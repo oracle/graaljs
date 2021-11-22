@@ -50,6 +50,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
@@ -125,13 +126,13 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
 
     @TruffleBoundary
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return "[Boolean " + valueOf(obj) + "]";
         } else {
             boolean primitiveValue = JSBoolean.valueOf(obj);
-            return JSRuntime.objectToConsoleString(obj, getBuiltinToStringTag(obj), depth,
-                            new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue}, allowSideEffects);
+            return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth,
+                            getBuiltinToStringTag(obj), new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
         }
     }
 

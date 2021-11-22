@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,9 +48,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -61,7 +64,8 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
+import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -71,6 +75,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
@@ -143,8 +148,6 @@ public final class JSRuntime {
     public static final int ITERATION_KIND_KEY = 1 << 0;
     public static final int ITERATION_KIND_VALUE = 1 << 1;
     public static final int ITERATION_KIND_KEY_PLUS_VALUE = ITERATION_KIND_KEY | ITERATION_KIND_VALUE;
-
-    public static final int TO_STRING_MAX_DEPTH = 3;
 
     private JSRuntime() {
         // this class should not be instantiated
@@ -250,7 +253,7 @@ public final class JSRuntime {
                 }
             }
             TruffleObject object = (TruffleObject) value;
-            InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+            InteropLibrary interop = InteropLibrary.getUncached();
             if (interop.isBoolean(object)) {
                 return JSBoolean.TYPE_NAME;
             } else if (interop.isString(object)) {
@@ -317,20 +320,17 @@ public final class JSRuntime {
      *
      * @param value an Object to be converted to a primitive value
      * @param hint the preferred type of primitive to return ("number", "string" or "default")
-     *
      * @return an Object representing the primitive value of the parameter
+     * @see com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode
      */
     @TruffleBoundary
     public static Object toPrimitive(Object value, String hint) {
         if (value == Null.instance || value == Undefined.instance) {
             return value;
-        } else if (value instanceof TruffleObject) {
-            if (JSDynamicObject.isJSDynamicObject(value)) {
-                return JSObject.toPrimitive((DynamicObject) value, hint);
-            } else if (isForeignObject(value)) {
-                TruffleObject tObj = (TruffleObject) value;
-                return toPrimitiveFromForeign(tObj, hint);
-            }
+        } else if (JSDynamicObject.isJSDynamicObject(value)) {
+            return JSObject.toPrimitive((DynamicObject) value, hint);
+        } else if (isForeignObject(value)) {
+            return toPrimitiveFromForeign(value, hint);
         }
         return value;
 
@@ -341,25 +341,63 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Object toPrimitiveFromForeign(Object tObj, String hint) {
-        TruffleLanguage.Env env;
+        assert isForeignObject(tObj);
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(tObj);
         if (interop.isNull(tObj)) {
             return Null.instance;
-        } else if ((env = JavaScriptLanguage.getCurrentEnv()).isHostObject(tObj)) {
-            Object javaObject = env.asHostObject(tObj);
-            if (javaObject == null) {
-                return Null.instance;
-            } else if (JSGuards.isJavaPrimitiveNumber(javaObject)) {
-                return JSRuntime.importValue(javaObject);
-            } else if (JavaScriptLanguage.getCurrentLanguage().getJSContext().isOptionNashornCompatibilityMode() && javaObject instanceof Number) {
-                return ((Number) javaObject).doubleValue();
-            } else {
-                return JSRuntime.toJSNull(javaObject.toString());
-            }
         } else if (JSInteropUtil.isBoxedPrimitive(tObj, interop)) {
             return JSInteropUtil.toPrimitiveOrDefault(tObj, Null.instance, interop, null);
-        } else {
-            return foreignOrdinaryToPrimitive(tObj, hint);
+        } else if (JavaScriptLanguage.getCurrentEnv().isHostObject(tObj)) {
+            if (JSRuntime.HINT_NUMBER.equals(hint) && JavaScriptLanguage.getCurrentLanguage().getJSContext().isOptionNashornCompatibilityMode() &&
+                            interop.isMemberInvocable(tObj, "doubleValue")) {
+                try {
+                    return interop.invokeMember(tObj, "doubleValue");
+                } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
+                    throw Errors.createTypeErrorInteropException(tObj, e, "doubleValue()", null);
+                }
+            } else if (interop.isInstant(tObj)) {
+                return JSDate.getDateValueFromInstant(tObj, interop);
+            } else if (isJavaArray(tObj, interop)) {
+                return formatJavaArray(tObj, interop);
+            } else if (interop.isMetaObject(tObj)) {
+                return javaClassToString(tObj, interop);
+            } else if (interop.isException(tObj)) {
+                return javaExceptionToString(tObj, interop);
+            }
+        }
+        return foreignOrdinaryToPrimitive(tObj, hint);
+    }
+
+    private static boolean isJavaArray(Object obj, InteropLibrary interop) {
+        return interop.hasArrayElements(obj) && interop.isMemberReadable(obj, "length");
+    }
+
+    @TruffleBoundary
+    private static Object formatJavaArray(Object obj, InteropLibrary interop) {
+        assert isJavaArray(obj, interop);
+        return JSRuntime.toDisplayString(obj, true, ToDisplayStringFormat.getArrayFormat());
+    }
+
+    @TruffleBoundary
+    private static Object javaClassToString(Object object, InteropLibrary interop) {
+        try {
+            String qualifiedName = InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(object));
+            if (JavaScriptLanguage.getCurrentLanguage().getJSContext().isOptionNashornCompatibilityMode() && qualifiedName.endsWith("[]")) {
+                Object hostObject = JavaScriptLanguage.getCurrentEnv().asHostObject(object);
+                qualifiedName = ((Class<?>) hostObject).getName();
+            }
+            return "class " + qualifiedName;
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(object, e, "getTypeName", null);
+        }
+    }
+
+    @TruffleBoundary
+    private static String javaExceptionToString(Object object, InteropLibrary interop) {
+        try {
+            return InteropLibrary.getUncached().asString(interop.toDisplayString(object, true));
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(object, e, "toString", null);
         }
     }
 
@@ -393,7 +431,7 @@ public final class JSRuntime {
                 } catch (InteropException e) {
                     result = null;
                 }
-                if (result != null && !isObject(result)) {
+                if (result != null && IsPrimitiveNode.getUncached().executeBoolean(result)) {
                     return result;
                 }
             }
@@ -401,7 +439,7 @@ public final class JSRuntime {
             Object method = JSObject.getMethod(proto, name);
             if (isCallable(method)) {
                 Object result = call(method, obj, new Object[]{});
-                if (!isObject(result)) {
+                if (IsPrimitiveNode.getUncached().executeBoolean(result)) {
                     return result;
                 }
             }
@@ -943,30 +981,32 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static String safeToString(Object value) {
-        return toDisplayStringImpl(value, TO_STRING_MAX_DEPTH, null, false, false);
+        return toDisplayString(value, false, ToDisplayStringFormat.getDefaultFormat());
     }
 
     @TruffleBoundary
     public static String toDisplayString(Object value, boolean allowSideEffects) {
-        return toDisplayStringImpl(value, TO_STRING_MAX_DEPTH, null, false, allowSideEffects);
+        return toDisplayString(value, allowSideEffects, ToDisplayStringFormat.getDefaultFormat());
     }
 
     @TruffleBoundary
-    public static String toDisplayString(Object value, int currentDepth, Object parent, boolean allowSideEffects) {
-        return toDisplayStringImpl(value, currentDepth - 1, parent, true, allowSideEffects);
+    public static String toDisplayString(Object value, boolean allowSideEffects, ToDisplayStringFormat format) {
+        return toDisplayStringImpl(value, allowSideEffects, format, 0, null);
     }
 
     @TruffleBoundary
-    public static String toDisplayString(Object value, int currentDepth, Object parent, boolean quoteString, boolean allowSideEffects) {
-        return toDisplayStringImpl(value, currentDepth - 1, parent, quoteString, allowSideEffects);
+    public static String toDisplayStringInner(Object value, boolean allowSideEffects, ToDisplayStringFormat format, int currentDepth, Object parent) {
+        return toDisplayStringImpl(value, allowSideEffects, format.withQuoteString(true), currentDepth + 1, parent);
     }
 
     /**
-     * Converts the value to a String that can be print on the console and used in error messages.
+     * Converts the value to a String that can be printed on the console and used in error messages.
      *
-     * @param depth allowed recursion depth (0 = do not recurse)
+     * @param format formatting parameters
+     * @param depth current recursion depth (starts at 0 = top level)
+     * @param parent parent object or null
      */
-    private static String toDisplayStringImpl(Object value, int depth, Object parent, boolean quoteString, boolean allowSideEffects) {
+    public static String toDisplayStringImpl(Object value, boolean allowSideEffects, ToDisplayStringFormat format, int depth, Object parent) {
         CompilerAsserts.neverPartOfCompilation();
         if (value == parent) {
             return "(this)";
@@ -978,9 +1018,9 @@ public final class JSRuntime {
             return booleanToString((Boolean) value);
         } else if (isString(value)) {
             String string = value.toString();
-            return quoteString ? quote(string) : string;
+            return format.quoteString() ? quote(string) : string;
         } else if (JSDynamicObject.isJSDynamicObject(value)) {
-            return JSObject.toDisplayString((DynamicObject) value, depth, allowSideEffects);
+            return ((JSDynamicObject) value).toDisplayStringImpl(allowSideEffects, format, depth);
         } else if (value instanceof Symbol) {
             return value.toString();
         } else if (value instanceof BigInt) {
@@ -993,22 +1033,22 @@ public final class JSRuntime {
                 return numberToString(number);
             }
         } else if (value instanceof InteropFunction) {
-            return toDisplayStringImpl(((InteropFunction) value).getFunction(), depth, parent, quoteString, allowSideEffects);
+            return toDisplayStringImpl(((InteropFunction) value).getFunction(), allowSideEffects, format, depth, parent);
         } else if (value instanceof TruffleObject) {
             assert !isJSNative(value) : value;
-            return foreignToString(value, depth, allowSideEffects);
+            return foreignToString(value, allowSideEffects, format, depth);
         } else {
             return String.valueOf(value);
         }
     }
 
     @TruffleBoundary
-    public static String objectToConsoleString(DynamicObject obj, String name, int depth, boolean allowSideEffects) {
-        return objectToConsoleString(obj, name, depth, null, null, allowSideEffects);
+    public static String objectToDisplayString(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth, String name) {
+        return objectToDisplayString(obj, allowSideEffects, format, depth, name, null, null);
     }
 
     @TruffleBoundary
-    public static String objectToConsoleString(DynamicObject obj, String name, int depth, String[] internalKeys, Object[] internalValues, boolean allowSideEffects) {
+    public static String objectToDisplayString(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth, String name, String[] internalKeys, Object[] internalValues) {
         assert JSDynamicObject.isJSDynamicObject(obj) && !JSFunction.isJSFunction(obj) && !JSProxy.isJSProxy(obj);
         boolean v8CompatMode = JSObject.getJSContext(obj).isOptionV8CompatibilityMode();
         StringBuilder sb = new StringBuilder();
@@ -1034,18 +1074,18 @@ public final class JSRuntime {
 
         if (isArrayLike) {
             if (length > 0) {
-                boolean topLevel = depth == TO_STRING_MAX_DEPTH;
-                if (depth <= 0 || (!topLevel && length > JSConfig.MaxConsolePrintProperties)) {
+                boolean topLevel = depth == 0;
+                if (depth >= format.getMaxDepth() || (!topLevel && length > format.getMaxElements())) {
                     if (name == null) {
                         sb.append("Array");
                     }
                     sb.append('(').append(length).append(')');
                     return sb.toString();
-                } else if (topLevel && length >= 2 && !v8CompatMode) {
+                } else if (topLevel && length >= 2 && !v8CompatMode && format.includeArrayLength()) {
                     sb.append('(').append(length).append(')');
                 }
             }
-        } else if (depth <= 0) {
+        } else if (depth >= format.getMaxDepth()) {
             sb.append("{...}");
             return sb.toString();
         }
@@ -1068,7 +1108,7 @@ public final class JSRuntime {
             }
             if (propertyCount > 0) {
                 sb.append(v8CompatMode ? "," : ", ");
-                if (propertyCount >= JSConfig.MaxConsolePrintProperties) {
+                if (propertyCount >= format.getMaxElements()) {
                     sb.append("...");
                     break;
                 }
@@ -1080,7 +1120,7 @@ public final class JSRuntime {
                     if ((index < length) && fillEmptyArrayElements(sb, index, prevArrayIndex, false)) {
                         sb.append(", ");
                         propertyCount++;
-                        if (propertyCount >= JSConfig.MaxConsolePrintProperties) {
+                        if (propertyCount >= format.getMaxElements()) {
                             sb.append("...");
                             break;
                         }
@@ -1090,7 +1130,7 @@ public final class JSRuntime {
                     if (fillEmptyArrayElements(sb, length, prevArrayIndex, false)) {
                         sb.append(", ");
                         propertyCount++;
-                        if (propertyCount >= JSConfig.MaxConsolePrintProperties) {
+                        if (propertyCount >= format.getMaxElements()) {
                             sb.append("...");
                             break;
                         }
@@ -1106,7 +1146,7 @@ public final class JSRuntime {
             String valueStr = null;
             if (desc.isDataDescriptor()) {
                 Object value = desc.getValue();
-                valueStr = toDisplayString(value, depth, obj, allowSideEffects);
+                valueStr = toDisplayStringInner(value, allowSideEffects, format, depth, obj);
             } else if (desc.isAccessorDescriptor()) {
                 valueStr = "accessor";
             } else {
@@ -1115,7 +1155,7 @@ public final class JSRuntime {
             sb.append(valueStr);
             propertyCount++;
         }
-        if (isArray && propertyCount < JSConfig.MaxConsolePrintProperties) {
+        if (isArray && propertyCount < format.getMaxElements()) {
             // fill "empty (times) (count)" entries at the end of the array
             if (fillEmptyArrayElements(sb, length, prevArrayIndex, propertyCount > 0)) {
                 propertyCount++;
@@ -1127,7 +1167,7 @@ public final class JSRuntime {
                 if (propertyCount > 0) {
                     sb.append(", ");
                 }
-                sb.append("[[").append(internalKeys[i]).append("]]: ").append(toDisplayString(internalValues[i], depth, obj, allowSideEffects));
+                sb.append("[[").append(internalKeys[i]).append("]]: ").append(toDisplayStringInner(internalValues[i], allowSideEffects, format, depth, obj));
                 propertyCount++;
             }
         }
@@ -1135,17 +1175,17 @@ public final class JSRuntime {
         return sb.toString();
     }
 
-    private static String foreignToString(Object value, int depth, boolean allowSideEffects) {
+    private static String foreignToString(Object value, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         CompilerAsserts.neverPartOfCompilation();
-        TruffleLanguage.Env env;
         try {
-            InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
+            InteropLibrary interop = InteropLibrary.getUncached(value);
             if (interop.isNull(value)) {
                 return "null";
             } else if (interop.hasArrayElements(value)) {
-                return foreignArrayToString(value, depth, allowSideEffects);
+                return foreignArrayToString(value, allowSideEffects, format, depth);
             } else if (interop.isString(value)) {
-                return interop.asString(value);
+                String string = interop.asString(value);
+                return format.quoteString() ? quote(string) : string;
             } else if (interop.isBoolean(value)) {
                 return booleanToString(interop.asBoolean(value));
             } else if (interop.isNumber(value)) {
@@ -1157,93 +1197,62 @@ public final class JSRuntime {
                 } else if (interop.fitsInDouble(value)) {
                     unboxed = interop.asDouble(value);
                 }
-                return JSRuntime.toDisplayString(unboxed, 0, null, allowSideEffects);
-            } else if ((env = JavaScriptLanguage.getCurrentEnv()).isHostObject(value)) {
-                Object hostObject = env.asHostObject(value);
-                Class<?> clazz = hostObject.getClass();
-                if (clazz == Class.class) {
-                    clazz = (Class<?>) hostObject;
-                    return "JavaClass[" + clazz.getTypeName() + "]";
-                } else {
-                    return "JavaObject[" + clazz.getTypeName() + "]";
-                }
+                return JSRuntime.toDisplayString(unboxed, allowSideEffects, format);
+            } else if ((JavaScriptLanguage.getCurrentEnv()).isHostObject(value)) {
+                return hostObjectToString(value, interop);
             } else if (interop.isMetaObject(value)) {
-                return InteropLibrary.getFactory().getUncached().asString(interop.getMetaQualifiedName(value));
+                return InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(value));
             } else if (interop.hasMembers(value) && !(interop.isExecutable(value) || interop.isInstantiable(value))) {
-                return foreignObjectToString(value, depth, allowSideEffects);
+                return foreignObjectToString(value, allowSideEffects, format, depth);
             } else {
-                return InteropLibrary.getFactory().getUncached().asString(interop.toDisplayString(value, allowSideEffects));
+                return InteropLibrary.getUncached().asString(interop.toDisplayString(value, allowSideEffects));
             }
         } catch (InteropException e) {
             return "Object";
         }
     }
 
-    private static String foreignArrayToString(Object truffleObject, int depth, boolean allowSideEffects) throws InteropException {
+    private static String hostObjectToString(Object value, InteropLibrary interop) throws UnsupportedMessageException {
+        if (interop.isMetaObject(value)) {
+            return "JavaClass[" + InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(value)) + "]";
+        } else {
+            Object metaObject = interop.getMetaObject(value);
+            return "JavaObject[" + InteropLibrary.getUncached().asString(InteropLibrary.getUncached().getMetaQualifiedName(metaObject)) + "]";
+        }
+    }
+
+    private static String foreignArrayToString(Object truffleObject, boolean allowSideEffects, ToDisplayStringFormat format, int depth) throws InteropException {
         CompilerAsserts.neverPartOfCompilation();
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(truffleObject);
         assert interop.hasArrayElements(truffleObject);
         long size = interop.getArraySize(truffleObject);
         if (size == 0) {
             return "[]";
-        } else if (depth <= 0) {
+        } else if (depth >= format.getMaxDepth()) {
             return "Array(" + size + ")";
         }
-        boolean topLevel = depth == TO_STRING_MAX_DEPTH;
+        boolean topLevel = depth == 0;
         StringBuilder sb = new StringBuilder();
-        if (topLevel && size >= 2) {
+        if (topLevel && size >= 2 && format.includeArrayLength()) {
             sb.append('(').append(size).append(')');
         }
         sb.append('[');
         for (long i = 0; i < size; i++) {
             if (i > 0) {
                 sb.append(", ");
-                if (i >= JSConfig.MaxConsolePrintProperties) {
+                if (i >= format.getMaxElements()) {
                     sb.append("...");
                     break;
                 }
             }
             Object value = interop.readArrayElement(truffleObject, i);
-            sb.append(toDisplayString(value, depth, truffleObject, allowSideEffects));
+            sb.append(toDisplayStringInner(value, allowSideEffects, format, depth, truffleObject));
         }
         sb.append(']');
         return sb.toString();
     }
 
-    @TruffleBoundary
-    public static String javaArrayToString(Object array) {
-        return javaArrayToString(array, TO_STRING_MAX_DEPTH, true);
-    }
-
-    private static String javaArrayToString(Object javaArray, int depth, boolean allowSideEffects) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (javaArray == null) {
-            return "null";
-        }
-        if (depth <= 0) {
-            return "[...]";
-        }
-        int size = Array.getLength(javaArray) - 1;
-        if (size == -1) {
-            return "[]";
-        }
-        StringBuilder b = new StringBuilder();
-        b.append('[');
-        for (int i = 0;; i++) {
-            Object arrayValue = Array.get(javaArray, i);
-            if (JSGuards.isJavaArray(arrayValue)) {
-                b.append(javaArrayToString(arrayValue, depth - 1, allowSideEffects));
-            } else {
-                b.append(toDisplayString(arrayValue, depth, javaArray, allowSideEffects));
-            }
-            if (i == size) {
-                return b.append(']').toString();
-            }
-            b.append(", ");
-        }
-    }
-
-    private static String foreignObjectToString(Object truffleObject, int depth, boolean allowSideEffects) throws InteropException {
+    private static String foreignObjectToString(Object truffleObject, boolean allowSideEffects, ToDisplayStringFormat format, int depth) throws InteropException {
         CompilerAsserts.neverPartOfCompilation();
         InteropLibrary objInterop = InteropLibrary.getFactory().getUncached(truffleObject);
         assert objInterop.hasMembers(truffleObject);
@@ -1255,7 +1264,7 @@ public final class JSRuntime {
         long keyCount = keysInterop.getArraySize(keys);
         if (keyCount == 0) {
             return "{}";
-        } else if (depth <= 0) {
+        } else if (depth >= format.getMaxDepth()) {
             return "{...}";
         }
         StringBuilder sb = new StringBuilder();
@@ -1263,18 +1272,18 @@ public final class JSRuntime {
         for (long i = 0; i < keyCount; i++) {
             if (i > 0) {
                 sb.append(", ");
-                if (i >= JSConfig.MaxConsolePrintProperties) {
+                if (i >= format.getMaxElements()) {
                     sb.append("...");
                     break;
                 }
             }
             Object key = keysInterop.readArrayElement(keys, i);
-            assert InteropLibrary.getFactory().getUncached().isString(key);
-            String stringKey = key instanceof String ? (String) key : InteropLibrary.getFactory().getUncached().asString(key);
+            assert InteropLibrary.getUncached().isString(key);
+            String stringKey = key instanceof String ? (String) key : InteropLibrary.getUncached().asString(key);
             Object value = objInterop.readMember(truffleObject, stringKey);
             sb.append(stringKey);
             sb.append(": ");
-            sb.append(toDisplayString(value, depth, truffleObject, allowSideEffects));
+            sb.append(toDisplayStringInner(value, allowSideEffects, format, depth, truffleObject));
         }
         sb.append('}');
         return sb.toString();
@@ -1297,14 +1306,14 @@ public final class JSRuntime {
         return false;
     }
 
-    public static String collectionToConsoleString(DynamicObject obj, String name, JSHashMap map, int depth, boolean allowSideEffects) {
+    public static String collectionToConsoleString(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, String name, JSHashMap map, int depth) {
         assert JSMap.isJSMap(obj) || JSSet.isJSSet(obj);
         assert name != null;
         int size = map.size();
         StringBuilder sb = new StringBuilder();
         sb.append(name);
         sb.append('(').append(size).append(')');
-        if (size > 0 && depth > 0) {
+        if (size > 0 && depth < format.getMaxDepth()) {
             sb.append('{');
             boolean isMap = JSMap.isJSMap(obj);
             boolean isFirst = true;
@@ -1315,10 +1324,11 @@ public final class JSRuntime {
                     if (!isFirst) {
                         sb.append(", ");
                     }
-                    sb.append(toDisplayString(key, depth, obj, allowSideEffects));
+                    sb.append(toDisplayStringInner(key, allowSideEffects, format, depth, obj));
                     if (isMap) {
                         sb.append(" => ");
-                        sb.append(toDisplayString(cursor.getValue(), depth, obj, allowSideEffects));
+                        Object value = cursor.getValue();
+                        sb.append(toDisplayStringInner(value, allowSideEffects, format, depth, obj));
                     }
                     isFirst = false;
                 }
@@ -2479,7 +2489,7 @@ public final class JSRuntime {
     @TruffleBoundary
     public static boolean isCallableForeign(Object value) {
         if (isForeignObject(value)) {
-            InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+            InteropLibrary interop = InteropLibrary.getUncached();
             return interop.isExecutable(value) || interop.isInstantiable(value);
         }
         return false;
@@ -2501,7 +2511,7 @@ public final class JSRuntime {
         } else if (JSProxy.isJSProxy(obj)) {
             return isProxyAnArray((DynamicObject) obj);
         } else if (isForeignObject(obj)) {
-            return InteropLibrary.getFactory().getUncached().hasArrayElements(obj);
+            return InteropLibrary.getUncached().hasArrayElements(obj);
         }
         return false;
     }
@@ -2752,7 +2762,7 @@ public final class JSRuntime {
     @TruffleBoundary
     public static boolean isConstructorForeign(Object value) {
         if (isForeignObject(value)) {
-            return InteropLibrary.getFactory().getUncached().isInstantiable(value);
+            return InteropLibrary.getUncached().isInstantiable(value);
         }
         return false;
     }
@@ -2862,17 +2872,7 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Object exportValue(Object value) {
-        if (JSRuntime.isLazyString(value)) {
-            return value.toString();
-        } else if (value instanceof SafeInteger) {
-            return ((SafeInteger) value).doubleValue();
-        } else if (value instanceof TruffleObject) {
-            return value;
-        } else if (JSRuntime.isJSPrimitive(value)) {
-            return value;
-        }
-        TruffleLanguage.Env env = JavaScriptLanguage.getCurrentEnv();
-        return env.asGuestValue(value);
+        return ExportValueNode.getUncached().execute(value);
     }
 
     @TruffleBoundary

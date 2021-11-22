@@ -41,13 +41,15 @@
 package com.oracle.truffle.js.runtime.java;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
@@ -97,8 +99,9 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, Object name, Node encapsulatingNode) {
-        if (name instanceof String) {
+    public Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+        if (key instanceof String) {
+            String name = (String) key;
             Object[] imports = getImports(store);
             JSRealm realm = JSRealm.get(null);
             // Nashorn searches the imports from the last one
@@ -106,15 +109,17 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
                 Object anImport = imports[i];
                 if (anImport instanceof JavaPackageObject) {
                     JavaPackageObject javaPackage = (JavaPackageObject) anImport;
-                    Object found = JavaPackage.getClass(realm, javaPackage, (String) name, Object.class);
+                    Object found = JavaPackage.lookupClass(realm, javaPackage, name);
                     if (found != null) {
                         return found;
                     }
                 } else {
-                    TruffleLanguage.Env env = JavaScriptLanguage.getCurrentEnv();
-                    Object clazz = env.asHostObject(anImport);
-                    if (name.equals(((Class<?>) clazz).getSimpleName())) {
-                        return anImport;
+                    try {
+                        if (name.equals(InteropLibrary.getUncached().asString(InteropLibrary.getUncached().getMetaSimpleName(anImport)))) {
+                            return anImport;
+                        }
+                    } catch (UnsupportedMessageException e) {
+                        throw Errors.createTypeErrorInteropException(anImport, e, "getSimpleName", null);
                     }
                 }
             }
@@ -128,7 +133,7 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject object, int depth, boolean allowSideEffects) {
+    public String toDisplayStringImpl(DynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return "[JavaImporter]";
     }
 

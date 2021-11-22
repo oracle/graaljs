@@ -2533,8 +2533,9 @@ public class JSRealm {
     }
 
     public String getCustomEsmPathMapping(String refPath, String specifier) {
+        CompilerAsserts.neverPartOfCompilation();
         if (getContext().isOptionMleBuiltin() && customEsmPathMappingCallback != null) {
-            Object[] args = new Object[]{refPath, specifier};
+            Object[] args = new Object[]{JSRuntime.toJSNull(refPath), specifier};
             Object custom = JSInteropUtil.call(customEsmPathMappingCallback, args);
             InteropLibrary interopLibrary = InteropLibrary.getUncached();
             if (interopLibrary.isString(custom)) {

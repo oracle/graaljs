@@ -89,8 +89,8 @@ public final class InteropMemberIterator implements TruffleObject {
             try {
                 Object key = keysInterop.readArrayElement(keysObject, index);
                 if (values) {
-                    assert InteropLibrary.getFactory().getUncached().isString(key);
-                    String stringKey = key instanceof String ? (String) key : InteropLibrary.getFactory().getUncached().asString(key);
+                    assert InteropLibrary.getUncached().isString(key);
+                    String stringKey = key instanceof String ? (String) key : InteropLibrary.getUncached().asString(key);
                     // the value is imported in the iterator's next method node
                     return objInterop.readMember(iteratedObject, stringKey);
                 } else {

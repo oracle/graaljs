@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.WeakRefPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
@@ -105,7 +106,7 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return "[" + getClassName() + "]";
     }
 

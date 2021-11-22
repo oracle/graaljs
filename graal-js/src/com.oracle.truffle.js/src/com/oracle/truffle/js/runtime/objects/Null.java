@@ -45,6 +45,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.builtins.AbstractJSClass;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 
@@ -87,7 +88,7 @@ public final class Null {
         }
 
         @Override
-        public String toDisplayStringImpl(DynamicObject object, int depth, boolean allowSideEffects) {
+        public String toDisplayStringImpl(DynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
             return object == Undefined.instance ? "[object Undefined]" : "[object Null]";
         }
 

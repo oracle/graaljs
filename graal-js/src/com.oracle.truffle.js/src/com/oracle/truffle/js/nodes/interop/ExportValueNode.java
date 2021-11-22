@@ -61,7 +61,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * This node prepares the export of a value via Interop. It transforms values not allowed in Truffle
- * (e.g. {@link JSLazyString}) and binds Functions. See also {@link JSRuntime#exportValue(Object)}.
+ * (e.g. {@link JSLazyString}) and binds Functions.
  *
  * @see JSRuntime#exportValue(Object)
  */

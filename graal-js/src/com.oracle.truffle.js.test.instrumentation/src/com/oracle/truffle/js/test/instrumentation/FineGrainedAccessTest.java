@@ -365,7 +365,7 @@ public abstract class FineGrainedAccessTest {
 
     public static Object getAttributeFrom(EventContext cx, String name) {
         try {
-            return InteropLibrary.getFactory().getUncached().readMember(((InstrumentableNode) cx.getInstrumentedNode()).getNodeObject(), name);
+            return InteropLibrary.getUncached().readMember(((InstrumentableNode) cx.getInstrumentedNode()).getNodeObject(), name);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw new RuntimeException(e);
         }

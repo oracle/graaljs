@@ -176,7 +176,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
 
                 if (interop.hasMembers(iteratedObject)) {
                     Object keysObj = interop.getMembers(iteratedObject);
-                    assert InteropLibrary.getFactory().getUncached().hasArrayElements(keysObj);
+                    assert InteropLibrary.getUncached().hasArrayElements(keysObj);
                     long longSize = keysInterop.getArraySize(keysObj);
                     return newEnumerateIterator(InteropMemberIterator.create(values, iteratedObject, keysObj, longSize));
                 }

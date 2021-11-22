@@ -773,7 +773,7 @@ public final class Errors {
 
     private static String toDisplayStringSafe(Object receiver) {
         CompilerAsserts.neverPartOfCompilation();
-        InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+        InteropLibrary interop = InteropLibrary.getUncached();
         try {
             return interop.asString(interop.toDisplayString(receiver, false));
         } catch (Exception e) {

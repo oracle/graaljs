@@ -44,6 +44,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 
 /**
  * Delegates methods to JSClass.
@@ -165,8 +166,8 @@ public abstract class JSClassObject extends JSObject {
     }
 
     @Override
-    public String toDisplayStringImpl(int depth, boolean allowSideEffects) {
-        return getJSClass().toDisplayStringImpl(this, depth, allowSideEffects);
+    public String toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        return getJSClass().toDisplayStringImpl(this, allowSideEffects, format, depth);
     }
 
     @Override

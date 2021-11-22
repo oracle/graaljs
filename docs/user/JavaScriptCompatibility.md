@@ -259,7 +259,7 @@ When no target type is provided, `Object[]` is assumed:
 var jsArr = ["a", "b", "c"];
 var strArrType = Java.type("java.lang.String[]");
 var javaArr = Java.to(jsArr, strArrType);
-assertEquals('class [Ljava.lang.String;', String(javaArr.getClass()));
+assertEquals('class java.lang.String[]', String(javaArr.getClass()));
 ```
 
 The conversion methods as defined by ECMAScript (e.g., `ToString` and `ToDouble`) are executed when a JavaScript value has to be converted to a Java type.

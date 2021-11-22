@@ -98,16 +98,7 @@ public final class JSInteropUtil {
     }
 
     public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue) {
-        if (!(member instanceof String)) {
-            return defaultValue;
-        }
-        try {
-            return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().readMember(obj, (String) member));
-        } catch (UnknownIdentifierException e) {
-            return defaultValue;
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "readMember", member, null);
-        }
+        return readMemberOrDefault(obj, member, defaultValue, InteropLibrary.getUncached(), ImportValueNode.getUncached(), null);
     }
 
     public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue, InteropLibrary interop, ImportValueNode importValue, Node originatingNode) {
@@ -134,24 +125,11 @@ public final class JSInteropUtil {
     }
 
     public static Object readArrayElementOrDefault(Object obj, long index, Object defaultValue) {
-        try {
-            return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().readArrayElement(obj, index));
-        } catch (InvalidArrayIndexException e) {
-            return defaultValue;
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "readArrayElement", index, null);
-        }
+        return readArrayElementOrDefault(obj, index, defaultValue, InteropLibrary.getUncached(), ImportValueNode.getUncached(), null);
     }
 
     public static void writeMember(Object obj, Object member, Object value) {
-        if (!(member instanceof String)) {
-            return;
-        }
-        try {
-            InteropLibrary.getFactory().getUncached().writeMember(obj, (String) member, JSRuntime.exportValue(value));
-        } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "writeMember", member, null);
-        }
+        writeMember(obj, member, value, InteropLibrary.getUncached(), ExportValueNode.getUncached(), null);
     }
 
     public static void writeMember(Object obj, Object member, Object value, InteropLibrary interop, ExportValueNode exportValue, Node originatingNode) {
@@ -192,8 +170,8 @@ public final class JSInteropUtil {
     @TruffleBoundary
     public static List<Object> keys(Object obj) {
         try {
-            Object keysObj = InteropLibrary.getFactory().getUncached().getMembers(obj);
-            InteropLibrary keysInterop = InteropLibrary.getFactory().getUncached(keysObj);
+            Object keysObj = InteropLibrary.getUncached().getMembers(obj);
+            InteropLibrary keysInterop = InteropLibrary.getUncached(keysObj);
             long size = keysInterop.getArraySize(keysObj);
             if (size < 0 || size >= Integer.MAX_VALUE) {
                 throw Errors.createRangeErrorInvalidArrayLength();
@@ -201,7 +179,7 @@ public final class JSInteropUtil {
             List<Object> keys = new ArrayList<>((int) size);
             for (int i = 0; i < size; i++) {
                 Object key = keysInterop.readArrayElement(keysObj, i);
-                assert InteropLibrary.getFactory().getUncached().isString(key);
+                assert InteropLibrary.getUncached().isString(key);
                 keys.add(key);
             }
             return keys;
@@ -213,7 +191,7 @@ public final class JSInteropUtil {
     @TruffleBoundary
     public static boolean hasProperty(Object obj, Object key) {
         if (key instanceof String) {
-            return InteropLibrary.getFactory().getUncached().isMemberExisting(obj, (String) key);
+            return InteropLibrary.getUncached().isMemberExisting(obj, (String) key);
         } else {
             return false;
         }
@@ -223,7 +201,7 @@ public final class JSInteropUtil {
     public static boolean remove(Object obj, Object key) {
         if (key instanceof String) {
             try {
-                InteropLibrary.getFactory().getUncached().removeMember(obj, (String) key);
+                InteropLibrary.getUncached().removeMember(obj, (String) key);
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
                 throw Errors.createTypeErrorInteropException(obj, e, "removeMember", key, null);
             }
@@ -237,7 +215,7 @@ public final class JSInteropUtil {
     public static Object call(Object function, Object[] args) {
         Object[] exportedArgs = JSRuntime.exportValueArray(args);
         try {
-            return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().execute(function, exportedArgs));
+            return JSRuntime.importValue(InteropLibrary.getUncached().execute(function, exportedArgs));
         } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
             throw Errors.createTypeErrorInteropException(function, e, "execute", null);
         }
@@ -247,7 +225,7 @@ public final class JSInteropUtil {
     public static Object construct(Object target, Object[] args) {
         Object[] exportedArgs = JSRuntime.exportValueArray(args);
         try {
-            return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().instantiate(target, exportedArgs));
+            return JSRuntime.importValue(InteropLibrary.getUncached().instantiate(target, exportedArgs));
         } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
             throw Errors.createTypeErrorInteropException(target, e, "instantiate", null);
         }

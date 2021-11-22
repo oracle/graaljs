@@ -329,8 +329,8 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             boolean hasContent = false;
             for (long i = 0; i < size; i++) {
                 Object key = keysInterop.readArrayElement(keysObj, i);
-                assert InteropLibrary.getFactory().getUncached().isString(key);
-                String stringKey = key instanceof String ? (String) key : InteropLibrary.getFactory().getUncached().asString(key);
+                assert InteropLibrary.getUncached().isString(key);
+                String stringKey = key instanceof String ? (String) key : InteropLibrary.getUncached().asString(key);
                 if (!objInterop.isMemberReadable(obj, stringKey)) {
                     continue;
                 }
@@ -358,7 +358,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     @TruffleBoundary
     private void jsonJA(StringBuilder builder, JSONData data, Object value) {
         checkCycle(data, value);
-        assert JSRuntime.isArray(value) || InteropLibrary.getFactory().getUncached().hasArrayElements(value);
+        assert JSRuntime.isArray(value) || InteropLibrary.getUncached().hasArrayElements(value);
         data.pushStack(value);
         checkStackDepth(data);
         int stepback = data.getIndent();
@@ -524,12 +524,12 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     private Object truffleGetSize(Object obj) {
-        return JSInteropUtil.getArraySize(obj, InteropLibrary.getFactory().getUncached(), this);
+        return JSInteropUtil.getArraySize(obj, InteropLibrary.getUncached(), this);
     }
 
     private Object truffleRead(Object obj, String key) {
         try {
-            return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().readMember(obj, key));
+            return JSRuntime.importValue(InteropLibrary.getUncached().readMember(obj, key));
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             throw Errors.createTypeErrorInteropException(obj, e, "readMember", key, this);
         }
@@ -537,7 +537,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
 
     private Object truffleRead(Object obj, int index) {
         try {
-            return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().readArrayElement(obj, index));
+            return JSRuntime.importValue(InteropLibrary.getUncached().readArrayElement(obj, index));
         } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
             throw Errors.createTypeErrorInteropException(obj, e, "readArrayElement", index, this);
         }

@@ -81,7 +81,7 @@ public abstract class JSPrimitive extends JSNonProxy implements PrototypeSupplie
         String thisStr = (String) thisObj;
         Object boxedString = realm.getEnv().asBoxedGuestValue(thisStr);
         try {
-            return InteropLibrary.getFactory().getUncached().readMember(boxedString, name);
+            return InteropLibrary.getUncached().readMember(boxedString, name);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             return Undefined.instance;
         }
@@ -112,7 +112,7 @@ public abstract class JSPrimitive extends JSNonProxy implements PrototypeSupplie
         String thisStr = (String) thisObj;
         Object boxedString = realm.getEnv().asBoxedGuestValue(thisStr);
         try {
-            return InteropLibrary.getFactory().getUncached().readMember(boxedString, name);
+            return InteropLibrary.getUncached().readMember(boxedString, name);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             return null;
         }

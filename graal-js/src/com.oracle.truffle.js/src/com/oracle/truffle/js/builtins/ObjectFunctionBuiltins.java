@@ -544,7 +544,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     array = new Object[(int) size];
                     for (int i = 0; i < size; i++) {
                         Object key = members.readArrayElement(keysObj, i);
-                        assert InteropLibrary.getFactory().getUncached().isString(key);
+                        assert InteropLibrary.getUncached().isString(key);
                         array[i] = key;
                     }
                 } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
@@ -859,7 +859,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         SimpleArrayList<String> keys = SimpleArrayList.create(size);
                         for (int i = 0; i < size; i++) {
                             Object key = members.readArrayElement(keysObj, i);
-                            assert InteropLibrary.getFactory().getUncached().isString(key);
+                            assert InteropLibrary.getUncached().isString(key);
                             keys.add(asStringKey(key), growProfile);
                         }
                         return JSArray.createConstant(getContext(), getRealm(), keys.toArray());
@@ -881,7 +881,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private String asStringKey(Object key) throws UnsupportedMessageException {
-            assert InteropLibrary.getFactory().getUncached().isString(key);
+            assert InteropLibrary.getUncached().isString(key);
             if (key instanceof String) {
                 return (String) key;
             } else {
@@ -1125,7 +1125,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private String asStringKey(Object key) throws UnsupportedMessageException {
-            assert InteropLibrary.getFactory().getUncached().isString(key);
+            assert InteropLibrary.getUncached().isString(key);
             if (key instanceof String) {
                 return (String) key;
             } else {
@@ -1288,7 +1288,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         if (key instanceof String) {
                             stringKey = (String) key;
                         } else {
-                            stringKey = InteropLibrary.getFactory().getUncached().asString(key);
+                            stringKey = InteropLibrary.getUncached().asString(key);
                         }
                         if (!JSObject.hasOwnProperty(target, key, targetProfile)) {
                             if (!extensible) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,6 +63,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 
 /**
@@ -288,10 +289,11 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
     /**
      * A more informative toString variant, mainly used for error messages.
      *
-     * @param depth allowed nesting depth
+     * @param format formatting parameters
+     * @param depth current nesting depth
      */
     @TruffleBoundary
-    public abstract String toDisplayStringImpl(int depth, boolean allowSideEffects);
+    public abstract String toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth);
 
     /**
      * ES2015 7.3.15 TestIntegrityLevel(O, level).

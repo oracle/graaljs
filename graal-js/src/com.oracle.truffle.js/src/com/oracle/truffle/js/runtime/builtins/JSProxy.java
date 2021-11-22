@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -565,13 +566,13 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
             Object target = getTarget(obj);
             Object handler = getHandler(obj);
-            return "Proxy(" + JSRuntime.toDisplayString(target, depth, obj, allowSideEffects) + ", " + JSRuntime.toDisplayString(handler, depth, obj, allowSideEffects) + ")";
+            return "Proxy(" + JSRuntime.toDisplayStringInner(target, allowSideEffects, format, depth, obj) + ", " + JSRuntime.toDisplayStringInner(handler, allowSideEffects, format, depth, obj) + ")";
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -167,7 +167,7 @@ public class FullExecutionTracerInstrument extends TruffleInstrument {
 
                     private String getAttributeFrom(EventContext cx, String name) {
                         try {
-                            return (String) InteropLibrary.getFactory().getUncached().readMember(((InstrumentableNode) cx.getInstrumentedNode()).getNodeObject(), name);
+                            return (String) InteropLibrary.getUncached().readMember(((InstrumentableNode) cx.getInstrumentedNode()).getNodeObject(), name);
                         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                             throw new RuntimeException(e);
                         }
