@@ -139,12 +139,17 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
     // https://tc39.github.io/ecma402/#sec-currencydigits
     @TruffleBoundary
-    public static int currencyDigits(String currencyCode) {
-        try {
-            int digits = Currency.getInstance(currencyCode).getDefaultFractionDigits();
-            return (digits == -1) ? 2 : digits;
-        } catch (IllegalArgumentException e) {
-            return 2;
+    public static int currencyDigits(JSContext context, String currencyCode) {
+        if (context.isOptionV8CompatibilityMode()) {
+            // ICU is using CLDR data that differ from ISO 4217 data for several currencies.
+            return com.ibm.icu.util.Currency.getInstance(currencyCode).getDefaultFractionDigits();
+        } else {
+            try {
+                int digits = Currency.getInstance(currencyCode).getDefaultFractionDigits();
+                return (digits == -1) ? 2 : digits;
+            } catch (IllegalArgumentException e) {
+                return 2;
+            }
         }
     }
 
