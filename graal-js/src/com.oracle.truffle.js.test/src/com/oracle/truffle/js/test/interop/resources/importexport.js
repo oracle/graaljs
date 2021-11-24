@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-import MyMath from 'mymathmodule.js'; // import default class
+import MyMath from './mymathmodule.js'; // import default class
 
 const m = new MyMath();
 

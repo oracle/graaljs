@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-const module = await import('classexportmodule.js');
+const module = await import('./classexportmodule.js');
 
 export function sqrtPlusOne(n) {
     const m = new module.MyMath();

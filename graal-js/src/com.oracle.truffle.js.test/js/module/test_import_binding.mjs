@@ -5,7 +5,7 @@
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
  */
 
-import { other } from "test_import_binding_other.mjs";
+import { other } from "./test_import_binding_other.mjs";
 
 const kTestString = 'hello';
 globalThis.run = cb => cb();

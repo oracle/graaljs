@@ -71,6 +71,7 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.attribute.FileAttribute;
 import java.util.ArrayList;
 import java.util.List;
@@ -115,7 +116,7 @@ public class ESModuleTest {
             String line;
             while ((line = br.readLine()) != null) {
                 for (String[] moduleNameReplacement : moduleNameReplacements) {
-                    line = line.replace("'" + moduleNameReplacement[0] + "'", "'" + moduleNameReplacement[1] + "'");
+                    line = line.replace(moduleNameReplacement[0], moduleNameReplacement[1]);
                 }
                 bw.write(line);
                 bw.write(System.lineSeparator());
@@ -181,8 +182,8 @@ public class ESModuleTest {
 
             moduleNameReplacements[replacementIndex++] = new String[]{moduleName, moduleTempFileName};
             if (moduleName.contains(".")) {
-                String moduleNameBase = baseAndExtension(moduleName)[0];
-                String moduleTempFileNameBase = baseAndExtension(moduleTempFileName)[0];
+                String moduleNameBase = "'" + baseAndExtension(moduleName)[0] + "'";
+                String moduleTempFileNameBase = "'" + baseAndExtension(moduleTempFileName)[0] + "'";
                 moduleNameReplacements[replacementIndex++] = new String[]{moduleNameBase, moduleTempFileNameBase};
             }
         }
@@ -330,9 +331,11 @@ public class ESModuleTest {
      */
     @Test
     public void testImportWithCustomFileSystem() throws IOException {
-        File[] allFilesArray = null;
+        File[] allFilesArray = prepareTestFileAndModules("resources/importwithcustomfilesystemtest.js", "resources" +
+                        "/functionexportmodule.js");
+
         FileSystem fileSystem = new FileSystem() {
-            java.nio.file.FileSystem fullIO = FileSystems.getDefault();
+            final java.nio.file.FileSystem fullIO = FileSystems.getDefault();
 
             @Override
             public Path parsePath(URI uri) {
@@ -341,6 +344,10 @@ public class ESModuleTest {
 
             @Override
             public Path parsePath(String path) {
+                if (!Files.exists(Paths.get(path)) && !path.endsWith(".js")) {
+                    String expected = allFilesArray[1].getAbsolutePath();
+                    return fullIO.getPath(expected);
+                }
                 return fullIO.getPath(path);
             }
 
@@ -381,12 +388,7 @@ public class ESModuleTest {
 
             @Override
             public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
-                Path realPath = path;
-                if (!Files.exists(path, linkOptions) && !path.getFileName().toString().endsWith(".js")) {
-                    realPath = path.resolveSibling(path.getFileName() + ".js");
-                }
-
-                return realPath.toRealPath(linkOptions);
+                return path.toRealPath(linkOptions);
             }
 
             @Override
@@ -396,14 +398,13 @@ public class ESModuleTest {
         };
 
         try (Context context = JSTest.newContextBuilder().allowIO(true).fileSystem(fileSystem).build()) {
-            allFilesArray = prepareTestFileAndModules("resources/importwithcustomfilesystemtest.js", "resources" +
-                            "/functionexportmodule.js");
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value v = context.eval(mainSource);
             commonCheck(v);
         } finally {
             deleteFiles(allFilesArray);
         }
+
     }
 
     /**
@@ -510,6 +511,84 @@ public class ESModuleTest {
             Value result = sqrtPlusOne.execute(121);
             Assert.assertTrue(result.fitsInInt());
             Assert.assertEquals(14, result.asInt());
+        }
+    }
+
+    @Test
+    public void testBareModulesVirtualFsAccesses() throws IOException {
+        final String expectedBarePath = "bare.js";
+        final File[] allFilesArray = prepareTestFileAndModules("resources/importbarevirtualfs.js", "resources/folder/subfolder.js/foo.js");
+
+        FileSystem fileSystem = new FileSystem() {
+            final java.nio.file.FileSystem fullIO = FileSystems.getDefault();
+
+            @Override
+            public Path parsePath(URI uri) {
+                return fullIO.provider().getPath(uri);
+            }
+
+            @Override
+            public Path parsePath(String path) {
+                if (expectedBarePath.equals(path)) {
+                    String replacement = allFilesArray[1].getAbsolutePath();
+                    return Paths.get(replacement);
+                }
+                return fullIO.getPath(path);
+            }
+
+            @Override
+            public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
+                if (linkOptions.length > 0) {
+                    throw new UnsupportedOperationException("CheckAccess for this FileSystem is unsupported with non " +
+                                    "empty link options.");
+                }
+                fullIO.provider().checkAccess(path, modes.toArray(new AccessMode[]{}));
+            }
+
+            @Override
+            public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
+                fullIO.provider().createDirectory(dir, attrs);
+            }
+
+            @Override
+            public void delete(Path path) throws IOException {
+                fullIO.provider().delete(path);
+            }
+
+            @Override
+            public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options,
+                            FileAttribute<?>... attrs) throws IOException {
+                return fullIO.provider().newByteChannel(path, options, attrs);
+            }
+
+            @Override
+            public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
+                return fullIO.provider().newDirectoryStream(dir, filter);
+            }
+
+            @Override
+            public Path toAbsolutePath(Path path) {
+                return path.toAbsolutePath();
+            }
+
+            @Override
+            public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
+                return path.toRealPath(linkOptions);
+            }
+
+            @Override
+            public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
+                return fullIO.provider().readAttributes(path, attributes, options);
+            }
+        };
+
+        try (Context context = JSTest.newContextBuilder().allowIO(true).fileSystem(fileSystem).build()) {
+            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
+            Value v = context.eval(mainSource);
+            assertTrue(v.isString());
+            assertEquals("HELLO GRAALJS", v.asString());
+        } finally {
+            deleteFiles(allFilesArray);
         }
     }
 }

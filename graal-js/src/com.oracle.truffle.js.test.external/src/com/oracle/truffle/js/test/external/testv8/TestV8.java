@@ -97,6 +97,7 @@ public class TestV8 extends TestSuite {
         options.put(JSContextOptions.SHELL_NAME, "true"); // readbuffer, quit
         // Reduce string length limit in order to avoid transient out of memory errors.
         options.put(JSContextOptions.STRING_LENGTH_LIMIT_NAME, String.valueOf(STRING_LENGTH_LIMIT));
+        options.put(JSContextOptions.ESM_BARE_SPECIFIER_RELATIVE_LOOKUP_NAME, "true");
         config.addCommonOptions(options);
         commonOptions = Collections.unmodifiableMap(options);
         commonOptionsExtLauncher = optionsToExtLauncherOptions(options);

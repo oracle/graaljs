@@ -232,7 +232,7 @@ public class TestEngine {
         }
 
         String mainModuleName = new File(dependency.getParent(), "main.mjs").getAbsolutePath();
-        String mainModule = "import { answer } from '" + dependency.getName() + "'; answer;";
+        String mainModule = "import { answer } from './" + dependency.getName() + "'; answer;";
         engine.getContext().setAttribute(ScriptEngine.FILENAME, mainModuleName, ScriptContext.ENGINE_SCOPE);
 
         Object result = engine.eval(mainModule);

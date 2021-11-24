@@ -46,6 +46,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.UserScriptException;
 
@@ -112,7 +113,11 @@ public class DefaultESModuleLoader implements JSModuleLoader {
                         String uriFile = realm.getEnv().getPublicTruffleFile(maybeUri).getCanonicalFile().getPath();
                         moduleFile = refFile.resolveSibling(uriFile).getCanonicalFile();
                     } else {
-                        moduleFile = refFile.resolveSibling(specifier).getCanonicalFile();
+                        if (bareSpecifierDirectLookup(specifier)) {
+                            moduleFile = realm.getEnv().getPublicTruffleFile(specifier).getCanonicalFile();
+                        } else {
+                            moduleFile = refFile.resolveSibling(specifier).getCanonicalFile();
+                        }
                     }
                 }
                 canonicalPath = moduleFile.getPath();
@@ -136,6 +141,14 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         } catch (IOException | UnsupportedOperationException | SecurityException e) {
             throw Errors.createErrorFromException(e);
         }
+    }
+
+    private boolean bareSpecifierDirectLookup(String specifier) {
+        JSContextOptions options = realm.getContext().getContextOptions();
+        if (options.isEsmBareSpecifierRelativeLookup()) {
+            return false;
+        }
+        return !(specifier.startsWith("/") || specifier.startsWith("./") || specifier.startsWith("../"));
     }
 
     protected JSModuleRecord loadModuleFromUrl(ScriptOrModule referrer, ModuleRequest moduleRequest, TruffleFile moduleFile, String canonicalPath) throws IOException {
