@@ -491,7 +491,7 @@ public final class TemporalUtil {
     }
 
     private static JSTemporalZonedDateTimeRecord parseTemporalRelativeToString(String isoString) {
-        JSTemporalDateTimeRecord result = parseISODateTime(isoString, true);
+        JSTemporalDateTimeRecord result = parseISODateTime(isoString, true, false);
         boolean z = false;
         String offset = null;
         String timeZone = null;
@@ -513,6 +513,10 @@ public final class TemporalUtil {
     public static JSTemporalDateTimeRecord parseTemporalMonthDayString(String string) {
         JSTemporalParserRecord rec = (new TemporalParser(string)).parseMonthDay();
         if (rec != null) {
+            if (rec.getZ()) {
+                throw TemporalErrors.createRangeErrorUnexpectedUTCDesignator();
+            }
+
             long y = rec.getYear() == Long.MIN_VALUE ? Long.MIN_VALUE : rec.getYear();
             long m = rec.getMonth() == Long.MIN_VALUE ? 1 : rec.getMonth();
             long d = rec.getDay() == Long.MIN_VALUE ? 1 : rec.getDay();
@@ -528,16 +532,19 @@ public final class TemporalUtil {
     }
 
     private static JSTemporalDateTimeRecord parseISODateTime(String string) {
-        return parseISODateTime(string, false);
+        return parseISODateTime(string, false, false);
     }
 
     // TODO this needs to be improved!
     @TruffleBoundary
-    private static JSTemporalDateTimeRecord parseISODateTime(String string, boolean dateExpected) {
+    private static JSTemporalDateTimeRecord parseISODateTime(String string, boolean dateExpected, boolean failWithUTCDesignator) {
         JSTemporalParserRecord rec = (new TemporalParser(string)).parseISODateTime();
         if (rec != null) {
             if (dateExpected && (rec.getYear() <= 0 || rec.getMonth() < 0 || rec.getDay() < 0)) {
                 throw Errors.createRangeError("cannot parse the ISO date time string");
+            }
+            if (failWithUTCDesignator && rec.getZ()) {
+                throw TemporalErrors.createRangeErrorUnexpectedUTCDesignator();
             }
 
             String fraction = rec.getFraction();
@@ -1054,21 +1061,21 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static JSTemporalDateTimeRecord parseTemporalDateTimeString(String string) {
         // TODO 2. If isoString does not satisfy the syntax of a TemporalDateTimeString (see 13.39)
-        JSTemporalDateTimeRecord result = parseISODateTime(string);
+        JSTemporalDateTimeRecord result = parseISODateTime(string, false, true);
         return result;
     }
 
     @TruffleBoundary
     public static JSTemporalDateTimeRecord parseTemporalDateString(String string) {
         // TODO 2. If isoString does not satisfy the syntax of a TemporalDateTimeString (see 13.39)
-        JSTemporalDateTimeRecord result = parseISODateTime(string);
+        JSTemporalDateTimeRecord result = parseISODateTime(string, false, true);
         return JSTemporalDateTimeRecord.createCalendar(result.getYear(), result.getMonth(), result.getDay(), 0, 0, 0, 0, 0, 0, result.getCalendar());
     }
 
     @TruffleBoundary
     public static JSTemporalDateTimeRecord parseTemporalTimeString(String string) {
         // TODO 2. If isoString does not satisfy the syntax of a TemporalDateTimeString (see 13.39)
-        JSTemporalDateTimeRecord result = parseISODateTime(string);
+        JSTemporalDateTimeRecord result = parseISODateTime(string, false, true);
         return JSTemporalDateTimeRecord.createCalendar(0, 0, 0, result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(),
                         result.getCalendar());
     }
@@ -3623,6 +3630,10 @@ public final class TemporalUtil {
     public static JSTemporalDateTimeRecord parseTemporalYearMonthString(String string) {
         JSTemporalParserRecord rec = (new TemporalParser(string)).parseYearMonth();
         if (rec != null) {
+            if (rec.getZ()) {
+                throw TemporalErrors.createRangeErrorUnexpectedUTCDesignator();
+            }
+
             long y = rec.getYear() == Long.MIN_VALUE ? 0 : rec.getYear();
             long m = rec.getMonth() == Long.MIN_VALUE ? 0 : rec.getMonth();
             long d = rec.getDay() == Long.MIN_VALUE ? 1 : rec.getDay();

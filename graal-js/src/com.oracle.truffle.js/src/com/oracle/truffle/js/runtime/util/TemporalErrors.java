@@ -247,4 +247,9 @@ public final class TemporalErrors {
     public static JSException createTypeErrorObjectExpected() {
         return Errors.createTypeError("Object expected");
     }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorUnexpectedUTCDesignator() {
+        return Errors.createRangeError("UTCDesignator Z not allowed");
+    }
 }
