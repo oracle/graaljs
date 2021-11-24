@@ -86,11 +86,11 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
     public boolean hasProperty(Object thisObj) {
         HasCacheNode c = cacheNode;
         for (; c != null; c = c.next) {
-            ReceiverCheckNode receiverCheck = c.receiverCheck;
-            if (receiverCheck == null && c instanceof GenericHasPropertyCacheNode) {
+            if (c instanceof GenericHasPropertyCacheNode) {
                 return ((GenericHasPropertyCacheNode) c).hasProperty(thisObj, this);
             }
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            ReceiverCheckNode receiverCheck = c.receiverCheck;
             boolean guard;
             Object castObj;
             if (isSimpleShapeCheck) {

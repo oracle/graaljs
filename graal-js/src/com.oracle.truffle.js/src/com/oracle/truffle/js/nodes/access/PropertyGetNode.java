@@ -204,12 +204,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     protected int getValueInt(Object thisObj, Object receiver) throws UnexpectedResultException {
         GetCacheNode c = cacheNode;
         for (; c != null; c = c.next) {
-            ReceiverCheckNode receiverCheck = c.receiverCheck;
-            if (receiverCheck == null && c instanceof GenericPropertyGetNode) {
+            if (c instanceof GenericPropertyGetNode) {
                 return ((GenericPropertyGetNode) c).getValueInt(thisObj, receiver, this, false);
             }
             boolean isFinalSpecialization = c.isFinalSpecialization();
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            ReceiverCheckNode receiverCheck = c.receiverCheck;
             boolean guard;
             Object castObj;
             if (c.isConstantObjectSpecialization()) {
@@ -262,12 +262,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     protected double getValueDouble(Object thisObj, Object receiver) throws UnexpectedResultException {
         GetCacheNode c = cacheNode;
         for (; c != null; c = c.next) {
-            ReceiverCheckNode receiverCheck = c.receiverCheck;
-            if (receiverCheck == null && c instanceof GenericPropertyGetNode) {
+            if (c instanceof GenericPropertyGetNode) {
                 return ((GenericPropertyGetNode) c).getValueDouble(thisObj, receiver, this, false);
             }
             boolean isFinalSpecialization = c.isFinalSpecialization();
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            ReceiverCheckNode receiverCheck = c.receiverCheck;
             boolean guard;
             Object castObj;
             if (c.isConstantObjectSpecialization()) {
@@ -320,12 +320,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     protected boolean getValueBoolean(Object thisObj, Object receiver) throws UnexpectedResultException {
         GetCacheNode c = cacheNode;
         for (; c != null; c = c.next) {
-            ReceiverCheckNode receiverCheck = c.receiverCheck;
-            if (receiverCheck == null && c instanceof GenericPropertyGetNode) {
+            if (c instanceof GenericPropertyGetNode) {
                 return ((GenericPropertyGetNode) c).getValueBoolean(thisObj, receiver, this, false);
             }
             boolean isFinalSpecialization = c.isFinalSpecialization();
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            ReceiverCheckNode receiverCheck = c.receiverCheck;
             boolean guard;
             Object castObj;
             if (c.isConstantObjectSpecialization()) {
@@ -378,12 +378,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     protected long getValueLong(Object thisObj, Object receiver) throws UnexpectedResultException {
         GetCacheNode c = cacheNode;
         for (; c != null; c = c.next) {
-            ReceiverCheckNode receiverCheck = c.receiverCheck;
-            if (receiverCheck == null && c instanceof GenericPropertyGetNode) {
+            if (c instanceof GenericPropertyGetNode) {
                 return ((GenericPropertyGetNode) c).getValueLong(thisObj, receiver, this, false);
             }
             boolean isFinalSpecialization = c.isFinalSpecialization();
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            ReceiverCheckNode receiverCheck = c.receiverCheck;
             boolean guard;
             Object castObj;
             if (c.isConstantObjectSpecialization()) {
@@ -436,12 +436,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     protected Object getValueOrDefault(Object thisObj, Object receiver, Object defaultValue) {
         GetCacheNode c = cacheNode;
         for (; c != null; c = c.next) {
-            ReceiverCheckNode receiverCheck = c.receiverCheck;
-            if (receiverCheck == null && c instanceof GenericPropertyGetNode) {
+            if (c instanceof GenericPropertyGetNode) {
                 return ((GenericPropertyGetNode) c).getValue(thisObj, receiver, defaultValue, this, false);
             }
             boolean isFinalSpecialization = c.isFinalSpecialization();
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            ReceiverCheckNode receiverCheck = c.receiverCheck;
             boolean guard;
             Object castObj;
             if (c.isConstantObjectSpecialization()) {
