@@ -41,7 +41,6 @@
 package com.oracle.truffle.trufflenode.buffer;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
@@ -96,7 +95,7 @@ public final class NIOBuffer extends JSNonProxy {
                 return create(getRealm());
             }
         };
-        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), Truffle.getRuntime().createCallTarget(wrapperNode), 2, "NIOBufferBuiltinsInitFunction");
+        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), wrapperNode.getCallTarget(), 2, "NIOBufferBuiltinsInitFunction");
         return JSFunction.create(realm, functionData);
     }
 
