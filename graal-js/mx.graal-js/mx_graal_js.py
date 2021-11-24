@@ -318,10 +318,13 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     },
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle', 'TRegex'],
+    dependencies=[
+        'Truffle',
+        'TRegex',
+        'ICU4J',
+    ],
     truffle_jars=[
         'graal-js:GRAALJS',
-        'graal-js:ICU4J',
     ],
     support_distributions=[
         'graal-js:GRAALJS_GRAALVM_SUPPORT',

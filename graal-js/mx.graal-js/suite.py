@@ -132,7 +132,7 @@ suite = {
         "com.oracle.truffle.js.codec",
         "com.oracle.truffle.js.runtime.doubleconv",
         "truffle:TRUFFLE_API",
-        "ICU4J",
+        "truffle:ICU4J",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR", "TRUFFLE_JS_FACTORY_PROCESSOR"],
       "jacoco" : "include",
@@ -418,9 +418,7 @@ suite = {
         "regex:TREGEX",
         "truffle:TRUFFLE_API",
         "sdk:GRAAL_SDK",
-      ],
-      "exclude": [
-        "ICU4J",
+        "truffle:ICU4J",
       ],
       "description" : "Graal JavaScript engine",
       "maven" : {
