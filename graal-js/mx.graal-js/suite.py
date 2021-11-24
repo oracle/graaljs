@@ -58,6 +58,17 @@ suite = {
       "sha1" : "4b52bd03014f6d080ef0528865c1ee50621e35c6",
     },
 
+    "ICU4J" : {
+      "moduleName" : "com.ibm.icu",
+      "sha1" : "ff666ac55986650893aacb9e2e0003538e9799c0",
+      "sourceSha1" : "3e19ca5465fce86a094c24df0b6c9256e53c8885",
+      "maven" : {
+        "groupId" : "com.ibm.icu",
+        "artifactId" : "icu4j",
+        "version" : "69.1",
+      },
+    },
+
     "TEST262" : {
       "sha1" : "2bb8b13c1e1fa109377ab25628eefdeccb410767",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/test262-227977a8.tar.bz2"],
