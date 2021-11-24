@@ -131,7 +131,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
             int mxfdDefault;
             String style = state.getStyle();
             if (IntlUtil.CURRENCY.equals(style)) {
-                int cDigits = JSNumberFormat.currencyDigits(state.getCurrency());
+                int cDigits = JSNumberFormat.currencyDigits(context, state.getCurrency());
                 mnfdDefault = cDigits;
                 mxfdDefault = cDigits;
             } else {
