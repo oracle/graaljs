@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins.intl;
 
 import java.util.Set;
 
-import com.ibm.icu.text.Collator;
 import com.ibm.icu.text.DateTimePatternGenerator;
 import com.ibm.icu.text.NumberingSystem;
 import com.ibm.icu.util.Calendar;
@@ -436,10 +435,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String calendar = locale.getUnicodeLocaleType("ca");
             String[] calendars;
             if (calendar == null) {
-                calendars = Calendar.getKeywordValuesForLocale(IntlUtil.CALENDAR, locale, true);
-                for (int i = 0; i < calendars.length; i++) {
-                    calendars[i] = IntlUtil.normalizeCAType(calendars[i]);
-                }
+                calendars = IntlUtil.availableCalendars(locale, true);
             } else {
                 calendars = new String[]{calendar};
             }
@@ -466,20 +462,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String collation = locale.getUnicodeLocaleType("co");
             String[] collations;
             if (collation == null) {
-                collations = Collator.getKeywordValuesForLocale(IntlUtil.COLLATION, locale, true);
-
-                int length = 0;
-                for (String element : collations) {
-                    // The values "standard" and "search" must be excluded
-                    if (!IntlUtil.SEARCH.equals(element) && !IntlUtil.STANDARD.equals(element)) {
-                        collations[length++] = normalizeCollation(element);
-                    }
-                }
-                if (length != collations.length) {
-                    String[] trimmed = new String[length];
-                    System.arraycopy(collations, 0, trimmed, 0, length);
-                    collations = trimmed;
-                }
+                collations = IntlUtil.availableCollations(locale);
             } else {
                 collations = new String[]{collation};
             }
@@ -489,32 +472,6 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "!isJSLocale(bummer)")
         public Object doOther(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeErrorLocaleExpected();
-        }
-
-        // The returned collations are supposed to be "lower case String values conforming to the
-        // type sequence from UTS 35 Unicode Locale Identifier, section 3.2" =>
-        // replacing non-conforming collations by their conforming aliases according to
-        // https://github.com/unicode-org/cldr/blob/main/common/bcp47/collation.xml
-        private static String normalizeCollation(String collation) {
-            String normalizedCollation;
-            switch (collation) {
-                case "dictionary":
-                    normalizedCollation = "dict";
-                    break;
-                case "gb2312han":
-                    normalizedCollation = "gb2312";
-                    break;
-                case "phonebook":
-                    normalizedCollation = "phonebk";
-                    break;
-                case "traditional":
-                    normalizedCollation = "trad";
-                    break;
-                default:
-                    normalizedCollation = collation;
-                    break;
-            }
-            return normalizedCollation;
         }
 
     }

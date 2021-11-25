@@ -56,8 +56,11 @@ import java.time.ZoneId;
 import com.ibm.icu.text.CaseMap;
 import com.ibm.icu.text.CaseMap.Lower;
 import com.ibm.icu.text.CaseMap.Upper;
+import com.ibm.icu.text.Collator;
+import com.ibm.icu.text.CurrencyMetaInfo;
 import com.ibm.icu.text.DateFormat;
 import com.ibm.icu.text.NumberingSystem;
+import com.ibm.icu.util.Calendar;
 import com.ibm.icu.util.TimeZone;
 import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -714,6 +717,123 @@ public final class IntlUtil {
             default:
                 throw Errors.shouldNotReachHere(Objects.toString(hourCycle));
         }
+    }
+
+    @TruffleBoundary
+    public static String[] availableCalendars(ULocale locale, boolean commonlyUsed) {
+        String[] calendars = Calendar.getKeywordValuesForLocale(IntlUtil.CALENDAR, locale, commonlyUsed);
+
+        int length = 0;
+        for (String calendar : calendars) {
+            // ICU4J returns "unknown" available calendar but it does not provide any useful data
+            // for this calendar
+            if (!"unknown".equals(calendar)) {
+                calendars[length++] = IntlUtil.normalizeCAType(calendar);
+            }
+        }
+        if (length != calendars.length) {
+            String[] trimmed = new String[length];
+            System.arraycopy(calendars, 0, trimmed, 0, length);
+            calendars = trimmed;
+        }
+
+        return calendars;
+    }
+
+    @TruffleBoundary
+    public static String[] availableCalendars() {
+        String[] calendars = availableCalendars(ULocale.ROOT, false);
+        Arrays.sort(calendars);
+        return calendars;
+    }
+
+    // The returned collations are supposed to be "lower case String values conforming to the
+    // type sequence from UTS 35 Unicode Locale Identifier, section 3.2" =>
+    // replacing non-conforming collations by their conforming aliases according to
+    // https://github.com/unicode-org/cldr/blob/main/common/bcp47/collation.xml
+    public static String normalizeCollation(String collation) {
+        String normalizedCollation;
+        switch (collation) {
+            case "dictionary":
+                normalizedCollation = "dict";
+                break;
+            case "gb2312han":
+                normalizedCollation = "gb2312";
+                break;
+            case "phonebook":
+                normalizedCollation = "phonebk";
+                break;
+            case "traditional":
+                normalizedCollation = "trad";
+                break;
+            default:
+                normalizedCollation = collation;
+                break;
+        }
+        return normalizedCollation;
+    }
+
+    @TruffleBoundary
+    public static String[] availableCollations(ULocale locale) {
+        String[] collations;
+        if (locale == null) {
+            collations = Collator.getKeywordValues(IntlUtil.COLLATION);
+        } else {
+            collations = Collator.getKeywordValuesForLocale(IntlUtil.COLLATION, locale, true);
+        }
+
+        int length = 0;
+        for (String element : collations) {
+            // The values "standard" and "search" must be excluded
+            if (!IntlUtil.SEARCH.equals(element) && !IntlUtil.STANDARD.equals(element)) {
+                collations[length++] = normalizeCollation(element);
+            }
+        }
+        if (length != collations.length) {
+            String[] trimmed = new String[length];
+            System.arraycopy(collations, 0, trimmed, 0, length);
+            collations = trimmed;
+        }
+
+        return collations;
+    }
+
+    @TruffleBoundary
+    public static String[] availableCollations() {
+        String[] collations = availableCollations(null);
+        Arrays.sort(collations);
+        return collations;
+    }
+
+    @TruffleBoundary
+    public static String[] availableCurrencies() {
+        List<String> list = CurrencyMetaInfo.getInstance().currencies(CurrencyMetaInfo.CurrencyFilter.all());
+        String[] currencies = list.toArray(new String[list.size()]);
+        Arrays.sort(currencies);
+        return currencies;
+    }
+
+    @TruffleBoundary
+    public static String[] availableNumberingSystems() {
+        String[] numberingSystems = NumberingSystem.getAvailableNames();
+        Arrays.sort(numberingSystems);
+        return numberingSystems;
+    }
+
+    @TruffleBoundary
+    public static String[] availableTimeZones() {
+        Set<String> set = TimeZone.getAvailableIDs(TimeZone.SystemTimeZoneType.CANONICAL_LOCATION, null, null);
+        String[] timeZones = set.toArray(new String[set.size()]);
+        Arrays.sort(timeZones);
+        return timeZones;
+    }
+
+    @TruffleBoundary
+    public static String[] availableUnits() {
+        Set<String> set = SANCTIONED_SIMPLE_UNIT_IDENTIFIERS;
+        String[] units = set.toArray(new String[set.size()]);
+        Arrays.sort(units);
+        return units;
     }
 
 }

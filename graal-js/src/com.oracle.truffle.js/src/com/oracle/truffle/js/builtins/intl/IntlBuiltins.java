@@ -43,16 +43,24 @@ package com.oracle.truffle.js.builtins.intl;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.IntlBuiltinsFactory.GetCanonicalLocalesNodeGen;
+import com.oracle.truffle.js.builtins.intl.IntlBuiltinsFactory.SupportedValuesOfNodeGen;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.intl.JSToCanonicalizedLocaleListNode;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.intl.JSIntl;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /**
  * Contains builtins for {@linkplain Intl} function (constructor).
@@ -66,7 +74,8 @@ public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuilt
     }
 
     public enum Intl implements BuiltinEnum<Intl> {
-        getCanonicalLocales(1);
+        getCanonicalLocales(1),
+        supportedValuesOf(1);
 
         private final int length;
 
@@ -78,6 +87,17 @@ public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuilt
         public int getLength() {
             return length;
         }
+
+        @Override
+        public int getECMAScriptVersion() {
+            switch (this) {
+                case getCanonicalLocales:
+                    return JSConfig.ECMAScript2016;
+                case supportedValuesOf:
+                    return JSConfig.StagingECMAScriptVersion;
+            }
+            return BuiltinEnum.super.getECMAScriptVersion();
+        }
     }
 
     @Override
@@ -85,6 +105,8 @@ public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuilt
         switch (builtinEnum) {
             case getCanonicalLocales:
                 return GetCanonicalLocalesNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case supportedValuesOf:
+                return SupportedValuesOfNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -106,6 +128,45 @@ public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuilt
             }
             String[] languageTags = canonicalizeLocaleListNode.executeLanguageTags(locales);
             return JSRuntime.createArrayFromList(getContext(), getRealm(), Arrays.asList((Object[]) languageTags));
+        }
+    }
+
+    public abstract static class SupportedValuesOfNode extends JSBuiltinNode {
+
+        public SupportedValuesOfNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object supportedValuesOf(Object keyArg,
+                        @Cached JSToStringNode toStringNode,
+                        @Cached BranchProfile errorBranch) {
+            String key = toStringNode.executeString(keyArg);
+            String[] list;
+            switch (key) {
+                case IntlUtil.CALENDAR:
+                    list = IntlUtil.availableCalendars();
+                    break;
+                case IntlUtil.COLLATION:
+                    list = IntlUtil.availableCollations();
+                    break;
+                case IntlUtil.CURRENCY:
+                    list = IntlUtil.availableCurrencies();
+                    break;
+                case IntlUtil.NUMBERING_SYSTEM:
+                    list = IntlUtil.availableNumberingSystems();
+                    break;
+                case IntlUtil.TIME_ZONE:
+                    list = IntlUtil.availableTimeZones();
+                    break;
+                case IntlUtil.UNIT:
+                    list = IntlUtil.availableUnits();
+                    break;
+                default:
+                    errorBranch.enter();
+                    throw Errors.createRangeErrorFormat("Invalid key : %s", this, key);
+            }
+            return JSArray.createConstant(getContext(), getRealm(), list);
         }
     }
 }
