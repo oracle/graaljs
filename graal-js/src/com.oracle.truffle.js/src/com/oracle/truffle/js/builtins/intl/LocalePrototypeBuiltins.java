@@ -462,7 +462,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String collation = locale.getUnicodeLocaleType("co");
             String[] collations;
             if (collation == null) {
-                collations = IntlUtil.availableCollations(locale);
+                collations = IntlUtil.availableCollations(locale, true);
             } else {
                 collations = new String[]{collation};
             }

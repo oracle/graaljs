@@ -42,12 +42,11 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 
 import java.text.Normalizer;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Locale;
-import java.util.Set;
 
 import com.ibm.icu.text.Collator;
 import com.ibm.icu.text.RuleBasedCollator;
+import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -87,32 +86,6 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
     static final HiddenKey BOUND_OBJECT_KEY = new HiddenKey(CLASS_NAME);
 
     public static final JSCollator INSTANCE = new JSCollator();
-
-    // Valid values of Unicode collation ("co") type key.
-    // Based on https://github.com/unicode-org/cldr/blob/master/common/bcp47/collation.xml
-    // "standard" and "search" are missing from the list because ECMAScript spec says:
-    // The values "standard" and "search" must not be used as elements
-    // in any [[SortLocaleData]].[[<locale>]].[[co]]
-    // and [[SearchLocaleData]].[[<locale>]].[[co]] list.
-    private static final Set<String> VALID_COLLATION_TYPES = new HashSet<>(Arrays.asList(new String[]{
-                    "big5han",
-                    "compat",
-                    "dict",
-                    "direct",
-                    "ducet",
-                    "emoji",
-                    "eor",
-                    "gb2312",
-                    "phonebk",
-                    "phonetic",
-                    "pinyin",
-                    "reformed",
-                    "searchjl",
-                    "stroke",
-                    "trad",
-                    "unihan",
-                    "zhuyin"
-    }));
 
     private JSCollator() {
     }
@@ -186,8 +159,11 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
         }
 
         String collation = (optco == null) ? selectedLocale.getUnicodeLocaleType("co") : optco;
-        if (!VALID_COLLATION_TYPES.contains(collation)) {
-            collation = null;
+        if (collation != null) {
+            String[] validCollations = IntlUtil.availableCollations(ULocale.forLocale(strippedLocale), false);
+            if (!Arrays.asList(validCollations).contains(collation)) {
+                collation = null;
+            }
         }
 
         // "search" maps to -u-co-search, "sort" means the default behavior

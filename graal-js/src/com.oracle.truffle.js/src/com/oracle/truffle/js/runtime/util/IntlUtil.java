@@ -774,12 +774,12 @@ public final class IntlUtil {
     }
 
     @TruffleBoundary
-    public static String[] availableCollations(ULocale locale) {
+    public static String[] availableCollations(ULocale locale, boolean commonOnly) {
         String[] collations;
         if (locale == null) {
             collations = Collator.getKeywordValues(IntlUtil.COLLATION);
         } else {
-            collations = Collator.getKeywordValuesForLocale(IntlUtil.COLLATION, locale, true);
+            collations = Collator.getKeywordValuesForLocale(IntlUtil.COLLATION, locale, commonOnly);
         }
 
         int length = 0;
@@ -800,7 +800,7 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static String[] availableCollations() {
-        String[] collations = availableCollations(null);
+        String[] collations = availableCollations(null, false);
         Arrays.sort(collations);
         return collations;
     }
