@@ -814,8 +814,24 @@ public final class IntlUtil {
     }
 
     @TruffleBoundary
-    public static String[] availableNumberingSystems() {
+    public static String[] availableNumberingSystems(JSContext context) {
         String[] numberingSystems = NumberingSystem.getAvailableNames();
+
+        if (context.isOptionV8CompatibilityMode()) {
+            // V8 filters out algorithmic numbering systems because of Chrome
+            int length = 0;
+            for (String numberingSystem : numberingSystems) {
+                if (!NumberingSystem.getInstanceByName(numberingSystem).isAlgorithmic()) {
+                    numberingSystems[length++] = numberingSystem;
+                }
+            }
+            if (length != numberingSystems.length) {
+                String[] trimmed = new String[length];
+                System.arraycopy(numberingSystems, 0, trimmed, 0, length);
+                numberingSystems = trimmed;
+            }
+        }
+
         Arrays.sort(numberingSystems);
         return numberingSystems;
     }

@@ -154,7 +154,7 @@ public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuilt
                     list = IntlUtil.availableCurrencies();
                     break;
                 case IntlUtil.NUMBERING_SYSTEM:
-                    list = IntlUtil.availableNumberingSystems();
+                    list = IntlUtil.availableNumberingSystems(getContext());
                     break;
                 case IntlUtil.TIME_ZONE:
                     list = IntlUtil.availableTimeZones();
