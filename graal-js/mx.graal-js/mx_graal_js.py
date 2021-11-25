@@ -133,7 +133,7 @@ def parse_js_args(args, default_cp=None, useDoubleDash=False):
         if skip:
             skip = False
             continue
-        elif any(arg.startswith(prefix) for prefix in ['-X', '-D', '-verbose', '-ea', '-javaagent:', '-agentlib:', '-agentpath:']) or arg in ['-esa', '-d64', '-server']:
+        if any(arg.startswith(prefix) for prefix in ['-X', '-D', '-verbose', '-ea', '-javaagent:', '-agentlib:', '-agentpath:']) or arg in ['-esa', '-d64', '-server']:
             vm_args += [arg]
         elif arg.startswith('--vm.D') or arg.startswith('--vm.X'):
             vm_args += ['-' + arg[5:]]
@@ -326,9 +326,10 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     support_distributions=[
         'graal-js:GRAALJS_GRAALVM_SUPPORT',
     ],
-    launcher_configs=[
-        mx_sdk.LanguageLauncherConfig(
-            destination='bin/<exe:js>',
+    library_configs=[
+        mx_sdk.LanguageLibraryConfig(
+            destination='lib/<lib:js>',
+            launchers=['bin/<exe:js>'],
             jar_distributions=['graal-js:GRAALJS_LAUNCHER'],
             main_class='com.oracle.truffle.js.shell.JSLauncher',
             build_args=['-H:+TruffleCheckBlockListMethods'],
