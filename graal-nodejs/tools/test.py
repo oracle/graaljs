@@ -117,8 +117,6 @@ class ProgressIndicator(object):
     self.crashed = 0
     self.lock = threading.Lock()
     self.shutdown_event = threading.Event()
-    # generate json tests reports only if env flag MX_TEST_RESULTS_PATTERN is present
-    self.json_result = JsonTestResultGenerator() if os.getenv('MX_TEST_RESULTS_PATTERN') else None
 
   def GetFailureOutput(self, failure):
     output = []
@@ -216,19 +214,26 @@ class ProgressIndicator(object):
         if FLAKY in output.test.outcomes and self.flaky_tests_mode == DONTCARE:
           self.flaky_failed.append(output)
         else:
-          if self.json_result:
-            self.json_result.failedTest(str(case.GetLabel()), int(case.duration.microseconds))
           self.failed.append(output)
           if output.HasCrashed():
             self.crashed += 1
       else:
-        if self.json_result:
-          self.json_result.passedTest(str(case.GetLabel()), int(case.duration.microseconds))
         self.succeeded += 1
       self.remaining -= 1
       self.HasRun(output)
       self.lock.release()
 
+  def Done(self):
+    # generate json tests reports only if env flag MX_TEST_RESULTS_PATTERN is present
+    if os.getenv('MX_TEST_RESULTS_PATTERN'):
+      json_result = JsonTestResultGenerator()
+      failed_tests_ids = {f.test.serial_id for f in self.failed}
+      for case in self.cases:
+        if case.serial_id in failed_tests_ids:
+          json_result.failedTest(str(case.GetLabel()), int(case.duration.microseconds))
+        else:
+          json_result.passedTest(str(case.GetLabel()), int(case.duration.microseconds))
+      json_result.generateReportFile()
 
 def EscapeCommand(command):
   parts = []
@@ -248,8 +253,7 @@ class SimpleProgressIndicator(ProgressIndicator):
     print('Running %i tests' % len(self.cases))
 
   def Done(self):
-    if self.json_result:
-      self.json_result.generateReportFile()
+    super(SimpleProgressIndicator, self).Done()
     print()
     for failed in self.failed:
       self.PrintFailureHeader(failed.test)
@@ -409,7 +413,7 @@ class TapProgressIndicator(SimpleProgressIndicator):
     logger.info('  ...')
 
   def Done(self):
-    pass
+    super(TapProgressIndicator, self).Done()
 
 class DeoptsCheckProgressIndicator(SimpleProgressIndicator):
 
@@ -441,7 +445,7 @@ class DeoptsCheckProgressIndicator(SimpleProgressIndicator):
         print('  %s' % line)
 
   def Done(self):
-    pass
+    super(DeoptsCheckProgressIndicator, self).Done()
 
 
 class CompactProgressIndicator(ProgressIndicator):
@@ -456,8 +460,7 @@ class CompactProgressIndicator(ProgressIndicator):
     pass
 
   def Done(self):
-    if self.json_result:
-      self.json_result.generateReportFile()
+    super(CompactProgressIndicator, self).Done()
     self.PrintProgress('Done\n')
 
   def AboutToRun(self, case):

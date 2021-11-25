@@ -35,7 +35,7 @@ class JsonTestResultGenerator():
         return self.tags
 
     def passedTest(self, testName, time):
-        self.record_test_result("SUSSESS", testName, time)
+        self.record_test_result("SUCCESS", testName, time)
 
     def failedTest(self, testName, time):
         self.record_test_result("FAILED", testName, time)
