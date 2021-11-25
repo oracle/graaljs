@@ -296,6 +296,8 @@ final class ScopeMembers implements TruffleObject {
                             return true;
                         } else if (node instanceof BlockNode) {
                             return true;
+                        } else if (node instanceof ScopeFrameNode) {
+                            return true;
                         } else {
                             return false;
                         }

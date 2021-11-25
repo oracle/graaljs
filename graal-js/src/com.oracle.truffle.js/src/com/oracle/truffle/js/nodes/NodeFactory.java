@@ -69,6 +69,7 @@ import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
+import com.oracle.truffle.js.nodes.access.InitializeFrameSlotsNode;
 import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteUnaryNode;
 import com.oracle.truffle.js.nodes.access.IteratorGetNextValueNode;
@@ -602,6 +603,10 @@ public class NodeFactory {
 
     public JavaScriptNode createGlobalVarWrapper(String varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
         return new GlobalScopeVarWrapperNode(varName, defaultDelegate, dynamicScope, scopeAccessNode);
+    }
+
+    public JavaScriptNode createInitializeFrameSlots(ScopeFrameNode scope, int[] slots) {
+        return InitializeFrameSlotsNode.create(scope, slots);
     }
 
     public JavaScriptNode createThrow(JSContext context, JavaScriptNode expression) {

@@ -176,7 +176,6 @@ import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InternalSlotId;
 import com.oracle.truffle.js.runtime.util.Pair;
@@ -1259,13 +1258,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private void createTemporalDeadZoneInit(Block block, List<JavaScriptNode> blockWithInit) {
         assert (block.getScope().hasBlockScopedOrRedeclaredSymbols() || block.isModuleBody()) && !(environment instanceof GlobalEnvironment);
 
+        List<FrameSlotVarRef> slotsWithTDZ = new ArrayList<>();
         for (Symbol symbol : block.getSymbols()) {
             if (symbol.isImportBinding()) {
                 continue;
             }
             if (symbol.isBlockScoped()) {
                 if (!symbol.hasBeenDeclared()) {
-                    blockWithInit.add(findScopeVar(symbol.getName(), true).createWriteNode(factory.createConstant(Dead.instance())));
+                    slotsWithTDZ.add((FrameSlotVarRef) findScopeVar(symbol.getName(), true));
                 }
             }
             if (symbol.isVarRedeclaredHere()) {
@@ -1275,6 +1275,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 blockWithInit.add(findScopeVar(symbol.getName(), true).createWriteNode(outerVar));
             }
         }
+
+        if (!slotsWithTDZ.isEmpty()) {
+            int[] slots = new int[slotsWithTDZ.size()];
+            ScopeFrameNode scope = slotsWithTDZ.get(0).createScopeFrameNode();
+            for (int i = 0; i < slots.length; i++) {
+                FrameSlotVarRef slotRef = slotsWithTDZ.get(i);
+                assert JSFrameUtil.hasTemporalDeadZone(slotRef.getFrameSlot()) : slotRef.getFrameSlot();
+                slots[i] = slotRef.getFrameSlot().getIndex();
+            }
+            blockWithInit.add(factory.createInitializeFrameSlots(scope, slots));
+        }
+
         if (block.isModuleBody()) {
             createResolveImports(lc.getCurrentFunction(), blockWithInit);
         }
