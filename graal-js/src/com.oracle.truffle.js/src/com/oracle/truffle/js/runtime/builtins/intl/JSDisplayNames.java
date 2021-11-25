@@ -254,7 +254,12 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
                 break;
             case IntlUtil.CURRENCY:
                 IntlUtil.ensureIsWellFormedCurrencyCode(code);
-                result = displayNames.keyValueDisplayName(IntlUtil.CURRENCY, code.toUpperCase());
+                String upperCaseCode = code.toUpperCase();
+                result = displayNames.keyValueDisplayName(IntlUtil.CURRENCY, upperCaseCode);
+                if (IntlUtil.NONE.equals(state.fallback) && upperCaseCode.equals(result)) {
+                    // ICU4J seems to ignore DisplayContext.NO_SUBSTITUTE for currencies
+                    result = null;
+                }
                 break;
             default:
                 throw Errors.shouldNotReachHere(type);
