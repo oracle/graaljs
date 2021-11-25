@@ -47,7 +47,6 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.objects.Dead;
@@ -55,26 +54,22 @@ import com.oracle.truffle.js.runtime.objects.Dead;
 public abstract class FrameSlotNode extends JavaScriptNode {
 
     protected final int slot;
-    protected final JSFrameSlot frameSlot;
+    protected final Object identifier;
 
-    protected FrameSlotNode(JSFrameSlot frameSlot) {
-        this.slot = frameSlot.getIndex();
-        this.frameSlot = frameSlot;
+    protected FrameSlotNode(int slot, Object identifier) {
+        this.slot = slot;
+        this.identifier = identifier;
     }
 
     public final int getSlotIndex() {
         return slot;
     }
 
-    public final JSFrameSlot getFrameSlot() {
-        return frameSlot;
-    }
-
     /**
      * @return the identifier corresponding to this slot
      */
     public final Object getIdentifier() {
-        return frameSlot.getIdentifier();
+        return identifier;
     }
 
     public abstract ScopeFrameNode getLevelFrameNode();
@@ -134,8 +129,8 @@ public abstract class FrameSlotNode extends JavaScriptNode {
     public abstract static class WithDescriptor extends FrameSlotNode {
         @CompilationFinal private FrameDescriptor frameDescriptor;
 
-        protected WithDescriptor(JSFrameSlot frameSlot) {
-            super(frameSlot);
+        protected WithDescriptor(int slot, Object identifier) {
+            super(slot, identifier);
         }
 
         protected final boolean isBooleanKind(Frame frame) {

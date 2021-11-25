@@ -181,7 +181,7 @@ public final class JSFrameUtil {
         return isInternalIdentifier(desc.getSlotName(index));
     }
 
-    private static boolean isInternalIdentifier(Object identifier) {
+    public static boolean isInternalIdentifier(Object identifier) {
         CompilerAsserts.neverPartOfCompilation();
         if (identifier instanceof String) {
             String name = (String) identifier;
@@ -219,6 +219,10 @@ public final class JSFrameUtil {
 
     public static boolean isThisSlot(FrameDescriptor desc, int index) {
         return desc.getSlotName(index).equals(THIS_SLOT_ID);
+    }
+
+    public static boolean isThisSlotIdentifier(Object identifier) {
+        return THIS_SLOT_ID.equals(identifier);
     }
 
     public static int getThisSlotIndex(FrameDescriptor frameDescriptor) {

@@ -60,16 +60,15 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.SafeInteger;
 
 public abstract class JSWriteFrameSlotNode extends FrameSlotNode.WithDescriptor implements WriteNode {
-    protected JSWriteFrameSlotNode(JSFrameSlot frameSlot) {
-        super(frameSlot);
+
+    protected JSWriteFrameSlotNode(int slot, Object identifier) {
+        super(slot, identifier);
     }
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == WriteVariableTag.class || tag == StandardTags.WriteVariableTag.class) {
-            return !JSFrameUtil.isInternal(frameSlot);
-        } else if (tag == JSTags.InputNodeTag.class) {
-            return !JSFrameUtil.isInternal(frameSlot);
+        if (tag == WriteVariableTag.class || tag == StandardTags.WriteVariableTag.class || tag == JSTags.InputNodeTag.class) {
+            return !JSFrameUtil.isInternalIdentifier(getIdentifier());
         } else {
             return super.hasTag(tag);
         }
@@ -100,16 +99,22 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode.WithDescriptor 
 
     public static JSWriteFrameSlotNode create(JSFrameSlot frameSlot, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
         if (!hasTemporalDeadZone) {
-            return JSWriteCurrentFrameSlotNodeGen.create(frameSlot, rhs);
+            return JSWriteCurrentFrameSlotNodeGen.create(frameSlot.getIndex(), frameSlot.getIdentifier(), rhs);
         }
         return create(frameSlot, ScopeFrameNode.createCurrent(), rhs, hasTemporalDeadZone);
     }
 
     public static JSWriteFrameSlotNode create(JSFrameSlot frameSlot, ScopeFrameNode scopeFrameNode, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
+        assert !hasTemporalDeadZone || JSFrameUtil.hasTemporalDeadZone(frameSlot);
+        return create(frameSlot.getIndex(), frameSlot.getIdentifier(), scopeFrameNode, rhs, hasTemporalDeadZone);
+    }
+
+    public static JSWriteFrameSlotNode create(int slotIndex, Object identifier, ScopeFrameNode scopeFrameNode, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
         if (!hasTemporalDeadZone && scopeFrameNode == ScopeFrameNode.createCurrent()) {
-            return JSWriteCurrentFrameSlotNodeGen.create(frameSlot, rhs);
+            return JSWriteCurrentFrameSlotNodeGen.create(slotIndex, identifier, rhs);
         }
-        return JSWriteScopeFrameSlotNodeGen.create(frameSlot, scopeFrameNode, hasTemporalDeadZone ? TemporalDeadZoneCheckNode.create(frameSlot, scopeFrameNode, rhs) : rhs);
+        return JSWriteScopeFrameSlotNodeGen.create(slotIndex, identifier, scopeFrameNode,
+                        hasTemporalDeadZone ? TemporalDeadZoneCheckNode.create(slotIndex, identifier, scopeFrameNode, rhs) : rhs);
     }
 
     @Override
@@ -122,8 +127,8 @@ abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
     @Child @Executed ScopeFrameNode scopeFrameNode;
     @Child @Executed JavaScriptNode rhsNode;
 
-    protected JSWriteScopeFrameSlotNode(JSFrameSlot frameSlot, ScopeFrameNode scopeFrameNode, JavaScriptNode rhsNode) {
-        super(frameSlot);
+    protected JSWriteScopeFrameSlotNode(int slot, Object identifier, ScopeFrameNode scopeFrameNode, JavaScriptNode rhsNode) {
+        super(slot, identifier);
         this.scopeFrameNode = scopeFrameNode;
         this.rhsNode = rhsNode;
     }
@@ -197,15 +202,15 @@ abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSWriteScopeFrameSlotNodeGen.create(frameSlot, getLevelFrameNode(), cloneUninitialized(getRhs(), materializedTags));
+        return JSWriteScopeFrameSlotNodeGen.create(getSlotIndex(), getIdentifier(), getLevelFrameNode(), cloneUninitialized(getRhs(), materializedTags));
     }
 }
 
 abstract class JSWriteCurrentFrameSlotNode extends JSWriteFrameSlotNode {
     @Child @Executed JavaScriptNode rhsNode;
 
-    protected JSWriteCurrentFrameSlotNode(JSFrameSlot frameSlot, JavaScriptNode rhsNode) {
-        super(frameSlot);
+    protected JSWriteCurrentFrameSlotNode(int slot, Object identifier, JavaScriptNode rhsNode) {
+        super(slot, identifier);
         this.rhsNode = rhsNode;
     }
 
@@ -273,7 +278,7 @@ abstract class JSWriteCurrentFrameSlotNode extends JSWriteFrameSlotNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSWriteCurrentFrameSlotNodeGen.create(frameSlot, cloneUninitialized(getRhs(), materializedTags));
+        return JSWriteCurrentFrameSlotNodeGen.create(getSlotIndex(), getIdentifier(), cloneUninitialized(getRhs(), materializedTags));
     }
 
     @Override

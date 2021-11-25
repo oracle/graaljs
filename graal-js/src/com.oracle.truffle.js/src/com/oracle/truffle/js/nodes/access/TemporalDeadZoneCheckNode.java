@@ -48,20 +48,17 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 
 public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
     @Child private JavaScriptNode child;
     @Child private ScopeFrameNode levelFrameNode;
     private final BranchProfile deadBranch = BranchProfile.create();
 
-    private TemporalDeadZoneCheckNode(JSFrameSlot frameSlot, ScopeFrameNode levelFrameNode, JavaScriptNode child) {
-        super(frameSlot);
+    private TemporalDeadZoneCheckNode(int slot, Object identifier, ScopeFrameNode levelFrameNode, JavaScriptNode child) {
+        super(slot, identifier);
         this.levelFrameNode = levelFrameNode;
         this.child = child;
-        assert JSFrameUtil.hasTemporalDeadZone(frameSlot);
     }
 
     private void checkNotDead(VirtualFrame frame) {
@@ -105,12 +102,12 @@ public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
         return true;
     }
 
-    public static TemporalDeadZoneCheckNode create(JSFrameSlot frameSlot, ScopeFrameNode levelFrameNode, JavaScriptNode rhs) {
-        return new TemporalDeadZoneCheckNode(frameSlot, levelFrameNode, rhs);
+    public static TemporalDeadZoneCheckNode create(int slotIndex, Object identifier, ScopeFrameNode levelFrameNode, JavaScriptNode rhs) {
+        return new TemporalDeadZoneCheckNode(slotIndex, identifier, levelFrameNode, rhs);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new TemporalDeadZoneCheckNode(frameSlot, NodeUtil.cloneNode(levelFrameNode), cloneUninitialized(child, materializedTags));
+        return new TemporalDeadZoneCheckNode(getSlotIndex(), getIdentifier(), NodeUtil.cloneNode(levelFrameNode), cloneUninitialized(child, materializedTags));
     }
 }

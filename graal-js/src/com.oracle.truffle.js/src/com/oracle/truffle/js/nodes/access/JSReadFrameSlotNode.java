@@ -65,8 +65,9 @@ import com.oracle.truffle.js.runtime.SafeInteger;
 
 @ImportStatic(FrameSlotKind.class)
 public abstract class JSReadFrameSlotNode extends FrameSlotNode implements RepeatableNode, ReadNode {
-    JSReadFrameSlotNode(JSFrameSlot slot) {
-        super(slot);
+
+    protected JSReadFrameSlotNode(int slot, Object identifier) {
+        super(slot, identifier);
     }
 
     public static JSReadFrameSlotNode create(JSFrameSlot slot, boolean hasTemporalDeadZone) {
@@ -74,39 +75,39 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
     }
 
     public static JSReadFrameSlotNode create(JSFrameSlot slot, ScopeFrameNode levelFrameNode, boolean hasTemporalDeadZone) {
+        assert !hasTemporalDeadZone || JSFrameUtil.hasTemporalDeadZone(slot);
+        return create(slot.getIndex(), slot.getIdentifier(), levelFrameNode, hasTemporalDeadZone);
+    }
+
+    static JSReadFrameSlotNode create(int slotIndex, Object identifier, ScopeFrameNode levelFrameNode, boolean hasTemporalDeadZone) {
         if (!hasTemporalDeadZone && levelFrameNode == ScopeFrameNode.createCurrent()) {
-            return JSReadCurrentFrameSlotNodeGen.create(slot);
+            return JSReadCurrentFrameSlotNodeGen.create(slotIndex, identifier);
         }
         if (hasTemporalDeadZone) {
-            return JSReadScopeFrameSlotWithTDZNodeGen.create(slot, levelFrameNode);
+            return JSReadScopeFrameSlotWithTDZNodeGen.create(slotIndex, identifier, levelFrameNode);
         } else {
-            return JSReadScopeFrameSlotNodeGen.create(slot, levelFrameNode);
+            return JSReadScopeFrameSlotNodeGen.create(slotIndex, identifier, levelFrameNode);
         }
     }
 
     public static JSReadFrameSlotNode create(JSFrameSlot slot) {
         if (JSFrameUtil.hasTemporalDeadZone(slot)) {
-            return JSReadScopeFrameSlotWithTDZNodeGen.create(slot, ScopeFrameNode.createCurrent());
+            return JSReadScopeFrameSlotWithTDZNodeGen.create(slot.getIndex(), slot.getIdentifier(), ScopeFrameNode.createCurrent());
         } else {
-            return JSReadCurrentFrameSlotNodeGen.create(slot);
+            return JSReadCurrentFrameSlotNodeGen.create(slot.getIndex(), slot.getIdentifier());
         }
     }
 
     public static JSReadFrameSlotNode create(FrameDescriptor desc, int slotIndex) {
-        JSFrameSlot slotInfo = JSFrameSlot.fromIndexedFrameSlot(desc, slotIndex);
-        if (JSFrameUtil.hasTemporalDeadZone(desc, slotIndex)) {
-            return JSReadScopeFrameSlotWithTDZNodeGen.create(slotInfo, ScopeFrameNode.createCurrent());
-        } else {
-            return JSReadCurrentFrameSlotNodeGen.create(slotInfo);
-        }
+        return create(JSFrameSlot.fromIndexedFrameSlot(desc, slotIndex));
     }
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if ((tag == ReadVariableTag.class || tag == StandardTags.ReadVariableTag.class)) {
-            if (JSFrameUtil.isInternal(frameSlot)) {
+            if (JSFrameUtil.isInternalIdentifier(getIdentifier())) {
                 // Reads to "<this>" are instrumentable
-                return JSFrameUtil.isThisSlot(frameSlot);
+                return JSFrameUtil.isThisSlotIdentifier(getIdentifier());
             }
             return true;
         } else {
@@ -135,8 +136,8 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
 abstract class JSReadScopeFrameSlotNode extends JSReadFrameSlotNode {
     @Child @Executed ScopeFrameNode scopeFrameNode;
 
-    JSReadScopeFrameSlotNode(JSFrameSlot slot, ScopeFrameNode scopeFrameNode) {
-        super(slot);
+    JSReadScopeFrameSlotNode(int slot, Object identifier, ScopeFrameNode scopeFrameNode) {
+        super(slot, identifier);
         this.scopeFrameNode = scopeFrameNode;
     }
 
@@ -176,13 +177,14 @@ abstract class JSReadScopeFrameSlotNode extends JSReadFrameSlotNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSReadScopeFrameSlotNodeGen.create(frameSlot, getLevelFrameNode());
+        return JSReadScopeFrameSlotNodeGen.create(getSlotIndex(), getIdentifier(), getLevelFrameNode());
     }
 }
 
 abstract class JSReadScopeFrameSlotWithTDZNode extends JSReadScopeFrameSlotNode {
-    JSReadScopeFrameSlotWithTDZNode(JSFrameSlot slot, ScopeFrameNode scopeFrameNode) {
-        super(slot, scopeFrameNode);
+
+    JSReadScopeFrameSlotWithTDZNode(int slot, Object identifier, ScopeFrameNode scopeFrameNode) {
+        super(slot, identifier, scopeFrameNode);
     }
 
     @Override
@@ -198,13 +200,14 @@ abstract class JSReadScopeFrameSlotWithTDZNode extends JSReadScopeFrameSlotNode 
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSReadScopeFrameSlotWithTDZNodeGen.create(frameSlot, getLevelFrameNode());
+        return JSReadScopeFrameSlotWithTDZNodeGen.create(getSlotIndex(), getIdentifier(), getLevelFrameNode());
     }
 }
 
 abstract class JSReadCurrentFrameSlotNode extends JSReadFrameSlotNode {
-    JSReadCurrentFrameSlotNode(JSFrameSlot slot) {
-        super(slot);
+
+    JSReadCurrentFrameSlotNode(int slot, Object identifier) {
+        super(slot, identifier);
     }
 
     @Specialization(guards = "frame.isBoolean(slot)")
@@ -243,6 +246,6 @@ abstract class JSReadCurrentFrameSlotNode extends JSReadFrameSlotNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSReadCurrentFrameSlotNodeGen.create(frameSlot);
+        return JSReadCurrentFrameSlotNodeGen.create(getSlotIndex(), getIdentifier());
     }
 }
