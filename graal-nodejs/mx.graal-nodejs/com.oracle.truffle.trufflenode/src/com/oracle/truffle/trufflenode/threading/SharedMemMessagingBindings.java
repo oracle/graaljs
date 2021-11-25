@@ -41,7 +41,6 @@
 package com.oracle.truffle.trufflenode.threading;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -91,7 +90,7 @@ public final class SharedMemMessagingBindings extends JSNonProxy {
                 return create(getRealm());
             }
         };
-        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), Truffle.getRuntime().createCallTarget(wrapperNode), 2, "SharedMemMessagingInit");
+        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), wrapperNode.getCallTarget(), 2, "SharedMemMessagingInit");
         return JSFunction.create(realm, functionData);
     }
 

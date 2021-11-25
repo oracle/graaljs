@@ -134,6 +134,7 @@ describe('Spawn', function () {
         var stdbuf = spawnSync('which', ['stdbuf']);
         if (stdbuf.stdout.toString().trim() !== '') { // stdbuf exists
             it('should not print a warning when spawning a process with inherit stdio', function () {
+                this.timeout(40000);
                 var result = spawnSync('stdbuf', ['-oL', process.execPath, '-e', 'child_process.spawnSync(process.execPath, ["-p", "6*7"], { stdio: "inherit"})']);
                 checkTheAnswerToLifeTheUniverseAndEverything(result);
             });
