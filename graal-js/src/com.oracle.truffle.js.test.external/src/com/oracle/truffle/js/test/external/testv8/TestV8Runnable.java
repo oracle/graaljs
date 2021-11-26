@@ -100,6 +100,7 @@ public class TestV8Runnable extends TestRunnable {
     }));
     private static final Set<String> ES2023_FLAGS = new HashSet<>(Arrays.asList(new String[]{
                     "--harmony-atomics-waitasync",
+                    "--harmony_intl_enumeration",
                     "--harmony_intl_locale_info",
                     "--harmony_intl_more_timezone",
     }));

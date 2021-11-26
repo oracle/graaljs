@@ -9,6 +9,7 @@ The main focus is on user-observable behavior of the engine.
 * Implemented the [Intl Locale Info](https://github.com/tc39/proposal-intl-locale-info) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [Intl.DateTimeFormat.prototype.formatRange](https://github.com/tc39/proposal-intl-DateTimeFormat-formatRange) proposal.
 * Implemented the [Extend TimeZoneName Option](https://github.com/tc39/proposal-intl-extend-timezonename) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* Implemented the [Intl Enumeration API](https://github.com/tc39/proposal-intl-enumeration) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Updated Node.js to version 14.18.1.
 * Added option `js.esm-bare-specifier-relative-lookup` (default: false) to customize how bare specifiers for ES Modules are resolved. When disabled, bare specifiers are resolved with an absolute path lookup. When enabled, bare specifiers are resolved relative to the importing module's path.
 

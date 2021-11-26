@@ -113,6 +113,7 @@ public class Test262Runnable extends TestRunnable {
                     "Int16Array",
                     "Int32Array",
                     "Int8Array",
+                    "Intl-enumeration",
                     "Intl.DateTimeFormat-datetimestyle",
                     "Intl.DateTimeFormat-dayPeriod",
                     "Intl.DateTimeFormat-extend-timezonename",
@@ -237,7 +238,6 @@ public class Test262Runnable extends TestRunnable {
                     "top-level-await",
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
-                    "Intl-enumeration",
                     "IsHTMLDDA",
                     "ShadowRealm",
                     "Temporal",
@@ -248,6 +248,7 @@ public class Test262Runnable extends TestRunnable {
     }));
     private static final Set<String> ES2023_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Atomics.waitAsync",
+                    "Intl-enumeration",
                     "Intl.DateTimeFormat-extend-timezonename",
                     "Intl.Locale-info",
     }));
