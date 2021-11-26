@@ -40,10 +40,13 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -151,6 +154,13 @@ public abstract class ImportValueNode extends JavaScriptBaseNode {
 
     @Fallback
     static Object fallbackCase(Object value) {
+        if (InteropLibrary.getUncached().isString(value)) {
+            try {
+                return InteropLibrary.getUncached().asString(value);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
         throw Errors.createTypeErrorUnsupportedInteropType(value);
     }
 }
