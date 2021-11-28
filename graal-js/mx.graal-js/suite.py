@@ -24,7 +24,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "bf06b0f9e5ab88ae988343aa041367a6c6e37625",
+           "version" : "770c53654ef0c2e942dc53c42ffcb9a8b7f5c335",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -132,7 +132,7 @@ suite = {
         "com.oracle.truffle.js.codec",
         "com.oracle.truffle.js.runtime.doubleconv",
         "truffle:TRUFFLE_API",
-        "ICU4J",
+        "truffle:ICU4J",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR", "TRUFFLE_JS_FACTORY_PROCESSOR"],
       "jacoco" : "include",
@@ -418,9 +418,7 @@ suite = {
         "regex:TREGEX",
         "truffle:TRUFFLE_API",
         "sdk:GRAAL_SDK",
-      ],
-      "exclude": [
-        "ICU4J",
+        "truffle:ICU4J",
       ],
       "description" : "Graal JavaScript engine",
       "maven" : {
