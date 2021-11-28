@@ -64,7 +64,7 @@ public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
     private void checkNotDead(VirtualFrame frame) {
         Frame levelFrame = levelFrameNode.executeFrame(frame);
         if (levelFrame.isObject(slot)) {
-            checkNotDead(super.getObject(levelFrame), deadBranch);
+            checkNotDead(levelFrame.getObject(slot), deadBranch);
         }
     }
 

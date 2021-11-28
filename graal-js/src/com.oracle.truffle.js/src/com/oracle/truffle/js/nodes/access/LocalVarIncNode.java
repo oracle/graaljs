@@ -195,7 +195,7 @@ public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
     }
 
     @Override
-    public boolean hasTemporalDeadZone() {
+    public final boolean hasTemporalDeadZone() {
         return hasTemporalDeadZone;
     }
 
@@ -310,67 +310,67 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         }
     }
 
-    @Specialization(guards = {"isBoolean(frame)", "isIntegerKind(frame)"})
+    @Specialization(guards = {"frame.isBoolean(slot)", "isIntegerKind(frame)"})
     public int doBoolean(Frame frame) {
-        int value = JSRuntime.booleanToNumber(getBoolean(frame));
+        int value = JSRuntime.booleanToNumber(frame.getBoolean(slot));
         int newValue = op.doInt(value);
         frame.setInt(slot, newValue);
         return value;
     }
 
-    @Specialization(guards = {"isBoolean(frame)", "isDoubleKind(frame)"}, replaces = "doBoolean")
+    @Specialization(guards = {"frame.isBoolean(slot)", "isDoubleKind(frame)"}, replaces = "doBoolean")
     public int doBooleanDouble(Frame frame) {
-        int value = JSRuntime.booleanToNumber(getBoolean(frame));
+        int value = JSRuntime.booleanToNumber(frame.getBoolean(slot));
         int newValue = op.doInt(value);
         frame.setDouble(slot, newValue);
         return value;
     }
 
-    @Specialization(guards = {"isBoolean(frame)"}, replaces = "doBooleanDouble")
+    @Specialization(guards = {"frame.isBoolean(slot)"}, replaces = "doBooleanDouble")
     public int doBooleanObject(Frame frame) {
         ensureObjectKind(frame);
-        int value = JSRuntime.booleanToNumber(getBoolean(frame));
+        int value = JSRuntime.booleanToNumber(frame.getBoolean(slot));
         int newValue = op.doInt(value);
         frame.setObject(slot, newValue);
         return value;
     }
 
-    @Specialization(guards = {"isInt(frame)", "isIntegerKind(frame)"}, rewriteOn = {ArithmeticException.class})
+    @Specialization(guards = {"frame.isInt(slot)", "isIntegerKind(frame)"}, rewriteOn = {ArithmeticException.class})
     public int doInt(Frame frame) {
-        int value = getInt(frame);
+        int value = frame.getInt(slot);
         int newValue = op.doInt(value);
         frame.setInt(slot, newValue);
         return value;
     }
 
-    @Specialization(guards = {"isInt(frame)", "isDoubleKind(frame)"}, replaces = "doInt")
+    @Specialization(guards = {"frame.isInt(slot)", "isDoubleKind(frame)"}, replaces = "doInt")
     public int doIntDouble(Frame frame) {
-        int value = getInt(frame);
+        int value = frame.getInt(slot);
         double newValue = op.doDouble(value);
         frame.setDouble(slot, newValue);
         return value;
     }
 
-    @Specialization(guards = {"isInt(frame)"}, replaces = "doIntDouble")
+    @Specialization(guards = {"frame.isInt(slot)"}, replaces = "doIntDouble")
     public int doIntObject(Frame frame) {
         ensureObjectKind(frame);
-        int value = getInt(frame);
+        int value = frame.getInt(slot);
         double newValue = op.doDouble(value);
         frame.setObject(slot, newValue);
         return value;
     }
 
-    @Specialization(guards = {"isDouble(frame)", "isDoubleKind(frame)"})
+    @Specialization(guards = {"frame.isDouble(slot)", "isDoubleKind(frame)"})
     public double doDouble(Frame frame) {
-        double doubleValue = getDouble(frame);
+        double doubleValue = frame.getDouble(slot);
         frame.setDouble(slot, op.doDouble(doubleValue));
         return doubleValue;
     }
 
-    @Specialization(guards = {"isDouble(frame)"}, replaces = "doDouble")
+    @Specialization(guards = {"frame.isDouble(slot)"}, replaces = "doDouble")
     public double doDoubleObject(Frame frame) {
         ensureObjectKind(frame);
-        double doubleValue = getDouble(frame);
+        double doubleValue = frame.getDouble(slot);
         frame.setObject(slot, op.doDouble(doubleValue));
         return doubleValue;
     }
@@ -379,7 +379,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         return op.getOverloadedOperatorName();
     }
 
-    @Specialization(guards = {"isObject(frame)"})
+    @Specialization(guards = {"frame.isObject(slot)"})
     public Object doObject(Frame frame,
                     @Cached("createBinaryProfile()") ConditionProfile isNumberProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isIntegerProfile,
@@ -389,7 +389,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
                     @Cached("createToNumericOperand()") JSToNumericNode toNumericOperand,
                     @Cached("create()") BranchProfile deadBranch) {
         ensureObjectKind(frame);
-        Object value = getObject(frame);
+        Object value = frame.getObject(slot);
         if (hasTemporalDeadZone()) {
             checkNotDead(value, deadBranch);
         }
@@ -405,26 +405,26 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         return operand;
     }
 
-    @Specialization(guards = {"isLong(frame)", "isLongKind(frame)"}, rewriteOn = ArithmeticException.class)
+    @Specialization(guards = {"frame.isLong(slot)", "isLongKind(frame)"}, rewriteOn = ArithmeticException.class)
     public SafeInteger doSafeInteger(Frame frame) {
-        SafeInteger oldValue = SafeInteger.valueOf(getLong(frame));
+        SafeInteger oldValue = SafeInteger.valueOf(frame.getLong(slot));
         SafeInteger newValue = op.doSafeInteger(oldValue);
         frame.setLong(slot, newValue.longValue());
         return oldValue;
     }
 
-    @Specialization(guards = {"isLong(frame)", "isDoubleKind(frame)"}, replaces = "doSafeInteger")
+    @Specialization(guards = {"frame.isLong(slot)", "isDoubleKind(frame)"}, replaces = "doSafeInteger")
     public double doSafeIntegerToDouble(Frame frame) {
-        double oldValue = getLong(frame);
+        double oldValue = frame.getLong(slot);
         double newValue = op.doDouble(oldValue);
         frame.setDouble(slot, newValue);
         return oldValue;
     }
 
-    @Specialization(guards = {"isLong(frame)"}, replaces = "doSafeIntegerToDouble")
+    @Specialization(guards = {"frame.isLong(slot)"}, replaces = "doSafeIntegerToDouble")
     public double doSafeIntegerObject(Frame frame) {
         ensureObjectKind(frame);
-        double oldValue = getLong(frame);
+        double oldValue = frame.getLong(slot);
         double newValue = op.doDouble(oldValue);
         frame.setObject(slot, newValue);
         return oldValue;
@@ -454,68 +454,68 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         }
     }
 
-    @Specialization(guards = {"isBoolean(frame)", "isIntegerKind(frame)"})
+    @Specialization(guards = {"frame.isBoolean(slot)", "isIntegerKind(frame)"})
     public int doBoolean(Frame frame) {
-        int value = JSRuntime.booleanToNumber(getBoolean(frame));
+        int value = JSRuntime.booleanToNumber(frame.getBoolean(slot));
         int newValue = op.doInt(value);
         frame.setInt(slot, newValue);
         return newValue;
     }
 
-    @Specialization(guards = {"isBoolean(frame)", "isDoubleKind(frame)"}, replaces = "doBoolean")
+    @Specialization(guards = {"frame.isBoolean(slot)", "isDoubleKind(frame)"}, replaces = "doBoolean")
     public int doBooleanDouble(Frame frame) {
-        int value = JSRuntime.booleanToNumber(getBoolean(frame));
+        int value = JSRuntime.booleanToNumber(frame.getBoolean(slot));
         int newValue = op.doInt(value);
         frame.setDouble(slot, newValue);
         return newValue;
     }
 
-    @Specialization(guards = {"isBoolean(frame)"}, replaces = "doBooleanDouble")
+    @Specialization(guards = {"frame.isBoolean(slot)"}, replaces = "doBooleanDouble")
     public int doBooleanObject(Frame frame) {
         ensureObjectKind(frame);
-        int value = JSRuntime.booleanToNumber(getBoolean(frame));
+        int value = JSRuntime.booleanToNumber(frame.getBoolean(slot));
         int newValue = op.doInt(value);
         frame.setObject(slot, newValue);
         return newValue;
     }
 
-    @Specialization(guards = {"isInt(frame)", "isIntegerKind(frame)"}, rewriteOn = {ArithmeticException.class})
+    @Specialization(guards = {"frame.isInt(slot)", "isIntegerKind(frame)"}, rewriteOn = {ArithmeticException.class})
     public int doInt(Frame frame) {
-        int value = getInt(frame);
+        int value = frame.getInt(slot);
         int newValue = op.doInt(value);
         frame.setInt(slot, newValue);
         return newValue;
     }
 
-    @Specialization(guards = {"isInt(frame)", "isDoubleKind(frame)"}, replaces = "doInt")
+    @Specialization(guards = {"frame.isInt(slot)", "isDoubleKind(frame)"}, replaces = "doInt")
     public double doIntOverflow(Frame frame) {
-        int value = getInt(frame);
+        int value = frame.getInt(slot);
         double newValue = op.doDouble(value);
         frame.setDouble(slot, newValue);
         return newValue;
     }
 
-    @Specialization(guards = {"isInt(frame)"}, replaces = "doIntOverflow")
+    @Specialization(guards = {"frame.isInt(slot)"}, replaces = "doIntOverflow")
     public double doIntOverflowObject(Frame frame) {
         ensureObjectKind(frame);
-        int value = getInt(frame);
+        int value = frame.getInt(slot);
         double newValue = op.doDouble(value);
         frame.setObject(slot, newValue);
         return newValue;
     }
 
-    @Specialization(guards = {"isDouble(frame)", "isDoubleKind(frame)"})
+    @Specialization(guards = {"frame.isDouble(slot)", "isDoubleKind(frame)"})
     public double doDouble(Frame frame) {
-        double doubleValue = getDouble(frame);
+        double doubleValue = frame.getDouble(slot);
         double newValue = op.doDouble(doubleValue);
         frame.setDouble(slot, newValue);
         return newValue;
     }
 
-    @Specialization(guards = {"isDouble(frame)"}, replaces = "doDouble")
+    @Specialization(guards = {"frame.isDouble(slot)"}, replaces = "doDouble")
     public double doDoubleObject(Frame frame) {
         ensureObjectKind(frame);
-        double doubleValue = getDouble(frame);
+        double doubleValue = frame.getDouble(slot);
         double newValue = op.doDouble(doubleValue);
         frame.setObject(slot, newValue);
         return newValue;
@@ -525,7 +525,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         return op.getOverloadedOperatorName();
     }
 
-    @Specialization(guards = {"isObject(frame)"})
+    @Specialization(guards = {"frame.isObject(slot)"})
     public Object doObject(Frame frame,
                     @Cached("createBinaryProfile()") ConditionProfile isNumberProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isIntegerProfile,
@@ -535,7 +535,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
                     @Cached("createToNumericOperand()") JSToNumericNode toNumericOperand,
                     @Cached("create()") BranchProfile deadBranch) {
         ensureObjectKind(frame);
-        Object value = getObject(frame);
+        Object value = frame.getObject(slot);
         if (hasTemporalDeadZone()) {
             checkNotDead(value, deadBranch);
         }
@@ -553,26 +553,26 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         return newValue;
     }
 
-    @Specialization(guards = {"isLong(frame)", "isLongKind(frame)"}, rewriteOn = ArithmeticException.class)
+    @Specialization(guards = {"frame.isLong(slot)", "isLongKind(frame)"}, rewriteOn = ArithmeticException.class)
     public SafeInteger doSafeInteger(Frame frame) {
-        SafeInteger oldValue = SafeInteger.valueOf(getLong(frame));
+        SafeInteger oldValue = SafeInteger.valueOf(frame.getLong(slot));
         SafeInteger newValue = op.doSafeInteger(oldValue);
         frame.setLong(slot, newValue.longValue());
         return newValue;
     }
 
-    @Specialization(guards = {"isLong(frame)", "isDoubleKind(frame)"}, replaces = "doSafeInteger")
+    @Specialization(guards = {"frame.isLong(slot)", "isDoubleKind(frame)"}, replaces = "doSafeInteger")
     public double doSafeIntegerToDouble(Frame frame) {
-        double oldValue = getLong(frame);
+        double oldValue = frame.getLong(slot);
         double newValue = op.doDouble(oldValue);
         frame.setDouble(slot, newValue);
         return newValue;
     }
 
-    @Specialization(guards = {"isLong(frame)"}, replaces = "doSafeIntegerToDouble")
+    @Specialization(guards = {"frame.isLong(slot)"}, replaces = "doSafeIntegerToDouble")
     public double doSafeIntegerToObject(Frame frame) {
         ensureObjectKind(frame);
-        double oldValue = getLong(frame);
+        double oldValue = frame.getLong(slot);
         double newValue = op.doDouble(oldValue);
         frame.setObject(slot, newValue);
         return newValue;

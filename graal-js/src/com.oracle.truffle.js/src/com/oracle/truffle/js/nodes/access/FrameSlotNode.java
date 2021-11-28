@@ -74,46 +74,6 @@ public abstract class FrameSlotNode extends JavaScriptNode {
 
     public abstract ScopeFrameNode getLevelFrameNode();
 
-    protected final boolean getBoolean(Frame frame) {
-        return frame.getBoolean(slot);
-    }
-
-    protected final int getInt(Frame frame) {
-        return frame.getInt(slot);
-    }
-
-    protected final double getDouble(Frame frame) {
-        return frame.getDouble(slot);
-    }
-
-    protected final Object getObject(Frame frame) {
-        return frame.getObject(slot);
-    }
-
-    protected final long getLong(Frame frame) {
-        return frame.getLong(slot);
-    }
-
-    protected final boolean isBoolean(Frame frame) {
-        return frame.isBoolean(slot);
-    }
-
-    protected final boolean isInt(Frame frame) {
-        return frame.isInt(slot);
-    }
-
-    protected final boolean isDouble(Frame frame) {
-        return frame.isDouble(slot);
-    }
-
-    protected final boolean isObject(Frame frame) {
-        return frame.isObject(slot);
-    }
-
-    protected final boolean isLong(Frame frame) {
-        return frame.isLong(slot);
-    }
-
     public boolean hasTemporalDeadZone() {
         return false;
     }
