@@ -229,7 +229,13 @@ public final class FunctionEnvironment extends Environment {
         T applicableTarget = null;
         for (ListIterator<BreakTarget> iterator = jumpTargetStack.listIterator(jumpTargetStack.size()); iterator.hasPrevious();) {
             BreakTarget target = iterator.previous();
-            if (direct || label == null) {
+            if (direct && label == null) {
+                // break without a label is consumed by a switch or an iteration statement,
+                // not by other labelled statements
+                if ((BreakTarget.forSwitch() == target) || (target instanceof ContinueTarget)) {
+                    return targetClass.cast(target);
+                }
+            } else if (direct || label == null) {
                 // ignore label or label directly on target
                 if (label == null || label.equals(target.getLabel())) {
                     if (targetClass.isInstance(target)) {
