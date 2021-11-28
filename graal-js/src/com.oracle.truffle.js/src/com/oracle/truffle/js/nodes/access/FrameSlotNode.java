@@ -130,12 +130,17 @@ public abstract class FrameSlotNode extends JavaScriptNode {
         }
 
         private boolean isOrSetKind(Frame frame, FrameSlotKind targetKind) {
-            FrameSlotKind currentKind = getFrameDescriptor(frame).getSlotKind(slot);
-            return isOrSetKind(frame, currentKind, targetKind);
+            FrameDescriptor desc = getFrameDescriptor(frame);
+            FrameSlotKind currentKind = desc.getSlotKind(slot);
+            return isOrSetKind(frame, desc, currentKind, targetKind);
         }
 
         private boolean isOrSetKind(Frame frame, FrameSlotKind currentKind, FrameSlotKind targetKind) {
             FrameDescriptor desc = getFrameDescriptor(frame);
+            return isOrSetKind(frame, desc, currentKind, targetKind);
+        }
+
+        private boolean isOrSetKind(Frame frame, FrameDescriptor desc, FrameSlotKind currentKind, FrameSlotKind targetKind) {
             assert desc == frame.getFrameDescriptor();
             if (currentKind == targetKind) {
                 return true;
