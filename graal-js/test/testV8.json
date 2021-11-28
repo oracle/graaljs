@@ -888,10 +888,6 @@
       "POLYGLOT" : "PASS"
     }
   }, {
-    "filePath" : "mjsunit/regress/asm/regress-9022.js",
-    "status" : "FAIL",
-    "comment" : "update 2021-07-07"
-  }, {
     "filePath" : "mjsunit/regress/asm/regress-crbug-934138.js",
     "status" : "FAIL",
     "comment" : "update 2021-07-07"
