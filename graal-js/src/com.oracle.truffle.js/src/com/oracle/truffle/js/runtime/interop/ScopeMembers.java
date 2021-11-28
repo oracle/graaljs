@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -164,7 +163,7 @@ final class ScopeMembers implements TruffleObject {
                     // insert direct eval scope variables
                     FrameSlot evalScopeSlot = frameDescriptor.findFrameSlot(ScopeFrameNode.EVAL_SCOPE_IDENTIFIER);
                     if (evalScopeSlot != null) {
-                        DynamicObject evalScope = (DynamicObject) FrameUtil.getObjectSafe(outerScope, evalScopeSlot);
+                        DynamicObject evalScope = (DynamicObject) outerScope.getObject(evalScopeSlot);
                         DynamicObjectLibrary objLib = DynamicObjectLibrary.getUncached();
                         for (Object key : objLib.getKeyArray(evalScope)) {
                             membersList.add(new Key(key.toString(), descNode, null));
@@ -176,7 +175,7 @@ final class ScopeMembers implements TruffleObject {
                         break;
                     }
 
-                    Object parent = FrameUtil.getObjectSafe(outerScope, parentSlot);
+                    Object parent = outerScope.getObject(parentSlot);
                     if (parent instanceof Frame) {
                         outerScope = (Frame) parent;
                     } else if (currentFunctionFrame != null && currentFunctionFrame != outerScope) {
@@ -205,7 +204,7 @@ final class ScopeMembers implements TruffleObject {
 
     static boolean isUnsetFrameSlot(Frame frame, FrameSlot slot) {
         if (frame != null && frame.isObject(slot)) {
-            Object value = FrameUtil.getObjectSafe(frame, slot);
+            Object value = frame.getObject(slot);
             if (value == null || value == Dead.instance() || value instanceof Frame) {
                 return true;
             }

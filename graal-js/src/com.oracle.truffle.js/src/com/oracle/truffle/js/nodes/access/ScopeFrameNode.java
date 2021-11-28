@@ -46,7 +46,6 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -96,7 +95,7 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
         if (!slots.isEmpty()) {
             FrameSlot parentSlot = slots.get(0);
             if (parentSlot.getIdentifier() == PARENT_SCOPE_IDENTIFIER) {
-                return (Frame) FrameUtil.getObjectSafe(frame, parentSlot);
+                return (Frame) frame.getObject(parentSlot);
             }
         }
         return null;
@@ -145,7 +144,7 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
 
         @Override
         public Frame executeFrame(Frame frame) {
-            return JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(frame, blockScopeSlot));
+            return JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
         }
     }
 
@@ -164,9 +163,9 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
         @Override
         @ExplodeLoop
         public Frame executeFrame(Frame frame) {
-            Frame retFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(frame, blockScopeSlot));
+            Frame retFrame = JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
             for (int i = 0; i < scopeLevel; i++) {
-                retFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(retFrame, parentSlots[i]));
+                retFrame = JSFrameUtil.castMaterializedFrame(retFrame.getObject(parentSlots[i]));
             }
             return retFrame;
         }
@@ -191,7 +190,7 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
                 retFrame = JSFrameUtil.castMaterializedFrame(JSArguments.getEnclosingFrame(retFrame.getArguments()));
             }
             for (int i = 0; i < scopeLevel; i++) {
-                retFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(retFrame, parentSlots[i]));
+                retFrame = JSFrameUtil.castMaterializedFrame(retFrame.getObject(parentSlots[i]));
             }
             return retFrame;
         }

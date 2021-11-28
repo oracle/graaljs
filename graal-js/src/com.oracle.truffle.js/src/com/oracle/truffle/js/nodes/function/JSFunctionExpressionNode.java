@@ -44,7 +44,6 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -163,7 +162,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         public Object execute(VirtualFrame frame) {
             MaterializedFrame closureFrame;
             if (blockScopeSlot != null) {
-                Object blockScope = FrameUtil.getObjectSafe(frame, blockScopeSlot);
+                Object blockScope = frame.getObject(blockScopeSlot);
                 closureFrame = JSFrameUtil.castMaterializedFrame(blockScope);
             } else {
                 closureFrame = frame.materialize();
@@ -210,7 +209,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         public Object execute(VirtualFrame frame) {
             MaterializedFrame closureFrame;
             if (blockScopeSlot != null) {
-                Object blockScope = FrameUtil.getObjectSafe(frame, blockScopeSlot);
+                Object blockScope = frame.getObject(blockScopeSlot);
                 closureFrame = JSFrameUtil.castMaterializedFrame(blockScope);
             } else {
                 closureFrame = frame.materialize();

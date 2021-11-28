@@ -47,7 +47,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -152,7 +151,7 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
 
         @Override
         public VirtualFrame appendScopeFrame(VirtualFrame frame) {
-            Object parentScopeFrame = FrameUtil.getObjectSafe(frame, blockScopeSlot);
+            Object parentScopeFrame = frame.getObject(blockScopeSlot);
             if (captureFunctionFrame) {
                 assert parentScopeFrame == Undefined.instance;
                 parentScopeFrame = frame.materialize();
@@ -165,8 +164,8 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
 
         @Override
         public void exitScope(VirtualFrame frame) {
-            MaterializedFrame blockScopeFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(frame, blockScopeSlot));
-            Object parentScopeFrame = FrameUtil.getObjectSafe(blockScopeFrame, parentSlot);
+            MaterializedFrame blockScopeFrame = JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
+            Object parentScopeFrame = blockScopeFrame.getObject(parentSlot);
             if (captureFunctionFrame) {
                 assert ((Frame) parentScopeFrame).getFrameDescriptor() == frame.getFrameDescriptor();
                 // Avoid self reference
@@ -207,7 +206,7 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
 
         @Override
         public Object getBlockScope(VirtualFrame frame) {
-            return FrameUtil.getObjectSafe(frame, blockScopeSlot);
+            return frame.getObject(blockScopeSlot);
         }
 
         @Override

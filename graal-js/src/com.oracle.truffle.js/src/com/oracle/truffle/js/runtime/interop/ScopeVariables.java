@@ -53,7 +53,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -207,7 +206,7 @@ public final class ScopeVariables implements TruffleObject {
     private Frame getParentFrame(boolean functionBlock) {
         FrameSlot parentSlot = frame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
         if (parentSlot != null) {
-            Object parent = FrameUtil.getObjectSafe(frame, parentSlot);
+            Object parent = frame.getObject(parentSlot);
             if (parent instanceof Frame) {
                 return (Frame) parent;
             } else if (functionFrame != null && functionFrame != frame && !functionBlock) {
@@ -559,7 +558,7 @@ public final class ScopeVariables implements TruffleObject {
                 // look up direct eval scope variable
                 FrameSlot evalScopeSlot = frameDescriptor.findFrameSlot(ScopeFrameNode.EVAL_SCOPE_IDENTIFIER);
                 if (evalScopeSlot != null) {
-                    DynamicObject evalScope = (DynamicObject) FrameUtil.getObjectSafe(outerScope, evalScopeSlot);
+                    DynamicObject evalScope = (DynamicObject) outerScope.getObject(evalScopeSlot);
                     DynamicObjectLibrary objLib = DynamicObjectLibrary.getUncached();
                     if (objLib.containsKey(evalScope, member)) {
                         return new DynamicScopeResolvedSlot(member, evalScopeSlot, frameLevel, scopeLevel, frameDescriptor, parentSlotList);
@@ -572,7 +571,7 @@ public final class ScopeVariables implements TruffleObject {
                 }
 
                 assert scopeLevel >= 0;
-                Object parent = FrameUtil.getObjectSafe(outerScope, parentSlot);
+                Object parent = outerScope.getObject(parentSlot);
                 if (parent instanceof Frame) {
                     outerScope = (Frame) parent;
                     parentSlotList.add(parentSlot);

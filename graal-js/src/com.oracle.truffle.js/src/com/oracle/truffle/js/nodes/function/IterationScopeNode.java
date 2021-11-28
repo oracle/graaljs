@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.function;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -84,7 +83,7 @@ public abstract class IterationScopeNode extends JavaScriptNode {
 
         @Override
         public VirtualFrame execute(VirtualFrame frame) {
-            VirtualFrame prevFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(frame, blockScopeSlot));
+            VirtualFrame prevFrame = JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
             VirtualFrame nextFrame = Truffle.getRuntime().createVirtualFrame(frame.getArguments(), frameDescriptor).materialize();
             writes[0].executeWithFrame(nextFrame, reads[0].execute(prevFrame)); // copy parent slot
             copySlots(nextFrame, prevFrame);
@@ -94,9 +93,9 @@ public abstract class IterationScopeNode extends JavaScriptNode {
 
         @Override
         public void executeCopy(VirtualFrame frame, VirtualFrame prevFrame) {
-            VirtualFrame nextFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(frame, blockScopeSlot));
+            VirtualFrame nextFrame = JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
             // no need to copy effectively final parent frame slot
-            assert FrameUtil.getObjectSafe(nextFrame, nextFrame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER)) == FrameUtil.getObjectSafe(prevFrame,
+            assert nextFrame.getObject(nextFrame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER)) == prevFrame.getObject(
                             prevFrame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER));
             copySlots(prevFrame, nextFrame);
             exitScope(frame, prevFrame);

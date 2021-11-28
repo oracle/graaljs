@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -144,7 +143,7 @@ public class DefineMethodNode extends JavaScriptBaseNode {
             MaterializedFrame enclosingFrame;
             if (functionData.needsParentFrame()) {
                 if (blockScopeSlot != null) {
-                    Object blockScope = FrameUtil.getObjectSafe(frame, blockScopeSlot);
+                    Object blockScope = frame.getObject(blockScopeSlot);
                     enclosingFrame = JSFrameUtil.castMaterializedFrame(blockScope);
                 } else {
                     enclosingFrame = frame.materialize();

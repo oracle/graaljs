@@ -45,7 +45,6 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -74,23 +73,23 @@ public abstract class FrameSlotNode extends JavaScriptNode {
     public abstract ScopeFrameNode getLevelFrameNode();
 
     protected final boolean getBoolean(Frame frame) {
-        return FrameUtil.getBooleanSafe(frame, frameSlot);
+        return frame.getBoolean(frameSlot);
     }
 
     protected final int getInt(Frame frame) {
-        return FrameUtil.getIntSafe(frame, frameSlot);
+        return frame.getInt(frameSlot);
     }
 
     protected final double getDouble(Frame frame) {
-        return FrameUtil.getDoubleSafe(frame, frameSlot);
+        return frame.getDouble(frameSlot);
     }
 
     protected final Object getObject(Frame frame) {
-        return FrameUtil.getObjectSafe(frame, frameSlot);
+        return frame.getObject(frameSlot);
     }
 
     protected final long getLong(Frame frame) {
-        return FrameUtil.getLongSafe(frame, frameSlot);
+        return frame.getLong(frameSlot);
     }
 
     protected final boolean isBoolean(Frame frame) {

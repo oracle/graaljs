@@ -48,7 +48,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -239,7 +238,7 @@ public abstract class EvalNode extends JavaScriptNode {
             ScriptNode script = context.getEvaluator().parseDirectEval(context, getParent(), source, currEnv);
             MaterializedFrame blockScopeFrame;
             if (blockScopeSlot != null) {
-                Object maybeFrame = FrameUtil.getObjectSafe(frame, blockScopeSlot);
+                Object maybeFrame = frame.getObject(blockScopeSlot);
                 blockScopeFrame = JSFrameUtil.castMaterializedFrame(maybeFrame);
             } else {
                 blockScopeFrame = frame.materialize();

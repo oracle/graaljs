@@ -47,7 +47,6 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -166,7 +165,7 @@ public final class JSModuleNamespace extends JSNonProxy {
             return targetModule.getContext().getEvaluator().getModuleNamespace(targetModule);
         }
         FrameSlot frameSlot = targetEnv.getFrameDescriptor().findFrameSlot(binding.getBindingName());
-        if (JSFrameUtil.hasTemporalDeadZone(frameSlot) && targetEnv.isObject(frameSlot) && FrameUtil.getObjectSafe(targetEnv, frameSlot) == Dead.instance()) {
+        if (JSFrameUtil.hasTemporalDeadZone(frameSlot) && targetEnv.isObject(frameSlot) && targetEnv.getObject(frameSlot) == Dead.instance()) {
             // If it is an uninitialized binding, throw a ReferenceError
             throw Errors.createReferenceErrorNotDefined(binding.getBindingName(), null);
         }
