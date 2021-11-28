@@ -71,18 +71,48 @@ public class InitializeFrameSlotsNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         Frame scopeFrame = scopeFrameNode.executeFrame(frame);
         for (int slot : slots) {
-            assert JSFrameUtil.hasTemporalDeadZone(scopeFrame.getFrameDescriptor(), slot) : slot;
-            scopeFrame.setObject(slot, Dead.instance());
+            initializeSlot(scopeFrame, slot);
         }
         return Undefined.instance;
     }
 
-    public static InitializeFrameSlotsNode create(ScopeFrameNode scopeFrameNode, int[] slots) {
+    static void initializeSlot(Frame scopeFrame, int slot) {
+        assert JSFrameUtil.hasTemporalDeadZone(scopeFrame.getFrameDescriptor(), slot) : slot;
+        scopeFrame.setObject(slot, Dead.instance());
+    }
+
+    public static JavaScriptNode create(ScopeFrameNode scopeFrameNode, int[] slots) {
+        if (slots.length == 1) {
+            return new InitializeFrameSlotNode(scopeFrameNode, slots[0]);
+        }
         return new InitializeFrameSlotsNode(scopeFrameNode, slots);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return create(scopeFrameNode, slots);
+    }
+}
+
+class InitializeFrameSlotNode extends JavaScriptNode {
+
+    @Child private ScopeFrameNode scopeFrameNode;
+    private final int slot;
+
+    protected InitializeFrameSlotNode(ScopeFrameNode scopeFrameNode, int slot) {
+        this.slot = slot;
+        this.scopeFrameNode = Objects.requireNonNull(scopeFrameNode);
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        Frame scopeFrame = scopeFrameNode.executeFrame(frame);
+        InitializeFrameSlotsNode.initializeSlot(scopeFrame, slot);
+        return Undefined.instance;
+    }
+
+    @Override
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new InitializeFrameSlotNode(scopeFrameNode, slot);
     }
 }
