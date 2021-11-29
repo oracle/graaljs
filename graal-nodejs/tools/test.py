@@ -44,8 +44,6 @@ import multiprocessing
 import errno
 import copy
 
-from json_test_result import JsonTestResultGenerator
-
 
 if sys.version_info >= (3, 5):
   from importlib import machinery, util
@@ -223,17 +221,6 @@ class ProgressIndicator(object):
       self.HasRun(output)
       self.lock.release()
 
-  def Done(self):
-    # generate json tests reports only if env flag MX_TEST_RESULTS_PATTERN is present
-    if os.getenv('MX_TEST_RESULTS_PATTERN'):
-      json_result = JsonTestResultGenerator()
-      failed_tests_ids = {f.test.serial_id for f in self.failed}
-      for case in self.cases:
-        if case.serial_id in failed_tests_ids:
-          json_result.failedTest(str(case.GetLabel()), int(case.duration.microseconds))
-        else:
-          json_result.passedTest(str(case.GetLabel()), int(case.duration.microseconds))
-      json_result.generateReportFile()
 
 def EscapeCommand(command):
   parts = []
@@ -253,7 +240,6 @@ class SimpleProgressIndicator(ProgressIndicator):
     print('Running %i tests' % len(self.cases))
 
   def Done(self):
-    super(SimpleProgressIndicator, self).Done()
     print()
     for failed in self.failed:
       self.PrintFailureHeader(failed.test)
@@ -413,7 +399,7 @@ class TapProgressIndicator(SimpleProgressIndicator):
     logger.info('  ...')
 
   def Done(self):
-    super(TapProgressIndicator, self).Done()
+    pass
 
 class DeoptsCheckProgressIndicator(SimpleProgressIndicator):
 
@@ -445,7 +431,7 @@ class DeoptsCheckProgressIndicator(SimpleProgressIndicator):
         print('  %s' % line)
 
   def Done(self):
-    super(DeoptsCheckProgressIndicator, self).Done()
+    pass
 
 
 class CompactProgressIndicator(ProgressIndicator):
@@ -460,7 +446,6 @@ class CompactProgressIndicator(ProgressIndicator):
     pass
 
   def Done(self):
-    super(CompactProgressIndicator, self).Done()
     self.PrintProgress('Done\n')
 
   def AboutToRun(self, case):

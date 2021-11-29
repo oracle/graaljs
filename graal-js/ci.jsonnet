@@ -100,7 +100,7 @@ local ci = import '../ci.jsonnet';
 
     // jdk 17 - linux
     graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('default')                                                 + ce + {name: 'js-gate-default-ce-jdk17-linux-amd64'} + common.js_unittest,
-    graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('default')                                                 + ee + {name: 'js-gate-default-ee-jdk17-linux-amd64'} + common.js_unittest,
+    graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('default')                                                 + ee + {name: 'js-gate-default-ee-jdk17-linux-amd64'} + common.js_unittest_ee,
     graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('noic')                                                         + {name: 'js-gate-noic-jdk17-linux-amd64'},
     graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('directbytebuffer')                                             + {name: 'js-gate-directbytebuffer-jdk17-linux-amd64'},
     graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('cloneuninitialized')                                           + {name: 'js-gate-cloneuninitialized-jdk17-linux-amd64'},
@@ -108,19 +108,19 @@ local ci = import '../ci.jsonnet';
     graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('shareengine')                                                  + {name: 'js-gate-shareengine-jdk17-linux-amd64'},
     graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('latestversion')                                                + {name: 'js-gate-latestversion-jdk17-linux-amd64'},
     graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('instrument')                                                   + {name: 'js-gate-instrument-jdk17-linux-amd64'},
-    graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('tck')                                                          + {name: 'js-gate-tck-jdk17-linux-amd64'} + common.js_unittest,
+    graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('tck')                                                          + {name: 'js-gate-tck-jdk17-linux-amd64'}         + common.js_unittest,
     graalJs + common.jdk17 + common.gate   + common.linux          + webassemblyTest                                                          + {name: 'js-gate-webassembly-jdk17-linux-amd64'} + common.js_unittest,
     graalJs + common.jdk17 + common.gate   + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-gate-native-image-smoke-test-jdk17-linux-amd64'},
 
     // jdk 11 - linux
-    graalJs + common.jdk11 + common.gate   + common.linux          + gateTags('default')                                                 + ce + {name: 'js-gate-default-ce-jdk11-linux-amd64'} + common.js_unittest,
+    graalJs + common.jdk11 + common.gate   + common.linux          + gateTags('default')                                                 + ce + {name: 'js-gate-default-ce-jdk11-linux-amd64'}  + common.js_unittest,
 
     // windows
     graalJs + common.jdk11 + common.gate   + common.windows_jdk11  + gateTags('Test262-default')                                              + {name: 'js-gate-test262-default-jdk11-windows-amd64'},
     graalJs + common.jdk17 + common.gate   + common.windows_jdk17  + gateTags('Test262-default')                                              + {name: 'js-gate-test262-default-jdk17-windows-amd64'},
 
     // darwin
-    graalJs + common.jdk17 + common.gate   + common.darwin         + gateTags('default')                                                 + ee + {name: 'js-gate-default-ee-jdk17-darwin-amd64'} + common.js_unittest,
+    graalJs + common.jdk17 + common.gate   + common.darwin         + gateTags('default')                                                 + ee + {name: 'js-gate-default-ee-jdk17-darwin-amd64'}  + common.js_unittest_ee,
 
     // linux aarch64
     graalJs + common.jdk11 + common.gate   + common.linux_aarch64  + gateTags('default')                                                      + {name: 'js-gate-default-ce-jdk11-linux-aarch64'} + common.js_unittest,
