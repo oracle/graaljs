@@ -73,6 +73,7 @@ import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteUnaryNode;
 import com.oracle.truffle.js.nodes.access.IteratorGetNextValueNode;
+import com.oracle.truffle.js.nodes.access.IteratorIsDoneNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextUnaryNode;
 import com.oracle.truffle.js.nodes.access.IteratorSetDoneNode;
 import com.oracle.truffle.js.nodes.access.IteratorToArrayNode;
@@ -952,6 +953,10 @@ public class NodeFactory {
 
     public JavaScriptNode createIteratorSetDone(JavaScriptNode iterator, JavaScriptNode isDone) {
         return IteratorSetDoneNode.create(iterator, isDone);
+    }
+
+    public JavaScriptNode createIteratorIsDone(JavaScriptNode iterator) {
+        return IteratorIsDoneNode.create(iterator);
     }
 
     public JavaScriptNode createAsyncIteratorNext(JSContext context, JavaScriptNode createReadNode, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {

@@ -56,6 +56,13 @@
     "status" : "SKIP",
     "comment" : "suspicious performance test"
   }, {
+    "filePath" : "intl/regress-10248.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "JDK8" : "FAIL"
+    },
+    "comment" : "toUpperCase() used to verify the correct result is using obsolete data on JDK 8"
+  }, {
     "filePath" : "intl/regress-10438.js",
     "status" : "FAIL",
     "comment" : "Different error message expected, passes otherwise"
@@ -369,10 +376,6 @@
   }, {
     "filePath" : "mjsunit/debugPrint.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/destruct-array-spread-done.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/disallow-codegen-from-strings.js",
     "status" : "FAIL",

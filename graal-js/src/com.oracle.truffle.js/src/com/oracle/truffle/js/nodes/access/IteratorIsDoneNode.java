@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,59 +40,36 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.util.Set;
-
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.util.SimpleArrayList;
+
+import java.util.Set;
 
 /**
- * Absorb iterator to new array.
+ * Returns the value of [[Done]] field of an IteratorRecord.
  */
-public abstract class IteratorToArrayNode extends JavaScriptNode {
-    private final JSContext context;
-    @Child @Executed JavaScriptNode iteratorNode;
-    @Child private IteratorGetNextValueNode iteratorStepNode;
+public abstract class IteratorIsDoneNode extends JavaScriptNode {
+    @Node.Child @Executed JavaScriptNode iteratorNode;
 
-    protected IteratorToArrayNode(JSContext context, JavaScriptNode iteratorNode, IteratorGetNextValueNode iteratorStepNode) {
-        this.context = context;
+    protected IteratorIsDoneNode(JavaScriptNode iteratorNode) {
         this.iteratorNode = iteratorNode;
-        this.iteratorStepNode = iteratorStepNode;
     }
 
-    public static IteratorToArrayNode create(JSContext context, JavaScriptNode iterator) {
-        IteratorGetNextValueNode iteratorStep = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), true);
-        return IteratorToArrayNodeGen.create(context, iterator, iteratorStep);
+    public static IteratorIsDoneNode create(JavaScriptNode iteratorNode) {
+        return IteratorIsDoneNodeGen.create(iteratorNode);
     }
 
-    @Specialization(guards = "!iteratorRecord.isDone()")
-    protected Object doIterator(VirtualFrame frame, IteratorRecord iteratorRecord,
-                    @Cached BranchProfile growProfile) {
-        SimpleArrayList<Object> elements = new SimpleArrayList<>();
-        Object value;
-        while ((value = iteratorStepNode.execute(frame, iteratorRecord)) != null) {
-            elements.add(value, growProfile);
-        }
-        return JSArray.createZeroBasedObjectArray(context, getRealm(), elements.toArray());
+    @Specialization
+    protected static boolean doIterator(IteratorRecord iteratorRecord) {
+        return iteratorRecord.isDone();
     }
-
-    @Specialization(guards = "iteratorRecord.isDone()")
-    protected Object doDoneIterator(@SuppressWarnings("unused") IteratorRecord iteratorRecord) {
-        return JSArray.createEmptyZeroLength(context, getRealm());
-    }
-
-    public abstract Object execute(VirtualFrame frame, IteratorRecord iteratorRecord);
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return IteratorToArrayNodeGen.create(context, cloneUninitialized(iteratorNode, materializedTags), cloneUninitialized(iteratorStepNode, materializedTags));
+        return create(cloneUninitialized(iteratorNode, materializedTags));
     }
 }
