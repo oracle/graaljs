@@ -492,7 +492,7 @@ public class NodeFactory {
 
     public IterationScopeNode createIterationScope(FrameDescriptor frameDescriptor, JSFrameSlot blockScopeSlot) {
         int numberOfSlots = frameDescriptor.getNumberOfSlots();
-        assert numberOfSlots > ScopeFrameNode.PARENT_SCOPE_SLOT_INDEX && frameDescriptor.getSlotName(ScopeFrameNode.PARENT_SCOPE_SLOT_INDEX) == ScopeFrameNode.PARENT_SCOPE_IDENTIFIER;
+        assert numberOfSlots > ScopeFrameNode.PARENT_SCOPE_SLOT_INDEX && ScopeFrameNode.PARENT_SCOPE_IDENTIFIER.equals(frameDescriptor.getSlotName(ScopeFrameNode.PARENT_SCOPE_SLOT_INDEX));
         int numberOfSlotsToCopy = numberOfSlots - 1;
         JSReadFrameSlotNode[] reads = new JSReadFrameSlotNode[numberOfSlotsToCopy];
         JSWriteFrameSlotNode[] writes = new JSWriteFrameSlotNode[numberOfSlotsToCopy];

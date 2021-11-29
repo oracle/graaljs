@@ -130,10 +130,6 @@ public final class JSFrameUtil {
         return (getFlags(desc, index) & IS_LET) != 0;
     }
 
-    public static boolean isHoistable(JSFrameSlot frameSlot) {
-        return (getFlags(frameSlot) & IS_HOISTABLE_DECLARATION) != 0;
-    }
-
     public static boolean isHoistable(FrameDescriptor desc, int index) {
         return (getFlags(desc, index) & IS_HOISTABLE_DECLARATION) != 0;
     }
@@ -173,10 +169,6 @@ public final class JSFrameUtil {
     /**
      * Returns true if the frame slot is implementation-internal.
      */
-    public static boolean isInternal(JSFrameSlot frameSlot) {
-        return isInternalIdentifier(frameSlot.getIdentifier());
-    }
-
     public static boolean isInternal(FrameDescriptor desc, int index) {
         return isInternalIdentifier(desc.getSlotName(index));
     }
@@ -213,12 +205,8 @@ public final class JSFrameUtil {
         }
     }
 
-    public static boolean isThisSlot(JSFrameSlot frameSlot) {
-        return frameSlot.getIdentifier().equals(THIS_SLOT_ID);
-    }
-
     public static boolean isThisSlot(FrameDescriptor desc, int index) {
-        return desc.getSlotName(index).equals(THIS_SLOT_ID);
+        return isThisSlotIdentifier(desc.getSlotName(index));
     }
 
     public static boolean isThisSlotIdentifier(Object identifier) {
@@ -227,17 +215,17 @@ public final class JSFrameUtil {
 
     public static int getThisSlotIndex(FrameDescriptor frameDescriptor) {
         for (int i = 0; i < frameDescriptor.getNumberOfSlots(); i++) {
-            if (frameDescriptor.getSlotName(i).equals(THIS_SLOT_ID)) {
+            if (isThisSlotIdentifier(frameDescriptor.getSlotName(i))) {
                 return i;
             }
         }
         return -1;
     }
 
-    public static int findFrameSlotIndex(FrameDescriptor frameDescriptor, Object identifier) {
+    private static int findFrameSlotIndex(FrameDescriptor frameDescriptor, Object identifier) {
         CompilerAsserts.neverPartOfCompilation();
         for (int i = 0; i < frameDescriptor.getNumberOfSlots(); i++) {
-            if (frameDescriptor.getSlotName(i).equals(identifier)) {
+            if (identifier.equals(frameDescriptor.getSlotName(i))) {
                 return i;
             }
         }

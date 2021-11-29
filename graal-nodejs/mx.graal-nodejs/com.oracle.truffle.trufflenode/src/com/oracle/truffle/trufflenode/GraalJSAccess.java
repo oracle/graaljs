@@ -121,6 +121,7 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -3721,12 +3722,12 @@ public final class GraalJSAccess {
     public void moduleSetSyntheticModuleExport(Object module, String exportName, Object exportValue) {
         JSModuleRecord moduleRecord = (JSModuleRecord) module;
         FrameDescriptor frameDescriptor = moduleRecord.getFrameDescriptor();
-        int frameSlot = JSFrameUtil.findFrameSlotIndex(frameDescriptor, exportName);
-        if (frameSlot < 0) {
+        OptionalInt frameSlot = JSFrameUtil.findOptionalFrameSlotIndex(frameDescriptor, exportName);
+        if (!frameSlot.isPresent()) {
             throw Errors.createReferenceError("Export '" + exportName + "' is not defined in module");
         }
         MaterializedFrame frame = moduleRecord.getEnvironment();
-        frame.setObject(frameSlot, exportValue);
+        frame.setObject(frameSlot.getAsInt(), exportValue);
     }
 
     private static final ByteBuffer DUMMY_UNBOUND_MODULE_PARSE_RESULT = ByteBuffer.allocate(0);
