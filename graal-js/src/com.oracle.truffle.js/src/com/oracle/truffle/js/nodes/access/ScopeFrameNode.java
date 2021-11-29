@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -57,8 +56,6 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
     public static final Object PARENT_SCOPE_IDENTIFIER = "<parent>";
     public static final Object BLOCK_SCOPE_IDENTIFIER = "<blockscope>";
     public static final String EVAL_SCOPE_IDENTIFIER = "<evalscope>";
-    public static final FrameSlot[] EMPTY_FRAME_SLOT_ARRAY = {};
-    public static final int[] EMPTY_FRAME_SLOT_INDEX_ARRAY = {};
 
     public static ScopeFrameNode createCurrent() {
         return CurrentFrameNode.instance();
