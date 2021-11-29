@@ -73,7 +73,7 @@ public abstract class IteratorToArrayNode extends JavaScriptNode {
         return IteratorToArrayNodeGen.create(context, iterator, iteratorStep);
     }
 
-    @Specialization
+    @Specialization(guards = "!iteratorRecord.isDone()")
     protected Object doIterator(VirtualFrame frame, IteratorRecord iteratorRecord,
                     @Cached BranchProfile growProfile) {
         SimpleArrayList<Object> elements = new SimpleArrayList<>();
@@ -82,6 +82,11 @@ public abstract class IteratorToArrayNode extends JavaScriptNode {
             elements.add(value, growProfile);
         }
         return JSArray.createZeroBasedObjectArray(context, getRealm(), elements.toArray());
+    }
+
+    @Specialization(guards = "iteratorRecord.isDone()")
+    protected Object doDoneIterator(@SuppressWarnings("unused") IteratorRecord iteratorRecord) {
+        return JSArray.createEmptyZeroLength(context, getRealm());
     }
 
     public abstract Object execute(VirtualFrame frame, IteratorRecord iteratorRecord);
