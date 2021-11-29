@@ -56,10 +56,6 @@
     "status" : "SKIP",
     "comment" : "suspicious performance test"
   }, {
-    "filePath" : "intl/regress-10248.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
     "filePath" : "intl/regress-10438.js",
     "status" : "FAIL",
     "comment" : "Different error message expected, passes otherwise"
