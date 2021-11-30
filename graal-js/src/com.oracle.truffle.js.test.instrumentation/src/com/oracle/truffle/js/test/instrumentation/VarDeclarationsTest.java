@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.test.instrumentation;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
@@ -173,6 +174,36 @@ public class VarDeclarationsTest extends FineGrainedAccessTest {
         evalWithTag("function* foo() {};", LiteralTag.class);
         enter(LiteralTag.class, (e, expr) -> {
             assertAttribute(e, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
+        }).exit();
+    }
+
+    @Test
+    public void mappedArguments() {
+        evalWithTags("(function(\\u0061) { \\u0061 = \\u0061 + 1; return arguments; })(42);",
+                        new Class<?>[]{DeclareTag.class, StandardTags.ReadVariableTag.class, StandardTags.WriteVariableTag.class});
+
+        String varName = "a";
+        enter(DeclareTag.class, (e, decl) -> {
+            assertAttribute(e, DECL_NAME, varName);
+            assertAttribute(e, DECL_TYPE, "var");
+        }).exit();
+        enter(DeclareTag.class, (e, decl) -> {
+            assertAttribute(e, DECL_NAME, "arguments");
+            assertAttribute(e, DECL_TYPE, "var");
+        }).exit();
+        enter(StandardTags.WriteVariableTag.class, (e1, w1) -> {
+            assertAttribute(e1, NAME, varName);
+            w1.input(42);
+        }).exit();
+        enter(StandardTags.WriteVariableTag.class, (e1, w1) -> {
+            assertAttribute(e1, NAME, varName);
+            enter(StandardTags.ReadVariableTag.class, (e2, r2) -> {
+                assertAttribute(e2, NAME, varName);
+            }).exit();
+            w1.input(43);
+        }).exit();
+        enter(StandardTags.ReadVariableTag.class, (e1, w1) -> {
+            assertAttribute(e1, NAME, "arguments");
         }).exit();
     }
 }
