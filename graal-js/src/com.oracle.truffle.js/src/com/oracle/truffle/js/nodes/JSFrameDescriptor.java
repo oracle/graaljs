@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -58,7 +57,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class JSFrameDescriptor {
 
     private final Object defaultValue;
-    private final ArrayList<JSFrameSlot> slots = new ArrayList<>();
+    private final List<JSFrameSlot> slots = new ArrayList<>();
     private final EconomicMap<Object, JSFrameSlot> identifierToSlotMap = EconomicMap.create();
     private int size;
     private FrameDescriptor frameDescriptor;
@@ -132,11 +131,6 @@ public final class JSFrameDescriptor {
 
     public int getSize() {
         return this.size;
-    }
-
-    public List<? extends JSFrameSlot> getSlots() {
-        CompilerAsserts.neverPartOfCompilation();
-        return Collections.unmodifiableList(new ArrayList<>(slots));
     }
 
     @SuppressWarnings("unchecked")
