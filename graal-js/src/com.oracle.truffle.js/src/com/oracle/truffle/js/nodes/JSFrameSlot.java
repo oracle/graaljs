@@ -134,6 +134,14 @@ public final class JSFrameSlot {
                         "]";
     }
 
+    /**
+     * Interning cache for boxed integer representation of frame slot flags.
+     *
+     * Frame slot flags are stored as boxed integer objects in the frame descriptor (as slot info)
+     * and since there is going to be only a limited number of different flags, caching them allows
+     * us to save memory footprint. Values <128 are already cached by {@link Integer#valueOf(int)},
+     * so we do not cache them again. The interned objects are never compared by identity.
+     */
     static final class FrameSlotFlags {
         private static final Map<Integer, Integer> cachedFlags = new ConcurrentHashMap<>();
 
