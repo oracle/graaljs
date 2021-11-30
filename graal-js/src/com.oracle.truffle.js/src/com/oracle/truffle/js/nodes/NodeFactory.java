@@ -1099,13 +1099,11 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray, JSFrameSlot slot) {
-        assert slot != null;
-        return JSGuardDisconnectedArgumentRead.create(index, readElementNode, argumentsArray);
+        return JSGuardDisconnectedArgumentRead.create(index, readElementNode, argumentsArray, (String) slot.getIdentifier());
     }
 
     public JavaScriptNode createGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs, JSFrameSlot slot) {
-        assert slot != null;
-        return JSGuardDisconnectedArgumentWrite.create(index, argumentsArrayAccess, argumentsArray, rhs);
+        return JSGuardDisconnectedArgumentWrite.create(index, argumentsArrayAccess, argumentsArray, rhs, (String) slot.getIdentifier());
     }
 
     public JavaScriptNode createModuleBody(JavaScriptNode moduleBody) {

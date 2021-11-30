@@ -62,16 +62,18 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
     @Child @Executed JavaScriptNode argumentsArrayNode;
     @Child @Executed JavaScriptNode rhsNode;
     @Child private WriteElementNode writeArgumentsElementNode;
+    private final String name;
 
-    JSGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs) {
+    JSGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs, String name) {
         this.argumentIndex = index;
         this.argumentsArrayNode = argumentsArray;
         this.rhsNode = rhs;
         this.writeArgumentsElementNode = argumentsArrayAccess;
+        this.name = name;
     }
 
-    public static JSGuardDisconnectedArgumentWrite create(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs) {
-        return JSGuardDisconnectedArgumentWriteNodeGen.create(index, argumentsArrayAccess, argumentsArray, rhs);
+    public static JSGuardDisconnectedArgumentWrite create(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs, String name) {
+        return JSGuardDisconnectedArgumentWriteNodeGen.create(index, argumentsArrayAccess, argumentsArray, rhs, name);
     }
 
     @Override
@@ -85,7 +87,6 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
 
     @Override
     public Object getNodeObject() {
-        String name = getEncapsulatingSourceSection().getCharacters().toString();
         NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor("name", name);
         descriptor.addProperty(StandardTags.WriteVariableTag.NAME, name);
         return descriptor;
@@ -133,6 +134,6 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return JSGuardDisconnectedArgumentWriteNodeGen.create(argumentIndex, cloneUninitialized(writeArgumentsElementNode, materializedTags), cloneUninitialized(argumentsArrayNode, materializedTags),
-                        cloneUninitialized(rhsNode, materializedTags));
+                        cloneUninitialized(rhsNode, materializedTags), name);
     }
 }

@@ -63,15 +63,17 @@ public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode imp
     private final int argumentIndex;
     @Child @Executed JavaScriptNode argumentsArrayNode;
     @Child private ReadElementNode readElementNode;
+    private final String name;
 
-    JSGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray) {
+    JSGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray, String name) {
         this.argumentIndex = index;
         this.argumentsArrayNode = argumentsArray;
         this.readElementNode = readElementNode;
+        this.name = name;
     }
 
-    public static JSGuardDisconnectedArgumentRead create(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray) {
-        return JSGuardDisconnectedArgumentReadNodeGen.create(index, readElementNode, argumentsArray);
+    public static JSGuardDisconnectedArgumentRead create(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray, String name) {
+        return JSGuardDisconnectedArgumentReadNodeGen.create(index, readElementNode, argumentsArray, name);
     }
 
     @Override
@@ -85,7 +87,6 @@ public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode imp
 
     @Override
     public Object getNodeObject() {
-        String name = getEncapsulatingSourceSection().getCharacters().toString();
         NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor("name", name);
         descriptor.addProperty(StandardTags.ReadVariableTag.NAME, name);
         return descriptor;
@@ -122,6 +123,6 @@ public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode imp
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSGuardDisconnectedArgumentReadNodeGen.create(argumentIndex, cloneUninitialized(readElementNode, materializedTags), cloneUninitialized(argumentsArrayNode, materializedTags));
+        return JSGuardDisconnectedArgumentReadNodeGen.create(argumentIndex, cloneUninitialized(readElementNode, materializedTags), cloneUninitialized(argumentsArrayNode, materializedTags), name);
     }
 }
