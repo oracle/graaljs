@@ -34,7 +34,7 @@ local ci = import '../ci.jsonnet';
 
   local nativeImageSmokeTest = checkoutJsBenchmarks + {
     suiteimports+:: ['substratevm'],
-    nativeimages+:: ['lib:js'],
+    nativeimages+:: ['lib:jsvm'],
     extraimagebuilderarguments+:: ['-H:+TruffleCheckBlockListMethods', '-H:+ReportExceptionStackTraces'],
     run+: [
       ['mx', 'build'],
