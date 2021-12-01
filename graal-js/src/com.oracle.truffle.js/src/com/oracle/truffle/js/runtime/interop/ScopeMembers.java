@@ -42,14 +42,13 @@ package com.oracle.truffle.js.runtime.interop;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalInt;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -129,11 +128,11 @@ final class ScopeMembers implements TruffleObject {
                     break;
                 }
                 FrameDescriptor desc = ((FrameDescriptorProvider) descNode).getFrameDescriptor();
-                for (FrameSlot slot : desc.getSlots()) {
-                    if (JSFrameUtil.isInternal(slot)) {
+                for (int slot = 0; slot < desc.getNumberOfSlots(); slot++) {
+                    if (JSFrameUtil.isInternal(desc, slot)) {
                         continue;
                     }
-                    membersList.add(new Key(slot.getIdentifier().toString(), descNode, slot));
+                    membersList.add(new Key(desc.getSlotName(slot).toString(), descNode, slot));
                 }
 
                 descNode = JavaScriptNode.findBlockScopeNode(descNode.getParent());
@@ -147,10 +146,10 @@ final class ScopeMembers implements TruffleObject {
                 boolean seenThis = false;
                 for (;;) { // scopeLevel
                     FrameDescriptor frameDescriptor = outerScope.getFrameDescriptor();
-                    for (FrameSlot slot : frameDescriptor.getSlots()) {
-                        if (JSFrameUtil.isInternal(slot)) {
-                            if (JSFrameUtil.isThisSlot(slot)) {
-                                membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, descNode, null));
+                    for (int slot = 0; slot < frameDescriptor.getNumberOfSlots(); slot++) {
+                        if (JSFrameUtil.isInternal(frameDescriptor, slot)) {
+                            if (JSFrameUtil.isThisSlot(frameDescriptor, slot)) {
+                                membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, descNode));
                                 seenThis = true;
                             }
                             continue;
@@ -158,25 +157,25 @@ final class ScopeMembers implements TruffleObject {
                         if (isUnsetFrameSlot(outerScope, slot)) {
                             continue;
                         }
-                        membersList.add(new Key(slot.getIdentifier().toString(), descNode, slot));
+                        membersList.add(new Key(frameDescriptor.getSlotName(slot).toString(), descNode, slot));
                     }
 
                     // insert direct eval scope variables
-                    FrameSlot evalScopeSlot = frameDescriptor.findFrameSlot(ScopeFrameNode.EVAL_SCOPE_IDENTIFIER);
-                    if (evalScopeSlot != null) {
-                        DynamicObject evalScope = (DynamicObject) FrameUtil.getObjectSafe(outerScope, evalScopeSlot);
+                    OptionalInt evalScopeSlot = JSFrameUtil.findOptionalFrameSlotIndex(frameDescriptor, ScopeFrameNode.EVAL_SCOPE_IDENTIFIER);
+                    if (evalScopeSlot.isPresent()) {
+                        DynamicObject evalScope = (DynamicObject) outerScope.getObject(evalScopeSlot.getAsInt());
                         DynamicObjectLibrary objLib = DynamicObjectLibrary.getUncached();
                         for (Object key : objLib.getKeyArray(evalScope)) {
-                            membersList.add(new Key(key.toString(), descNode, null));
+                            membersList.add(new Key(key.toString(), descNode));
                         }
                     }
 
-                    FrameSlot parentSlot = frameDescriptor.findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
-                    if (parentSlot == null) {
+                    OptionalInt parentSlot = JSFrameUtil.findOptionalFrameSlotIndex(frameDescriptor, ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
+                    if (!parentSlot.isPresent()) {
                         break;
                     }
 
-                    Object parent = FrameUtil.getObjectSafe(outerScope, parentSlot);
+                    Object parent = outerScope.getObject(parentSlot.getAsInt());
                     if (parent instanceof Frame) {
                         outerScope = (Frame) parent;
                     } else if (currentFunctionFrame != null && currentFunctionFrame != outerScope) {
@@ -190,7 +189,7 @@ final class ScopeMembers implements TruffleObject {
                 }
 
                 if (!seenThis) {
-                    membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, descNode, null));
+                    membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, descNode));
                 }
 
                 outerFrame = JSArguments.getEnclosingFrame(outerFrame.getArguments());
@@ -203,9 +202,9 @@ final class ScopeMembers implements TruffleObject {
         return membersList.toArray();
     }
 
-    static boolean isUnsetFrameSlot(Frame frame, FrameSlot slot) {
+    static boolean isUnsetFrameSlot(Frame frame, int slot) {
         if (frame != null && frame.isObject(slot)) {
-            Object value = FrameUtil.getObjectSafe(frame, slot);
+            Object value = frame.getObject(slot);
             if (value == null || value == Dead.instance() || value instanceof Frame) {
                 return true;
             }
@@ -221,10 +220,14 @@ final class ScopeMembers implements TruffleObject {
 
         private final String name;
         private final Node blockOrRoot;
-        private final FrameSlot slot;
+        private final int slot;
         private SourceSection sourceLocation;
 
-        Key(String name, Node blockOrRoot, FrameSlot slot) {
+        Key(String name, Node blockOrRoot) {
+            this(name, blockOrRoot, -1);
+        }
+
+        Key(String name, Node blockOrRoot, int slot) {
             this.name = name;
             this.slot = slot;
             this.blockOrRoot = blockOrRoot;
@@ -274,7 +277,7 @@ final class ScopeMembers implements TruffleObject {
         }
 
         private SourceSection findSourceLocation() {
-            if (slot != null) {
+            if (hasSlot()) {
                 class DeclarationFinder implements NodeVisitor {
                     JavaScriptNode found;
 
@@ -283,7 +286,7 @@ final class ScopeMembers implements TruffleObject {
                         if (node instanceof JavaScriptNode) {
                             if (node instanceof JSWriteFrameSlotNode) {
                                 JSWriteFrameSlotNode write = (JSWriteFrameSlotNode) node;
-                                if (write.getFrameSlot() == slot && write.hasSourceSection()) {
+                                if (write.getSlotIndex() == slot && write.hasSourceSection()) {
                                     found = write;
                                     return false;
                                 }
@@ -292,6 +295,8 @@ final class ScopeMembers implements TruffleObject {
                         } else if (node == blockOrRoot) {
                             return true;
                         } else if (node instanceof BlockNode) {
+                            return true;
+                        } else if (node instanceof ScopeFrameNode) {
                             return true;
                         } else {
                             return false;
@@ -306,6 +311,10 @@ final class ScopeMembers implements TruffleObject {
                 }
             }
             return blockOrRoot.getEncapsulatingSourceSection();
+        }
+
+        private boolean hasSlot() {
+            return slot >= 0;
         }
     }
 }

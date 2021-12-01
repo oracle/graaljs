@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,74 +40,79 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Objects;
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.NodeUtil;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.objects.Dead;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
-    @Child private JavaScriptNode child;
-    @Child private ScopeFrameNode levelFrameNode;
-    private final BranchProfile deadBranch = BranchProfile.create();
+/*
+ * Sets the initial value of frame slots of locals with a temporal dead zone.
+ */
+public class InitializeFrameSlotsNode extends JavaScriptNode {
 
-    private TemporalDeadZoneCheckNode(int slot, Object identifier, ScopeFrameNode levelFrameNode, JavaScriptNode child) {
-        super(slot, identifier);
-        this.levelFrameNode = levelFrameNode;
-        this.child = child;
+    @Child private ScopeFrameNode scopeFrameNode;
+    @CompilationFinal(dimensions = 1) private final int[] slots;
+
+    protected InitializeFrameSlotsNode(ScopeFrameNode scopeFrameNode, int[] slots) {
+        this.scopeFrameNode = Objects.requireNonNull(scopeFrameNode);
+        this.slots = Objects.requireNonNull(slots);
     }
 
-    private void checkNotDead(VirtualFrame frame) {
-        Frame levelFrame = levelFrameNode.executeFrame(frame);
-        if (levelFrame.isObject(slot)) {
-            checkNotDead(levelFrame.getObject(slot), deadBranch);
-        }
-    }
-
+    @ExplodeLoop
     @Override
     public Object execute(VirtualFrame frame) {
-        checkNotDead(frame);
-        return child.execute(frame);
+        Frame scopeFrame = scopeFrameNode.executeFrame(frame);
+        for (int slot : slots) {
+            initializeSlot(scopeFrame, slot);
+        }
+        return Undefined.instance;
     }
 
-    @Override
-    public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-        checkNotDead(frame);
-        return child.executeInt(frame);
+    static void initializeSlot(Frame scopeFrame, int slot) {
+        assert JSFrameUtil.hasTemporalDeadZone(scopeFrame.getFrameDescriptor(), slot) : slot;
+        scopeFrame.setObject(slot, Dead.instance());
     }
 
-    @Override
-    public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-        checkNotDead(frame);
-        return child.executeDouble(frame);
-    }
-
-    @Override
-    public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        checkNotDead(frame);
-        return child.executeBoolean(frame);
-    }
-
-    @Override
-    public ScopeFrameNode getLevelFrameNode() {
-        return levelFrameNode;
-    }
-
-    @Override
-    public boolean hasTemporalDeadZone() {
-        return true;
-    }
-
-    public static TemporalDeadZoneCheckNode create(int slotIndex, Object identifier, ScopeFrameNode levelFrameNode, JavaScriptNode rhs) {
-        return new TemporalDeadZoneCheckNode(slotIndex, identifier, levelFrameNode, rhs);
+    public static JavaScriptNode create(ScopeFrameNode scopeFrameNode, int[] slots) {
+        if (slots.length == 1) {
+            return new InitializeFrameSlotNode(scopeFrameNode, slots[0]);
+        }
+        return new InitializeFrameSlotsNode(scopeFrameNode, slots);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new TemporalDeadZoneCheckNode(getSlotIndex(), getIdentifier(), NodeUtil.cloneNode(levelFrameNode), cloneUninitialized(child, materializedTags));
+        return create(scopeFrameNode, slots);
+    }
+}
+
+class InitializeFrameSlotNode extends JavaScriptNode {
+
+    @Child private ScopeFrameNode scopeFrameNode;
+    private final int slot;
+
+    protected InitializeFrameSlotNode(ScopeFrameNode scopeFrameNode, int slot) {
+        this.slot = slot;
+        this.scopeFrameNode = Objects.requireNonNull(scopeFrameNode);
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        Frame scopeFrame = scopeFrameNode.executeFrame(frame);
+        InitializeFrameSlotsNode.initializeSlot(scopeFrame, slot);
+        return Undefined.instance;
+    }
+
+    @Override
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new InitializeFrameSlotNode(scopeFrameNode, slot);
     }
 }

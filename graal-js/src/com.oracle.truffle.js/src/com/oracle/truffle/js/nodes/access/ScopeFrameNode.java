@@ -40,64 +40,55 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.util.List;
-import java.util.Objects;
-
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 
 public abstract class ScopeFrameNode extends JavaScriptBaseNode {
+    public static final int PARENT_SCOPE_SLOT_INDEX = 0;
     public static final Object PARENT_SCOPE_IDENTIFIER = "<parent>";
     public static final Object BLOCK_SCOPE_IDENTIFIER = "<blockscope>";
     public static final String EVAL_SCOPE_IDENTIFIER = "<evalscope>";
-    public static final FrameSlot[] EMPTY_FRAME_SLOT_ARRAY = {};
 
     public static ScopeFrameNode createCurrent() {
         return CurrentFrameNode.instance();
     }
 
     public static ScopeFrameNode create(int frameLevel) {
-        return create(frameLevel, 0, EMPTY_FRAME_SLOT_ARRAY, null);
+        return create(frameLevel, 0, null);
     }
 
-    public static ScopeFrameNode create(int frameLevel, int scopeLevel, FrameSlot[] parentSlots, FrameSlot blockScopeSlot) {
-        assert scopeLevel == parentSlots.length;
+    public static ScopeFrameNode create(int frameLevel, int scopeLevel, JSFrameSlot blockScopeSlot) {
         if (frameLevel == 0) {
             if (scopeLevel == 0) {
                 if (blockScopeSlot != null) {
-                    return new CurrentBlockScopeFrameNode(blockScopeSlot);
+                    return new CurrentBlockScopeFrameNode(blockScopeSlot.getIndex());
                 }
                 return CurrentFrameNode.instance();
             }
-            return new EnclosingScopeFrameNode(scopeLevel, parentSlots, blockScopeSlot);
+            return new EnclosingScopeFrameNode(scopeLevel, blockScopeSlot.getIndex());
         } else if (scopeLevel == 0) {
             assert frameLevel > 0;
             return EnclosingFunctionFrameNode.instance(frameLevel);
         }
-        return new EnclosingFunctionScopeFrameNode(frameLevel, scopeLevel, parentSlots);
+        return new EnclosingFunctionScopeFrameNode(frameLevel, scopeLevel);
     }
 
     public static boolean isBlockScopeFrame(Frame frame) {
-        List<? extends FrameSlot> slots = frame.getFrameDescriptor().getSlots();
-        return !slots.isEmpty() && slots.get(0).getIdentifier() == PARENT_SCOPE_IDENTIFIER;
+        FrameDescriptor desc = frame.getFrameDescriptor();
+        return desc.getNumberOfSlots() > PARENT_SCOPE_SLOT_INDEX && PARENT_SCOPE_IDENTIFIER.equals(desc.getSlotName(PARENT_SCOPE_SLOT_INDEX));
     }
 
     public static Frame getBlockScopeParentFrame(Frame frame) {
-        List<? extends FrameSlot> slots = frame.getFrameDescriptor().getSlots();
-        if (!slots.isEmpty()) {
-            FrameSlot parentSlot = slots.get(0);
-            if (parentSlot.getIdentifier() == PARENT_SCOPE_IDENTIFIER) {
-                return (Frame) FrameUtil.getObjectSafe(frame, parentSlot);
-            }
+        if (isBlockScopeFrame(frame)) {
+            return (Frame) frame.getObject(PARENT_SCOPE_SLOT_INDEX);
         }
         return null;
     }
@@ -137,36 +128,34 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
 
     @NodeInfo(cost = NodeCost.NONE)
     private static final class CurrentBlockScopeFrameNode extends ScopeFrameNode {
-        private final FrameSlot blockScopeSlot;
+        private final int blockScopeSlot;
 
-        private CurrentBlockScopeFrameNode(FrameSlot blockScopeSlot) {
+        private CurrentBlockScopeFrameNode(int blockScopeSlot) {
             this.blockScopeSlot = blockScopeSlot;
         }
 
         @Override
         public Frame executeFrame(Frame frame) {
-            return JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(frame, blockScopeSlot));
+            return JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
         }
     }
 
     private static final class EnclosingScopeFrameNode extends ScopeFrameNode {
         private final int scopeLevel;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] parentSlots;
-        private final FrameSlot blockScopeSlot;
+        private final int blockScopeSlot;
 
-        EnclosingScopeFrameNode(int scopeLevel, FrameSlot[] parentSlots, FrameSlot blockScopeSlot) {
+        EnclosingScopeFrameNode(int scopeLevel, int blockScopeSlot) {
             assert scopeLevel >= 1;
             this.scopeLevel = scopeLevel;
-            this.parentSlots = parentSlots;
-            this.blockScopeSlot = Objects.requireNonNull(blockScopeSlot);
+            this.blockScopeSlot = blockScopeSlot;
         }
 
         @Override
         @ExplodeLoop
         public Frame executeFrame(Frame frame) {
-            Frame retFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(frame, blockScopeSlot));
+            Frame retFrame = JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
             for (int i = 0; i < scopeLevel; i++) {
-                retFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(retFrame, parentSlots[i]));
+                retFrame = JSFrameUtil.castMaterializedFrame(retFrame.getObject(PARENT_SCOPE_SLOT_INDEX));
             }
             return retFrame;
         }
@@ -175,12 +164,10 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
     private static final class EnclosingFunctionScopeFrameNode extends ScopeFrameNode {
         private final int frameLevel;
         private final int scopeLevel;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] parentSlots;
 
-        EnclosingFunctionScopeFrameNode(int frameLevel, int scopeLevel, FrameSlot[] parentSlots) {
+        EnclosingFunctionScopeFrameNode(int frameLevel, int scopeLevel) {
             this.frameLevel = frameLevel;
             this.scopeLevel = scopeLevel;
-            this.parentSlots = parentSlots;
         }
 
         @Override
@@ -191,7 +178,7 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
                 retFrame = JSFrameUtil.castMaterializedFrame(JSArguments.getEnclosingFrame(retFrame.getArguments()));
             }
             for (int i = 0; i < scopeLevel; i++) {
-                retFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(retFrame, parentSlots[i]));
+                retFrame = JSFrameUtil.castMaterializedFrame(retFrame.getObject(PARENT_SCOPE_SLOT_INDEX));
             }
             return retFrame;
         }

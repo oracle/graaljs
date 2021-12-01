@@ -48,7 +48,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -104,7 +103,7 @@ public class JSNodeDecoder {
         /** Create FrameDescriptor. */
         ID_FRAME_DESCRIPTOR,
         /** Add FrameSlot to FrameDescriptor. */
-        ID_FRAME_SLOT,
+        ID_JSFRAME_SLOT,
         /** Create SourceSection. */
         ID_SOURCE_SECTION,
 
@@ -230,16 +229,35 @@ public class JSNodeDecoder {
                 case ID_CALL_TARGET:
                     storeResult(state, ((RootNode) state.getObject()).getCallTarget());
                     break;
-                case ID_FRAME_DESCRIPTOR:
-                    storeResult(state, new FrameDescriptor(Undefined.instance));
+                case ID_FRAME_DESCRIPTOR: {
+                    int numberOfIndexedSlots = state.getInt();
+                    FrameDescriptor.Builder b = FrameDescriptor.newBuilder(numberOfIndexedSlots).defaultValue(Undefined.instance);
+                    Object[] names = new Object[numberOfIndexedSlots];
+                    int[] flags = new int[numberOfIndexedSlots];
+                    byte[] tags = new byte[numberOfIndexedSlots];
+                    for (int i = 0; i < numberOfIndexedSlots; i++) {
+                        names[i] = state.getObject();
+                    }
+                    for (int i = 0; i < numberOfIndexedSlots; i++) {
+                        flags[i] = state.getInt();
+                    }
+                    for (int i = 0; i < numberOfIndexedSlots; i++) {
+                        tags[i] = (byte) state.getInt();
+                    }
+                    for (int i = 0; i < numberOfIndexedSlots; i++) {
+                        b.addSlot(FrameSlotKind.fromTag(tags[i]), names[i], flags[i]);
+                    }
+                    FrameDescriptor frameDescriptor = b.build();
+                    storeResult(state, frameDescriptor);
                     break;
-                case ID_FRAME_SLOT: {
-                    FrameDescriptor frameDescriptor = (FrameDescriptor) state.getObject();
+                }
+                case ID_JSFRAME_SLOT: {
                     Object identifier = state.getObject();
+                    int index = state.getInt();
                     int flags = state.getInt();
-                    boolean findOrAdd = state.getBoolean();
-                    FrameSlot frameSlot = findOrAdd ? frameDescriptor.findOrAddFrameSlot(identifier, flags, FrameSlotKind.Illegal)
-                                    : frameDescriptor.addFrameSlot(identifier, flags, FrameSlotKind.Illegal);
+                    int tag = state.getInt();
+                    FrameSlotKind kind = FrameSlotKind.fromTag((byte) tag);
+                    JSFrameSlot frameSlot = new JSFrameSlot(index, identifier, flags, kind);
                     storeResult(state, frameSlot);
                     break;
                 }

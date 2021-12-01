@@ -42,7 +42,7 @@ package com.oracle.truffle.js.parser.env;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
 
@@ -57,7 +57,7 @@ public final class GlobalEnvironment extends DerivedEnvironment {
     }
 
     @Override
-    public FrameSlot findBlockFrameSlot(Object name) {
+    public JSFrameSlot findBlockFrameSlot(Object name) {
         return null;
     }
 

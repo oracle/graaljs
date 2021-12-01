@@ -46,13 +46,12 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
@@ -61,16 +60,15 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.SafeInteger;
 
 public abstract class JSWriteFrameSlotNode extends FrameSlotNode.WithDescriptor implements WriteNode {
-    protected JSWriteFrameSlotNode(FrameSlot frameSlot, FrameDescriptor frameDescriptor) {
-        super(frameSlot, frameDescriptor);
+
+    protected JSWriteFrameSlotNode(int slot, Object identifier) {
+        super(slot, identifier);
     }
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == WriteVariableTag.class || tag == StandardTags.WriteVariableTag.class) {
-            return !JSFrameUtil.isInternal(frameSlot);
-        } else if (tag == JSTags.InputNodeTag.class) {
-            return !JSFrameUtil.isInternal(frameSlot);
+        if (tag == WriteVariableTag.class || tag == StandardTags.WriteVariableTag.class || tag == JSTags.InputNodeTag.class) {
+            return !JSFrameUtil.isInternalIdentifier(getIdentifier());
         } else {
             return super.hasTag(tag);
         }
@@ -78,7 +76,7 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode.WithDescriptor 
 
     @Override
     public Object getNodeObject() {
-        String name = JSFrameUtil.getPublicName(frameSlot);
+        String name = JSFrameUtil.getPublicName(getIdentifier());
         NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor("name", name);
         descriptor.addProperty(StandardTags.WriteVariableTag.NAME, name);
         return descriptor;
@@ -99,18 +97,24 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode.WithDescriptor 
 
     public abstract Object executeWithFrame(Frame frame, Object value);
 
-    public static JSWriteFrameSlotNode create(FrameSlot frameSlot, FrameDescriptor frameDescriptor, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
+    public static JSWriteFrameSlotNode create(JSFrameSlot frameSlot, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
         if (!hasTemporalDeadZone) {
-            return JSWriteCurrentFrameSlotNodeGen.create(frameSlot, rhs, frameDescriptor);
+            return JSWriteCurrentFrameSlotNodeGen.create(frameSlot.getIndex(), frameSlot.getIdentifier(), rhs);
         }
-        return create(frameSlot, ScopeFrameNode.createCurrent(), rhs, frameDescriptor, hasTemporalDeadZone);
+        return create(frameSlot, ScopeFrameNode.createCurrent(), rhs, hasTemporalDeadZone);
     }
 
-    public static JSWriteFrameSlotNode create(FrameSlot frameSlot, ScopeFrameNode scopeFrameNode, JavaScriptNode rhs, FrameDescriptor frameDescriptor, boolean hasTemporalDeadZone) {
+    public static JSWriteFrameSlotNode create(JSFrameSlot frameSlot, ScopeFrameNode scopeFrameNode, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
+        assert !hasTemporalDeadZone || JSFrameUtil.hasTemporalDeadZone(frameSlot);
+        return create(frameSlot.getIndex(), frameSlot.getIdentifier(), scopeFrameNode, rhs, hasTemporalDeadZone);
+    }
+
+    public static JSWriteFrameSlotNode create(int slotIndex, Object identifier, ScopeFrameNode scopeFrameNode, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
         if (!hasTemporalDeadZone && scopeFrameNode == ScopeFrameNode.createCurrent()) {
-            return JSWriteCurrentFrameSlotNodeGen.create(frameSlot, rhs, frameDescriptor);
+            return JSWriteCurrentFrameSlotNodeGen.create(slotIndex, identifier, rhs);
         }
-        return JSWriteScopeFrameSlotNodeGen.create(frameSlot, scopeFrameNode, hasTemporalDeadZone ? TemporalDeadZoneCheckNode.create(frameSlot, scopeFrameNode, rhs) : rhs, frameDescriptor);
+        return JSWriteScopeFrameSlotNodeGen.create(slotIndex, identifier, scopeFrameNode,
+                        hasTemporalDeadZone ? TemporalDeadZoneCheckNode.create(slotIndex, identifier, scopeFrameNode, rhs) : rhs);
     }
 
     @Override
@@ -123,54 +127,54 @@ abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
     @Child @Executed ScopeFrameNode scopeFrameNode;
     @Child @Executed JavaScriptNode rhsNode;
 
-    protected JSWriteScopeFrameSlotNode(FrameSlot frameSlot, ScopeFrameNode scopeFrameNode, JavaScriptNode rhsNode, FrameDescriptor frameDescriptor) {
-        super(frameSlot, frameDescriptor);
+    protected JSWriteScopeFrameSlotNode(int slot, Object identifier, ScopeFrameNode scopeFrameNode, JavaScriptNode rhsNode) {
+        super(slot, identifier);
         this.scopeFrameNode = scopeFrameNode;
         this.rhsNode = rhsNode;
     }
 
     @Specialization(guards = "isBooleanKind(levelFrame)")
     protected final boolean doBoolean(Frame levelFrame, boolean value) {
-        levelFrame.setBoolean(frameSlot, value);
+        levelFrame.setBoolean(slot, value);
         return value;
     }
 
     @Specialization(guards = "(isIntegerKind(frame, kind) || isLongKind(frame, kind)) || isDoubleKind(frame, kind)")
     protected final int doInteger(Frame frame, int value,
-                    @Bind("frameDescriptor.getFrameSlotKind(frameSlot)") FrameSlotKind kind) {
+                    @Bind("getFrameDescriptor(frame).getSlotKind(slot)") FrameSlotKind kind) {
         if (isIntegerKind(frame, kind)) {
-            frame.setInt(frameSlot, value);
+            frame.setInt(slot, value);
         } else if (isLongKind(frame, kind)) {
-            frame.setLong(frameSlot, value);
+            frame.setLong(slot, value);
         } else if (isDoubleKind(frame, kind)) {
-            frame.setDouble(frameSlot, value);
+            frame.setDouble(slot, value);
         }
         return value;
     }
 
     @Specialization(guards = "isLongKind(levelFrame)")
     protected final SafeInteger doSafeInteger(Frame levelFrame, SafeInteger value) {
-        levelFrame.setLong(frameSlot, value.longValue());
+        levelFrame.setLong(slot, value.longValue());
         return value;
     }
 
     @Specialization
     protected final long doLong(Frame levelFrame, long value) {
         ensureObjectKind(levelFrame);
-        levelFrame.setObject(frameSlot, value);
+        levelFrame.setObject(slot, value);
         return value;
     }
 
     @Specialization(guards = "isDoubleKind(levelFrame)", replaces = {"doInteger", "doSafeInteger"})
     protected final double doDouble(Frame levelFrame, double value) {
-        levelFrame.setDouble(frameSlot, value);
+        levelFrame.setDouble(slot, value);
         return value;
     }
 
     @Specialization(replaces = {"doBoolean", "doInteger", "doDouble", "doSafeInteger", "doLong"})
     protected final Object doObject(Frame levelFrame, Object value) {
         ensureObjectKind(levelFrame);
-        levelFrame.setObject(frameSlot, value);
+        levelFrame.setObject(slot, value);
         return value;
     }
 
@@ -198,60 +202,60 @@ abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSWriteScopeFrameSlotNodeGen.create(frameSlot, getLevelFrameNode(), cloneUninitialized(getRhs(), materializedTags), frameDescriptor);
+        return JSWriteScopeFrameSlotNodeGen.create(getSlotIndex(), getIdentifier(), getLevelFrameNode(), cloneUninitialized(getRhs(), materializedTags));
     }
 }
 
 abstract class JSWriteCurrentFrameSlotNode extends JSWriteFrameSlotNode {
     @Child @Executed JavaScriptNode rhsNode;
 
-    protected JSWriteCurrentFrameSlotNode(FrameSlot frameSlot, JavaScriptNode rhsNode, FrameDescriptor frameDescriptor) {
-        super(frameSlot, frameDescriptor);
+    protected JSWriteCurrentFrameSlotNode(int slot, Object identifier, JavaScriptNode rhsNode) {
+        super(slot, identifier);
         this.rhsNode = rhsNode;
     }
 
     @Specialization(guards = "isBooleanKind(frame)")
     protected final boolean doBoolean(VirtualFrame frame, boolean value) {
-        frame.setBoolean(frameSlot, value);
+        frame.setBoolean(slot, value);
         return value;
     }
 
     @Specialization(guards = "(isIntegerKind(frame, kind) || isLongKind(frame, kind)) || isDoubleKind(frame, kind)")
     protected final int doInteger(VirtualFrame frame, int value,
-                    @Bind("frameDescriptor.getFrameSlotKind(frameSlot)") FrameSlotKind kind) {
+                    @Bind("getFrameDescriptor(frame).getSlotKind(slot)") FrameSlotKind kind) {
         if (isIntegerKind(frame, kind)) {
-            frame.setInt(frameSlot, value);
+            frame.setInt(slot, value);
         } else if (isLongKind(frame, kind)) {
-            frame.setLong(frameSlot, value);
+            frame.setLong(slot, value);
         } else if (isDoubleKind(frame, kind)) {
-            frame.setDouble(frameSlot, value);
+            frame.setDouble(slot, value);
         }
         return value;
     }
 
     @Specialization(guards = "isLongKind(frame)")
     protected final SafeInteger doSafeInteger(VirtualFrame frame, SafeInteger value) {
-        frame.setLong(frameSlot, value.longValue());
+        frame.setLong(slot, value.longValue());
         return value;
     }
 
     @Specialization
     protected final long doLong(VirtualFrame frame, long value) {
         ensureObjectKind(frame);
-        frame.setObject(frameSlot, value);
+        frame.setObject(slot, value);
         return value;
     }
 
     @Specialization(guards = "isDoubleKind(frame)", replaces = {"doInteger", "doSafeInteger"})
     protected final double doDouble(VirtualFrame frame, double value) {
-        frame.setDouble(frameSlot, value);
+        frame.setDouble(slot, value);
         return value;
     }
 
     @Specialization(replaces = {"doBoolean", "doInteger", "doDouble", "doSafeInteger", "doLong"})
     protected final Object doObject(VirtualFrame frame, Object value) {
         ensureObjectKind(frame);
-        frame.setObject(frameSlot, value);
+        frame.setObject(slot, value);
         return value;
     }
 
@@ -274,7 +278,7 @@ abstract class JSWriteCurrentFrameSlotNode extends JSWriteFrameSlotNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSWriteCurrentFrameSlotNodeGen.create(frameSlot, cloneUninitialized(getRhs(), materializedTags), frameDescriptor);
+        return JSWriteCurrentFrameSlotNodeGen.create(getSlotIndex(), getIdentifier(), cloneUninitialized(getRhs(), materializedTags));
     }
 
     @Override

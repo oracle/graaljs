@@ -94,8 +94,6 @@ import com.oracle.js.parser.ir.VarNode;
 import com.oracle.js.parser.ir.WithNode;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
@@ -103,6 +101,8 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSFrameDescriptor;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.NodeFactory.BinaryOperation;
@@ -176,7 +176,6 @@ import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InternalSlotId;
 import com.oracle.truffle.js.runtime.util.Pair;
@@ -345,7 +344,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         String functionName = getFunctionName(functionNode);
         JSFunctionData functionData;
         FunctionRootNode functionRoot;
-        FrameSlot blockScopeSlot;
+        JSFrameSlot blockScopeSlot;
         if (lazyTranslation) {
             assert functionMode && !functionNode.isProgram();
 
@@ -465,7 +464,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private FunctionRootNode createFunctionRoot(FunctionNode functionNode, JSFunctionData functionData, FunctionEnvironment currentFunction, JavaScriptNode body) {
         SourceSection functionSourceSection = createSourceSection(functionNode);
         FunctionBodyNode functionBody = factory.createFunctionBody(body);
-        FunctionRootNode functionRoot = factory.createFunctionRootNode(functionBody, environment.getFunctionFrameDescriptor(), functionData, functionSourceSection,
+        FunctionRootNode functionRoot = factory.createFunctionRootNode(functionBody, environment.getFunctionFrameDescriptor().toFrameDescriptor(), functionData, functionSourceSection,
                         currentFunction.getInternalFunctionName());
 
         if (JSConfig.PrintAst) {
@@ -634,20 +633,20 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             all.set(0, ((AbstractBlockNode) resumableNode).getStatements().length);
             return toGeneratorBlockNode((AbstractBlockNode) resumableNode, all);
         }
-        FrameDescriptor functionFrameDescriptor = environment.getFunctionFrameDescriptor();
+        JSFrameDescriptor functionFrameDescriptor = environment.getFunctionFrameDescriptor();
         InternalSlotId identifier = factory.createInternalSlotId("generatorstate", functionFrameDescriptor.getSize());
-        FrameSlot frameSlot = functionFrameDescriptor.addFrameSlot(identifier);
+        JSFrameSlot frameSlot = functionFrameDescriptor.addFrameSlot(identifier);
         JavaScriptNode readState = factory.createReadCurrentFrameSlot(frameSlot);
-        WriteNode writeState = factory.createWriteCurrentFrameSlot(frameSlot, functionFrameDescriptor, null);
+        WriteNode writeState = factory.createWriteCurrentFrameSlot(frameSlot, null);
         return factory.createGeneratorWrapper((JavaScriptNode) resumableNode, readState, writeState);
     }
 
     private JavaScriptNode toGeneratorBlockNode(AbstractBlockNode blockNode, BitSet suspendableIndices) {
-        FrameDescriptor functionFrameDescriptor = environment.getFunctionFrameDescriptor();
+        JSFrameDescriptor functionFrameDescriptor = environment.getFunctionFrameDescriptor();
         InternalSlotId identifier = factory.createInternalSlotId("generatorstate", functionFrameDescriptor.getSize());
-        FrameSlot frameSlot = functionFrameDescriptor.addFrameSlot(identifier);
+        JSFrameSlot frameSlot = functionFrameDescriptor.addFrameSlot(identifier);
         JavaScriptNode readState = factory.createReadCurrentFrameSlot(frameSlot);
-        WriteNode writeState = factory.createWriteCurrentFrameSlot(frameSlot, functionFrameDescriptor, null);
+        WriteNode writeState = factory.createWriteCurrentFrameSlot(frameSlot, null);
 
         JavaScriptNode[] statements = blockNode.getStatements();
         boolean returnsResult = !blockNode.isResultAlwaysOfType(Undefined.class);
@@ -715,15 +714,15 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (child instanceof JavaScriptNode) {
             JavaScriptNode jschild = (JavaScriptNode) child;
             if (NodeUtil.isReplacementSafe(parent, child, ANY_JAVA_SCRIPT_NODE)) {
-                FrameDescriptor functionFrameDescriptor = environment.getFunctionFrameDescriptor();
+                JSFrameDescriptor functionFrameDescriptor = environment.getFunctionFrameDescriptor();
                 InternalSlotId identifier = factory.createInternalSlotId("generatorexpr", functionFrameDescriptor.getSize());
-                FrameSlot frameSlot = functionFrameDescriptor.addFrameSlot(identifier);
+                JSFrameSlot frameSlot = functionFrameDescriptor.addFrameSlot(identifier);
                 JavaScriptNode readState = factory.createReadCurrentFrameSlot(frameSlot);
                 if (jschild.hasTag(StandardTags.ExpressionTag.class) ||
                                 (jschild instanceof GeneratorWrapperNode && ((GeneratorWrapperNode) jschild).getResumableNode().hasTag(StandardTags.ExpressionTag.class))) {
                     tagHiddenExpression(readState);
                 }
-                JavaScriptNode writeState = factory.createWriteCurrentFrameSlot(frameSlot, functionFrameDescriptor, jschild);
+                JavaScriptNode writeState = factory.createWriteCurrentFrameSlot(frameSlot, jschild);
                 extracted.add(writeState);
                 // replace child with saved expression result
                 boolean ok = NodeUtil.replaceChild(parent, child, readState);
@@ -1259,13 +1258,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private void createTemporalDeadZoneInit(Block block, List<JavaScriptNode> blockWithInit) {
         assert (block.getScope().hasBlockScopedOrRedeclaredSymbols() || block.isModuleBody()) && !(environment instanceof GlobalEnvironment);
 
+        List<FrameSlotVarRef> slotsWithTDZ = new ArrayList<>();
         for (Symbol symbol : block.getSymbols()) {
             if (symbol.isImportBinding()) {
                 continue;
             }
             if (symbol.isBlockScoped()) {
                 if (!symbol.hasBeenDeclared()) {
-                    blockWithInit.add(findScopeVar(symbol.getName(), true).createWriteNode(factory.createConstant(Dead.instance())));
+                    slotsWithTDZ.add((FrameSlotVarRef) findScopeVar(symbol.getName(), true));
                 }
             }
             if (symbol.isVarRedeclaredHere()) {
@@ -1275,6 +1275,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 blockWithInit.add(findScopeVar(symbol.getName(), true).createWriteNode(outerVar));
             }
         }
+
+        if (!slotsWithTDZ.isEmpty()) {
+            int[] slots = new int[slotsWithTDZ.size()];
+            ScopeFrameNode scope = slotsWithTDZ.get(0).createScopeFrameNode();
+            for (int i = 0; i < slots.length; i++) {
+                FrameSlotVarRef slotRef = slotsWithTDZ.get(i);
+                assert JSFrameUtil.hasTemporalDeadZone(slotRef.getFrameSlot()) : slotRef.getFrameSlot();
+                slots[i] = slotRef.getFrameSlot().getIndex();
+            }
+            blockWithInit.add(factory.createInitializeFrameSlots(scope, slots));
+        }
+
         if (block.isModuleBody()) {
             createResolveImports(lc.getCurrentFunction(), blockWithInit);
         }
@@ -1283,8 +1295,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode createReadFromParentEnv(String symbolName) {
         assert environment.getScopeLevel() >= 1;
         ScopeFrameNode parentScope = environment.getScopeLevel() == 1
-                        ? factory.createScopeFrame(0, 0, ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY, null)
-                        : factory.createScopeFrame(0, 1, environment.getParentSlots(0, 1), environment.function().getBlockScopeSlot());
+                        ? factory.createScopeFrame(0, 0, null)
+                        : factory.createScopeFrame(0, 1, environment.function().getBlockScopeSlot());
         return factory.createReadFrameSlot(environment.getParent().findLocalVar(symbolName).getFrameSlot(), parentScope);
     }
 
@@ -1555,7 +1567,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             String privateVarName = identNode.getName();
             VarRef privateVarRef = environment.findLocalVar(privateVarName);
             JavaScriptNode readNode = privateVarRef.createReadNode();
-            FrameSlot frameSlot = privateVarRef.getFrameSlot();
+            JSFrameSlot frameSlot = privateVarRef.getFrameSlot();
             if (JSFrameUtil.needsPrivateBrandCheck(frameSlot)) {
                 // Create a brand node so that a brand check can be performed in the InNode.
                 result = getPrivateBrandNode(frameSlot, privateVarRef);
@@ -1670,7 +1682,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     }
 
                     @Override
-                    public FrameSlot getFrameSlot() {
+                    public JSFrameSlot getFrameSlot() {
                         return null;
                     }
 
@@ -1861,8 +1873,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode desugarFor(ForNode forNode, JavaScriptNode init, JavaScriptNode test, JavaScriptNode modify, JavaScriptNode wrappedBody) {
         if (needsPerIterationScope(forNode)) {
             VarRef firstTempVar = environment.createTempVar();
-            FrameDescriptor iterationBlockFrameDescriptor = environment.getBlockFrameDescriptor();
-            StatementNode newFor = factory.createFor(test, wrappedBody, modify, iterationBlockFrameDescriptor, firstTempVar.createReadNode(),
+            JSFrameDescriptor iterationBlockFrameDescriptor = environment.getBlockFrameDescriptor();
+            StatementNode newFor = factory.createFor(test, wrappedBody, modify, iterationBlockFrameDescriptor.toFrameDescriptor(), firstTempVar.createReadNode(),
                             firstTempVar.createWriteNode(factory.createConstantBoolean(false)), currentFunction().getBlockScopeSlot());
             ensureHasSourceSection(newFor, forNode);
             return createBlock(init, firstTempVar.createWriteNode(factory.createConstantBoolean(true)), newFor);
@@ -2163,13 +2175,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             VarRef varRef = findScopeVarCheckTDZ(identNode.getName(), false);
             if (varRef instanceof FrameSlotVarRef) {
                 FrameSlotVarRef frameVarRef = (FrameSlotVarRef) varRef;
-                FrameSlot frameSlot = frameVarRef.getFrameSlot();
+                JSFrameSlot frameSlot = frameVarRef.getFrameSlot();
                 if (JSFrameUtil.isConst(frameSlot)) {
                     // we know this is going to throw. do the read and throw TypeError.
                     return tagExpression(checkMutableBinding(frameVarRef.createReadNode(), frameSlot.getIdentifier()), unaryNode);
                 }
                 return tagExpression(factory.createLocalVarInc(tokenTypeToUnaryOperation(unaryNode.tokenType()), frameSlot, frameVarRef.hasTDZCheck(),
-                                frameVarRef.createScopeFrameNode(), frameVarRef.getFrameDescriptor()), unaryNode);
+                                frameVarRef.createScopeFrameNode()), unaryNode);
             }
         }
 
@@ -2910,7 +2922,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode insertPrivateBrandCheck(JavaScriptNode base, VarRef privateNameVar) {
-        FrameSlot frameSlot = privateNameVar.getFrameSlot();
+        JSFrameSlot frameSlot = privateNameVar.getFrameSlot();
         if (JSFrameUtil.needsPrivateBrandCheck(frameSlot)) {
             JavaScriptNode brand = getPrivateBrandNode(frameSlot, privateNameVar);
             return factory.createPrivateBrandCheck(base, brand);
@@ -2919,11 +2931,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
-    private JavaScriptNode getPrivateBrandNode(FrameSlot frameSlot, VarRef privateNameVar) {
+    private JavaScriptNode getPrivateBrandNode(JSFrameSlot frameSlot, VarRef privateNameVar) {
         int frameLevel = ((AbstractFrameVarRef) privateNameVar).getFrameLevel();
         int scopeLevel = ((AbstractFrameVarRef) privateNameVar).getScopeLevel();
         Environment memberEnv = environment.getParentAt(frameLevel, scopeLevel);
-        FrameSlot constructorSlot = memberEnv.getBlockFrameDescriptor().findFrameSlot(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME);
+        JSFrameSlot constructorSlot = memberEnv.getBlockFrameDescriptor().findFrameSlot(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME);
         JavaScriptNode constructor = environment.createLocal(constructorSlot, frameLevel, scopeLevel);
         if (JSFrameUtil.isPrivateNameStatic(frameSlot)) {
             return constructor;
@@ -3532,7 +3544,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     // since their frames are always materialized anyway; so we need to capture the
                     // function frame in this case. Note that isModule implies isGenerator.
                     boolean captureFunctionFrame = blockEnv.getParent() == blockEnv.function() && blockEnv.function().isGeneratorFunction();
-                    return factory.createBlockScope(block, blockEnv.function().getBlockScopeSlot(), blockEnv.getBlockFrameDescriptor(), blockEnv.getParentSlot(),
+                    return factory.createBlockScope(block, blockEnv.function().getBlockScopeSlot(), blockEnv.getBlockFrameDescriptor().toFrameDescriptor(), blockEnv.getParentSlot(),
                                     blockEnv.isFunctionBlock(), captureFunctionFrame);
                 }
             }

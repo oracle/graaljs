@@ -46,8 +46,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -156,21 +155,23 @@ public final class JSModuleNamespace extends JSNonProxy {
     }
 
     static Object getBindingValue(ExportResolution binding) {
+        String bindingName = binding.getBindingName();
         JSModuleRecord targetModule = binding.getModule();
         MaterializedFrame targetEnv = targetModule.getEnvironment();
         if (targetEnv == null) {
             // Module has not been linked yet.
-            throw Errors.createReferenceErrorNotDefined(binding.getBindingName(), null);
+            throw Errors.createReferenceErrorNotDefined(bindingName, null);
         }
         if (binding.isNamespace()) {
             return targetModule.getContext().getEvaluator().getModuleNamespace(targetModule);
         }
-        FrameSlot frameSlot = targetEnv.getFrameDescriptor().findFrameSlot(binding.getBindingName());
-        if (JSFrameUtil.hasTemporalDeadZone(frameSlot) && targetEnv.isObject(frameSlot) && FrameUtil.getObjectSafe(targetEnv, frameSlot) == Dead.instance()) {
+        FrameDescriptor targetEnvDesc = targetEnv.getFrameDescriptor();
+        int slot = JSFrameUtil.findRequiredFrameSlotIndex(targetEnvDesc, bindingName);
+        if (JSFrameUtil.hasTemporalDeadZone(targetEnvDesc, slot) && targetEnv.isObject(slot) && targetEnv.getObject(slot) == Dead.instance()) {
             // If it is an uninitialized binding, throw a ReferenceError
-            throw Errors.createReferenceErrorNotDefined(binding.getBindingName(), null);
+            throw Errors.createReferenceErrorNotDefined(bindingName, null);
         }
-        return targetEnv.getValue(frameSlot);
+        return targetEnv.getValue(slot);
     }
 
     @Override

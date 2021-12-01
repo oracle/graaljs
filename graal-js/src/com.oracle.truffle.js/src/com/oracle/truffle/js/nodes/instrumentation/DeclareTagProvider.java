@@ -45,7 +45,6 @@ import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -62,7 +61,7 @@ public final class DeclareTagProvider {
         return new MaterializedFunctionBodyNode(body, sourceSection, frameDescriptor);
     }
 
-    public static JavaScriptNode createMaterializedBlockNode(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, FrameSlot parentSlot, SourceSection sourceSection,
+    public static JavaScriptNode createMaterializedBlockNode(JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot, SourceSection sourceSection,
                     boolean functionBlock, boolean functionFrame) {
         return new MaterializedFrameBlockScopeNode(block, blockScopeSlot, frameDescriptor, parentSlot, sourceSection, functionBlock, functionFrame);
     }
@@ -84,15 +83,15 @@ public final class DeclareTagProvider {
     private static JavaScriptNode[] initDeclarations(FrameDescriptor frameDescriptor, SourceSection sourceSection) {
         assert sourceSection != null;
         if (frameDescriptor != null) {
-            List<FrameSlot> slots = new ArrayList<>();
-            for (FrameSlot slot : frameDescriptor.getSlots()) {
-                if (!JSFrameUtil.isInternal(slot) && !JSFrameUtil.isHoistable(slot)) {
-                    slots.add(slot);
+            List<Integer> slots = new ArrayList<>();
+            for (int i = 0; i < frameDescriptor.getNumberOfSlots(); i++) {
+                if (!JSFrameUtil.isInternal(frameDescriptor, i) && !JSFrameUtil.isHoistable(frameDescriptor, i)) {
+                    slots.add(i);
                 }
             }
             JavaScriptNode[] declarations = new JavaScriptNode[slots.size()];
             for (int i = 0; i < slots.size(); i++) {
-                declarations[i] = new DeclareProviderNode(slots.get(i));
+                declarations[i] = new DeclareProviderNode(frameDescriptor, slots.get(i));
                 declarations[i].setSourceSection(sourceSection);
             }
             return declarations;
@@ -105,7 +104,7 @@ public final class DeclareTagProvider {
 
         @Children private JavaScriptNode[] declarations;
 
-        protected MaterializedFrameBlockScopeNode(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, FrameSlot parentSlot, SourceSection sourceSection,
+        protected MaterializedFrameBlockScopeNode(JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot, SourceSection sourceSection,
                         boolean functionBlock, boolean captureFunctionFrame) {
             super(block, blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame);
             this.declarations = initDeclarations(frameDescriptor, sourceSection);
@@ -166,10 +165,12 @@ public final class DeclareTagProvider {
 
     private static class DeclareProviderNode extends JavaScriptNode {
 
-        private final FrameSlot slot;
+        private final FrameDescriptor frameDescriptor;
+        private final int slotIndex;
 
-        DeclareProviderNode(FrameSlot slot) {
-            this.slot = slot;
+        DeclareProviderNode(FrameDescriptor frameDescriptor, int slotIndex) {
+            this.frameDescriptor = frameDescriptor;
+            this.slotIndex = slotIndex;
         }
 
         @Override
@@ -195,19 +196,19 @@ public final class DeclareTagProvider {
         @Override
         public Object getNodeObject() {
             String type;
-            if (JSFrameUtil.isConst(slot)) {
+            if (JSFrameUtil.isConst(frameDescriptor, slotIndex)) {
                 type = "const";
-            } else if (JSFrameUtil.isLet(slot)) {
+            } else if (JSFrameUtil.isLet(frameDescriptor, slotIndex)) {
                 type = "let";
             } else {
                 type = "var";
             }
-            return createDeclareNodeObject(slot.getIdentifier(), type);
+            return createDeclareNodeObject(frameDescriptor.getSlotName(slotIndex), type);
         }
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new DeclareProviderNode(slot);
+            return new DeclareProviderNode(frameDescriptor, slotIndex);
         }
     }
 }

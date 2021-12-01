@@ -41,17 +41,17 @@
 package com.oracle.truffle.js.runtime;
 
 import java.util.Objects;
+import java.util.OptionalInt;
 
 import com.oracle.js.parser.ir.Symbol;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InternalSlotId;
 
@@ -90,51 +90,71 @@ public final class JSFrameUtil {
         return JSArguments.extractUserArguments(frame.getArguments());
     }
 
-    public static int getFlags(FrameSlot frameSlot) {
-        return frameSlot.getInfo() instanceof Integer ? (int) frameSlot.getInfo() : 0;
+    public static int getFlags(JSFrameSlot frameSlot) {
+        return frameSlot.getFlags();
     }
 
-    public static boolean hasTemporalDeadZone(FrameSlot frameSlot) {
+    public static int getFlags(FrameDescriptor desc, int index) {
+        return getFlagsFromInfo(desc.getSlotInfo(index));
+    }
+
+    public static int getFlagsFromInfo(Object info) {
+        return info instanceof Integer ? (int) info : 0;
+    }
+
+    public static boolean hasTemporalDeadZone(JSFrameSlot frameSlot) {
         return (getFlags(frameSlot) & HAS_TDZ) != 0;
     }
 
-    public static boolean needsTemporalDeadZoneCheck(FrameSlot frameSlot, int frameLevel) {
+    public static boolean hasTemporalDeadZone(FrameDescriptor desc, int index) {
+        return (getFlags(desc, index) & HAS_TDZ) != 0;
+    }
+
+    public static boolean needsTemporalDeadZoneCheck(JSFrameSlot frameSlot, int frameLevel) {
         return hasTemporalDeadZone(frameSlot) && frameLevel != 0;
     }
 
-    public static boolean isConst(FrameSlot frameSlot) {
+    public static boolean isConst(JSFrameSlot frameSlot) {
         return (getFlags(frameSlot) & IS_CONST) != 0;
     }
 
-    public static boolean isLet(FrameSlot frameSlot) {
+    public static boolean isLet(JSFrameSlot frameSlot) {
         return (getFlags(frameSlot) & IS_LET) != 0;
     }
 
-    public static boolean isHoistable(FrameSlot frameSlot) {
-        return (getFlags(frameSlot) & IS_HOISTABLE_DECLARATION) != 0;
+    public static boolean isConst(FrameDescriptor desc, int index) {
+        return (getFlags(desc, index) & IS_CONST) != 0;
     }
 
-    public static boolean isImportBinding(FrameSlot frameSlot) {
+    public static boolean isLet(FrameDescriptor desc, int index) {
+        return (getFlags(desc, index) & IS_LET) != 0;
+    }
+
+    public static boolean isHoistable(FrameDescriptor desc, int index) {
+        return (getFlags(desc, index) & IS_HOISTABLE_DECLARATION) != 0;
+    }
+
+    public static boolean isImportBinding(JSFrameSlot frameSlot) {
         return (getFlags(frameSlot) & IS_IMPORT_BINDING) != 0;
     }
 
-    public static boolean isPrivateName(FrameSlot frameSlot) {
+    public static boolean isPrivateName(JSFrameSlot frameSlot) {
         return (getFlags(frameSlot) & IS_PRIVATE_NAME) != 0;
     }
 
-    public static boolean needsPrivateBrandCheck(FrameSlot frameSlot) {
+    public static boolean needsPrivateBrandCheck(JSFrameSlot frameSlot) {
         return (getFlags(frameSlot) & IS_PRIVATE_METHOD_OR_ACCESSOR) != 0;
     }
 
-    public static boolean isPrivateNameStatic(FrameSlot frameSlot) {
+    public static boolean isPrivateNameStatic(JSFrameSlot frameSlot) {
         return (getFlags(frameSlot) & IS_PRIVATE_NAME_STATIC) != 0;
     }
 
-    public static boolean isParam(FrameSlot frameSlot) {
+    public static boolean isParam(JSFrameSlot frameSlot) {
         return (getFlags(frameSlot) & IS_PARAM) != 0;
     }
 
-    public static boolean isArguments(FrameSlot frameSlot) {
+    public static boolean isArguments(JSFrameSlot frameSlot) {
         return (getFlags(frameSlot) & IS_ARGUMENTS) != 0;
     }
 
@@ -149,28 +169,30 @@ public final class JSFrameUtil {
     /**
      * Returns true if the frame slot is implementation-internal.
      */
-    public static boolean isInternal(FrameSlot frameSlot) {
+    public static boolean isInternal(FrameDescriptor desc, int index) {
+        return isInternalIdentifier(desc.getSlotName(index));
+    }
+
+    public static boolean isInternalIdentifier(Object identifier) {
         CompilerAsserts.neverPartOfCompilation();
-        if (frameSlot.getIdentifier() instanceof String) {
-            String name = (String) frameSlot.getIdentifier();
+        if (identifier instanceof String) {
+            String name = (String) identifier;
             if (name.startsWith(":")) {
                 return true;
             } else if (name.startsWith("<") && name.endsWith(">")) {
                 return true;
             }
             return false;
-        } else if (frameSlot.getIdentifier() instanceof InternalSlotId) {
+        } else if (identifier instanceof InternalSlotId) {
             return true;
         }
         return true;
     }
 
-    @TruffleBoundary
-    public static String getPublicName(FrameSlot frameSlot) {
+    public static String getPublicName(Object identifier) {
         CompilerAsserts.neverPartOfCompilation();
-        Object identifier = frameSlot.getIdentifier();
-        if (frameSlot.getIdentifier() instanceof String) {
-            String name = (String) frameSlot.getIdentifier();
+        if (identifier instanceof String) {
+            String name = (String) identifier;
             if (name.startsWith(":")) {
                 return name.substring(1);
             } else if (name.startsWith("<") && name.endsWith(">")) {
@@ -183,11 +205,41 @@ public final class JSFrameUtil {
         }
     }
 
-    public static boolean isThisSlot(FrameSlot frameSlot) {
-        return frameSlot.getIdentifier().equals(THIS_SLOT_ID);
+    public static boolean isThisSlot(FrameDescriptor desc, int index) {
+        return isThisSlotIdentifier(desc.getSlotName(index));
     }
 
-    public static FrameSlot getThisSlot(FrameDescriptor frameDescriptor) {
-        return frameDescriptor.findFrameSlot(THIS_SLOT_ID);
+    public static boolean isThisSlotIdentifier(Object identifier) {
+        return THIS_SLOT_ID.equals(identifier);
+    }
+
+    public static int getThisSlotIndex(FrameDescriptor frameDescriptor) {
+        for (int i = 0; i < frameDescriptor.getNumberOfSlots(); i++) {
+            if (isThisSlotIdentifier(frameDescriptor.getSlotName(i))) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static int findFrameSlotIndex(FrameDescriptor frameDescriptor, Object identifier) {
+        CompilerAsserts.neverPartOfCompilation();
+        for (int i = 0; i < frameDescriptor.getNumberOfSlots(); i++) {
+            if (identifier.equals(frameDescriptor.getSlotName(i))) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public static int findRequiredFrameSlotIndex(FrameDescriptor frameDescriptor, Object identifier) {
+        int index = findFrameSlotIndex(frameDescriptor, identifier);
+        assert index >= 0 : identifier + " not found in " + frameDescriptor;
+        return index;
+    }
+
+    public static OptionalInt findOptionalFrameSlotIndex(FrameDescriptor frameDescriptor, Object identifier) {
+        int index = findFrameSlotIndex(frameDescriptor, identifier);
+        return index >= 0 ? OptionalInt.of(index) : OptionalInt.empty();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -58,24 +59,21 @@ import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-import java.util.Set;
-
 public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode implements RepeatableNode, ReadNode {
-    private final int index;
+    private final int argumentIndex;
     @Child @Executed JavaScriptNode argumentsArrayNode;
     @Child private ReadElementNode readElementNode;
+    private final String name;
 
-    private final FrameSlot slot;
-
-    JSGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray, FrameSlot slot) {
-        this.index = index;
+    JSGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray, String name) {
+        this.argumentIndex = index;
         this.argumentsArrayNode = argumentsArray;
         this.readElementNode = readElementNode;
-        this.slot = slot;
+        this.name = name;
     }
 
-    public static JSGuardDisconnectedArgumentRead create(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray, FrameSlot slot) {
-        return JSGuardDisconnectedArgumentReadNodeGen.create(index, readElementNode, argumentsArray, slot);
+    public static JSGuardDisconnectedArgumentRead create(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray, String name) {
+        return JSGuardDisconnectedArgumentReadNodeGen.create(index, readElementNode, argumentsArray, name);
     }
 
     @Override
@@ -89,8 +87,8 @@ public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode imp
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor("name", slot.getIdentifier());
-        descriptor.addProperty(StandardTags.ReadVariableTag.NAME, slot.getIdentifier());
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor("name", name);
+        descriptor.addProperty(StandardTags.ReadVariableTag.NAME, name);
         return descriptor;
     }
 
@@ -98,15 +96,15 @@ public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode imp
     public Object doObject(DynamicObject argumentsArray,
                     @Cached("createBinaryProfile()") @Shared("unconnected") ConditionProfile unconnected) {
         assert JSArgumentsArray.isJSArgumentsObject(argumentsArray);
-        if (unconnected.profile(index >= JSArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
+        if (unconnected.profile(argumentIndex >= JSArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
             return Undefined.instance;
         } else {
-            return readElementNode.executeWithTargetAndIndex(argumentsArray, index);
+            return readElementNode.executeWithTargetAndIndex(argumentsArray, argumentIndex);
         }
     }
 
     public final int getIndex() {
-        return index;
+        return argumentIndex;
     }
 
     @Specialization(guards = "isArgumentsDisconnected(argumentsArray)")
@@ -114,17 +112,17 @@ public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode imp
                     @Cached("createBinaryProfile()") ConditionProfile wasDisconnected,
                     @Cached("createBinaryProfile()") @Shared("unconnected") ConditionProfile unconnected) {
         assert JSArgumentsArray.isJSArgumentsObject(argumentsArray);
-        if (wasDisconnected.profile(JSArgumentsArray.wasIndexDisconnected(argumentsArray, index))) {
-            return JSArgumentsArray.getDisconnectedIndexValue(argumentsArray, index);
-        } else if (unconnected.profile(index >= JSArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
+        if (wasDisconnected.profile(JSArgumentsArray.wasIndexDisconnected(argumentsArray, argumentIndex))) {
+            return JSArgumentsArray.getDisconnectedIndexValue(argumentsArray, argumentIndex);
+        } else if (unconnected.profile(argumentIndex >= JSArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
             return Undefined.instance;
         } else {
-            return readElementNode.executeWithTargetAndIndex(argumentsArray, index);
+            return readElementNode.executeWithTargetAndIndex(argumentsArray, argumentIndex);
         }
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSGuardDisconnectedArgumentReadNodeGen.create(index, cloneUninitialized(readElementNode, materializedTags), cloneUninitialized(argumentsArrayNode, materializedTags), slot);
+        return JSGuardDisconnectedArgumentReadNodeGen.create(argumentIndex, cloneUninitialized(readElementNode, materializedTags), cloneUninitialized(argumentsArrayNode, materializedTags), name);
     }
 }

@@ -46,14 +46,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.FrameDescriptorProvider;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
@@ -70,8 +69,9 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         this.block = block;
     }
 
-    public static BlockScopeNode create(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, FrameSlot parentSlot, boolean functionBlock, boolean captureFunctionFrame) {
-        return new FrameBlockScopeNode(block, blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame);
+    public static BlockScopeNode create(JavaScriptNode block, JSFrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, JSFrameSlot parentSlot, boolean functionBlock,
+                    boolean captureFunctionFrame) {
+        return new FrameBlockScopeNode(block, blockScopeSlot.getIndex(), frameDescriptor, parentSlot.getIndex(), functionBlock, captureFunctionFrame);
     }
 
     @Override
@@ -121,21 +121,21 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
     }
 
     public static class FrameBlockScopeNode extends BlockScopeNode implements FrameDescriptorProvider {
-        protected final FrameSlot blockScopeSlot;
+        protected final int blockScopeSlot;
+        protected final int parentSlot;
         protected final FrameDescriptor frameDescriptor;
-        protected final FrameSlot parentSlot;
         /** If true, this is the function-level block scope. */
         protected final boolean functionBlock;
         /** If true, put the virtual function frame in the parent scope slot. */
         protected final boolean captureFunctionFrame;
 
-        protected FrameBlockScopeNode(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, FrameSlot parentSlot, boolean functionBlock, boolean captureFunctionFrame) {
+        protected FrameBlockScopeNode(JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot, boolean functionBlock, boolean captureFunctionFrame) {
             super(block);
             this.blockScopeSlot = blockScopeSlot;
-            this.frameDescriptor = frameDescriptor;
             this.parentSlot = parentSlot;
             this.functionBlock = functionBlock;
             this.captureFunctionFrame = captureFunctionFrame;
+            this.frameDescriptor = frameDescriptor;
         }
 
         @Override
@@ -152,7 +152,7 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
 
         @Override
         public VirtualFrame appendScopeFrame(VirtualFrame frame) {
-            Object parentScopeFrame = FrameUtil.getObjectSafe(frame, blockScopeSlot);
+            Object parentScopeFrame = frame.getObject(blockScopeSlot);
             if (captureFunctionFrame) {
                 assert parentScopeFrame == Undefined.instance;
                 parentScopeFrame = frame.materialize();
@@ -165,15 +165,15 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
 
         @Override
         public void exitScope(VirtualFrame frame) {
-            MaterializedFrame blockScopeFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(frame, blockScopeSlot));
-            Object parentScopeFrame = FrameUtil.getObjectSafe(blockScopeFrame, parentSlot);
+            MaterializedFrame blockScopeFrame = JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
+            Object parentScopeFrame = blockScopeFrame.getObject(parentSlot);
             if (captureFunctionFrame) {
                 assert ((Frame) parentScopeFrame).getFrameDescriptor() == frame.getFrameDescriptor();
                 // Avoid self reference
                 parentScopeFrame = Undefined.instance;
             }
             frame.setObject(blockScopeSlot, parentScopeFrame);
-            assert CompilerDirectives.inCompiledCode() || ScopeFrameNode.isBlockScopeFrame(blockScopeFrame);
+            assert CompilerDirectives.inCompiledCode() || ScopeFrameNode.isBlockScopeFrame(blockScopeFrame) : blockScopeFrame.getFrameDescriptor();
         }
 
         @Override
@@ -207,7 +207,7 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
 
         @Override
         public Object getBlockScope(VirtualFrame frame) {
-            return FrameUtil.getObjectSafe(frame, blockScopeSlot);
+            return frame.getObject(blockScopeSlot);
         }
 
         @Override

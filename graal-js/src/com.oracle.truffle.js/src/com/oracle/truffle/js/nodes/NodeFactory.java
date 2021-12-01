@@ -46,7 +46,6 @@ import java.util.List;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
@@ -70,6 +69,7 @@ import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
+import com.oracle.truffle.js.nodes.access.InitializeFrameSlotsNode;
 import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteUnaryNode;
 import com.oracle.truffle.js.nodes.access.IteratorGetNextValueNode;
@@ -293,16 +293,16 @@ public class NodeFactory {
         }
     }
 
-    public JavaScriptNode createLocalVarInc(UnaryOperation operation, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode, FrameDescriptor frameDescriptor) {
+    public JavaScriptNode createLocalVarInc(UnaryOperation operation, JSFrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode) {
         switch (operation) {
             case POSTFIX_LOCAL_INCREMENT:
-                return LocalVarIncNode.createPostfix(LocalVarIncNode.Op.Inc, frameSlot, hasTemporalDeadZone, scopeFrameNode, frameDescriptor);
+                return LocalVarIncNode.createPostfix(LocalVarIncNode.Op.Inc, frameSlot, hasTemporalDeadZone, scopeFrameNode);
             case PREFIX_LOCAL_INCREMENT:
-                return LocalVarIncNode.createPrefix(LocalVarIncNode.Op.Inc, frameSlot, hasTemporalDeadZone, scopeFrameNode, frameDescriptor);
+                return LocalVarIncNode.createPrefix(LocalVarIncNode.Op.Inc, frameSlot, hasTemporalDeadZone, scopeFrameNode);
             case POSTFIX_LOCAL_DECREMENT:
-                return LocalVarIncNode.createPostfix(LocalVarIncNode.Op.Dec, frameSlot, hasTemporalDeadZone, scopeFrameNode, frameDescriptor);
+                return LocalVarIncNode.createPostfix(LocalVarIncNode.Op.Dec, frameSlot, hasTemporalDeadZone, scopeFrameNode);
             case PREFIX_LOCAL_DECREMENT:
-                return LocalVarIncNode.createPrefix(LocalVarIncNode.Op.Dec, frameSlot, hasTemporalDeadZone, scopeFrameNode, frameDescriptor);
+                return LocalVarIncNode.createPrefix(LocalVarIncNode.Op.Dec, frameSlot, hasTemporalDeadZone, scopeFrameNode);
             default:
                 throw new IllegalArgumentException();
         }
@@ -486,22 +486,29 @@ public class NodeFactory {
     }
 
     public StatementNode createFor(JavaScriptNode condition, JavaScriptNode body, JavaScriptNode modify, FrameDescriptor frameDescriptor, JavaScriptNode isFirstNode, JavaScriptNode setNotFirstNode,
-                    FrameSlot blockScopeSlot) {
+                    JSFrameSlot blockScopeSlot) {
         IterationScopeNode perIterationScope = createIterationScope(frameDescriptor, blockScopeSlot);
         return ForNode.createFor(condition, body, modify, perIterationScope, isFirstNode, setNotFirstNode);
     }
 
-    public IterationScopeNode createIterationScope(FrameDescriptor frameDescriptor, FrameSlot blockScopeSlot) {
-        assert frameDescriptor.getSize() > 0 && frameDescriptor.getSlots().get(0).getIdentifier() == ScopeFrameNode.PARENT_SCOPE_IDENTIFIER;
-        List<? extends FrameSlot> slots = frameDescriptor.getSlots();
-        JSReadFrameSlotNode[] reads = new JSReadFrameSlotNode[slots.size()];
-        JSWriteFrameSlotNode[] writes = new JSWriteFrameSlotNode[slots.size()];
-        for (int i = 0; i < slots.size(); i++) {
-            FrameSlot slot = slots.get(i);
-            reads[i] = JSReadFrameSlotNode.create(slot, false);
-            writes[i] = JSWriteFrameSlotNode.create(slot, frameDescriptor, null, false);
+    public IterationScopeNode createIterationScope(FrameDescriptor frameDescriptor, JSFrameSlot blockScopeSlot) {
+        int numberOfSlots = frameDescriptor.getNumberOfSlots();
+        assert numberOfSlots > ScopeFrameNode.PARENT_SCOPE_SLOT_INDEX && ScopeFrameNode.PARENT_SCOPE_IDENTIFIER.equals(frameDescriptor.getSlotName(ScopeFrameNode.PARENT_SCOPE_SLOT_INDEX));
+        int numberOfSlotsToCopy = numberOfSlots - 1;
+        JSReadFrameSlotNode[] reads = new JSReadFrameSlotNode[numberOfSlotsToCopy];
+        JSWriteFrameSlotNode[] writes = new JSWriteFrameSlotNode[numberOfSlotsToCopy];
+        int slotIndex = 0;
+        for (int i = 0; i < numberOfSlots; i++) {
+            if (i == ScopeFrameNode.PARENT_SCOPE_SLOT_INDEX) {
+                continue;
+            }
+            JSFrameSlot slot = JSFrameSlot.fromIndexedFrameSlot(frameDescriptor, i);
+            reads[slotIndex] = JSReadFrameSlotNode.create(slot, false);
+            writes[slotIndex] = JSWriteFrameSlotNode.create(slot, null, false);
+            slotIndex++;
         }
-        return IterationScopeNode.create(frameDescriptor, reads, writes, blockScopeSlot);
+        assert slotIndex == numberOfSlotsToCopy;
+        return IterationScopeNode.create(frameDescriptor, reads, writes, blockScopeSlot.getIndex());
     }
 
     public BreakNode createBreak(BreakTarget breakTarget) {
@@ -548,36 +555,36 @@ public class NodeFactory {
         return DebuggerNode.create();
     }
 
-    public JavaScriptNode createLocal(FrameSlot frameSlot, int frameLevel, int scopeLevel, FrameSlot[] parentSlots) {
-        return createReadFrameSlot(frameSlot, createScopeFrame(frameLevel, scopeLevel, parentSlots, null), false);
+    public JavaScriptNode createLocal(JSFrameSlot frameSlot, int frameLevel, int scopeLevel) {
+        return createReadFrameSlot(frameSlot, createScopeFrame(frameLevel, scopeLevel, null), false);
     }
 
-    public JavaScriptNode createReadFrameSlot(FrameSlot frameSlot, ScopeFrameNode scope) {
+    public JavaScriptNode createReadFrameSlot(JSFrameSlot frameSlot, ScopeFrameNode scope) {
         return createReadFrameSlot(frameSlot, scope, false);
     }
 
-    public JavaScriptNode createReadFrameSlot(FrameSlot frameSlot, ScopeFrameNode scope, boolean hasTemporalDeadZone) {
+    public JavaScriptNode createReadFrameSlot(JSFrameSlot frameSlot, ScopeFrameNode scope, boolean hasTemporalDeadZone) {
         return JSReadFrameSlotNode.create(frameSlot, scope, hasTemporalDeadZone);
     }
 
-    public JavaScriptNode createReadCurrentFrameSlot(FrameSlot frameSlot) {
+    public JavaScriptNode createReadCurrentFrameSlot(JSFrameSlot frameSlot) {
         return JSReadFrameSlotNode.create(frameSlot, false);
     }
 
-    public JSWriteFrameSlotNode createWriteFrameSlot(FrameSlot frameSlot, ScopeFrameNode scope, FrameDescriptor frameDescriptor, JavaScriptNode rhs) {
-        return JSWriteFrameSlotNode.create(frameSlot, scope, rhs, frameDescriptor, false);
+    public JSWriteFrameSlotNode createWriteFrameSlot(JSFrameSlot frameSlot, ScopeFrameNode scope, JavaScriptNode rhs) {
+        return JSWriteFrameSlotNode.create(frameSlot, scope, rhs, false);
     }
 
-    public JSWriteFrameSlotNode createWriteFrameSlot(FrameSlot frameSlot, ScopeFrameNode scope, FrameDescriptor frameDescriptor, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
-        return JSWriteFrameSlotNode.create(frameSlot, scope, rhs, frameDescriptor, hasTemporalDeadZone);
+    public JSWriteFrameSlotNode createWriteFrameSlot(JSFrameSlot frameSlot, ScopeFrameNode scope, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
+        return JSWriteFrameSlotNode.create(frameSlot, scope, rhs, hasTemporalDeadZone);
     }
 
-    public JSWriteFrameSlotNode createWriteCurrentFrameSlot(FrameSlot frameSlot, FrameDescriptor frameDescriptor, JavaScriptNode rhs) {
-        return JSWriteFrameSlotNode.create(frameSlot, frameDescriptor, rhs, false);
+    public JSWriteFrameSlotNode createWriteCurrentFrameSlot(JSFrameSlot frameSlot, JavaScriptNode rhs) {
+        return JSWriteFrameSlotNode.create(frameSlot, rhs, false);
     }
 
-    public ScopeFrameNode createScopeFrame(int frameLevel, int scopeLevel, FrameSlot[] parentSlots, FrameSlot blockScopeSlot) {
-        return ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots, blockScopeSlot);
+    public ScopeFrameNode createScopeFrame(int frameLevel, int scopeLevel, JSFrameSlot blockScopeSlot) {
+        return ScopeFrameNode.create(frameLevel, scopeLevel, blockScopeSlot);
     }
 
     public JavaScriptNode createReadLexicalGlobal(String name, boolean hasTemporalDeadZone, JSContext context) {
@@ -597,6 +604,10 @@ public class NodeFactory {
 
     public JavaScriptNode createGlobalVarWrapper(String varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
         return new GlobalScopeVarWrapperNode(varName, defaultDelegate, dynamicScope, scopeAccessNode);
+    }
+
+    public JavaScriptNode createInitializeFrameSlots(ScopeFrameNode scope, int[] slots) {
+        return InitializeFrameSlotsNode.create(scope, slots);
     }
 
     public JavaScriptNode createThrow(JSContext context, JavaScriptNode expression) {
@@ -759,11 +770,11 @@ public class NodeFactory {
         return FunctionBodyNode.create(body);
     }
 
-    public JSFunctionExpressionNode createFunctionExpression(JSFunctionData function, FunctionRootNode functionNode, FrameSlot blockScopeSlot) {
+    public JSFunctionExpressionNode createFunctionExpression(JSFunctionData function, FunctionRootNode functionNode, JSFrameSlot blockScopeSlot) {
         return JSFunctionExpressionNode.create(function, functionNode, blockScopeSlot);
     }
 
-    public JSFunctionExpressionNode createFunctionExpressionLexicalThis(JSFunctionData function, FunctionRootNode functionNode, FrameSlot blockScopeSlot, JavaScriptNode thisNode) {
+    public JSFunctionExpressionNode createFunctionExpressionLexicalThis(JSFunctionData function, FunctionRootNode functionNode, JSFrameSlot blockScopeSlot, JavaScriptNode thisNode) {
         return JSFunctionExpressionNode.createLexicalThis(function, functionNode, blockScopeSlot, thisNode);
     }
 
@@ -824,7 +835,7 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members,
-                    JSWriteFrameSlotNode writeClassBinding, String className, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods, FrameSlot blockScopeSlot) {
+                    JSWriteFrameSlotNode writeClassBinding, String className, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods, JSFrameSlot blockScopeSlot) {
         return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members,
                         writeClassBinding, className != null, instanceFieldCount, staticFieldCount, hasPrivateInstanceMethods, blockScopeSlot);
     }
@@ -908,7 +919,7 @@ public class NodeFactory {
         return GeneratorExprBlockNode.create(statements, readState, writeState);
     }
 
-    public JavaScriptNode createBlockScope(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor blockFrameDescriptor, FrameSlot parentSlot,
+    public JavaScriptNode createBlockScope(JavaScriptNode block, JSFrameSlot blockScopeSlot, FrameDescriptor blockFrameDescriptor, JSFrameSlot parentSlot,
                     boolean functionBlock, boolean captureFunctionFrame) {
         return BlockScopeNode.create(block, blockScopeSlot, blockFrameDescriptor, parentSlot, functionBlock, captureFunctionFrame);
     }
@@ -1046,12 +1057,12 @@ public class NodeFactory {
         return RequireObjectCoercibleWrapperNode.create(argument);
     }
 
-    public FrameDescriptor createFrameDescriptor() {
-        return new FrameDescriptor(Undefined.instance);
+    public JSFrameDescriptor createFunctionFrameDescriptor() {
+        return new JSFrameDescriptor(Undefined.instance);
     }
 
-    public FrameDescriptor createBlockFrameDescriptor() {
-        FrameDescriptor desc = new FrameDescriptor(Undefined.instance);
+    public JSFrameDescriptor createBlockFrameDescriptor() {
+        JSFrameDescriptor desc = new JSFrameDescriptor(Undefined.instance);
         desc.addFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER, FrameSlotKind.Object);
         return desc;
     }
@@ -1092,12 +1103,12 @@ public class NodeFactory {
         return CallApplyArgumentsNode.create(callNode);
     }
 
-    public JavaScriptNode createGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray, FrameSlot slot) {
-        return JSGuardDisconnectedArgumentRead.create(index, readElementNode, argumentsArray, slot);
+    public JavaScriptNode createGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray, JSFrameSlot slot) {
+        return JSGuardDisconnectedArgumentRead.create(index, readElementNode, argumentsArray, (String) slot.getIdentifier());
     }
 
-    public JavaScriptNode createGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs, FrameSlot slot) {
-        return JSGuardDisconnectedArgumentWrite.create(index, argumentsArrayAccess, argumentsArray, rhs, slot);
+    public JavaScriptNode createGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs, JSFrameSlot slot) {
+        return JSGuardDisconnectedArgumentWrite.create(index, argumentsArrayAccess, argumentsArray, rhs, (String) slot.getIdentifier());
     }
 
     public JavaScriptNode createModuleBody(JavaScriptNode moduleBody) {

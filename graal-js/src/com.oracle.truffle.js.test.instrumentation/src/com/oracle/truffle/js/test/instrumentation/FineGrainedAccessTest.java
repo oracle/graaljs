@@ -69,6 +69,7 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -127,6 +128,25 @@ public abstract class FineGrainedAccessTest {
         return tags.toString();
     }
 
+    static String getAttributesDescription(JavaScriptNode instrumentedNode) {
+        Object nodeObject = instrumentedNode.getNodeObject();
+        InteropLibrary interop = InteropLibrary.getUncached();
+        StringJoiner attrs = new StringJoiner(", ");
+        try {
+            Object members = interop.getMembers(nodeObject);
+            long numberOfMembers = interop.getArraySize(members);
+            for (long i = 0; i < numberOfMembers; i++) {
+                Object key = interop.readArrayElement(members, i);
+                String name = interop.asString(key);
+                Object value = interop.readMember(nodeObject, name);
+                attrs.add(name + "=" + interop.asString(interop.toDisplayString(value, false)));
+            }
+            return attrs.toString();
+        } catch (InteropException e) {
+            return "";
+        }
+    }
+
     protected Context context;
     private boolean collecting;
     private List<Event> events;
@@ -153,7 +173,8 @@ public abstract class FineGrainedAccessTest {
 
         public Event(EventContext context, Kind kind, JavaScriptNode instrumentedNode, Object inputValue, Object... others) {
             if (DEBUG) {
-                System.out.println("New event: " + kind + " === " + inputValue + "  === " + instrumentedNode.getClass().getSimpleName());
+                System.out.println("New event: " + kind + " === " + inputValue + "  === " + instrumentedNode.getClass().getSimpleName() +
+                                " [" + getTagNames(instrumentedNode) + "]" + " {" + getAttributesDescription(instrumentedNode) + "}");
             }
             this.context = context;
             this.kind = kind;

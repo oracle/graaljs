@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -53,11 +53,9 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 
-import java.util.Set;
-
 public abstract class IterationScopeNode extends JavaScriptNode {
 
-    public static IterationScopeNode create(FrameDescriptor frameDescriptor, JSReadFrameSlotNode[] reads, JSWriteFrameSlotNode[] writes, FrameSlot blockScopeSlot) {
+    public static IterationScopeNode create(FrameDescriptor frameDescriptor, JSReadFrameSlotNode[] reads, JSWriteFrameSlotNode[] writes, int blockScopeSlot) {
         return new FrameIterationScopeNode(frameDescriptor, reads, writes, blockScopeSlot);
     }
 
@@ -72,9 +70,9 @@ public abstract class IterationScopeNode extends JavaScriptNode {
         private final FrameDescriptor frameDescriptor;
         @Children private final JSReadFrameSlotNode[] reads;
         @Children private final JSWriteFrameSlotNode[] writes;
-        private final FrameSlot blockScopeSlot;
+        private final int blockScopeSlot;
 
-        public FrameIterationScopeNode(FrameDescriptor frameDescriptor, JSReadFrameSlotNode[] reads, JSWriteFrameSlotNode[] writes, FrameSlot blockScopeSlot) {
+        public FrameIterationScopeNode(FrameDescriptor frameDescriptor, JSReadFrameSlotNode[] reads, JSWriteFrameSlotNode[] writes, int blockScopeSlot) {
             this.frameDescriptor = frameDescriptor;
             this.reads = reads;
             this.writes = writes;
@@ -84,20 +82,23 @@ public abstract class IterationScopeNode extends JavaScriptNode {
 
         @Override
         public VirtualFrame execute(VirtualFrame frame) {
-            VirtualFrame prevFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(frame, blockScopeSlot));
+            VirtualFrame prevFrame = JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
             VirtualFrame nextFrame = Truffle.getRuntime().createVirtualFrame(frame.getArguments(), frameDescriptor).materialize();
-            writes[0].executeWithFrame(nextFrame, reads[0].execute(prevFrame)); // copy parent slot
+            copyParentSlot(nextFrame, prevFrame);
             copySlots(nextFrame, prevFrame);
             frame.setObject(blockScopeSlot, nextFrame);
             return prevFrame;
         }
 
+        private static void copyParentSlot(VirtualFrame nextFrame, VirtualFrame prevFrame) {
+            nextFrame.setObject(ScopeFrameNode.PARENT_SCOPE_SLOT_INDEX, prevFrame.getObject(ScopeFrameNode.PARENT_SCOPE_SLOT_INDEX));
+        }
+
         @Override
         public void executeCopy(VirtualFrame frame, VirtualFrame prevFrame) {
-            VirtualFrame nextFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(frame, blockScopeSlot));
+            VirtualFrame nextFrame = JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
             // no need to copy effectively final parent frame slot
-            assert FrameUtil.getObjectSafe(nextFrame, nextFrame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER)) == FrameUtil.getObjectSafe(prevFrame,
-                            prevFrame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER));
+            assert nextFrame.getObject(ScopeFrameNode.PARENT_SCOPE_SLOT_INDEX) == prevFrame.getObject(ScopeFrameNode.PARENT_SCOPE_SLOT_INDEX);
             copySlots(prevFrame, nextFrame);
             exitScope(frame, prevFrame);
         }
@@ -109,7 +110,7 @@ public abstract class IterationScopeNode extends JavaScriptNode {
 
         @ExplodeLoop
         private void copySlots(VirtualFrame nextFrame, VirtualFrame frame) {
-            for (int i = 1; i < reads.length; i++) {
+            for (int i = 0; i < reads.length; i++) {
                 writes[i].executeWithFrame(nextFrame, reads[i].execute(frame));
             }
         }

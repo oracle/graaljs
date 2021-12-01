@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.js.parser.env;
 
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
 
@@ -59,7 +59,7 @@ public class DebugEnvironment extends Environment {
     }
 
     @Override
-    protected FrameSlot findBlockFrameSlot(Object name) {
+    protected JSFrameSlot findBlockFrameSlot(Object name) {
         return null;
     }
 
