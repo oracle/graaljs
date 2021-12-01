@@ -678,20 +678,21 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             String roundingMode = toTemporalRoundingMode(options, TRUNC);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
-            if (!YEAR.equals(largestUnit) || !MONTH.equals(largestUnit) || !WEEK.equals(largestUnit) || !DAY.equals(largestUnit)) {
+            if (!(YEAR.equals(largestUnit) || MONTH.equals(largestUnit) || WEEK.equals(largestUnit) || DAY.equals(largestUnit))) {
                 long differenceNs = TemporalUtil.differenceInstant(zonedDateTime.getNanoseconds(), other.getNanoseconds(), roundingIncrement, smallestUnit, roundingMode);
                 JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, 0, 0, 0, 0, 0, 0, differenceNs, largestUnit);
                 return TemporalUtil.createTemporalDuration(getContext(), 0, 0, 0, 0, balanceResult.getHours(), balanceResult.getMinutes(), balanceResult.getSeconds(),
-                                balanceResult.getMilliseconds(),
-                                balanceResult.getMicroseconds(), balanceResult.getNanoseconds());
+                                balanceResult.getMilliseconds(), balanceResult.getMicroseconds(), balanceResult.getNanoseconds());
             }
             if (!TemporalUtil.timeZoneEquals(zonedDateTime.getTimeZone(), other.getTimeZone())) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorIdenticalTimeZoneExpected();
             }
+            DynamicObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, options, largestUnit);
             JSTemporalDurationRecord difference = TemporalUtil.differenceZonedDateTime(getContext(), namesNode, zonedDateTime.getNanoseconds(), other.getNanoseconds(), zonedDateTime.getTimeZone(),
-                            zonedDateTime.getCalendar(), largestUnit);
-            JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), namesNode, difference.getYears(), difference.getMonths(), difference.getWeeks(), difference.getDays(),
+                            zonedDateTime.getCalendar(), largestUnit, untilOptions);
+            JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), getRealm(), namesNode, difference.getYears(), difference.getMonths(), difference.getWeeks(),
+                            difference.getDays(),
                             difference.getHours(), difference.getMinutes(), difference.getSeconds(), difference.getMilliseconds(), difference.getMicroseconds(), difference.getNanoseconds(),
                             (long) roundingIncrement, smallestUnit, roundingMode, zonedDateTime);
             JSTemporalDurationRecord result = TemporalUtil.adjustRoundedDurationDays(getContext(), namesNode, roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(),
@@ -738,9 +739,11 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorIdenticalTimeZoneExpected();
             }
+            DynamicObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, options, largestUnit);
             JSTemporalDurationRecord difference = TemporalUtil.differenceZonedDateTime(getContext(), namesNode, zonedDateTime.getNanoseconds(), other.getNanoseconds(), zonedDateTime.getTimeZone(),
-                            zonedDateTime.getCalendar(), largestUnit);
-            JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), namesNode, difference.getYears(), difference.getMonths(), difference.getWeeks(), difference.getDays(),
+                            zonedDateTime.getCalendar(), largestUnit, untilOptions);
+            JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), getRealm(), namesNode, difference.getYears(), difference.getMonths(), difference.getWeeks(),
+                            difference.getDays(),
                             difference.getHours(), difference.getMinutes(), difference.getSeconds(), difference.getMilliseconds(), difference.getMicroseconds(), difference.getNanoseconds(),
                             (long) roundingIncrement, smallestUnit, roundingMode, zonedDateTime);
             JSTemporalDurationRecord result = TemporalUtil.adjustRoundedDurationDays(getContext(), namesNode, roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(),
@@ -789,6 +792,10 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             BigInt startNs = instantStart.getNanoseconds();
             BigInt endNs = TemporalUtil.addZonedDateTime(getContext(), startNs, timeZone, zonedDateTime.getCalendar(), 0, 0, 0, 1, 0, 0, 0, 0, 0, 0);
             BigInt dayLengthNs = endNs.subtract(startNs);
+            if (dayLengthNs.compareValueTo(0) == 0) {
+                errorBranch.enter();
+                throw Errors.createRangeError("day length of zero now allowed");
+            }
             JSTemporalDurationRecord roundResult = TemporalUtil.roundISODateTime(tdt.getYear(), tdt.getMonth(), tdt.getDay(), tdt.getHour(), tdt.getMinute(), tdt.getSecond(), tdt.getMillisecond(),
                             tdt.getMicrosecond(), tdt.getNanosecond(), roundingIncrement, smallestUnit, roundingMode, TemporalUtil.bigIntToLong(dayLengthNs));
             long offsetNanoseconds = TemporalUtil.getOffsetNanosecondsFor(timeZone, instant);
@@ -810,7 +817,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime) {
             JSTemporalZonedDateTimeObject zdt = requireTemporalZonedDateTime(thisObj);
             JSTemporalZonedDateTimeObject other = (JSTemporalZonedDateTimeObject) toTemporalZonedDateTime.executeDynamicObject(otherParam, Undefined.instance);
-            if (zdt.getNanoseconds().equals(other.getNanoseconds())) {
+            if (!zdt.getNanoseconds().equals(other.getNanoseconds())) {
                 return false;
             }
             if (!TemporalUtil.timeZoneEquals(zdt.getTimeZone(), other.getTimeZone())) {

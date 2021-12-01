@@ -54,6 +54,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -147,7 +148,7 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
             } else {
                 epochNanoseconds = JSRuntime.toBigInt(epochParam);
             }
-            epochNanoseconds = new BigInt(epochNanoseconds.bigIntegerValue().multiply(factor));
+            epochNanoseconds = new BigInt(Boundaries.bigIntegerMultiply(epochNanoseconds.bigIntegerValue(), factor));
             if (!TemporalUtil.isValidEpochNanoseconds(epochNanoseconds)) {
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }

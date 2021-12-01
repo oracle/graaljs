@@ -433,7 +433,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalDurationRecord unbalanceResult = TemporalUtil.unbalanceDurationRelative(getContext(), getRealm(),
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), largestUnit,
                             relativeTo);
-            JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), namesNode,
+            JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), getRealm(), namesNode,
                             unbalanceResult.getYears(), unbalanceResult.getMonths(), unbalanceResult.getWeeks(), unbalanceResult.getDays(),
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                             duration.getMicroseconds(), duration.getNanoseconds(), (long) roundingIncrement, smallestUnit,
@@ -476,7 +476,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             DynamicObject totalOf;
             if (JSRuntime.isString(totalOfParam)) {
                 totalOf = JSOrdinary.createWithNullPrototype(getContext());
-                JSRuntime.createDataPropertyOrThrow(totalOf, TemporalConstants.SMALLEST_UNIT, JSRuntime.toStringIsString(totalOfParam));
+                JSRuntime.createDataPropertyOrThrow(totalOf, TemporalConstants.UNIT, JSRuntime.toStringIsString(totalOfParam));
             } else {
                 totalOf = getOptionsObject(totalOfParam);
             }
@@ -490,7 +490,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, unbalanceResult.getDays(), duration.getHours(), duration.getMinutes(),
                             duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), unit, intermediate);
-            JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), namesNode, unbalanceResult.getYears(), unbalanceResult.getMonths(), unbalanceResult.getWeeks(),
+            JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), getRealm(), namesNode, unbalanceResult.getYears(), unbalanceResult.getMonths(), unbalanceResult.getWeeks(),
                             balanceResult.getDays(), balanceResult.getHours(), balanceResult.getMinutes(), balanceResult.getSeconds(), balanceResult.getMilliseconds(), balanceResult.getMicroseconds(),
                             balanceResult.getNanoseconds(), 1, unit, TRUNC, relativeTo);
             long whole = 0;
@@ -555,7 +555,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw Errors.createRangeError("unexpected precision minute");
             }
             String roundingMode = toTemporalRoundingMode(options, TRUNC);
-            JSTemporalDurationRecord result = TemporalUtil.roundDuration(getContext(), namesNode,
+            JSTemporalDurationRecord result = TemporalUtil.roundDuration(getContext(), getRealm(), namesNode,
                             dur.getYears(), dur.getMonths(), dur.getWeeks(), dur.getDays(), dur.getHours(), dur.getMinutes(), dur.getSeconds(), dur.getMilliseconds(), dur.getMicroseconds(),
                             dur.getNanoseconds(), (long) precision.getIncrement(), precision.getUnit(), roundingMode, Undefined.instance);
             return JSTemporalDuration.temporalDurationToString(result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(),

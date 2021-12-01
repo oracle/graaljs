@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -65,6 +66,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateTimeNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -291,9 +293,9 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
             JSTemporalPlainDateTimeObject dateTime = (JSTemporalPlainDateTimeObject) toTemporalDateTime.executeDynamicObject(dateTimeParam, Undefined.instance);
             if (!TemporalUtil.isNullish(timeZone.getNanoseconds())) {
-                double epochNanoseconds = TemporalUtil.getEpochFromISOParts(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(),
+                BigInteger epochNanoseconds = TemporalUtil.getEpochFromISOParts(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(),
                                 dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
-                Object instant = TemporalUtil.createTemporalInstant(getContext(), (long) (epochNanoseconds - timeZone.getNanoseconds().bigIntegerValue().doubleValue()));
+                Object instant = TemporalUtil.createTemporalInstant(getContext(), new BigInt(epochNanoseconds.subtract(timeZone.getNanoseconds().bigIntegerValue())));
                 List<Object> list = new ArrayList<>();
                 list.add(instant);
                 return JSRuntime.createArrayFromList(getContext(), getRealm(), list);

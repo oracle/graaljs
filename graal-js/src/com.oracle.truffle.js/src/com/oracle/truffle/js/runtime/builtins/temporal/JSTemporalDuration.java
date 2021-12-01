@@ -283,7 +283,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 return new Pair<>(Long.parseLong(numstr), null);
             }
         }
-        return new Pair<>(0l, null);
+        return new Pair<>(0L, null);
     }
 
     // 7.5.2
@@ -388,9 +388,6 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         microseconds = TemporalUtil.remainder(microseconds, 1000);
         seconds += TemporalUtil.integralPartOf(milliseconds / 1000d);
         milliseconds = TemporalUtil.remainder(milliseconds, 1000);
-        if (years == 0 && months == 0 && weeks == 0 && days == 0 && hours == 0 && minutes == 0 && seconds == 0 && milliseconds == 0 && microseconds == 0 && nanoseconds == 0) {
-            return "PT0S";
-        }
         StringBuilder datePart = new StringBuilder();
         if (years != 0) {
             datePart.append(Math.abs(years));
@@ -417,7 +414,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             timePart.append(Math.abs(minutes));
             timePart.append("M");
         }
-        if (seconds != 0 || milliseconds != 0 || microseconds != 0 || nanoseconds != 0) {
+        if (seconds != 0 || milliseconds != 0 || microseconds != 0 || nanoseconds != 0 || (years == 0 && months == 0 && weeks == 0 && days == 0 && hours == 0 && minutes == 0)) {
             String nanosecondPart = "";
             String microsecondPart = "";
             String millisecondPart = "";
@@ -436,7 +433,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             String decimalPart = millisecondPart + microsecondPart + nanosecondPart;
             if (AUTO.equals(precision)) {
                 int pos = decimalPart.length() - 1;
-                while (decimalPart.charAt(pos) == '0' && pos >= 0) {
+                while (pos >= 0 && decimalPart.charAt(pos) == '0') {
                     pos--;
                 }
                 if (pos != (decimalPart.length() - 1)) {

@@ -54,7 +54,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimeFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltins;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
@@ -150,7 +150,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     // region Abstract methods
 
     // 4.5.3
-    public static DynamicObject toPartialTime(DynamicObject temporalTimeLike, IsObjectNode isObject, JSToIntegerAsLongNode toInt, JSContext ctx) {
+    public static DynamicObject toPartialTime(DynamicObject temporalTimeLike, IsObjectNode isObject, JSToIntegerThrowOnInfinityNode toInt, JSContext ctx) {
         if (!isObject.executeBoolean(temporalTimeLike)) {
             throw TemporalErrors.createTypeErrorTemporalTimeExpected();
         }
@@ -161,7 +161,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
             Object value = JSObject.get(temporalTimeLike, property);
             if (value != Undefined.instance) {
                 any = true;
-                value = toInt.executeLong(value);
+                value = toInt.executeNumber(value);
                 JSObjectUtil.putDataProperty(ctx, result, property, value);
             }
         }

@@ -70,7 +70,7 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
     protected TemporalGetOptionNode() {
     }
 
-    public static enum OptionTypeEnum {
+    public enum OptionTypeEnum {
         STRING,
         BOOLEAN;
     }

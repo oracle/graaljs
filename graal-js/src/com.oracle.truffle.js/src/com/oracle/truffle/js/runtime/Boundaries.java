@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -456,12 +457,22 @@ public final class Boundaries {
     }
 
     @TruffleBoundary
-    public static BigInteger bigIntegerValueOf(long ns) {
-        return BigInteger.valueOf(ns);
+    public static BigInteger bigIntegerValueOf(long l) {
+        return BigInteger.valueOf(l);
     }
 
     @TruffleBoundary
     public static int intValue(Number number) {
         return number.intValue();
+    }
+
+    @TruffleBoundary
+    public static BigDecimal bigDecimalValueOf(long l) {
+        return BigDecimal.valueOf(l);
+    }
+
+    @TruffleBoundary
+    public static BigInteger bigIntegerMultiply(BigInteger a, BigInteger b) {
+        return a.multiply(b);
     }
 }

@@ -97,6 +97,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -346,14 +347,12 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         throw Errors.createTypeError("string expected");
                     }
                     String str = JSRuntime.toString(nextValue);
-                    if (fieldNames.contains(str)) {
+                    if (Boundaries.listContains(fieldNames, str)) {
                         iteratorCloseAbrupt(iter.getIterator());
                         throw Errors.createRangeError("");
                     }
-                    if (YEAR.equals(str) || MONTH.equals(str) || MONTH_CODE.equals(str) || DAY.equals(str) || HOUR.equals(str) ||
-                                    MINUTE.equals(str) || SECOND.equals(str) || MILLISECOND.equals(str) || MICROSECOND.equals(str) || NANOSECOND.equals(str)) {
-
-                    } else {
+                    if (!(YEAR.equals(str) || MONTH.equals(str) || MONTH_CODE.equals(str) || DAY.equals(str) || HOUR.equals(str) ||
+                                    MINUTE.equals(str) || SECOND.equals(str) || MILLISECOND.equals(str) || MICROSECOND.equals(str) || NANOSECOND.equals(str))) {
                         iteratorCloseAbrupt(iter.getIterator());
                         throw Errors.createRangeError("");
                     }

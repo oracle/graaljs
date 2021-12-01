@@ -1907,6 +1907,7 @@ public class JSRealm {
 
         JSObjectUtil.putDataProperty(context, temporalObject, "Now", nowObject, flags);
         JSObjectUtil.putFunctionsFromContainer(this, nowObject, TemporalNowBuiltins.BUILTINS);
+        JSObjectUtil.putToStringTag(nowObject, "Temporal.Now");
 
         putGlobalProperty(TemporalConstants.TEMPORAL, temporalObject);
     }

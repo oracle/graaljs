@@ -271,7 +271,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             String roundingMode = toTemporalRoundingMode(options, TRUNC);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
-            Double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
+            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
 
             BigInt one = isUntil ? instant.getNanoseconds() : other.getNanoseconds();
             BigInt two = isUntil ? other.getNanoseconds() : instant.getNanoseconds();
@@ -340,10 +340,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         public boolean equals(Object thisObj, Object otherObj) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
             JSTemporalInstantObject other = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(getContext(), otherObj);
-            if (instant.getNanoseconds().equals(other.getNanoseconds())) {
-                return false;
-            }
-            return true;
+            return instant.getNanoseconds().compareTo(other.getNanoseconds()) == 0;
         }
     }
 

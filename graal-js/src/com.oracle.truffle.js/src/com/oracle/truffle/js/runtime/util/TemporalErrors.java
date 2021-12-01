@@ -252,4 +252,14 @@ public final class TemporalErrors {
     public static JSException createRangeErrorUnexpectedUTCDesignator() {
         return Errors.createRangeError("UTCDesignator Z not allowed");
     }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorTimeZoneOffsetExpected() {
+        return Errors.createRangeError("TimeZone offset expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorCalendarUnknown() {
+        return Errors.createRangeError("unknown Calendar");
+    }
 }

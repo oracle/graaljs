@@ -111,6 +111,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             calendar = getTemporalCalendarNode.executeDynamicObject(itemObj);
             List<String> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.listDHMMMMMNSY);
             fieldNames.add(TIME_ZONE);
+            fieldNames.add(OFFSET);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.listTimeZone);
             Object timeZoneObj = JSObject.get(fields, TIME_ZONE);
             timeZone = (JSTemporalTimeZoneObject) toTemporalTimeZone.executeDynamicObject(timeZoneObj);

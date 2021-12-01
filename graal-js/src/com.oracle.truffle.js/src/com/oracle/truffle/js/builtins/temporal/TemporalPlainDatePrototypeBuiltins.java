@@ -247,11 +247,11 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 case calendar:
                     return temporalDT.getCalendar();
                 case year:
-                    return temporalDT.getYear();
+                    return JSTemporalCalendar.calendarYear(temporalDT.getCalendar(), temporalDT);
                 case month:
-                    return temporalDT.getMonth();
+                    return JSTemporalCalendar.calendarMonth(temporalDT.getCalendar(), temporalDT);
                 case day:
-                    return temporalDT.getDay();
+                    return JSTemporalCalendar.calendarDay(temporalDT.getCalendar(), temporalDT);
 
                 case dayOfWeek:
                     return TemporalUtil.dayOfWeek(temporalDT.getCalendar(), temporalDT);
@@ -575,12 +575,14 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             String roundingMode = toTemporalRoundingMode(options, TRUNC);
             roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, null, false, isObjectNode, toNumber);
-            JSTemporalDurationObject result = (JSTemporalDurationObject) TemporalUtil.calendarDateUntil(temporalDate.getCalendar(), temporalDate, other, options, Undefined.instance);
+            DynamicObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, options, largestUnit);
+            JSTemporalDurationObject result = (JSTemporalDurationObject) TemporalUtil.calendarDateUntil(temporalDate.getCalendar(), temporalDate, other, untilOptions, Undefined.instance);
 
             if (DAYS.equals(smallestUnit) && (roundingIncrement == 1)) {
                 return JSTemporalDuration.createTemporalDuration(getContext(), -result.getYears(), -result.getMonths(), -result.getWeeks(), -result.getDays(), 0, 0, 0, 0, 0, 0);
             }
-            JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), namesNode, result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), 0, 0, 0, 0, 0, 0,
+            JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), getRealm(), namesNode, result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), 0, 0, 0, 0,
+                            0, 0,
                             (long) roundingIncrement, smallestUnit, roundingMode, temporalDate);
 
             return JSTemporalDuration.createTemporalDuration(getContext(), -result2.getYears(), -result2.getMonths(), -result2.getWeeks(), -result2.getDays(), 0, 0, 0, 0, 0, 0);
@@ -611,10 +613,12 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             String roundingMode = toTemporalRoundingMode(options, TRUNC);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, null, false, isObjectNode, toNumber);
-            JSTemporalDurationObject result = (JSTemporalDurationObject) TemporalUtil.calendarDateUntil(temporalDate.getCalendar(), (DynamicObject) thisObj, (DynamicObject) other, options);
+            DynamicObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, options, largestUnit);
+            JSTemporalDurationObject result = (JSTemporalDurationObject) TemporalUtil.calendarDateUntil(temporalDate.getCalendar(), (DynamicObject) thisObj, (DynamicObject) other, untilOptions);
 
             if (!DAY.equals(smallestUnit) || (roundingIncrement != 1)) {
-                JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), namesNode, result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), 0, 0, 0, 0, 0, 0,
+                JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), getRealm(), namesNode, result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), 0, 0, 0,
+                                0, 0, 0,
                                 (long) roundingIncrement, smallestUnit, roundingMode, temporalDate);
                 return JSTemporalDuration.createTemporalDuration(getContext(), result2.getYears(), result2.getMonths(), result2.getWeeks(), result2.getDays(), 0, 0, 0, 0, 0, 0);
             }

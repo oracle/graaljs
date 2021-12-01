@@ -56,10 +56,11 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalCalendar;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Implementation of ToTemporalCalendar() operation.
+ * Implementation of ToTemporalCalendar() operation. See {@link TemporalUtil#toTemporalCalendar}.
  */
 public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
 
@@ -100,12 +101,15 @@ public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
                 return (DynamicObject) item;
             }
         }
-        String string = toStringNode.executeString(item);
-        if (!JSTemporalCalendar.isBuiltinCalendar(string)) {
+        String identifier = toStringNode.executeString(item);
+        if (!JSTemporalCalendar.isBuiltinCalendar(identifier)) {
             parseBranch.enter();
-            string = TemporalUtil.parseTemporalCalendarString(string);
+            identifier = TemporalUtil.parseTemporalCalendarString(identifier);
+            if (!JSTemporalCalendar.isBuiltinCalendar(identifier)) {
+                throw TemporalErrors.createRangeErrorCalendarUnknown();
+            }
         }
-        return JSTemporalCalendar.create(context, string);
+        return JSTemporalCalendar.create(context, identifier);
     }
 
     private Object getCalendarProperty(DynamicObject obj) {

@@ -481,8 +481,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             if (MONTH.equals(smallestUnit) && roundingIncrement == 1) {
                 return JSTemporalDuration.createTemporalDuration(getContext(), result.getYears(), result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0);
             }
-            JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), namesNode, result.getYears(), result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, (long) roundingIncrement,
-                            smallestUnit, roundingMode, ym);
+            JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), getRealm(), namesNode, result.getYears(), result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, (long) roundingIncrement,
+                            smallestUnit, roundingMode, thisDate);
             return JSTemporalDuration.createTemporalDuration(getContext(), result2.getYears(), result2.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0);
         }
     }
@@ -524,8 +524,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             if (MONTH.equals(smallestUnit) && roundingIncrement == 1) {
                 return JSTemporalDuration.createTemporalDuration(getContext(), -result.getYears(), -result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0);
             }
-            JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), namesNode, result.getYears(), result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, (long) roundingIncrement,
-                            smallestUnit, roundingMode, ym);
+            JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), getRealm(), namesNode, result.getYears(), result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, (long) roundingIncrement,
+                            smallestUnit, roundingMode, thisDate);
             return JSTemporalDuration.createTemporalDuration(getContext(), -result2.getYears(), -result2.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0);
         }
     }
