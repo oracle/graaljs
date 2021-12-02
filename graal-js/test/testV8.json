@@ -556,14 +556,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
-    "filePath" : "mjsunit/global-proxy-globalThis.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "mjsunit/global-proxy-this.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
     "filePath" : "mjsunit/harmony/async-for-of-non-iterable.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
@@ -913,10 +905,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
-    "filePath" : "mjsunit/regress/regress-1016703.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
     "filePath" : "mjsunit/regress/regress-1020031.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -934,10 +922,6 @@
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
     "filePath" : "mjsunit/regress/regress-10508.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-1069964.js",
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
   }, {
@@ -1075,10 +1059,6 @@
     "filePath" : "mjsunit/regress/regress-500980.js",
     "runInIsolation" : true,
     "comment" : "memory intensive test"
-  }, {
-    "filePath" : "mjsunit/regress/regress-5085.js",
-    "status" : "SKIP",
-    "comment" : "obj instanceof Proxy throws (as Proxy.prototype is not an object) but the test expects it to be false"
   }, {
     "filePath" : "mjsunit/regress/regress-5404.js",
     "runInIsolation" : true,
@@ -1324,17 +1304,9 @@
     "status" : "FAIL",
     "comment" : "Off-spec: expects an error when overriding a global data property defined in the prototype of a global object"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-1130213.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-1162473.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-1197053.js",
-    "status" : "FAIL",
-    "comment" : "Realm.detachGlobal"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-150545.js",
     "status" : "SKIP",
@@ -1457,10 +1429,6 @@
     },
     "comment" : "ExplodeLoop bailout in CompileImmediately mode"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-683667.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-687063.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -1568,10 +1536,6 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests, Skipped now as it accounts for more than 1 minute when run in isolation"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-959727.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-961709-1.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
@@ -1608,10 +1572,6 @@
     "filePath" : "mjsunit/regress/regress-v8-11360.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "mjsunit/regress/regress-v8-5009.js",
-    "status" : "SKIP",
-    "comment" : "version()"
   }, {
     "filePath" : "mjsunit/regress/regress-v8-5848.js",
     "status" : "FAIL",
