@@ -323,7 +323,11 @@ public abstract class InstanceofNode extends JSBinaryNode {
 
         @TruffleBoundary
         private JSException createTypeErrorInvalidPrototype(DynamicObject obj, Object proto) {
-            return Errors.createTypeError("\"prototype\" of " + JSRuntime.safeToString(obj) + " is not an Object, it is " + JSRuntime.safeToString(proto), this);
+            if (context.isOptionV8CompatibilityMode()) {
+                return Errors.createTypeError("Function has non-object prototype '" + JSRuntime.safeToString(proto) + "' in instanceof check");
+            } else {
+                return Errors.createTypeError("\"prototype\" of " + JSRuntime.safeToString(obj) + " is not an Object, it is " + JSRuntime.safeToString(proto), this);
+            }
         }
     }
 

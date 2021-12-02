@@ -1093,3 +1093,7 @@ function v8VerifyType() {
 function v8PretenureAllocationSite() {
     return v8IgnoreResult;
 }
+
+function version() {
+    return Graal.versionGraalVM;
+}
