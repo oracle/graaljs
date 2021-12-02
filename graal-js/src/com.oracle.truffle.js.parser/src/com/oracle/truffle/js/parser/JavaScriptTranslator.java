@@ -101,7 +101,10 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
     private static Source applyExplicitSourceURL(Source source, FunctionNode parserFunctionNode) {
         String explicitURL = parserFunctionNode.getSource().getExplicitURL();
         if (explicitURL != null) {
-            return Source.newBuilder(source).name(explicitURL).internal(source.isInternal() || explicitURL.startsWith(JavaScriptLanguage.INTERNAL_SOURCE_URL_PREFIX)).build();
+            boolean internal = source.isInternal() || explicitURL.startsWith(JavaScriptLanguage.INTERNAL_SOURCE_URL_PREFIX);
+            if (!(explicitURL.equals(source.getName()) && internal == source.isInternal())) {
+                return Source.newBuilder(source).name(explicitURL).internal(internal).build();
+            }
         }
         return source;
     }
