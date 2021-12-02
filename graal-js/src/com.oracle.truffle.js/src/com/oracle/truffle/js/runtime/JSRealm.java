@@ -2501,6 +2501,12 @@ public class JSRealm {
         return (0 <= idx && idx < realmList.size()) ? realmList.get(idx) : null;
     }
 
+    public void setInRealmList(int idx, JSRealm realm) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert isMainRealm();
+        realmList.set(idx, realm);
+    }
+
     public int getIndexFromRealmList(JSRealm rlm) {
         CompilerAsserts.neverPartOfCompilation();
         assert isMainRealm();

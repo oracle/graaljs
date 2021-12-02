@@ -52,6 +52,7 @@ import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmDetachGl
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmDisposeNodeGen;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmEvalNodeGen;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmGlobalNodeGen;
+import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmNavigateNodeGen;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmOwnerNodeGen;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -88,7 +89,8 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         current(0),
         eval(2),
         owner(1),
-        detachGlobal(1);
+        detachGlobal(1),
+        navigate(1);
 
         private final int length;
 
@@ -120,6 +122,8 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return RealmOwnerNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case detachGlobal:
                 return RealmDetachGlobalNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case navigate:
+                return RealmNavigateNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -286,6 +290,32 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             JSRealm realm = topLevelRealm.getFromRealmList(realmIndex);
             JSObject.setPrototype(realm.getGlobalObject(), Null.instance);
             realm.setGlobalObject(Undefined.instance);
+            return Undefined.instance;
+        }
+    }
+
+    public abstract static class RealmNavigateNode extends JSBuiltinNode {
+
+        public RealmNavigateNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @TruffleBoundary
+        @Specialization
+        protected Object navigate(Object index) {
+            JSRealm topLevelRealm = topLevelRealm(this);
+            int realmIndex = toRealmIndexOrThrow(topLevelRealm, index);
+            JSRealm realm = topLevelRealm.getFromRealmList(realmIndex);
+
+            // detachGlobal(index)
+            JSObject.setPrototype(realm.getGlobalObject(), Null.instance);
+            realm.setGlobalObject(Undefined.instance);
+
+            JSRealm newRealm = topLevelRealm.createChildRealm();
+            int tempIdx = topLevelRealm.getIndexFromRealmList(newRealm);
+            topLevelRealm.removeFromRealmList(tempIdx);
+            topLevelRealm.setInRealmList(tempIdx, newRealm);
+
             return Undefined.instance;
         }
     }
