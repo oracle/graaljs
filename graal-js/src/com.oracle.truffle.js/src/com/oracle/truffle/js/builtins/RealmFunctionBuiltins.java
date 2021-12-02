@@ -44,12 +44,14 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmCreateNodeGen;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmCurrentNodeGen;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmDisposeNodeGen;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmEvalNodeGen;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmGlobalNodeGen;
+import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmOwnerNodeGen;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -60,6 +62,10 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -79,7 +85,8 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         global(1),
         dispose(1),
         current(0),
-        eval(2);
+        eval(2),
+        owner(1);
 
         private final int length;
 
@@ -107,6 +114,8 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return RealmCurrentNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
             case eval:
                 return RealmEvalNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+            case owner:
+                return RealmOwnerNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -214,4 +223,49 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
         }
     }
+
+    public abstract static class RealmOwnerNode extends JSBuiltinNode {
+
+        public RealmOwnerNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @TruffleBoundary
+        @Specialization
+        protected Object owner(Object object) {
+            JSRealm realm = null;
+            if (JSObject.isJSObject(object)) {
+                realm = creationRealm((JSObject) object);
+            } else {
+                throw Errors.createError("Invalid argument");
+            }
+            JSRealm topLevelRealm = topLevelRealm(this);
+            int index = topLevelRealm.getIndexFromRealmList(realm);
+            return (index == -1) ? Undefined.instance : index;
+        }
+
+        private static JSRealm creationRealm(JSObject object) {
+            if (JSFunction.isJSFunction(object)) {
+                return JSFunction.getRealm(object);
+            } else {
+                return creationRealmFromConstructor(object);
+            }
+        }
+
+        private static JSRealm creationRealmFromConstructor(JSObject object) {
+            Object nonProxy = JSProxy.getTargetNonProxy(object);
+            if (nonProxy instanceof JSObject) {
+                DynamicObject prototype = JSObject.getPrototype((DynamicObject) nonProxy);
+                if (prototype != Null.instance) {
+                    Object constructor = JSRuntime.getDataProperty(prototype, JSObject.CONSTRUCTOR);
+                    if (JSFunction.isJSFunction(constructor)) {
+                        return JSFunction.getRealm((DynamicObject) constructor);
+                    }
+                }
+            }
+            return null;
+        }
+
+    }
+
 }
