@@ -48,6 +48,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmCreateNodeGen;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmCurrentNodeGen;
+import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmDetachGlobalNodeGen;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmDisposeNodeGen;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmEvalNodeGen;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmGlobalNodeGen;
@@ -86,7 +87,8 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         dispose(1),
         current(0),
         eval(2),
-        owner(1);
+        owner(1),
+        detachGlobal(1);
 
         private final int length;
 
@@ -116,6 +118,8 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return RealmEvalNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case owner:
                 return RealmOwnerNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case detachGlobal:
+                return RealmDetachGlobalNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -266,6 +270,24 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             return null;
         }
 
+    }
+
+    public abstract static class RealmDetachGlobalNode extends JSBuiltinNode {
+
+        public RealmDetachGlobalNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @TruffleBoundary
+        @Specialization
+        protected Object detachGlobal(Object index) {
+            JSRealm topLevelRealm = topLevelRealm(this);
+            int realmIndex = toRealmIndexOrThrow(topLevelRealm, index);
+            JSRealm realm = topLevelRealm.getFromRealmList(realmIndex);
+            JSObject.setPrototype(realm.getGlobalObject(), Null.instance);
+            realm.setGlobalObject(Undefined.instance);
+            return Undefined.instance;
+        }
     }
 
 }
