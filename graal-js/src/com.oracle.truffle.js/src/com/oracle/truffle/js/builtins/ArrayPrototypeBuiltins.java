@@ -1005,15 +1005,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return arrayGetArrayType(thisObj) instanceof SparseArray;
         }
 
-        protected static boolean isArrayWithoutHoles(DynamicObject thisObj, IsArrayNode isArrayNode, TestArrayNode hasHolesNode) {
+        protected static boolean isArrayWithoutHolesAndNotSealed(DynamicObject thisObj, IsArrayNode isArrayNode, TestArrayNode hasHolesNode, TestArrayNode isSealedNode) {
             boolean isArray = isArrayNode.execute(thisObj);
-            return isArray && !hasHolesNode.executeBoolean(thisObj);
+            return isArray && !hasHolesNode.executeBoolean(thisObj) && !isSealedNode.executeBoolean(thisObj);
         }
 
-        @Specialization(guards = {"isArrayWithoutHoles(thisObj, isArrayNode, hasHolesNode)"}, limit = "1")
+        @Specialization(guards = {"isArrayWithoutHolesAndNotSealed(thisObj, isArrayNode, hasHolesNode, isSealedNode)"}, limit = "1")
         protected Object shiftWithoutHoles(DynamicObject thisObj,
                         @Shared("isArray") @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
                         @Shared("hasHoles") @Cached("createHasHoles()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
+                        @Shared("isSealed") @Cached("createIsSealed()") @SuppressWarnings("unused") TestArrayNode isSealedNode,
                         @Cached("createClassProfile()") ValueProfile arrayTypeProfile,
                         @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero,
                         @Cached("createBinaryProfile()") ConditionProfile lengthLargerOne) {
@@ -1025,22 +1026,23 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 Object firstElement = read(thisObj, 0);
                 if (lengthLargerOne.profile(len > 1)) {
                     ScriptArray array = arrayTypeProfile.profile(arrayGetArrayType(thisObj));
-                    arraySetArrayType(thisObj, array.shiftRange(thisObj, 1, errorBranch));
+                    arraySetArrayType(thisObj, array.shiftRange(thisObj, 1));
                 }
                 setLength(thisObj, len - 1);
                 return firstElement;
             }
         }
 
-        protected static boolean isArrayWithHoles(DynamicObject thisObj, IsArrayNode isArrayNode, TestArrayNode hasHolesNode) {
+        protected static boolean isArrayWithHolesOrSealed(DynamicObject thisObj, IsArrayNode isArrayNode, TestArrayNode hasHolesNode, TestArrayNode isSealedNode) {
             boolean isArray = isArrayNode.execute(thisObj);
-            return isArray && hasHolesNode.executeBoolean(thisObj) && !isSparseArray(thisObj);
+            return isArray && (hasHolesNode.executeBoolean(thisObj) || isSealedNode.executeBoolean(thisObj)) && !isSparseArray(thisObj);
         }
 
-        @Specialization(guards = {"isArrayWithHoles(thisObj, isArrayNode, hasHolesNode)"}, limit = "1")
+        @Specialization(guards = {"isArrayWithHolesOrSealed(thisObj, isArrayNode, hasHolesNode, isSealedNode)"}, limit = "1")
         protected Object shiftWithHoles(DynamicObject thisObj,
                         @Shared("isArray") @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
                         @Shared("hasHoles") @Cached("createHasHoles()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
+                        @Shared("isSealed") @Cached("createIsSealed()") @SuppressWarnings("unused") TestArrayNode isSealedNode,
                         @Shared("deleteProperty") @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode,
                         @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero) {
             long len = getLength(thisObj);
