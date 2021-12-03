@@ -3263,7 +3263,7 @@ public final class GraalJSAccess {
 
     private void exit(int status) {
         try {
-            evaluator.close();
+            getCurrentRealm().getEnv().getContext().closeExited(null, status);
         } finally {
             System.exit(status);
         }
