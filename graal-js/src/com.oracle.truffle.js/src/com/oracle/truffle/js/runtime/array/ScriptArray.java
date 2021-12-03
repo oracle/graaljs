@@ -393,12 +393,9 @@ public abstract class ScriptArray {
         return removeRangeImpl(object, 0, limit);
     }
 
-    public final ScriptArray shiftRange(DynamicObject object, long from, BranchProfile errorBranch) {
+    public final ScriptArray shiftRange(DynamicObject object, long from) {
         assert from >= 0;
-        if (isSealed()) {
-            errorBranch.enter();
-            throw Errors.createTypeErrorCannotDeletePropertyOfSealedArray(from);
-        }
+        assert !isSealed();
         return shiftRangeImpl(object, from);
     }
 
