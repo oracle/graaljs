@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.unary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -68,7 +69,7 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
  * {@link JSEqualNode} for optimizing {@code a == undefined;} and {@code a == null;}
  *
  */
-@ImportStatic({JSConfig.class})
+@ImportStatic({CompilerDirectives.class, JSConfig.class})
 public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
 
     private final boolean isLeft;
@@ -138,7 +139,7 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "1")
+    @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
     protected static boolean doJSObjectCached(Object object,
                     @Cached("getClassIfJSObject(object)") Class<?> cachedClass) {
         assert !JSGuards.isNullOrUndefined(object);

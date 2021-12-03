@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,7 +90,7 @@ public class JSProperty {
      * @return the value assigned to this property
      */
     public static Object getValue(Property property, DynamicObject store, Object thisObj, Node encapsulatingNode) {
-        Object value = property.get(store, false);
+        Object value = property.getLocation().get(store, false);
         if (isAccessor(property)) {
             return getValueAccessor(thisObj, value, encapsulatingNode);
         } else if (isProxy(property)) {
@@ -219,6 +219,6 @@ public class JSProperty {
 
     public static PropertyProxy getConstantProxy(Property proxyProperty) {
         assert isProxy(proxyProperty);
-        return proxyProperty.getLocation().isConstant() ? (PropertyProxy) proxyProperty.get(null, false) : null;
+        return proxyProperty.getLocation().isConstant() ? (PropertyProxy) proxyProperty.getLocation().get(null, false) : null;
     }
 }

@@ -213,7 +213,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
 
     private Object getDataPropertyValue(DynamicObject thisObj, Property prop) {
         assert JSProperty.isData(prop);
-        Object value = prop.get(thisObj, false);
+        Object value = prop.getLocation().get(thisObj, false);
         if (JSProperty.isProxy(prop)) {
             return getPropertyProxyValue(thisObj, value);
         } else {

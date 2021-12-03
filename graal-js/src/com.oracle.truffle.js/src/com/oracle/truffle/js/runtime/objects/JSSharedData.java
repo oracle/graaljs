@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,8 +42,8 @@ package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.util.AssumptionUtil;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
 
 /**
@@ -84,7 +84,7 @@ public final class JSSharedData {
         Assumption assumption = prototypeAssumption;
         if (assumption != null) {
             assumption.invalidate();
-            prototypeAssumption = NeverValidAssumption.INSTANCE;
+            prototypeAssumption = AssumptionUtil.neverValidAssumption();
             prototypeAssumptionsRemoved.inc();
         }
     }

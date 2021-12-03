@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.cast;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -68,7 +69,7 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
  * Converts the caller provided thisArg to the ThisBinding of the callee's execution context,
  * replacing null or undefined with the global object and performing ToObject on primitives.
  */
-@ImportStatic({JSConfig.class})
+@ImportStatic({CompilerDirectives.class, JSConfig.class})
 public abstract class JSPrepareThisNode extends JSUnaryNode {
 
     final JSContext context;
@@ -88,7 +89,7 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "1")
+    @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
     protected Object doJSObjectCached(Object object,
                     @Cached("getClassIfJSObject(object)") Class<?> cachedClass) {
         return object;

@@ -513,7 +513,7 @@ public class WriteElementNode extends JSTargetableNode {
             return new BigIntWriteElementTypeCacheNode(next);
         } else if (target instanceof TruffleObject) {
             assert JSRuntime.isForeignObject(target);
-            return new TruffleObjectWriteElementTypeCacheNode(target.getClass(), next);
+            return new ForeignObjectWriteElementTypeCacheNode(target.getClass(), next);
         } else {
             assert JSRuntime.isJavaPrimitive(target);
             return new JavaObjectWriteElementTypeCacheNode(target.getClass(), next);
@@ -734,7 +734,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         public final boolean guard(Object target) {
-            return targetClass.isInstance(target);
+            return CompilerDirectives.isExact(target, targetClass);
         }
     }
 
@@ -1670,7 +1670,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
-            CharSequence charSequence = (CharSequence) stringClass.cast(target);
+            CharSequence charSequence = (CharSequence) CompilerDirectives.castExact(target, stringClass);
             Object convertedIndex = toArrayIndexNode.execute(index);
             if (isIndexProfile.profile(convertedIndex instanceof Long)) {
                 long longIndex = (long) convertedIndex;
@@ -1687,7 +1687,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
-            CharSequence charSequence = (CharSequence) stringClass.cast(target);
+            CharSequence charSequence = (CharSequence) CompilerDirectives.castExact(target, stringClass);
             if (isImmutable.profile(index >= 0 && index < JSRuntime.length(charSequence))) {
                 // cannot set characters of immutable strings
                 if (root.isStrict) {
@@ -1701,7 +1701,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         public boolean guard(Object target) {
-            return stringClass.isInstance(target);
+            return CompilerDirectives.isExact(target, stringClass);
         }
     }
 
@@ -1715,19 +1715,19 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
-            Number number = (Number) target;
+            Number number = (Number) CompilerDirectives.castExact(target, numberClass);
             JSObject.setWithReceiver(JSNumber.create(root.context, getRealm(), number), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
-            Number number = (Number) target;
+            Number number = (Number) CompilerDirectives.castExact(target, numberClass);
             JSObject.setWithReceiver(JSNumber.create(root.context, getRealm(), number), index, value, target, root.isStrict, classProfile, root);
         }
 
         @Override
         public boolean guard(Object target) {
-            return numberClass.isInstance(target);
+            return CompilerDirectives.isExact(target, numberClass);
         }
     }
 
@@ -1808,7 +1808,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    static class TruffleObjectWriteElementTypeCacheNode extends WriteElementTypeCacheNode {
+    static class ForeignObjectWriteElementTypeCacheNode extends WriteElementTypeCacheNode {
         private final Class<?> targetClass;
         @Child private InteropLibrary interop;
         @Child private InteropLibrary keyInterop;
@@ -1818,8 +1818,9 @@ public class WriteElementNode extends JSTargetableNode {
         @Child private ToArrayIndexNode toArrayIndexNode;
         private final BranchProfile errorBranch = BranchProfile.create();
 
-        TruffleObjectWriteElementTypeCacheNode(Class<?> targetClass, WriteElementTypeCacheNode next) {
+        ForeignObjectWriteElementTypeCacheNode(Class<?> targetClass, WriteElementTypeCacheNode next) {
             super(next);
+            assert !JSDynamicObject.class.isAssignableFrom(targetClass) : targetClass;
             this.targetClass = targetClass;
             this.exportValue = ExportValueNode.create();
             this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
@@ -1828,7 +1829,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
-            Object truffleObject = targetClass.cast(target);
+            Object truffleObject = CompilerDirectives.castExact(target, targetClass);
             if (interop.isNull(truffleObject)) {
                 throw Errors.createTypeErrorCannotSetProperty(index, truffleObject, this, root.getContext());
             }
@@ -1901,7 +1902,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         public boolean guard(Object target) {
-            return targetClass.isInstance(target) && !JSDynamicObject.isJSDynamicObject(target);
+            return CompilerDirectives.isExact(target, targetClass);
         }
 
         private boolean tryInvokeSetter(Object thisObj, String key, Object value, JSContext context) {

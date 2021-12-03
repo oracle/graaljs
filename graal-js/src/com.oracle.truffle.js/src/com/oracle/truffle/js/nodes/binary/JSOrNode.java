@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,51 +40,55 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.js.nodes.*;
-import com.oracle.truffle.js.runtime.objects.*;
-
 import java.util.Set;
 
-@NodeInfo(shortName = "||")
-public class JSOrNode extends JSLogicalNode {
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
-    public JSOrNode(JavaScriptNode left, JavaScriptNode right) {
-        super(left, right, false);
+@NodeInfo(shortName = "||")
+public final class JSOrNode extends JSLogicalNode {
+
+    @Child private JSToBooleanNode toBooleanCast = JSToBooleanNode.create();
+
+    JSOrNode(JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
     }
 
-    public static JSOrNode create(JavaScriptNode left, JavaScriptNode right) {
+    public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         return new JSOrNode(left, right);
     }
 
-    public static JSOrNode createNotUndefinedOr(JavaScriptNode left, JavaScriptNode right) {
+    public static JavaScriptNode createNotUndefinedOr(JavaScriptNode left, JavaScriptNode right) {
         return new NotUndefinedOrNode(left, right);
     }
 
     @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return getLeft().isResultAlwaysOfType(clazz) && getRight().isResultAlwaysOfType(clazz);
+    protected boolean useLeftValue(Object leftValue) {
+        return toBooleanCast.executeBoolean(leftValue);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return new JSOrNode(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags));
     }
+}
 
-    public static class NotUndefinedOrNode extends JSOrNode {
-        public NotUndefinedOrNode(JavaScriptNode left, JavaScriptNode right) {
-            super(left, right);
-        }
+final class NotUndefinedOrNode extends JSLogicalNode {
 
-        @Override
-        protected boolean toBoolean(Object operand) {
-            return operand != Undefined.instance;
-        }
+    NotUndefinedOrNode(JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
+    }
 
-        @Override
-        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new NotUndefinedOrNode(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags));
-        }
+    @Override
+    protected boolean useLeftValue(Object leftValue) {
+        return leftValue != Undefined.instance;
+    }
+
+    @Override
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new NotUndefinedOrNode(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags));
     }
 }

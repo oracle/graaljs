@@ -138,17 +138,19 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
      * Converts the right int param lazily.
      */
     @TruffleBoundary
-    public static CharSequence createLazyInt(CharSequence left, int right) {
+    public static CharSequence createLazyInt(CharSequence left, int right, int stringLengthLimit) {
         assert JSRuntime.isString(left);
-        if (left.length() == 0) {
+        int leftLength = left.length();
+        if (leftLength == 0) {
             return String.valueOf(right); // bailout
         }
+        int rightLength = stringLengthForInt(right);
+        int resultLength = leftLength + rightLength;
+        if (resultLength < 0 || resultLength > stringLengthLimit) {
+            throw Errors.createRangeErrorInvalidStringLength();
+        }
         if (JSConfig.LazyStrings) {
-            JSLazyString result = new JSLazyString(left, new JSLazyIntWrapper(right));
-            if (result.length() > JavaScriptLanguage.getCurrentLanguage().getJSContext().getStringLengthLimit()) {
-                throw Errors.createRangeErrorInvalidStringLength();
-            }
-            return result;
+            return new JSLazyString(left, new JSLazyIntWrapper(right, rightLength));
         } else {
             return left.toString().concat(String.valueOf(right));
         }
@@ -158,17 +160,19 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
      * Converts the left int param lazily.
      */
     @TruffleBoundary
-    public static CharSequence createLazyInt(int left, CharSequence right) {
+    public static CharSequence createLazyInt(int left, CharSequence right, int stringLengthLimit) {
         assert JSRuntime.isString(right);
-        if (right.length() == 0) {
+        int rightLength = right.length();
+        if (rightLength == 0) {
             return String.valueOf(left); // bailout
         }
+        int leftLength = stringLengthForInt(left);
+        int resultLength = leftLength + rightLength;
+        if (resultLength < 0 || resultLength > stringLengthLimit) {
+            throw Errors.createRangeErrorInvalidStringLength();
+        }
         if (JSConfig.LazyStrings) {
-            JSLazyString result = new JSLazyString(new JSLazyIntWrapper(left), right);
-            if (result.length() > JavaScriptLanguage.getCurrentLanguage().getJSContext().getStringLengthLimit()) {
-                throw Errors.createRangeErrorInvalidStringLength();
-            }
-            return result;
+            return new JSLazyString(new JSLazyIntWrapper(left, leftLength), right);
         } else {
             return String.valueOf(left).concat(right.toString());
         }
@@ -286,30 +290,20 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
     private static class JSLazyIntWrapper implements CharSequence {
 
         private final int value;
+        private final int length;
         private String str;
 
-        JSLazyIntWrapper(int value) {
+        JSLazyIntWrapper(int value, int length) {
             this.value = value;
+            this.length = length;
             this.str = null;
+            assert stringLengthForInt(value) == length;
         }
 
         @Override
         public int length() {
-            return (value < 0) ? lengthImpl(-(long) value) + 1 : lengthImpl(value);
+            return length;
         }
-
-        private static int lengthImpl(long value) {
-            assert value >= 0;
-            for (int i = 0;; i++) {
-                if (value <= LENGTH_TABLE[i]) {
-                    return i + 1;
-                }
-            }
-        }
-
-        private static final long[] LENGTH_TABLE = {
-                        9, 99, 999, 9999, 99999, 999999, 9999999,
-                        99999999, 999999999, 9999999999L};
 
         @Override
         public char charAt(int index) {
@@ -367,4 +361,30 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return toString();
     }
+
+    public static int stringLengthForInt(int value) {
+        int signLength;
+        long uintValue;
+        if (value < 0) {
+            signLength = 1;
+            uintValue = -(long) value;
+        } else {
+            signLength = 0;
+            uintValue = value;
+        }
+        return stringLengthForUnsignedInt(uintValue) + signLength;
+    }
+
+    private static int stringLengthForUnsignedInt(long value) {
+        assert value >= 0;
+        for (int i = 0;; i++) {
+            if (value <= LENGTH_TABLE[i]) {
+                return i + 1;
+            }
+        }
+    }
+
+    private static final long[] LENGTH_TABLE = {
+                    9, 99, 999, 9999, 99999, 999999, 9999999,
+                    99999999, 999999999, 9999999999L};
 }

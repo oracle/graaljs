@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,35 +38,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.binary;
+package com.oracle.truffle.js.runtime.util;
 
-import java.util.Set;
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.Truffle;
 
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+public final class AssumptionUtil {
 
-@NodeInfo(shortName = "&&")
-public final class JSAndNode extends JSLogicalNode {
-
-    @Child private JSToBooleanNode toBooleanCast = JSToBooleanNode.create();
-
-    JSAndNode(JavaScriptNode left, JavaScriptNode right) {
-        super(left, right);
+    private AssumptionUtil() {
     }
 
-    public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
-        return new JSAndNode(left, right);
+    /** Not using NeverValidAssumption.INSTANCE in order not to pollute profiles. */
+    public static Assumption neverValidAssumption() {
+        return NEVER_VALID_ASSUMPTION;
     }
 
-    @Override
-    protected boolean useLeftValue(Object leftValue) {
-        return !toBooleanCast.executeBoolean(leftValue);
+    private static final Assumption NEVER_VALID_ASSUMPTION;
+
+    static {
+        NEVER_VALID_ASSUMPTION = Truffle.getRuntime().createAssumption("never valid");
+        NEVER_VALID_ASSUMPTION.invalidate();
     }
 
-    @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new JSAndNode(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags));
-    }
 }

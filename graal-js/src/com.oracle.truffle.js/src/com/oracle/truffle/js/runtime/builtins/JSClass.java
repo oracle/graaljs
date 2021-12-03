@@ -50,6 +50,7 @@ import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
@@ -390,6 +391,16 @@ public abstract class JSClass extends ObjectType {
 
     @SuppressWarnings("unused")
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+        throw Errors.shouldNotReachHere(getClass().getName());
+    }
+
+    /**
+     * Allows invokevirtual of this method instead of invokeinterface. Classes overriding this
+     * method should implement {@link PrototypeSupplier}.
+     *
+     * @see PrototypeSupplier#getIntrinsicDefaultProto
+     */
+    public DynamicObject getIntrinsicDefaultProto(@SuppressWarnings("unused") JSRealm realm) {
         throw Errors.shouldNotReachHere(getClass().getName());
     }
 

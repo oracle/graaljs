@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -68,6 +67,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode.HasCacheNode> {
     private final boolean hasOwnProperty;
     private boolean propertyAssumptionCheckEnabled = true;
+    @Child protected HasCacheNode cacheNode;
 
     public static HasPropertyCacheNode create(Object key, JSContext context, boolean hasOwnProperty) {
         return new HasPropertyCacheNode(key, context, hasOwnProperty);
@@ -84,37 +84,73 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
 
     @ExplodeLoop
     public boolean hasProperty(Object thisObj) {
-        for (HasCacheNode c = cacheNode; c != null; c = c.next) {
-            if (c.isGeneric()) {
-                return c.hasProperty(thisObj, this);
+        HasCacheNode c = cacheNode;
+        for (; c != null; c = c.next) {
+            if (c instanceof GenericHasPropertyCacheNode) {
+                return ((GenericHasPropertyCacheNode) c).hasProperty(thisObj, this);
             }
-            if (!c.isValid()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                break;
+            boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            ReceiverCheckNode receiverCheck = c.receiverCheck;
+            boolean guard;
+            Object castObj;
+            if (isSimpleShapeCheck) {
+                Shape shape = receiverCheck.getShape();
+                if (isDynamicObject(thisObj, shape)) {
+                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    guard = shape.check(jsobj);
+                    castObj = jsobj;
+                    if (!shape.getValidAssumption().isValid()) {
+                        break;
+                    }
+                } else {
+                    continue;
+                }
+            } else {
+                guard = receiverCheck.accept(thisObj);
+                castObj = thisObj;
             }
-            boolean guard = c.accepts(thisObj);
             if (guard) {
-                return c.hasProperty(thisObj, this);
+                if (!isSimpleShapeCheck && !receiverCheck.isValid()) {
+                    break;
+                }
+                return c.hasProperty(castObj, this);
             }
         }
-        deoptimize();
+        deoptimize(c);
         return hasPropertyAndSpecialize(thisObj);
     }
 
     @TruffleBoundary
     private boolean hasPropertyAndSpecialize(Object thisObj) {
-        HasCacheNode node = specialize(thisObj);
-        if (node.accepts(thisObj)) {
-            return node.hasProperty(thisObj, this);
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("Inconsistent guards.");
-        }
+        HasCacheNode c = specialize(thisObj);
+        return c.hasProperty(thisObj, this);
+    }
+
+    @Override
+    protected HasCacheNode getCacheNode() {
+        return this.cacheNode;
+    }
+
+    @Override
+    protected void setCacheNode(HasCacheNode cache) {
+        this.cacheNode = cache;
     }
 
     public abstract static class HasCacheNode extends PropertyCacheNode.CacheNode<HasCacheNode> {
+        @Child protected HasCacheNode next;
+
         protected HasCacheNode(ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
+        }
+
+        @Override
+        protected final HasCacheNode getNext() {
+            return next;
+        }
+
+        @Override
+        protected final void setNext(HasCacheNode next) {
+            this.next = next;
         }
 
         protected abstract boolean hasProperty(Object thisObj, HasPropertyCacheNode root);
@@ -183,10 +219,11 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         @Override
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
             Object key = root.getKey();
+            DynamicObject store = receiverCheck.getStore(thisObj);
             if (hasOwnProperty) {
-                return getOwnPropertyNode.execute(receiverCheck.getStore(thisObj), key) != null;
+                return getOwnPropertyNode.execute(store, key) != null;
             } else {
-                return proxyGet.executeWithTargetAndKeyBoolean(receiverCheck.getStore(thisObj), key);
+                return proxyGet.executeWithTargetAndKeyBoolean(store, key);
             }
         }
     }
@@ -287,28 +324,26 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         if (JSDynamicObject.isJSDynamicObject(thisObj)) {
             JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
             Shape cacheShape = thisJSObj.getShape();
-            AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, thisJSObj, depth, false, false);
-            ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(thisJSObj)) : shapeCheck;
             if (JSAdapter.isJSAdapter(store)) {
-                return new JSAdapterHasPropertyCacheNode(key, receiverCheck);
+                return new JSAdapterHasPropertyCacheNode(key, createJSClassCheck(thisObj, depth));
             } else if (JSProxy.isJSProxy(store)) {
-                return new JSProxyDispatcherPropertyHasNode(context, key, receiverCheck, isOwnProperty());
+                return new JSProxyDispatcherPropertyHasNode(context, key, createJSClassCheck(thisObj, depth), isOwnProperty());
             } else if (JSModuleNamespace.isJSModuleNamespace(store)) {
-                return new UnspecializedHasPropertyCacheNode(receiverCheck);
+                return new UnspecializedHasPropertyCacheNode(createJSClassCheck(thisObj, depth));
             } else {
-                return new AbsentHasPropertyCacheNode(shapeCheck);
+                return new AbsentHasPropertyCacheNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, false));
             }
         } else {
-            return new AbsentHasPropertyCacheNode(new InstanceofCheckNode(thisObj.getClass(), context));
+            return new AbsentHasPropertyCacheNode(new InstanceofCheckNode(thisObj.getClass()));
         }
     }
 
     @Override
     protected HasCacheNode createJavaPropertyNodeMaybe(Object thisObj, int depth) {
         if (JavaPackage.isJavaPackage(thisObj)) {
-            return new PresentHasPropertyCacheNode(new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
+            return new PresentHasPropertyCacheNode(createJSClassCheck(thisObj, depth));
         } else if (JavaImporter.isJavaImporter(thisObj)) {
-            return new UnspecializedHasPropertyCacheNode(new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
+            return new UnspecializedHasPropertyCacheNode(createJSClassCheck(thisObj, depth));
         }
         return null;
     }

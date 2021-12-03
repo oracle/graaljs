@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -47,12 +48,11 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * Checks whether the argument is a JS object (optionally including null and undefined).
  */
-@ImportStatic(JSObject.class)
+@ImportStatic({CompilerDirectives.class})
 public abstract class IsJSObjectNode extends JavaScriptBaseNode {
 
     protected static final int MAX_CLASS_COUNT = 1;
@@ -65,7 +65,7 @@ public abstract class IsJSObjectNode extends JavaScriptBaseNode {
     public abstract boolean executeBoolean(Object obj);
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "MAX_CLASS_COUNT")
+    @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "MAX_CLASS_COUNT")
     protected static boolean isObjectCached(Object object,
                     @Cached("getClassIfJSDynamicObject(object)") Class<?> cachedClass,
                     @Cached("guardIsJSObject(object)") boolean cachedResult) {

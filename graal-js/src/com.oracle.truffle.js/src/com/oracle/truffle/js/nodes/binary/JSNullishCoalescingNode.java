@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,30 +40,24 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.util.Set;
+
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.unary.JSIsNullOrUndefinedNode;
 
-import java.util.Set;
-
 @NodeInfo(shortName = "??")
-public class JSNullishCoalescingNode extends JSLogicalNode {
+public final class JSNullishCoalescingNode extends JSLogicalNode {
 
-    @Child private JSIsNullOrUndefinedNode isNullOrUndefinedNode;
+    @Child private JSIsNullOrUndefinedNode isNullOrUndefinedNode = JSIsNullOrUndefinedNode.create();
 
-    public JSNullishCoalescingNode(JavaScriptNode left, JavaScriptNode right) {
-        super(left, right, false);
+    JSNullishCoalescingNode(JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
     }
 
-    public static JSNullishCoalescingNode create(JavaScriptNode left, JavaScriptNode right) {
+    public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         return new JSNullishCoalescingNode(left, right);
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return getLeft().isResultAlwaysOfType(clazz) && getRight().isResultAlwaysOfType(clazz);
     }
 
     @Override
@@ -73,10 +67,6 @@ public class JSNullishCoalescingNode extends JSLogicalNode {
 
     @Override
     protected boolean useLeftValue(Object leftValue) {
-        if (isNullOrUndefinedNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            isNullOrUndefinedNode = insert(JSIsNullOrUndefinedNode.create());
-        }
         return !isNullOrUndefinedNode.executeBoolean(leftValue);
     }
 }

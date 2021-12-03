@@ -48,6 +48,8 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDictionary;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -207,6 +209,8 @@ public final class JSShape {
             return JSOrdinaryObject.InternalFieldLayout.class;
         } else if (jsclass == JSOrdinary.OVERLOADED_OPERATORS_INSTANCE) {
             return JSOverloadedOperatorsObject.class;
+        } else if (jsclass == JSArray.INSTANCE) {
+            return JSArrayObject.class;
         }
         return JSDynamicObject.class;
     }
@@ -218,7 +222,8 @@ public final class JSShape {
                         dynamicType(jsclass).//
                         sharedData(JSShape.makeJSSharedData(context, (JSDynamicObject) proto)).//
                         shapeFlags(getDefaultShapeFlags(jsclass)).//
-                        allowImplicitCastIntToDouble(true);
+                        allowImplicitCastIntToDouble(true).//
+                        propertyAssumptions(JSConfig.PropertyAssumption && !context.isMultiContext());
     }
 
     public static int getDefaultShapeFlags(JSClass jsclass) {

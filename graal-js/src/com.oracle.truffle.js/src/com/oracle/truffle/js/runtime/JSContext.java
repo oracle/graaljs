@@ -1665,7 +1665,7 @@ public class JSContext {
             public Object execute(VirtualFrame frame) {
                 Object obj = toObjectNode.execute(JSArguments.getThisObject(frame.getArguments()));
                 if (JSDynamicObject.isJSDynamicObject(obj)) {
-                    return getPrototypeNode.executeJSObject(obj);
+                    return getPrototypeNode.execute(obj);
                 }
                 return Null.instance;
             }

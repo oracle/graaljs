@@ -451,8 +451,10 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return new JSObjectReadElementTypeCacheNode(next);
         } else if (target instanceof JSLazyString) {
             return new LazyStringReadElementTypeCacheNode(next);
+        } else if (target instanceof String) {
+            return new StringReadElementTypeCacheNode(next);
         } else if (JSRuntime.isString(target)) {
-            return new StringReadElementTypeCacheNode(target.getClass(), next);
+            return new CharSequenceReadElementTypeCacheNode(target.getClass(), next);
         } else if (target instanceof Boolean) {
             return new BooleanReadElementTypeCacheNode(next);
         } else if (target instanceof Number) {
@@ -834,7 +836,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         public final boolean guard(Object target) {
-            return targetClass.isInstance(target);
+            return CompilerDirectives.isExact(target, targetClass);
         }
     }
 
@@ -1366,13 +1368,13 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    private static class StringReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
+    private static class CharSequenceReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
         private final Class<?> stringClass;
         private final ConditionProfile arrayIndexProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile stringIndexInBounds = ConditionProfile.createBinaryProfile();
         @Child private ToArrayIndexNode toArrayIndexNode;
 
-        StringReadElementTypeCacheNode(Class<?> stringClass, ReadElementTypeCacheNode next) {
+        CharSequenceReadElementTypeCacheNode(Class<?> stringClass, ReadElementTypeCacheNode next) {
             super(next);
             this.stringClass = stringClass;
             this.toArrayIndexNode = ToArrayIndexNode.createNoToPropertyKey();
@@ -1380,7 +1382,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            CharSequence charSequence = (CharSequence) stringClass.cast(target);
+            CharSequence charSequence = (CharSequence) CompilerDirectives.castExact(target, stringClass);
             Object convertedIndex = toArrayIndexNode.execute(index);
             if (arrayIndexProfile.profile(convertedIndex instanceof Long)) {
                 int intIndex = ((Long) convertedIndex).intValue();
@@ -1394,7 +1396,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
-            CharSequence charSequence = (CharSequence) stringClass.cast(target);
+            CharSequence charSequence = (CharSequence) CompilerDirectives.castExact(target, stringClass);
             if (stringIndexInBounds.profile(index >= 0 && index < JSRuntime.length(charSequence))) {
                 return String.valueOf(JSRuntime.charAt(charSequence, index));
             } else {
@@ -1404,7 +1406,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
-            CharSequence charSequence = (CharSequence) stringClass.cast(target);
+            CharSequence charSequence = (CharSequence) CompilerDirectives.castExact(target, stringClass);
             if (stringIndexInBounds.profile(index >= 0 && index < JSRuntime.length(charSequence))) {
                 return String.valueOf(JSRuntime.charAt(charSequence, (int) index));
             } else {
@@ -1414,7 +1416,56 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         public boolean guard(Object target) {
-            return stringClass.isInstance(target);
+            return CompilerDirectives.isExact(target, stringClass);
+        }
+    }
+
+    private static class StringReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
+        private final ConditionProfile arrayIndexProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile stringIndexInBounds = ConditionProfile.createBinaryProfile();
+        @Child private ToArrayIndexNode toArrayIndexNode;
+
+        StringReadElementTypeCacheNode(ReadElementTypeCacheNode next) {
+            super(next);
+            this.toArrayIndexNode = ToArrayIndexNode.createNoToPropertyKey();
+        }
+
+        @Override
+        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
+            String string = (String) target;
+            Object convertedIndex = toArrayIndexNode.execute(index);
+            if (arrayIndexProfile.profile(convertedIndex instanceof Long)) {
+                int intIndex = ((Long) convertedIndex).intValue();
+                if (stringIndexInBounds.profile(intIndex >= 0 && intIndex < string.length())) {
+                    return String.valueOf(string.charAt(intIndex));
+                }
+            }
+            return JSObject.getOrDefault(JSString.create(root.context, getRealm(), string), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
+        }
+
+        @Override
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
+            String string = (String) target;
+            if (stringIndexInBounds.profile(index >= 0 && index < string.length())) {
+                return String.valueOf(string.charAt(index));
+            } else {
+                return JSObject.getOrDefault(JSString.create(root.context, getRealm(), string), index, receiver, defaultValue, jsclassProfile, root);
+            }
+        }
+
+        @Override
+        protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
+            String string = (String) target;
+            if (stringIndexInBounds.profile(index >= 0 && index < string.length())) {
+                return String.valueOf(string.charAt((int) index));
+            } else {
+                return JSObject.getOrDefault(JSString.create(root.context, getRealm(), string), index, receiver, defaultValue, jsclassProfile, root);
+            }
+        }
+
+        @Override
+        public boolean guard(Object target) {
+            return target instanceof String;
         }
     }
 
@@ -1478,19 +1529,19 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            Number charSequence = (Number) target;
+            Number charSequence = (Number) CompilerDirectives.castExact(target, numberClass);
             return JSObject.getOrDefault(JSNumber.create(root.context, getRealm(), charSequence), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
         }
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
-            Number charSequence = (Number) target;
+            Number charSequence = (Number) CompilerDirectives.castExact(target, numberClass);
             return JSObject.getOrDefault(JSNumber.create(root.context, getRealm(), charSequence), index, receiver, defaultValue, jsclassProfile, root);
         }
 
         @Override
         public boolean guard(Object target) {
-            return numberClass.isInstance(target);
+            return CompilerDirectives.isExact(target, numberClass);
         }
     }
 
@@ -1581,6 +1632,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         ForeignObjectReadElementTypeCacheNode(Class<?> targetClass, ReadElementTypeCacheNode next) {
             super(next);
+            assert !JSDynamicObject.class.isAssignableFrom(targetClass) : targetClass;
             this.targetClass = targetClass;
             this.importValueNode = ImportValueNode.create();
             this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
@@ -1588,7 +1640,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            Object truffleObject = targetClass.cast(target);
+            Object truffleObject = CompilerDirectives.castExact(target, targetClass);
             if (interop.isNull(truffleObject)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorCannotGetProperty(root.getContext(), JSRuntime.safeToString(index), target, false, this);
@@ -1729,7 +1781,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         public boolean guard(Object target) {
-            return targetClass.isInstance(target) && !JSDynamicObject.isJSDynamicObject(target);
+            return CompilerDirectives.isExact(target, targetClass);
         }
 
         private Object toArrayIndex(Object maybeIndex) {

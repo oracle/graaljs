@@ -55,13 +55,13 @@ public abstract class JSArrayBase extends JSNonProxyObject {
     protected JSArrayBase(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         super(shape);
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
-        this.arrayStorage = Objects.requireNonNull(array);
-        this.arrayStrategy = arrayType;
         this.length = (int) length;
         this.usedLength = usedLength;
         this.indexOffset = indexOffset;
         this.arrayOffset = arrayOffset;
         this.holeCount = holeCount;
+        this.arrayStorage = Objects.requireNonNull(array);
+        this.arrayStrategy = arrayType;
         this.allocationSite = site;
     }
 

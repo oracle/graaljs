@@ -130,7 +130,7 @@ public abstract class IsPristineObjectNode extends JavaScriptBaseNode {
     }
 
     private boolean prototypeShapeUnchanged(DynamicObject object) {
-        return getPrototypeNode.executeJSObject(object).getShape() == initialPrototypeShape;
+        return getPrototypeNode.execute(object).getShape() == initialPrototypeShape;
     }
 
     boolean isInstanceAndDoesNotOverwriteProps(Shape objectShape) {

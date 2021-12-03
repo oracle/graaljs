@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,9 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.control.YieldException;
 
@@ -53,37 +51,21 @@ public abstract class JSLogicalNode extends JSBinaryNode implements ResumableNod
     private static final int RESUME_RIGHT = 1;
     private static final int RESUME_UNEXECUTED = 0;
 
-    private final boolean negate;
-
-    @Child private JSToBooleanNode toBooleanCast;
-
     protected final ConditionProfile canShortCircuit = ConditionProfile.createBinaryProfile();
 
-    public JSLogicalNode(JavaScriptNode left, JavaScriptNode right, boolean negate) {
+    protected JSLogicalNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
-        this.negate = negate;
     }
 
-    protected boolean toBoolean(Object operand) {
-        if (toBooleanCast == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toBooleanCast = insert(JSToBooleanNode.create());
-        }
-        boolean value = toBooleanCast.executeBoolean(operand);
-        return negate ? !value : value;
-    }
-
-    protected boolean useLeftValue(Object leftValue) {
-        return toBoolean(leftValue);
-    }
+    protected abstract boolean useLeftValue(Object leftValue);
 
     @Override
     public final Object execute(VirtualFrame frame) {
-        Object leftValue = getLeft().execute(frame);
+        Object leftValue = leftNode.execute(frame);
         if (canShortCircuit.profile(useLeftValue(leftValue))) {
             return leftValue;
         } else {
-            return getRight().execute(frame);
+            return rightNode.execute(frame);
         }
     }
 
@@ -91,7 +73,7 @@ public abstract class JSLogicalNode extends JSBinaryNode implements ResumableNod
     public Object resume(VirtualFrame frame) {
         int state = getStateAsIntAndReset(frame);
         if (state == RESUME_UNEXECUTED) {
-            Object leftValue = getLeft().execute(frame);
+            Object leftValue = leftNode.execute(frame);
             if (canShortCircuit.profile(useLeftValue(leftValue))) {
                 return leftValue;
             } else {
@@ -105,11 +87,16 @@ public abstract class JSLogicalNode extends JSBinaryNode implements ResumableNod
         } else {
             assert state == RESUME_RIGHT;
             try {
-                return getRight().execute(frame);
+                return rightNode.execute(frame);
             } catch (YieldException e) {
                 setState(frame, RESUME_RIGHT);
                 throw e;
             }
         }
+    }
+
+    @Override
+    public boolean isResultAlwaysOfType(Class<?> clazz) {
+        return getLeft().isResultAlwaysOfType(clazz) && getRight().isResultAlwaysOfType(clazz);
     }
 }
