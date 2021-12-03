@@ -798,10 +798,6 @@
     "filePath" : "mjsunit/number-tostring-big-integer.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/object-seal.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
     "filePath" : "mjsunit/opt-elements-kind.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
