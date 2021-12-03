@@ -52,6 +52,7 @@ public abstract class TestArrayNode extends JavaScriptBaseNode {
 
     protected enum Test {
         HasHoles,
+        IsSealed,
     }
 
     protected static final int MAX_TYPE_COUNT = 4;
@@ -74,6 +75,10 @@ public abstract class TestArrayNode extends JavaScriptBaseNode {
         return create(Test.HasHoles);
     }
 
+    public static TestArrayNode createIsSealed() {
+        return create(Test.IsSealed);
+    }
+
     public abstract boolean executeBoolean(DynamicObject target);
 
     @Specialization(guards = {"arrayType.isInstance(getArrayType(target))"}, limit = "MAX_TYPE_COUNT")
@@ -81,6 +86,8 @@ public abstract class TestArrayNode extends JavaScriptBaseNode {
                     @Cached("getArrayType(target)") ScriptArray arrayType) {
         if (test == Test.HasHoles) {
             return arrayType.hasHoles(target);
+        } else if (test == Test.IsSealed) {
+            return arrayType.isSealed();
         } else {
             throw Errors.shouldNotReachHere();
         }
