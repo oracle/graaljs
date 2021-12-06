@@ -92,6 +92,18 @@ local ci = import '../ci.jsonnet';
     timelimit: '30:00',
   },
 
+  local engineCacheTest = ee + {
+    base_mx_cmd:: ['mx', '--dynamicimports', '/substratevm-enterprise', '--native-images=lib:jsvm'],
+    run+: [
+      ['git', 'clone', ['mx', 'urlrewrite', 'https://github.com/graalvm/graalvm-tests.git'], '../../graalvm-tests'],
+      ['git', '-C', '../../graalvm-tests', 'checkout', '75b6a9e16ebbfd8b9b0a24e4be7c4378e3281204'],
+      self.base_mx_cmd + ['build'],
+      ['set-export', 'GRAALVM_HOME', self.base_mx_cmd + ['--quiet', 'graalvm-home']],
+      ['python', '../../graalvm-tests/test.py', '-g', '${GRAALVM_HOME}', '--print-revisions', '--keep-on-error', 'test/aux-engine-cache'],
+    ],
+    timelimit: '30:00',
+  },
+
   builds: [
     // GATE
     graalJs + common.jdk8  + common.gate   + common.linux          + common.gateStyleFullBuild                                                + {name: 'js-gate-style-fullbuild-jdk8-linux-amd64'},
@@ -111,6 +123,7 @@ local ci = import '../ci.jsonnet';
     graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('tck')                                                          + {name: 'js-gate-tck-jdk17-linux-amd64'}         + common.js_unittest,
     graalJs + common.jdk17 + common.gate   + common.linux          + webassemblyTest                                                          + {name: 'js-gate-webassembly-jdk17-linux-amd64'} + common.js_unittest,
     graalJs + common.jdk17 + common.gate   + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-gate-native-image-smoke-test-jdk17-linux-amd64'},
+    graalJs + common.jdk17 + common.gate   + common.linux          + engineCacheTest                                                          + {name: 'js-gate-aux-engine-cache-test-jdk17-linux-amd64'},
 
     // jdk 11 - linux
     graalJs + common.jdk11 + common.gate   + common.linux          + gateTags('default')                                                 + ce + {name: 'js-gate-default-ce-jdk11-linux-amd64'}  + common.js_unittest,
