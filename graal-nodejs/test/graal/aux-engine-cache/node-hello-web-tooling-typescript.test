@@ -4,11 +4,11 @@
 # *
 # * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
 # */
-> mkdir ${TMP_DIR}/aux
-> cd ${TMP_DIR}/aux
+> mkdir ${TMP_DIR}/typescript
+> cd ${TMP_DIR}/typescript
 >[0?] git clone --quiet --depth 1 `mx urlrewrite https://github.com/graalvm/nodejs-benchmarks.git`
 >[0?] npm --prefix nodejs-benchmarks/web-tooling-benchmark install
 > cd nodejs-benchmarks/web-tooling-benchmark
 >[0?] node --experimental-options --engine.TraceCache --engine.CacheStore=ts.img src/cli.js -b typescript -i 10
 > test -f ts.img
->[0?] node --experimental-options --engine.TraceCache --engine.CacheLoad=ts.img ./src/cli.js -b typescript -i 1
+>[0?] node --experimental-options --engine.TraceCache --engine.CacheLoad=ts.img src/cli.js -b typescript -i 1
