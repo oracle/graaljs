@@ -55,14 +55,10 @@ local ci = import '../ci.jsonnet';
     ],
   },
 
-  local engineCacheTest = ee + {
-    base_mx_cmd:: ['mx', '--dynamicimports', '/substratevm-enterprise', '--native-images=lib:graal-nodejs'],
+  local auxEngineCache = {
+    graalvmtests:: '../../graalvm-tests',
     run+: [
-      ['git', 'clone', ['mx', 'urlrewrite', 'https://github.com/graalvm/graalvm-tests.git'], '../../graalvm-tests'],
-      ['git', '-C', '../../graalvm-tests', 'checkout', '75b6a9e16ebbfd8b9b0a24e4be7c4378e3281204'],
-      self.base_mx_cmd + ['build'],
-      ['set-export', 'GRAALVM_HOME', self.base_mx_cmd + ['--quiet', 'graalvm-home']],
-      ['python', '../../graalvm-tests/test.py', '-g', '${GRAALVM_HOME}', '--print-revisions', '--keep-on-error', 'test/graal/aux-engine-cache'],
+      ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', 'graalvm-home'], '--print-revisions', '--keep-on-error', 'test/graal/aux-engine-cache'],
     ],
     timelimit: '30:00',
   },
@@ -136,7 +132,7 @@ local ci = import '../ci.jsonnet';
     graalNodeJs + common.jdk17 + common.gate      + common.linux + vm_env + build            + testNode(parallelNoHttp2, part='-r2,5', max_heap='8G')             + artifact        + {name: 'nodejs-gate-parallel-3-jdk17-linux-amd64'},
     graalNodeJs + common.jdk17 + common.gate      + common.linux + vm_env + build            + testNode(parallelNoHttp2, part='-r3,5', max_heap='8G')             + artifact        + {name: 'nodejs-gate-parallel-4-jdk17-linux-amd64'},
     graalNodeJs + common.jdk17 + common.gate      + common.linux + vm_env + build            + testNode(parallelNoHttp2, part='-r4,5', max_heap='8G')             + artifact        + {name: 'nodejs-gate-parallel-5-jdk17-linux-amd64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.linux          + engineCacheTest                                                                                         + {name: 'nodejs-gate-aux-engine-cache-test-jdk17-linux-amd64'},
+    graalNodeJs + common.jdk17 + common.gate      + common.linux + vm_env + build            + auxEngineCache                                                     + artifact   + ee + {name: 'nodejs-gate-aux-engine-cache-jdk17-linux-amd64'},
 
     graalNodeJs + common.jdk17 + common.gate      + common.windows_jdk17  + build            + testNode('async-hooks',   part='-r0,1', max_heap='8G')                               + {name: 'nodejs-gate-async-hooks-jdk17-windows-amd64'},
     graalNodeJs + common.jdk17 + common.gate      + common.windows_jdk17  + build            + testNode('es-module',     part='-r0,1', max_heap='8G')                               + {name: 'nodejs-gate-es-module-jdk17-windows-amd64'},
