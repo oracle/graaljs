@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,7 +102,8 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
             errorBranch.enter();
             throw Errors.createTypeErrorCannotSetAccessorProperty(keyAsString(), target);
         }
-        return callNode.executeCall(JSArguments.createOneArg(target, setter, value));
+        callNode.executeCall(JSArguments.createOneArg(target, setter, value));
+        return value;
     }
 
     @TruffleBoundary

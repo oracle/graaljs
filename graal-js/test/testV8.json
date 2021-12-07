@@ -1565,10 +1565,6 @@
     "filePath" : "mjsunit/regress/regress-trap-allocation-memento.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/regress/regress-v8-11360.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
     "filePath" : "mjsunit/regress/regress-v8-5848.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
