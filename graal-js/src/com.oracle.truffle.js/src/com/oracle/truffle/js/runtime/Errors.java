@@ -842,8 +842,14 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCannotGetPrivateMember(String name, Node originatingNode) {
-        return createTypeError(String.format("Cannot read private member %s from an object whose class did not declare it.", name), originatingNode);
+    public static JSException createTypeErrorCannotGetPrivateMember(boolean fieldAccess, String name, Node originatingNode) {
+        String message;
+        if (fieldAccess) {
+            message = String.format("Cannot read private member %s from an object whose class did not declare it.", name);
+        } else {
+            message = "Object must be an instance of class";
+        }
+        return createTypeError(message, originatingNode);
     }
 
     @TruffleBoundary
