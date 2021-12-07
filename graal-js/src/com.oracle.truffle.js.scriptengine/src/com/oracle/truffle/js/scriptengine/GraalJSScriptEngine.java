@@ -319,6 +319,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private static void updateForNashornCompatibilityMode(Context.Builder builder) {
         builder.allowAllAccess(true);
         builder.allowHostAccess(NASHORN_HOST_ACCESS);
+        builder.useSystemExit(true);
     }
 
     private static void updateForScriptEngineAccessibility(Context.Builder builder) {
