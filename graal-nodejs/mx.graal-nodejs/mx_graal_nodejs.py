@@ -607,7 +607,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
             build_args_enterprise=[
                 '-H:+AuxiliaryEngineCache',
                 '-H:ReservedAuxiliaryImageBytes=2145482548',
-            ],
+            ] if not mx.is_windows() else [],
             home_finder=True,
         ),
     ],
