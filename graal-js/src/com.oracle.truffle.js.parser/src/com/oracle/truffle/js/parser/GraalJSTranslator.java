@@ -645,8 +645,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JSFrameDescriptor functionFrameDescriptor = environment.getFunctionFrameDescriptor();
         InternalSlotId identifier = factory.createInternalSlotId("generatorstate", functionFrameDescriptor.getSize());
         JSFrameSlot frameSlot = functionFrameDescriptor.addFrameSlot(identifier);
-        JavaScriptNode readState = factory.createReadCurrentFrameSlot(frameSlot);
-        WriteNode writeState = factory.createWriteCurrentFrameSlot(frameSlot, null);
 
         JavaScriptNode[] statements = blockNode.getStatements();
         boolean returnsResult = !blockNode.isResultAlwaysOfType(Undefined.class);
@@ -655,7 +653,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         int resumePoints = suspendableIndices.cardinality() + (suspendableIndices.get(0) ? 0 : 1);
         if (resumePoints == statements.length) {
             // all statements are resume points
-            genBlock = returnsResult ? factory.createGeneratorExprBlock(statements, readState, writeState) : factory.createGeneratorVoidBlock(statements, readState, writeState);
+            genBlock = returnsResult ? factory.createGeneratorExprBlock(statements, frameSlot) : factory.createGeneratorVoidBlock(statements, frameSlot);
         } else {
             // split block into resumable chunks of at least 1 statement.
             JavaScriptNode[] chunks = new JavaScriptNode[resumePoints];
@@ -678,7 +676,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 chunks[chunkI] = chunk;
                 fromIndex = toIndex;
             }
-            genBlock = returnsResult ? factory.createGeneratorExprBlock(chunks, readState, writeState) : factory.createGeneratorVoidBlock(chunks, readState, writeState);
+            genBlock = returnsResult ? factory.createGeneratorExprBlock(chunks, frameSlot) : factory.createGeneratorVoidBlock(chunks, frameSlot);
         }
         JavaScriptNode.transferSourceSectionAndTags(blockNode, genBlock);
         return genBlock;

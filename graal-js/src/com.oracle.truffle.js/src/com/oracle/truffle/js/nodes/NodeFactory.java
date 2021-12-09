@@ -911,12 +911,12 @@ public class NodeFactory {
         return GeneratorWrapperNode.createWrapper(child, state, writeStateNode);
     }
 
-    public JavaScriptNode createGeneratorVoidBlock(JavaScriptNode[] statements, JavaScriptNode readState, WriteNode writeState) {
-        return GeneratorVoidBlockNode.create(statements, readState, writeState);
+    public JavaScriptNode createGeneratorVoidBlock(JavaScriptNode[] statements, JSFrameSlot stateSlot) {
+        return GeneratorVoidBlockNode.create(statements, stateSlot.getIndex());
     }
 
-    public JavaScriptNode createGeneratorExprBlock(JavaScriptNode[] statements, JavaScriptNode readState, WriteNode writeState) {
-        return GeneratorExprBlockNode.create(statements, readState, writeState);
+    public JavaScriptNode createGeneratorExprBlock(JavaScriptNode[] statements, JSFrameSlot stateSlot) {
+        return GeneratorExprBlockNode.create(statements, stateSlot.getIndex());
     }
 
     public JavaScriptNode createBlockScope(JavaScriptNode block, JSFrameSlot blockScopeSlot, FrameDescriptor blockFrameDescriptor, JSFrameSlot parentSlot,

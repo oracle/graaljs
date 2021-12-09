@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,21 +40,20 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.WriteNode;
-
-import java.util.Set;
 
 public final class GeneratorVoidBlockNode extends AbstractGeneratorBlockNode {
 
-    GeneratorVoidBlockNode(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode) {
-        super(statements, readStateNode, writeStateNode);
+    GeneratorVoidBlockNode(JavaScriptNode[] statements, int stateSlot) {
+        super(statements, stateSlot);
     }
 
-    public static JavaScriptNode create(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode) {
-        return new GeneratorVoidBlockNode(statements, readStateNode, writeStateNode);
+    public static JavaScriptNode create(JavaScriptNode[] statements, int stateSlot) {
+        return new GeneratorVoidBlockNode(statements, stateSlot);
     }
 
     @Override
@@ -65,7 +64,6 @@ public final class GeneratorVoidBlockNode extends AbstractGeneratorBlockNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new GeneratorVoidBlockNode(cloneUninitialized(getStatements(), materializedTags), cloneUninitialized(readStateNode, materializedTags),
-                        (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode, materializedTags));
+        return new GeneratorVoidBlockNode(cloneUninitialized(getStatements(), materializedTags), stateSlot);
     }
 }
