@@ -12,6 +12,7 @@ The main focus is on user-observable behavior of the engine.
 * Implemented the [Intl Enumeration API](https://github.com/tc39/proposal-intl-enumeration) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Updated Node.js to version 14.18.1.
 * Added option `js.esm-bare-specifier-relative-lookup` (default: false) to customize how bare specifiers for ES Modules are resolved. When disabled, bare specifiers are resolved with an absolute path lookup. When enabled, bare specifiers are resolved relative to the importing module's path.
+* ICU4J library moved to `truffle`.
 
 ## Version 21.3.0
 * Implemented the [Private Fields in `in`](https://tc39.es/proposal-private-fields-in-in) proposal. It is available behind the experimental option `--js.private-fields-in`. 
