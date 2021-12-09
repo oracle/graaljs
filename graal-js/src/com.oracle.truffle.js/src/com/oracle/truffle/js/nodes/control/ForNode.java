@@ -67,7 +67,7 @@ import com.oracle.truffle.js.runtime.util.Pair;
  * for(;condition;modify) {body} with per-iteration scope.
  */
 @NodeInfo(shortName = "for")
-public final class ForNode extends StatementNode implements ResumableNode {
+public final class ForNode extends StatementNode implements ResumableNode.WithObjectState {
 
     @Child private LoopNode loop;
     @Child private IterationScopeNode copy;
@@ -138,8 +138,8 @@ public final class ForNode extends StatementNode implements ResumableNode {
     }
 
     @Override
-    public Object resume(VirtualFrame frame) {
-        Object state = getStateAndReset(frame);
+    public Object resume(VirtualFrame frame, int stateSlot) {
+        Object state = getStateAndReset(frame, stateSlot);
         VirtualFrame prevFrame;
         if (state == Undefined.instance) {
             prevFrame = copy.execute(frame);
@@ -151,7 +151,7 @@ public final class ForNode extends StatementNode implements ResumableNode {
             loop.execute(frame);
         } catch (YieldException e) {
             yielded = true;
-            setState(frame, prevFrame);
+            setState(frame, stateSlot, prevFrame);
             throw e;
         } finally {
             if (!yielded) {
@@ -177,7 +177,7 @@ public final class ForNode extends StatementNode implements ResumableNode {
     }
 
     /** for(;condition;modify) {body}. */
-    private static final class ForRepeatingNode extends AbstractRepeatingNode {
+    private static final class ForRepeatingNode extends AbstractRepeatingNode implements ResumableNode.WithObjectState {
         @Child private JavaScriptNode modify;
         @Child private IterationScopeNode copy;
         @Child private JavaScriptNode isFirstNode;
@@ -244,8 +244,8 @@ public final class ForNode extends StatementNode implements ResumableNode {
         }
 
         @Override
-        public Object resume(VirtualFrame frame) {
-            Object state = getStateAndReset(frame);
+        public Object resume(VirtualFrame frame, int stateSlot) {
+            Object state = getStateAndReset(frame, stateSlot);
             MaterializedFrame prevFrame;
             int index; // resume into: 0:modify, 1:condition, 2:body
             if (state == Undefined.instance) {
@@ -261,7 +261,7 @@ public final class ForNode extends StatementNode implements ResumableNode {
                 try {
                     modify.executeVoid(frame);
                 } catch (YieldException e) {
-                    setState(frame, new Pair<>(prevFrame, 0));
+                    setState(frame, stateSlot, new Pair<>(prevFrame, 0));
                     throw e;
                 }
             }
@@ -270,7 +270,7 @@ public final class ForNode extends StatementNode implements ResumableNode {
                 try {
                     condition = executeCondition(frame);
                 } catch (YieldException e) {
-                    setState(frame, new Pair<>(prevFrame, 1));
+                    setState(frame, stateSlot, new Pair<>(prevFrame, 1));
                     throw e;
                 }
             }
@@ -278,7 +278,7 @@ public final class ForNode extends StatementNode implements ResumableNode {
                 try {
                     executeBody(frame);
                 } catch (YieldException e) {
-                    setState(frame, new Pair<>(prevFrame, 2));
+                    setState(frame, stateSlot, new Pair<>(prevFrame, 2));
                     throw e;
                 }
                 copy.executeCopy(frame, prevFrame);

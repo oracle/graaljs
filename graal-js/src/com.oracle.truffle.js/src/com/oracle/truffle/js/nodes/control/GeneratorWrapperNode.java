@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,31 +40,27 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 public final class GeneratorWrapperNode extends JavaScriptNode implements RepeatingNode {
     @Child private JavaScriptNode childNode;
-    @Child private JavaScriptNode stateNode;
-    @Child private WriteNode writeStateNode;
+    private final int stateSlot;
 
-    private GeneratorWrapperNode(JavaScriptNode childNode, JavaScriptNode stateNode, WriteNode writeStateNode) {
+    private GeneratorWrapperNode(JavaScriptNode childNode, int stateSlot) {
         assert childNode instanceof ResumableNode : childNode;
         this.childNode = childNode;
-        this.stateNode = stateNode;
-        this.writeStateNode = writeStateNode;
+        this.stateSlot = stateSlot;
     }
 
-    public static JavaScriptNode createWrapper(JavaScriptNode child, JavaScriptNode readStateNode, WriteNode writeStateNode) {
-        JavaScriptNode wrapper = new GeneratorWrapperNode(child, readStateNode, writeStateNode);
+    public static JavaScriptNode createWrapper(JavaScriptNode child, int stateSlot) {
+        JavaScriptNode wrapper = new GeneratorWrapperNode(child, stateSlot);
         Node realChild = child instanceof WrapperNode ? ((WrapperNode) child).getDelegateNode() : child;
         wrapper.setSourceSection(realChild.getSourceSection());
         return wrapper;
@@ -96,7 +92,7 @@ public final class GeneratorWrapperNode extends JavaScriptNode implements Repeat
             child = ((WrapperNode) child).getDelegateNode();
         }
         if (child instanceof ResumableNode) {
-            return ((ResumableNode) child).resume(frame);
+            return ((ResumableNode) child).resume(frame, stateSlot);
         } else {
             assert false : child.getClass();
             throw Errors.shouldNotReachHere();
@@ -109,30 +105,12 @@ public final class GeneratorWrapperNode extends JavaScriptNode implements Repeat
         return (boolean) execute(frame);
     }
 
-    public Object isResuming(VirtualFrame frame) {
-        return stateNode.execute(frame) != Undefined.instance;
-    }
-
-    public Object getState(VirtualFrame frame) {
-        return stateNode.execute(frame);
-    }
-
-    public int getStateAsInt(VirtualFrame frame) {
-        Object value = stateNode.execute(frame);
-        return (value instanceof Integer) ? (int) value : 0;
-    }
-
-    public void setState(VirtualFrame frame, Object resumeState) {
-        writeStateNode.executeWrite(frame, resumeState);
-    }
-
     public JavaScriptNode getResumableNode() {
         return childNode;
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return createWrapper(cloneUninitialized(childNode, materializedTags), cloneUninitialized(stateNode, materializedTags),
-                        (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode, materializedTags));
+        return new GeneratorWrapperNode(cloneUninitialized(childNode, materializedTags), stateSlot);
     }
 }

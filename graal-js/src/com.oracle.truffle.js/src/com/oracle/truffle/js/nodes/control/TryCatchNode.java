@@ -81,7 +81,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * 12.14 The try Statement.
  */
 @NodeInfo(shortName = "try-catch")
-public class TryCatchNode extends StatementNode implements ResumableNode {
+public class TryCatchNode extends StatementNode implements ResumableNode.WithObjectState {
 
     @Child private JavaScriptNode tryBlock;
     @Child private JavaScriptNode catchBlock;
@@ -219,8 +219,8 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
     }
 
     @Override
-    public Object resume(VirtualFrame frame) {
-        Object state = getStateAndReset(frame);
+    public Object resume(VirtualFrame frame, int stateSlot) {
+        Object state = getStateAndReset(frame, stateSlot);
         if (state == Undefined.instance) {
             try {
                 return tryBlock.execute(frame);
@@ -247,7 +247,11 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         try {
             return catchBlock.execute(frame);
         } catch (YieldException e) {
-            setState(frame, blockScope == null ? 1 : blockScope.getBlockScope(frame));
+            if (blockScope == null) {
+                setState(frame, stateSlot, 1);
+            } else {
+                setState(frame, stateSlot, blockScope.getBlockScope(frame));
+            }
             throw e;
         } finally {
             if (blockScope != null) {

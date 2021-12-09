@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -67,10 +69,9 @@ import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-import java.util.Set;
+public class YieldNode extends JavaScriptNode implements ResumableNode.WithIntState, SuspendNode {
 
-public class YieldNode extends JavaScriptNode implements ResumableNode, SuspendNode {
-
+    protected final int stateSlot;
     @Child protected JavaScriptNode expression;
     @Child private CreateIterResultObjectNode createIterResultObjectNode;
     @Child protected JavaScriptNode yieldValue;
@@ -79,7 +80,8 @@ public class YieldNode extends JavaScriptNode implements ResumableNode, SuspendN
     private final JSContext context;
     private final ConditionProfile returnOrExceptionProfile = ConditionProfile.createBinaryProfile();
 
-    protected YieldNode(JSContext context, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
+    protected YieldNode(JSContext context, int stateSlot, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
+        this.stateSlot = stateSlot;
         this.context = context;
         this.expression = expression;
         this.returnNode = returnNode;
@@ -88,19 +90,12 @@ public class YieldNode extends JavaScriptNode implements ResumableNode, SuspendN
         this.generatorYieldNode = writeYieldResultNode == null ? new ExceptionYieldResultNode() : new FrameYieldResultNode(writeYieldResultNode);
     }
 
-    public static YieldNode createYield(JSContext context, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
-        return new YieldNode(context, expression, yieldValue, returnNode, writeYieldResultNode);
+    public static YieldNode createYield(JSContext context, int stateSlot, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
+        return new YieldNode(context, stateSlot, expression, yieldValue, returnNode, writeYieldResultNode);
     }
 
-    public static YieldNode createYieldStar(JSContext context, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
-        return new YieldStarNode(context, expression, yieldValue, returnNode, writeYieldResultNode);
-    }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-        Object value = expression.execute(frame);
-        DynamicObject iterNextObj = createIterResultObjectNode.execute(frame, value, false);
-        return generatorYield(frame, iterNextObj);
+    public static YieldNode createYieldStar(JSContext context, int stateSlot, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
+        return new YieldStarNode(context, expression, stateSlot, yieldValue, returnNode, writeYieldResultNode);
     }
 
     protected final Object generatorYield(VirtualFrame frame, Object iterNextObj) {
@@ -108,16 +103,16 @@ public class YieldNode extends JavaScriptNode implements ResumableNode, SuspendN
     }
 
     @Override
-    public Object resume(VirtualFrame frame) {
-        int index = getStateAsInt(frame);
+    public Object execute(VirtualFrame frame) {
+        int index = getStateAsInt(frame, stateSlot);
         if (index == 0) {
             Object value = expression.execute(frame);
             DynamicObject iterNextObj = createIterResultObjectNode.execute(frame, value, false);
-            setState(frame, 1);
+            setStateAsInt(frame, stateSlot, 1);
             return generatorYield(frame, iterNextObj);
         } else {
             assert index == 1;
-            setState(frame, 0);
+            setStateAsInt(frame, stateSlot, 0);
             Object value = yieldValue.execute(frame);
             if (value instanceof Completion) {
                 Completion completion = (Completion) value;
@@ -177,14 +172,14 @@ public class YieldNode extends JavaScriptNode implements ResumableNode, SuspendN
         JSWriteFrameSlotNode writeYieldValueCopy = cloneUninitialized(generatorYieldNode instanceof FrameYieldResultNode ? ((FrameYieldResultNode) generatorYieldNode).writeYieldValueNode : null,
                         materializedTags);
         if (this instanceof YieldStarNode) {
-            return createYieldStar(context, expressionCopy, yieldValueCopy, returnCopy, writeYieldValueCopy);
+            return createYieldStar(context, stateSlot, expressionCopy, yieldValueCopy, returnCopy, writeYieldValueCopy);
         } else {
-            return createYield(context, expressionCopy, yieldValueCopy, returnCopy, writeYieldValueCopy);
+            return createYield(context, stateSlot, expressionCopy, yieldValueCopy, returnCopy, writeYieldValueCopy);
         }
     }
 }
 
-class YieldStarNode extends YieldNode {
+class YieldStarNode extends YieldNode implements ResumableNode.WithObjectState {
     @Child private GetIteratorNode getIteratorNode;
     @Child private IteratorNextNode iteratorNextNode;
     @Child private IteratorCompleteNode iteratorCompleteNode;
@@ -197,8 +192,8 @@ class YieldStarNode extends YieldNode {
     private final ConditionProfile returnOrExceptionProfile = ConditionProfile.createBinaryProfile();
     private final BranchProfile errorBranch = BranchProfile.create();
 
-    protected YieldStarNode(JSContext context, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
-        super(context, expression, yieldValue, returnNode, writeYieldResultNode);
+    protected YieldStarNode(JSContext context, JavaScriptNode expression, int stateSlot, JavaScriptNode yieldValue, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
+        super(context, stateSlot, expression, yieldValue, returnNode, writeYieldResultNode);
         this.getIteratorNode = GetIteratorNode.create(context);
         this.iteratorNextNode = IteratorNextNode.create();
         this.iteratorCompleteNode = IteratorCompleteNode.create(context);
@@ -210,8 +205,7 @@ class YieldStarNode extends YieldNode {
         this.iteratorCloseNode = IteratorCloseNode.create(context);
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
+    private Object executeBegin(VirtualFrame frame) {
         IteratorRecord iteratorRecord = getIteratorNode.execute(expression.execute(frame));
         Object received = Undefined.instance;
         Object innerResult = iteratorNextNode.execute(iteratorRecord, received);
@@ -222,17 +216,17 @@ class YieldStarNode extends YieldNode {
     }
 
     private Object saveStateAndYield(VirtualFrame frame, IteratorRecord iteratorRecord, Object innerResult) {
-        setState(frame, iteratorRecord);
+        setState(frame, stateSlot, iteratorRecord);
         return generatorYield(frame, innerResult);
     }
 
     @Override
-    public Object resume(VirtualFrame frame) {
-        Object state = getState(frame);
+    public Object execute(VirtualFrame frame) {
+        Object state = getState(frame, stateSlot);
         if (state == Undefined.instance) {
-            return execute(frame);
+            return executeBegin(frame);
         } else {
-            resetState(frame);
+            resetState(frame, stateSlot);
             IteratorRecord iteratorRecord = (IteratorRecord) state;
             Object received = yieldValue.execute(frame);
             if (!(received instanceof Completion)) {

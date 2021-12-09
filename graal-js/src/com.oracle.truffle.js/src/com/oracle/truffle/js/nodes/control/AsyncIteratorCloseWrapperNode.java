@@ -66,7 +66,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 /**
  * ES8 5.2 AsyncIteratorClose(iterator, completion).
  */
-public class AsyncIteratorCloseWrapperNode extends AwaitNode {
+public class AsyncIteratorCloseWrapperNode extends AwaitNode implements ResumableNode.WithObjectState {
 
     @Child private JavaScriptNode loopNode;
     @Child private GetMethodNode getReturnNode;
@@ -78,20 +78,21 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
     private final BranchProfile notDoneBranch = BranchProfile.create();
     @Child private InteropLibrary exceptions;
 
-    protected AsyncIteratorCloseWrapperNode(JSContext context, JavaScriptNode loopNode, JavaScriptNode iteratorNode, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
-        super(context, null, asyncContextNode, asyncResultNode);
+    protected AsyncIteratorCloseWrapperNode(JSContext context, int stateSlot, JavaScriptNode loopNode, JavaScriptNode iteratorNode,
+                    JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
+        super(context, stateSlot, null, asyncContextNode, asyncResultNode);
         this.loopNode = loopNode;
         this.iteratorNode = iteratorNode;
 
         this.getReturnNode = GetMethodNode.create(context, "return");
     }
 
-    public static JavaScriptNode create(JSContext context, JavaScriptNode loopNode, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
-        return new AsyncIteratorCloseWrapperNode(context, loopNode, iterator, asyncContextNode, asyncResultNode);
+    public static JavaScriptNode create(JSContext context, int stateSlot, JavaScriptNode loopNode, JavaScriptNode iterator,
+                    JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
+        return new AsyncIteratorCloseWrapperNode(context, stateSlot, loopNode, iterator, asyncContextNode, asyncResultNode);
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
+    private Object executeBegin(VirtualFrame frame) {
         Object result;
         Object innerResult;
         Completion completion;
@@ -146,17 +147,17 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
                 }
             }
         }
-        setState(frame, completion);
+        setState(frame, stateSlot, completion);
         return suspendAwait(frame, innerResult);
     }
 
     @Override
-    public Object resume(VirtualFrame frame) {
-        Object state = getState(frame);
+    public Object execute(VirtualFrame frame) {
+        Object state = getState(frame, stateSlot);
         if (state == Undefined.instance) {
-            return execute(frame);
+            return executeBegin(frame);
         } else {
-            resetState(frame);
+            resetState(frame, stateSlot);
             Completion completion = (Completion) state;
             if (completion.isThrow()) {
                 throw JSRuntime.rethrow((Throwable) completion.getValue());
@@ -196,8 +197,8 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new AsyncIteratorCloseWrapperNode(context, cloneUninitialized(loopNode, materializedTags), cloneUninitialized(iteratorNode, materializedTags),
-                        cloneUninitialized(readAsyncContextNode, materializedTags),
-                        cloneUninitialized(readAsyncResultNode, materializedTags));
+        return new AsyncIteratorCloseWrapperNode(context, stateSlot,
+                        cloneUninitialized(loopNode, materializedTags), cloneUninitialized(iteratorNode, materializedTags),
+                        cloneUninitialized(readAsyncContextNode, materializedTags), cloneUninitialized(readAsyncResultNode, materializedTags));
     }
 }

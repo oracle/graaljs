@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,7 @@ import com.oracle.truffle.js.nodes.control.YieldException;
 import java.util.Set;
 
 @NodeInfo(cost = NodeCost.NONE)
-public class DualNode extends JavaScriptNode implements SequenceNode, ResumableNode {
+public class DualNode extends JavaScriptNode implements SequenceNode, ResumableNode.WithIntState {
 
     @Child private JavaScriptNode left;
     @Child private JavaScriptNode right;
@@ -155,14 +155,14 @@ public class DualNode extends JavaScriptNode implements SequenceNode, ResumableN
     }
 
     @Override
-    public Object resume(VirtualFrame frame) {
-        int state = getStateAsIntAndReset(frame);
+    public Object resume(VirtualFrame frame, int stateSlot) {
+        int state = getStateAsIntAndReset(frame, stateSlot);
         if (state == 0) {
             left.executeVoid(frame);
             try {
                 return right.execute(frame);
             } catch (YieldException e) {
-                setState(frame, 1);
+                setStateAsInt(frame, stateSlot, 1);
                 throw e;
             }
         } else {
@@ -170,7 +170,7 @@ public class DualNode extends JavaScriptNode implements SequenceNode, ResumableN
             try {
                 return right.execute(frame);
             } catch (YieldException e) {
-                setState(frame, 1);
+                setStateAsInt(frame, stateSlot, 1);
                 throw e;
             }
         }

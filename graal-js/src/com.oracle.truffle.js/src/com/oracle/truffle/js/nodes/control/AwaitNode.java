@@ -93,8 +93,9 @@ import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
-public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendNode {
+public class AwaitNode extends JavaScriptNode implements ResumableNode.WithIntState, SuspendNode {
 
+    protected final int stateSlot;
     @Child protected JavaScriptNode expression;
     @Child protected JSReadFrameSlotNode readAsyncResultNode;
     @Child protected JSReadFrameSlotNode readAsyncContextNode;
@@ -118,11 +119,13 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     static final HiddenKey ASYNC_GENERATOR = new HiddenKey("AsyncGenerator");
     static final HiddenKey ASYNC_CALL_NODE = new HiddenKey("AsyncCallNode");
 
-    protected AwaitNode(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode) {
-        this(context, expression, readAsyncContextNode, readAsyncResultNode, null);
+    protected AwaitNode(JSContext context, int stateSlot, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode) {
+        this(context, stateSlot, expression, readAsyncContextNode, readAsyncResultNode, null);
     }
 
-    private AwaitNode(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode, JSTargetableNode materializedInputNode) {
+    private AwaitNode(JSContext context, int stateSlot, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode,
+                    JSTargetableNode materializedInputNode) {
+        this.stateSlot = stateSlot;
         this.context = context;
         this.expression = expression;
         this.readAsyncResultNode = readAsyncResultNode;
@@ -145,14 +148,21 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         this.materializedInputNode = materializedInputNode;
     }
 
-    public static AwaitNode create(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode) {
-        return new AwaitNode(context, expression, readAsyncContextNode, readAsyncResultNode, null);
+    public static AwaitNode create(JSContext context, int stateSlot, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode) {
+        return new AwaitNode(context, stateSlot, expression, readAsyncContextNode, readAsyncResultNode, null);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        Object value = expression.execute(frame);
-        return suspendAwait(frame, value);
+        int index = getStateAsInt(frame, stateSlot);
+        if (index == 0) {
+            Object value = expression.execute(frame);
+            setStateAsInt(frame, stateSlot, 1);
+            return suspendAwait(frame, value);
+        } else {
+            setStateAsInt(frame, stateSlot, 0);
+            return resumeAwait(frame);
+        }
     }
 
     @Override
@@ -167,7 +177,8 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializationNeeded() && materializedTags.contains(JSTags.ControlFlowBranchTag.class)) {
             JSTargetableNode materializedInput = JSMaterializedInvokeTargetableNode.EchoTargetValueNode.create();
-            AwaitNode materialized = new AwaitNode(context, cloneUninitialized(expression, materializedTags), cloneUninitialized(readAsyncContextNode, materializedTags),
+            AwaitNode materialized = new AwaitNode(context, stateSlot, cloneUninitialized(expression, materializedTags),
+                            cloneUninitialized(readAsyncContextNode, materializedTags),
                             cloneUninitialized(readAsyncResultNode, materializedTags), materializedInput);
             transferSourceSectionAndTags(this, materialized);
             return materialized;
@@ -270,19 +281,6 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     @Override
     public Object getNodeObject() {
         return JSTags.createNodeObjectDescriptor("type", JSTags.ControlFlowBranchTag.Type.Await.name());
-    }
-
-    @Override
-    public Object resume(VirtualFrame frame) {
-        int index = getStateAsInt(frame);
-        if (index == 0) {
-            Object value = expression.execute(frame);
-            setState(frame, 1);
-            return suspendAwait(frame, value);
-        } else {
-            setState(frame, 0);
-            return resumeAwait(frame);
-        }
     }
 
     protected Object resumeAwait(VirtualFrame frame) {
@@ -389,7 +387,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         JavaScriptNode expressionCopy = cloneUninitialized(expression, materializedTags);
         JSReadFrameSlotNode asyncResultCopy = cloneUninitialized(readAsyncResultNode, materializedTags);
         JSReadFrameSlotNode asyncContextCopy = cloneUninitialized(readAsyncContextNode, materializedTags);
-        return create(context, expressionCopy, asyncContextCopy, asyncResultCopy);
+        return create(context, stateSlot, expressionCopy, asyncContextCopy, asyncResultCopy);
     }
 
     public static List<TruffleStackTraceElement> findAsyncStackFramesFromPromise(DynamicObject promise) {

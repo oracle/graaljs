@@ -64,33 +64,33 @@ public class AsyncIteratorNextNode extends AwaitNode {
     @Child private IsObjectNode isObjectNode;
     private final BranchProfile errorBranch = BranchProfile.create();
 
-    protected AsyncIteratorNextNode(JSContext context, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
-        super(context, iterator, asyncContextNode, asyncResultNode);
+    protected AsyncIteratorNextNode(JSContext context, int stateSlot, JavaScriptNode iterator,
+                    JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
+        super(context, stateSlot, iterator, asyncContextNode, asyncResultNode);
         this.methodCallNode = JSFunctionCallNode.createCall();
         this.isObjectNode = IsObjectNode.create();
     }
 
-    public static AwaitNode create(JSContext context, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
-        return new AsyncIteratorNextNode(context, iterator, asyncContextNode, asyncResultNode);
+    public static AwaitNode create(JSContext context, int stateSlot, JavaScriptNode iterator,
+                    JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
+        return new AsyncIteratorNextNode(context, stateSlot, iterator, asyncContextNode, asyncResultNode);
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
+    private Object executeBegin(VirtualFrame frame) {
         IteratorRecord iteratorRecord = (IteratorRecord) expression.execute(frame);
         Object next = iteratorRecord.getNextMethod();
         DynamicObject iterator = iteratorRecord.getIterator();
         Object nextResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, next));
-        setState(frame, 1);
+        setStateAsInt(frame, stateSlot, 1);
         return suspendAwait(frame, nextResult);
     }
 
     @Override
-    public Object resume(VirtualFrame frame) {
-        int index = getStateAsInt(frame);
+    public Object execute(VirtualFrame frame) {
+        int index = getStateAsIntAndReset(frame, stateSlot);
         if (index == 0) {
-            return execute(frame);
+            return executeBegin(frame);
         } else {
-            setState(frame, 0);
             Object result = resumeAwait(frame);
             if (!isObjectNode.executeBoolean(result)) {
                 errorBranch.enter();
@@ -102,7 +102,7 @@ public class AsyncIteratorNextNode extends AwaitNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new AsyncIteratorNextNode(context, cloneUninitialized(expression, materializedTags), cloneUninitialized(readAsyncContextNode, materializedTags),
-                        cloneUninitialized(readAsyncResultNode, materializedTags));
+        return new AsyncIteratorNextNode(context, stateSlot, cloneUninitialized(expression, materializedTags),
+                        cloneUninitialized(readAsyncContextNode, materializedTags), cloneUninitialized(readAsyncResultNode, materializedTags));
     }
 }
