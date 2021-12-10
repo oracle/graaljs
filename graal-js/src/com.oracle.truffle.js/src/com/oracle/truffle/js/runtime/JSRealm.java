@@ -442,8 +442,6 @@ public class JSRealm {
     private long nanoToCurrentTimeOffset;
     private long lastFuzzyTime = Long.MIN_VALUE;
 
-    private OutputStream outputStream;
-    private OutputStream errorStream;
     private PrintWriterWrapper outputWriter;
     private PrintWriterWrapper errorWriter;
 
@@ -770,10 +768,8 @@ public class JSRealm {
             this.javaImporterPrototype = null;
         }
 
-        this.outputStream = env.out();
-        this.errorStream = env.err();
-        this.outputWriter = new PrintWriterWrapper(outputStream, true);
-        this.errorWriter = new PrintWriterWrapper(errorStream, true);
+        this.outputWriter = new PrintWriterWrapper(env.out(), true);
+        this.errorWriter = new PrintWriterWrapper(env.err(), true);
         this.consoleUtil = new JSConsoleUtil();
 
         if (context.getContextOptions().isCommonJSRequire()) {
@@ -2150,12 +2146,7 @@ public class JSRealm {
         getContext().setAllocationReporter(newEnv);
         getContext().getContextOptions().setOptionValues(newEnv.getOptions());
 
-        if (newEnv.out() != getOutputStream()) {
-            setOutputWriter(null, newEnv.out());
-        }
-        if (newEnv.err() != getErrorStream()) {
-            setErrorWriter(null, newEnv.err());
-        }
+        setOutputStreamsFromEnv(newEnv);
 
         // During context pre-initialization, optional globals are not added to global
         // environment. During context-patching time, we are obliged to call addOptionalGlobals
@@ -2183,12 +2174,7 @@ public class JSRealm {
             return;
         }
 
-        if (getEnv().out() != getOutputStream()) {
-            setOutputWriter(null, getEnv().out());
-        }
-        if (getEnv().err() != getErrorStream()) {
-            setErrorWriter(null, getEnv().err());
-        }
+        setOutputStreamsFromEnv(getEnv());
 
         addOptionalGlobals();
 
@@ -2197,6 +2183,15 @@ public class JSRealm {
         initTimeOffsetAndRandom();
 
         addStaticRegexResultProperties();
+    }
+
+    private void setOutputStreamsFromEnv(TruffleLanguage.Env newEnv) {
+        if (newEnv.out() != outputWriter.getDelegate()) {
+            setOutputWriter(null, newEnv.out());
+        }
+        if (newEnv.err() != errorWriter.getDelegate()) {
+            setErrorWriter(null, newEnv.err());
+        }
     }
 
     private void preinitializeObjects() {
@@ -2301,34 +2296,18 @@ public class JSRealm {
         return getEnv().getOptions();
     }
 
+    /**
+     * Returns the environment's output stream as a PrintWriter.
+     */
     public final PrintWriter getOutputWriter() {
         return outputWriter;
     }
 
     /**
-     * Returns the stream used by {@link #getOutputWriter}, or null if the stream is not available.
-     *
-     * Do not write to the stream directly, always use the {@link #getOutputWriter writer} instead.
-     * Use this method only to check if the current writer is already writing to the stream you want
-     * to use, in which case you can avoid creating a new {@link PrintWriter}.
+     * Returns the environment's error stream as a PrintWriter.
      */
-    public final OutputStream getOutputStream() {
-        return outputStream;
-    }
-
     public final PrintWriter getErrorWriter() {
         return errorWriter;
-    }
-
-    /**
-     * Returns the stream used by {@link #getErrorWriter}, or null if the stream is not available.
-     *
-     * Do not write to the stream directly, always use the {@link #getErrorWriter writer} instead.
-     * Use this method only to check if the current writer is already writing to the stream you want
-     * to use, in which case you can avoid creating a new {@link PrintWriter}.
-     */
-    public final OutputStream getErrorStream() {
-        return errorStream;
     }
 
     public final void setOutputWriter(Writer writer, OutputStream stream) {
@@ -2341,7 +2320,6 @@ public class JSRealm {
                 this.outputWriter.setDelegate(writer);
             }
         }
-        this.outputStream = stream;
     }
 
     public final void setErrorWriter(Writer writer, OutputStream stream) {
@@ -2354,7 +2332,6 @@ public class JSRealm {
                 this.errorWriter.setDelegate(writer);
             }
         }
-        this.errorStream = stream;
     }
 
     public long nanoTime() {
