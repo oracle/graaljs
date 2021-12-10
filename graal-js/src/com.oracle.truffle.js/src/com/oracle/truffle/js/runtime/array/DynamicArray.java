@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.builtins.ArrayAccess;
 
 /**
@@ -75,6 +76,15 @@ public abstract class DynamicArray extends ScriptArray {
         CompilerAsserts.neverPartOfCompilation();
         this.integrityLevel = integrityLevel;
         this.cache = cache;
+        if (JSConfig.SubstrateVM && integrityLevel == INTEGRITY_LEVEL_NONE) {
+            // In SVM mode, pre-initialize the cache to allow aux engine cache storage.
+            cache.withIntegrityLevel[INTEGRITY_LEVEL_NONE] = this;
+            for (int level = 1; level < INTEGRITY_LEVELS; level++) {
+                if (cache.withIntegrityLevel[level] == null) {
+                    cache.withIntegrityLevel[level] = withIntegrityLevel(level);
+                }
+            }
+        }
     }
 
     protected static DynamicArrayCache createCache() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,8 +53,11 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  * invalidated if the Array.prototype and Object.prototype is ever assigned an indexed property.
  */
 public final class ConstantEmptyPrototypeArray extends AbstractConstantEmptyArray {
+
+    private static final ConstantEmptyPrototypeArray CONSTANT_EMPTY_PROTOTYPE_ARRAY = new ConstantEmptyPrototypeArray(INTEGRITY_LEVEL_NONE, createCache());
+
     public static ScriptArray createConstantEmptyPrototypeArray() {
-        return new ConstantEmptyPrototypeArray(INTEGRITY_LEVEL_NONE, createCache());
+        return CONSTANT_EMPTY_PROTOTYPE_ARRAY;
     }
 
     private ConstantEmptyPrototypeArray(int integrityLevel, DynamicArrayCache cache) {
