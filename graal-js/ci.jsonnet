@@ -92,6 +92,17 @@ local ci = import '../ci.jsonnet';
     timelimit: '30:00',
   },
 
+  local auxEngineCache = {
+    suiteimports+:: ['vm', 'substratevm', 'tools'],
+    nativeimages+:: ['lib:jsvm'],
+    graalvmtests:: '../../graalvm-tests',
+    run+: [
+      ['mx', 'build'],
+      ['python', '../../graalvm-tests/test.py', '-g', ['mx', '--quiet', 'graalvm-home'], '--print-revisions', '--keep-on-error', 'test/aux-engine-cache'],
+    ],
+    timelimit: '30:00',
+  },
+
   builds: [
     // GATE
     graalJs + common.jdk8  + common.gate   + common.linux          + common.gateStyleFullBuild                                                + {name: 'js-gate-style-fullbuild-jdk8-linux-amd64'},
@@ -111,6 +122,7 @@ local ci = import '../ci.jsonnet';
     graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('tck')                                                          + {name: 'js-gate-tck-jdk17-linux-amd64'}         + common.js_unittest,
     graalJs + common.jdk17 + common.gate   + common.linux          + webassemblyTest                                                          + {name: 'js-gate-webassembly-jdk17-linux-amd64'} + common.js_unittest,
     graalJs + common.jdk17 + common.gate   + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-gate-native-image-smoke-test-jdk17-linux-amd64'},
+    graalJs + common.jdk17 + common.gate   + common.linux          + auxEngineCache                                                      + ee + {name: 'js-gate-aux-engine-cache-jdk17-linux-amd64'},
 
     // jdk 11 - linux
     graalJs + common.jdk11 + common.gate   + common.linux          + gateTags('default')                                                 + ce + {name: 'js-gate-default-ce-jdk11-linux-amd64'}  + common.js_unittest,

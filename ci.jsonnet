@@ -55,10 +55,16 @@ local defs = import 'defs.jsonnet';
     export_envvars:: [['set-export', key, self.envvars[key]] for key in std.objectFields(self.envvars) if std.length(self.envvars[key]) > 0],
     cd:: '',
     cd_run:: if self.cd != '' then [['cd', self.cd]] else [],
+    graalvmtests:: '',
+    graalvmtests_run:: if self.graalvmtests != '' then [
+      ['git', 'clone', ['mx', 'urlrewrite', 'https://github.com/graalvm/graalvm-tests.git'], self.graalvmtests],
+      ['git', '-C', self.graalvmtests, 'checkout', '75b6a9e16ebbfd8b9b0a24e4be7c4378e3281204'],
+    ] else [],
     setup+: self.graalvm.setup,
     run+: []
       + self.export_envvars
       + self.cd_run
+      + self.graalvmtests_run
       + (if std.length(self.cd_run) > 0 then [['mx', 'sversions']] else []),
     timelimit: "00:30:00",
   },

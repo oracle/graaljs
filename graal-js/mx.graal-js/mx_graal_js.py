@@ -335,6 +335,10 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
             jar_distributions=['graal-js:GRAALJS_LAUNCHER'],
             main_class='com.oracle.truffle.js.shell.JSLauncher',
             build_args=['-H:+TruffleCheckBlockListMethods'],
+            build_args_enterprise=[
+                '-H:+AuxiliaryEngineCache',
+                '-H:ReservedAuxiliaryImageBytes=2145482548',
+            ] if not mx.is_windows() else [],
             language='js',
         )
     ],
