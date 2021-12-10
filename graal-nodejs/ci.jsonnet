@@ -102,7 +102,6 @@ local ci = import '../ci.jsonnet';
 
   builds: [
     // gates
-    graalNodeJs + common.jdk8  + common.gate      + common.linux                             + common.gateStyleFullBuild                                                            + {name: 'nodejs-gate-style-fullbuild-jdk8-linux-amd64'},
     graalNodeJs + common.jdk11 + common.gate      + common.linux                             + common.gateStyleFullBuild                                                            + {name: 'nodejs-gate-style-fullbuild-jdk11-linux-amd64'},
     graalNodeJs + common.jdk17 + common.gate      + common.linux                             + common.gateStyleFullBuild                                                            + {name: 'nodejs-gate-style-fullbuild-jdk17-linux-amd64'},
 
