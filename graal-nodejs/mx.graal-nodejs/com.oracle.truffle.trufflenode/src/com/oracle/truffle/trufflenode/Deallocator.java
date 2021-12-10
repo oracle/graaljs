@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.trufflenode;
 
+import java.lang.ref.Cleaner;
 import java.nio.ByteBuffer;
 
 /**
@@ -49,8 +50,10 @@ import java.nio.ByteBuffer;
  */
 final class Deallocator {
 
+    private final Cleaner cleaner;
+
     Deallocator() {
-        throw new UnsupportedOperationException();
+        this.cleaner = Cleaner.create();
     }
 
     /**
@@ -59,9 +62,10 @@ final class Deallocator {
      * @param buffer buffer whose memory should be deallocated once it is no longer used.
      * @param pointer pointer to the memory that should be deallocated.
      */
-    @SuppressWarnings("static-method")
     public void register(ByteBuffer buffer, long pointer) {
-        throw new UnsupportedOperationException();
+        cleaner.register(buffer, () -> {
+            NativeAccess.deallocate(pointer);
+        });
     }
 
 }

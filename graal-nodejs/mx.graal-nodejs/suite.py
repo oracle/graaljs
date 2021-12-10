@@ -80,31 +80,8 @@ suite = {
         "sdk:LAUNCHER_COMMON",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-      "javaCompliance" : "8+",
-      "checkstyleVersion" : "8.8",
-      "workingSets" : "Truffle,JavaScript,NodeJS",
-    },
-    "com.oracle.truffle.trufflenode.jdk8" : {
-      "subDir" : "mx.graal-nodejs",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.trufflenode",
-      ],
-      "overlayTarget" : "com.oracle.truffle.trufflenode",
-      "javaCompliance" : "8",
-      "checkstyle" : "com.oracle.truffle.trufflenode",
-      "workingSets" : "Truffle,JavaScript,NodeJS",
-    },
-    "com.oracle.truffle.trufflenode.jdk11" : {
-      "subDir" : "mx.graal-nodejs",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.trufflenode",
-      ],
-      "overlayTarget" : "com.oracle.truffle.trufflenode",
-      "multiReleaseJarVersion" : "11",
       "javaCompliance" : "11+",
-      "checkstyle" : "com.oracle.truffle.trufflenode",
+      "checkstyleVersion" : "8.8",
       "workingSets" : "Truffle,JavaScript,NodeJS",
     },
     "com.oracle.truffle.trufflenode.test" : {
@@ -115,7 +92,7 @@ suite = {
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.trufflenode",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "Truffle,JavaScript,NodeJS",
     },
     "coremodules" : {
