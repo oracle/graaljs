@@ -52,7 +52,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.js.runtime.util.BufferUtil;
 
 /**
  * Utility class for calls to library methods that require a {@link TruffleBoundary}.
@@ -419,14 +418,14 @@ public final class Boundaries {
     public static void byteBufferPutSlice(ByteBuffer dst, int dstPos, ByteBuffer src, int srcPos, int srcLimit) {
         ByteBuffer slice = byteBufferSlice(src, srcPos, srcLimit);
         ByteBuffer dstDup = dst.duplicate();
-        BufferUtil.asBaseBuffer(dstDup).position(dstPos);
+        dstDup.position(dstPos);
         dstDup.put(slice);
     }
 
     @TruffleBoundary(allowInlining = true)
     public static ByteBuffer byteBufferSlice(ByteBuffer buf, int pos, int limit) {
         ByteBuffer dup = buf.duplicate();
-        BufferUtil.asBaseBuffer(dup).position(pos).limit(limit);
+        dup.position(pos).limit(limit);
         return dup.slice();
     }
 

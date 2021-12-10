@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
-
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -1625,7 +1623,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 if (getContext().isOptionDirectByteBuffer()) {
                     ByteBuffer buffer = ByteBuffer.allocateDirect(bytes.length);
                     buffer.put(bytes);
-                    asBaseBuffer(buffer).rewind();
+                    buffer.rewind();
                     arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(getContext(), realm, buffer);
                 } else {
                     arrayBuffer = JSArrayBuffer.createArrayBuffer(getContext(), realm, bytes);

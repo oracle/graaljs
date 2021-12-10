@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.trufflenode.serialization;
 
-import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
-
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -573,7 +571,7 @@ public class Deserializer {
             throw underflowError();
         }
         int position = buffer.position();
-        asBaseBuffer(buffer).position(position + length);
+        buffer.position(position + length);
         return position;
     }
 
