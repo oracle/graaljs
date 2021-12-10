@@ -147,7 +147,7 @@ public final class FunctionRootNode extends JavaScriptRealmBoundaryRootNode impl
     @TruffleBoundary
     public Map<String, Object> getDebugProperties() {
         Map<String, Object> map = super.getDebugProperties();
-        map.put("name", "function " + getName() + "(" + getParamCount() + "/" + getFrameDescriptor().getSize() + ")");
+        map.put("name", "function " + getName() + "(" + getParamCount() + "/" + getFrameDescriptor().getNumberOfSlots() + ")");
         return map;
     }
 
