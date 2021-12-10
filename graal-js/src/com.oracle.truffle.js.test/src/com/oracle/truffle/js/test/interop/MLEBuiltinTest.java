@@ -40,15 +40,8 @@
  */
 package com.oracle.truffle.js.test.interop;
 
-import com.oracle.truffle.js.test.JSTest;
-import com.oracle.truffle.js.test.builtins.ReadOnlySeekableByteArrayChannel;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.FileSystem;
-import org.graalvm.polyglot.proxy.ProxyExecutable;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.net.URI;
@@ -65,8 +58,17 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.junit.Assume;
+import org.junit.Test;
+
+import com.oracle.truffle.js.test.JSTest;
+import com.oracle.truffle.js.test.builtins.ReadOnlySeekableByteArrayChannel;
 
 public class MLEBuiltinTest {
 
@@ -118,6 +120,7 @@ public class MLEBuiltinTest {
 
     @Test
     public void testWithReferencer() throws IOException {
+        Assume.assumeFalse(System.getProperty("os.name").contains("Windows"));
         Map<String, String> testMappings = new HashMap<>();
         testMappings.put("foo:/some/ref.mjs", "/foo/bar");
         testMappings.put("/some/ref.mjs", "/some/ref.mjs");
@@ -179,7 +182,7 @@ public class MLEBuiltinTest {
         @Override
         public Path parsePath(String path) {
             if (virtualModules.containsKey(path)) {
-                this.expectedPath = Paths.get(path);
+                this.expectedPath = Paths.get(path).toAbsolutePath();
                 this.expectedModule = virtualModules.get(path);
                 return expectedPath;
             } else {

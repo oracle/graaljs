@@ -46,7 +46,7 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -168,7 +168,7 @@ public final class JSTestRunner extends ParentRunner<TestCase> {
     public static String readAllLines(Path file) throws IOException {
         // fix line feeds for non unix os
         StringBuilder outFile = new StringBuilder();
-        for (String line : Files.readAllLines(file, Charset.defaultCharset())) {
+        for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
             outFile.append(line).append(LF);
         }
         return outFile.toString();

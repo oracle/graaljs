@@ -44,6 +44,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Creation of PrintWriter is expensive, this is why we change just the delegate writer in this
@@ -58,7 +59,7 @@ public final class PrintWriterWrapper extends PrintWriter {
     }
 
     private PrintWriterWrapper(OutputStreamWrapper outWrapper, boolean autoFlush) {
-        this(new OutputStreamWriter(outWrapper), autoFlush);
+        this(new OutputStreamWriter(outWrapper, StandardCharsets.UTF_8), autoFlush);
         this.outWrapper = outWrapper;
     }
 
