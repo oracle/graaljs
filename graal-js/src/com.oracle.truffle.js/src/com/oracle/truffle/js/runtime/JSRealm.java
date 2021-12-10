@@ -514,7 +514,7 @@ public class JSRealm {
 
     protected JSRealm(JSContext context, TruffleLanguage.Env env, JSRealm parentRealm) {
         this.context = context;
-        this.truffleLanguageEnv = env; // can be null
+        this.truffleLanguageEnv = env;
         this.parentRealm = parentRealm;
         if (parentRealm == null) {
             // top-level realm
@@ -770,8 +770,8 @@ public class JSRealm {
             this.javaImporterPrototype = null;
         }
 
-        this.outputStream = System.out;
-        this.errorStream = System.err;
+        this.outputStream = env.out();
+        this.errorStream = env.err();
         this.outputWriter = new PrintWriterWrapper(outputStream, true);
         this.errorWriter = new PrintWriterWrapper(errorStream, true);
         this.consoleUtil = new JSConsoleUtil();
