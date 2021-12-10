@@ -631,6 +631,14 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             assert finalValue.equals(actualValue);
             return true;
         }
+
+        @Override
+        protected String debugString() {
+            if (isConstantObjectSpecialization()) {
+                return super.debugString() + "(expectedObj=" + getExpectedObject() + ")";
+            }
+            return super.debugString();
+        }
     }
 
     public static final class FinalObjectPropertyGetNode extends AbstractFinalPropertyGetNode {
