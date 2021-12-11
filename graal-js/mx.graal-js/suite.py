@@ -123,6 +123,10 @@ suite = {
         "truffle:TRUFFLE_API",
         "truffle:ICU4J",
       ],
+      "requires" : [
+        "java.management",
+        "jdk.management",
+      ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR", "TRUFFLE_JS_FACTORY_PROCESSOR"],
       "jacoco" : "include",
       "javaCompliance" : "11+",
@@ -208,6 +212,9 @@ suite = {
         "com.oracle.truffle.js.codec",
         "truffle:TRUFFLE_API",
       ],
+      "requires": [
+        "java.compiler",
+      ],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "11+",
@@ -249,6 +256,9 @@ suite = {
         "GRAALJS",
         "truffle:TRUFFLE_TCK",
         "com.oracle.truffle.js.snapshot",
+      ],
+      "requires" : [
+        "java.desktop",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js",
@@ -292,6 +302,9 @@ suite = {
       "dependencies" : [
         "sdk:GRAAL_SDK",
       ],
+      "requires" : [
+        "java.scripting",
+      ],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "11+",
@@ -306,6 +319,10 @@ suite = {
         "sdk:GRAAL_SDK",
         "mx:JUNIT",
         "GRAALJS",
+      ],
+      "requires" : [
+        "java.scripting",
+        "java.desktop",
       ],
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "11+",
