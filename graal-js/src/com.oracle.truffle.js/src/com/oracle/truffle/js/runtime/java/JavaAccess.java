@@ -95,6 +95,7 @@ public final class JavaAccess {
         return isReflectionClass(type);
     }
 
+    @SuppressWarnings("deprecation")
     private static void checkReflectionPermission(final SecurityManager sm) {
         sm.checkPermission(new RuntimePermission(PERMISSION_JAVA_REFLECTION));
     }
