@@ -79,6 +79,9 @@ suite = {
         "graal-js:GRAALJS",
         "sdk:LAUNCHER_COMMON",
       ],
+      "requires" : [
+        "jdk.unsupported",
+      ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "11+",
       "checkstyleVersion" : "8.8",

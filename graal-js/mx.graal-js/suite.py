@@ -126,6 +126,7 @@ suite = {
       "requires" : [
         "java.management",
         "jdk.management",
+        "jdk.unsupported",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR", "TRUFFLE_JS_FACTORY_PROCESSOR"],
       "jacoco" : "include",
@@ -259,6 +260,7 @@ suite = {
       ],
       "requires" : [
         "java.desktop",
+        "jdk.unsupported",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js",
