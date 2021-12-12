@@ -55,7 +55,7 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 public final class LazyRegexResultArray extends AbstractConstantArray {
 
-    public static final LazyRegexResultArray LAZY_REGEX_RESULT_ARRAY = new LazyRegexResultArray(INTEGRITY_LEVEL_NONE, createCache());
+    public static final LazyRegexResultArray LAZY_REGEX_RESULT_ARRAY = new LazyRegexResultArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
 
     public static LazyRegexResultArray createLazyRegexResultArray() {
         return LAZY_REGEX_RESULT_ARRAY;

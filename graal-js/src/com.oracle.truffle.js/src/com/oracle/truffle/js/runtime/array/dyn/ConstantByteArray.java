@@ -50,7 +50,7 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class ConstantByteArray extends AbstractConstantArray {
-    private static final ConstantByteArray CONSTANT_BYTE_ARRAY = new ConstantByteArray(INTEGRITY_LEVEL_NONE, createCache());
+    private static final ConstantByteArray CONSTANT_BYTE_ARRAY = new ConstantByteArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
 
     public static ConstantByteArray createConstantByteArray() {
         return CONSTANT_BYTE_ARRAY;

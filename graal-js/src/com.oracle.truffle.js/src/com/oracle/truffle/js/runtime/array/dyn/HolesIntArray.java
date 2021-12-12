@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class HolesIntArray extends AbstractContiguousIntArray {
 
-    private static final HolesIntArray HOLES_INT_ARRAY = new HolesIntArray(INTEGRITY_LEVEL_NONE, createCache());
+    private static final HolesIntArray HOLES_INT_ARRAY = new HolesIntArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
     public static final int HOLE_VALUE = Integer.MIN_VALUE;
 
     private HolesIntArray(int integrityLevel, DynamicArrayCache cache) {

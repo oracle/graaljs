@@ -76,8 +76,12 @@ public abstract class DynamicArray extends ScriptArray {
         CompilerAsserts.neverPartOfCompilation();
         this.integrityLevel = integrityLevel;
         this.cache = cache;
-        if (JSConfig.SubstrateVM && integrityLevel == INTEGRITY_LEVEL_NONE) {
-            // In SVM mode, pre-initialize the cache to allow aux engine cache storage.
+    }
+
+    @SuppressWarnings("unchecked")
+    protected final <T extends ScriptArray> T maybePreinitializeCache() {
+        assert integrityLevel == INTEGRITY_LEVEL_NONE;
+        if (JSConfig.SubstrateVM) {
             cache.withIntegrityLevel[INTEGRITY_LEVEL_NONE] = this;
             for (int level = 1; level < INTEGRITY_LEVELS; level++) {
                 if (cache.withIntegrityLevel[level] == null) {
@@ -85,6 +89,7 @@ public abstract class DynamicArray extends ScriptArray {
                 }
             }
         }
+        return (T) this;
     }
 
     protected static DynamicArrayCache createCache() {

@@ -53,8 +53,8 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class ConstantObjectArray extends AbstractConstantArray {
-    private static final ConstantObjectArray CONSTANT_OBJECT_ARRAY = new ConstantObjectArray(false, INTEGRITY_LEVEL_NONE, createCache());
-    private static final ConstantObjectArray CONSTANT_HOLES_OBJECT_ARRAY = new ConstantObjectArray(true, INTEGRITY_LEVEL_NONE, createCache());
+    private static final ConstantObjectArray CONSTANT_OBJECT_ARRAY = new ConstantObjectArray(false, INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
+    private static final ConstantObjectArray CONSTANT_HOLES_OBJECT_ARRAY = new ConstantObjectArray(true, INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
 
     public static ConstantObjectArray createConstantObjectArray() {
         return CONSTANT_OBJECT_ARRAY;

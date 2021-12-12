@@ -51,7 +51,7 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
 
 public final class ZeroBasedIntArray extends AbstractIntArray {
 
-    private static final ZeroBasedIntArray ZERO_BASED_INT_ARRAY = new ZeroBasedIntArray(INTEGRITY_LEVEL_NONE, createCache());
+    private static final ZeroBasedIntArray ZERO_BASED_INT_ARRAY = new ZeroBasedIntArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
 
     public static ZeroBasedIntArray makeZeroBasedIntArray(DynamicObject object, int length, int usedLength, int[] array, int integrityLevel) {
         ZeroBasedIntArray arrayType = createZeroBasedIntArray().setIntegrityLevel(integrityLevel);

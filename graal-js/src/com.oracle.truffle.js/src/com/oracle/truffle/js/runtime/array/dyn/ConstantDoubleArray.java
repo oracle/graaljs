@@ -50,7 +50,7 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class ConstantDoubleArray extends AbstractConstantArray {
-    private static final ConstantDoubleArray CONSTANT_DOUBLE_ARRAY = new ConstantDoubleArray(INTEGRITY_LEVEL_NONE, createCache());
+    private static final ConstantDoubleArray CONSTANT_DOUBLE_ARRAY = new ConstantDoubleArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
 
     public static ConstantDoubleArray createConstantDoubleArray() {
         return CONSTANT_DOUBLE_ARRAY;

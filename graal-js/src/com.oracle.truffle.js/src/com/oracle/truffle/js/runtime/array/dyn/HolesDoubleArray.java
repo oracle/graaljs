@@ -53,7 +53,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
 
-    private static final HolesDoubleArray HOLES_DOUBLE_ARRAY = new HolesDoubleArray(INTEGRITY_LEVEL_NONE, createCache());
+    private static final HolesDoubleArray HOLES_DOUBLE_ARRAY = new HolesDoubleArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
     public static final long HOLE_VALUE = 0x7ff8000000000001L; // NaN + 1
     public static final double HOLE_VALUE_DOUBLE = Double.longBitsToDouble(HOLE_VALUE);
 

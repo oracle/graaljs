@@ -53,7 +53,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class HolesObjectArray extends AbstractContiguousObjectArray {
 
-    private static final HolesObjectArray HOLES_OBJECT_ARRAY = new HolesObjectArray(INTEGRITY_LEVEL_NONE, createCache());
+    private static final HolesObjectArray HOLES_OBJECT_ARRAY = new HolesObjectArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
 
     private HolesObjectArray(int integrityLevel, DynamicArrayCache cache) {
         super(integrityLevel, cache);

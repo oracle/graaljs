@@ -63,7 +63,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
  */
 public class LazyArray extends AbstractConstantArray {
 
-    private static final LazyArray LAZY_ARRAY = new LazyArray(INTEGRITY_LEVEL_NONE, createCache());
+    private static final LazyArray LAZY_ARRAY = new LazyArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
 
     protected LazyArray(int integrityLevel, DynamicArrayCache cache) {
         super(integrityLevel, cache);
