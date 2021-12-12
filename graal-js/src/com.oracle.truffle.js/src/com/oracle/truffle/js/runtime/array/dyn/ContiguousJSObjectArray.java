@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArray {
 
-    private static final ContiguousJSObjectArray CONTIGUOUS_JSOBJECT_ARRAY = new ContiguousJSObjectArray(INTEGRITY_LEVEL_NONE, createCache());
+    private static final ContiguousJSObjectArray CONTIGUOUS_JSOBJECT_ARRAY = new ContiguousJSObjectArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
 
     public static ContiguousJSObjectArray makeContiguousJSObjectArray(DynamicObject object, long length, JSDynamicObject[] array, long indexOffset, int arrayOffset, int usedLength,
                     int integrityLevel) {

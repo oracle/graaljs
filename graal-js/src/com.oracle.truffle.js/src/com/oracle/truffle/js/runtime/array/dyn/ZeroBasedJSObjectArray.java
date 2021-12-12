@@ -51,7 +51,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
 
-    private static final ZeroBasedJSObjectArray ZERO_BASED_JSOBJECT_ARRAY = new ZeroBasedJSObjectArray(INTEGRITY_LEVEL_NONE, createCache());
+    private static final ZeroBasedJSObjectArray ZERO_BASED_JSOBJECT_ARRAY = new ZeroBasedJSObjectArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
 
     public static <T> ZeroBasedJSObjectArray makeZeroBasedJSObjectArray(DynamicObject object, int length, int usedLength, T[] array, int integrityLevel) {
         ZeroBasedJSObjectArray arrayType = createZeroBasedJSObjectArray().setIntegrityLevel(integrityLevel);

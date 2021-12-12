@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,7 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
 
 public final class ContiguousDoubleArray extends AbstractContiguousDoubleArray {
 
-    private static final ContiguousDoubleArray CONTIGUOUS_DOUBLE_ARRAY = new ContiguousDoubleArray(INTEGRITY_LEVEL_NONE, createCache());
+    private static final ContiguousDoubleArray CONTIGUOUS_DOUBLE_ARRAY = new ContiguousDoubleArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
 
     public static ContiguousDoubleArray makeContiguousDoubleArray(DynamicObject object, long length, double[] array, long indexOffset, int arrayOffset, int usedLength, int integrityLevel) {
         ContiguousDoubleArray arrayType = createContiguousDoubleArray().setIntegrityLevel(integrityLevel);

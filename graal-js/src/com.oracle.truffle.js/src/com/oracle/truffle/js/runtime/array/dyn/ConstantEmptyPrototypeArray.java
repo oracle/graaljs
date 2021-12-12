@@ -54,7 +54,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  */
 public final class ConstantEmptyPrototypeArray extends AbstractConstantEmptyArray {
 
-    private static final ConstantEmptyPrototypeArray CONSTANT_EMPTY_PROTOTYPE_ARRAY = new ConstantEmptyPrototypeArray(INTEGRITY_LEVEL_NONE, createCache());
+    private static final ConstantEmptyPrototypeArray CONSTANT_EMPTY_PROTOTYPE_ARRAY = new ConstantEmptyPrototypeArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
 
     public static ScriptArray createConstantEmptyPrototypeArray() {
         return CONSTANT_EMPTY_PROTOTYPE_ARRAY;

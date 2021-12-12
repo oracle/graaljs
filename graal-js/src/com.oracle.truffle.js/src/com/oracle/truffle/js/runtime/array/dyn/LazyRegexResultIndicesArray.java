@@ -59,7 +59,7 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil.Constants;
 
 public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
 
-    public static final LazyRegexResultIndicesArray LAZY_REGEX_RESULT_INDICES_ARRAY = new LazyRegexResultIndicesArray(INTEGRITY_LEVEL_NONE, createCache());
+    public static final LazyRegexResultIndicesArray LAZY_REGEX_RESULT_INDICES_ARRAY = new LazyRegexResultIndicesArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
 
     public static LazyRegexResultIndicesArray createLazyRegexResultIndicesArray() {
         return LAZY_REGEX_RESULT_INDICES_ARRAY;

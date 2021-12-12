@@ -64,7 +64,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 public final class SparseArray extends DynamicArray {
 
-    private static final SparseArray SPARSE_ARRAY = new SparseArray(INTEGRITY_LEVEL_NONE, createCache());
+    private static final SparseArray SPARSE_ARRAY = new SparseArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
 
     private SparseArray(int integrityLevel, DynamicArrayCache cache) {
         super(integrityLevel, cache);
