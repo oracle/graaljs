@@ -131,7 +131,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR", "TRUFFLE_JS_FACTORY_PROCESSOR"],
       "jacoco" : "include",
       "javaCompliance" : "11+",
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -156,7 +156,7 @@ suite = {
       ],
       "jacoco" : "include",
       "javaCompliance" : "11+",
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "workingSets" : "Truffle,JavaScript",
     },
 
