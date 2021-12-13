@@ -84,8 +84,8 @@ public class AsyncGeneratorYieldNode extends AwaitNode {
     }
 
     public static AsyncGeneratorYieldNode createYieldStar(JSContext context, int stateSlot, JavaScriptNode expression,
-                    JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode, ReturnNode returnNode, JavaScriptNode readTemp, WriteNode writeTemp) {
-        return new AsyncGeneratorYieldStarNode(context, expression, stateSlot, readAsyncContextNode, readAsyncResultNode, returnNode, readTemp, writeTemp);
+                    JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode, ReturnNode returnNode, int iteratorTempSlot) {
+        return new AsyncGeneratorYieldStarNode(context, expression, stateSlot, readAsyncContextNode, readAsyncResultNode, returnNode, iteratorTempSlot);
     }
 
     @Override
@@ -156,8 +156,8 @@ public class AsyncGeneratorYieldNode extends AwaitNode {
 }
 
 class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
-    @Child private JavaScriptNode readIteratorTemp;
-    @Child private WriteNode writeIteratorTemp;
+
+    private final int iteratorTempSlot;
 
     @Child private GetIteratorNode getIteratorNode;
     @Child private IteratorNextNode iteratorNextNode;
@@ -169,10 +169,9 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
     @Child private JSFunctionCallNode callReturnNode;
 
     protected AsyncGeneratorYieldStarNode(JSContext context, JavaScriptNode expression, int stateSlot,
-                    JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readYieldResultNode, ReturnNode returnNode, JavaScriptNode readTemp, WriteNode writeTemp) {
+                    JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readYieldResultNode, ReturnNode returnNode, int iteratorTempSlot) {
         super(context, stateSlot, expression, readAsyncContextNode, readYieldResultNode, returnNode);
-        this.readIteratorTemp = readTemp;
-        this.writeIteratorTemp = writeTemp;
+        this.iteratorTempSlot = iteratorTempSlot;
 
         this.getIteratorNode = GetIteratorNode.createAsync(context, null);
         this.iteratorNextNode = IteratorNextNode.create();
@@ -199,10 +198,10 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         IteratorRecord iteratorRecord;
         if (state == 0) {
             iteratorRecord = getIteratorNode.execute(expression.execute(frame));
-            writeIteratorTemp.executeWrite(frame, iteratorRecord);
+            frame.setObject(iteratorTempSlot, iteratorRecord);
             state = loopBegin;
         } else {
-            iteratorRecord = (IteratorRecord) readIteratorTemp.execute(frame);
+            iteratorRecord = (IteratorRecord) frame.getObject(iteratorTempSlot);
         }
         DynamicObject iterator = iteratorRecord.getIterator();
 
@@ -346,7 +345,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
 
     private void reset(VirtualFrame frame) {
         setStateAsInt(frame, stateSlot, 0);
-        writeIteratorTemp.executeWrite(frame, Undefined.instance);
+        frame.setObject(iteratorTempSlot, Undefined.instance);
     }
 
     private Object callThrowMethod(Object throwMethod, DynamicObject iterator, Object received) {
@@ -368,6 +367,6 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return createYieldStar(context, stateSlot, cloneUninitialized(expression, materializedTags),
                         cloneUninitialized(readAsyncContextNode, materializedTags), cloneUninitialized(readAsyncResultNode, materializedTags), cloneUninitialized(returnNode, materializedTags),
-                        cloneUninitialized(readIteratorTemp, materializedTags), (WriteNode) cloneUninitialized((JavaScriptNode) writeIteratorTemp, materializedTags));
+                        iteratorTempSlot);
     }
 }

@@ -105,7 +105,6 @@ import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
 import com.oracle.truffle.js.nodes.access.WithTargetNode;
 import com.oracle.truffle.js.nodes.access.WithVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
-import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
 import com.oracle.truffle.js.nodes.arguments.AccessArgumentsArrayDirectlyNode;
 import com.oracle.truffle.js.nodes.arguments.AccessDerivedConstructorThisNode;
@@ -896,9 +895,10 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createAsyncGeneratorYieldStar(JSContext context, JSFrameDescriptor functionFrameDesc, JavaScriptNode expression,
-                    JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode, ReturnNode returnNode, JavaScriptNode readTemp, WriteNode writeTemp) {
+                    JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode, ReturnNode returnNode) {
         JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
-        return AsyncGeneratorYieldNode.createYieldStar(context, stateSlot.getIndex(), expression, asyncContextNode, asyncResultNode, returnNode, readTemp, writeTemp);
+        JSFrameSlot iteratorTempSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Object);
+        return AsyncGeneratorYieldNode.createYieldStar(context, stateSlot.getIndex(), expression, asyncContextNode, asyncResultNode, returnNode, iteratorTempSlot.getIndex());
     }
 
     public JavaScriptNode createAsyncFunctionBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeAsyncContext, JSReadFrameSlotNode readAsyncContext,
