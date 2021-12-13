@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.control;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -294,5 +295,10 @@ class YieldStarNode extends YieldNode implements ResumableNode.WithObjectState {
             throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
         }
         return (DynamicObject) innerResult;
+    }
+
+    @Override
+    public FrameSlotKind getStateSlotKind() {
+        return WithObjectState.super.getStateSlotKind();
     }
 }
