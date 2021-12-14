@@ -238,7 +238,6 @@ public final class SwitchNode extends StatementNode implements ResumableNode.Wit
             CompilerAsserts.partialEvaluationConstant(statementStartIndex);
             return statementStartIndex;
         } catch (YieldException e) {
-            assert stateSlot >= 0;
             setState(frame, stateSlot, new SwitchResumptionRecord(i, -1, null));
             throw e;
         }
@@ -260,7 +259,6 @@ public final class SwitchNode extends StatementNode implements ResumableNode.Wit
             }
             return result;
         } catch (YieldException e) {
-            assert stateSlot >= 0;
             setState(frame, stateSlot, new SwitchResumptionRecord(-1, statementIndex, result));
             throw e;
         }
