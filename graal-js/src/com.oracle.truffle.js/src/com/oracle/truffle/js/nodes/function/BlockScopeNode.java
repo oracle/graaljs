@@ -62,7 +62,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public abstract class BlockScopeNode extends JavaScriptNode implements ResumableNode, RepeatingNode {
+public abstract class BlockScopeNode extends JavaScriptNode implements ResumableNode.WithObjectState, RepeatingNode {
     @Child protected JavaScriptNode block;
 
     protected BlockScopeNode(JavaScriptNode block) {
@@ -182,14 +182,14 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         }
 
         @Override
-        public Object resume(VirtualFrame frame) {
+        public Object resume(VirtualFrame frame, int stateSlot) {
             // Q: Why do we exit the scope when we yield even though we resume back into it anyway?
             // A: This is in order to allow (side-effect-free) uses of outer block frame slots
             // during resumption before we reach this block scope again.
             // A simple example would be an assignment that checks the frame slot type before it
             // executes/resumes the right hand side, e.g.:
             // `let C = <scope> class C { [await](){} } </scope>;`
-            Object state = getStateAndReset(frame);
+            Object state = getStateAndReset(frame, stateSlot);
             if (state == Undefined.instance) {
                 appendScopeFrame(frame);
             } else {
@@ -198,7 +198,7 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
             try {
                 return block.execute(frame);
             } catch (YieldException e) {
-                setState(frame, getBlockScope(frame));
+                setState(frame, stateSlot, getBlockScope(frame));
                 throw e;
             } finally {
                 exitScope(frame);

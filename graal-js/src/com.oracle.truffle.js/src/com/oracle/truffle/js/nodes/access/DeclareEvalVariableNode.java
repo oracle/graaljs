@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,8 +79,7 @@ public class DeclareEvalVariableNode extends StatementNode {
         }
         assert isValidDynamicScopeObject(dynamicScope);
         if (!hasProperty.hasProperty(dynamicScope)) {
-            // must not have the same name declared in frame, it's either there or here
-            assert frame.getFrameDescriptor().findFrameSlot(varName) == null;
+            // Note: must not have the same name declared in frame, it's either there or here
             defineProperty.setValue(dynamicScope, Undefined.instance);
         }
         return EMPTY;

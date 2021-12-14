@@ -69,7 +69,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
  * </pre>
  */
 @NodeInfo(shortName = "switch")
-public final class SwitchNode extends StatementNode implements ResumableNode {
+public final class SwitchNode extends StatementNode implements ResumableNode.WithObjectState {
 
     @Children private final JavaScriptNode[] caseExpressions;
     @Children private final JavaScriptNode[] statements;
@@ -196,18 +196,18 @@ public final class SwitchNode extends StatementNode implements ResumableNode {
     }
 
     private Object executeDefault(VirtualFrame frame) {
-        int statementStartIndex = identifyTargetCase(frame, 0);
+        int statementStartIndex = identifyTargetCase(frame, 0, -1);
         return executeStatements(frame, statementStartIndex);
     }
 
     @Override
-    public Object resume(VirtualFrame frame) {
-        Object maybeState = getState(frame);
+    public Object resume(VirtualFrame frame, int stateSlot) {
+        Object maybeState = getState(frame, stateSlot);
         int caseIndex;
         int statementIndex;
         Object resumptionResult;
         if (maybeState instanceof SwitchResumptionRecord) {
-            resetState(frame);
+            resetState(frame, stateSlot);
             SwitchResumptionRecord state = (SwitchResumptionRecord) maybeState;
             caseIndex = state.caseIndex;
             statementIndex = state.statementIndex;
@@ -218,13 +218,13 @@ public final class SwitchNode extends StatementNode implements ResumableNode {
             resumptionResult = EMPTY;
         }
         if (caseIndex >= 0) {
-            statementIndex = identifyTargetCase(frame, caseIndex);
+            statementIndex = identifyTargetCase(frame, caseIndex, stateSlot);
         }
-        return executeStatements(frame, statementIndex, resumptionResult);
+        return executeStatements(frame, statementIndex, resumptionResult, stateSlot);
     }
 
     @ExplodeLoop
-    private int identifyTargetCase(VirtualFrame frame, int firstCase) {
+    private int identifyTargetCase(VirtualFrame frame, int firstCase, int stateSlot) {
         int i = 0;
         try {
             for (; i < caseExpressions.length; i++) {
@@ -238,17 +238,17 @@ public final class SwitchNode extends StatementNode implements ResumableNode {
             CompilerAsserts.partialEvaluationConstant(statementStartIndex);
             return statementStartIndex;
         } catch (YieldException e) {
-            setState(frame, new SwitchResumptionRecord(i, -1, null));
+            setState(frame, stateSlot, new SwitchResumptionRecord(i, -1, null));
             throw e;
         }
     }
 
     private Object executeStatements(VirtualFrame frame, int statementStartIndex) {
-        return executeStatements(frame, statementStartIndex, EMPTY);
+        return executeStatements(frame, statementStartIndex, EMPTY, -1);
     }
 
     @ExplodeLoop
-    private Object executeStatements(VirtualFrame frame, int statementStartIndex, Object initialResult) {
+    private Object executeStatements(VirtualFrame frame, int statementStartIndex, Object initialResult, int stateSlot) {
         int statementIndex = 0;
         Object result = initialResult;
         try {
@@ -259,7 +259,7 @@ public final class SwitchNode extends StatementNode implements ResumableNode {
             }
             return result;
         } catch (YieldException e) {
-            setState(frame, new SwitchResumptionRecord(-1, statementIndex, result));
+            setState(frame, stateSlot, new SwitchResumptionRecord(-1, statementIndex, result));
             throw e;
         }
     }

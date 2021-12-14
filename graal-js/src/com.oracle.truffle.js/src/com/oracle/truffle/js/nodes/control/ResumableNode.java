@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,52 +40,87 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.function.ToIntFunction;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public interface ResumableNode {
-    Object resume(VirtualFrame frame);
 
-    static GeneratorWrapperNode parent(ResumableNode node) {
-        Node parent = ((Node) node).getParent();
-        if (parent instanceof WrapperNode) {
-            assert ((WrapperNode) parent).getDelegateNode() == node;
-            parent = parent.getParent();
+    @SuppressWarnings("unused")
+    default Object resume(VirtualFrame frame, int stateSlot) {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    static JavaScriptNode createResumableNode(ResumableNode node, ToIntFunction<FrameSlotKind> newSlot) {
+        JavaScriptNode original = (JavaScriptNode) node;
+        if (node instanceof SuspendNode) {
+            return original;
         }
-        return (GeneratorWrapperNode) parent;
+        JavaScriptNode wrappedNode = GeneratorWrapperNode.createWrapper(original, newSlot.applyAsInt(node.getStateSlotKind()));
+        JavaScriptNode.transferSourceSectionAndTags(original, wrappedNode);
+        return wrappedNode;
     }
 
-    default void setState(VirtualFrame frame, Object state) {
-        parent(this).setState(frame, state);
+    default void resetState(VirtualFrame frame, int stateSlot) {
+        frame.setObject(stateSlot, Undefined.instance);
     }
 
-    default Object getState(VirtualFrame frame) {
-        return parent(this).getState(frame);
+    default FrameSlotKind getStateSlotKind() {
+        return FrameSlotKind.Illegal;
     }
 
-    default int getStateAsInt(VirtualFrame frame) {
-        return parent(this).getStateAsInt(frame);
-    }
+    interface WithObjectState extends ResumableNode {
+        default void setState(VirtualFrame frame, int stateSlot, Object state) {
+            assert frame.getFrameDescriptor().getSlotKind(stateSlot) == FrameSlotKind.Object;
+            frame.setObject(stateSlot, state);
+        }
 
-    default Object getStateAndReset(VirtualFrame frame) {
-        try {
-            return getState(frame);
-        } finally {
-            resetState(frame);
+        default Object getState(VirtualFrame frame, int stateSlot) {
+            assert frame.getFrameDescriptor().getSlotKind(stateSlot) == FrameSlotKind.Object;
+            return frame.getObject(stateSlot);
+        }
+
+        default Object getStateAndReset(VirtualFrame frame, int stateSlot) {
+            Object state = getState(frame, stateSlot);
+            resetState(frame, stateSlot);
+            return state;
+        }
+
+        @Override
+        default FrameSlotKind getStateSlotKind() {
+            return FrameSlotKind.Object;
         }
     }
 
-    default int getStateAsIntAndReset(VirtualFrame frame) {
-        try {
-            return getStateAsInt(frame);
-        } finally {
-            resetState(frame);
+    interface WithIntState extends ResumableNode {
+        default void setStateAsInt(VirtualFrame frame, int stateSlot, int state) {
+            assert frame.getFrameDescriptor().getSlotKind(stateSlot) == FrameSlotKind.Int;
+            frame.setInt(stateSlot, state);
         }
-    }
 
-    default void resetState(VirtualFrame frame) {
-        setState(frame, Undefined.instance);
+        default int getStateAsInt(VirtualFrame frame, int stateSlot) {
+            assert frame.getFrameDescriptor().getSlotKind(stateSlot) == FrameSlotKind.Int;
+            if (frame.isInt(stateSlot)) {
+                return frame.getInt(stateSlot);
+            } else {
+                assert frame.isObject(stateSlot) && frame.getObject(stateSlot) == Undefined.instance;
+                return 0;
+            }
+        }
+
+        default int getStateAsIntAndReset(VirtualFrame frame, int stateSlot) {
+            int state = getStateAsInt(frame, stateSlot);
+            resetState(frame, stateSlot);
+            return state;
+        }
+
+        @Override
+        default FrameSlotKind getStateSlotKind() {
+            return FrameSlotKind.Int;
+        }
     }
 }

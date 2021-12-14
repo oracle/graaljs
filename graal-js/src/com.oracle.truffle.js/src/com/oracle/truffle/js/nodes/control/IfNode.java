@@ -68,7 +68,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * 12.5 The if Statement.
  */
 @NodeInfo(shortName = "if")
-public final class IfNode extends StatementNode implements ResumableNode {
+public final class IfNode extends StatementNode implements ResumableNode.WithIntState {
 
     @Child private JavaScriptNode condition;
     @Child private JavaScriptNode thenPart;
@@ -185,8 +185,8 @@ public final class IfNode extends StatementNode implements ResumableNode {
     }
 
     @Override
-    public Object resume(VirtualFrame frame) {
-        int index = getStateAsIntAndReset(frame);
+    public Object resume(VirtualFrame frame, int stateSlot) {
+        int index = getStateAsIntAndReset(frame, stateSlot);
         if (index == 0 && conditionProfile.profile(executeCondition(frame)) || index == 1) {
             try {
                 if (thenPart != null) {
@@ -195,7 +195,7 @@ public final class IfNode extends StatementNode implements ResumableNode {
                     return EMPTY;
                 }
             } catch (YieldException e) {
-                setState(frame, 1);
+                setStateAsInt(frame, stateSlot, 1);
                 throw e;
             }
         } else {
@@ -207,7 +207,7 @@ public final class IfNode extends StatementNode implements ResumableNode {
                     return EMPTY;
                 }
             } catch (YieldException e) {
-                setState(frame, 2);
+                setStateAsInt(frame, stateSlot, 2);
                 throw e;
             }
         }

@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -52,8 +54,7 @@ import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.control.ReturnNode.FrameReturnNode;
-import com.oracle.truffle.js.nodes.control.YieldNode.ExceptionYieldResultNode;
-import com.oracle.truffle.js.nodes.control.YieldNode.YieldResultNode;
+import com.oracle.truffle.js.nodes.control.YieldResultNode.ExceptionYieldResultNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
@@ -65,31 +66,30 @@ import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-import java.util.Set;
-
-public class AsyncGeneratorYieldNode extends AwaitNode {
+public class AsyncGeneratorYieldNode extends AbstractAwaitNode implements ResumableNode.WithIntState {
     @Child protected ReturnNode returnNode;
     @Child private YieldResultNode generatorYieldNode;
 
-    protected AsyncGeneratorYieldNode(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readYieldResultNode, ReturnNode returnNode) {
-        super(context, expression, readAsyncContextNode, readYieldResultNode);
+    protected AsyncGeneratorYieldNode(JSContext context, int stateSlot, JavaScriptNode expression,
+                    JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readYieldResultNode, ReturnNode returnNode) {
+        super(context, stateSlot, expression, readAsyncContextNode, readYieldResultNode);
         this.returnNode = returnNode;
         this.generatorYieldNode = new ExceptionYieldResultNode();
     }
 
-    public static AsyncGeneratorYieldNode createYield(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode,
-                    ReturnNode returnNode) {
-        return new AsyncGeneratorYieldNode(context, expression, readAsyncContextNode, readAsyncResultNode, returnNode);
+    public static AsyncGeneratorYieldNode createYield(JSContext context, int stateSlot, JavaScriptNode expression,
+                    JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode, ReturnNode returnNode) {
+        return new AsyncGeneratorYieldNode(context, stateSlot, expression, readAsyncContextNode, readAsyncResultNode, returnNode);
     }
 
-    public static AsyncGeneratorYieldNode createYieldStar(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode,
-                    ReturnNode returnNode, JavaScriptNode readTemp, WriteNode writeTemp) {
-        return new AsyncGeneratorYieldStarNode(context, expression, readAsyncContextNode, readAsyncResultNode, returnNode, readTemp, writeTemp);
+    public static AsyncGeneratorYieldNode createYieldStar(JSContext context, int stateSlot, JavaScriptNode expression,
+                    JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode, ReturnNode returnNode, int iteratorTempSlot) {
+        return new AsyncGeneratorYieldStarNode(context, expression, stateSlot, readAsyncContextNode, readAsyncResultNode, returnNode, iteratorTempSlot);
     }
 
     @Override
-    public Object resume(VirtualFrame frame) {
-        int state = getStateAsInt(frame);
+    public Object execute(VirtualFrame frame) {
+        int state = getStateAsInt(frame, stateSlot);
         // 0 .. execute expression and await
         // 1 .. resume await and yield
         // 2 .. resume yield (and await if return)
@@ -100,15 +100,15 @@ public class AsyncGeneratorYieldNode extends AwaitNode {
 
         if (state == 0) {
             Object value = expression.execute(frame);
-            setState(frame, awaitValue);
+            setStateAsInt(frame, stateSlot, awaitValue);
             return suspendAwait(frame, value);
         } else if (state == awaitValue) {
             Object awaited = resumeAwait(frame);
-            setState(frame, suspendedYield);
+            setStateAsInt(frame, stateSlot, suspendedYield);
             return suspendYield(frame, awaited);
         } else {
             assert state >= suspendedYield;
-            setState(frame, 0);
+            setStateAsInt(frame, stateSlot, 0);
             if (state == suspendedYield) {
                 Completion completion = resumeYield(frame);
                 if (completion.isNormal()) {
@@ -118,7 +118,7 @@ public class AsyncGeneratorYieldNode extends AwaitNode {
                 } else {
                     assert completion.isReturn();
                     // Let awaited be Await(resumptionValue.[[Value]]).
-                    setState(frame, awaitResumptionValue);
+                    setStateAsInt(frame, stateSlot, awaitResumptionValue);
                     return suspendAwait(frame, completion.getValue());
                 }
             } else {
@@ -140,7 +140,7 @@ public class AsyncGeneratorYieldNode extends AwaitNode {
     }
 
     protected final Object returnValue(VirtualFrame frame, Object value) {
-        assert getStateAsInt(frame) == 0;
+        assert getStateAsInt(frame, stateSlot) == 0;
         if (returnNode instanceof FrameReturnNode) {
             ((WriteNode) returnNode.expression).executeWrite(frame, value);
         }
@@ -149,14 +149,14 @@ public class AsyncGeneratorYieldNode extends AwaitNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return createYield(context, cloneUninitialized(expression, materializedTags), cloneUninitialized(readAsyncContextNode, materializedTags),
-                        cloneUninitialized(readAsyncResultNode, materializedTags), cloneUninitialized(returnNode, materializedTags));
+        return createYield(context, stateSlot, cloneUninitialized(expression, materializedTags),
+                        cloneUninitialized(readAsyncContextNode, materializedTags), cloneUninitialized(readAsyncResultNode, materializedTags), cloneUninitialized(returnNode, materializedTags));
     }
 }
 
 class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
-    @Child private JavaScriptNode readIteratorTemp;
-    @Child private WriteNode writeIteratorTemp;
+
+    private final int iteratorTempSlot;
 
     @Child private GetIteratorNode getIteratorNode;
     @Child private IteratorNextNode iteratorNextNode;
@@ -167,11 +167,10 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
     @Child private JSFunctionCallNode callThrowNode;
     @Child private JSFunctionCallNode callReturnNode;
 
-    protected AsyncGeneratorYieldStarNode(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readYieldResultNode,
-                    ReturnNode returnNode, JavaScriptNode readTemp, WriteNode writeTemp) {
-        super(context, expression, readAsyncContextNode, readYieldResultNode, returnNode);
-        this.readIteratorTemp = readTemp;
-        this.writeIteratorTemp = writeTemp;
+    protected AsyncGeneratorYieldStarNode(JSContext context, JavaScriptNode expression, int stateSlot,
+                    JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readYieldResultNode, ReturnNode returnNode, int iteratorTempSlot) {
+        super(context, stateSlot, expression, readAsyncContextNode, readYieldResultNode, returnNode);
+        this.iteratorTempSlot = iteratorTempSlot;
 
         this.getIteratorNode = GetIteratorNode.createAsync(context, null);
         this.iteratorNextNode = IteratorNextNode.create();
@@ -184,8 +183,8 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
     }
 
     @Override
-    public Object resume(VirtualFrame frame) {
-        int state = getStateAsInt(frame);
+    public Object execute(VirtualFrame frame) {
+        int state = getStateAsInt(frame, stateSlot);
         final int loopBegin = 1;
         final int normalOrThrowAwaitInnerResult = 2;
         final int returnAwaitInnerReturnResult = 3;
@@ -198,10 +197,10 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         IteratorRecord iteratorRecord;
         if (state == 0) {
             iteratorRecord = getIteratorNode.execute(expression.execute(frame));
-            writeIteratorTemp.executeWrite(frame, iteratorRecord);
+            frame.setObject(iteratorTempSlot, iteratorRecord);
             state = loopBegin;
         } else {
-            iteratorRecord = (IteratorRecord) readIteratorTemp.execute(frame);
+            iteratorRecord = (IteratorRecord) frame.getObject(iteratorTempSlot);
         }
         DynamicObject iterator = iteratorRecord.getIterator();
 
@@ -334,18 +333,18 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
     }
 
     private void awaitWithNext(VirtualFrame frame, Object value, int nextState) {
-        setState(frame, nextState);
+        setStateAsInt(frame, stateSlot, nextState);
         suspendAwait(frame, value);
     }
 
     private Object yieldWithNext(VirtualFrame frame, Object value, int nextState) {
-        setState(frame, nextState);
+        setStateAsInt(frame, stateSlot, nextState);
         return suspendYield(frame, value);
     }
 
     private void reset(VirtualFrame frame) {
-        setState(frame, 0);
-        writeIteratorTemp.executeWrite(frame, Undefined.instance);
+        setStateAsInt(frame, stateSlot, 0);
+        frame.setObject(iteratorTempSlot, Undefined.instance);
     }
 
     private Object callThrowMethod(Object throwMethod, DynamicObject iterator, Object received) {
@@ -365,8 +364,8 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return createYieldStar(context, cloneUninitialized(expression, materializedTags), cloneUninitialized(readAsyncContextNode, materializedTags),
-                        cloneUninitialized(readAsyncResultNode, materializedTags), cloneUninitialized(returnNode, materializedTags),
-                        cloneUninitialized(readIteratorTemp, materializedTags), (WriteNode) cloneUninitialized((JavaScriptNode) writeIteratorTemp, materializedTags));
+        return createYieldStar(context, stateSlot, cloneUninitialized(expression, materializedTags),
+                        cloneUninitialized(readAsyncContextNode, materializedTags), cloneUninitialized(readAsyncResultNode, materializedTags), cloneUninitialized(returnNode, materializedTags),
+                        iteratorTempSlot);
     }
 }

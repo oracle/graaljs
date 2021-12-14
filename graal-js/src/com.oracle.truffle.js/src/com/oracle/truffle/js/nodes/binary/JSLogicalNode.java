@@ -46,7 +46,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.control.YieldException;
 
-public abstract class JSLogicalNode extends JSBinaryNode implements ResumableNode {
+public abstract class JSLogicalNode extends JSBinaryNode implements ResumableNode.WithIntState {
 
     private static final int RESUME_RIGHT = 1;
     private static final int RESUME_UNEXECUTED = 0;
@@ -70,8 +70,8 @@ public abstract class JSLogicalNode extends JSBinaryNode implements ResumableNod
     }
 
     @Override
-    public Object resume(VirtualFrame frame) {
-        int state = getStateAsIntAndReset(frame);
+    public Object resume(VirtualFrame frame, int stateSlot) {
+        int state = getStateAsIntAndReset(frame, stateSlot);
         if (state == RESUME_UNEXECUTED) {
             Object leftValue = leftNode.execute(frame);
             if (canShortCircuit.profile(useLeftValue(leftValue))) {
@@ -80,7 +80,7 @@ public abstract class JSLogicalNode extends JSBinaryNode implements ResumableNod
                 try {
                     return getRight().execute(frame);
                 } catch (YieldException e) {
-                    setState(frame, RESUME_RIGHT);
+                    setStateAsInt(frame, stateSlot, RESUME_RIGHT);
                     throw e;
                 }
             }
@@ -89,7 +89,7 @@ public abstract class JSLogicalNode extends JSBinaryNode implements ResumableNod
             try {
                 return rightNode.execute(frame);
             } catch (YieldException e) {
-                setState(frame, RESUME_RIGHT);
+                setStateAsInt(frame, stateSlot, RESUME_RIGHT);
                 throw e;
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -185,7 +185,7 @@ public final class WhileNode extends StatementNode {
     }
 
     /** do {body} while(condition). */
-    private static final class DoWhileRepeatingNode extends AbstractRepeatingNode {
+    private static final class DoWhileRepeatingNode extends AbstractRepeatingNode implements ResumableNode.WithIntState {
 
         DoWhileRepeatingNode(JavaScriptNode condition, JavaScriptNode body) {
             super(condition, body);
@@ -199,15 +199,15 @@ public final class WhileNode extends StatementNode {
         }
 
         @Override
-        public Object resume(VirtualFrame frame) {
-            int index = getStateAsIntAndReset(frame);
+        public Object resume(VirtualFrame frame, int stateSlot) {
+            int index = getStateAsIntAndReset(frame, stateSlot);
             if (index == 0) {
                 executeBody(frame);
             }
             try {
                 return executeCondition(frame);
             } catch (YieldException e) {
-                setState(frame, 1);
+                setStateAsInt(frame, stateSlot, 1);
                 throw e;
             }
         }
@@ -219,7 +219,7 @@ public final class WhileNode extends StatementNode {
     }
 
     /** while(condition) {body}. */
-    private static final class WhileDoRepeatingNode extends AbstractRepeatingNode {
+    private static final class WhileDoRepeatingNode extends AbstractRepeatingNode implements ResumableNode.WithIntState {
 
         WhileDoRepeatingNode(JavaScriptNode condition, JavaScriptNode body) {
             super(condition, body);
@@ -235,13 +235,13 @@ public final class WhileNode extends StatementNode {
         }
 
         @Override
-        public Object resume(VirtualFrame frame) {
-            int index = getStateAsIntAndReset(frame);
+        public Object resume(VirtualFrame frame, int stateSlot) {
+            int index = getStateAsIntAndReset(frame, stateSlot);
             if (index != 0 || executeCondition(frame)) {
                 try {
                     executeBody(frame);
                 } catch (YieldException e) {
-                    setState(frame, 1);
+                    setStateAsInt(frame, stateSlot, 1);
                     throw e;
                 }
                 return true;

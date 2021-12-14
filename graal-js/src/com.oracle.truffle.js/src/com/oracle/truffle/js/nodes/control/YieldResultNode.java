@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,30 +40,47 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
-import java.util.Set;
+import java.util.Collections;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 
-public final class GeneratorVoidBlockNode extends AbstractGeneratorBlockNode {
+public abstract class YieldResultNode extends JavaScriptBaseNode {
 
-    GeneratorVoidBlockNode(JavaScriptNode[] statements, int stateSlot) {
-        super(statements, stateSlot);
+    public abstract YieldException generatorYield(VirtualFrame frame, Object value);
+
+    public abstract YieldResultNode cloneUninitialized();
+
+    public static final class ExceptionYieldResultNode extends YieldResultNode {
+        @Override
+        public YieldException generatorYield(VirtualFrame frame, Object value) {
+            throw new YieldException(value);
+        }
+
+        @Override
+        public YieldResultNode cloneUninitialized() {
+            return new ExceptionYieldResultNode();
+        }
     }
 
-    public static JavaScriptNode create(JavaScriptNode[] statements, int stateSlot) {
-        return new GeneratorVoidBlockNode(statements, stateSlot);
-    }
+    public static final class FrameYieldResultNode extends YieldResultNode {
+        @Child private JSWriteFrameSlotNode writeYieldValueNode;
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        executeVoid(frame);
-        return EMPTY;
-    }
+        public FrameYieldResultNode(JSWriteFrameSlotNode writeYieldValueNode) {
+            this.writeYieldValueNode = writeYieldValueNode;
+        }
 
-    @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new GeneratorVoidBlockNode(cloneUninitialized(getStatements(), materializedTags), stateSlot);
+        @Override
+        public YieldException generatorYield(VirtualFrame frame, Object value) {
+            writeYieldValueNode.executeWrite(frame, value);
+            throw YieldException.YIELD_NULL;
+        }
+
+        @Override
+        public YieldResultNode cloneUninitialized() {
+            return new FrameYieldResultNode(JavaScriptNode.cloneUninitialized(writeYieldValueNode, Collections.emptySet()));
+        }
     }
 }

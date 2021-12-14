@@ -105,7 +105,6 @@ import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
 import com.oracle.truffle.js.nodes.access.WithTargetNode;
 import com.oracle.truffle.js.nodes.access.WithVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
-import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
 import com.oracle.truffle.js.nodes.arguments.AccessArgumentsArrayDirectlyNode;
 import com.oracle.truffle.js.nodes.arguments.AccessDerivedConstructorThisNode;
@@ -168,12 +167,12 @@ import com.oracle.truffle.js.nodes.control.ForNode;
 import com.oracle.truffle.js.nodes.control.GeneratorBodyNode;
 import com.oracle.truffle.js.nodes.control.GeneratorExprBlockNode;
 import com.oracle.truffle.js.nodes.control.GeneratorVoidBlockNode;
-import com.oracle.truffle.js.nodes.control.GeneratorWrapperNode;
 import com.oracle.truffle.js.nodes.control.IfNode;
 import com.oracle.truffle.js.nodes.control.IteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.LabelNode;
 import com.oracle.truffle.js.nodes.control.ModuleBodyNode;
 import com.oracle.truffle.js.nodes.control.ModuleYieldNode;
+import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.control.ReturnNode;
 import com.oracle.truffle.js.nodes.control.ReturnTargetNode;
 import com.oracle.truffle.js.nodes.control.RuntimeErrorNode;
@@ -870,27 +869,36 @@ public class NodeFactory {
                         strictProperties, needsNewTarget, false);
     }
 
-    public JavaScriptNode createAwait(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
-        return AwaitNode.create(context, expression, asyncContextNode, asyncResultNode);
+    public JavaScriptNode createAwait(JSContext context, JSFrameDescriptor functionFrameDesc, JavaScriptNode expression,
+                    JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
+        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
+        return AwaitNode.create(context, stateSlot.getIndex(), expression, asyncContextNode, asyncResultNode);
     }
 
     // ##### Generator nodes
 
-    public JavaScriptNode createYield(JSContext context, JavaScriptNode expression, JavaScriptNode yieldValue, boolean yieldStar, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
+    public JavaScriptNode createYield(JSContext context, JSFrameDescriptor functionFrameDesc, JavaScriptNode expression, JavaScriptNode yieldValue, boolean yieldStar,
+                    ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
         if (yieldStar) {
-            return YieldNode.createYieldStar(context, expression, yieldValue, returnNode, writeYieldResultNode);
+            JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Object);
+            return YieldNode.createYieldStar(context, stateSlot.getIndex(), expression, yieldValue, returnNode, writeYieldResultNode);
         } else {
-            return YieldNode.createYield(context, expression, yieldValue, returnNode, writeYieldResultNode);
+            JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
+            return YieldNode.createYield(context, stateSlot.getIndex(), expression, yieldValue, returnNode, writeYieldResultNode);
         }
     }
 
-    public JavaScriptNode createAsyncGeneratorYield(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode, ReturnNode returnNode) {
-        return AsyncGeneratorYieldNode.createYield(context, expression, asyncContextNode, asyncResultNode, returnNode);
+    public JavaScriptNode createAsyncGeneratorYield(JSContext context, JSFrameDescriptor functionFrameDesc, JavaScriptNode expression,
+                    JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode, ReturnNode returnNode) {
+        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
+        return AsyncGeneratorYieldNode.createYield(context, stateSlot.getIndex(), expression, asyncContextNode, asyncResultNode, returnNode);
     }
 
-    public JavaScriptNode createAsyncGeneratorYieldStar(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode,
-                    ReturnNode returnNode, JavaScriptNode readTemp, WriteNode writeTemp) {
-        return AsyncGeneratorYieldNode.createYieldStar(context, expression, asyncContextNode, asyncResultNode, returnNode, readTemp, writeTemp);
+    public JavaScriptNode createAsyncGeneratorYieldStar(JSContext context, JSFrameDescriptor functionFrameDesc, JavaScriptNode expression,
+                    JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode, ReturnNode returnNode) {
+        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
+        JSFrameSlot iteratorTempSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Object);
+        return AsyncGeneratorYieldNode.createYieldStar(context, stateSlot.getIndex(), expression, asyncContextNode, asyncResultNode, returnNode, iteratorTempSlot.getIndex());
     }
 
     public JavaScriptNode createAsyncFunctionBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeAsyncContext, JSReadFrameSlotNode readAsyncContext,
@@ -907,16 +915,18 @@ public class NodeFactory {
         return AsyncGeneratorBodyNode.create(context, body, writeYieldValue, readYieldResult, writeAsyncContext, readAsyncContext);
     }
 
-    public JavaScriptNode createGeneratorWrapper(JavaScriptNode child, JavaScriptNode state, WriteNode writeStateNode) {
-        return GeneratorWrapperNode.createWrapper(child, state, writeStateNode);
+    public JavaScriptNode createGeneratorWrapper(JavaScriptNode child, JSFrameDescriptor frameDescriptor) {
+        return ResumableNode.createResumableNode((ResumableNode) child, kind -> addGeneratorStateSlot(frameDescriptor, kind).getIndex());
     }
 
-    public JavaScriptNode createGeneratorVoidBlock(JavaScriptNode[] statements, JavaScriptNode readState, WriteNode writeState) {
-        return GeneratorVoidBlockNode.create(statements, readState, writeState);
+    public JavaScriptNode createGeneratorVoidBlock(JavaScriptNode[] statements, JSFrameDescriptor functionFrameDesc) {
+        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
+        return GeneratorVoidBlockNode.create(statements, stateSlot.getIndex());
     }
 
-    public JavaScriptNode createGeneratorExprBlock(JavaScriptNode[] statements, JavaScriptNode readState, WriteNode writeState) {
-        return GeneratorExprBlockNode.create(statements, readState, writeState);
+    public JavaScriptNode createGeneratorExprBlock(JavaScriptNode[] statements, JSFrameDescriptor functionFrameDesc) {
+        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
+        return GeneratorExprBlockNode.create(statements, stateSlot.getIndex());
     }
 
     public JavaScriptNode createBlockScope(JavaScriptNode block, JSFrameSlot blockScopeSlot, FrameDescriptor blockFrameDescriptor, JSFrameSlot parentSlot,
@@ -970,17 +980,20 @@ public class NodeFactory {
         return IteratorIsDoneNode.create(iterator);
     }
 
-    public JavaScriptNode createAsyncIteratorNext(JSContext context, JavaScriptNode createReadNode, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
-        return AsyncIteratorNextNode.create(context, createReadNode, asyncContextNode, asyncResultNode);
+    public JavaScriptNode createAsyncIteratorNext(JSContext context, JSFrameDescriptor functionFrameDesc, JavaScriptNode createReadNode,
+                    JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
+        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
+        return AsyncIteratorNextNode.create(context, stateSlot.getIndex(), createReadNode, asyncContextNode, asyncResultNode);
     }
 
     public JavaScriptNode createIteratorValue(JSContext context, JavaScriptNode iterator) {
         return IteratorValueNode.create(context, iterator);
     }
 
-    public JavaScriptNode createAsyncIteratorCloseWrapper(JSContext context, JavaScriptNode loopNode, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode,
-                    JSReadFrameSlotNode asyncResultNode) {
-        return AsyncIteratorCloseWrapperNode.create(context, loopNode, iterator, asyncContextNode, asyncResultNode);
+    public JavaScriptNode createAsyncIteratorCloseWrapper(JSContext context, JSFrameDescriptor functionFrameDesc, JavaScriptNode loopNode, JavaScriptNode iterator,
+                    JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
+        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Object);
+        return AsyncIteratorCloseWrapperNode.create(context, stateSlot.getIndex(), loopNode, iterator, asyncContextNode, asyncResultNode);
     }
 
     public JavaScriptNode createIteratorCloseIfNotDone(JSContext context, JavaScriptNode block, JavaScriptNode iterator) {
@@ -1115,8 +1128,9 @@ public class NodeFactory {
         return ModuleBodyNode.create(moduleBody);
     }
 
-    public JavaScriptNode createModuleYield() {
-        return ModuleYieldNode.create();
+    public JavaScriptNode createModuleYield(JSFrameDescriptor functionFrameDesc) {
+        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
+        return ModuleYieldNode.create(stateSlot.getIndex());
     }
 
     public JavaScriptNode createTopLevelAsyncModuleBody(JSContext context, JavaScriptNode moduleBody, JSWriteFrameSlotNode asyncResult, JSWriteFrameSlotNode writeAsyncContextNode) {
@@ -1218,6 +1232,11 @@ public class NodeFactory {
 
     public InternalSlotId createInternalSlotId(String description, int ordinal) {
         return new InternalSlotId(description, ordinal);
+    }
+
+    public JSFrameSlot addGeneratorStateSlot(JSFrameDescriptor functionFrameDescriptor, FrameSlotKind slotKind) {
+        InternalSlotId identifier = createInternalSlotId("generatorstate", functionFrameDescriptor.getSize());
+        return functionFrameDescriptor.addFrameSlot(identifier, slotKind);
     }
 
     public JavaScriptNode createPrivateFieldIn(JavaScriptNode left, JavaScriptNode right) {

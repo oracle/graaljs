@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,30 +40,45 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
-import java.util.Set;
-
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.WriteNode;
+import com.oracle.truffle.js.nodes.control.ReturnNode.FrameReturnNode;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.UserScriptException;
 
-public final class GeneratorVoidBlockNode extends AbstractGeneratorBlockNode {
+abstract class AbstractYieldNode extends JavaScriptNode implements ResumableNode, SuspendNode {
 
-    GeneratorVoidBlockNode(JavaScriptNode[] statements, int stateSlot) {
-        super(statements, stateSlot);
+    protected final int stateSlot;
+    @Child protected JavaScriptNode expression;
+    @Child protected JavaScriptNode yieldValue;
+    @Child protected ReturnNode returnNode;
+    @Child protected YieldResultNode generatorYieldNode;
+    protected final JSContext context;
+    protected final ConditionProfile returnOrExceptionProfile = ConditionProfile.createBinaryProfile();
+
+    protected AbstractYieldNode(JSContext context, int stateSlot, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, YieldResultNode yieldResultNode) {
+        this.stateSlot = stateSlot;
+        this.context = context;
+        this.expression = expression;
+        this.returnNode = returnNode;
+        this.yieldValue = yieldValue;
+        this.generatorYieldNode = yieldResultNode;
     }
 
-    public static JavaScriptNode create(JavaScriptNode[] statements, int stateSlot) {
-        return new GeneratorVoidBlockNode(statements, stateSlot);
+    protected final Object generatorYield(VirtualFrame frame, Object iterNextObj) {
+        throw generatorYieldNode.generatorYield(frame, iterNextObj);
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        executeVoid(frame);
-        return EMPTY;
+    protected final Object throwValue(Object value) {
+        throw UserScriptException.create(value, this, context.getContextOptions().getStackTraceLimit());
     }
 
-    @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new GeneratorVoidBlockNode(cloneUninitialized(getStatements(), materializedTags), stateSlot);
+    protected final Object returnValue(VirtualFrame frame, Object value) {
+        if (returnNode instanceof FrameReturnNode) {
+            ((WriteNode) returnNode.expression).executeWrite(frame, value);
+        }
+        throw new ReturnException(value);
     }
 }

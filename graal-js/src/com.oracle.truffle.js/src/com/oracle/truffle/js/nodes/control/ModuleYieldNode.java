@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,35 +40,31 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.control.YieldNode.ExceptionYieldResultNode;
-import com.oracle.truffle.js.nodes.control.YieldNode.YieldResultNode;
+import com.oracle.truffle.js.nodes.control.YieldResultNode.ExceptionYieldResultNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 /**
  * A synthetic yield statement that suspends execution when the module function has successfully
  * finished initializing the environment. Execution is resumed at this point when the module is
  * evaluated.
  */
-public class ModuleYieldNode extends JavaScriptNode implements ResumableNode, SuspendNode {
+public class ModuleYieldNode extends JavaScriptNode implements ResumableNode.WithIntState, SuspendNode {
 
+    private final int stateSlot;
     @Child private YieldResultNode generatorYieldNode;
 
-    protected ModuleYieldNode() {
+    protected ModuleYieldNode(int stateSlot) {
+        this.stateSlot = stateSlot;
         this.generatorYieldNode = new ExceptionYieldResultNode();
     }
 
-    public static ModuleYieldNode create() {
-        return new ModuleYieldNode();
-    }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-        return generatorYield(frame);
+    public static ModuleYieldNode create(int stateSlot) {
+        return new ModuleYieldNode(stateSlot);
     }
 
     protected final Object generatorYield(VirtualFrame frame) {
@@ -76,21 +72,21 @@ public class ModuleYieldNode extends JavaScriptNode implements ResumableNode, Su
     }
 
     @Override
-    public Object resume(VirtualFrame frame) {
-        int index = getStateAsInt(frame);
+    public Object execute(VirtualFrame frame) {
+        int index = getStateAsInt(frame, stateSlot);
         if (index == 0) {
-            setState(frame, 1);
+            setStateAsInt(frame, stateSlot, 1);
             return generatorYield(frame);
         } else {
             assert index == 1;
-            setState(frame, 0);
+            setStateAsInt(frame, stateSlot, 0);
             return Undefined.instance;
         }
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create();
+        return create(stateSlot);
     }
 
 }

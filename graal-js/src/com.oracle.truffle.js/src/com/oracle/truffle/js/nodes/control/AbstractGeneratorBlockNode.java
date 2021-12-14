@@ -42,27 +42,29 @@ package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.WriteNode;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class AbstractGeneratorBlockNode extends AbstractBlockNode {
-    @Child protected JavaScriptNode readStateNode;
-    @Child protected WriteNode writeStateNode;
+    protected final int stateSlot;
 
-    protected AbstractGeneratorBlockNode(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode) {
+    protected AbstractGeneratorBlockNode(JavaScriptNode[] statements, int stateSlot) {
         super(statements);
-        this.readStateNode = readStateNode;
-        this.writeStateNode = writeStateNode;
+        this.stateSlot = stateSlot;
     }
 
     protected final int getStateAndReset(VirtualFrame frame) {
-        Object value = readStateNode.execute(frame);
-        int index = (value instanceof Integer) ? (int) value : 0;
+        int index = 0;
+        if (frame.isInt(stateSlot)) {
+            index = frame.getInt(stateSlot);
+        } else {
+            assert frame.isObject(stateSlot) && frame.getObject(stateSlot) == Undefined.instance;
+        }
         setState(frame, 0);
         return index;
     }
 
     protected final void setState(VirtualFrame frame, int index) {
-        writeStateNode.executeWrite(frame, index);
+        frame.setInt(stateSlot, index);
     }
 
     @Override

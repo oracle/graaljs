@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * 12.14 The try Statement.
  */
 @NodeInfo(shortName = "try-finally")
-public class TryFinallyNode extends StatementNode implements ResumableNode {
+public class TryFinallyNode extends StatementNode implements ResumableNode.WithObjectState {
 
     @Child private JavaScriptNode tryBlock;
     @Child private JavaScriptNode finallyBlock;
@@ -129,10 +129,10 @@ public class TryFinallyNode extends StatementNode implements ResumableNode {
     }
 
     @Override
-    public Object resume(VirtualFrame frame) {
+    public Object resume(VirtualFrame frame, int stateSlot) {
         Object result = EMPTY;
         Throwable throwable = null;
-        Object state = getStateAndReset(frame);
+        Object state = getStateAndReset(frame, stateSlot);
         if (state == Undefined.instance) {
             try {
                 result = tryBlock.execute(frame);
@@ -159,7 +159,7 @@ public class TryFinallyNode extends StatementNode implements ResumableNode {
         try {
             finallyBlock.execute(frame);
         } catch (YieldException e) {
-            setState(frame, throwable);
+            setState(frame, stateSlot, throwable);
             throw e;
         }
 
