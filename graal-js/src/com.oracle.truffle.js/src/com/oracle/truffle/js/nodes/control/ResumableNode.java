@@ -55,21 +55,14 @@ public interface ResumableNode {
         throw CompilerDirectives.shouldNotReachHere();
     }
 
-    default JavaScriptNode asResumableNode(int stateSlot) {
-        return GeneratorWrapperNode.createWrapper((JavaScriptNode) this, stateSlot);
-    }
-
     static JavaScriptNode createResumableNode(ResumableNode node, ToIntFunction<FrameSlotKind> newSlot) {
+        JavaScriptNode original = (JavaScriptNode) node;
         if (node instanceof SuspendNode) {
-            return (JavaScriptNode) node;
+            return original;
         }
-        JavaScriptNode resumableNode = node.asResumableNode(newSlot.applyAsInt(node.getStateSlotKind()));
-        if (resumableNode == node) {
-            return resumableNode;
-        } else {
-            JavaScriptNode.transferSourceSectionAndTags((JavaScriptNode) node, resumableNode);
-            return resumableNode;
-        }
+        JavaScriptNode wrappedNode = GeneratorWrapperNode.createWrapper(original, newSlot.applyAsInt(node.getStateSlotKind()));
+        JavaScriptNode.transferSourceSectionAndTags(original, wrappedNode);
+        return wrappedNode;
     }
 
     default void resetState(VirtualFrame frame, int stateSlot) {
