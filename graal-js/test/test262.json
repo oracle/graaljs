@@ -126,14 +126,6 @@
     },
     "comment" : "GR-22846"
   }, {
-    "filePath" : "built-ins/Date/prototype/valueOf/S9.4_A3_T1.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-09-15"
-  }, {
-    "filePath" : "built-ins/Date/prototype/valueOf/S9.4_A3_T2.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-09-15"
-  }, {
     "filePath" : "built-ins/RegExp/named-groups/non-unicode-property-names-valid.js",
     "status" : "FAIL",
     "comment" : "new failures 2020-07-21"
@@ -1766,10 +1758,6 @@
       "BIG_ENDIAN" : "FAIL"
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
-  }, {
-    "filePath" : "intl402/Locale/prototype/weekInfo/output-object-keys.js",
-    "status" : "FAIL",
-    "comment" : "Off-spec/obsolete test."
   }, {
     "filePath" : "language/expressions/assignment/destructuring/obj-prop-__proto__dup.js",
     "status" : "FAIL"
