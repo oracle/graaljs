@@ -54,8 +54,7 @@ import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.control.ReturnNode.FrameReturnNode;
-import com.oracle.truffle.js.nodes.control.YieldNode.ExceptionYieldResultNode;
-import com.oracle.truffle.js.nodes.control.YieldNode.YieldResultNode;
+import com.oracle.truffle.js.nodes.control.YieldResultNode.ExceptionYieldResultNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
@@ -67,7 +66,7 @@ import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public class AsyncGeneratorYieldNode extends AwaitNode {
+public class AsyncGeneratorYieldNode extends AbstractAwaitNode implements ResumableNode.WithIntState {
     @Child protected ReturnNode returnNode;
     @Child private YieldResultNode generatorYieldNode;
 

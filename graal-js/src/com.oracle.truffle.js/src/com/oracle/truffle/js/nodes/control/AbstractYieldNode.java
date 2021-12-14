@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,53 +40,45 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
-import java.util.Set;
-
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.control.YieldResultNode.ExceptionYieldResultNode;
-import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.nodes.access.WriteNode;
+import com.oracle.truffle.js.nodes.control.ReturnNode.FrameReturnNode;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.UserScriptException;
 
-/**
- * A synthetic yield statement that suspends execution when the module function has successfully
- * finished initializing the environment. Execution is resumed at this point when the module is
- * evaluated.
- */
-public class ModuleYieldNode extends JavaScriptNode implements ResumableNode.WithIntState, SuspendNode {
+abstract class AbstractYieldNode extends JavaScriptNode implements ResumableNode, SuspendNode {
 
-    private final int stateSlot;
-    @Child private YieldResultNode generatorYieldNode;
+    protected final int stateSlot;
+    @Child protected JavaScriptNode expression;
+    @Child protected JavaScriptNode yieldValue;
+    @Child protected ReturnNode returnNode;
+    @Child protected YieldResultNode generatorYieldNode;
+    protected final JSContext context;
+    protected final ConditionProfile returnOrExceptionProfile = ConditionProfile.createBinaryProfile();
 
-    protected ModuleYieldNode(int stateSlot) {
+    protected AbstractYieldNode(JSContext context, int stateSlot, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, YieldResultNode yieldResultNode) {
         this.stateSlot = stateSlot;
-        this.generatorYieldNode = new ExceptionYieldResultNode();
+        this.context = context;
+        this.expression = expression;
+        this.returnNode = returnNode;
+        this.yieldValue = yieldValue;
+        this.generatorYieldNode = yieldResultNode;
     }
 
-    public static ModuleYieldNode create(int stateSlot) {
-        return new ModuleYieldNode(stateSlot);
+    protected final Object generatorYield(VirtualFrame frame, Object iterNextObj) {
+        throw generatorYieldNode.generatorYield(frame, iterNextObj);
     }
 
-    protected final Object generatorYield(VirtualFrame frame) {
-        throw generatorYieldNode.generatorYield(frame, Undefined.instance);
+    protected final Object throwValue(Object value) {
+        throw UserScriptException.create(value, this, context.getContextOptions().getStackTraceLimit());
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        int index = getStateAsInt(frame, stateSlot);
-        if (index == 0) {
-            setStateAsInt(frame, stateSlot, 1);
-            return generatorYield(frame);
-        } else {
-            assert index == 1;
-            setStateAsInt(frame, stateSlot, 0);
-            return Undefined.instance;
+    protected final Object returnValue(VirtualFrame frame, Object value) {
+        if (returnNode instanceof FrameReturnNode) {
+            ((WriteNode) returnNode.expression).executeWrite(frame, value);
         }
+        throw new ReturnException(value);
     }
-
-    @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(stateSlot);
-    }
-
 }

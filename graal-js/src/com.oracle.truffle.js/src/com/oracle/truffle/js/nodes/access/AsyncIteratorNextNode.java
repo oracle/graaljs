@@ -40,26 +40,27 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.control.AwaitNode;
+import com.oracle.truffle.js.nodes.control.AbstractAwaitNode;
+import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
-import java.util.Set;
-
 /**
  * Utility node implementing ForIn/OfBodyEvaluation handling of async iterators.
  *
  * @see IteratorNextUnaryNode
  */
-public class AsyncIteratorNextNode extends AwaitNode {
+public class AsyncIteratorNextNode extends AbstractAwaitNode implements ResumableNode.WithIntState {
     @Child private JSFunctionCallNode methodCallNode;
     @Child private IsObjectNode isObjectNode;
     private final BranchProfile errorBranch = BranchProfile.create();
@@ -71,7 +72,7 @@ public class AsyncIteratorNextNode extends AwaitNode {
         this.isObjectNode = IsObjectNode.create();
     }
 
-    public static AwaitNode create(JSContext context, int stateSlot, JavaScriptNode iterator,
+    public static JavaScriptNode create(JSContext context, int stateSlot, JavaScriptNode iterator,
                     JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
         return new AsyncIteratorNextNode(context, stateSlot, iterator, asyncContextNode, asyncResultNode);
     }

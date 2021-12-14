@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.control;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -67,7 +66,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 /**
  * ES8 5.2 AsyncIteratorClose(iterator, completion).
  */
-public class AsyncIteratorCloseWrapperNode extends AwaitNode implements ResumableNode.WithObjectState {
+public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements ResumableNode.WithObjectState {
 
     @Child private JavaScriptNode loopNode;
     @Child private GetMethodNode getReturnNode;
@@ -201,10 +200,5 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode implements Resumabl
         return new AsyncIteratorCloseWrapperNode(context, stateSlot,
                         cloneUninitialized(loopNode, materializedTags), cloneUninitialized(iteratorNode, materializedTags),
                         cloneUninitialized(readAsyncContextNode, materializedTags), cloneUninitialized(readAsyncResultNode, materializedTags));
-    }
-
-    @Override
-    public FrameSlotKind getStateSlotKind() {
-        return WithObjectState.super.getStateSlotKind();
     }
 }

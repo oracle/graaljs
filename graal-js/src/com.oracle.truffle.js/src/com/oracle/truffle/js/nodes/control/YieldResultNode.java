@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,53 +40,47 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
-import java.util.Set;
+import java.util.Collections;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.control.YieldResultNode.ExceptionYieldResultNode;
-import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 
-/**
- * A synthetic yield statement that suspends execution when the module function has successfully
- * finished initializing the environment. Execution is resumed at this point when the module is
- * evaluated.
- */
-public class ModuleYieldNode extends JavaScriptNode implements ResumableNode.WithIntState, SuspendNode {
+public abstract class YieldResultNode extends JavaScriptBaseNode {
 
-    private final int stateSlot;
-    @Child private YieldResultNode generatorYieldNode;
+    public abstract YieldException generatorYield(VirtualFrame frame, Object value);
 
-    protected ModuleYieldNode(int stateSlot) {
-        this.stateSlot = stateSlot;
-        this.generatorYieldNode = new ExceptionYieldResultNode();
-    }
+    public abstract YieldResultNode cloneUninitialized();
 
-    public static ModuleYieldNode create(int stateSlot) {
-        return new ModuleYieldNode(stateSlot);
-    }
+    public static final class ExceptionYieldResultNode extends YieldResultNode {
+        @Override
+        public YieldException generatorYield(VirtualFrame frame, Object value) {
+            throw new YieldException(value);
+        }
 
-    protected final Object generatorYield(VirtualFrame frame) {
-        throw generatorYieldNode.generatorYield(frame, Undefined.instance);
-    }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-        int index = getStateAsInt(frame, stateSlot);
-        if (index == 0) {
-            setStateAsInt(frame, stateSlot, 1);
-            return generatorYield(frame);
-        } else {
-            assert index == 1;
-            setStateAsInt(frame, stateSlot, 0);
-            return Undefined.instance;
+        @Override
+        public YieldResultNode cloneUninitialized() {
+            return new ExceptionYieldResultNode();
         }
     }
 
-    @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(stateSlot);
-    }
+    public static final class FrameYieldResultNode extends YieldResultNode {
+        @Child private JSWriteFrameSlotNode writeYieldValueNode;
 
+        public FrameYieldResultNode(JSWriteFrameSlotNode writeYieldValueNode) {
+            this.writeYieldValueNode = writeYieldValueNode;
+        }
+
+        @Override
+        public YieldException generatorYield(VirtualFrame frame, Object value) {
+            writeYieldValueNode.executeWrite(frame, value);
+            throw YieldException.YIELD_NULL;
+        }
+
+        @Override
+        public YieldResultNode cloneUninitialized() {
+            return new FrameYieldResultNode(JavaScriptNode.cloneUninitialized(writeYieldValueNode, Collections.emptySet()));
+        }
+    }
 }
