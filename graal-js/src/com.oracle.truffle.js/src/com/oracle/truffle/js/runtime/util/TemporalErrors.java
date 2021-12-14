@@ -262,4 +262,9 @@ public final class TemporalErrors {
     public static JSException createRangeErrorCalendarUnknown() {
         return Errors.createRangeError("unknown Calendar");
     }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorNumberIsNaN() {
+        return Errors.createRangeError("Number value cannot be NaN");
+    }
 }

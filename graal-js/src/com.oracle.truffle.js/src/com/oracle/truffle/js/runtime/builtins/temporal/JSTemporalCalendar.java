@@ -58,6 +58,7 @@ import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -281,10 +282,10 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
 
     // 12.1.39
     public static JSTemporalDateTimeRecord isoDateFromFields(DynamicObject fields, DynamicObject options, JSContext ctx, IsObjectNode isObject,
-                    JSToBooleanNode toBoolean, JSToStringNode toString, JSStringToNumberNode stringToNumber,
+                    JSToBooleanNode toBoolean, JSToNumberNode toNumber, JSToStringNode toString, JSStringToNumberNode stringToNumber,
                     JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
-        TemporalOverflowEnum overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
+        TemporalOverflowEnum overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toNumber, toString);
         DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(ctx, fields, TemporalUtil.listDMMCY, TemporalUtil.listEmpty);
         Object year = JSObject.get(preparedFields, YEAR);
         if (year == Undefined.instance) {
@@ -300,11 +301,11 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
 
     // 12.1.40
     public static JSTemporalYearMonthDayRecord isoYearMonthFromFields(DynamicObject fields, DynamicObject options, JSContext ctx, IsObjectNode isObject,
-                    JSToBooleanNode toBoolean,
+                    JSToBooleanNode toBoolean, JSToNumberNode toNumber,
                     JSToStringNode toString, JSStringToNumberNode stringToNumber,
                     JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
-        TemporalOverflowEnum overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
+        TemporalOverflowEnum overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toNumber, toString);
         DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(ctx, fields, TemporalUtil.listMMCY, TemporalUtil.listEmpty);
         Object year = JSObject.get(preparedFields, YEAR);
         if (year == Undefined.instance) {
@@ -318,9 +319,9 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
 
     // 12.1.41
     public static JSTemporalYearMonthDayRecord isoMonthDayFromFields(DynamicObject fields, DynamicObject options, JSContext ctx, IsObjectNode isObject,
-                    JSToBooleanNode toBoolean, JSToStringNode toString, JSStringToNumberNode stringToNumber, JSIdenticalNode identicalNode) {
+                    JSToBooleanNode toBoolean, JSToNumberNode toNumber, JSToStringNode toString, JSStringToNumberNode stringToNumber, JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
-        TemporalOverflowEnum overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
+        TemporalOverflowEnum overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toNumber, toString);
         DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(ctx, fields, TemporalUtil.listDMMCY, TemporalUtil.listEmpty);
         Object month = JSObject.get(preparedFields, MONTH);
         Object monthCode = JSObject.get(preparedFields, MONTH_CODE);

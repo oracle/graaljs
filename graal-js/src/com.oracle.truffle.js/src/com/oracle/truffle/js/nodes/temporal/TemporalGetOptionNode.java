@@ -49,6 +49,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -66,12 +67,14 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
 
     @Child private JSToStringNode toStringNode;
     @Child private JSToBooleanNode toBooleanNode;
+    @Child private JSToNumberNode toNumberNode;
 
     protected TemporalGetOptionNode() {
     }
 
     public enum OptionTypeEnum {
         STRING,
+        NUMBER,
         BOOLEAN;
     }
 
@@ -91,6 +94,11 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
         assert type == OptionTypeEnum.BOOLEAN || type == OptionTypeEnum.STRING;
         if (type == OptionTypeEnum.BOOLEAN) {
             value = toBoolean(value);
+        } else if (type == OptionTypeEnum.NUMBER) {
+            value = toNumber(value);
+            if (Double.isNaN(((Number) value).doubleValue())) {
+                throw TemporalErrors.createRangeErrorNumberIsNaN();
+            }
         } else if (type == OptionTypeEnum.STRING) {
             value = toStringNode(value);
         }
@@ -115,5 +123,13 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
             toBooleanNode = insert(JSToBooleanNode.create());
         }
         return toBooleanNode.executeBoolean(value);
+    }
+
+    private Number toNumber(Object value) {
+        if (toNumberNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            toNumberNode = insert(JSToNumberNode.create());
+        }
+        return toNumberNode.executeNumber(value);
     }
 }

@@ -55,7 +55,9 @@ public final class JSTemporalParserRecord {
     private final String fraction;
 
     private final String calendar;
-    private final String name;
+    private final String timeZoneIANAName;
+    private final String timeZoneEtcName;
+    private final String timeZoneUTCOffsetName;
 
     private final String offsetSign;
     private final long offsetHour;
@@ -64,7 +66,7 @@ public final class JSTemporalParserRecord {
     private final String offsetFraction;
 
     public JSTemporalParserRecord(boolean z, long year, long month, long day, long hour, long minute, long second, String fraction, String offsetSign, long offsetHour,
-                    long offsetMinute, long offsetSecond, String offsetFraction, String name, String calendar) {
+                    long offsetMinute, long offsetSecond, String offsetFraction, String timeZoneIANAName, String timeZoneEtcName, String timeZoneUTCOffsetName, String calendar) {
         this.z = z;
 
         this.year = year;
@@ -82,7 +84,9 @@ public final class JSTemporalParserRecord {
         this.offsetFraction = offsetFraction;
 
         this.calendar = calendar;
-        this.name = name;
+        this.timeZoneIANAName = timeZoneIANAName;
+        this.timeZoneEtcName = timeZoneEtcName;
+        this.timeZoneUTCOffsetName = timeZoneUTCOffsetName;
     }
 
     public boolean getZ() {
@@ -109,8 +113,29 @@ public final class JSTemporalParserRecord {
         return fraction;
     }
 
-    public String getName() {
-        return name;
+    public String getTimeZoneIANAName() {
+        return timeZoneIANAName;
+    }
+
+    public String getTimeZoneUTCOffsetName() {
+        return timeZoneIANAName;
+    }
+
+    public String getTimeZoneEtcName() {
+        return timeZoneIANAName;
+    }
+
+    public String getTimeZoneANYName() {
+        if (timeZoneIANAName != null) {
+            return timeZoneIANAName;
+        }
+        if (timeZoneUTCOffsetName != null) {
+            return timeZoneUTCOffsetName;
+        }
+        if (timeZoneEtcName != null) {
+            return timeZoneEtcName;
+        }
+        return null;
     }
 
     public long getYear() {

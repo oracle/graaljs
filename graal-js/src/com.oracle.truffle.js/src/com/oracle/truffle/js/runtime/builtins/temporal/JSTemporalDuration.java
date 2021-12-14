@@ -415,22 +415,10 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             timePart.append("M");
         }
         if (seconds != 0 || milliseconds != 0 || microseconds != 0 || nanoseconds != 0 || (years == 0 && months == 0 && weeks == 0 && days == 0 && hours == 0 && minutes == 0)) {
-            String nanosecondPart = "";
-            String microsecondPart = "";
-            String millisecondPart = "";
-            if (nanoseconds != 0) {
-                nanosecondPart = String.format("%1$3d", Math.abs(nanoseconds)).replace(" ", "0");
-                microsecondPart = "000";
-                millisecondPart = "000";
-            }
-            if (microseconds != 0) {
-                microsecondPart = String.format("%1$3d", Math.abs(microseconds)).replace(" ", "0");
-                millisecondPart = "000";
-            }
-            if (milliseconds != 0) {
-                millisecondPart = String.format("%1$3d", Math.abs(milliseconds)).replace(" ", "0");
-            }
-            String decimalPart = millisecondPart + microsecondPart + nanosecondPart;
+            long fraction = Math.abs(milliseconds) * 1_000_000L + Math.abs(microseconds) * 1_000 + Math.abs(nanoseconds);
+            String decimalPart = String.format("000000000%1$9d", fraction).replace(" ", "0");
+            decimalPart = decimalPart.substring(decimalPart.length() - 9);
+
             if (AUTO.equals(precision)) {
                 int pos = decimalPart.length() - 1;
                 while (pos >= 0 && decimalPart.charAt(pos) == '0') {

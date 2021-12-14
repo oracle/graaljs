@@ -1797,10 +1797,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/toString/blank-duration-precision.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/balance-negative-result.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -1824,14 +1820,6 @@
     "filePath" : "built-ins/Temporal/Instant/from/timezone-custom.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/round/subclassing-ignored.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/Now/instant/return-value-value.js",
-    "status" : "FAIL",
-    "comment" : "Temporal tests still failing"
   }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/add/balance-smaller-units.js",
     "status" : "FAIL",
@@ -1873,55 +1861,7 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/getISOFields/field-traversal-order.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/since/argument-zoneddatetime-negative-epochnanoseconds.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/since/balance-negative-duration.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/since/roundingincrement-non-integer.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/since/roundingincrement-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/since/roundingmode-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/since/roundingmode-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/since/smallestunit-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toZonedDateTime/plain-custom-timezone.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/until/argument-zoneddatetime-negative-epochnanoseconds.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/until/balance-negative-duration.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/until/balance.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainMonthDay/from/fields-missing-properties.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
@@ -1977,10 +1917,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-propertybag-timezone-getoffsetnanosecondsfor-not-callable.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/zoneddatetime-string.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -1997,10 +1933,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/round/subclassing-ignored.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/calendar-dateuntil-called-with-singular-largestunit.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -2010,10 +1942,6 @@
     "comment" : "Temporal failures"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/zoneddatetime-string.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/calendar-dateuntil-called-with-singular-largestunit.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
@@ -2034,10 +1962,6 @@
     "comment" : "Temporal failures"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/offset-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/receiver-offset-broken.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {

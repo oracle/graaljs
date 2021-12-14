@@ -2521,8 +2521,20 @@ public class JSRealm {
         this.errorWriter.setDelegate(stream);
     }
 
+    /**
+     * The current time in nanoseconds precision (with fuzzed resolution for security reasons).
+     * Counted from the start of the application, as required by Node.js' `performance.now()`.
+     */
     public long nanoTime() {
         return nanoTime(nanoToZeroTimeOffset);
+    }
+
+    /**
+     * The current time in nanoseconds precision (with fuzzed resolution for security reasons). Wall
+     * clock time, to be in the same range as ECMAScript's `Date.now()`.
+     */
+    public long nanoTimeWallClock() {
+        return nanoTime(nanoToCurrentTimeOffset);
     }
 
     public long nanoTime(long offset) {

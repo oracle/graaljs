@@ -92,6 +92,7 @@ import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -374,6 +375,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         public Object dateFromFields(Object thisObj, Object fields, Object optionsParam,
                         @Cached("createSameValue()") JSIdenticalNode identicalNode,
                         @Cached("create()") JSToBooleanNode toBoolean,
+                        @Cached("create()") JSToNumberNode toNumber,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSStringToNumberNode stringToNumber) {
             JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
@@ -384,7 +386,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             DynamicObject options = getOptionsObject(optionsParam);
             JSTemporalDateTimeRecord result = JSTemporalCalendar.isoDateFromFields((DynamicObject) fields, options, getContext(),
-                            isObjectNode, toBoolean, toString, stringToNumber, identicalNode);
+                            isObjectNode, toBoolean, toNumber, toString, stringToNumber, identicalNode);
 
             return JSTemporalPlainDate.create(getContext(), result.getYear(), result.getMonth(), result.getDay(), calendar);
         }
@@ -401,6 +403,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         public Object yearMonthFromFields(Object thisObj, Object fields, Object optionsParam,
                         @Cached("createSameValue()") JSIdenticalNode identicalNode,
                         @Cached("create()") JSToBooleanNode toBoolean,
+                        @Cached("create()") JSToNumberNode toNumber,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSStringToNumberNode stringToNumber) {
             JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
@@ -411,7 +414,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             DynamicObject options = getOptionsObject(optionsParam);
             JSTemporalYearMonthDayRecord result = JSTemporalCalendar.isoYearMonthFromFields((DynamicObject) fields, options, getContext(),
-                            isObjectNode, toBoolean, toString, stringToNumber, identicalNode);
+                            isObjectNode, toBoolean, toNumber, toString, stringToNumber, identicalNode);
             return JSTemporalPlainYearMonth.create(getContext(), result.getYear(), result.getMonth(), calendar, result.getDay());
         }
     }
@@ -427,6 +430,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         public Object monthDayFromFields(Object thisObj, Object fields, Object optionsParam,
                         @Cached("createSameValue()") JSIdenticalNode identicalNode,
                         @Cached("create()") JSToBooleanNode toBoolean,
+                        @Cached("create()") JSToNumberNode toNumber,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSStringToNumberNode stringToNumber) {
             JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
@@ -437,7 +441,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             DynamicObject options = getOptionsObject(optionsParam);
             JSTemporalYearMonthDayRecord result = JSTemporalCalendar.isoMonthDayFromFields((DynamicObject) fields, options, getContext(),
-                            isObjectNode, toBoolean, toString, stringToNumber, identicalNode);
+                            isObjectNode, toBoolean, toNumber, toString, stringToNumber, identicalNode);
 
             return JSTemporalPlainMonthDay.create(getContext(), result.getMonth(), result.getDay(), calendar, result.getYear());
         }

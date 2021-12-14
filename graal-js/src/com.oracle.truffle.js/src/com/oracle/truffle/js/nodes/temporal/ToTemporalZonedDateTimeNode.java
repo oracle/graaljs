@@ -58,7 +58,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -67,6 +66,8 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetBehaviour;
 
 /**
  * Implementation of ToTemporalZonedDateTime() operation.
+ *
+ * Note there also is {@link TemporalUtil#toTemporalZonedDateTime}.
  */
 public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
 
@@ -98,7 +99,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
         }
         JSTemporalDateTimeRecord result;
         String offsetString = null;
-        JSTemporalTimeZoneObject timeZone = null;
+        DynamicObject timeZone = null;
         DynamicObject calendar = null;
         JSRealm realm = JSRealm.get(this);
         OffsetBehaviour offsetBehaviour = OffsetBehaviour.OPTION;
@@ -114,7 +115,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             fieldNames.add(OFFSET);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.listTimeZone);
             Object timeZoneObj = JSObject.get(fields, TIME_ZONE);
-            timeZone = (JSTemporalTimeZoneObject) toTemporalTimeZone.executeDynamicObject(timeZoneObj);
+            timeZone = toTemporalTimeZone.executeDynamicObject(timeZoneObj);
             Object offsetStringObj = JSObject.get(fields, OFFSET);
             if (TemporalUtil.isNullish(offsetStringObj)) {
                 offsetBehaviour = OffsetBehaviour.WALL;
@@ -132,7 +133,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             } else {
                 offsetBehaviour = OffsetBehaviour.WALL;
             }
-            timeZone = (JSTemporalTimeZoneObject) TemporalUtil.createTemporalTimeZone(ctx, resultZDT.getTimeZoneName());
+            timeZone = TemporalUtil.createTemporalTimeZone(ctx, resultZDT.getTimeZoneName());
             offsetString = resultZDT.getTimeZoneOffsetString();
             calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, realm, result.getCalendar());
             matchBehaviour = MatchBehaviour.MATCH_MINUTES;

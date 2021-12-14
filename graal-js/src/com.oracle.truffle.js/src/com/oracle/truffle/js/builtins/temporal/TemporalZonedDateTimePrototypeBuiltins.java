@@ -511,15 +511,10 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             String offset = TemporalUtil.toTemporalOffset(options, PREFER, getOptionNode());
             DynamicObject timeZone = zonedDateTime.getTimeZone();
             fieldNames.add(TIME_ZONE);
-            DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), zonedDateTime, fieldNames, TemporalUtil.listTimeZone);
+            DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), zonedDateTime, fieldNames, TemporalUtil.listTimeZoneOffset);
             fields = TemporalUtil.calendarMergeFields(getContext(), namesNode, calendar, fields, partialZonedDateTime);
             fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.listTimeZone);
-            Object offsetString = JSObject.get(partialZonedDateTime, OFFSET);
-            if (!TemporalUtil.isNullish(offsetString)) {
-                JSObject.set(fields, OFFSET, offsetString);
-            } else {
-                offsetString = JSObject.get(fields, OFFSET);
-            }
+            Object offsetString = JSObject.get(fields, OFFSET);
             JSTemporalDateTimeRecord dateTimeResult = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options);
             long offsetNanoseconds = TemporalUtil.parseTimeZoneOffsetString((String) offsetString);
             BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(getContext(), getRealm(), dateTimeResult.getYear(), dateTimeResult.getMonth(), dateTimeResult.getDay(),

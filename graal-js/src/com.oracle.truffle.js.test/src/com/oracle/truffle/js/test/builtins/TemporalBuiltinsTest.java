@@ -444,7 +444,7 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testDurationRound() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = new Temporal.Duration(0, 0, 0, 0, 12, 45, 35, 520, 450, 860);");
-            ctx.eval(ID, "duration = duration.round({ smallestUnit: 'hours' });");
+            ctx.eval(ID, "duration = duration.round({ smallestUnit: 'hours' }); print(duration.toString());");
             validateDuration(ctx, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0);
         }
     }
@@ -769,7 +769,7 @@ public class TemporalBuiltinsTest extends JSTest {
         assertEquals(2019, rec.getYear());
         assertEquals(11, rec.getMonth());
         assertEquals(18, rec.getDay());
-        assertEquals("Europe/Madrid", rec.getName());
+        assertEquals("Europe/Madrid", rec.getTimeZoneIANAName());
         assertEquals("gregory", rec.getCalendar());
     }
 
@@ -862,8 +862,7 @@ public class TemporalBuiltinsTest extends JSTest {
                         "};\n";
 
         try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, code);
-            System.out.println(result.asString());
+            ctx.eval(ID, code);
 
             ctx.eval(ID, "test('01:00:00','02:00:00',{ smallestUnit: 'hours' }, 'PT1H');");
             ctx.eval(ID, "test('02:00:00','01:00:00',{ smallestUnit: 'hours' }, '-PT1H');");
@@ -905,4 +904,28 @@ public class TemporalBuiltinsTest extends JSTest {
             Assert.assertEquals(expected, result.toString());
         }
     }
+
+    @Test
+    public void testSinceMicoseconds() {
+        String code = "const earlier = new Temporal.PlainDateTime(2000, 5, 2, 12, 34, 56, 0, 0, 0); \n" +
+                        "const later = new Temporal.PlainDateTime(2000, 5, 3, 13, 35, 57, 987, 654, 321); \n" +
+                        "const result = later.since(earlier, { smallestUnit: 'microsecond' }); \n" +
+                        "result.microseconds";
+        try (Context ctx = getJSContext()) {
+            Value result = ctx.eval(ID, code);
+            Assert.assertEquals(654, result.asInt());
+        }
+    }
+
+    @Test
+    public void testInstantMultipleOffsets() {
+        String code = "const epoch = new Temporal.Instant(0n);\n" +
+                        "const str = '1970-01-01T00:02:00.000000000+00:02[+00:01:30.987654321]';\n" +
+                        "Temporal.Instant.compare(str, epoch) === 0;";
+        try (Context ctx = getJSContext()) {
+            Value result = ctx.eval(ID, code);
+            Assert.assertEquals(true, result.asBoolean());
+        }
+    }
+
 }

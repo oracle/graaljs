@@ -125,8 +125,6 @@ public final class TemporalConstants {
     public static final String INCREMENT = "Increment";
     public static final String UNIT = "unit";
     public static final String SMALLEST_UNIT = "smallestUnit";
-    public static final String STRING = "string";
-    public static final String BOOLEAN = "boolean";
 
     public static final String AUTO = "auto";
     public static final String ALWAYS = "always";

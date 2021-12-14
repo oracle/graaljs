@@ -76,7 +76,9 @@ public final class TemporalParser {
     private String fraction;
 
     private String calendar;
-    private String timeZoneName;
+    private String timeZoneIANAName;
+    private String timeZoneUTCOffsetName;
+    private String timeZoneEtcName;
     private String utcDesignator;
 
     private String offsetSign;
@@ -173,7 +175,9 @@ public final class TemporalParser {
     private boolean parseTimeZoneIANAName() {
         Matcher matcher = createMatch(patternTimeZoneIANAName, rest);
         if (matcher.matches()) {
-            this.timeZoneName = matcher.group(1);
+            this.timeZoneIANAName = matcher.group(1);
+
+            assert timeZoneIANAName == null || isTZLeadingChar(timeZoneIANAName.charAt(0));
 
             move(matcher.end(1));
             return true;
@@ -257,7 +261,8 @@ public final class TemporalParser {
         try {
             // TODO MinuteSecond has 59 seconds, TimeSecond has 60 seconds
             return new JSTemporalParserRecord(utcDesignator != null, prepare(year, Long.MAX_VALUE), prepare(month, 12), prepare(day, 31), prepare(hour, 23), prepare(minute, 59), prepare(second, 60),
-                            fraction, offsetSign, prepare(offsetHour, 23), prepare(offsetMinute, 59), prepare(offsetSecond, 59), offsetFraction, timeZoneName, calendar);
+                            fraction, offsetSign, prepare(offsetHour, 23), prepare(offsetMinute, 59), prepare(offsetSecond, 59), offsetFraction, timeZoneIANAName, timeZoneEtcName,
+                            timeZoneUTCOffsetName, calendar);
         } catch (Exception ex) {
             return null;
         }
@@ -291,7 +296,9 @@ public final class TemporalParser {
         fraction = null;
 
         calendar = null;
-        timeZoneName = null;
+        timeZoneIANAName = null;
+        timeZoneUTCOffsetName = null;
+        timeZoneEtcName = null;
         utcDesignator = null;
 
         offsetSign = null;
@@ -436,7 +443,7 @@ public final class TemporalParser {
 
         if (rest.startsWith("Z") || rest.startsWith("z")) {
             move(1);
-            this.timeZoneName = TemporalConstants.UTC;
+            this.timeZoneIANAName = TemporalConstants.UTC; // TODO is this correct?
             this.utcDesignator = "Z";
 
             parseTimeZoneBracket(); // optional
@@ -455,12 +462,32 @@ public final class TemporalParser {
     private boolean parseTimeZoneBracket() {
         Matcher matcher = createMatch(patternTimeZoneBracketedAnnotation, rest);
         if (matcher.matches()) {
-            timeZoneName = matcher.group(2);
+            String content = matcher.group(2);
+
+            // content could be TimeZoneIANAName, Etc/GMT, or TimeZOneUTCOffsetName
+            if (content != null) {
+                if (content.startsWith("Etc")) {
+                    timeZoneEtcName = content;
+                } else if (isSign(content.charAt(0))) {
+                    timeZoneUTCOffsetName = content;
+                } else {
+                    assert isTZLeadingChar(content.charAt(0));
+                    timeZoneIANAName = content;
+                }
+            }
 
             move(matcher.end(1));
             return true;
         }
         return false;
+    }
+
+    private static boolean isTZLeadingChar(char c) {
+        return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '.' || c == '_';
+    }
+
+    private static boolean isSign(char c) {
+        return c == '+' || c == '-' || c == '\u2212';
     }
 
     private static Matcher createMatch(String pattern, String input) {
