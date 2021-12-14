@@ -140,4 +140,16 @@ describe('Spawn', function () {
             });
         }
     }
+    it('should finish with exit code and not print stack trace of exit exception (process.exit())', function() {
+            var result = spawnSync(process.execPath, ['-e', 'process.exit(42); console.error("should not reach here");']);
+            assert.strictEqual(result.stderr.toString(), '');
+            assert.strictEqual(result.stdout.toString(), '');
+            assert.strictEqual(result.status, 42);
+    });
+    it('should finish with exit code and not print stack trace of exit exception (quit())', function() {
+            var result = spawnSync(process.execPath, ['--experimental-options', '--js.shell', '-e', 'quit(42); console.error("should not reach here");']);
+            assert.strictEqual(result.stderr.toString(), '');
+            assert.strictEqual(result.stdout.toString(), '');
+            assert.strictEqual(result.status, 42);
+    });
 });

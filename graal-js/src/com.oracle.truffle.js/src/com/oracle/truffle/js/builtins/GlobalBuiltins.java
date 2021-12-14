@@ -123,7 +123,6 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
-import com.oracle.truffle.js.runtime.ExitException;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSConsoleUtil;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -1476,8 +1475,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
     }
 
     /**
-     * Non-standard global exit() and quit() functions to provide compatibility with Nashorn (both)
-     * and V8 (only quit).
+     * Non-standard global exit function to provide compatibility with Nashorn (exit() and quit())
+     * and V8 (only quit()) shells. Available as quit() if the {@code js.shell} option is enabled.
      */
     public abstract static class JSGlobalExitNode extends JSBuiltinNode {
 
@@ -1492,10 +1491,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization
         protected Object exit(int exitCode) {
-            if (getContext().isOptionNashornCompatibilityMode()) {
-                nashornExit(exitCode);
-            }
-            throw newExitException(exitCode);
+            getRealm().getEnv().getContext().closeExited(this, exitCode);
+            return Undefined.instance;
         }
 
         @Specialization
@@ -1503,16 +1500,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                         @Cached("create()") JSToNumberNode toNumberNode) {
             int exitCode = (int) JSRuntime.toInteger(toNumberNode.executeNumber(arg));
             return exit(exitCode);
-        }
-
-        @TruffleBoundary
-        private ExitException newExitException(int exitCode) {
-            return new ExitException(exitCode, this);
-        }
-
-        @TruffleBoundary
-        private static void nashornExit(int exitCode) {
-            System.exit(exitCode);
         }
     }
 

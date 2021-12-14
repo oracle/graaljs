@@ -373,6 +373,7 @@ public final class GraalJSAccess {
             contextBuilder.option(JSContextOptions.CONSOLE_NAME, "false");
             // Node.js does not have global arguments property
             contextBuilder.option(JSContextOptions.GLOBAL_ARGUMENTS_NAME, "false");
+            contextBuilder.useSystemExit(true);
 
             exposeGC = options.isGCExposed();
             unsafeWasmMemory = options.isUnsafeWasmMemory();
