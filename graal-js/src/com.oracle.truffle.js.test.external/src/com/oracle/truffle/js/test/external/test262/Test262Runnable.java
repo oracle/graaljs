@@ -238,6 +238,8 @@ public class Test262Runnable extends TestRunnable {
                     "top-level-await",
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "Intl.DurationFormat",
+                    "Intl.NumberFormat-v3",
                     "IsHTMLDDA",
                     "ShadowRealm",
                     "Temporal",
