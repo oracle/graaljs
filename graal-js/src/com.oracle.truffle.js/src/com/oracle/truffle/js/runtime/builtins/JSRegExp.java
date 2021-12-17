@@ -238,7 +238,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         }
     }
 
-    private static final Comparator<Pair<Integer, String>> NAMED_GROUPS_COMPARATOR = new Comparator<Pair<Integer, String>>() {
+    private static final Comparator<Pair<Integer, String>> NAMED_GROUPS_COMPARATOR = new Comparator<>() {
         @Override
         public int compare(Pair<Integer, String> group1, Pair<Integer, String> group2) {
             return group1.getFirst() - group2.getFirst();

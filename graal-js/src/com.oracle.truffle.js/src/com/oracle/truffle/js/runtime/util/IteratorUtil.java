@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -131,10 +131,10 @@ public final class IteratorUtil {
     }
 
     public static <T> Iterable<T> concatIterables(final Iterable<T> first, final Iterable<T> second) {
-        return new Iterable<T>() {
+        return new Iterable<>() {
             @Override
             public Iterator<T> iterator() {
-                return new Iterator<T>() {
+                return new Iterator<>() {
                     private final Iterator<T> firstIterator = first.iterator();
                     private final Iterator<T> secondIterator = second.iterator();
 
@@ -171,7 +171,7 @@ public final class IteratorUtil {
         } else if (size1 == 0) {
             return list0;
         }
-        return new AbstractList<T>() {
+        return new AbstractList<>() {
             @Override
             public T get(int index) {
                 if (index >= 0 && index < size0) {
@@ -311,7 +311,7 @@ public final class IteratorUtil {
      * Like {@code Arrays.asList(array).iterator()}, but without concurrent modification checks.
      */
     public static <T> Iterator<T> simpleArrayIterator(T[] array) {
-        return new Iterator<T>() {
+        return new Iterator<>() {
             private int cursor;
 
             @Override
@@ -333,7 +333,7 @@ public final class IteratorUtil {
      * Like {@link AbstractList#iterator()}, but without concurrent modification checks.
      */
     public static <T> Iterator<T> simpleListIterator(List<T> list) {
-        return new Iterator<T>() {
+        return new Iterator<>() {
             private int cursor;
 
             @Override

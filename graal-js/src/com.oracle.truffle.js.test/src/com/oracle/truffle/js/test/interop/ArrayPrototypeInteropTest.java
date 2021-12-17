@@ -271,7 +271,7 @@ public class ArrayPrototypeInteropTest {
         resultTest.accept(resultValue);
     }
 
-    private static final TypeLiteral<List<Integer>> LIST_OF_INTEGER = new TypeLiteral<List<Integer>>() {
+    private static final TypeLiteral<List<Integer>> LIST_OF_INTEGER = new TypeLiteral<>() {
     };
 
     private static class MyProxyArray implements ProxyArray {

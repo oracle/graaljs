@@ -63,7 +63,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
  */
 public final class TestFile {
 
-    public static final Comparator<TestFile> COMPARATOR = new Comparator<TestFile>() {
+    public static final Comparator<TestFile> COMPARATOR = new Comparator<>() {
         @Override
         public int compare(TestFile o1, TestFile o2) {
             int result = o1.getFilePath().compareToIgnoreCase(o2.getFilePath());

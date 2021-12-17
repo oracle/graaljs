@@ -901,7 +901,7 @@ public final class JSFunction extends JSNonProxy {
 
         @TruffleBoundary
         private static Object createArguments(DynamicObject thiz) {
-            return Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+            return Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                 @Override
                 public Object visitFrame(FrameInstance frameInstance) {
                     RootNode rootNode = getFrameRootNode(frameInstance);
@@ -940,7 +940,7 @@ public final class JSFunction extends JSNonProxy {
 
         @TruffleBoundary
         private static Object findCaller(DynamicObject thiz) {
-            return Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+            return Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                 private boolean seenThis = false;
 
                 @Override
