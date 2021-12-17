@@ -260,7 +260,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (resultNode instanceof VarWrapperNode) {
             tagBody(((VarWrapperNode) resultNode).getDelegateNode(), parseNode);
         } else {
-            resultNode.addRootBodyTag();
+            if (resultNode instanceof BlockScopeNode) {
+                JavaScriptNode blockNode = ((BlockScopeNode) resultNode).getBlock();
+                blockNode.addRootBodyTag();
+                ensureHasSourceSection(blockNode, parseNode);
+            } else {
+                resultNode.addRootBodyTag();
+            }
         }
         return resultNode;
     }

@@ -418,7 +418,9 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
                     functionFrame = frame.materialize();
                 }
                 if (block instanceof BlockScopeNode) {
-                    scopeFrame = (Frame) ((BlockScopeNode) block).getBlockScope((VirtualFrame) functionFrame);
+                    Object maybeScopeFrame = ((BlockScopeNode) block).getBlockScope((VirtualFrame) functionFrame);
+                    assert maybeScopeFrame instanceof Frame;
+                    scopeFrame = (Frame) maybeScopeFrame;
                 } else {
                     scopeFrame = functionFrame;
                 }
