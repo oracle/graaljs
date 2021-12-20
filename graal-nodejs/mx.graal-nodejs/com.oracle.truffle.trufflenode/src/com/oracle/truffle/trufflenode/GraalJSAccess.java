@@ -2186,9 +2186,15 @@ public final class GraalJSAccess {
                             suffix,
                             String.valueOf(isStrict)
             };
-            CallTarget target = realm.getEnv().parsePublic(source, args);
-            DynamicObject script = (DynamicObject) target.call();
-            function = anyExtension ? JSFunction.call(script, Undefined.instance, extensions) : script;
+            JSRealm mainRealm = JSRealm.getMain(null);
+            JSRealm prevRealm = mainRealm.enterRealm(null, realm);
+            try {
+                CallTarget target = realm.getEnv().parsePublic(source, args);
+                DynamicObject script = (DynamicObject) target.call();
+                function = anyExtension ? JSFunction.call(script, Undefined.instance, extensions) : script;
+            } finally {
+                mainRealm.leaveRealm(null, prevRealm);
+            }
         }
         assert JSFunction.isJSFunction(function);
 
