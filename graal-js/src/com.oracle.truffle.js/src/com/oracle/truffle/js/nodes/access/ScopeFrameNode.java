@@ -73,7 +73,9 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
                 }
                 return CurrentFrameNode.instance();
             }
-            return new EnclosingScopeFrameNode(scopeLevel, blockScopeSlot.getIndex());
+            if (blockScopeSlot != null) {
+                return new EnclosingScopeFrameNode(scopeLevel, blockScopeSlot.getIndex());
+            }
         } else if (scopeLevel == 0) {
             assert frameLevel > 0;
             return EnclosingFunctionFrameNode.instance(frameLevel);

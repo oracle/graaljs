@@ -40,8 +40,11 @@
  */
 package com.oracle.truffle.js.test.instrumentation;
 
-import java.util.HashSet;
-import java.util.Set;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.graalvm.polyglot.Context;
 import org.junit.Before;
@@ -52,9 +55,11 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 
 public class GR35314 {
@@ -76,29 +81,35 @@ public class GR35314 {
     }
 
     @Test
-    public void testBlockSwitchRoot() {
+    public void testBlockSwitchRoot() throws InteropException {
         final String gr35314 = "'use strict';" +
                         "function crash(x) {" +
                         "  switch (x) {" +
                         "    case 'foo':" +
                         "      var local = 42;" +
                         "      break;" +
+                        "    case 'bar':" +
+                        "      (function(){return x;})();" +
+                        "      break;" +
                         "  }" +
                         "};" +
                         "crash('foo');";
-        assertHasSymbols(evalScopes(gr35314, RootBodyTag.class), "x", "local", "this");
+        Map<String, Object> scope = evalScopes(gr35314, RootBodyTag.class);
+        assertHasSymbols(scope, "x", "local", "this");
+        assertEquals("x == 'foo'", "foo", InteropLibrary.getUncached().asString(scope.get("x")));
+        assertTrue("local == undefined", InteropLibrary.getUncached().isNull(scope.get("local")));
     }
 
-    private static void assertHasSymbols(Set<String> collected, String... expected) {
+    private static void assertHasSymbols(Map<String, Object> collected, String... expected) {
         for (String s : expected) {
-            if (!collected.contains(s)) {
+            if (!collected.containsKey(s)) {
                 throw new AssertionError("Symbols collected by instrument do not contain: " + s);
             }
         }
     }
 
-    protected Set<String> evalScopes(String src, Class<?>... tags) {
-        final Set<String> scopeSymbols = new HashSet<>();
+    protected Map<String, Object> evalScopes(String src, Class<?>... tags) {
+        final Map<String, Object> scopeSymbols = new LinkedHashMap<>();
         SourceSectionFilter expFilter = SourceSectionFilter.newBuilder().tagIs(tags).includeInternal(false).build();
         instrumenter.attachExecutionEventFactory(expFilter, eventContext -> new ExecutionEventNode() {
 
@@ -114,10 +125,11 @@ public class GR35314 {
                         long arraySize = interopLib.getArraySize(members);
                         for (int i = 0; i < arraySize; i++) {
                             Object element = interopLib.readArrayElement(members, i);
-                            scopeSymbols.add(element.toString());
+                            String symbol = interopLib.asString(element);
+                            scopeSymbols.put(symbol, interopLib.readMember(scope, symbol));
                         }
                     }
-                } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
                     throw new AssertionError(e);
                 }
             }
