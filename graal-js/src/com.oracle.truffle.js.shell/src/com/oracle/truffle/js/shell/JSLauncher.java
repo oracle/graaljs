@@ -334,6 +334,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
         int status;
         contextBuilder.arguments("js", programArgs);
         contextBuilder.option("js.shell", "true");
+        contextBuilder.useSystemExit(true);
         try (Context context = contextBuilder.build()) {
             runVersionAction(versionAction, context.getEngine());
             preEval(context);
