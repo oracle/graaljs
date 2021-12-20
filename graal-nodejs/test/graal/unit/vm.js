@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -87,5 +87,13 @@ describe('vm', function () {
             new vm.Script('!', { filename: 'vm.js' });
         }, SyntaxError);
         assert.strictEqual(new vm.Script('6*7', { filename: 'vm.js' }).runInThisContext(), 42);
+    });
+    it('should honor parsingContext option of compileFunction()', function () {
+        // Extracted from parallel/test-vm-basic.js.
+        // Similar pattern is used by jest testing framework.
+        assert.strictEqual(
+            vm.compileFunction('return varInContext', [], { parsingContext: vm.createContext({varInContext: 'abc'}) })(),
+            'abc'
+        );
     });
 });
