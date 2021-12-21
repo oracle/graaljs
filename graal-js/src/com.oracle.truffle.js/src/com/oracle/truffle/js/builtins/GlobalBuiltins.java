@@ -77,6 +77,7 @@ import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
@@ -1666,7 +1667,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     InteropLibrary keyInterop = InteropLibrary.getUncached(hashKey);
                     if (keyInterop.isString(hashKey)) {
                         String stringKey = keyInterop.asString(hashKey);
-                        if (!globalObject.getShape().hasProperty(stringKey) && !JSObject.getPrototype(globalObject).getShape().hasProperty(stringKey)) {
+                        Object value = DynamicObjectLibrary.getUncached().getOrDefault(globalObject, stringKey, Undefined.instance);
+                        if ((value == Undefined.instance || value instanceof ScriptEngineGlobalScopeBindingsPropertyProxy &&
+                                        ((ScriptEngineGlobalScopeBindingsPropertyProxy) value).get(globalObject) == Undefined.instance) &&
+                                        !JSObject.getPrototype(globalObject).getShape().hasProperty(stringKey)) {
                             JSObjectUtil.defineProxyProperty(globalObject, stringKey, new ScriptEngineGlobalScopeBindingsPropertyProxy(stringKey, globalContextBindings, bindingsInterop),
                                             JSAttributes.getDefault());
                         }
