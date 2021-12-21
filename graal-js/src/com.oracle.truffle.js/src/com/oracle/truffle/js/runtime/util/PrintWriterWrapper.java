@@ -66,13 +66,6 @@ public final class PrintWriterWrapper extends PrintWriter {
         super(out, autoFlush);
     }
 
-    public void setDelegate(Writer out) {
-        synchronized (this.lock) {
-            this.out = out;
-            this.outWrapper = null;
-        }
-    }
-
     public void setDelegate(OutputStream out) {
         synchronized (this.lock) {
             if (outWrapper != null) {
@@ -80,33 +73,6 @@ public final class PrintWriterWrapper extends PrintWriter {
             } else {
                 outWrapper = new OutputStreamWrapper(out);
                 this.out = new OutputStreamWriter(outWrapper);
-            }
-        }
-    }
-
-    public void setFrom(PrintWriterWrapper otherWrapper) {
-        synchronized (this.lock) {
-            boolean newWrapper = false;
-            if (otherWrapper.outWrapper != null) {
-                // Need to keep separate OutputStreamWrapper instances
-                if (this.outWrapper != null) {
-                    // We both have wrappers, great, just need to update the delegate
-                    this.outWrapper.setDelegate(otherWrapper.outWrapper.getDelegate());
-                } else {
-                    // The other has a wrapper, but we do not. Create our own.
-                    this.outWrapper = new OutputStreamWrapper(otherWrapper.outWrapper.getDelegate());
-                    newWrapper = true;
-                }
-            } else {
-                // No wrapper. Will copy the Writer only.
-                this.outWrapper = null;
-            }
-            if (this.outWrapper != null) {
-                if (newWrapper) {
-                    this.out = new OutputStreamWriter(this.outWrapper);
-                }
-            } else {
-                this.out = otherWrapper.out;
             }
         }
     }

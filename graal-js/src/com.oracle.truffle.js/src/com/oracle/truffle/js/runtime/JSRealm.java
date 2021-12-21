@@ -45,7 +45,6 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_S
 
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.io.Writer;
 import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -2187,10 +2186,10 @@ public class JSRealm {
 
     private void setOutputStreamsFromEnv(TruffleLanguage.Env newEnv) {
         if (newEnv.out() != outputWriter.getDelegate()) {
-            setOutputWriter(null, newEnv.out());
+            setOutputWriter(newEnv.out());
         }
         if (newEnv.err() != errorWriter.getDelegate()) {
-            setErrorWriter(null, newEnv.err());
+            setErrorWriter(newEnv.err());
         }
     }
 
@@ -2310,28 +2309,12 @@ public class JSRealm {
         return errorWriter;
     }
 
-    public final void setOutputWriter(Writer writer, OutputStream stream) {
-        if (writer instanceof PrintWriterWrapper) {
-            this.outputWriter.setFrom((PrintWriterWrapper) writer);
-        } else {
-            if (stream != null) {
-                this.outputWriter.setDelegate(stream);
-            } else {
-                this.outputWriter.setDelegate(writer);
-            }
-        }
+    private void setOutputWriter(OutputStream stream) {
+        this.outputWriter.setDelegate(stream);
     }
 
-    public final void setErrorWriter(Writer writer, OutputStream stream) {
-        if (writer instanceof PrintWriterWrapper) {
-            this.errorWriter.setFrom((PrintWriterWrapper) writer);
-        } else {
-            if (stream != null) {
-                this.errorWriter.setDelegate(stream);
-            } else {
-                this.errorWriter.setDelegate(writer);
-            }
-        }
+    private void setErrorWriter(OutputStream stream) {
+        this.errorWriter.setDelegate(stream);
     }
 
     public long nanoTime() {
