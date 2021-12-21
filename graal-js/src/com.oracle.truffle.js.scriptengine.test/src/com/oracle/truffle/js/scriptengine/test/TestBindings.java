@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import javax.script.SimpleBindings;
+import javax.script.SimpleScriptContext;
 
 import org.graalvm.polyglot.HostAccess;
 import org.junit.Test;
@@ -424,6 +425,38 @@ public class TestBindings {
         Bindings engineBindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         globalBindings.put("foo", "bar");
         assertEquals("bar", engineBindings.get("foo"));
+    }
+
+    @Test
+    public void sharedEngineScope() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings global = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+
+        ScriptContext cx1 = new SimpleScriptContext();
+        engine.setContext(cx1);
+        cx1.setBindings(global, ScriptContext.ENGINE_SCOPE);
+
+        Bindings bindings1 = new SimpleBindings();
+        cx1.setBindings(bindings1, ScriptContext.GLOBAL_SCOPE);
+
+        bindings1.put("key", "value1");
+        assertEquals("value1", engine.eval("key"));
+
+        bindings1.remove("key");
+        assertTrue((boolean) engine.eval("typeof key === 'undefined'"));
+
+        ScriptContext cx2 = new SimpleScriptContext();
+        engine.setContext(cx2);
+        cx2.setBindings(global, ScriptContext.ENGINE_SCOPE);
+
+        Bindings bindings2 = new SimpleBindings();
+        cx2.setBindings(bindings2, ScriptContext.GLOBAL_SCOPE);
+
+        bindings2.put("key", "value2");
+        assertEquals("value2", engine.eval("key"));
+
+        bindings2.remove("key");
+        assertTrue((boolean) engine.eval("typeof key === 'undefined'"));
     }
 
 }
