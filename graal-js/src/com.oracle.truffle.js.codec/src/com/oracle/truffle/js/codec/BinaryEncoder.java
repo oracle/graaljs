@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.codec;
 
 import java.math.BigInteger;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -58,7 +57,7 @@ public class BinaryEncoder {
     }
 
     public ByteBuffer getBuffer() {
-        return asByteBuffer(buffer.duplicate().order(ByteOrder.LITTLE_ENDIAN).flip());
+        return buffer.duplicate().order(ByteOrder.LITTLE_ENDIAN).flip();
     }
 
     protected void putU1(long value) {
@@ -70,7 +69,7 @@ public class BinaryEncoder {
         if (buffer.position() + increase >= buffer.limit()) {
             ByteBuffer oldBuffer = buffer;
             ByteBuffer newBuffer = ByteBuffer.allocate(Math.max(2 * oldBuffer.capacity(), oldBuffer.position() + increase)).order(ByteOrder.LITTLE_ENDIAN);
-            newBuffer.put(asByteBuffer(oldBuffer.duplicate().flip()));
+            newBuffer.put(oldBuffer.duplicate().flip());
             assert newBuffer.position() == oldBuffer.position();
             assert newBuffer.order() == ByteOrder.LITTLE_ENDIAN;
             buffer = newBuffer;
@@ -168,9 +167,5 @@ public class BinaryEncoder {
 
     public int getPosition() {
         return buffer.position();
-    }
-
-    static ByteBuffer asByteBuffer(Buffer buffer) {
-        return (ByteBuffer) buffer;
     }
 }

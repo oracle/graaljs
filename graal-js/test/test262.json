@@ -1742,13 +1742,6 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
-    "filePath" : "built-ins/String/prototype/toLowerCase/Final_Sigma_U180E.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "JDK8" : "FAIL"
-    },
-    "comment" : "On JDK8, String.toLowerCase() does not handle Final_Sigma special casing with respect to u180e correctly"
-  }, {
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
   }, {

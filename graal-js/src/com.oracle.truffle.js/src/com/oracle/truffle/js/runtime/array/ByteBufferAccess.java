@@ -41,9 +41,6 @@
 package com.oracle.truffle.js.runtime.array;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-
-import com.oracle.truffle.js.runtime.Boundaries;
 
 public abstract class ByteBufferAccess {
 
@@ -99,89 +96,5 @@ public abstract class ByteBufferAccess {
 
     public static final ByteBufferAccess forOrder(boolean littleEndian) {
         return littleEndian ? littleEndian() : bigEndian();
-    }
-}
-
-abstract class AbstractByteBufferAccess extends ByteBufferAccess {
-
-    @Override
-    public final int getInt16(ByteBuffer buffer, int index) {
-        return wrap(buffer).getShort(index);
-    }
-
-    @Override
-    public final int getInt32(ByteBuffer buffer, int index) {
-        return wrap(buffer).getInt(index);
-    }
-
-    @Override
-    public final float getFloat(ByteBuffer buffer, int index) {
-        return wrap(buffer).getFloat(index);
-    }
-
-    @Override
-    public final double getDouble(ByteBuffer buffer, int index) {
-        return wrap(buffer).getDouble(index);
-    }
-
-    @Override
-    public long getInt64(ByteBuffer buffer, int index) {
-        return wrap(buffer).getLong(index);
-    }
-
-    @Override
-    public final void putInt16(ByteBuffer buffer, int index, int value) {
-        wrap(buffer).putShort(index, (short) value);
-    }
-
-    @Override
-    public final void putInt32(ByteBuffer buffer, int index, int value) {
-        wrap(buffer).putInt(index, value);
-    }
-
-    @Override
-    public final void putInt64(ByteBuffer buffer, int index, long value) {
-        wrap(buffer).putLong(index, value);
-    }
-
-    @Override
-    public final void putFloat(ByteBuffer buffer, int index, float value) {
-        wrap(buffer).putFloat(index, value);
-    }
-
-    @Override
-    public final void putDouble(ByteBuffer buffer, int index, double value) {
-        wrap(buffer).putDouble(index, value);
-    }
-
-    protected ByteBuffer wrap(ByteBuffer buffer) {
-        return buffer;
-    }
-}
-
-final class NativeByteBufferAccess extends AbstractByteBufferAccess {
-    static final ByteBufferAccess INSTANCE = new NativeByteBufferAccess();
-
-    @Override
-    protected ByteBuffer wrap(ByteBuffer buffer) {
-        return Boundaries.byteBufferDuplicate(buffer).order(ByteOrder.nativeOrder());
-    }
-}
-
-final class LittleEndianByteBufferAccess extends AbstractByteBufferAccess {
-    static final ByteBufferAccess INSTANCE = new LittleEndianByteBufferAccess();
-
-    @Override
-    protected ByteBuffer wrap(ByteBuffer buffer) {
-        return Boundaries.byteBufferDuplicate(buffer).order(ByteOrder.LITTLE_ENDIAN);
-    }
-}
-
-final class BigEndianByteBufferAccess extends AbstractByteBufferAccess {
-    static final ByteBufferAccess INSTANCE = new BigEndianByteBufferAccess();
-
-    @Override
-    protected ByteBuffer wrap(ByteBuffer buffer) {
-        return Boundaries.byteBufferDuplicate(buffer).order(ByteOrder.BIG_ENDIAN);
     }
 }

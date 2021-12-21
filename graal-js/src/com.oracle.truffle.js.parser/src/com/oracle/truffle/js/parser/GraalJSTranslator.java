@@ -911,7 +911,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return; // nothing to do
         }
 
-        com.oracle.js.parser.ir.visitor.NodeVisitor<LexicalContext> visitor = new com.oracle.js.parser.ir.visitor.NodeVisitor<LexicalContext>(new LexicalContext()) {
+        com.oracle.js.parser.ir.visitor.NodeVisitor<LexicalContext> visitor = new com.oracle.js.parser.ir.visitor.NodeVisitor<>(new LexicalContext()) {
             @Override
             public boolean enterIdentNode(IdentNode identNode) {
                 if (!identNode.isPropertyName()) {

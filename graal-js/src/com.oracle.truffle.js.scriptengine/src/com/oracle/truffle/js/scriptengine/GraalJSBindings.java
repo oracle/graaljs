@@ -59,7 +59,7 @@ import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine.MagicBindingsOptio
 final class GraalJSBindings extends AbstractMap<String, Object> implements Bindings, AutoCloseable {
     private static final String SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME = "importScriptEngineGlobalBindings";
 
-    private static final TypeLiteral<Map<String, Object>> STRING_MAP = new TypeLiteral<Map<String, Object>>() {
+    private static final TypeLiteral<Map<String, Object>> STRING_MAP = new TypeLiteral<>() {
     };
 
     private Context context;

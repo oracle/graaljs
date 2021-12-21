@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.trufflenode;
 
-import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.ConstantFalse;
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.ConstantUndefined;
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.GcBuiltinRoot;
@@ -439,7 +438,7 @@ public final class GraalJSAccess {
     }
 
     public void resetSharedBuffer() {
-        asBaseBuffer(sharedBuffer).clear();
+        sharedBuffer.clear();
     }
 
     public ByteBuffer getSharedBuffer() {
@@ -894,7 +893,7 @@ public final class GraalJSAccess {
     private Object processReturnValue(Object value) {
         Object flatten = valueFlatten(value);
         resetSharedBuffer();
-        asBaseBuffer(sharedBuffer).position(4);
+        sharedBuffer.position(4);
         sharedBuffer.putInt(0, valueType(flatten, true));
         return flatten;
     }

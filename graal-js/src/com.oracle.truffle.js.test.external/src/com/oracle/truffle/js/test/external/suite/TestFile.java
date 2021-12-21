@@ -63,7 +63,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
  */
 public final class TestFile {
 
-    public static final Comparator<TestFile> COMPARATOR = new Comparator<TestFile>() {
+    public static final Comparator<TestFile> COMPARATOR = new Comparator<>() {
         @Override
         public int compare(TestFile o1, TestFile o2) {
             int result = o1.getFilePath().compareToIgnoreCase(o2.getFilePath());
@@ -377,7 +377,6 @@ public final class TestFile {
         AMD64(cfg -> System.getProperty("os.arch").equals("amd64") || System.getProperty("os.arch").equals("x86_64")),
         AARCH64(cfg -> System.getProperty("os.arch").equals("aarch64")),
         WINDOWS(cfg -> System.getProperty("os.name").startsWith("Windows")),
-        JDK8(cfg -> TestFileUtil.JAVA_SPEC == 8),
         JDK15(cfg -> TestFileUtil.JAVA_SPEC >= 15),
         LAZY_TRANSLATION(cfg -> "true".equals(System.getProperty("polyglot.js.lazy-translation")));
 

@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.nodes;
 
-import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
-
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -298,7 +296,7 @@ public class JSNodeDecoder {
                         System.err.println("callex pos:" + position);
                     }
                     final Object[] arguments = getObjectArray(state);
-                    final ByteBuffer buffer = ((ByteBuffer) asBaseBuffer(state.getBuffer().duplicate()).position(position));
+                    final ByteBuffer buffer = state.getBuffer().duplicate().position(position);
                     NodeDecoder.DecoderState extracted = new NodeDecoder.DecoderState(new BinaryDecoder(buffer), arguments);
                     storeResult(state, decodeNode(extracted, nodeFactory, context, source));
                     break;
@@ -311,7 +309,7 @@ public class JSNodeDecoder {
                     }
                     JSFunctionData functionData = (JSFunctionData) state.getObject();
                     final Object[] arguments = getObjectArray(state);
-                    final ByteBuffer buffer = ((ByteBuffer) asBaseBuffer(state.getBuffer().duplicate()).position(position));
+                    final ByteBuffer buffer = state.getBuffer().duplicate().position(position);
                     functionData.setLazyInit(new JSFunctionData.Initializer() {
                         @Override
                         public void initializeRoot(JSFunctionData fd) {

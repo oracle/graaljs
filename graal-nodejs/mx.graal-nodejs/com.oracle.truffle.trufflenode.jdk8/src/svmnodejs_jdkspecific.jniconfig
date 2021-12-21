@@ -1,8 +1,0 @@
-[
-  {
-    "name": "sun.misc.Cleaner",
-    "fields": [
-      { "name": "thunk" }
-    ]
-  }
-]

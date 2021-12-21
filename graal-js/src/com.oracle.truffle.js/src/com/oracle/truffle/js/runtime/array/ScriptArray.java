@@ -230,7 +230,7 @@ public abstract class ScriptArray {
     }
 
     public Iterable<Object> asIterable(DynamicObject object) {
-        return new Iterable<Object>() {
+        return new Iterable<>() {
             @Override
             public Iterator<Object> iterator() {
                 return new DefaultIterator(object);
@@ -481,7 +481,7 @@ public abstract class ScriptArray {
 
     public static List<Object> makeRangeList(final long rangeStart, final long rangeEnd) {
         assert rangeEnd - rangeStart >= 0 && rangeEnd - rangeStart <= Integer.MAX_VALUE;
-        return new AbstractList<Object>() {
+        return new AbstractList<>() {
             @Override
             public Object get(int index) {
                 if (index >= 0 && rangeStart + index < rangeEnd) {
@@ -499,7 +499,7 @@ public abstract class ScriptArray {
     }
 
     protected static List<Object> makeMultiRangeList(final int total, final long[] ranges) {
-        return new AbstractList<Object>() {
+        return new AbstractList<>() {
             @Override
             public Object get(int index) {
                 if (index >= 0) {

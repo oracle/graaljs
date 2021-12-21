@@ -291,7 +291,7 @@ public class SyncAsyncIteratorsInteropTest {
         TestOutput out = new TestOutput();
         try (Context context = createTestContext(out)) {
 
-            Object proxyIterable = ProxyIterable.from(() -> new Iterator<Object>() {
+            Object proxyIterable = ProxyIterable.from(() -> new Iterator<>() {
                 private int count = 0;
 
                 @Override

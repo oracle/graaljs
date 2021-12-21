@@ -486,13 +486,8 @@ public abstract class JSAbstractArray extends JSNonProxy {
                 });
                 int after = list.size();
                 if (after != before) {
-                    Collections.sort(list, new Comparator<Object>() {
-                        @Override
-                        public int compare(Object o1, Object o2) {
-                            long l1 = JSRuntime.propertyKeyToArrayIndex(o1);
-                            long l2 = JSRuntime.propertyKeyToArrayIndex(o2);
-                            return l1 < l2 ? -1 : (l1 == l2 ? 0 : 1);
-                        }
+                    Collections.sort(list, (o1, o2) -> {
+                        return Long.compare(JSRuntime.propertyKeyToArrayIndex(o1), JSRuntime.propertyKeyToArrayIndex(o2));
                     });
                 }
                 keyList.forEach(k -> {

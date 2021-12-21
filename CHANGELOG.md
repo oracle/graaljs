@@ -3,6 +3,9 @@
 This changelog summarizes major changes between GraalVM versions of the GraalVM JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 22.1.0
+* Graal.js now requires Java 11+ and no longer supports Java 8.
+
 ## Version 22.0.0
 * ECMAScript 2022 mode/features enabled by default.
 * Implemented the [Intl.DisplayNames v2](https://github.com/tc39/intl-displaynames-v2) proposal.
