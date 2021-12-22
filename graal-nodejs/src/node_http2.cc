@@ -2,6 +2,7 @@
 #include "allocated_buffer-inl.h"
 #include "aliased_struct-inl.h"
 #include "debug_utils-inl.h"
+#include "histogram-inl.h"
 #include "memory_tracker-inl.h"
 #include "node.h"
 #include "node_buffer.h"
@@ -1215,22 +1216,29 @@ void Http2Session::HandleHeadersFrame(const nghttp2_frame* frame) {
   // this way for performance reasons (it's faster to generate and pass an
   // array than it is to generate and pass the object).
 
-  std::vector<Local<Value>> headers_v(stream->headers_count() * 2);
+  MaybeStackBuffer<Local<Value>, 64> headers_v(stream->headers_count() * 2);
+  MaybeStackBuffer<Local<Value>, 32> sensitive_v(stream->headers_count());
+  size_t sensitive_count = 0;
+
   stream->TransferHeaders([&](const Http2Header& header, size_t i) {
     headers_v[i * 2] = header.GetName(this).ToLocalChecked();
     headers_v[i * 2 + 1] = header.GetValue(this).ToLocalChecked();
+    if (header.flags() & NGHTTP2_NV_FLAG_NO_INDEX)
+      sensitive_v[sensitive_count++] = headers_v[i * 2];
   });
   CHECK_EQ(stream->headers_count(), 0);
 
   DecrementCurrentSessionMemory(stream->current_headers_length_);
   stream->current_headers_length_ = 0;
 
-  Local<Value> args[5] = {
-      stream->object(),
-      Integer::New(isolate, id),
-      Integer::New(isolate, stream->headers_category()),
-      Integer::New(isolate, frame->hd.flags),
-      Array::New(isolate, headers_v.data(), headers_v.size())};
+  Local<Value> args[] = {
+    stream->object(),
+    Integer::New(isolate, id),
+    Integer::New(isolate, stream->headers_category()),
+    Integer::New(isolate, frame->hd.flags),
+    Array::New(isolate, headers_v.out(), headers_v.length()),
+    Array::New(isolate, sensitive_v.out(), sensitive_count),
+  };
   MakeCallback(env()->http2session_on_headers_function(),
                arraysize(args), args);
 }
@@ -2433,6 +2441,25 @@ void Http2Session::SetNextStreamID(const FunctionCallbackInfo<Value>& args) {
   Debug(session, "set next stream id to %d", id);
 }
 
+// Set local window size (local endpoints's window size) to the given
+// window_size for the stream denoted by 0.
+// This function returns 0 if it succeeds, or one of a negative codes
+void Http2Session::SetLocalWindowSize(
+    const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  Http2Session* session;
+  ASSIGN_OR_RETURN_UNWRAP(&session, args.Holder());
+
+  int32_t window_size = args[0]->Int32Value(env->context()).ToChecked();
+
+  int result = nghttp2_session_set_local_window_size(
+      session->session(), NGHTTP2_FLAG_NONE, 0, window_size);
+
+  args.GetReturnValue().Set(result);
+
+  Debug(session, "set local window size to %d", window_size);
+}
+
 // A TypedArray instance is shared between C++ and JS land to contain the
 // SETTINGS (either remote or local). RefreshSettings updates the current
 // values established for each of the settings so those can be read in JS land.
@@ -3051,9 +3078,6 @@ void Initialize(Local<Object> target,
   env->SetMethod(target, "packSettings", PackSettings);
   env->SetMethod(target, "setCallbackFunctions", SetCallbackFunctions);
 
-  Local<String> http2SessionClassName =
-    FIXED_ONE_BYTE_STRING(isolate, "Http2Session");
-
   Local<FunctionTemplate> ping = FunctionTemplate::New(env->isolate());
   ping->SetClassName(FIXED_ONE_BYTE_STRING(env->isolate(), "Http2Ping"));
   ping->Inherit(AsyncWrap::GetConstructorTemplate(env));
@@ -3062,14 +3086,12 @@ void Initialize(Local<Object> target,
   env->set_http2ping_constructor_template(pingt);
 
   Local<FunctionTemplate> setting = FunctionTemplate::New(env->isolate());
-  setting->SetClassName(FIXED_ONE_BYTE_STRING(env->isolate(), "Http2Setting"));
   setting->Inherit(AsyncWrap::GetConstructorTemplate(env));
   Local<ObjectTemplate> settingt = setting->InstanceTemplate();
   settingt->SetInternalFieldCount(AsyncWrap::kInternalFieldCount);
   env->set_http2settings_constructor_template(settingt);
 
   Local<FunctionTemplate> stream = FunctionTemplate::New(env->isolate());
-  stream->SetClassName(FIXED_ONE_BYTE_STRING(env->isolate(), "Http2Stream"));
   env->SetProtoMethod(stream, "id", Http2Stream::GetID);
   env->SetProtoMethod(stream, "destroy", Http2Stream::Destroy);
   env->SetProtoMethod(stream, "priority", Http2Stream::Priority);
@@ -3084,13 +3106,10 @@ void Initialize(Local<Object> target,
   Local<ObjectTemplate> streamt = stream->InstanceTemplate();
   streamt->SetInternalFieldCount(StreamBase::kInternalFieldCount);
   env->set_http2stream_constructor_template(streamt);
-  target->Set(context,
-              FIXED_ONE_BYTE_STRING(env->isolate(), "Http2Stream"),
-              stream->GetFunction(env->context()).ToLocalChecked()).Check();
+  env->SetConstructorFunction(target, "Http2Stream", stream);
 
   Local<FunctionTemplate> session =
       env->NewFunctionTemplate(Http2Session::New);
-  session->SetClassName(http2SessionClassName);
   session->InstanceTemplate()->SetInternalFieldCount(
       Http2Session::kInternalFieldCount);
   session->Inherit(AsyncWrap::GetConstructorTemplate(env));
@@ -3105,6 +3124,8 @@ void Initialize(Local<Object> target,
   env->SetProtoMethod(session, "request", Http2Session::Request);
   env->SetProtoMethod(session, "setNextStreamID",
                       Http2Session::SetNextStreamID);
+  env->SetProtoMethod(session, "setLocalWindowSize",
+                      Http2Session::SetLocalWindowSize);
   env->SetProtoMethod(session, "updateChunksSent",
                       Http2Session::UpdateChunksSent);
   env->SetProtoMethod(session, "refreshState", Http2Session::RefreshState);
@@ -3114,9 +3135,7 @@ void Initialize(Local<Object> target,
   env->SetProtoMethod(
       session, "remoteSettings",
       Http2Session::RefreshSettings<nghttp2_session_get_remote_settings>);
-  target->Set(context,
-              http2SessionClassName,
-              session->GetFunction(env->context()).ToLocalChecked()).Check();
+  env->SetConstructorFunction(target, "Http2Session", session);
 
   Local<Object> constants = Object::New(isolate);
 

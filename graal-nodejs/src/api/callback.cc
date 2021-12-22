@@ -19,11 +19,16 @@ using v8::Value;
 
 CallbackScope::CallbackScope(Isolate* isolate,
                              Local<Object> object,
+                             async_context async_context)
+  : CallbackScope(Environment::GetCurrent(isolate), object, async_context) {}
+
+CallbackScope::CallbackScope(Environment* env,
+                             Local<Object> object,
                              async_context asyncContext)
-  : private_(new InternalCallbackScope(Environment::GetCurrent(isolate),
+  : private_(new InternalCallbackScope(env,
                                        object,
                                        asyncContext)),
-    try_catch_(isolate) {
+    try_catch_(env->isolate()) {
   try_catch_.SetVerbose(true);
 }
 

@@ -1357,6 +1357,9 @@ being issued by trusted CA (`options.ca`).
 <!-- YAML
 added: v0.11.3
 changes:
+  - version: v14.18.0
+    pr-url: https://github.com/nodejs/node/pull/35753
+    description: Added `onread` option.
   - version: v14.1.0
     pr-url: https://github.com/nodejs/node/pull/32786
     description: The `highWaterMark` option is accepted now.
@@ -1468,6 +1471,10 @@ changes:
     [`tls.createSecureContext()`][]. If a `secureContext` is _not_ provided, one
     will be created by passing the entire `options` object to
     `tls.createSecureContext()`.
+  * `onread` {Object} If the `socket` option is missing, incoming data is
+    stored in a single `buffer` and passed to the supplied `callback` when
+    data arrives on the socket, otherwise the option is ignored. See the
+    `onread` option of [`net.Socket`][] for details.
   * ...: [`tls.createSecureContext()`][] options that are used if the
     `secureContext` option is missing, otherwise they are ignored.
   * ...: Any [`socket.connect()`][] option not already listed.
@@ -2005,14 +2012,14 @@ added: v11.4.0
 [Session Resumption]: #tls_session_resumption
 [Stream]: stream.md#stream_stream
 [TLS recommendations]: https://wiki.mozilla.org/Security/Server_Side_TLS
-[`--tls-cipher-list`]: cli.md#cli_tls_cipher_list_list
-[`Duplex`]: stream.md#stream_class_stream_duplex
-[`NODE_OPTIONS`]: cli.md#cli_node_options_options
 [`'newSession'`]: #tls_event_newsession
 [`'resumeSession'`]: #tls_event_resumesession
 [`'secureConnect'`]: #tls_event_secureconnect
 [`'secureConnection'`]: #tls_event_secureconnection
 [`'session'`]: #tls_event_session
+[`--tls-cipher-list`]: cli.md#cli_tls_cipher_list_list
+[`Duplex`]: stream.md#stream_class_stream_duplex
+[`NODE_OPTIONS`]: cli.md#cli_node_options_options
 [`SSL_export_keying_material`]: https://www.openssl.org/docs/man1.1.1/man3/SSL_export_keying_material.html
 [`SSL_get_version`]: https://www.openssl.org/docs/man1.1.1/man3/SSL_get_version.html
 [`crypto.getCurves()`]: crypto.md#crypto_crypto_getcurves
@@ -2046,5 +2053,5 @@ added: v11.4.0
 [cipher list format]: https://www.openssl.org/docs/man1.1.1/man1/ciphers.html#CIPHER-LIST-FORMAT
 [forward secrecy]: https://en.wikipedia.org/wiki/Perfect_forward_secrecy
 [modifying the default cipher suite]: #tls_modifying_the_default_tls_cipher_suite
-[specific attacks affecting larger AES key sizes]: https://www.schneier.com/blog/archives/2009/07/another_new_aes.html
 [perfect forward secrecy]: #tls_perfect_forward_secrecy
+[specific attacks affecting larger AES key sizes]: https://www.schneier.com/blog/archives/2009/07/another_new_aes.html

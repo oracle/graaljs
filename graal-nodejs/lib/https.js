@@ -41,16 +41,14 @@ const url = require('url');
 const { Agent: HttpAgent } = require('_http_agent');
 const {
   Server: HttpServer,
+  storeHTTPOptions,
   _connectionListener,
-  kServerResponse
 } = require('_http_server');
 const { ClientRequest } = require('_http_client');
 let debug = require('internal/util/debuglog').debuglog('https', (fn) => {
   debug = fn;
 });
-const { URL, urlToOptions, searchParamsSymbol } = require('internal/url');
-const { IncomingMessage, ServerResponse } = require('http');
-const { kIncomingMessage } = require('_http_common');
+const { URL, urlToHttpOptions, searchParamsSymbol } = require('internal/url');
 
 function Server(opts, requestListener) {
   if (!(this instanceof Server)) return new Server(opts, requestListener);
@@ -68,9 +66,7 @@ function Server(opts, requestListener) {
     opts.ALPNProtocols = ['http/1.1'];
   }
 
-  this[kIncomingMessage] = opts.IncomingMessage || IncomingMessage;
-  this[kServerResponse] = opts.ServerResponse || ServerResponse;
-
+  FunctionPrototypeCall(storeHTTPOptions, this, opts);
   FunctionPrototypeCall(tls.Server, this, opts, _connectionListener);
 
   this.httpAllowHalfOpen = false;
@@ -344,7 +340,7 @@ function request(...args) {
   if (typeof args[0] === 'string') {
     const urlStr = ArrayPrototypeShift(args);
     try {
-      options = urlToOptions(new URL(urlStr));
+      options = urlToHttpOptions(new URL(urlStr));
     } catch (err) {
       options = url.parse(urlStr);
       if (!options.hostname) {
@@ -361,7 +357,7 @@ function request(...args) {
   } else if (args[0] && args[0][searchParamsSymbol] &&
              args[0][searchParamsSymbol][searchParamsSymbol]) {
     // url.URL instance
-    options = urlToOptions(ArrayPrototypeShift(args));
+    options = urlToHttpOptions(ArrayPrototypeShift(args));
   }
 
   if (args[0] && typeof args[0] !== 'function') {

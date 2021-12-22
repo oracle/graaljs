@@ -4,7 +4,7 @@ const common = require('../common');
 common.skipIfInspectorDisabled();
 
 const fixtures = require('../common/fixtures');
-const startCLI = require('../common/inspector-cli');
+const startCLI = require('../common/debugger');
 
 const assert = require('assert');
 const { spawn } = require('child_process');
@@ -16,7 +16,7 @@ function launchTarget(...args) {
 }
 
 {
-  const script = fixtures.path('inspector-cli', 'alive.js');
+  const script = fixtures.path('debugger', 'alive.js');
   let cli = null;
   let target = null;
 

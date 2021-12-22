@@ -61,6 +61,7 @@ function prepareMainThreadExecution(expandArgv1 = false) {
   initializeClusterIPC();
 
   initializeAbortController();
+  initializeSourceMapsHandlers();
   initializeDeprecations();
   initializeWASI();
   initializeCJSLoader();
@@ -135,7 +136,7 @@ function setupWarningHandler() {
   const {
     onWarning
   } = require('internal/process/warning');
-  if (!getOptionValue('--no-warnings') &&
+  if (getOptionValue('--warnings') &&
     process.env.NODE_NO_WARNINGS !== '1') {
     process.on('warning', onWarning);
   }
@@ -259,7 +260,7 @@ function initializeDeprecations() {
     'isSetIterator',
     'isTypedArray',
     'isUint8Array',
-    'isAnyArrayBuffer'
+    'isAnyArrayBuffer',
   ]) {
     utilBinding[name] = pendingDeprecation ?
       deprecate(types[name],
@@ -455,6 +456,12 @@ function initializeESMLoader() {
   setImportModuleDynamicallyCallback(esm.importModuleDynamicallyCallback);
 }
 
+function initializeSourceMapsHandlers() {
+  const { setSourceMapsEnabled } =
+    require('internal/source_map/source_map_cache');
+  process.setSourceMapsEnabled = setSourceMapsEnabled;
+}
+
 function initializeFrozenIntrinsics() {
   if (getOptionValue('--frozen-intrinsics')) {
     process.emitWarning('The --frozen-intrinsics flag is experimental',
@@ -486,6 +493,7 @@ module.exports = {
   initializeDeprecations,
   initializeESMLoader,
   initializeFrozenIntrinsics,
+  initializeSourceMapsHandlers,
   loadPreloadModules,
   setupTraceCategoryState,
   setupInspectorHooks,

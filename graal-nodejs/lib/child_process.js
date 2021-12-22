@@ -28,12 +28,12 @@ const {
   ObjectAssign,
   ObjectDefineProperty,
   ObjectPrototypeHasOwnProperty,
-  Promise,
 } = primordials;
 
 const {
   promisify,
   convertToValidSignal,
+  createDeferredPromise,
   getSystemErrorName
 } = require('internal/util');
 const { isArrayBufferView } = require('internal/util/types');
@@ -43,7 +43,6 @@ let debug = require('internal/util/debuglog').debuglog(
     debug = fn;
   }
 );
-const { AbortController } = require('internal/abort_controller');
 const { Buffer } = require('buffer');
 const { Pipe, constants: PipeConstants } = internalBinding('pipe_wrap');
 
@@ -59,6 +58,7 @@ const {
   ERR_OUT_OF_RANGE,
 } = errorCodes;
 const { clearTimeout, setTimeout } = require('timers');
+const { getValidatedPath } = require('internal/fs/utils');
 const {
   validateString,
   isInt32,
@@ -150,7 +150,7 @@ function fork(modulePath /* , args, options */) {
   options.execPath = options.execPath || process.execPath;
   options.shell = false;
 
-  return spawnWithSignal(options.execPath, args, options);
+  return spawn(options.execPath, args, options);
 }
 
 function _forkChild(fd, serializationMode) {
@@ -216,12 +216,7 @@ function exec(command, options, callback) {
 
 const customPromiseExecFunction = (orig) => {
   return (...args) => {
-    let resolve;
-    let reject;
-    const promise = new Promise((res, rej) => {
-      resolve = res;
-      reject = rej;
-    });
+    const { promise, resolve, reject } = createDeferredPromise();
 
     promise.child = orig(...args, (err, stdout, stderr) => {
       if (err !== null) {
@@ -311,17 +306,15 @@ function execFile(file /* , args, options, callback */) {
   // Validate maxBuffer, if present.
   validateMaxBuffer(options.maxBuffer);
 
-  // Validate signal, if present
-  validateAbortSignal(options.signal, 'options.signal');
-
   options.killSignal = sanitizeKillSignal(options.killSignal);
 
   const child = spawn(file, args, {
     cwd: options.cwd,
     env: options.env,
     gid: options.gid,
-    uid: options.uid,
     shell: options.shell,
+    signal: options.signal,
+    uid: options.uid,
     windowsHide: !!options.windowsHide,
     windowsVerbatimArguments: !!options.windowsVerbatimArguments
   });
@@ -425,27 +418,11 @@ function execFile(file /* , args, options, callback */) {
     }
   }
 
-  function abortHandler() {
-    if (!ex)
-      ex = new AbortError();
-    process.nextTick(() => kill());
-  }
-
   if (options.timeout > 0) {
     timeoutId = setTimeout(function delayedKill() {
       kill();
       timeoutId = null;
     }, options.timeout);
-  }
-  if (options.signal) {
-    if (options.signal.aborted) {
-      process.nextTick(abortHandler);
-    } else {
-      const childController = new AbortController();
-      options.signal.addEventListener('abort', abortHandler,
-                                      { signal: childController.signal });
-      child.once('close', () => childController.abort());
-    }
   }
 
   if (child.stdout) {
@@ -527,10 +504,11 @@ function normalizeSpawnArguments(file, args, options) {
   else if (options === null || typeof options !== 'object')
     throw new ERR_INVALID_ARG_TYPE('options', 'object', options);
 
+  let cwd = options.cwd;
+
   // Validate the cwd, if present.
-  if (options.cwd != null &&
-      typeof options.cwd !== 'string') {
-    throw new ERR_INVALID_ARG_TYPE('options.cwd', 'string', options.cwd);
+  if (cwd != null) {
+    cwd = getValidatedPath(cwd, 'options.cwd');
   }
 
   // Validate detached, if present.
@@ -557,9 +535,8 @@ function normalizeSpawnArguments(file, args, options) {
   }
 
   // Validate argv0, if present.
-  if (options.argv0 != null &&
-      typeof options.argv0 !== 'string') {
-    throw new ERR_INVALID_ARG_TYPE('options.argv0', 'string', options.argv0);
+  if (options.argv0 != null) {
+    validateString(options.argv0, 'options.argv0');
   }
 
   // Validate windowsHide, if present.
@@ -638,12 +615,25 @@ function normalizeSpawnArguments(file, args, options) {
     // Make a shallow copy so we don't clobber the user's options object.
     ...options,
     args,
+    cwd,
     detached: !!options.detached,
     envPairs,
     file,
     windowsHide: !!options.windowsHide,
-    windowsVerbatimArguments: !!windowsVerbatimArguments
+    windowsVerbatimArguments: !!windowsVerbatimArguments,
   };
+}
+
+function abortChildProcess(child, killSignal) {
+  if (!child)
+    return;
+  try {
+    if (child.kill(killSignal)) {
+      child.emit('error', new AbortError());
+    }
+  } catch (err) {
+    child.emit('error', err);
+  }
 }
 
 
@@ -670,11 +660,51 @@ function normalizeSpawnArguments(file, args, options) {
  * @returns {ChildProcess}
  */
 function spawn(file, args, options) {
+  options = normalizeSpawnArguments(file, args, options);
+  validateTimeout(options.timeout, 'options.timeout');
+  validateAbortSignal(options.signal, 'options.signal');
+  const killSignal = sanitizeKillSignal(options.killSignal);
   const child = new ChildProcess();
 
-  options = normalizeSpawnArguments(file, args, options);
+  if (options.signal) {
+    const signal = options.signal;
+    if (signal.aborted) {
+      onAbortListener();
+    } else {
+      signal.addEventListener('abort', onAbortListener, { once: true });
+      child.once('exit',
+                 () => signal.removeEventListener('abort', onAbortListener));
+    }
+
+    function onAbortListener() {
+      process.nextTick(() => {
+        abortChildProcess(child, killSignal);
+      });
+    }
+  }
+
   debug('spawn', options);
   child.spawn(options);
+
+  if (options.timeout > 0) {
+    let timeoutId = setTimeout(() => {
+      if (timeoutId) {
+        try {
+          child.kill(killSignal);
+        } catch (err) {
+          child.emit('error', err);
+        }
+        timeoutId = null;
+      }
+    }, options.timeout);
+
+    child.once('exit', () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+    });
+  }
 
   return child;
 }
@@ -878,23 +908,30 @@ function sanitizeKillSignal(killSignal) {
 // This level of indirection is here because the other child_process methods
 // call spawn internally but should use different cancellation logic.
 function spawnWithSignal(file, args, options) {
-  const child = spawn(file, args, options);
+  // Remove signal from options to spawn
+  // to avoid double emitting of AbortError
+  const opts = options && typeof options === 'object' && ('signal' in options) ?
+    { ...options, signal: undefined } :
+    options;
 
-  if (options && options.signal) {
+  if (options?.signal) {
     // Validate signal, if present
     validateAbortSignal(options.signal, 'options.signal');
+  }
+  const child = spawn(file, args, opts);
+
+  if (options?.signal) {
+    const killSignal = sanitizeKillSignal(options.killSignal);
+
     function kill() {
-      if (child._handle) {
-        child.kill('SIGTERM');
-        child.emit('error', new AbortError());
-      }
+      abortChildProcess(child, killSignal);
     }
     if (options.signal.aborted) {
       process.nextTick(kill);
     } else {
-      options.signal.addEventListener('abort', kill);
+      options.signal.addEventListener('abort', kill, { once: true });
       const remove = () => options.signal.removeEventListener('abort', kill);
-      child.once('close', remove);
+      child.once('exit', remove);
     }
   }
   return child;

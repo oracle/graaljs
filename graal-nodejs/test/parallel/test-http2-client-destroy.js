@@ -16,7 +16,7 @@ const Countdown = require('../common/countdown');
   server.listen(0, common.mustCall(() => {
     const destroyCallbacks = [
       (client) => client.destroy(),
-      (client) => client[kSocket].destroy()
+      (client) => client[kSocket].destroy(),
     ];
 
     const countdown = new Countdown(destroyCallbacks.length, () => {
@@ -78,6 +78,7 @@ const Countdown = require('../common/countdown');
     };
 
     assert.throws(() => client.setNextStreamID(), sessionError);
+    assert.throws(() => client.setLocalWindowSize(), sessionError);
     assert.throws(() => client.ping(), sessionError);
     assert.throws(() => client.settings({}), sessionError);
     assert.throws(() => client.goaway(), sessionError);
@@ -88,6 +89,7 @@ const Countdown = require('../common/countdown');
     // so that state.destroyed is set to true
     setImmediate(() => {
       assert.throws(() => client.setNextStreamID(), sessionError);
+      assert.throws(() => client.setLocalWindowSize(), sessionError);
       assert.throws(() => client.ping(), sessionError);
       assert.throws(() => client.settings({}), sessionError);
       assert.throws(() => client.goaway(), sessionError);

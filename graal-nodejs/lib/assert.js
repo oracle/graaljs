@@ -91,7 +91,7 @@ const meta = [
   '\\u000f', '\\u0010', '\\u0011', '\\u0012', '\\u0013',
   '\\u0014', '\\u0015', '\\u0016', '\\u0017', '\\u0018',
   '\\u0019', '\\u001a', '\\u001b', '\\u001c', '\\u001d',
-  '\\u001e', '\\u001f'
+  '\\u001e', '\\u001f',
 ];
 
 const escapeFn = (str) => meta[StringPrototypeCharCodeAt(str, 0)];
@@ -238,21 +238,9 @@ function getCode(fd, line, column) {
 function parseCode(code, offset) {
   // Lazy load acorn.
   if (parseExpressionAt === undefined) {
-    const acorn = require('internal/deps/acorn/acorn/dist/acorn');
-    const privateMethods =
-      require('internal/deps/acorn-plugins/acorn-private-methods/index');
-    const classFields =
-      require('internal/deps/acorn-plugins/acorn-class-fields/index');
-    const staticClassFeatures =
-      require('internal/deps/acorn-plugins/acorn-static-class-features/index');
-
+    const Parser = require('internal/deps/acorn/acorn/dist/acorn').Parser;
     ({ findNodeAround } = require('internal/deps/acorn/acorn-walk/dist/walk'));
 
-    const Parser = acorn.Parser.extend(
-      privateMethods,
-      classFields,
-      staticClassFeatures
-    );
     parseExpressionAt = FunctionPrototypeBind(Parser.parseExpressionAt, Parser);
   }
   let node;
@@ -280,7 +268,7 @@ function parseCode(code, offset) {
     node.node.start,
     StringPrototypeReplace(StringPrototypeSlice(code,
                                                 node.node.start, node.node.end),
-                           escapeSequencesRegExp, escapeFn)
+                           escapeSequencesRegExp, escapeFn),
   ];
 }
 
@@ -339,7 +327,7 @@ function getErrMessage(message, fn) {
       }
       fd = openSync(filename, 'r', 0o666);
       // Reset column and message.
-      [column, message] = getCode(fd, line, column);
+      ({ 0: column, 1: message } = getCode(fd, line, column));
       // Flush unfinished multi byte characters.
       decoder.end();
     } else {
@@ -347,7 +335,7 @@ function getErrMessage(message, fn) {
         code = StringPrototypeSlice(code,
                                     StringPrototypeIndexOf(code, '\n') + 1);
       }
-      [column, message] = parseCode(code, column);
+      ({ 0: column, 1: message } = parseCode(code, column));
     }
     // Always normalize indentation, otherwise the message could look weird.
     if (StringPrototypeIncludes(message, '\n')) {

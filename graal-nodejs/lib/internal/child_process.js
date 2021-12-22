@@ -22,7 +22,11 @@ const {
     ERR_MISSING_ARGS
   }
 } = require('internal/errors');
-const { validateString, validateOneOf } = require('internal/validators');
+const {
+  validateArray,
+  validateOneOf,
+  validateString,
+} = require('internal/validators');
 const EventEmitter = require('events');
 const net = require('net');
 const dgram = require('dgram');
@@ -224,6 +228,7 @@ function stdioStringToArray(stdio, channel) {
 
   switch (stdio) {
     case 'ignore':
+    case 'overlapped':
     case 'pipe': options.push(stdio, stdio, stdio); break;
     case 'inherit': options.push(0, 1, 2); break;
     default:
@@ -355,11 +360,8 @@ ChildProcess.prototype.spawn = function(options) {
     // Let child process know about opened IPC channel
     if (options.envPairs === undefined)
       options.envPairs = [];
-    else if (!ArrayIsArray(options.envPairs)) {
-      throw new ERR_INVALID_ARG_TYPE('options.envPairs',
-                                     'Array',
-                                     options.envPairs);
-    }
+    else
+      validateArray(options.envPairs, 'options.envPairs');
 
     options.envPairs.push(`NODE_CHANNEL_FD=${ipcFd}`);
     options.envPairs.push(`NODE_CHANNEL_SERIALIZATION_MODE=${serialization}`);
@@ -972,9 +974,10 @@ function getValidStdio(stdio, sync) {
 
     if (stdio === 'ignore') {
       acc.push({ type: 'ignore' });
-    } else if (stdio === 'pipe' || (typeof stdio === 'number' && stdio < 0)) {
+    } else if (stdio === 'pipe' || stdio === 'overlapped' ||
+               (typeof stdio === 'number' && stdio < 0)) {
       const a = {
-        type: 'pipe',
+        type: stdio === 'overlapped' ? 'overlapped' : 'pipe',
         readable: i === 0,
         writable: i !== 0
       };

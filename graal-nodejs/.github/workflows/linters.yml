@@ -2,6 +2,7 @@ name: linters
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches:
       - master
@@ -11,7 +12,7 @@ on:
 
 env:
   PYTHON_VERSION: 3.9
-  NODE_VERSION: 14.x
+  NODE_VERSION: lts/*
 
 jobs:
   lint-addon-docs:

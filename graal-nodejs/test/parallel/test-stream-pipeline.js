@@ -21,7 +21,7 @@ const net = require('net');
   const expected = [
     Buffer.from('a'),
     Buffer.from('b'),
-    Buffer.from('c')
+    Buffer.from('c'),
   ];
 
   const read = new Readable({
@@ -346,7 +346,7 @@ const net = require('net');
 
   const expected = [
     Buffer.from('hello'),
-    Buffer.from('world')
+    Buffer.from('world'),
   ];
 
   const rs = new Readable({
@@ -1246,4 +1246,20 @@ const net = require('net');
     createThenable,
     () => common.mustNotCall(),
   );
+}
+
+{
+  const content = 'abc';
+  pipeline(Buffer.from(content), PassThrough({ objectMode: true }),
+           common.mustSucceed(() => {}));
+
+  let res = '';
+  pipeline(Buffer.from(content), async function*(previous) {
+    for await (const val of previous) {
+      res += String.fromCharCode(val);
+      yield val;
+    }
+  }, common.mustSucceed(() => {
+    assert.strictEqual(res, content);
+  }));
 }

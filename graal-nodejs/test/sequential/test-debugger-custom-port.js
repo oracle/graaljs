@@ -4,13 +4,13 @@ const common = require('../common');
 common.skipIfInspectorDisabled();
 
 const fixtures = require('../common/fixtures');
-const startCLI = require('../common/inspector-cli');
+const startCLI = require('../common/debugger');
 
 const assert = require('assert');
 
 // Custom port.
 {
-  const script = fixtures.path('inspector-cli', 'three-lines.js');
+  const script = fixtures.path('debugger', 'three-lines.js');
 
   const cli = startCLI([`--port=${common.PORT}`, script]);
 

@@ -179,6 +179,15 @@ let asyncTest = Promise.resolve();
 }
 
 {
+  // The `options` argument can be `null`.
+  const eventTarget = new EventTarget();
+  const event = new Event('foo');
+  const fn = common.mustCall((event) => strictEqual(event.type, 'foo'));
+  eventTarget.addEventListener('foo', fn, null);
+  eventTarget.dispatchEvent(event);
+}
+
+{
   const uncaughtException = common.mustCall((err, event) => {
     strictEqual(err.message, 'boom');
     strictEqual(event.type, 'foo');
@@ -232,7 +241,7 @@ let asyncTest = Promise.resolve();
     {},  // No type event
     undefined,
     1,
-    false
+    false,
   ].forEach((i) => {
     throws(() => target.dispatchEvent(i), {
       code: 'ERR_INVALID_ARG_TYPE',
@@ -253,7 +262,7 @@ let asyncTest = Promise.resolve();
     'foo',
     1,
     {},  // No handleEvent function
-    false
+    false,
   ].forEach((i) => throws(() => target.addEventListener('foo', i), err(i)));
 }
 
@@ -397,7 +406,7 @@ let asyncTest = Promise.resolve();
     undefined,
     false,
     Symbol(),
-    /a/
+    /a/,
   ].forEach((i) => {
     throws(() => target.dispatchEvent.call(i, event), {
       code: 'ERR_INVALID_THIS'

@@ -1,5 +1,4 @@
 'use strict';
-
 const {
   ArrayPrototypeMap,
   ObjectCreate,
@@ -13,7 +12,9 @@ const {
   Resolver: CallbackResolver,
   validateHints,
   validateTimeout,
+  validateTries,
   emitInvalidHostnameWarning,
+  getDefaultVerbatim,
 } = require('internal/dns/utils');
 const { codes, dnsException } = require('internal/errors');
 const { toASCII } = require('internal/idna');
@@ -103,7 +104,7 @@ function lookup(hostname, options) {
   var hints = 0;
   var family = -1;
   var all = false;
-  var verbatim = false;
+  var verbatim = getDefaultVerbatim();
 
   // Parse arguments
   if (hostname && typeof hostname !== 'string') {
@@ -112,7 +113,9 @@ function lookup(hostname, options) {
     hints = options.hints >>> 0;
     family = options.family >>> 0;
     all = options.all === true;
-    verbatim = options.verbatim === true;
+    if (typeof options.verbatim === 'boolean') {
+      verbatim = options.verbatim === true;
+    }
 
     validateHints(hints);
   } else {
@@ -214,7 +217,8 @@ const resolveMap = ObjectCreate(null);
 class Resolver {
   constructor(options = undefined) {
     const timeout = validateTimeout(options);
-    this._handle = new ChannelWrap(timeout);
+    const tries = validateTries(options);
+    this._handle = new ChannelWrap(timeout, tries);
   }
 }
 

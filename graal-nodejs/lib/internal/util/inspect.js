@@ -4,6 +4,7 @@ const {
   Array,
   ArrayIsArray,
   ArrayPrototypeFilter,
+  ArrayPrototypePushApply,
   BigIntPrototypeValueOf,
   BooleanPrototypeValueOf,
   DatePrototypeGetTime,
@@ -296,7 +297,8 @@ function inspect(value, opts) {
       ctx.showHidden = opts;
     } else if (opts) {
       const optKeys = ObjectKeys(opts);
-      for (const key of optKeys) {
+      for (let i = 0; i < optKeys.length; ++i) {
+        const key = optKeys[i];
         // TODO(BridgeAR): Find a solution what to do about stylize. Either make
         // this function public or add a new API with a similar or better
         // functionality.
@@ -652,7 +654,7 @@ function getKeys(value, showHidden) {
   if (showHidden) {
     keys = ObjectGetOwnPropertyNames(value);
     if (symbols.length !== 0)
-      keys.push(...symbols);
+      ArrayPrototypePushApply(keys, symbols);
   } else {
     // This might throw if `value` is a Module Namespace Object from an
     // unevaluated module, but we don't want to perform the actual type
@@ -668,7 +670,7 @@ function getKeys(value, showHidden) {
     }
     if (symbols.length !== 0) {
       const filter = (key) => ObjectPrototypePropertyIsEnumerable(value, key);
-      keys.push(...symbols.filter(filter));
+      ArrayPrototypePushApply(keys, ArrayPrototypeFilter(symbols, filter));
     }
   }
   return keys;
@@ -693,7 +695,7 @@ function formatProxy(ctx, proxy, recurseTimes) {
   ctx.indentationLvl += 2;
   const res = [
     formatValue(ctx, proxy[0], recurseTimes),
-    formatValue(ctx, proxy[1], recurseTimes)
+    formatValue(ctx, proxy[1], recurseTimes),
   ];
   ctx.indentationLvl -= 2;
   return reduceToSingleString(
@@ -1511,7 +1513,7 @@ function formatTypedArray(value, length, ctx, ignored, recurseTimes) {
       'length',
       'byteLength',
       'byteOffset',
-      'buffer'
+      'buffer',
     ]) {
       const str = formatValue(ctx, value[key], recurseTimes, true);
       output.push(`[${key}]: ${str}`);
@@ -1534,9 +1536,10 @@ function formatSet(value, ctx, ignored, recurseTimes) {
 function formatMap(value, ctx, ignored, recurseTimes) {
   const output = [];
   ctx.indentationLvl += 2;
-  for (const [k, v] of value) {
-    output.push(`${formatValue(ctx, k, recurseTimes)} => ` +
-                formatValue(ctx, v, recurseTimes));
+  for (const { 0: k, 1: v } of value) {
+    output.push(
+      `${formatValue(ctx, k, recurseTimes)} => ${formatValue(ctx, v, recurseTimes)}`
+    );
   }
   ctx.indentationLvl -= 2;
   return output;
@@ -1576,8 +1579,8 @@ function formatMapIterInner(ctx, recurseTimes, entries, state) {
   if (state === kWeak) {
     for (; i < maxLength; i++) {
       const pos = i * 2;
-      output[i] = `${formatValue(ctx, entries[pos], recurseTimes)}` +
-        ` => ${formatValue(ctx, entries[pos + 1], recurseTimes)}`;
+      output[i] =
+        `${formatValue(ctx, entries[pos], recurseTimes)} => ${formatValue(ctx, entries[pos + 1], recurseTimes)}`;
     }
     // Sort all entries to have a halfway reliable output (if more entries than
     // retrieved ones exist, we can not reliably return the same output) if the
@@ -1589,7 +1592,7 @@ function formatMapIterInner(ctx, recurseTimes, entries, state) {
       const pos = i * 2;
       const res = [
         formatValue(ctx, entries[pos], recurseTimes),
-        formatValue(ctx, entries[pos + 1], recurseTimes)
+        formatValue(ctx, entries[pos + 1], recurseTimes),
       ];
       output[i] = reduceToSingleString(
         ctx, res, '', ['[', ']'], kArrayExtrasType, recurseTimes);
@@ -1617,7 +1620,7 @@ function formatWeakMap(ctx, value, recurseTimes) {
 }
 
 function formatIterator(braces, ctx, value, recurseTimes) {
-  const [entries, isKeyValue] = previewEntries(value, true);
+  const { 0: entries, 1: isKeyValue } = previewEntries(value, true);
   if (isKeyValue) {
     // Mark entry iterators as such.
     braces[0] = braces[0].replace(/ Iterator] {$/, ' Entries] {');
@@ -1629,7 +1632,7 @@ function formatIterator(braces, ctx, value, recurseTimes) {
 
 function formatPromise(ctx, value, recurseTimes) {
   let output;
-  const [state, result] = getPromiseDetails(value);
+  const { 0: state, 1: result } = getPromiseDetails(value);
   if (state === kPending) {
     output = [ctx.stylize('<pending>', 'special')];
   } else {
@@ -1639,7 +1642,7 @@ function formatPromise(ctx, value, recurseTimes) {
     output = [
       state === kRejected ?
         `${ctx.stylize('<rejected>', 'special')} ${str}` :
-        str
+        str,
     ];
   }
   return output;
@@ -1847,7 +1850,7 @@ function tryStringify(arg) {
 }
 
 function format(...args) {
-  return formatWithOptionsInternal(undefined, ...args);
+  return formatWithOptionsInternal(undefined, args);
 }
 
 function formatWithOptions(inspectOptions, ...args) {
@@ -1855,10 +1858,10 @@ function formatWithOptions(inspectOptions, ...args) {
     throw new ERR_INVALID_ARG_TYPE(
       'inspectOptions', 'object', inspectOptions);
   }
-  return formatWithOptionsInternal(inspectOptions, ...args);
+  return formatWithOptionsInternal(inspectOptions, args);
 }
 
-function formatWithOptionsInternal(inspectOptions, ...args) {
+function formatWithOptionsInternal(inspectOptions, args) {
   const first = args[0];
   let a = 0;
   let str = '';

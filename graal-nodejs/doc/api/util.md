@@ -1308,6 +1308,17 @@ const { read, written } = encoder.encodeInto(src, dest);
 
 The encoding supported by the `TextEncoder` instance. Always set to `'utf-8'`.
 
+## `util.toUSVString(string)`
+<!-- YAML
+added: v14.18.0
+-->
+
+* `string` {string}
+
+Returns the `string` after replacing any surrogate code points
+(or equivalently, any unpaired surrogate code units) with the
+Unicode "replacement character" U+FFFD.
+
 ## `util.types`
 <!-- YAML
 added: v10.0.0

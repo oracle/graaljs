@@ -4,6 +4,7 @@
 #include "js_native_api_v8.h"
 #include "memory_tracker-inl.h"
 #include "node_api.h"
+#include "node_api_internals.h"
 #include "node_binding.h"
 #include "node_buffer.h"
 #include "node_errors.h"
@@ -15,46 +16,36 @@
 #include <atomic>
 #include <memory>
 
-struct node_napi_env__ : public napi_env__ {
-  explicit node_napi_env__(v8::Local<v8::Context> context):
-      napi_env__(context) {
-    CHECK_NOT_NULL(node_env());
-  }
+node_napi_env__::node_napi_env__(v8::Local<v8::Context> context,
+                                 const std::string& module_filename)
+    : napi_env__(context), filename(module_filename) {
+  CHECK_NOT_NULL(node_env());
+}
 
-  inline node::Environment* node_env() const {
-    return node::Environment::GetCurrent(context());
-  }
+bool node_napi_env__::can_call_into_js() const {
+  return node_env()->can_call_into_js();
+}
 
-  bool can_call_into_js() const override {
-    return node_env()->can_call_into_js();
-  }
+v8::Maybe<bool> node_napi_env__::mark_arraybuffer_as_untransferable(
+    v8::Local<v8::ArrayBuffer> ab) const {
+  return ab->SetPrivate(context(),
+                        node_env()->untransferable_object_private_symbol(),
+                        v8::True(isolate));
+}
 
-  v8::Maybe<bool> mark_arraybuffer_as_untransferable(
-      v8::Local<v8::ArrayBuffer> ab) const override {
-    return ab->SetPrivate(
-        context(),
-        node_env()->untransferable_object_private_symbol(),
-        v8::True(isolate));
-  }
-
-  void CallFinalizer(napi_finalize cb, void* data, void* hint) override {
-    // we need to keep the env live until the finalizer has been run
-    // EnvRefHolder provides an exception safe wrapper to Ref and then
-    // Unref once the lamba is freed
-    EnvRefHolder liveEnv(static_cast<napi_env>(this));
-    node_env()->SetImmediate([=, liveEnv = std::move(liveEnv)]
-        (node::Environment* node_env) {
-      napi_env env = liveEnv.env();
-      v8::HandleScope handle_scope(env->isolate);
-      v8::Context::Scope context_scope(env->context());
-      env->CallIntoModule([&](napi_env env) {
-        cb(env, data, hint);
+void node_napi_env__::CallFinalizer(napi_finalize cb, void* data, void* hint) {
+  // we need to keep the env live until the finalizer has been run
+  // EnvRefHolder provides an exception safe wrapper to Ref and then
+  // Unref once the lamba is freed
+  EnvRefHolder liveEnv(static_cast<napi_env>(this));
+  node_env()->SetImmediate(
+      [=, liveEnv = std::move(liveEnv)](node::Environment* node_env) {
+        napi_env env = liveEnv.env();
+        v8::HandleScope handle_scope(env->isolate);
+        v8::Context::Scope context_scope(env->context());
+        env->CallIntoModule([&](napi_env env) { cb(env, data, hint); });
       });
-    });
-  }
-};
-
-typedef node_napi_env__* node_napi_env;
+}
 
 namespace v8impl {
 
@@ -93,10 +84,11 @@ class BufferFinalizer : private Finalizer {
   };
 };
 
-static inline napi_env NewEnv(v8::Local<v8::Context> context) {
+static inline napi_env
+NewEnv(v8::Local<v8::Context> context, const std::string& module_filename) {
   node_napi_env result;
 
-  result = new node_napi_env__(context);
+  result = new node_napi_env__(context, module_filename);
   // TODO(addaleax): There was previously code that tried to delete the
   // napi_env when its v8::Context was garbage collected;
   // However, as long as N-API addons using this napi_env are in place,
@@ -547,7 +539,7 @@ class AsyncContext {
   class CallbackScope : public node::CallbackScope {
    public:
     explicit CallbackScope(AsyncContext* async_context)
-        : node::CallbackScope(async_context->node_env()->isolate(),
+        : node::CallbackScope(async_context->node_env(),
                               async_context->resource_.Get(
                                   async_context->node_env()->isolate()),
                               async_context->async_context()) {}
@@ -579,16 +571,35 @@ void napi_module_register_by_symbol(v8::Local<v8::Object> exports,
                                     v8::Local<v8::Value> module,
                                     v8::Local<v8::Context> context,
                                     napi_addon_register_func init) {
+  node::Environment* node_env = node::Environment::GetCurrent(context);
+  std::string module_filename = "";
   if (init == nullptr) {
-    node::Environment* node_env = node::Environment::GetCurrent(context);
     CHECK_NOT_NULL(node_env);
     node_env->ThrowError(
         "Module has no declared entry point.");
     return;
   }
 
+  // We set `env->filename` from `module.filename` here, but we could just as
+  // easily add a private property to `exports` in `process.dlopen`, which
+  // receives the file name from JS, and retrieve *that* here. Thus, we are not
+  // endorsing commonjs here by making use of `module.filename`.
+  v8::Local<v8::Value> filename_js;
+  v8::Local<v8::Object> modobj;
+  if (module->ToObject(context).ToLocal(&modobj) &&
+      modobj->Get(context, node_env->filename_string()).ToLocal(&filename_js) &&
+      filename_js->IsString()) {
+    node::Utf8Value filename(node_env->isolate(), filename_js);  // Cast
+
+    // Turn the absolute path into a URL. Currently the absolute path is always
+    // a file system path.
+    // TODO(gabrielschulhof): Pass the `filename` through unchanged if/when we
+    // receive it as a URL already.
+    module_filename = std::string("file://") + (*filename);
+  }
+
   // Create a new napi_env for this specific module.
-  napi_env env = v8impl::NewEnv(context);
+  napi_env env = v8impl::NewEnv(context, module_filename);
 
   napi_value _exports;
   env->CallIntoModule([&](napi_env env) {
@@ -1293,4 +1304,12 @@ napi_status
 napi_ref_threadsafe_function(napi_env env, napi_threadsafe_function func) {
   CHECK_NOT_NULL(func);
   return reinterpret_cast<v8impl::ThreadSafeFunction*>(func)->Ref();
+}
+
+napi_status node_api_get_module_file_name(napi_env env, const char** result) {
+  CHECK_ENV(env);
+  CHECK_ARG(env, result);
+
+  *result = static_cast<node_napi_env>(env)->GetFilename();
+  return napi_clear_last_error(env);
 }

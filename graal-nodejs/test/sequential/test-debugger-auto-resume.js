@@ -4,7 +4,7 @@ const common = require('../common');
 common.skipIfInspectorDisabled();
 
 const fixtures = require('../common/fixtures');
-const startCLI = require('../common/inspector-cli');
+const startCLI = require('../common/debugger');
 const { addLibraryPath } = require('../common/shared-lib-util');
 
 const assert = require('assert');
@@ -14,7 +14,7 @@ addLibraryPath(process.env);
 
 // Auto-resume on start if the environment variable is defined.
 {
-  const scriptFullPath = fixtures.path('inspector-cli', 'break.js');
+  const scriptFullPath = fixtures.path('debugger', 'break.js');
   const script = path.relative(process.cwd(), scriptFullPath);
 
   const env = { ...process.env };

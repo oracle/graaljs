@@ -50,6 +50,9 @@ const buf7 = Buffer.from('tést', 'latin1');
 ## Buffers and character encodings
 <!-- YAML
 changes:
+  - version: v14.18.0
+    pr-url: https://github.com/nodejs/node/pull/36952
+    description: Introduced `base64url` encoding.
   - version: v6.4.0
     pr-url: https://github.com/nodejs/node/pull/7111
     description: Introduced `latin1` as an alias for `binary`.
@@ -105,6 +108,11 @@ string into a `Buffer` as decoding.
   this encoding will also correctly accept "URL and Filename Safe Alphabet" as
   specified in [RFC 4648, Section 5][]. Whitespace characters such as spaces,
   tabs, and new lines contained within the base64-encoded string are ignored.
+
+* `'base64url'`: [base64url][] encoding as specified in
+  [RFC 4648, Section 5][]. When creating a `Buffer` from a string, this
+  encoding will also correctly accept regular base64-encoded strings. When
+  encoding a `Buffer` to a string, this encoding will omit padding.
 
 * `'hex'`: Encode each byte as two hexadecimal characters. Data truncation
   may occur when decoding strings that do exclusively contain valid hexadecimal
@@ -278,6 +286,119 @@ for (const b of buf) {
 
 Additionally, the [`buf.values()`][], [`buf.keys()`][], and
 [`buf.entries()`][] methods can be used to create iterators.
+
+## Class: `Blob`
+<!-- YAML
+added: v14.18.0
+-->
+
+> Stability: 1 - Experimental
+
+A [`Blob`][] encapsulates immutable, raw data that can be safely shared across
+multiple worker threads.
+
+### `new buffer.Blob([sources[, options]])`
+<!-- YAML
+added: v14.18.0
+-->
+
+* `sources` {string[]|ArrayBuffer[]|TypedArray[]|DataView[]|Blob[]} An array
+  of string, {ArrayBuffer}, {TypedArray}, {DataView}, or {Blob} objects, or
+  any mix of such objects, that will be stored within the `Blob`.
+* `options` {Object}
+  * `encoding` {string} The character encoding to use for string sources.
+    **Default**: `'utf8'`.
+  * `type` {string} The Blob content-type. The intent is for `type` to convey
+    the MIME media type of the data, however no validation of the type format
+    is performed.
+
+Creates a new `Blob` object containing a concatenation of the given sources.
+
+{ArrayBuffer}, {TypedArray}, {DataView}, and {Buffer} sources are copied into
+the 'Blob' and can therefore be safely modified after the 'Blob' is created.
+
+String sources are also copied into the `Blob`.
+
+### `blob.arrayBuffer()`
+<!-- YAML
+added: v14.18.0
+-->
+
+* Returns: {Promise}
+
+Returns a promise that fulfills with an {ArrayBuffer} containing a copy of
+the `Blob` data.
+
+### `blob.size`
+<!-- YAML
+added: v14.18.0
+-->
+
+The total size of the `Blob` in bytes.
+
+### `blob.slice([start, [end, [type]]])`
+<!-- YAML
+added: v14.18.0
+-->
+
+* `start` {number} The starting index.
+* `end` {number} The ending index.
+* `type` {string} The content-type for the new `Blob`
+
+Creates and returns a new `Blob` containing a subset of this `Blob` objects
+data. The original `Blob` is not alterered.
+
+### `blob.text()`
+<!-- YAML
+added: v14.18.0
+-->
+
+* Returns: {Promise}
+
+Returns a promise that resolves the contents of the `Blob` decoded as a UTF-8
+string.
+
+### `blob.type`
+<!-- YAML
+added: v14.18.0
+-->
+
+* Type: {string}
+
+The content-type of the `Blob`.
+
+### `Blob` objects and `MessageChannel`
+
+Once a {Blob} object is created, it can be sent via `MessagePort` to multiple
+destinations without transfering or immediately copying the data. The data
+contained by the `Blob` is copied only when the `arrayBuffer()` or `text()`
+methods are called.
+
+```js
+const { Blob } = require('buffer');
+const blob = new Blob(['hello there']);
+const { setTimeout: delay } = require('timers/promises');
+
+const mc1 = new MessageChannel();
+const mc2 = new MessageChannel();
+
+mc1.port1.onmessage = async ({ data }) => {
+  console.log(await data.arrayBuffer());
+  mc1.port1.close();
+};
+
+mc2.port1.onmessage = async ({ data }) => {
+  await delay(1000);
+  console.log(await data.arrayBuffer());
+  mc2.port1.close();
+};
+
+mc1.port2.postMessage(blob);
+mc2.port2.postMessage(blob);
+
+// The Blob is still usable after posting.
+data.text().then(console.log);
+```
 
 ## Class: `Buffer`
 
@@ -469,9 +590,10 @@ Returns the byte length of a string when encoded using `encoding`.
 This is not the same as [`String.prototype.length`][], which does not account
 for the encoding that is used to convert the string into bytes.
 
-For `'base64'` and `'hex'`, this function assumes valid input. For strings that
-contain non-base64/hex-encoded data (e.g. whitespace), the return value might be
-greater than the length of a `Buffer` created from the string.
+For `'base64'`, `'base64url'`, and `'hex'`, this function assumes valid input.
+For strings that contain non-base64/hex-encoded data (e.g. whitespace), the
+return value might be greater than the length of a `Buffer` created from the
+string.
 
 ```js
 const str = '\u00bd + \u00bc = \u00be';
@@ -3388,6 +3510,7 @@ introducing security vulnerabilities into an application.
 [UTF-8]: https://en.wikipedia.org/wiki/UTF-8
 [WHATWG Encoding Standard]: https://encoding.spec.whatwg.org/
 [`ArrayBuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
+[`Blob`]: https://developer.mozilla.org/en-US/docs/Web/API/Blob
 [`Buffer.alloc()`]: #buffer_static_method_buffer_alloc_size_fill_encoding
 [`Buffer.allocUnsafe()`]: #buffer_static_method_buffer_allocunsafe_size
 [`Buffer.allocUnsafeSlow()`]: #buffer_static_method_buffer_allocunsafeslow_size
@@ -3427,6 +3550,7 @@ introducing security vulnerabilities into an application.
 [`buffer.kMaxLength`]: #buffer_buffer_kmaxlength
 [`util.inspect()`]: util.md#util_util_inspect_object_options
 [`v8::TypedArray::kMaxLength`]: https://v8.github.io/api/head/classv8_1_1TypedArray.html#a54a48f4373da0850663c4393d843b9b0
+[base64url]: https://tools.ietf.org/html/rfc4648#section-5
 [binary strings]: https://developer.mozilla.org/en-US/docs/Web/API/DOMString/Binary
 [endianness]: https://en.wikipedia.org/wiki/Endianness
 [iterator]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols

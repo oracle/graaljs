@@ -369,7 +369,7 @@ Socket.prototype.bind = function(port_, address_ /* , callback */) {
 };
 
 Socket.prototype.connect = function(port, address, callback) {
-  port = validatePort(port, 'Port', { allowZero: false });
+  port = validatePort(port, 'Port', false);
   if (typeof address === 'function') {
     callback = address;
     address = '';
@@ -626,7 +626,7 @@ Socket.prototype.send = function(buffer,
   }
 
   if (!connected)
-    port = validatePort(port, 'Port', { allowZero: false });
+    port = validatePort(port, 'Port', false);
 
   // Normalize callback so it's either a function or undefined but not anything
   // else.
@@ -872,13 +872,8 @@ Socket.prototype.addSourceSpecificMembership = function(sourceAddress,
                                                         interfaceAddress) {
   healthCheck(this);
 
-  if (typeof sourceAddress !== 'string') {
-    throw new ERR_INVALID_ARG_TYPE('sourceAddress', 'string', sourceAddress);
-  }
-
-  if (typeof groupAddress !== 'string') {
-    throw new ERR_INVALID_ARG_TYPE('groupAddress', 'string', groupAddress);
-  }
+  validateString(sourceAddress, 'sourceAddress');
+  validateString(groupAddress, 'groupAddress');
 
   const err =
     this[kStateSymbol].handle.addSourceSpecificMembership(sourceAddress,
@@ -895,13 +890,8 @@ Socket.prototype.dropSourceSpecificMembership = function(sourceAddress,
                                                          interfaceAddress) {
   healthCheck(this);
 
-  if (typeof sourceAddress !== 'string') {
-    throw new ERR_INVALID_ARG_TYPE('sourceAddress', 'string', sourceAddress);
-  }
-
-  if (typeof groupAddress !== 'string') {
-    throw new ERR_INVALID_ARG_TYPE('groupAddress', 'string', groupAddress);
-  }
+  validateString(sourceAddress, 'sourceAddress');
+  validateString(groupAddress, 'groupAddress');
 
   const err =
     this[kStateSymbol].handle.dropSourceSpecificMembership(sourceAddress,
