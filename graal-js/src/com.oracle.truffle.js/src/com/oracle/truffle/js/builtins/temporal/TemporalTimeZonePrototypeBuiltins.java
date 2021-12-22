@@ -201,7 +201,8 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected String toJSON(Object thisObj,
                         @Cached("create()") JSToStringNode toString) {
-            return toString.executeString(thisObj);
+            JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
+            return toString.executeString(timeZone);
         }
     }
 
@@ -257,10 +258,11 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected DynamicObject getPlainDateTimeFor(Object thisObj, Object instantParam, Object calendarLike) {
+            JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
             JSRealm realm = JSRealm.get(this);
             DynamicObject instant = TemporalUtil.toTemporalInstant(getContext(), instantParam);
             DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(getContext(), realm, calendarLike);
-            return TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), (DynamicObject) thisObj, instant, calendar);
+            return TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), timeZone, instant, calendar);
         }
     }
 

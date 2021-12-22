@@ -570,7 +570,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             DynamicObject options = getOptionsObject(optionsParam);
             List<String> disallowedUnits = TemporalUtil.listTime;
             String smallestUnit = toSmallestTemporalUnit(options, disallowedUnits, DAY);
-            String largestUnit = toLargestTemporalUnit(options, disallowedUnits, AUTO, DAY);
+            String defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(DAY, smallestUnit);
+            String largestUnit = toLargestTemporalUnit(options, disallowedUnits, AUTO, defaultLargestUnit);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             String roundingMode = toTemporalRoundingMode(options, TRUNC);
             roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
@@ -609,7 +610,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             DynamicObject options = getOptionsObject(optionsParam);
             List<String> disallowedUnits = TemporalUtil.listTime;
             String smallestUnit = toSmallestTemporalUnit(options, disallowedUnits, DAY);
-            String largestUnit = toLargestTemporalUnit(options, disallowedUnits, AUTO, DAY);
+            String defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(DAY, smallestUnit);
+            String largestUnit = toLargestTemporalUnit(options, disallowedUnits, AUTO, defaultLargestUnit);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             String roundingMode = toTemporalRoundingMode(options, TRUNC);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, null, false, isObjectNode, toNumber);

@@ -588,7 +588,6 @@ public final class TemporalUtil {
         return parseISODateTime(string, false, false);
     }
 
-    // TODO this needs to be improved!
     @TruffleBoundary
     private static JSTemporalDateTimeRecord parseISODateTime(String string, boolean dateExpected, boolean failWithUTCDesignator) {
         JSTemporalParserRecord rec = (new TemporalParser(string)).parseISODateTime();
@@ -1584,7 +1583,7 @@ public final class TemporalUtil {
             year = year - 1;
             testYear = testYear - 1;
         }
-        testYear = year + 1;
+        testYear = testYear + 1;
         while (day > isoDaysInYear(testYear)) {
             day = day - isoDaysInYear(testYear);
             year = year + 1;
@@ -3336,7 +3335,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static JSTemporalDateTimeRecord getISOPartsFromEpoch(BigInt epochNanoseconds) {
-        long remainderNs = remainder(epochNanoseconds.longValue(), 1_000_000);
+        long remainderNs = epochNanoseconds.longValue() % 1_000_000;
         long epochMilliseconds = (epochNanoseconds.longValue() - remainderNs) / 1_000_000;
         long year = JSDate.yearFromTime(epochMilliseconds);
         long month = JSDate.monthFromTime(epochMilliseconds) + 1;

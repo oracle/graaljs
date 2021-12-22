@@ -1813,10 +1813,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/total/timezone-getpossibleinstantsfor-iterable.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "built-ins/Temporal/Instant/from/timezone-custom.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -1825,39 +1821,7 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/since/roundingmode-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/since/roundingmode-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/since/smallestunit-plurals-accepted.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/since/smallestunit-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/subtract/balance-smaller-units.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/until/roundingmode-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/until/roundingmode-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/until/smallestunit-plurals-accepted.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/until/smallestunit-wrong-type.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
@@ -1909,9 +1873,21 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "built-ins/Temporal/TimeZone/prototype/getPlainDateTimeFor/custom-timezone.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures after normative changes not yet reflected in test262"
+  }, {
     "filePath" : "built-ins/Temporal/TimeZone/prototype/id/plain-custom-timezone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/TimeZone/prototype/toJSON/tostring-call.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures after normative changes not yet reflected in test262"
+  }, {
+    "filePath" : "built-ins/Temporal/TimeZone/prototype/toJSON/tostring-undefined-custom.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures after normative changes not yet reflected in test262"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/compare/zoneddatetime-string.js",
     "status" : "FAIL",
