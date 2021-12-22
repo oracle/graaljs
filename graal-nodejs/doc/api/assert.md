@@ -304,6 +304,10 @@ An alias of [`assert.ok()`][].
 <!-- YAML
 added: v0.1.21
 changes:
+  - version: v14.18.0
+    pr-url: https://github.com/nodejs/node/pull/38113
+    description: In Legacy assertion mode, changed status from Deprecated to
+                 Legacy.
   - version: v14.0.0
     pr-url: https://github.com/nodejs/node/pull/30766
     description: NaN is now treated as being identical in case both sides are
@@ -345,7 +349,7 @@ An alias of [`assert.deepStrictEqual()`][].
 
 **Legacy assertion mode**
 
-> Stability: 0 - Deprecated: Use [`assert.deepStrictEqual()`][] instead.
+> Stability: 3 - Legacy: Use [`assert.deepStrictEqual()`][] instead.
 
 Tests for deep equality between the `actual` and `expected` parameters. Consider
 using [`assert.deepStrictEqual()`][] instead. [`assert.deepEqual()`][] can have
@@ -754,6 +758,10 @@ assert.doesNotThrow(
 <!-- YAML
 added: v0.1.21
 changes:
+  - version: v14.18.0
+    pr-url: https://github.com/nodejs/node/pull/38113
+    description: In Legacy assertion mode, changed status from Deprecated to
+                 Legacy.
   - version: v14.0.0
     pr-url: https://github.com/nodejs/node/pull/30766
     description: NaN is now treated as being identical in case both sides are
@@ -770,7 +778,7 @@ An alias of [`assert.strictEqual()`][].
 
 **Legacy assertion mode**
 
-> Stability: 0 - Deprecated: Use [`assert.strictEqual()`][] instead.
+> Stability: 3 - Legacy: Use [`assert.strictEqual()`][] instead.
 
 Tests shallow, coercive equality between the `actual` and `expected` parameters
 using the [Abstract Equality Comparison][] ( `==` ). `NaN` is special handled
@@ -977,6 +985,10 @@ instance of an [`Error`][] then it will be thrown instead of the
 <!-- YAML
 added: v0.1.21
 changes:
+  - version: v14.18.0
+    pr-url: https://github.com/nodejs/node/pull/38113
+    description: In Legacy assertion mode, changed status from Deprecated to
+                 Legacy.
   - version: v14.0.0
     pr-url: https://github.com/nodejs/node/pull/30766
     description: NaN is now treated as being identical in case both sides are
@@ -1014,7 +1026,7 @@ An alias of [`assert.notDeepStrictEqual()`][].
 
 **Legacy assertion mode**
 
-> Stability: 0 - Deprecated: Use [`assert.notDeepStrictEqual()`][] instead.
+> Stability: 3 - Legacy: Use [`assert.notDeepStrictEqual()`][] instead.
 
 Tests for any deep inequality. Opposite of [`assert.deepEqual()`][].
 
@@ -1113,6 +1125,10 @@ instead of the [`AssertionError`][].
 <!-- YAML
 added: v0.1.21
 changes:
+  - version: v14.18.0
+    pr-url: https://github.com/nodejs/node/pull/38113
+    description: In Legacy assertion mode, changed status from Deprecated to
+                 Legacy.
   - version: v14.0.0
     pr-url: https://github.com/nodejs/node/pull/30766
     description: NaN is now treated as being identical in case both sides are
@@ -1129,7 +1145,7 @@ An alias of [`assert.notStrictEqual()`][].
 
 **Legacy assertion mode**
 
-> Stability: 0 - Deprecated: Use [`assert.notStrictEqual()`][] instead.
+> Stability: 3 - Legacy: Use [`assert.notStrictEqual()`][] instead.
 
 Tests shallow, coercive inequality with the [Abstract Equality Comparison][]
 (`!=` ). `NaN` is special handled and treated as being identical in case both
@@ -1585,6 +1601,7 @@ argument.
 [SameValue Comparison]: https://tc39.github.io/ecma262/#sec-samevalue
 [Strict Equality Comparison]: https://tc39.github.io/ecma262/#sec-strict-equality-comparison
 [`AssertionError`]: #assert_class_assert_assertionerror
+[`CallTracker`]: #assert_class_assert_calltracker
 [`Class`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes
 [`ERR_INVALID_RETURN_VALUE`]: errors.md#errors_err_invalid_return_value
 [`Error.captureStackTrace`]: errors.md#errors_error_capturestacktrace_targetobject_constructoropt
@@ -1597,7 +1614,6 @@ argument.
 [`TypeError`]: errors.md#errors_class_typeerror
 [`WeakMap`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap
 [`WeakSet`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakSet
-[`CallTracker`]: #assert_class_assert_calltracker
 [`assert.deepEqual()`]: #assert_assert_deepequal_actual_expected_message
 [`assert.deepStrictEqual()`]: #assert_assert_deepstrictequal_actual_expected_message
 [`assert.doesNotThrow()`]: #assert_assert_doesnotthrow_fn_error_message
@@ -1612,6 +1628,6 @@ argument.
 [`process.on('exit')`]: process.md#process_event_exit
 [`tracker.calls()`]: #assert_tracker_calls_fn_exact
 [`tracker.verify()`]: #assert_tracker_verify
-[strict assertion mode]: #assert_strict_assertion_mode
 [enumerable "own" properties]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Enumerability_and_ownership_of_properties
 [prototype-spec]: https://tc39.github.io/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots
+[strict assertion mode]: #assert_strict_assertion_mode

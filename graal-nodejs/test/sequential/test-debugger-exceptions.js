@@ -4,14 +4,14 @@ const common = require('../common');
 common.skipIfInspectorDisabled();
 
 const fixtures = require('../common/fixtures');
-const startCLI = require('../common/inspector-cli');
+const startCLI = require('../common/debugger');
 
 const assert = require('assert');
 const path = require('path');
 
 // Break on (uncaught) exceptions.
 {
-  const scriptFullPath = fixtures.path('inspector-cli', 'exceptions.js');
+  const scriptFullPath = fixtures.path('debugger', 'exceptions.js');
   const script = path.relative(process.cwd(), scriptFullPath);
   const cli = startCLI([script]);
 

@@ -22,7 +22,6 @@
 /doc/guides/contributing/pull-requests.md @nodejs/tsc
 /doc/guides/collaborator-guide.md @nodejs/tsc
 /doc/guides/offboarding.md @nodejs/tsc
-/doc/guides/onboarding-extras.md @nodejs/tsc
 
 # streams
 
@@ -97,6 +96,12 @@
 /doc/guides/adding-new-napi-api.md @nodejs/n-api
 /doc/api/n-api.md @nodejs/n-api
 
+# gyp
+
+*.gyp @nodejs/gyp
+*.gypi @nodejs/gyp
+/tools/gyp/**/* @nodejs/gyp
+
 # WASI
 /deps/uvwasi/ @nodejs/wasi
 /doc/api/wasi.md @nodejs/wasi
@@ -118,3 +123,8 @@
 # V8
 /deps/v8/* @nodejs/v8-update
 /tools/v8_gypfiles/* @nodejs/v8-update
+
+# Actions
+
+/.github/workflows/* @nodejs/actions
+/tools/actions/* @nodejs/actions

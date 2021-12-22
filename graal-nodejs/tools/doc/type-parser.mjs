@@ -38,6 +38,8 @@ const customTypesMap = {
   'WebAssembly.Instance':
     `${jsDocPrefix}Reference/Global_Objects/WebAssembly/Instance`,
 
+  'Blob': 'buffer.html#buffer_class_blob',
+
   'Iterable':
     `${jsDocPrefix}Reference/Iteration_protocols#The_iterable_protocol`,
   'Iterator':
@@ -122,8 +124,10 @@ const customTypesMap = {
   'require': 'modules.html#modules_require_id',
 
   'Handle': 'net.html#net_server_listen_handle_backlog_callback',
+  'net.BlockList': 'net.html#net_class_net_blocklist',
   'net.Server': 'net.html#net_class_net_server',
   'net.Socket': 'net.html#net_class_net_socket',
+  'net.SocketAddress': 'net.html#net_class_net_socketaddress',
 
   'NodeEventTarget':
     'events.html#events_class_nodeeventtarget',
@@ -131,6 +135,10 @@ const customTypesMap = {
   'os.constants.dlopen': 'os.html#os_dlopen_constants',
 
   'Histogram': 'perf_hooks.html#perf_hooks_class_histogram',
+  'IntervalHistogram':
+     'perf_hooks.html#perf_hooks_class_intervalhistogram_extends_histogram',
+  'RecordableHistogram':
+     'perf_hooks.html#perf_hooks_class_recordablehistogram_extends_histogram',
   'PerformanceEntry': 'perf_hooks.html#perf_hooks_class_performanceentry',
   'PerformanceNodeTiming':
     'perf_hooks.html#perf_hooks_class_performancenodetiming',
@@ -167,6 +175,7 @@ const customTypesMap = {
   'vm.SourceTextModule': 'vm.html#vm_class_vm_sourcetextmodule',
 
   'MessagePort': 'worker_threads.html#worker_threads_class_messageport',
+  'Worker': 'worker_threads.html#worker_threads_class_worker',
 
   'zlib options': 'zlib.html#zlib_class_options',
 };
@@ -204,7 +213,7 @@ export function toLink(typeInput) {
       } else {
         throw new Error(
           `Unrecognized type: '${typeTextFull}'.\n` +
-          "Please, edit the type or update the 'tools/doc/type-parser.js'."
+          `Please, edit the type or update '${import.meta.url}'.`
         );
       }
     } else {

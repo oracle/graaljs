@@ -71,11 +71,11 @@ function getCheckedFunction(fn) {
   });
 }
 
-const [
-  type,
-  version,
-  release
-] = _getOSInformation();
+const {
+  0: type,
+  1: version,
+  2: release,
+} = _getOSInformation();
 
 const getHomeDirectory = getCheckedFunction(_getHomeDirectory);
 const getHostname = getCheckedFunction(_getHostname);
@@ -382,5 +382,12 @@ ObjectDefineProperties(module.exports, {
     enumerable: true,
     writable: false,
     value: isWindows ? '\r\n' : '\n'
+  },
+
+  devNull: {
+    configurable: true,
+    enumerable: true,
+    writable: false,
+    value: isWindows ? '\\\\.\\nul' : '/dev/null'
   }
 });

@@ -15,7 +15,7 @@ common.skipIfDumbTerminal();
 [
   'あ',
   '𐐷',
-  '🐕'
+  '🐕',
 ].forEach((char) => {
   [true, false].forEach((lineBreak) => {
     const completer = (line) => [
@@ -24,7 +24,7 @@ common.skipIfDumbTerminal();
         '',
         `${char}${'a'.repeat(10)}`, `${char}${'b'.repeat(10)}`, char.repeat(11),
       ],
-      line
+      line,
     ];
 
     let output = '';
@@ -99,4 +99,40 @@ common.skipIfDumbTerminal();
     output = '';
   });
   rli.close();
+}
+
+{
+  let output = '';
+  class FakeInput extends EventEmitter {
+    columns = 80
+
+    write = common.mustCall((data) => {
+      output += data;
+    }, 9)
+
+    resume() {}
+    pause() {}
+    end() {}
+  }
+
+  const fi = new FakeInput();
+  const rli = new readline.Interface({
+    input: fi,
+    output: fi,
+    terminal: true,
+    completer: common.mustCall((input, cb) => {
+      cb(null, [[input[0].toUpperCase() + input.slice(1)], input]);
+    }),
+  });
+
+  rli.on('line', common.mustNotCall());
+  fi.emit('data', 'input');
+  queueMicrotask(() => {
+    fi.emit('data', '\t');
+    queueMicrotask(() => {
+      assert.match(output, /> Input/);
+      output = '';
+      rli.close();
+    });
+  });
 }

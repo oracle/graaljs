@@ -61,6 +61,38 @@ Worker threads inherit non-process-specific options by default. Refer to
 [`Worker constructor options`][] to know how to customize worker thread options,
 specifically `argv` and `execArgv` options.
 
+## `worker.getEnvironmentData(key)`
+<!-- YAML
+added: v14.18.0
+-->
+
+> Stability: 1 - Experimental
+
+* `key` {any} Any arbitrary, cloneable JavaScript value that can be used as a
+  {Map} key.
+* Returns: {any}
+
+Within a worker thread, `worker.getEnvironmentData()` returns a clone
+of data passed to the spawning thread's `worker.setEnvironmentData()`.
+Every new `Worker` receives its own copy of the environment data
+automatically.
+
+```js
+const {
+  Worker,
+  isMainThread,
+  setEnvironmentData,
+  getEnvironmentData,
+} = require('worker_threads');
+
+if (isMainThread) {
+  setEnvironmentData('Hello', 'World!');
+  const worker = new Worker(__filename);
+} else {
+  console.log(getEnvironmentData('Hello'));  // Prints 'World!'.
+}
+```
+
 ## `worker.isMainThread`
 <!-- YAML
 added: v10.5.0
@@ -240,6 +272,23 @@ new Worker('process.env.SET_IN_WORKER = "foo"', { eval: true, env: SHARE_ENV })
   });
 ```
 
+## `worker.setEnvironmentData(key[, value])`
+<!-- YAML
+added: v14.18.0
+-->
+
+> Stability: 1 - Experimental
+
+* `key` {any} Any arbitrary, cloneable JavaScript value that can be used as a
+  {Map} key.
+* `value` {any} Any arbitrary, cloneable JavaScript value that will be cloned
+  and passed automatically to all new `Worker` instances. If `value` is passed
+  as `undefined`, any previously set value for the `key` will be deleted.
+
+The `worker.setEnvironmentData()` API sets the content of
+`worker.getEnvironmentData()` in the current thread and all new `Worker`
+instances spawned from the current context.
+
 ## `worker.threadId`
 <!-- YAML
 added: v10.5.0
@@ -378,6 +427,12 @@ are part of the channel.
 <!-- YAML
 added: v10.5.0
 changes:
+  - version: v14.18.0
+    pr-url: https://github.com/nodejs/node/pull/37917
+    description: Add 'BlockList' to the list of cloneable types.
+  - version: v14.18.0
+    pr-url: https://github.com/nodejs/node/pull/37155
+    description: Add 'Histogram' types to the list of cloneable types.
   - version: v14.5.0
     pr-url: https://github.com/nodejs/node/pull/33360
     description: Added `KeyObject` to the list of cloneable types.
@@ -401,8 +456,13 @@ In particular, the significant differences to `JSON` are:
 * `value` may contain typed arrays, both using `ArrayBuffer`s
    and `SharedArrayBuffer`s.
 * `value` may contain [`WebAssembly.Module`][] instances.
-* `value` may not contain native (C++-backed) objects other than `MessagePort`s,
-  [`FileHandle`][]s, and [`KeyObject`][]s.
+* `value` may not contain native (C++-backed) objects other than:
+  * {FileHandle}s,
+  * {Histogram}s,
+  * {KeyObject}s,
+  * {MessagePort}s,
+  * {net.BlockList}s,
+  * {net.SocketAddress}es,
 
 ```js
 const { MessageChannel } = require('worker_threads');
@@ -1032,11 +1092,11 @@ thread spawned will spawn another until the application crashes.
 [`ERR_WORKER_NOT_RUNNING`]: errors.md#ERR_WORKER_NOT_RUNNING
 [`EventTarget`]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget
 [`FileHandle`]: fs.md#fs_class_filehandle
-[`KeyObject`]: crypto.md#crypto_class_keyobject
 [`MessagePort`]: #worker_threads_class_messageport
 [`SharedArrayBuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer
 [`Uint8Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array
 [`WebAssembly.Module`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Module
+[`Worker constructor options`]: #worker_threads_new_worker_filename_options
 [`Worker`]: #worker_threads_class_worker
 [`cluster` module]: cluster.md
 [`data:` URL]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs
@@ -1059,17 +1119,16 @@ thread spawned will spawn another until the application crashes.
 [`process.title`]: process.md#process_process_title
 [`require('worker_threads').isMainThread`]: #worker_threads_worker_ismainthread
 [`require('worker_threads').parentPort.on('message')`]: #worker_threads_event_message
-[`require('worker_threads').parentPort`]: #worker_threads_worker_parentport
 [`require('worker_threads').parentPort.postMessage()`]: #worker_threads_worker_postmessage_value_transferlist
+[`require('worker_threads').parentPort`]: #worker_threads_worker_parentport
 [`require('worker_threads').threadId`]: #worker_threads_worker_threadid
 [`require('worker_threads').workerData`]: #worker_threads_worker_workerdata
 [`trace_events`]: tracing.md
 [`v8.getHeapSnapshot()`]: v8.md#v8_v8_getheapsnapshot
 [`vm`]: vm.md
-[`Worker constructor options`]: #worker_threads_new_worker_filename_options
+[`worker.SHARE_ENV`]: #worker_threads_worker_share_env
 [`worker.on('message')`]: #worker_threads_event_message_1
 [`worker.postMessage()`]: #worker_threads_worker_postmessage_value_transferlist
-[`worker.SHARE_ENV`]: #worker_threads_worker_share_env
 [`worker.terminate()`]: #worker_threads_worker_terminate
 [`worker.threadId`]: #worker_threads_worker_threadid_1
 [async-resource-worker-pool]: async_hooks.md#async-resource-worker-pool

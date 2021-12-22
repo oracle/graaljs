@@ -21,6 +21,11 @@ information described.
     the date in the slug so that it will move to the top of the blog list.)
   * [ ] pre-release: ***LINK TO PR***
   * [ ] post-release: ***LINK TO PR***
+    * Ask the HackerOne reporter if they would like to be credited on the
+      security release blog page:
+      ```text
+      Thank you to <name> for reporting this vulnerability.
+      ```
 
 * [ ] Get agreement on the planned date for the release: ***RELEASE DATE***
 
@@ -35,16 +40,25 @@ information described.
   * Approved
   * Pass `make test`
   * Have CVEs
+     * Make sure that dependent libraries have CVEs for their issues. We should
+       only create CVEs for vulnerabilities in Node.js itself. This is to avoid
+       having duplicate CVEs for the same vulnerability.
   * Described in the pre/post announcements
 
 * [ ] Pre-release announcement [email][]: ***LINK TO EMAIL***
+   * Subject: `Node.js security updates for all active release lines, Month Year`
+   * Body:
   ```text
-  Security updates for all active release lines, Month Year
-
   The Node.js project will release new versions of all supported release lines on or shortly after Day of week, Month Day of Month, Year
   For more information see: https://nodejs.org/en/blog/vulnerability/month-year-security-releases/
   ```
   (Get access from existing manager: Ben Noordhuis, Rod Vagg, Michael Dawson)
+
+* [ ] CC `oss-security@lists.openwall.com` on pre-release
+
+The google groups UI does not support adding a CC, until we figure
+out a better way, forward the email you receive to
+`oss-security@lists.openwall.com` as a CC.
 
 * [ ] Pre-release announcement to nodejs.org blog: ***LINK TO BLOG***
   (Re-PR the pre-approved branch from nodejs-private/nodejs.org-private to
@@ -57,9 +71,19 @@ information described.
 * [ ] Request releaser(s) to start integrating the PRs to be released.
 
 * [ ] Notify [docker-node][] of upcoming security release date: ***LINK***
+  ```text
+  Heads up of Node.js security releases Day Month Year
+
+  As per the Node.js security release process this is the FYI that there is going to be a security release Day Month Year
+  ```
 
 * [ ] Notify build-wg of upcoming security release date by opening an issue
   in [nodejs/build][] to request WG members are available to fix any CI issues.
+  ```text
+  Heads up of Node.js security releases Day Month Year
+
+  As per security release process this is a heads up that there will be security releases Day Month Year and we'll need people from build to lock/unlock ci and to support and build issues we see.
+  ```
 
 ## Release day
 
@@ -70,9 +94,10 @@ information described.
 * [ ] [Unlock CI](https://github.com/nodejs/build/blob/HEAD/doc/jenkins-guide.md#after-the-release)
 
 * [ ] Post-release announcement in reply [email][]: ***LINK TO EMAIL***
+   * CC: `oss-security@lists.openwall.com`
+   * Subject: `Node.js security updates for all active release lines, Month Year`
+   * Body:
   ```text
-  Security updates for all active release lines, Month Year
-
   The Node.js project has now released new versions of all supported release lines.
   For more information see: https://nodejs.org/en/blog/vulnerability/month-year-security-releases/
   ```
@@ -98,6 +123,10 @@ information described.
 * [ ] PR machine-readable JSON descriptions of the vulnerabilities to the
   [core](https://github.com/nodejs/security-wg/tree/HEAD/vuln/core)
   vulnerability DB. ***LINK TO PR***
+  * For each vulnerability add a `#.json` file, one can copy an existing
+    [json](https://github.com/nodejs/security-wg/blob/0d82062d917cb9ddab88f910559469b2b13812bf/vuln/core/78.json)
+    file, and increment the latest created file number and use that as the name
+    of the new file to be added. For example, `79.json`.
 
 * [ ] Close this issue
 

@@ -6,6 +6,7 @@
 
 const {
   ArrayIsArray,
+  ArrayPrototypePush,
   BigUint64Array,
   Float64Array,
   NumberMAX_SAFE_INTEGER,
@@ -46,6 +47,7 @@ function wrapProcessMethods(binding) {
     hrtimeBigInt: _hrtimeBigInt,
     cpuUsage: _cpuUsage,
     memoryUsage: _memoryUsage,
+    rss,
     resourceUsage: _resourceUsage
   } = binding;
 
@@ -136,7 +138,7 @@ function wrapProcessMethods(binding) {
 
     return [
       hrValues[0] * 0x100000000 + hrValues[1],
-      hrValues[2]
+      hrValues[2],
     ];
   }
 
@@ -159,6 +161,8 @@ function wrapProcessMethods(binding) {
       arrayBuffers: memValues[4]
     };
   }
+
+  memoryUsage.rss = rss;
 
   function exit(code) {
     if (code || code === 0)
@@ -246,14 +250,19 @@ const trailingValuesRegex = /=.*$/;
 // from data in the config binding.
 function buildAllowedFlags() {
   const {
-    envSettings: { kAllowedInEnvironment }
+    envSettings: { kAllowedInEnvironment },
+    types: { kBoolean },
   } = internalBinding('options');
   const { options, aliases } = require('internal/options');
 
   const allowedNodeEnvironmentFlags = [];
   for (const [name, info] of options) {
     if (info.envVarSettings === kAllowedInEnvironment) {
-      allowedNodeEnvironmentFlags.push(name);
+      ArrayPrototypePush(allowedNodeEnvironmentFlags, name);
+      if (info.type === kBoolean) {
+        const negatedName = `--no-${name.slice(2)}`;
+        ArrayPrototypePush(allowedNodeEnvironmentFlags, negatedName);
+      }
     }
   }
 

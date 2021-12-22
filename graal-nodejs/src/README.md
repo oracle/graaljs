@@ -405,11 +405,7 @@ void Initialize(Local<Object> target,
 
   env->SetProtoMethodNoSideEffect(channel_wrap, "getServers", GetServers);
 
-  Local<String> channel_wrap_string =
-      FIXED_ONE_BYTE_STRING(env->isolate(), "ChannelWrap");
-  channel_wrap->SetClassName(channel_wrap_string);
-  target->Set(env->context(), channel_wrap_string,
-              channel_wrap->GetFunction(context).ToLocalChecked()).Check();
+  env->SetConstructorFunction(target, "ChannelWrap", channel_wrap);
 }
 
 // Run the `Initialize` function when loading this module through
@@ -1040,7 +1036,7 @@ static void GetUserInfo(const FunctionCallbackInfo<Value>& args) {
 [exception handling]: #exception-handling
 [internal field]: #internal-fields
 [introduction for V8 embedders]: https://v8.dev/docs/embed
+[libuv]: https://libuv.org/
 [libuv handles]: #libuv-handles-and-requests
 [libuv requests]: #libuv-handles-and-requests
-[libuv]: https://libuv.org/
 [reference documentation for the libuv API]: http://docs.libuv.org/en/v1.x/

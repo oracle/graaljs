@@ -93,10 +93,10 @@ RoundRobinHandle.prototype.remove = function(worker) {
 
 RoundRobinHandle.prototype.distribute = function(err, handle) {
   ArrayPrototypePush(this.handles, handle);
-  const [ workerEntry ] = this.free;
+  const [ workerEntry ] = this.free; // this.free is a SafeMap
 
   if (ArrayIsArray(workerEntry)) {
-    const [ workerId, worker ] = workerEntry;
+    const { 0: workerId, 1: worker } = workerEntry;
     this.free.delete(workerId);
     this.handoff(worker);
   }

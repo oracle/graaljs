@@ -24,10 +24,6 @@
 
 'use strict';
 
-// Most platforms don't allow reads or writes >= 2 GB.
-// See https://github.com/libuv/libuv/pull/1501.
-const kIoMaxLength = 2 ** 31 - 1;
-
 // When using FSReqCallback, make sure to create the object only *after* all
 // parameter validation has happened, so that the objects are not kept in memory
 // in case they are created but never used due to an exception.
@@ -36,7 +32,6 @@ const {
   Map,
   MathMax,
   Number,
-  NumberIsSafeInteger,
   ObjectCreate,
   ObjectDefineProperties,
   ObjectDefineProperty,
@@ -69,7 +64,7 @@ const {
     ERR_INVALID_ARG_VALUE,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_CALLBACK,
-    ERR_FEATURE_UNAVAILABLE_ON_PLATFORM
+    ERR_FEATURE_UNAVAILABLE_ON_PLATFORM,
   },
   hideStackFrames,
   uvErrmapGet,
@@ -80,6 +75,10 @@ const { FSReqCallback, statValues } = binding;
 const { toPathIfFileURL } = require('internal/url');
 const internalUtil = require('internal/util');
 const {
+  constants: {
+    kIoMaxLength,
+    kMaxUserId,
+  },
   copyObject,
   Dirent,
   getDirents,
@@ -99,6 +98,7 @@ const {
   validateOffsetLengthRead,
   validateOffsetLengthWrite,
   validatePath,
+  validatePosition,
   validateRmOptions,
   validateRmOptionsSync,
   validateRmdirOptions,
@@ -119,10 +119,9 @@ const {
   parseFileMode,
   validateBuffer,
   validateInteger,
-  validateInt32
+  validateInt32,
+  validateString,
 } = require('internal/validators');
-// 2 ** 32 - 1
-const kMaxUserId = 4294967295;
 
 let truncateWarn = true;
 let fs;
@@ -524,7 +523,7 @@ function read(fd, buffer, offset, length, position, callback) {
     ({
       buffer = Buffer.alloc(16384),
       offset = 0,
-      length = buffer.length,
+      length = buffer.byteLength,
       position
     } = options);
   }
@@ -553,8 +552,10 @@ function read(fd, buffer, offset, length, position, callback) {
 
   validateOffsetLengthRead(offset, length, buffer.byteLength);
 
-  if (!NumberIsSafeInteger(position))
+  if (position == null)
     position = -1;
+
+  validatePosition(position, 'position');
 
   function wrapper(err, bytesRead) {
     // Retain a reference to buffer so that it can't be GC'ed too soon.
@@ -577,14 +578,14 @@ ObjectDefineProperty(read, internalUtil.customPromisifyArgs,
 function readSync(fd, buffer, offset, length, position) {
   validateInt32(fd, 'fd', 0);
 
+  validateBuffer(buffer);
+
   if (arguments.length <= 3) {
     // Assume fs.read(fd, buffer, options)
     const options = offset || {};
 
-    ({ offset = 0, length = buffer.length, position } = options);
+    ({ offset = 0, length = buffer.byteLength, position } = options);
   }
-
-  validateBuffer(buffer);
 
   if (offset == null) {
     offset = 0;
@@ -605,8 +606,10 @@ function readSync(fd, buffer, offset, length, position) {
 
   validateOffsetLengthRead(offset, length, buffer.byteLength);
 
-  if (!NumberIsSafeInteger(position))
+  if (position == null)
     position = -1;
+
+  validatePosition(position, 'position');
 
   const ctx = {};
   const result = binding.read(fd, buffer, offset, length, position,
@@ -670,7 +673,7 @@ function write(fd, buffer, offset, length, position, callback) {
       validateInteger(offset, 'offset', 0);
     }
     if (typeof length !== 'number')
-      length = buffer.length - offset;
+      length = buffer.byteLength - offset;
     if (typeof position !== 'number')
       position = null;
     validateOffsetLengthWrite(offset, length, buffer.byteLength);
@@ -807,6 +810,7 @@ function truncate(path, len, callback) {
   }
 
   validateInteger(len, 'len');
+  len = MathMax(0, len);
   callback = maybeCallback(callback);
   fs.open(path, 'r+', (er, fd) => {
     if (er) return callback(er);
@@ -1997,9 +2001,8 @@ realpath.native = (path, options, callback) => {
 function mkdtemp(prefix, options, callback) {
   callback = makeCallback(typeof options === 'function' ? options : callback);
   options = getOptions(options, {});
-  if (!prefix || typeof prefix !== 'string') {
-    throw new ERR_INVALID_ARG_TYPE('prefix', 'string', prefix);
-  }
+
+  validateString(prefix, 'prefix');
   nullCheck(prefix, 'prefix');
   warnOnNonPortableTemplate(prefix);
   const req = new FSReqCallback();
@@ -2010,9 +2013,8 @@ function mkdtemp(prefix, options, callback) {
 
 function mkdtempSync(prefix, options) {
   options = getOptions(options, {});
-  if (!prefix || typeof prefix !== 'string') {
-    throw new ERR_INVALID_ARG_TYPE('prefix', 'string', prefix);
-  }
+
+  validateString(prefix, 'prefix');
   nullCheck(prefix, 'prefix');
   warnOnNonPortableTemplate(prefix);
   const path = `${prefix}XXXXXX`;
@@ -2062,7 +2064,8 @@ function copyFileSync(src, dest, mode) {
 function lazyLoadStreams() {
   if (!ReadStream) {
     ({ ReadStream, WriteStream } = require('internal/fs/streams'));
-    [ FileReadStream, FileWriteStream ] = [ ReadStream, WriteStream ];
+    FileReadStream = ReadStream;
+    FileWriteStream = WriteStream;
   }
 }
 

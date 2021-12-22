@@ -14,14 +14,18 @@ const {
   ObjectSetPrototypeOf,
   Promise,
   ReflectConstruct,
+  RegExpPrototypeExec,
   Set,
   Symbol,
   SymbolFor,
 } = primordials;
 
 const {
+  toUSVString: _toUSVString,
+} = internalBinding('url');
+
+const {
   codes: {
-    ERR_INVALID_ARG_TYPE,
     ERR_NO_CRYPTO,
     ERR_UNKNOWN_SIGNAL
   },
@@ -43,6 +47,18 @@ const noCrypto = !process.versions.openssl;
 const experimentalWarnings = new Set();
 
 const colorRegExp = /\u001b\[\d\d?m/g; // eslint-disable-line no-control-regex
+
+const unpairedSurrogateRe =
+  /(?:[^\uD800-\uDBFF]|^)[\uDC00-\uDFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])/;
+function toUSVString(val) {
+  const str = `${val}`;
+  // As of V8 5.5, `str.search()` (and `unpairedSurrogateRe[@@search]()`) are
+  // slower than `unpairedSurrogateRe.exec()`.
+  const match = RegExpPrototypeExec(unpairedSurrogateRe, str);
+  if (!match)
+    return str;
+  return _toUSVString(str, match.index);
+}
 
 let uvBinding;
 
@@ -66,6 +82,8 @@ function isError(e) {
 // each one once.
 const codesWarned = new Set();
 
+let validateString;
+
 // Mark that a method should not be used.
 // Returns a modified function which warns once by default.
 // If --no-deprecation is set, then it is a no-op.
@@ -74,8 +92,12 @@ function deprecate(fn, msg, code) {
     return fn;
   }
 
-  if (code !== undefined && typeof code !== 'string')
-    throw new ERR_INVALID_ARG_TYPE('code', 'string', code);
+  // Lazy-load to avoid a circular dependency.
+  if (validateString === undefined)
+    ({ validateString } = require('internal/validators'));
+
+  if (code !== undefined)
+    validateString(code, 'code');
 
   let warned = false;
   function deprecated(...args) {
@@ -176,6 +198,11 @@ function slowCases(enc) {
       if (enc === 'utf-16le' || enc === 'UTF-16LE' ||
         `${enc}`.toLowerCase() === 'utf-16le')
         return 'utf16le';
+      break;
+    case 9:
+      if (enc === 'base64url' || enc === 'BASE64URL' ||
+          `${enc}`.toLowerCase() === 'base64url')
+        return 'base64url';
       break;
     default:
       if (enc === '') return 'utf8';
@@ -285,15 +312,20 @@ function getSystemErrorMap() {
 const kCustomPromisifiedSymbol = SymbolFor('nodejs.util.promisify.custom');
 const kCustomPromisifyArgsSymbol = Symbol('customPromisifyArgs');
 
+let validateFunction;
+
 function promisify(original) {
-  if (typeof original !== 'function')
-    throw new ERR_INVALID_ARG_TYPE('original', 'Function', original);
+  // Lazy-load to avoid a circular dependency.
+  if (validateFunction === undefined)
+    ({ validateFunction } = require('internal/validators'));
+
+  validateFunction(original, 'original');
 
   if (original[kCustomPromisifiedSymbol]) {
     const fn = original[kCustomPromisifiedSymbol];
-    if (typeof fn !== 'function') {
-      throw new ERR_INVALID_ARG_TYPE('util.promisify.custom', 'Function', fn);
-    }
+
+    validateFunction(fn, 'util.promisify.custom');
+
     return ObjectDefineProperty(fn, kCustomPromisifiedSymbol, {
       value: fn, enumerable: false, writable: false, configurable: true
     });
@@ -415,11 +447,23 @@ function sleep(msec) {
   _sleep(msec);
 }
 
+function createDeferredPromise() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+}
+
 module.exports = {
   assertCrypto,
   cachedResult,
   convertToValidSignal,
   createClassWrapper,
+  createDeferredPromise,
   decorateErrorStack,
   deprecate,
   emitExperimentalWarning,
@@ -435,6 +479,7 @@ module.exports = {
   promisify,
   sleep,
   spliceOne,
+  toUSVString,
   removeColors,
 
   // Symbol used to customize promisify conversion

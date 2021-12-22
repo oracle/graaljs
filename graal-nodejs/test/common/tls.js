@@ -1,4 +1,3 @@
-/* eslint-disable node-core/require-common-first, node-core/required-modules */
 /* eslint-disable node-core/crypto-check */
 
 'use strict';
@@ -44,7 +43,7 @@ class TestTLSSocket extends net.Socket {
   createClientHello() {
     const compressions = Buffer.from('0100', 'hex'); // null
     const msg = addHandshakeHeader(0x01, Buffer.concat([
-      this.version, this.client_random, this.ciphers, compressions
+      this.version, this.client_random, this.ciphers, compressions,
     ]));
     this.emit('handshake', msg);
     return addRecordHeader(0x16, msg);

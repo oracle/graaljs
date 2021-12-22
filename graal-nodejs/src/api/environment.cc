@@ -228,9 +228,11 @@ void SetIsolateErrorHandlers(v8::Isolate* isolate, const IsolateSettings& s) {
       s.fatal_error_callback : OnFatalError;
   isolate->SetFatalErrorHandler(fatal_error_cb);
 
-  auto* prepare_stack_trace_cb = s.prepare_stack_trace_callback ?
-      s.prepare_stack_trace_callback : PrepareStackTraceCallback;
-  isolate->SetPrepareStackTraceCallback(prepare_stack_trace_cb);
+  if ((s.flags & SHOULD_NOT_SET_PREPARE_STACK_TRACE_CALLBACK) == 0) {
+    auto* prepare_stack_trace_cb = s.prepare_stack_trace_callback ?
+        s.prepare_stack_trace_callback : PrepareStackTraceCallback;
+    isolate->SetPrepareStackTraceCallback(prepare_stack_trace_cb);
+  }
 }
 
 void SetIsolateMiscHandlers(v8::Isolate* isolate, const IsolateSettings& s) {
@@ -465,6 +467,14 @@ Environment* GetCurrentEnvironment(Local<Context> context) {
 
 MultiIsolatePlatform* GetMainThreadMultiIsolatePlatform() {
   return per_process::v8_platform.Platform();
+}
+
+IsolateData* GetEnvironmentIsolateData(Environment* env) {
+  return env->isolate_data();
+}
+
+ArrayBufferAllocator* GetArrayBufferAllocator(IsolateData* isolate_data) {
+  return isolate_data->node_allocator();
 }
 
 MultiIsolatePlatform* GetMultiIsolatePlatform(Environment* env) {

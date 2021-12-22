@@ -2,6 +2,7 @@ name: misc
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches:
       - master
@@ -10,7 +11,7 @@ on:
       - v[0-9]+.x
 
 env:
-  NODE_VERSION: 14.x
+  NODE_VERSION: lts/*
 
 jobs:
   build-docs:
