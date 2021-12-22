@@ -391,15 +391,15 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         protected String toLargestTemporalUnit(DynamicObject normalizedOptions, List<String> disallowedUnits, String fallback, String autoValue) {
-            assert !disallowedUnits.contains(fallback) && !disallowedUnits.contains(AUTO);
+            assert fallback == null || (!disallowedUnits.contains(fallback) && !disallowedUnits.contains(AUTO));
             String largestUnit = (String) getOption(normalizedOptions, LARGEST_UNIT, OptionTypeEnum.STRING, TemporalUtil.listAllDateTimeAuto, fallback);
             if (largestUnit != null && largestUnit.equals(AUTO) && autoValue != null) {
                 return autoValue;
             }
-            if (Boundaries.setContains(TemporalUtil.pluralUnits, largestUnit)) {
+            if (largestUnit != null && Boundaries.setContains(TemporalUtil.pluralUnits, largestUnit)) {
                 largestUnit = Boundaries.mapGet(TemporalUtil.pluralToSingular, largestUnit);
             }
-            if (Boundaries.listContains(disallowedUnits, largestUnit)) {
+            if (largestUnit != null && Boundaries.listContains(disallowedUnits, largestUnit)) {
                 errorBranch.enter();
                 throw Errors.createRangeError("Largest unit is not allowed.");
             }
@@ -408,10 +408,10 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         protected String toSmallestTemporalUnit(DynamicObject normalizedOptions, List<String> disallowedUnits, String fallback) {
             String smallestUnit = (String) getOption(normalizedOptions, SMALLEST_UNIT, OptionTypeEnum.STRING, TemporalUtil.listAllDateTime, fallback);
-            if (Boundaries.setContains(TemporalUtil.pluralUnits, smallestUnit)) {
+            if (smallestUnit != null && Boundaries.setContains(TemporalUtil.pluralUnits, smallestUnit)) {
                 smallestUnit = Boundaries.mapGet(TemporalUtil.pluralToSingular, smallestUnit);
             }
-            if (Boundaries.listContains(disallowedUnits, smallestUnit)) {
+            if (smallestUnit != null && Boundaries.listContains(disallowedUnits, smallestUnit)) {
                 errorBranch.enter();
                 throw Errors.createRangeError("Smallest unit not allowed.");
             }
@@ -425,7 +425,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         // 13.24
         protected String toTemporalDurationTotalUnit(DynamicObject normalizedOptions) {
             String unit = (String) getOption(normalizedOptions, UNIT, OptionTypeEnum.STRING, TemporalUtil.listAllDateTime, null);
-            if (Boundaries.setContains(TemporalUtil.pluralUnits, unit)) {
+            if (unit != null && Boundaries.setContains(TemporalUtil.pluralUnits, unit)) {
                 unit = Boundaries.mapGet(TemporalUtil.pluralToSingular, unit);
             }
             return unit;

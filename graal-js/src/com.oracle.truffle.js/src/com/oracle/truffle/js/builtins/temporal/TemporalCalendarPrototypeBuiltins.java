@@ -348,7 +348,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         throw Errors.createTypeError("string expected");
                     }
                     String str = JSRuntime.toString(nextValue);
-                    if (Boundaries.listContains(fieldNames, str)) {
+                    if (str != null && Boundaries.listContains(fieldNames, str)) {
                         iteratorCloseAbrupt(iter.getIterator());
                         throw Errors.createRangeError("");
                     }

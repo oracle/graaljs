@@ -1888,7 +1888,7 @@ public class JSRealm {
 
     private void addTemporalGlobals() {
         assert context.isOptionTemporal();
-        DynamicObject temporalObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
+        DynamicObject temporalObject = JSOrdinary.createInit(this);
         JSObjectUtil.putToStringTag(temporalObject, TemporalConstants.TEMPORAL);
 
         int flags = JSAttributes.configurableNotEnumerableWritable();
@@ -1903,7 +1903,7 @@ public class JSRealm {
         JSObjectUtil.putDataProperty(context, temporalObject, "TimeZone", getTemporalTimeZoneConstructor(), flags);
         JSObjectUtil.putDataProperty(context, temporalObject, "ZonedDateTime", getTemporalZonedDateTimeConstructor(), flags);
 
-        DynamicObject nowObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
+        DynamicObject nowObject = JSOrdinary.createInit(this);
 
         JSObjectUtil.putDataProperty(context, temporalObject, "Now", nowObject, flags);
         JSObjectUtil.putFunctionsFromContainer(this, nowObject, TemporalNowBuiltins.BUILTINS);

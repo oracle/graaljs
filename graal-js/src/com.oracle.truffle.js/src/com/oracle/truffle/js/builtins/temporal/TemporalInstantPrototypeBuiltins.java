@@ -196,9 +196,9 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             BigInteger ns = instant.getNanoseconds().bigIntegerValue();
             switch (property) {
                 case epochSeconds:
-                    return TemporalUtil.roundTowardsZero(ns.divide(BigInteger.valueOf(1_000_000_000L))).longValue();
+                    return TemporalUtil.roundTowardsZero(ns.divide(BigInteger.valueOf(1_000_000_000L))).doubleValue();
                 case epochMilliseconds:
-                    return TemporalUtil.roundTowardsZero(ns.divide(BigInteger.valueOf(1_000_000L))).longValue();
+                    return TemporalUtil.roundTowardsZero(ns.divide(BigInteger.valueOf(1_000_000L))).doubleValue();
                 case epochMicroseconds:
                     return TemporalUtil.roundTowardsZero(ns.divide(BigInteger.valueOf(1_000L)));
                 case epochNanoseconds:

@@ -87,14 +87,12 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalTime;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -357,16 +355,6 @@ public final class JSGuards {
 
     public static boolean isJSTemporalCalendar(Object value) {
         return JSTemporalCalendar.isJSTemporalCalendar(value);
-    }
-
-    public static boolean isJSTemporalDateLike(Object value) {
-        // TODO Andreas might want to optimize the shape check?
-        return value instanceof JSTemporalPlainDateObject;
-    }
-
-    public static boolean isJSTemporalTimeLike(Object value) {
-        // TODO Andreas might want to optimize the shape check?
-        return value instanceof TemporalTime;
     }
 
     public static boolean isJSTemporalInstant(Object value) {

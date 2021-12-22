@@ -44,6 +44,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.OptionalLong;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -327,16 +328,17 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
             if (!TemporalUtil.isNullish(timeZone.getNanoseconds())) {
                 return Null.instance;
             }
-            Object transition;
+            OptionalLong transition;
             if (isNext) {
                 transition = TemporalUtil.getIANATimeZoneNextTransition(startingPoint.getNanoseconds(), timeZone.getIdentifier());
             } else {
                 transition = TemporalUtil.getIANATimeZonePreviousTransition(startingPoint.getNanoseconds(), timeZone.getIdentifier());
             }
-            if (TemporalUtil.isNullish(transition)) {
+            if (transition.isEmpty()) {
                 return Null.instance;
             }
-            return TemporalUtil.createTemporalInstant(getContext(), (long) transition);
+            // orElse avoids Exception
+            return TemporalUtil.createTemporalInstant(getContext(), transition.orElse(0));
         }
     }
 

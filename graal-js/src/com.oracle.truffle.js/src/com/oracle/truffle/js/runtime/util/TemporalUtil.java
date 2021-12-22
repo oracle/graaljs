@@ -103,14 +103,13 @@ import java.time.ZonedDateTime;
 import java.time.zone.ZoneOffsetTransition;
 import java.time.zone.ZoneRules;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -246,6 +245,9 @@ public final class TemporalUtil {
     // 8.64 * 10^13
     private static final BigInteger bi_8_64_13 = new BigInteger("86400000000000");
 
+    // 10 ^ 9
+    private static final BigInteger bi_10_pow_9 = new BigInteger("1000000000");
+
     public enum TemporalOverflowEnum {
         CONSTRAIN,
         REJECT
@@ -265,13 +267,13 @@ public final class TemporalUtil {
     @SuppressWarnings("unchecked")
     @TruffleBoundary
     public static <T> Set<T> toSet(T... values) {
-        return Arrays.stream(values).collect(Collectors.toSet());
+        return Set.of(values);
     }
 
     @SuppressWarnings("unchecked")
     @TruffleBoundary
     public static <T> List<T> toList(T... values) {
-        return Arrays.stream(values).collect(Collectors.toList());
+        return List.of(values);
     }
 
     /**
@@ -347,7 +349,7 @@ public final class TemporalUtil {
         if (Double.isNaN(numberValue) || numberValue < minimum || numberValue > maximum || (Double.isInfinite(numberValue) && Double.isInfinite(maximum))) {
             throw Errors.createRangeError("Numeric value out of range.");
         }
-        return floor(numberValue);
+        return Math.floor(numberValue);
     }
 
     // 13.4
@@ -373,7 +375,7 @@ public final class TemporalUtil {
             if (Double.isNaN(numberValue) || numberValue < minimum || numberValue > maximum) {
                 throw Errors.createRangeError("Numeric value out of range.");
             }
-            return floor(numberValue);
+            return Math.floor(numberValue);
         }
         value = JSRuntime.toString(value);
         if (stringValues != null && !stringValues.contains(value)) {
@@ -466,10 +468,10 @@ public final class TemporalUtil {
     // 13.22
     public static String toSmallestTemporalUnit(DynamicObject normalizedOptions, List<String> disallowedUnits, String fallback, TemporalGetOptionNode getOptionNode) {
         String smallestUnit = (String) getOptionNode.execute(normalizedOptions, SMALLEST_UNIT, OptionTypeEnum.STRING, listAllDateTime, fallback);
-        if (Boundaries.setContains(pluralUnits, smallestUnit)) {
+        if (smallestUnit != null && Boundaries.setContains(pluralUnits, smallestUnit)) {
             smallestUnit = Boundaries.mapGet(pluralToSingular, smallestUnit);
         }
-        if (Boundaries.listContains(disallowedUnits, smallestUnit)) {
+        if (smallestUnit != null && Boundaries.listContains(disallowedUnits, smallestUnit)) {
             throw Errors.createRangeError("Smallest unit not allowed.");
         }
         return smallestUnit;
@@ -906,12 +908,12 @@ public final class TemporalUtil {
         } else if (m == 0) { // Feb
             m = 12;
         }
-        long c = floorDiv(year, 100);
-        long y = floorMod(year, 100);
+        long c = Math.floorDiv(year, 100);
+        long y = Math.floorMod(year, 100);
         if (m == 11 || m == 12) {
             y = y - 1;
         }
-        long weekDay = floorMod((day + (long) floor((2.6 * m) - 0.2) - (2 * c) + y + floorDiv(y, 4) + floorDiv(c, 4)), 7);
+        long weekDay = Math.floorMod((day + (long) Math.floor((2.6 * m) - 0.2) - (2 * c) + y + Math.floorDiv(y, 4) + Math.floorDiv(c, 4)), 7);
         if (weekDay == 0) { // Sunday
             return 7;
         }
@@ -933,7 +935,7 @@ public final class TemporalUtil {
         long dow = toISODayOfWeek(year, month, day);
         long doj = toISODayOfWeek(year, 1, 1);
 
-        long week = floorDiv(doy - dow + 10, 7);
+        long week = Math.floorDiv(doy - dow + 10, 7);
         if (week < 1) {
             if (doj == 5 || (doj == 6 && isISOLeapYear(year - 1))) {
                 return 53;
@@ -1003,7 +1005,7 @@ public final class TemporalUtil {
             throw Errors.createRangeError("value our of range");
         }
 
-        long yearPrepared = year + (long) floor((month - 1.0) / 12.0);
+        long yearPrepared = year + (long) Math.floor((month - 1.0) / 12.0);
         long monthPrepared = (long) nonNegativeModulo(month - 1, 12) + 1;
 
         return JSTemporalDateTimeRecord.create(yearPrepared, monthPrepared, 0, 0, 0, 0, 0, 0, 0);
@@ -2261,39 +2263,39 @@ public final class TemporalUtil {
         ns = Math.abs(ns);
         if (largestUnit.equals(YEAR) || largestUnit.equals(MONTH) || largestUnit.equals(WEEK) ||
                         largestUnit.equals(DAY) || largestUnit.equals(HOUR)) {
-            mus = floorDiv(ns, 1000);
+            mus = Math.floorDiv(ns, 1000);
             ns = ns % 1000;
-            ms = floorDiv(mus, 1000);
+            ms = Math.floorDiv(mus, 1000);
             mus = mus % 1000;
-            s = floorDiv(ms, 1000);
+            s = Math.floorDiv(ms, 1000);
             ms = ms % 1000;
-            min = floorDiv(s, 60);
+            min = Math.floorDiv(s, 60);
             s = s % 60;
-            h = floorDiv(min, 60);
+            h = Math.floorDiv(min, 60);
             min = min % 60;
         } else if (largestUnit.equals(MINUTE)) {
-            mus = floorDiv(ns, 1000);
+            mus = Math.floorDiv(ns, 1000);
             ns = ns % 1000;
-            ms = floorDiv(mus, 1000);
+            ms = Math.floorDiv(mus, 1000);
             mus = mus % 1000;
-            s = floorDiv(ms, 1000);
+            s = Math.floorDiv(ms, 1000);
             ms = ms % 1000;
-            min = floorDiv(s, 60);
+            min = Math.floorDiv(s, 60);
             s = s % 60;
         } else if (largestUnit.equals(SECOND)) {
-            mus = floorDiv(ns, 1000);
+            mus = Math.floorDiv(ns, 1000);
             ns = ns % 1000;
-            ms = floorDiv(mus, 1000);
+            ms = Math.floorDiv(mus, 1000);
             mus = mus % 1000;
-            s = floorDiv(ms, 1000);
+            s = Math.floorDiv(ms, 1000);
             ms = ms % 1000;
         } else if (largestUnit.equals(MILLISECOND)) {
-            mus = floorDiv(ns, 1000);
+            mus = Math.floorDiv(ns, 1000);
             ns = ns % 1000;
-            ms = floorDiv(mus, 1000);
+            ms = Math.floorDiv(mus, 1000);
             mus = mus % 1000;
         } else if (largestUnit.equals(MICROSECOND)) {
-            mus = floorDiv(ns, 1000);
+            mus = Math.floorDiv(ns, 1000);
             ns = ns % 1000;
         } else {
             assert largestUnit.equals(NANOSECOND);
@@ -3156,17 +3158,17 @@ public final class TemporalUtil {
         long seconds = sec;
         long minutes = min;
         long hours = h;
-        microseconds = microseconds + (long) floor(nanoseconds / 1000.0);
+        microseconds = microseconds + (long) Math.floor(nanoseconds / 1000.0);
         nanoseconds = (long) TemporalUtil.nonNegativeModulo(nanoseconds, 1000);
-        milliseconds = milliseconds + (long) floor(microseconds / 1000.0);
+        milliseconds = milliseconds + (long) Math.floor(microseconds / 1000.0);
         microseconds = (long) TemporalUtil.nonNegativeModulo(microseconds, 1000);
-        seconds = seconds + (long) floor(milliseconds / 1000.0);
+        seconds = seconds + (long) Math.floor(milliseconds / 1000.0);
         milliseconds = (long) TemporalUtil.nonNegativeModulo(milliseconds, 1000);
-        minutes = minutes + (long) floor(seconds / 60.0);
+        minutes = minutes + (long) Math.floor(seconds / 60.0);
         seconds = (long) TemporalUtil.nonNegativeModulo(seconds, 60);
-        hours = hours + (long) floor(minutes / 60.0);
+        hours = hours + (long) Math.floor(minutes / 60.0);
         minutes = (long) TemporalUtil.nonNegativeModulo(minutes, 60);
-        long days = (long) floor(hours / 24.0);
+        long days = (long) Math.floor(hours / 24.0);
         hours = (long) TemporalUtil.nonNegativeModulo(hours, 24);
         return JSTemporalDurationRecord.create(0, 0, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
     }
@@ -3489,9 +3491,9 @@ public final class TemporalUtil {
         String sign = offsetNanosecondsParam >= 0 ? "+" : "-";
         long offsetNanoseconds = Math.abs(offsetNanosecondsParam);
         long nanoseconds = offsetNanoseconds % 1_000_000_000L;
-        double s1 = (floor(offsetNanoseconds / 1_000_000_000.0) % 60.0);
-        double m1 = (floor(offsetNanoseconds / 60_000_000_000.0) % 60.0);
-        double h1 = floor(offsetNanoseconds / 3_600_000_000_000.0);
+        double s1 = (Math.floor(offsetNanoseconds / 1_000_000_000.0) % 60.0);
+        double m1 = (Math.floor(offsetNanoseconds / 60_000_000_000.0) % 60.0);
+        double h1 = Math.floor(offsetNanoseconds / 3_600_000_000_000.0);
 
         long seconds = (long) s1;
         long minutes = (long) m1;
@@ -4057,52 +4059,40 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     @SuppressWarnings("unused")
-    public static Object getIANATimeZoneNextTransition(BigInt nanoseconds, String identifier) {
+    public static OptionalLong getIANATimeZoneNextTransition(BigInt nanoseconds, String identifier) {
         try {
-            Instant instant = Instant.ofEpochSecond(0, nanoseconds.longValue()); // TODO wrong
+            BigInteger[] sec = nanoseconds.bigIntegerValue().divideAndRemainder(bi_10_pow_9);
+            Instant instant = Instant.ofEpochSecond(sec[0].longValue(), sec[1].longValue());
             ZoneId zoneId = ZoneId.of(identifier);
             ZoneRules zoneRule = zoneId.getRules();
             ZoneOffsetTransition nextTransition = zoneRule.nextTransition(instant);
             if (nextTransition == null) {
-                return null;
+                return OptionalLong.empty();
             }
-            return nextTransition.toEpochSecond() * 1_000_000_000L;
+            return OptionalLong.of(nextTransition.toEpochSecond() * 1_000_000_000L);
         } catch (Exception ex) {
             assert false;
-            return Long.MIN_VALUE;
+            return OptionalLong.of(Long.MIN_VALUE);
         }
     }
 
     @TruffleBoundary
     @SuppressWarnings("unused")
-    public static Object getIANATimeZonePreviousTransition(BigInt nanoseconds, String identifier) {
+    public static OptionalLong getIANATimeZonePreviousTransition(BigInt nanoseconds, String identifier) {
         try {
-            Instant instant = Instant.ofEpochSecond(0, nanoseconds.longValue()); // TODO wrong
+            BigInteger[] sec = nanoseconds.bigIntegerValue().divideAndRemainder(bi_10_pow_9);
+            Instant instant = Instant.ofEpochSecond(sec[0].longValue(), sec[1].longValue());
             ZoneId zoneId = ZoneId.of(identifier);
             ZoneRules zoneRule = zoneId.getRules();
             ZoneOffsetTransition previousTransition = zoneRule.previousTransition(instant);
             if (previousTransition == null) {
-                return null;
+                return OptionalLong.empty();
             }
-            return previousTransition.toEpochSecond() * 1_000_000_000L;
+            return OptionalLong.of(previousTransition.toEpochSecond() * 1_000_000_000L);
         } catch (Exception ex) {
             assert false;
-            return null;
+            return OptionalLong.empty();
         }
-    }
-
-    public static double floor(double in) {
-        // ECMA 2021, 5.2.5: The mathematical function floor(x) produces the largest integer
-        // (closest to +Infinity) that is not larger than x.
-        return Math.floor(in);
-    }
-
-    private static long floorDiv(long dividend, int divisor) {
-        return Math.floorDiv(dividend, divisor);
-    }
-
-    private static long floorMod(long dividend, int divisor) {
-        return Math.floorMod(dividend, divisor);
     }
 
     // this should not be used according to spec (but polyfill uses it)
