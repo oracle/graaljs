@@ -23,7 +23,7 @@ Hello, World!
 \[engine\] \[cache\]     New image contains [ 0-9]+ sources and [0-9]+ function roots\.
 \[engine\] \[cache\]     Always persist policy\.
 \[engine\] \[cache\] Writing image to ${TMP_DIR}/aux/hw.img\.\.\.
-\[engine\] \[cache\] Finished writing [0-9,]+ bytes in [0-9]+ ms.
+\[engine\] \[cache\] Finished writing [0-9,]+ bytes in [0-9,]+ ms.
 > test -f hw.img
 > node --experimental-options --engine.TraceCache --engine.CacheLoad=hw.img -e "console.log('Hello, World!')"
 \[To redirect Truffle log output to a file use one of the following options:
