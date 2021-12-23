@@ -108,6 +108,7 @@ public final class TemporalParser {
         reset();
         if (parseTime()) {
             parseTimeZone();
+            parseCalendar();
             if (atEnd()) {
                 return result();
             }
@@ -115,18 +116,22 @@ public final class TemporalParser {
         return null;
     }
 
+    // TemporalYearMonthString
     public JSTemporalParserRecord parseYearMonth() {
+        // DateSpecYearMonth
         reset();
         if (parseDateSpecYearMonth()) {
             if (atEnd()) {
                 return result();
             }
         }
+        // CalendarDateTime
         reset();
         if (parseDate()) {
             parseDateTimeSeparator();
             parseTime();
             parseTimeZone();
+            parseCalendar();
             if (atEnd()) {
                 return result();
             }
@@ -135,17 +140,20 @@ public final class TemporalParser {
     }
 
     public JSTemporalParserRecord parseMonthDay() {
+        // DateSpecMonthDay
         reset();
         if (parseDateSpecMonthDay()) {
             if (atEnd()) {
                 return result();
             }
         }
+        // CalendarDateTime
         reset();
         if (parseDate()) {
             parseDateTimeSeparator();
             parseTime();
             parseTimeZone();
+            parseCalendar();
             if (atEnd()) {
                 return result();
             }

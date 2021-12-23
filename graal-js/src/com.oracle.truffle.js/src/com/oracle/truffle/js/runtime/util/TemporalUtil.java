@@ -248,6 +248,11 @@ public final class TemporalUtil {
     // 10 ^ 9
     private static final BigInteger bi_10_pow_9 = new BigInteger("1000000000");
 
+    public static final BigDecimal bd_10 = new BigDecimal("10");
+    public static final BigDecimal bd_1000 = new BigDecimal("1000");
+
+    public static final MathContext mc_20_floor = new MathContext(20, RoundingMode.FLOOR);
+
     public enum TemporalOverflowEnum {
         CONSTRAIN,
         REJECT
@@ -1392,7 +1397,7 @@ public final class TemporalUtil {
         Number number = JSRuntime.toNumber(value);
         double d = number.doubleValue();
         if (d == 0 || Double.isNaN(d)) {
-            return 0d;
+            return 0L;
         }
         if (Double.isInfinite(d)) {
             return d;
@@ -1798,57 +1803,6 @@ public final class TemporalUtil {
         return (JSTemporalPlainDateObject) JSTemporalPlainDate.create(context, year, month, day, calendar);
     }
 
-    @TruffleBoundary
-    public static JSTemporalDateTimeRecord durationHandleFractions(double fHoursP, long minutesP, double fMinutesP, long secondsP, double fSecondsP, long millisecondsP, double fMillisecondsP,
-                    long microsecondsP, double fMicrosecondsP, long nanosecondsP, double fNanosecondsP) {
-
-        double fHours = fHoursP;
-        double fMinutes = fMinutesP;
-        double fSeconds = fSecondsP;
-        double fMilliseconds = fMillisecondsP;
-        double fMicroseconds = fMicrosecondsP;
-        double fNanoseconds = fNanosecondsP;
-        long minutes = minutesP;
-        long seconds = secondsP;
-        long milliseconds = millisecondsP;
-        long microseconds = microsecondsP;
-        long nanoseconds = nanosecondsP;
-
-        if (fHours != 0) {
-            throwIfNotZero(minutes, fMinutes, seconds, fSeconds, milliseconds, fMilliseconds, microseconds, fMicroseconds, nanoseconds, fNanoseconds);
-            double mins = fHours * 60;
-            minutes = trunc(mins); // TODO https://github.com/tc39/proposal-temporal/issues/1754
-            fMinutes = remainder(mins, 1.0);
-        }
-        if (fMinutes != 0) {
-            throwIfNotZero(seconds, fSeconds, milliseconds, fMilliseconds, microseconds, fMicroseconds, nanoseconds, fNanoseconds);
-            double secs = fMinutes * 60;
-            seconds = trunc(secs); // TODO https://github.com/tc39/proposal-temporal/issues/1754
-            fSeconds = remainder(secs, 1.0);
-        }
-        if (fSeconds != 0) {
-            throwIfNotZero(milliseconds, fMilliseconds, microseconds, fMicroseconds, nanoseconds, fNanoseconds);
-            double mils = fSeconds * 1000;
-            milliseconds = trunc(mils); // TODO
-                                        // https://github.com/tc39/proposal-temporal/issues/1754
-            fMilliseconds = remainder(mils, 1.0);
-        }
-        if (fMilliseconds != 0) {
-            throwIfNotZero(microseconds, fMicroseconds, nanoseconds, fNanoseconds);
-            double mics = fMilliseconds * 1000;
-            microseconds = trunc(mics); // TODO
-                                        // https://github.com/tc39/proposal-temporal/issues/1754
-            fMicroseconds = remainder(mics, 1.0);
-        }
-        if (fMicroseconds != 0) {
-            throwIfNotZero(nanoseconds, fNanoseconds);
-            double nans = fMicroseconds * 1000;
-            nanoseconds = trunc(nans); // TODO https://github.com/tc39/proposal-temporal/issues/1754
-        }
-
-        return JSTemporalDateTimeRecord.create(0, 0, 0, 0, minutes, seconds, milliseconds, microseconds, nanoseconds);
-    }
-
     public static long remainder(long x, long y) {
         long magnitude = x % y;
         // assert Math.signum(y) == Math.signum(magnitude);
@@ -1864,15 +1818,6 @@ public final class TemporalUtil {
         double magnitude = x % y;
         // assert Math.signum(y) == Math.signum(magnitude);
         return magnitude;
-    }
-
-    @TruffleBoundary
-    private static void throwIfNotZero(double... elements) {
-        for (double elem : elements) {
-            if (elem != 0.0) {
-                throw Errors.createRangeError("zero expected");
-            }
-        }
     }
 
     public static long getPropertyFromRecord(JSTemporalDurationRecord d, String property) {
@@ -2888,7 +2833,7 @@ public final class TemporalUtil {
             days = TemporalUtil.roundNumberToIncrement(fractionalDays, increment, roundingMode);
             remainder = fractionalDays - days;
         } else if (unit.equals(HOUR)) {
-            double secondsPart = roundDurationFractionalDecondsDiv60(fractionalSeconds).doubleValue();
+            double secondsPart = roundDurationFractionalDecondsDiv60(fractionalSeconds);
             double fractionalHours = ((secondsPart + minutes) / 60.0) + hours;
             hours = TemporalUtil.roundNumberToIncrement(fractionalHours, increment, roundingMode);
             remainder = fractionalHours - hours;
@@ -2898,7 +2843,7 @@ public final class TemporalUtil {
             microseconds = 0;
             nanoseconds = 0;
         } else if (unit.equals(MINUTE)) {
-            long secondsPart = roundDurationFractionalDecondsDiv60(fractionalSeconds).longValue();
+            double secondsPart = roundDurationFractionalDecondsDiv60(fractionalSeconds);
             double fractionalMinutes = secondsPart + minutes;
             minutes = TemporalUtil.roundNumberToIncrement(fractionalMinutes, increment, roundingMode);
             remainder = fractionalMinutes - minutes;
@@ -2908,7 +2853,7 @@ public final class TemporalUtil {
             nanoseconds = 0;
         } else if (unit.equals(SECOND)) {
             seconds = TemporalUtil.roundNumberToIncrement(fractionalSeconds, Boundaries.bigDecimalValueOf(increment), roundingMode);
-            remainder = roundDurationFractionalSecondsSubtract(seconds, fractionalSeconds).doubleValue();
+            remainder = roundDurationFractionalSecondsSubtract(seconds, fractionalSeconds);
             milliseconds = 0;
             microseconds = 0;
             nanoseconds = 0;
@@ -2934,13 +2879,13 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    private static BigDecimal roundDurationFractionalSecondsSubtract(long seconds, BigDecimal fractionalSeconds) {
-        return fractionalSeconds.subtract(BigDecimal.valueOf(seconds));
+    private static double roundDurationFractionalSecondsSubtract(long seconds, BigDecimal fractionalSeconds) {
+        return fractionalSeconds.subtract(BigDecimal.valueOf(seconds)).doubleValue();
     }
 
     @TruffleBoundary
-    private static BigDecimal roundDurationFractionalDecondsDiv60(BigDecimal fractionalSeconds) {
-        return fractionalSeconds.divide(BigDecimal.valueOf(60), new MathContext(20, RoundingMode.FLOOR));
+    private static double roundDurationFractionalDecondsDiv60(BigDecimal fractionalSeconds) {
+        return fractionalSeconds.divide(BigDecimal.valueOf(60), mc_20_floor).doubleValue();
     }
 
     @TruffleBoundary

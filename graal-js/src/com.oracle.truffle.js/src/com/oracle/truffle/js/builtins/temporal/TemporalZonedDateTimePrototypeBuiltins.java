@@ -99,6 +99,7 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalZonedDateTimeNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -504,13 +505,13 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             }
             DynamicObject calendar = zonedDateTime.getCalendar();
             List<String> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.listDHMMMMMNSY);
-            fieldNames.add(OFFSET);
+            Boundaries.listAdd(fieldNames, OFFSET);
             DynamicObject partialZonedDateTime = TemporalUtil.preparePartialTemporalFields(getContext(), temporalZDTLike, fieldNames);
             DynamicObject options = getOptionsObject(optionsParam);
             String disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode());
             String offset = TemporalUtil.toTemporalOffset(options, PREFER, getOptionNode());
             DynamicObject timeZone = zonedDateTime.getTimeZone();
-            fieldNames.add(TIME_ZONE);
+            Boundaries.listAdd(fieldNames, TIME_ZONE);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), zonedDateTime, fieldNames, TemporalUtil.listTimeZoneOffset);
             fields = TemporalUtil.calendarMergeFields(getContext(), namesNode, calendar, fields, partialZonedDateTime);
             fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.listTimeZone);

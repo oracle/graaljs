@@ -54,6 +54,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -111,8 +112,8 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             }
             calendar = getTemporalCalendarNode.executeDynamicObject(itemObj);
             List<String> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.listDHMMMMMNSY);
-            fieldNames.add(TIME_ZONE);
-            fieldNames.add(OFFSET);
+            Boundaries.listAdd(fieldNames, TIME_ZONE);
+            Boundaries.listAdd(fieldNames, OFFSET);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.listTimeZone);
             Object timeZoneObj = JSObject.get(fields, TIME_ZONE);
             timeZone = toTemporalTimeZone.executeDynamicObject(timeZoneObj);

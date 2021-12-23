@@ -54,6 +54,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.SIGN;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
 
+import java.math.BigDecimal;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -175,19 +176,23 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
 
     @TruffleBoundary
     public static JSTemporalDurationRecord parseTemporalDurationString(String string) {
-        long year = 0;
-        long month = 0;
-        long day = 0;
-        long week = 0;
-        long hours = 0;
-        long minutes = 0;
-        long seconds = 0;
-        long milliseconds = 0;
-        long microseconds = 0;
-        long nanoseconds = 0;
-        String fHours = null;
-        String fMinutes = null;
-        String fSeconds = null;
+        long yearsMV = 0;
+        long monthsMV = 0;
+        long daysMV = 0;
+        long weeksMV = 0;
+        long hoursMV = 0;
+        double minutesMV = 0;
+        double secondsMV = 0;
+        BigDecimal millisecondsMV = BigDecimal.ZERO;
+        BigDecimal microsecondsMV = BigDecimal.ZERO;
+        BigDecimal nanosecondsMV = BigDecimal.ZERO;
+
+        String minutes = "";
+        String seconds = "";
+
+        String fHours = "";
+        String fMinutes = "";
+        String fSeconds = "";
 
         // P1Y1M1W1DT1H1M1.123456789S
         Pattern regex = Pattern.compile("^([\\+-]?)[Pp](\\d+[Yy])?(\\d+[Mm])?(\\d+[Ww])?(\\d+[Dd])?([Tt]([\\d.]+[Hh])?([\\d.]+[Mm])?([\\d.]+[Ss])?)?$");
@@ -195,18 +200,21 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         if (matcher.matches()) {
             String sign = matcher.group(1);
 
-            year = parseDurationIntl(matcher, 2);
-            month = parseDurationIntl(matcher, 3);
-            week = parseDurationIntl(matcher, 4);
-            day = parseDurationIntl(matcher, 5);
+            yearsMV = parseDurationIntl(matcher, 2);
+            monthsMV = parseDurationIntl(matcher, 3);
+            weeksMV = parseDurationIntl(matcher, 4);
+            daysMV = parseDurationIntl(matcher, 5);
+            Pair<String, String> hoursPair;
+            Pair<String, String> minutesPair;
+            Pair<String, String> secondsPair;
 
             String timeGroup = matcher.group(6);
             if (timeGroup != null && timeGroup.length() > 0) {
-                Pair<Long, String> hoursPair = parseDurationIntlWithFraction(matcher, 7);
-                Pair<Long, String> minutesPair = parseDurationIntlWithFraction(matcher, 8);
-                Pair<Long, String> secondsPair = parseDurationIntlWithFraction(matcher, 9);
+                hoursPair = parseDurationIntlWithFraction(matcher, 7);
+                minutesPair = parseDurationIntlWithFraction(matcher, 8);
+                secondsPair = parseDurationIntlWithFraction(matcher, 9);
 
-                hours = hoursPair.getFirst();
+                hoursMV = TemporalUtil.toIntegerOrInfinity(hoursPair.getFirst()).longValue();
                 fHours = hoursPair.getSecond();
 
                 minutes = minutesPair.getFirst();
@@ -216,44 +224,55 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 fSeconds = secondsPair.getSecond();
             }
 
+            if (!empty(fHours)) {
+                if (!empty(minutes) || !empty(fMinutes) || !empty(seconds) || !empty(fSeconds)) {
+                    throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
+                }
+                assert !fHours.contains(".");
+                String fHoursDigits = fHours; // substring(1) handled above
+                int fHoursScale = fHoursDigits.length();
+                minutesMV = 60.0 * TemporalUtil.toIntegerOrInfinity(fHoursDigits).doubleValue() / Math.pow(10, fHoursScale);
+            } else {
+                minutesMV = TemporalUtil.toIntegerOrInfinity(minutes).doubleValue();
+            }
+            if (!empty(fMinutes)) {
+                if (!empty(seconds) || !empty(fSeconds)) {
+                    throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
+                }
+                assert !fMinutes.contains(".");
+                String fMinutesDigits = fMinutes; // substring(1) handled above
+                int fMinutesScale = fMinutesDigits.length();
+                secondsMV = 60.0 * TemporalUtil.toIntegerOrInfinity(fMinutesDigits).doubleValue() / Math.pow(10, fMinutesScale);
+            } else if (!empty(seconds)) {
+                secondsMV = TemporalUtil.toIntegerOrInfinity(seconds).doubleValue();
+            } else {
+                secondsMV = TemporalUtil.remainder(minutesMV, 1) * 60.0;
+            }
+
+            if (!empty(fSeconds)) {
+                assert !fSeconds.contains("."); // substring(1) handled above
+                String fSecondsDigits = fSeconds;
+                int fSecondsScale = fSecondsDigits.length();
+                millisecondsMV = TemporalUtil.bd_1000.multiply(BigDecimal.valueOf(TemporalUtil.toIntegerOrInfinity(fSecondsDigits).longValue())).divide(
+                                TemporalUtil.bd_10.pow(fSecondsScale));
+            } else {
+                millisecondsMV = new BigDecimal(secondsMV).remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.bd_1000, TemporalUtil.mc_20_floor);
+            }
+            microsecondsMV = millisecondsMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.bd_1000);
+            nanosecondsMV = microsecondsMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.bd_1000);
+
             int factor = (sign.equals("-") || sign.equals("\u2212")) ? -1 : 1;
 
-            year = year * factor;
-            month = month * factor;
-            week = week * factor;
-            day = day * factor;
-            hours = hours * factor;
-            minutes = minutes * factor;
-            seconds = seconds * factor;
-            if (!TemporalUtil.isNullish(fSeconds)) {
-                String secExt = fSeconds + "000000000";
-                milliseconds = Long.parseLong(secExt.substring(0, 3)) * factor;
-                microseconds = Long.parseLong(secExt.substring(3, 6)) * factor;
-                nanoseconds = Long.parseLong(secExt.substring(6, 9)) * factor;
-            } else {
-                milliseconds = 0;
-                microseconds = 0;
-                nanoseconds = 0;
-            }
-            double fHoursDouble = 0;
-            if (!TemporalUtil.isNullish(fHours)) {
-                long hoursScale = fHours.length();
-                fHoursDouble = Long.parseLong(fHours) * factor / Math.pow(10, hoursScale);
-            } else {
-                fHoursDouble = 0;
-            }
-            double fMinutesDouble = 0;
-            if (!TemporalUtil.isNullish(fMinutes)) {
-                long minutesScale = fMinutes.length();
-                fMinutesDouble = Long.parseLong(fMinutes) * factor / Math.pow(10, minutesScale);
-            } else {
-                fMinutesDouble = 0;
-            }
-            JSTemporalDateTimeRecord result = TemporalUtil.durationHandleFractions(fHoursDouble, minutes, fMinutesDouble, seconds, 0, milliseconds, 0, microseconds, 0, nanoseconds, 0);
-            return JSTemporalDurationRecord.createWeeks(year, month, week, day, hours,
-                            result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
+            return JSTemporalDurationRecord.createWeeks(yearsMV * factor, monthsMV * factor, weeksMV * factor, daysMV * factor, hoursMV * factor,
+                            (long) (Math.floor(minutesMV) * factor), (long) (Math.floor(secondsMV) * factor),
+                            millisecondsMV.longValue() * factor, microsecondsMV.longValue() * factor, nanosecondsMV.longValue() * factor);
         }
         throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
+    }
+
+    private static boolean empty(String s) {
+        assert s != null;
+        return s.length() == 0;
     }
 
     private static long parseDurationIntl(Matcher matcher, int i) {
@@ -261,7 +280,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         if (val != null) {
             String numstr = val.substring(0, val.length() - 1);
             try {
-                return Long.parseLong(numstr);
+                return TemporalUtil.toIntegerOrInfinity(numstr).longValue();
             } catch (NumberFormatException ex) {
                 throw Errors.createRangeError("decimal numbers only allowed in time units");
             }
@@ -269,21 +288,21 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         return 0L;
     }
 
-    private static Pair<Long, String> parseDurationIntlWithFraction(Matcher matcher, int i) {
+    private static Pair<String, String> parseDurationIntlWithFraction(Matcher matcher, int i) {
         String val = matcher.group(i);
         if (val != null) {
             String numstr = val.substring(0, val.length() - 1);
 
             if (numstr.contains(".")) {
                 int idx = numstr.indexOf(".");
-                long wholePart = Long.parseLong(numstr.substring(0, idx));
+                String wholePart = numstr.substring(0, idx);
                 String fractionalPart = numstr.substring(idx + 1);
                 return new Pair<>(wholePart, fractionalPart);
             } else {
-                return new Pair<>(Long.parseLong(numstr), null);
+                return new Pair<>(numstr, "");
             }
         }
-        return new Pair<>(0L, null);
+        return new Pair<>("", "");
     }
 
     // 7.5.2
