@@ -684,8 +684,13 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     if ("file".equals(url.getProtocol())) {
                         String path = url.getPath();
                         if (!path.isEmpty()) {
+                            TruffleLanguage.Env env = realm.getEnv();
+                            if (env.getFileNameSeparator().equals("\\") && path.startsWith("/")) {
+                                // on Windows, remove first "/" from /c:/test/dir/ style paths
+                                path = path.substring(1);
+                            }
                             try {
-                                TruffleFile file = realm.getEnv().getPublicTruffleFile(path);
+                                TruffleFile file = env.getPublicTruffleFile(path);
                                 return sourceFromTruffleFile(file);
                             } catch (SecurityException e) {
                                 throw Errors.createErrorFromException(e);
@@ -1533,7 +1538,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 getRealm().getOutputWriter().print(promptString);
             }
             try {
-                final BufferedReader inReader = new BufferedReader(new InputStreamReader(getRealm().getEnv().in()));
+                final BufferedReader inReader = new BufferedReader(new InputStreamReader(getRealm().getEnv().in(), StandardCharsets.UTF_8));
                 String result = inReader.readLine();
                 return result == null ? (returnNullWhenEmpty ? Null.instance : Undefined.instance) : result;
             } catch (Exception ex) {

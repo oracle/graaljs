@@ -50,9 +50,9 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.function.Predicate;
 
 import javax.script.AbstractScriptEngine;
@@ -642,7 +642,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private static class DelegatingInputStream extends InputStream implements Proxy {
 
         private Reader reader;
-        private CharsetEncoder encoder = Charset.defaultCharset().newEncoder();
+        private CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
         private CharBuffer charBuffer = CharBuffer.allocate(2);
         private ByteBuffer byteBuffer = ByteBuffer.allocate((int) encoder.maxBytesPerChar() * 2);
 
@@ -679,8 +679,8 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private static class DelegatingOutputStream extends OutputStream implements Proxy {
 
         private Writer writer;
-        private CharsetDecoder decoder = Charset.defaultCharset().newDecoder();
-        private ByteBuffer byteBuffer = ByteBuffer.allocate((int) Charset.defaultCharset().newEncoder().maxBytesPerChar() * 2);
+        private CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
+        private ByteBuffer byteBuffer = ByteBuffer.allocate((int) StandardCharsets.UTF_8.newEncoder().maxBytesPerChar() * 2);
         private CharBuffer charBuffer = CharBuffer.allocate(byteBuffer.capacity() * (int) decoder.maxCharsPerByte());
 
         @Override

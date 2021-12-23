@@ -213,6 +213,10 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             canonicalPath = source.getName();
         } else {
             try {
+                if (realm.getEnv().getFileNameSeparator().equals("\\") && path.startsWith("/")) {
+                    // on Windows, remove first "/" from /c:/test/dir/ style paths
+                    path = path.substring(1);
+                }
                 TruffleFile moduleFile = realm.getEnv().getPublicTruffleFile(path);
                 if (moduleFile.exists()) {
                     canonicalPath = moduleFile.getCanonicalFile().getPath();

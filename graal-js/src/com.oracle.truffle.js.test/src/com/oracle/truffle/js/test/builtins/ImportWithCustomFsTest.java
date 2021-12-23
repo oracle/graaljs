@@ -165,7 +165,8 @@ public class ImportWithCustomFsTest {
     public void testMultiContextSingleSourceCachedImport() throws IOException {
         try (Engine engine = Engine.newBuilder().allowExperimentalOptions(true).build()) {
             String importedSourceText = "export default function() { return 42; }";
-            TestFS fs = new TestFS("imported.mjs", importedSourceText);
+            String moduleName = "imported.mjs";
+            TestFS fs = new TestFS(moduleName, importedSourceText, Paths.get(moduleName).toAbsolutePath());
             Source src = Source.newBuilder("js", "import f from 'imported.mjs'; f();", "main.mjs").mimeType("application/javascript+module").cached(true).build();
 
             final int numIters = 3;
@@ -259,9 +260,13 @@ public class ImportWithCustomFsTest {
         protected final Set<String> stringSpecifiers;
 
         TestFS(String expectedPath, String moduleBody) {
+            this(expectedPath, moduleBody, Paths.get("/dummy").toAbsolutePath());
+        }
+
+        TestFS(String expectedPath, String moduleBody, Path dummyPath) {
             this.expectedPath = expectedPath;
             this.moduleBody = moduleBody;
-            this.dummyPath = Paths.get("/", expectedPath);
+            this.dummyPath = dummyPath;
             this.uriSpecifiers = new HashSet<>();
             this.stringSpecifiers = new HashSet<>();
         }
@@ -282,7 +287,7 @@ public class ImportWithCustomFsTest {
             if (expectedPath.equals(path)) {
                 return dummyPath;
             } else {
-                return Paths.get("/", path);
+                return Paths.get(path);
             }
         }
 

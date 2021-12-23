@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,47 +38,27 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.util;
+package com.oracle.truffle.js.test.regress;
 
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.io.Writer;
-import java.nio.charset.StandardCharsets;
+import com.oracle.truffle.js.test.JSTest;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.junit.Test;
 
-/**
- * Creation of PrintWriter is expensive, this is why we change just the delegate writer in this
- * wrapper class.
- */
-public final class PrintWriterWrapper extends PrintWriter {
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
 
-    private OutputStreamWrapper outWrapper;
+public class GR35738 {
 
-    public PrintWriterWrapper(OutputStream out, boolean autoFlush) {
-        this(new OutputStreamWrapper(out), autoFlush);
-    }
-
-    private PrintWriterWrapper(OutputStreamWrapper outWrapper, boolean autoFlush) {
-        this(new OutputStreamWriter(outWrapper, StandardCharsets.UTF_8), autoFlush);
-        this.outWrapper = outWrapper;
-    }
-
-    private PrintWriterWrapper(Writer out, boolean autoFlush) {
-        super(out, autoFlush);
-    }
-
-    public void setDelegate(OutputStream out) {
-        synchronized (this.lock) {
-            if (outWrapper != null) {
-                outWrapper.setDelegate(out);
-            } else {
-                outWrapper = new OutputStreamWrapper(out);
-                this.out = new OutputStreamWriter(outWrapper);
-            }
+    @Test
+    public void testEmptyWithUrl() throws IOException {
+        try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
+            File tmpFile = File.createTempFile("empty", ".mjs");
+            tmpFile.deleteOnExit();
+            URL url = tmpFile.toURI().toURL();
+            context.eval(Source.newBuilder("js", url).build());
         }
     }
 
-    public OutputStream getDelegate() {
-        return outWrapper == null ? null : outWrapper.getDelegate();
-    }
 }

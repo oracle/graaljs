@@ -66,6 +66,8 @@ import com.oracle.truffle.js.test.JSTest;
 
 public class AsyncInteropTest {
 
+    private static final String LF = System.getProperty("line.separator");
+
     /**
      * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"none"</code> (or not
      * provided), no warnings are printed when rejected promises are not handled using `catch()`.
@@ -102,7 +104,7 @@ public class AsyncInteropTest {
                             "  console.log(x);" +
                             "})");
             asyncFn.executeVoid();
-            assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: failed!!\n", out.toString());
+            assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: failed!!" + LF, out.toString());
         }
     }
 
@@ -127,8 +129,8 @@ public class AsyncInteropTest {
             Consumer<Object> javaThen = (v) -> out.write("Got exception: " + v.toString());
             asyncPromise.invokeMember("catch", javaThen);
         }
-        assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: failed!!\n" +
-                        "[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: failed!!\n", err.toString());
+        assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: failed!!" + LF +
+                        "[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: failed!!" + LF, err.toString());
         assertEquals("Got exception: failed!!", out.toString());
     }
 
@@ -145,12 +147,12 @@ public class AsyncInteropTest {
                         JSContextOptions.UNHANDLED_REJECTIONS_NAME,
                         "warn").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
             Value promise = context.eval(ID, "Promise.reject(42);");
-            assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: 42\n", err.toString());
+            assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: 42" + LF, err.toString());
             err.reset();
             Consumer<Object> javaThen = (v) -> out.write("Promise rejected: " + v.toString());
             promise.invokeMember("catch", javaThen);
         }
-        assertEquals("[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: 42\n", err.toString());
+        assertEquals("[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: 42" + LF, err.toString());
         assertEquals("Promise rejected: 42", out.toString());
     }
 
@@ -256,7 +258,7 @@ public class AsyncInteropTest {
             context.eval("js", "rejectedPromise.catch(x => console.log(`Async handled: ${x}`));");
         }
         assertEquals("Async handled: 42\n", out.toString());
-        assertEquals("[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: 42\n", err.toString());
+        assertEquals("[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: 42" + LF, err.toString());
     }
 
     /**
