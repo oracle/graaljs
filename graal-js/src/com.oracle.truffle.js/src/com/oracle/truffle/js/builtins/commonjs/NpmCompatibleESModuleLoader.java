@@ -243,21 +243,39 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         // 1. Let packageName be undefined.
         TruffleLanguage.Env env = realm.getEnv();
         String packageName = null;
-        // 3. If packageSpecifier is an empty string, then
+        // 2. If packageSpecifier is an empty string, then
         if (packageSpecifier.isEmpty()) {
-            // 3,1 Throw an Invalid Module Specifier error.
+            // Throw an Invalid Module Specifier error.
             throw fail(packageSpecifier);
         }
-        // 4. Otherwise
-        if (packageSpecifier.indexOf('/') == -1) {
-            packageName = packageSpecifier;
+        // 4. If packageSpecifier does not start with "@", then
+        int packageSpecifierSeparator = packageSpecifier.indexOf('/');
+        if (packageSpecifier.charAt(0) != '@') {
+            // Set packageName to the substring of packageSpecifier until the first "/"
+            if (packageSpecifierSeparator != -1) {
+                packageName = packageSpecifier.substring(0, packageSpecifierSeparator);
+            } else {
+                // or the end of the string.
+                packageName = packageSpecifier;
+            }
         } else {
-            // 5,1 Throw an Invalid Module Specifier error.
-            throw fail(packageSpecifier);
+            // 5. Otherwise, if packageSpecifier does not contain a "/" separator, then
+            if (packageSpecifierSeparator == -1) {
+                // Throw an Invalid Module Specifier error.
+                throw fail(packageSpecifier);
+            }
+            // Set packageName to the substring of packageSpecifier until the second "/" separator
+            int secondSeparator = packageSpecifier.indexOf('/', packageSpecifierSeparator + 1);
+            if (secondSeparator != -1) {
+                packageName = packageSpecifier.substring(0, secondSeparator);
+            } else {
+                // or the end of the string.
+                packageName = packageSpecifier;
+            }
         }
-        // 5. If packageName starts with ".", then
-        if (packageName.charAt(0) == '.') {
-            // 5,1 Throw an Invalid Module Specifier error.
+        // 6. If packageName starts with "." or contains "\" or "%", then
+        if (packageName.charAt(0) == '.' || packageName.contains("\\") || packageName.contains("%")) {
+            // Throw an Invalid Module Specifier error.
             throw fail(packageSpecifier);
         }
         // Load module using `package.json`
