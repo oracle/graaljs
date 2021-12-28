@@ -119,8 +119,11 @@ public final class ScriptEnvironment {
     /** Is private field in enabled */
     final boolean privateFieldsIn;
 
+    /** Is top-level await enabled? */
+    final boolean topLevelAwait;
+
     private ScriptEnvironment(boolean strict, int ecmaScriptVersion, boolean emptyStatements, boolean syntaxExtensions, boolean scripting, boolean shebang,
-                    boolean constAsVar, boolean allowBigInt, boolean annexB, boolean classFields, boolean importAssertions, boolean privateFieldsIn,
+                    boolean constAsVar, boolean allowBigInt, boolean annexB, boolean classFields, boolean importAssertions, boolean privateFieldsIn, boolean topLevelAwait,
                     FunctionStatementBehavior functionStatementBehavior,
                     PrintWriter dumpOnError) {
         this.namespace = new Namespace();
@@ -140,6 +143,7 @@ public final class ScriptEnvironment {
         this.classFields = classFields;
         this.importAssertions = importAssertions;
         this.privateFieldsIn = privateFieldsIn;
+        this.topLevelAwait = topLevelAwait;
     }
 
     /**
@@ -182,6 +186,7 @@ public final class ScriptEnvironment {
         private boolean classFields = true;
         private boolean importAssertions = false;
         private boolean privateFieldsIn = false;
+        private boolean topLevelAwait = false;
         private FunctionStatementBehavior functionStatementBehavior = FunctionStatementBehavior.ERROR;
         private PrintWriter dumpOnError;
 
@@ -248,6 +253,11 @@ public final class ScriptEnvironment {
             return this;
         }
 
+        public Builder topLevelAwait(boolean topLevelAwait) {
+            this.topLevelAwait = topLevelAwait;
+            return this;
+        }
+
         public Builder functionStatementBehavior(FunctionStatementBehavior functionStatementBehavior) {
             this.functionStatementBehavior = functionStatementBehavior;
             return this;
@@ -260,7 +270,7 @@ public final class ScriptEnvironment {
 
         public ScriptEnvironment build() {
             return new ScriptEnvironment(strict, ecmaScriptVersion, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar, allowBigInt, annexB,
-                            classFields, importAssertions, privateFieldsIn, functionStatementBehavior, dumpOnError);
+                            classFields, importAssertions, privateFieldsIn, topLevelAwait, functionStatementBehavior, dumpOnError);
         }
     }
 }

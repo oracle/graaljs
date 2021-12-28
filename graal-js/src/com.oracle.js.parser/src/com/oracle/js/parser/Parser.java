@@ -233,7 +233,7 @@ public class Parser extends AbstractParser {
     private static final boolean ES8_FOR_AWAIT_OF = Options.getBooleanProperty("parser.for.await.of", true);
     private static final boolean ES2019_OPTIONAL_CATCH_BINDING = Options.getBooleanProperty("parser.optional.catch.binding", true);
     private static final boolean ES2020_CLASS_FIELDS = Options.getBooleanProperty("parser.class.fields", true);
-    private static final boolean ES2021_TOP_LEVEL_AWAIT = Options.getBooleanProperty("parser.top.level.await", true);
+    private static final boolean ES2022_TOP_LEVEL_AWAIT = Options.getBooleanProperty("parser.top.level.await", true);
 
     private static final int REPARSE_IS_PROPERTY_ACCESSOR = 1 << 0;
     private static final int REPARSE_IS_METHOD = 1 << 1;
@@ -6589,7 +6589,7 @@ public class Parser extends AbstractParser {
     }
 
     private boolean isTopLevelAwait() {
-        return isES2021() && ES2021_TOP_LEVEL_AWAIT;
+        return ES2022_TOP_LEVEL_AWAIT && env.topLevelAwait;
     }
 
     private boolean isImportExpression() {
