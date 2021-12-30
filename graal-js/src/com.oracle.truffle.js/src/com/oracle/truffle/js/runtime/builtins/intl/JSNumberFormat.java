@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins.intl;
 
+import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.AttributedCharacterIterator;
 import java.util.ArrayList;
@@ -54,6 +55,7 @@ import java.util.Set;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
+import com.ibm.icu.number.FractionPrecision;
 import com.ibm.icu.number.IntegerWidth;
 import com.ibm.icu.number.LocalizedNumberFormatter;
 import com.ibm.icu.number.Notation;
@@ -81,6 +83,7 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -258,6 +261,63 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         return unitWidth;
     }
 
+    private static NumberFormatter.GroupingStrategy useGroupingToGroupingStrategy(Object useGrouping) {
+        NumberFormatter.GroupingStrategy strategy;
+        if (Boolean.FALSE.equals(useGrouping)) {
+            strategy = NumberFormatter.GroupingStrategy.OFF;
+        } else if (IntlUtil.MIN2.equals(useGrouping)) {
+            strategy = NumberFormatter.GroupingStrategy.MIN2;
+        } else if (IntlUtil.AUTO.equals(useGrouping)) {
+            strategy = NumberFormatter.GroupingStrategy.AUTO;
+        } else {
+            assert IntlUtil.ALWAYS.equals(useGrouping);
+            strategy = NumberFormatter.GroupingStrategy.ON_ALIGNED;
+        }
+        return strategy;
+    }
+
+    private static RoundingMode roundingModeToICURoundingMode(String roundingMode) {
+        RoundingMode mode;
+        switch (roundingMode) {
+            case IntlUtil.CEIL:
+                mode = RoundingMode.CEILING;
+                break;
+            case IntlUtil.FLOOR:
+                mode = RoundingMode.FLOOR;
+                break;
+            case IntlUtil.EXPAND:
+                mode = RoundingMode.UP;
+                break;
+            case IntlUtil.TRUNC:
+                mode = RoundingMode.DOWN;
+                break;
+            case IntlUtil.HALF_CEIL:
+                // ICU4J does not support HALF_CEIL directly => we use
+                // HALF_UP for non-negative and HALF_DOWN for negative
+                // as a workaround, see formattedValue()
+                mode = RoundingMode.HALF_UP;
+                break;
+            case IntlUtil.HALF_FLOOR:
+                // ICU4J does not support HALF_FLOOR directly => we use
+                // HALF_DOWN for non-negative and HALF_UP for negative
+                // as a workaround, see formattedValue()
+                mode = RoundingMode.HALF_DOWN;
+                break;
+            case IntlUtil.HALF_EXPAND:
+                mode = RoundingMode.HALF_UP;
+                break;
+            case IntlUtil.HALF_TRUNC:
+                mode = RoundingMode.HALF_DOWN;
+                break;
+            case IntlUtil.HALF_EVEN:
+                mode = RoundingMode.HALF_EVEN;
+                break;
+            default:
+                throw Errors.shouldNotReachHere(roundingMode);
+        }
+        return mode;
+    }
+
     private static MeasureUnit unitToMeasureUnit(String unit) {
         MeasureUnit measureUnit;
         switch (unit) {
@@ -406,6 +466,8 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                 return accounting ? SignDisplay.ACCOUNTING_ALWAYS : SignDisplay.ALWAYS;
             case IntlUtil.EXCEPT_ZERO:
                 return accounting ? SignDisplay.ACCOUNTING_EXCEPT_ZERO : SignDisplay.EXCEPT_ZERO;
+            case IntlUtil.NEGATIVE:
+                return accounting ? SignDisplay.ACCOUNTING_NEGATIVE : SignDisplay.NEGATIVE;
             default:
                 throw Errors.shouldNotReachHere(signDisplay);
         }
@@ -413,6 +475,18 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
     private static FormattedValue formattedValue(InternalState state, Number x) {
         LocalizedNumberFormatter numberFormatter = state.getNumberFormatter();
+        if (x.doubleValue() < 0) {
+            String roundingMode = state.getRoundingMode();
+            // ICU4J does not support HALF_CEIL and HALF_FLOOR directly =>
+            // we map them to HALF_DOWN/HALF_UP as a workaround. The formatter
+            // is initialized for non-negative numbers. So, we have to change
+            // the rounding mode for negative numbers here.
+            if (IntlUtil.HALF_CEIL.equals(roundingMode)) {
+                numberFormatter = numberFormatter.roundingMode(RoundingMode.HALF_DOWN);
+            } else if (IntlUtil.HALF_FLOOR.equals(roundingMode)) {
+                numberFormatter = numberFormatter.roundingMode(RoundingMode.HALF_UP);
+            }
+        }
         return numberFormatter.format(x);
     }
 
@@ -521,6 +595,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
     public static class BasicInternalState {
         private LocalizedNumberFormatter numberFormatter;
+        private Precision precision;
 
         private Locale javaLocale;
         private String locale;
@@ -531,6 +606,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         private Integer maximumFractionDigits;
         private Integer minimumSignificantDigits;
         private Integer maximumSignificantDigits;
+        private String roundingType;
 
         DynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
             DynamicObject resolvedOptions = JSOrdinary.create(context, realm);
@@ -592,11 +668,20 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             formatter = formatter.symbols(NumberingSystem.getInstanceByName(numberingSystem));
             formatter = formatter.integerWidth(IntegerWidth.zeroFillTo(minimumIntegerDigits));
 
-            if (minimumSignificantDigits != null) {
-                formatter = formatter.precision(Precision.minMaxSignificantDigits(minimumSignificantDigits, maximumSignificantDigits));
-            } else if (minimumFractionDigits != null) {
-                formatter = formatter.precision(Precision.minMaxFraction(minimumFractionDigits, maximumFractionDigits));
+            if (IntlUtil.SIGNIFICANT_DIGITS.equals(roundingType)) {
+                precision = Precision.minMaxSignificantDigits(minimumSignificantDigits, maximumSignificantDigits);
+            } else {
+                FractionPrecision fractionPrecision = Precision.minMaxFraction(minimumFractionDigits, maximumFractionDigits);
+                if (IntlUtil.FRACTION_DIGITS.equals(roundingType)) {
+                    precision = fractionPrecision;
+                } else {
+                    boolean morePrecision = IntlUtil.MORE_PRECISION.equals(roundingType);
+                    assert morePrecision || IntlUtil.LESS_PRECISION.equals(roundingType);
+                    precision = fractionPrecision.withSignificantDigits(minimumSignificantDigits, maximumSignificantDigits,
+                                    morePrecision ? NumberFormatter.RoundingPriority.RELAXED : NumberFormatter.RoundingPriority.STRICT);
+                }
             }
+            formatter = formatter.precision(precision);
 
             this.numberFormatter = formatter;
         }
@@ -607,6 +692,10 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
         public void setNumberFormatter(LocalizedNumberFormatter numberFormatter) {
             this.numberFormatter = numberFormatter;
+        }
+
+        public Precision getPrecision() {
+            return precision;
         }
 
         public Locale getJavaLocale() {
@@ -661,6 +750,13 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             return maximumSignificantDigits;
         }
 
+        public void setRoundingType(String roundingType) {
+            this.roundingType = roundingType;
+        }
+
+        public String getRoundingType() {
+            return roundingType;
+        }
     }
 
     public static class InternalState extends BasicInternalState {
@@ -671,10 +767,13 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         private String currencySign;
         private String unit;
         private String unitDisplay;
-        private boolean useGrouping;
+        private Object useGrouping;
         private String notation;
         private String compactDisplay;
         private String signDisplay;
+        private String roundingMode;
+        private int roundingIncrement;
+        private String trailingZeroDisplay;
 
         DynamicObject boundFormatFunction;
 
@@ -699,12 +798,23 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                 JSObjectUtil.defineDataProperty(context, result, IntlUtil.UNIT_DISPLAY, unitDisplay, JSAttributes.getDefault());
             }
             super.fillResolvedOptions(context, realm, result);
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.USE_GROUPING, useGrouping, JSAttributes.getDefault());
+            Object resolvedUseGrouping = useGrouping;
+            if (useGrouping instanceof String && context.getEcmaScriptVersion() < JSConfig.StagingECMAScriptVersion) {
+                resolvedUseGrouping = true;
+            }
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.USE_GROUPING, resolvedUseGrouping, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.NOTATION, notation, JSAttributes.getDefault());
             if (compactDisplay != null) {
                 JSObjectUtil.defineDataProperty(context, result, IntlUtil.COMPACT_DISPLAY, compactDisplay, JSAttributes.getDefault());
             }
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.SIGN_DISPLAY, signDisplay, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.ROUNDING_MODE, roundingMode, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.ROUNDING_INCREMENT, roundingIncrement, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.TRAILING_ZERO_DISPLAY, trailingZeroDisplay, JSAttributes.getDefault());
+
+            String roundingType = getRoundingType();
+            String resolvedRoundingType = (IntlUtil.MORE_PRECISION.equals(roundingType) || IntlUtil.LESS_PRECISION.equals(roundingType)) ? roundingType : IntlUtil.AUTO;
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.ROUNDING_PRIORITY, resolvedRoundingType, JSAttributes.getDefault());
         }
 
         @TruffleBoundary
@@ -715,9 +825,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             LocalizedNumberFormatter formatter = getNumberFormatter();
 
             formatter = formatter.notation(notationToICUNotation(notation, compactDisplay));
-            if (!useGrouping) {
-                formatter = formatter.grouping(NumberFormatter.GroupingStrategy.OFF);
-            }
+            formatter = formatter.grouping(useGroupingToGroupingStrategy(useGrouping));
 
             if (IntlUtil.CURRENCY.equals(style)) {
                 formatter = formatter.unit(com.ibm.icu.util.Currency.getInstance(currency));
@@ -740,6 +848,20 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             }
 
             formatter = formatter.sign(signDisplay(signDisplay, IntlUtil.ACCOUNTING.equals(currencySign)));
+
+            formatter = formatter.roundingMode(roundingModeToICURoundingMode(roundingMode));
+
+            Precision precision = getPrecision();
+            if (roundingIncrement != 1) {
+                // Note that minimumFractionDigits digits are ignored here.
+                // ICU4J does not support the combination of increment and minimumFractionDigits
+                BigDecimal increment = BigDecimal.ONE.movePointLeft(getMaximumFractionDigits()).multiply(BigDecimal.valueOf(roundingIncrement));
+                precision = Precision.increment(increment);
+            }
+            if (IntlUtil.STRIP_IF_INTEGER.equals(trailingZeroDisplay)) {
+                precision = precision.trailingZeroDisplay(NumberFormatter.TrailingZeroDisplay.HIDE_IF_WHOLE);
+            }
+            formatter = formatter.precision(precision);
 
             this.setNumberFormatter(formatter);
         }
@@ -776,7 +898,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             this.unitDisplay = unitDisplay;
         }
 
-        public void setGroupingUsed(boolean useGrouping) {
+        public void setGroupingUsed(Object useGrouping) {
             this.useGrouping = useGrouping;
         }
 
@@ -790,6 +912,22 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
         public void setSignDisplay(String signDisplay) {
             this.signDisplay = signDisplay;
+        }
+
+        public String getRoundingMode() {
+            return roundingMode;
+        }
+
+        public void setRoundingMode(String roundingMode) {
+            this.roundingMode = roundingMode;
+        }
+
+        public void setRoundingIncrement(int roundingIncrement) {
+            this.roundingIncrement = roundingIncrement;
+        }
+
+        public void setTrailingZeroDisplay(String trailingZeroDisplay) {
+            this.trailingZeroDisplay = trailingZeroDisplay;
         }
     }
 

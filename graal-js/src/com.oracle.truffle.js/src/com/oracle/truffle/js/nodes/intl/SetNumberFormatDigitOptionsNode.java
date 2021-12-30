@@ -63,6 +63,7 @@ public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode
     @Child DefaultNumberOptionNode getMxsdDNO;
     @Child DefaultNumberOptionNode getMnfdDNO;
     @Child DefaultNumberOptionNode getMxfdDNO;
+    @Child GetStringOptionNode getRoundingPriorityOption;
     private final BranchProfile errorBranch = BranchProfile.create();
 
     protected SetNumberFormatDigitOptionsNode(JSContext context) {
@@ -75,6 +76,7 @@ public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode
         this.getMxsdDNO = DefaultNumberOptionNode.create();
         this.getMnfdDNO = DefaultNumberOptionNode.create();
         this.getMxfdDNO = DefaultNumberOptionNode.create();
+        this.getRoundingPriorityOption = GetStringOptionNode.create(context, IntlUtil.ROUNDING_PRIORITY, new String[]{IntlUtil.AUTO, IntlUtil.MORE_PRECISION, IntlUtil.LESS_PRECISION}, IntlUtil.AUTO);
     }
 
     public static SetNumberFormatDigitOptionsNode create(JSContext context) {
@@ -91,27 +93,56 @@ public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode
         Object mnsdValue = getMinSignificantDigitsOption.getValue(options);
         Object mxsdValue = getMaxSignificantDigitsOption.getValue(options);
         intlObj.setMinimumIntegerDigits(mnid);
-        if (mnsdValue != Undefined.instance || mxsdValue != Undefined.instance) {
-            int mnsd = getMnsdDNO.executeInt(mnsdValue, 1, 21, 1);
-            int mxsd = getMxsdDNO.executeInt(mxsdValue, mnsd, 21, 21);
-            intlObj.setMinimumSignificantDigits(mnsd);
-            intlObj.setMaximumSignificantDigits(mxsd);
-        } else if (mnfdValue != Undefined.instance || mxfdValue != Undefined.instance) {
-            int mnfd = getMnfdDNO.executeInt(mnfdValue, 0, 20, -1);
-            int mxfd = getMxfdDNO.executeInt(mxfdValue, 0, 20, -1);
-            if (mnfd == -1) {
-                mnfd = Math.min(mnfdDefault, mxfd);
-            } else if (mxfd == -1) {
-                mxfd = Math.max(mxfdDefault, mnfd);
-            } else if (mnfd > mxfd) {
-                errorBranch.enter();
-                throw Errors.createRangeError("minimumFractionDigits higher than maximumFractionDigits");
+        String roundingPriority = getRoundingPriorityOption.executeValue(options);
+        boolean hasSd = mnsdValue != Undefined.instance || mxsdValue != Undefined.instance;
+        boolean hasFd = mnfdValue != Undefined.instance || mxfdValue != Undefined.instance;
+        boolean autoRoundingPriority = IntlUtil.AUTO.equals(roundingPriority);
+        boolean needSd = hasSd || !autoRoundingPriority;
+        boolean needFd = (!hasSd && (hasFd || !compactNotation)) || !autoRoundingPriority;
+        if (needSd) {
+            if (hasSd) {
+                int mnsd = getMnsdDNO.executeInt(mnsdValue, 1, 21, 1);
+                int mxsd = getMxsdDNO.executeInt(mxsdValue, mnsd, 21, 21);
+                intlObj.setMinimumSignificantDigits(mnsd);
+                intlObj.setMaximumSignificantDigits(mxsd);
+            } else {
+                intlObj.setMinimumSignificantDigits(1);
+                intlObj.setMaximumSignificantDigits(21);
             }
-            intlObj.setMinimumFractionDigits(mnfd);
-            intlObj.setMaximumFractionDigits(mxfd);
-        } else if (!compactNotation) {
-            intlObj.setMinimumFractionDigits(mnfdDefault);
-            intlObj.setMaximumFractionDigits(mxfdDefault);
+        }
+        if (needFd) {
+            if (hasFd) {
+                int mnfd = getMnfdDNO.executeInt(mnfdValue, 0, 20, -1);
+                int mxfd = getMxfdDNO.executeInt(mxfdValue, 0, 20, -1);
+                if (mnfd == -1) {
+                    mnfd = Math.min(mnfdDefault, mxfd);
+                } else if (mxfd == -1) {
+                    mxfd = Math.max(mxfdDefault, mnfd);
+                } else if (mnfd > mxfd) {
+                    errorBranch.enter();
+                    throw Errors.createRangeError("minimumFractionDigits higher than maximumFractionDigits");
+                }
+                intlObj.setMinimumFractionDigits(mnfd);
+                intlObj.setMaximumFractionDigits(mxfd);
+            } else {
+                intlObj.setMinimumFractionDigits(mnfdDefault);
+                intlObj.setMaximumFractionDigits(mxfdDefault);
+            }
+        }
+        if (needSd || needFd) {
+            if (IntlUtil.MORE_PRECISION.equals(roundingPriority) || IntlUtil.LESS_PRECISION.equals(roundingPriority)) {
+                intlObj.setRoundingType(roundingPriority);
+            } else if (hasSd) {
+                intlObj.setRoundingType(IntlUtil.SIGNIFICANT_DIGITS);
+            } else {
+                intlObj.setRoundingType(IntlUtil.FRACTION_DIGITS);
+            }
+        } else {
+            intlObj.setRoundingType(IntlUtil.MORE_PRECISION);
+            intlObj.setMinimumFractionDigits(0);
+            intlObj.setMaximumFractionDigits(0);
+            intlObj.setMinimumSignificantDigits(1);
+            intlObj.setMaximumSignificantDigits(2);
         }
         return Undefined.instance;
     }
