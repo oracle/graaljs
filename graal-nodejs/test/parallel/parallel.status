@@ -59,6 +59,7 @@ test-http2-ping-settings-heapdump: SKIP
 
 # Worker resource limits are not supported
 test-worker-resource-limits: FAIL
+test-worker-nearheaplimit-deadlock: SKIP
 
 # Custom v8::ArrayBuffer::Allocator is not supported
 test-worker-sharedarraybuffer-from-worker-thread: SKIP
