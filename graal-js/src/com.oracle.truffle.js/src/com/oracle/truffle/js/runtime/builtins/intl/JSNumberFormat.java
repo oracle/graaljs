@@ -301,13 +301,13 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             case IntlUtil.HALF_CEIL:
                 // ICU4J does not support HALF_CEIL directly => we use
                 // HALF_UP for non-negative and HALF_DOWN for negative
-                // as a workaround, see formattedValue()
+                // as a workaround, see initializeNumberFormatter()
                 mode = RoundingMode.HALF_UP;
                 break;
             case IntlUtil.HALF_FLOOR:
                 // ICU4J does not support HALF_FLOOR directly => we use
                 // HALF_DOWN for non-negative and HALF_UP for negative
-                // as a workaround, see formattedValue()
+                // as a workaround, see initializeNumberFormatter()
                 mode = RoundingMode.HALF_DOWN;
                 break;
             case IntlUtil.HALF_EXPAND:
@@ -537,7 +537,9 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             throw Errors.createRangeError("invalid range");
         }
         InternalState state = getInternalState(numberFormatObj);
-        LocalizedNumberRangeFormatter formatter = state.getNumberRangeFormatter();
+        boolean xNegative = (x instanceof BigDecimal) ? (((BigDecimal) x).signum() == -1) : ((Double) x < 0);
+        boolean yNegative = (y instanceof BigDecimal) ? (((BigDecimal) y).signum() == -1) : ((Double) y < 0);
+        LocalizedNumberRangeFormatter formatter = state.getNumberRangeFormatter(xNegative, yNegative);
         return formatter.formatRange(x, y);
     }
 
@@ -880,7 +882,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     public static class InternalState extends BasicInternalState {
         private LocalizedNumberFormatter positiveNumberFormatter;
         private LocalizedNumberFormatter negativeNumberFormatter;
-        private LocalizedNumberRangeFormatter numberRangeFormatter;
+        private LocalizedNumberRangeFormatter[] numberRangeFormatter;
 
         private String style;
         private String currency;
@@ -984,19 +986,30 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             }
             formatter = formatter.precision(precision);
 
+            LocalizedNumberRangeFormatter rangeFormatter = NumberRangeFormatter.withLocale(getJavaLocale());
+            this.numberRangeFormatter = new LocalizedNumberRangeFormatter[3];
+
             // ICU4J does not support HALF_CEIL and HALF_FLOOR directly =>
-            // we map them to HALF_DOWN/HALF_UP as a workaround (separately
-            // for positive and negative numbers).
+            // we map them to HALF_DOWN/HALF_UP as a workaround, separately
+            // for positive and negative numbers and range types (negative-to-negative,
+            // negative-to-positive, positive-to-positive)
             this.positiveNumberFormatter = formatter.locale(getJavaLocale());
             if (IntlUtil.HALF_CEIL.equals(roundingMode)) {
+                UnlocalizedNumberFormatter negativeFormatter = formatter.roundingMode(RoundingMode.HALF_DOWN);
+                numberRangeFormatter[0] = rangeFormatter.numberFormatterBoth(negativeFormatter);
+                numberRangeFormatter[1] = rangeFormatter.numberFormatterFirst(negativeFormatter).numberFormatterSecond(formatter);
+                numberRangeFormatter[2] = rangeFormatter.numberFormatterBoth(formatter);
                 negativeNumberFormatter = positiveNumberFormatter.roundingMode(RoundingMode.HALF_DOWN);
             } else if (IntlUtil.HALF_FLOOR.equals(roundingMode)) {
+                UnlocalizedNumberFormatter negativeFormatter = formatter.roundingMode(RoundingMode.HALF_UP);
+                numberRangeFormatter[0] = rangeFormatter.numberFormatterBoth(negativeFormatter);
+                numberRangeFormatter[1] = rangeFormatter.numberFormatterFirst(negativeFormatter).numberFormatterSecond(formatter);
+                numberRangeFormatter[2] = rangeFormatter.numberFormatterBoth(formatter);
                 negativeNumberFormatter = positiveNumberFormatter.roundingMode(RoundingMode.HALF_UP);
             } else {
                 negativeNumberFormatter = positiveNumberFormatter;
+                numberRangeFormatter[0] = numberRangeFormatter[1] = numberRangeFormatter[2] = rangeFormatter.numberFormatterBoth(formatter);
             }
-
-            this.numberRangeFormatter = NumberRangeFormatter.withLocale(getJavaLocale()).numberFormatterBoth(formatter);
         }
 
         public String getStyle() {
@@ -1063,8 +1076,8 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             return forNegativeNumbers ? negativeNumberFormatter : positiveNumberFormatter;
         }
 
-        public LocalizedNumberRangeFormatter getNumberRangeFormatter() {
-            return numberRangeFormatter;
+        public LocalizedNumberRangeFormatter getNumberRangeFormatter(boolean firstNegative, boolean secondNegative) {
+            return numberRangeFormatter[secondNegative ? 0 : (firstNegative ? 1 : 2)];
         }
     }
 
