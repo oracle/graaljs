@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -663,11 +663,18 @@ public final class IntlUtil {
     }
 
     public static DynamicObject makePart(JSContext context, JSRealm realm, String type, String value, String unit) {
+        return makePart(context, realm, type, value, unit, null);
+    }
+
+    public static DynamicObject makePart(JSContext context, JSRealm realm, String type, String value, String unit, String source) {
         DynamicObject p = JSOrdinary.create(context, realm);
         JSObject.set(p, TYPE, type);
         JSObject.set(p, VALUE, value);
         if (unit != null) {
             JSObject.set(p, UNIT, unit);
+        }
+        if (source != null) {
+            JSObject.set(p, IntlUtil.SOURCE, source);
         }
         return p;
     }
@@ -870,6 +877,18 @@ public final class IntlUtil {
         String[] units = set.toArray(new String[set.size()]);
         Arrays.sort(units);
         return units;
+    }
+
+    public static String sourceString(int start, int limit, int startRangeStart, int startRangeLimit, int endRangeStart, int endRangeLimit) {
+        String source;
+        if (startRangeStart <= start && limit <= startRangeLimit) {
+            source = IntlUtil.START_RANGE;
+        } else if (endRangeStart <= start && limit <= endRangeLimit) {
+            source = IntlUtil.END_RANGE;
+        } else {
+            source = IntlUtil.SHARED;
+        }
+        return source;
     }
 
 }

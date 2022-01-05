@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,25 @@
  */
 package com.oracle.truffle.js.builtins.intl;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.intl.NumberFormatPrototypeBuiltinsFactory.JSNumberFormatFormatRangeNodeGen;
+import com.oracle.truffle.js.builtins.intl.NumberFormatPrototypeBuiltinsFactory.JSNumberFormatFormatRangeToPartsNodeGen;
 import com.oracle.truffle.js.builtins.intl.NumberFormatPrototypeBuiltinsFactory.JSNumberFormatFormatToPartsNodeGen;
 import com.oracle.truffle.js.builtins.intl.NumberFormatPrototypeBuiltinsFactory.JSNumberFormatResolvedOptionsNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.intl.ToIntlMathematicalValue;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<NumberFormatPrototypeBuiltins.NumberFormatPrototype> {
 
@@ -64,7 +71,9 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
     public enum NumberFormatPrototype implements BuiltinEnum<NumberFormatPrototype> {
 
         resolvedOptions(0),
-        formatToParts(1);
+        formatToParts(1),
+        formatRange(2),
+        formatRangeToParts(2);
 
         private final int length;
 
@@ -76,6 +85,19 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
         public int getLength() {
             return length;
         }
+
+        @Override
+        public int getECMAScriptVersion() {
+            switch (this) {
+                case formatToParts:
+                    return JSConfig.ECMAScript2018;
+                case formatRange:
+                case formatRangeToParts:
+                    return JSConfig.ECMAScript2023;
+            }
+            return BuiltinEnum.super.getECMAScriptVersion();
+        }
+
     }
 
     @Override
@@ -85,6 +107,10 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
                 return JSNumberFormatResolvedOptionsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case formatToParts:
                 return JSNumberFormatFormatToPartsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case formatRange:
+                return JSNumberFormatFormatRangeNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case formatRangeToParts:
+                return JSNumberFormatFormatRangeToPartsNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }
@@ -123,4 +149,59 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
             throw Errors.createTypeErrorTypeXExpected(JSNumberFormat.CLASS_NAME);
         }
     }
+
+    public abstract static class JSNumberFormatFormatRangeNode extends JSBuiltinNode {
+
+        public JSNumberFormatFormatRangeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = {"isJSNumberFormat(numberFormat)"})
+        public String doFormatRange(DynamicObject numberFormat, Object start, Object end,
+                        @Cached("create(true)") ToIntlMathematicalValue startToIntlMVNode,
+                        @Cached("create(true)") ToIntlMathematicalValue endToIntlMVNode,
+                        @Cached BranchProfile errorBranch) {
+            if (start == Undefined.instance || end == Undefined.instance) {
+                errorBranch.enter();
+                throw Errors.createTypeError("invalid range");
+            }
+            Number x = startToIntlMVNode.executeNumber(start);
+            Number y = endToIntlMVNode.executeNumber(end);
+            return JSNumberFormat.formatRange(numberFormat, x, y);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        public void throwTypeError(Object bummer, Object start, Object end) {
+            throw Errors.createTypeErrorTypeXExpected(JSNumberFormat.CLASS_NAME);
+        }
+    }
+
+    public abstract static class JSNumberFormatFormatRangeToPartsNode extends JSBuiltinNode {
+
+        public JSNumberFormatFormatRangeToPartsNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = {"isJSNumberFormat(numberFormat)"})
+        public Object doFormatRangeToParts(DynamicObject numberFormat, Object start, Object end,
+                        @Cached("create(true)") ToIntlMathematicalValue startToIntlMVNode,
+                        @Cached("create(true)") ToIntlMathematicalValue endToIntlMVNode,
+                        @Cached BranchProfile errorBranch) {
+            if (start == Undefined.instance || end == Undefined.instance) {
+                errorBranch.enter();
+                throw Errors.createTypeError("invalid range");
+            }
+            Number x = startToIntlMVNode.executeNumber(start);
+            Number y = endToIntlMVNode.executeNumber(end);
+            return JSNumberFormat.formatRangeToParts(getContext(), getRealm(), numberFormat, x, y);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        public void throwTypeError(Object bummer, Object start, Object end) {
+            throw Errors.createTypeErrorTypeXExpected(JSNumberFormat.CLASS_NAME);
+        }
+    }
+
 }
