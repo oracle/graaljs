@@ -171,6 +171,7 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         }
 
         @Override
+        @TruffleBoundary
         public void initializeNumberFormatter() {
             super.initializeNumberFormatter();
             numberFormatter = getUnlocalizedFormatter().locale(getJavaLocale());

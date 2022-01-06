@@ -492,6 +492,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         return formattedValue(state, x).toString();
     }
 
+    @TruffleBoundary
     public static String formatMV(DynamicObject numberFormatObj, Number mv) {
         InternalState state = getInternalState(numberFormatObj);
         return formattedValue(state, mv).toString();
