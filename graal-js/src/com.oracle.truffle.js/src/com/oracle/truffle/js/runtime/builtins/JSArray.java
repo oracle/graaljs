@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -230,6 +230,10 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
             names.add("flat");
             names.add("flatMap");
+        }
+        if (context.getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion) {
+            names.add("groupBy");
+            names.add("groupByToMap");
         }
         if (context.getEcmaScriptVersion() >= 7) {
             names.add("includes");
