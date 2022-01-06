@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,6 +97,7 @@ public final class IntlUtil {
     public static final String CARDINAL = "cardinal";
     public static final String CASE = "case";
     public static final String CASE_FIRST = "caseFirst";
+    public static final String CEIL = "ceil";
     public static final String CODE = "code";
     public static final String COLLATION = "collation";
     public static final String COLLATIONS = "collations";
@@ -120,11 +121,14 @@ public final class IntlUtil {
     public static final String ENGINEERING = "engineering";
     public static final String ERA = "era";
     public static final String EXCEPT_ZERO = "exceptZero";
+    public static final String EXPAND = "expand";
     public static final String FALLBACK = "fallback";
     public static final String FALSE = "false";
     public static final String FIRST_DAY = "firstDay";
+    public static final String FLOOR = "floor";
     public static final String FORMAT_MATCHER = "formatMatcher";
     public static final String FRACTIONAL_SECOND_DIGITS = "fractionalSecondDigits";
+    public static final String FRACTION_DIGITS = "fractionDigits";
     public static final String FULL = "full";
     public static final String GRANULARITY = "granularity";
     public static final String GRAPHEME = "grapheme";
@@ -132,6 +136,11 @@ public final class IntlUtil {
     public static final String H12 = "h12";
     public static final String H23 = "h23";
     public static final String H24 = "h24";
+    public static final String HALF_CEIL = "halfCeil";
+    public static final String HALF_EVEN = "halfEven";
+    public static final String HALF_EXPAND = "halfExpand";
+    public static final String HALF_FLOOR = "halfFloor";
+    public static final String HALF_TRUNC = "halfTrunc";
     public static final String HOUR = "hour";
     public static final String HOUR_CYCLE = "hourCycle";
     public static final String HOUR_CYCLES = "hourCycles";
@@ -142,6 +151,7 @@ public final class IntlUtil {
     public static final String IGNORE_PUNCTUATION = "ignorePunctuation";
     public static final String LANGUAGE = "language";
     public static final String LANGUAGE_DISPLAY = "languageDisplay";
+    public static final String LESS_PRECISION = "lessPrecision";
     public static final String LITERAL = "literal";
     public static final String LOCALE = "locale";
     public static final String LOCALE_MATCHER = "localeMatcher";
@@ -155,15 +165,18 @@ public final class IntlUtil {
     public static final String MAXIMUM_FRACTION_DIGITS = "maximumFractionDigits";
     public static final String MAXIMUM_SIGNIFICANT_DIGITS = "maximumSignificantDigits";
     public static final String MEDIUM = "medium";
+    public static final String MIN2 = "min2";
     public static final String MINIMAL_DAYS = "minimalDays";
     public static final String MINIMUM_FRACTION_DIGITS = "minimumFractionDigits";
     public static final String MINIMUM_INTEGER_DIGITS = "minimumIntegerDigits";
     public static final String MINIMUM_SIGNIFICANT_DIGITS = "minimumSignificantDigits";
     public static final String MINUTE = "minute";
     public static final String MONTH = "month";
+    public static final String MORE_PRECISION = "morePrecision";
     public static final String NAME = "name";
     public static final String NARROW = "narrow";
     public static final String NARROW_SYMBOL = "narrowSymbol";
+    public static final String NEGATIVE = "negative";
     public static final String NEVER = "never";
     public static final String NONE = "none";
     public static final String NORMAL = "normal";
@@ -178,6 +191,9 @@ public final class IntlUtil {
     public static final String PERCENT = "percent";
     public static final String QUARTER = "quarter";
     public static final String REGION = "region";
+    public static final String ROUNDING_INCREMENT = "roundingIncrement";
+    public static final String ROUNDING_MODE = "roundingMode";
+    public static final String ROUNDING_PRIORITY = "roundingPriority";
     public static final String RTL = "rtl";
     public static final String SCIENTIFIC = "scientific";
     public static final String SCRIPT = "script";
@@ -191,6 +207,7 @@ public final class IntlUtil {
     public static final String SHORT = "short";
     public static final String SHORT_GENERIC = "shortGeneric";
     public static final String SHORT_OFFSET = "shortOffset";
+    public static final String SIGNIFICANT_DIGITS = "significantDigits";
     public static final String SIGN_DISPLAY = "signDisplay";
     public static final String SORT = "sort";
     public static final String SOURCE = "source";
@@ -199,6 +216,7 @@ public final class IntlUtil {
     public static final String STANDARD_SHORT = "standard-short";
     public static final String START_RANGE = "startRange";
     public static final String STRICT = "strict";
+    public static final String STRIP_IF_INTEGER = "stripIfInteger";
     public static final String STYLE = "style";
     public static final String SYMBOL = "symbol";
     public static final String TERM = "term";
@@ -207,6 +225,8 @@ public final class IntlUtil {
     public static final String TIME_ZONE = "timeZone";
     public static final String TIME_ZONES = "timeZones";
     public static final String TIME_ZONE_NAME = "timeZoneName";
+    public static final String TRAILING_ZERO_DISPLAY = "trailingZeroDisplay";
+    public static final String TRUNC = "trunc";
     public static final String TYPE = "type";
     public static final String UND = "und";
     public static final String UNIT = "unit";
@@ -643,11 +663,18 @@ public final class IntlUtil {
     }
 
     public static DynamicObject makePart(JSContext context, JSRealm realm, String type, String value, String unit) {
+        return makePart(context, realm, type, value, unit, null);
+    }
+
+    public static DynamicObject makePart(JSContext context, JSRealm realm, String type, String value, String unit, String source) {
         DynamicObject p = JSOrdinary.create(context, realm);
         JSObject.set(p, TYPE, type);
         JSObject.set(p, VALUE, value);
         if (unit != null) {
             JSObject.set(p, UNIT, unit);
+        }
+        if (source != null) {
+            JSObject.set(p, IntlUtil.SOURCE, source);
         }
         return p;
     }
@@ -850,6 +877,18 @@ public final class IntlUtil {
         String[] units = set.toArray(new String[set.size()]);
         Arrays.sort(units);
         return units;
+    }
+
+    public static String sourceString(int start, int limit, int startRangeStart, int startRangeLimit, int endRangeStart, int endRangeLimit) {
+        String source;
+        if (startRangeStart <= start && limit <= startRangeLimit) {
+            source = IntlUtil.START_RANGE;
+        } else if (endRangeStart <= start && limit <= endRangeLimit) {
+            source = IntlUtil.END_RANGE;
+        } else {
+            source = IntlUtil.SHARED;
+        }
+        return source;
     }
 
 }

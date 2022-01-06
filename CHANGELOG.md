@@ -5,6 +5,7 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 22.1.0
 * Graal.js now requires Java 11+ and no longer supports Java 8.
+* Implemented the [Intl.NumberFormat v3](https://github.com/tc39/proposal-intl-numberformat-v3) proposal.
 
 ## Version 22.0.0
 * ECMAScript 2022 mode/features enabled by default.

@@ -125,6 +125,7 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.Locale",
                     "Intl.Locale-info",
                     "Intl.NumberFormat-unified",
+                    "Intl.NumberFormat-v3",
                     "Intl.RelativeTimeFormat",
                     "Intl.Segmenter",
                     "Map",
@@ -239,7 +240,6 @@ public class Test262Runnable extends TestRunnable {
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Intl.DurationFormat",
-                    "Intl.NumberFormat-v3",
                     "IsHTMLDDA",
                     "ShadowRealm",
                     "Temporal",
@@ -253,6 +253,7 @@ public class Test262Runnable extends TestRunnable {
                     "Intl-enumeration",
                     "Intl.DateTimeFormat-extend-timezonename",
                     "Intl.Locale-info",
+                    "Intl.NumberFormat-v3",
     }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {

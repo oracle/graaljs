@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -796,7 +796,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
             if (lastLimit < start) { // Literal
                 String literal = formattedString.substring(lastLimit, start);
-                String source = sourceString(lastLimit, start, startRangeStart, startRangeLimit, endRangeStart, endRangeLimit);
+                String source = IntlUtil.sourceString(lastLimit, start, startRangeStart, startRangeLimit, endRangeStart, endRangeLimit);
                 parts.add(makePart(context, realm, IntlUtil.LITERAL, literal, source));
                 lastLimit = start;
             }
@@ -816,7 +816,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             } else if (field instanceof DateFormat.Field) {
                 String type = fieldToType((DateFormat.Field) field);
                 String value = formattedString.substring(start, limit);
-                String source = sourceString(start, limit, startRangeStart, startRangeLimit, endRangeStart, endRangeLimit);
+                String source = IntlUtil.sourceString(start, limit, startRangeStart, startRangeLimit, endRangeStart, endRangeLimit);
                 parts.add(makePart(context, realm, type, value, source));
                 lastLimit = limit;
             } else {
@@ -827,23 +827,11 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         int length = formattedString.length();
         if (lastLimit < length) { // Literal at the end
             String literal = formattedString.substring(lastLimit, length);
-            String source = sourceString(lastLimit, length, startRangeStart, startRangeLimit, endRangeStart, endRangeLimit);
+            String source = IntlUtil.sourceString(lastLimit, length, startRangeStart, startRangeLimit, endRangeStart, endRangeLimit);
             parts.add(makePart(context, realm, IntlUtil.LITERAL, literal, source));
         }
 
         return JSArray.createConstant(context, realm, parts.toArray());
-    }
-
-    private static String sourceString(int start, int limit, int startRangeStart, int startRangeLimit, int endRangeStart, int endRangeLimit) {
-        String source;
-        if (startRangeStart <= start && limit <= startRangeLimit) {
-            source = IntlUtil.START_RANGE;
-        } else if (endRangeStart <= start && limit <= endRangeLimit) {
-            source = IntlUtil.END_RANGE;
-        } else {
-            source = IntlUtil.SHARED;
-        }
-        return source;
     }
 
     private static String yearRelatedSubpattern(DateFormat dateFormat) {

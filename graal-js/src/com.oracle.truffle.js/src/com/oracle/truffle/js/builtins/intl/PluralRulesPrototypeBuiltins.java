@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,25 @@
  */
 package com.oracle.truffle.js.builtins.intl;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.PluralRulesPrototypeBuiltinsFactory.JSPluralRulesResolvedOptionsNodeGen;
 import com.oracle.truffle.js.builtins.intl.PluralRulesPrototypeBuiltinsFactory.JSPluralRulesSelectNodeGen;
+import com.oracle.truffle.js.builtins.intl.PluralRulesPrototypeBuiltinsFactory.JSPluralRulesSelectRangeNodeGen;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<PluralRulesPrototypeBuiltins.PluralRulesPrototype> {
 
@@ -64,7 +71,8 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
     public enum PluralRulesPrototype implements BuiltinEnum<PluralRulesPrototype> {
 
         resolvedOptions(0),
-        select(1);
+        select(1),
+        selectRange(2);
 
         private final int length;
 
@@ -76,6 +84,14 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
         public int getLength() {
             return length;
         }
+
+        @Override
+        public int getECMAScriptVersion() {
+            if (selectRange == this) {
+                return JSConfig.ECMAScript2023;
+            }
+            return BuiltinEnum.super.getECMAScriptVersion();
+        }
     }
 
     @Override
@@ -85,6 +101,8 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 return JSPluralRulesResolvedOptionsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case select:
                 return JSPluralRulesSelectNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case selectRange:
+                return JSPluralRulesSelectRangeNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }
@@ -120,6 +138,37 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Fallback
         @SuppressWarnings("unused")
         public void throwTypeError(Object bummer, Object value) {
+            throw Errors.createTypeErrorTypeXExpected(JSPluralRules.CLASS_NAME);
+        }
+    }
+
+    public abstract static class JSPluralRulesSelectRangeNode extends JSBuiltinNode {
+
+        public JSPluralRulesSelectRangeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = {"isJSPluralRules(pluralRules)"})
+        public Object doSelectRange(DynamicObject pluralRules, Object start, Object end,
+                        @Cached JSToNumberNode startToNumber,
+                        @Cached JSToNumberNode endToNumber,
+                        @Cached BranchProfile errorBranch) {
+            if (start == Undefined.instance || end == Undefined.instance) {
+                errorBranch.enter();
+                throw Errors.createTypeError("invalid range");
+            }
+            double x = JSRuntime.doubleValue(startToNumber.executeNumber(start));
+            double y = JSRuntime.doubleValue(endToNumber.executeNumber(end));
+            if (Double.isNaN(x) || Double.isNaN(y) || x > y) {
+                errorBranch.enter();
+                throw Errors.createRangeError("invalid range");
+            }
+            return JSPluralRules.selectRange(pluralRules, x, y);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        public void throwTypeError(Object bummer, Object start, Object end) {
             throw Errors.createTypeErrorTypeXExpected(JSPluralRules.CLASS_NAME);
         }
     }

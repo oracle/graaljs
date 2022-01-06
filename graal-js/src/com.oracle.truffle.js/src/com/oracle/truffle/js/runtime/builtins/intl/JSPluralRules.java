@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,10 @@ import java.util.LinkedList;
 import java.util.List;
 
 import com.ibm.icu.number.FormattedNumber;
+import com.ibm.icu.number.FormattedNumberRange;
 import com.ibm.icu.number.LocalizedNumberFormatter;
+import com.ibm.icu.number.LocalizedNumberRangeFormatter;
+import com.ibm.icu.number.NumberRangeFormatter;
 import com.ibm.icu.text.PluralRules;
 import com.ibm.icu.text.PluralRules.PluralType;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -134,7 +137,17 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         return pluralRules.select(formattedNumber);
     }
 
+    @TruffleBoundary
+    public static String selectRange(DynamicObject pluralRulesObj, double x, double y) {
+        PluralRules pluralRules = getPluralRulesProperty(pluralRulesObj);
+        LocalizedNumberRangeFormatter rangeFormatter = getInternalState(pluralRulesObj).getNumberRangeFormatter();
+        FormattedNumberRange formattedRange = rangeFormatter.formatRange(x, y);
+        return pluralRules.select(formattedRange);
+    }
+
     public static class InternalState extends JSNumberFormat.BasicInternalState {
+        private LocalizedNumberFormatter numberFormatter;
+        private LocalizedNumberRangeFormatter numberRangeFormatter;
 
         private String type;
         private PluralRules pluralRules;
@@ -146,6 +159,9 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.TYPE, type, JSAttributes.getDefault());
             super.fillResolvedOptions(context, realm, result);
             JSObjectUtil.defineDataProperty(context, result, "pluralCategories", JSRuntime.createArrayFromList(realm.getContext(), realm, pluralCategories), JSAttributes.getDefault());
+            String roundingType = getRoundingType();
+            String resolvedRoundingType = (IntlUtil.MORE_PRECISION.equals(roundingType) || IntlUtil.LESS_PRECISION.equals(roundingType)) ? roundingType : IntlUtil.AUTO;
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.ROUNDING_PRIORITY, resolvedRoundingType, JSAttributes.getDefault());
         }
 
         @TruffleBoundary
@@ -154,8 +170,24 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
             pluralCategories.addAll(pluralRules.getKeywords());
         }
 
+        @Override
+        @TruffleBoundary
+        public void initializeNumberFormatter() {
+            super.initializeNumberFormatter();
+            numberFormatter = getUnlocalizedFormatter().locale(getJavaLocale());
+            numberRangeFormatter = NumberRangeFormatter.withLocale(getJavaLocale()).numberFormatterBoth(getUnlocalizedFormatter());
+        }
+
         public PluralRules getPluralRules() {
             return pluralRules;
+        }
+
+        public LocalizedNumberFormatter getNumberFormatter() {
+            return numberFormatter;
+        }
+
+        public LocalizedNumberRangeFormatter getNumberRangeFormatter() {
+            return numberRangeFormatter;
         }
 
         public void setType(String type) {

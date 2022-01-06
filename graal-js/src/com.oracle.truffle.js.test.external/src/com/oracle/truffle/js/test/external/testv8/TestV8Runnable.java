@@ -103,6 +103,7 @@ public class TestV8Runnable extends TestRunnable {
                     "--harmony_intl_enumeration",
                     "--harmony_intl_locale_info",
                     "--harmony_intl_more_timezone",
+                    "--harmony-intl-number-format-v3",
     }));
 
     private static final String FLAGS_PREFIX = "// Flags: ";
