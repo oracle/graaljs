@@ -41,10 +41,9 @@
 package com.oracle.truffle.js.lang;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.options.OptionDescriptor;
@@ -107,9 +106,9 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSEngine;
-import com.oracle.truffle.js.runtime.JSLanguageOptions;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSLanguageOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
@@ -403,7 +402,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     /**
      * Options which can be patched without throwing away the pre-initialized context.
      */
-    private static final OptionKey<?>[] PREINIT_CONTEXT_PATCHABLE_OPTIONS = {
+    private static final Set<OptionKey<?>> PREINIT_CONTEXT_PATCHABLE_OPTIONS = Set.of(
                     JSContextOptions.TIMER_RESOLUTION,
                     JSContextOptions.SHELL,
                     JSContextOptions.V8_COMPATIBILITY_MODE,
@@ -415,8 +414,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
                     JSContextOptions.CONSOLE,
                     JSContextOptions.PERFORMANCE,
                     JSContextOptions.REGEXP_STATIC_RESULT,
-                    JSContextOptions.TIME_ZONE,
-    };
+                    JSContextOptions.TIME_ZONE);
 
     /**
      * Check for options that differ from the expected options and do not support patching, in which
@@ -425,17 +423,14 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     private static boolean optionsAllowPreInitializedContext(Env preinitEnv, Env env) {
         OptionValues preinitOptions = preinitEnv.getOptions();
         OptionValues options = env.getOptions();
-        if (!preinitOptions.hasSetOptions() && !options.hasSetOptions()) {
-            return true;
-        } else if (preinitOptions.equals(options)) {
+        if (areOptionsEqual(preinitOptions, options)) {
             return true;
         } else {
             assert preinitOptions.getDescriptors().equals(options.getDescriptors());
-            Collection<OptionKey<?>> ignoredOptions = Arrays.asList(PREINIT_CONTEXT_PATCHABLE_OPTIONS);
             for (OptionDescriptor descriptor : options.getDescriptors()) {
                 OptionKey<?> key = descriptor.getKey();
                 if (preinitOptions.hasBeenSet(key) || options.hasBeenSet(key)) {
-                    if (ignoredOptions.contains(key)) {
+                    if (PREINIT_CONTEXT_PATCHABLE_OPTIONS.contains(key)) {
                         continue;
                     }
                     if (!preinitOptions.get(key).equals(options.get(key))) {
@@ -468,14 +463,21 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
     @Override
     protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
-        if (!firstOptions.hasSetOptions() && !newOptions.hasSetOptions()) {
+        if (areOptionsEqual(firstOptions, newOptions)) {
             return true;
+        } else {
+            return JSLanguageOptions.fromOptionValues(SandboxPolicy.TRUSTED, firstOptions).equals(JSLanguageOptions.fromOptionValues(SandboxPolicy.TRUSTED, newOptions));
         }
-        if (firstOptions.equals(newOptions)) {
-            assert JSContextOptions.fromOptionValues(SandboxPolicy.TRUSTED, firstOptions).equals(JSContextOptions.fromOptionValues(SandboxPolicy.TRUSTED, newOptions));
+    }
+
+    private static boolean areOptionsEqual(OptionValues prevOptions, OptionValues newOptions) {
+        if (!prevOptions.hasSetOptions() && !newOptions.hasSetOptions()) {
             return true;
+        } else if (prevOptions.equals(newOptions)) {
+            return true;
+        } else {
+            return false;
         }
-        return false;
     }
 
     @Override
