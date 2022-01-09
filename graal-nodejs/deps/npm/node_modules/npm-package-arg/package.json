@@ -1,0 +1,46 @@
+{
+  "name": "npm-package-arg",
+  "version": "8.1.5",
+  "description": "Parse the things that can be arguments to `npm install`",
+  "main": "npa.js",
+  "directories": {
+    "test": "test"
+  },
+  "files": [
+    "npa.js"
+  ],
+  "dependencies": {
+    "hosted-git-info": "^4.0.1",
+    "semver": "^7.3.4",
+    "validate-npm-package-name": "^3.0.0"
+  },
+  "devDependencies": {
+    "@npmcli/lint": "^1.0.1",
+    "tap": "^15.0.9"
+  },
+  "scripts": {
+    "preversion": "npm test",
+    "postversion": "npm publish",
+    "prepublishOnly": "git push origin --follow-tags",
+    "test": "tap",
+    "snap": "tap",
+    "npmclilint": "npmcli-lint",
+    "lint": "npm run npmclilint -- \"*.*js\" \"test/**/*.*js\"",
+    "lintfix": "npm run lint -- --fix",
+    "posttest": "npm run lint --",
+    "postsnap": "npm run lintfix --"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/npm/npm-package-arg"
+  },
+  "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/npm/npm-package-arg/issues"
+  },
+  "homepage": "https://github.com/npm/npm-package-arg",
+  "engines": {
+    "node": ">=10"
+  }
+}
