@@ -6,4 +6,8 @@ prefix node-api
 
 [true] # This section applies to all platforms
 
+# Suspicious gc-based test
+test_async_context/test-gcable: SKIP
+test_async_context/test-gcable-callback: SKIP
+
 [$system==win32]

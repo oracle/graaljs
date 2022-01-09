@@ -8,6 +8,44 @@ prefix sequential
 # https://github.com/nodejs/node/issues/27611#issuecomment-613100468
 test-cpu-prof-dir-worker: PASS, FLAKY
 
+### Graal.js-specific ###
+
+# suspicious memory-related test that does some conclusion based on rss
+# before and after some operation, this does not work on JVM (where heap
+# size does not decrease usually - despite there is no memory leak)
+test-net-bytes-per-incoming-chunk-overhead : SKIP
+
+# unstable timing-sensitive test
+test-perf-hooks : SKIP
+
+# gc-related callback not invoked
+test-gc-http-client: SKIP
+
+# heapdump is not supported
+test-heapdump: SKIP
+test-heapdump-flag: SKIP
+
+# Custom MicrotaskQueue is not supported
+test-vm-timeout-escape-promise-module-2: FAIL
+
+# Profiling is not supported
+test-worker-prof: FAIL
+
+[$system==solaris]
+
+# Needs too many system resources (starts 80 child processes)
+test-child-process-pass-fd: SKIP
+
+[$system==win32]
+
+# Triggers stack-overflow that may not be handled well
+test-fs-stat-sync-overflow: SKIP
+
+# Needs too many system resources (starts 80 child processes)
+test-child-process-pass-fd: SKIP
+
+### Graal-specific end ###
+
 [$system==win32]
 
 [$system==linux]

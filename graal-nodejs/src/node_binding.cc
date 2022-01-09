@@ -501,16 +501,26 @@ void DLOpen(const FunctionCallbackInfo<Value>& args) {
     }
 
     // -1 is used for N-API modules
-    if ((mp->nm_version != -1) && (mp->nm_version != NODE_MODULE_VERSION)) {
-      // Even if the module did self-register, it may have done so with the
-      // wrong version. We must only give up after having checked to see if it
-      // has an appropriate initializer callback.
-      if (auto callback = GetInitializerCallback(dlib)) {
-        callback(exports, module, context);
-        return true;
-      }
+    if ((mp->nm_version != -1) && (mp->nm_version != -NODE_MODULE_VERSION)) {
       char errmsg[1024];
-      snprintf(errmsg,
+      if (mp->nm_version == NODE_MODULE_VERSION) {
+          snprintf(errmsg,
+               sizeof(errmsg),
+               "Native module '%s' is compiled against the original Node.js!\n"
+               "Use '--nodedir=<GraalVMHome>/jre/languages/nodejs' option of 'npm install' "
+               "(resp. 'node-gyp') for the compilation against Graal-Node.js.\n"
+               "If the native module is downloaded by 'node-pre-gyp' then use also "
+               "'--build-from-source' option (to force the compilation).",
+               *filename);
+      } else {
+        // Even if the module did self-register, it may have done so with the wrong
+        // version. We must only give up after having checked to see if it has an
+        // appropriate initializer callback.
+        if (auto callback = GetInitializerCallback(dlib)) {
+          callback(exports, module, context);
+          return true;
+        }
+        snprintf(errmsg,
                sizeof(errmsg),
                "The module '%s'"
                "\nwas compiled against a different Node.js version using"
@@ -520,7 +530,8 @@ void DLOpen(const FunctionCallbackInfo<Value>& args) {
                "or `npm install`).",
                *filename,
                mp->nm_version,
-               NODE_MODULE_VERSION);
+               -NODE_MODULE_VERSION);
+      }
 
       // NOTE: `mp` is allocated inside of the shared library's memory, calling
       // `dlclose` will deallocate it

@@ -124,6 +124,13 @@ function patchProcessObject(expandArgv1) {
   addReadOnlyProcessAlias('traceDeprecation', '--trace-deprecation');
   addReadOnlyProcessAlias('_breakFirstLine', '--inspect-brk', false);
   addReadOnlyProcessAlias('_breakNodeFirstLine', '--inspect-brk-node', false);
+
+  if (process._breakFirstLine) {
+    process.binding('inspector').callAndPauseOnStart = function(fn, self, ...args) {
+      require('internal/graal/debug').setBreakPoint(fn, 0, 0, undefined, true);
+      return fn.apply(self, args);
+    }
+  }
 }
 
 function addReadOnlyProcessAlias(name, option, enumerable = true) {

@@ -56,6 +56,12 @@ const { deprecate } = require('internal/util');
 
 setupProcessObject();
 
+// graal-node.js patch start
+if (typeof Packages !== 'undefined') {
+  Packages[Symbol.toStringTag] = 'Packages'; // breaking isRhino check of acorn package
+}
+// graal-node.js patch end
+
 setupGlobalProxy();
 setupBuffer();
 

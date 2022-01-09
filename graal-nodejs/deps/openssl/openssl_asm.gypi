@@ -42,6 +42,7 @@
             '-o', '<(INTERMEDIATE_DIR)/<(RULE_INPUT_ROOT).obj',
             '<(RULE_INPUT_PATH)',
           ],
+          'process_outputs_as_sources': 1,
         }
       ],
     }, 'target_arch=="ia32"', {
@@ -71,6 +72,7 @@
             '-o', '<(INTERMEDIATE_DIR)/<(RULE_INPUT_ROOT).obj',
             '<(RULE_INPUT_PATH)',
           ],
+          'process_outputs_as_sources': 1,
         }
       ],
     }, 'target_arch=="x64" and OS=="linux"', {

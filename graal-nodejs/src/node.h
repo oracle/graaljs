@@ -814,7 +814,7 @@ extern "C" NODE_EXTERN void node_module_register(void* mod);
   extern "C" {                                                        \
     static node::node_module _module =                                \
     {                                                                 \
-      NODE_MODULE_VERSION,                                            \
+      -NODE_MODULE_VERSION,                                            \
       flags,                                                          \
       NULL,  /* NOLINT (readability/null_usage) */                    \
       __FILE__,                                                       \
@@ -833,7 +833,7 @@ extern "C" NODE_EXTERN void node_module_register(void* mod);
   extern "C" {                                                        \
     static node::node_module _module =                                \
     {                                                                 \
-      NODE_MODULE_VERSION,                                            \
+      -NODE_MODULE_VERSION,                                            \
       flags,                                                          \
       NULL,  /* NOLINT (readability/null_usage) */                    \
       __FILE__,                                                       \
@@ -1126,6 +1126,11 @@ void RegisterSignalHandler(int signal,
                                            void* ucontext),
                            bool reset_handler = false);
 #endif  // _WIN32
+
+// GRAAL EXTENSIONS
+
+long GraalArgumentsPreprocessing(int argc, char *argv[]);
+
 
 }  // namespace node
 

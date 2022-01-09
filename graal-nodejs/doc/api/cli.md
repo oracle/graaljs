@@ -1544,8 +1544,10 @@ Node.js options that are allowed are:
 * `--inspect-port`, `--debug-port`
 * `--inspect-publish-uid`
 * `--inspect`
+* `--jvm`
 * `--max-http-header-size`
 * `--napi-modules`
+* `--native`
 * `--no-addons`
 * `--no-deprecation`
 * `--no-experimental-repl-await`

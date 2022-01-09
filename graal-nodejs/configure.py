@@ -268,6 +268,26 @@ shared_optgroup.add_argument('--shared-libuv-libpath',
     dest='shared_libuv_libpath',
     help='a directory to search for the shared libuv DLL')
 
+shared_optgroup.add_argument('--java-home',
+    action='store',
+    dest='java_home',
+    help='a directory where JDK is installed')
+
+shared_optgroup.add_argument('--enable-shared-library',
+    action='store_true',
+    dest='enable_shared_library',
+    help='build as a shared library with JNI support')
+
+shared_optgroup.add_argument('--svm',
+    action='store_true',
+    dest='svm',
+    help='build binary for svm image')
+
+shared_optgroup.add_argument('--production',
+    action='store_true',
+    dest='build_production',
+    help='production build')
+
 shared_optgroup.add_argument('--shared-nghttp2',
     action='store_true',
     dest='shared_nghttp2',
@@ -743,6 +763,11 @@ parser.add_argument('--verbose',
     default=False,
     help='get more output from this script')
 
+parser.add_argument('--lazy-generator',
+    action='store_true',
+    dest='lazy_generator',
+    help='generate files only if they differ from the existing ones')
+
 parser.add_argument('--v8-non-optimized-debug',
     action='store_true',
     dest='v8_non_optimized_debug',
@@ -1062,6 +1087,7 @@ def host_arch_cc():
     '__PPC__'     : 'ppc64',
     '__x86_64__'  : 'x64',
     '__s390x__'   : 's390x',
+    '__sparc__'   : 'sparcv9',
     '__riscv'     : 'riscv',
   }
 
@@ -1162,6 +1188,8 @@ def configure_node(o):
   o['variables']['debug_node'] = b(options.debug_node)
   o['default_configuration'] = 'Debug' if options.debug else 'Release'
   o['variables']['error_on_warn'] = b(options.error_on_warn)
+
+  o['variables']['ninja'] = 'true' if options.use_ninja else 'false'
 
   host_arch = host_arch_win() if os.name == 'nt' else host_arch_cc()
   target_arch = options.dest_cpu or host_arch
@@ -1272,6 +1300,23 @@ def configure_node(o):
   if options.no_ifaddrs:
     o['defines'] += ['SUNOS_NO_IFADDRS']
 
+  # java-home check
+  if not options.java_home:
+    raise Exception('provide path to JDK via --java-home path_to_jdk')
+
+  o['variables']['java_home'] = options.java_home
+
+  # production build
+  if options.build_production:
+    o['variables']['node_production'] = 'true'
+
+  # shared library
+  if options.enable_shared_library:
+    o['variables']['node_target_type'] = 'shared_library'
+    o['cflags'] += ['-fPIC']
+
+  o['variables']['svm'] = b(options.svm)
+
   # By default, enable ETW on Windows.
   if flavor == 'win':
     o['variables']['node_use_etw'] = b(not options.without_etw)
@@ -1327,6 +1372,7 @@ def configure_node(o):
     o['variables']['library_files'] = options.linked_module
 
   o['variables']['asan'] = int(options.enable_asan or 0)
+  o['variables']['v8_inspector'] = 'false'
 
   if options.coverage:
     o['variables']['coverage'] = 'true'
@@ -1499,6 +1545,11 @@ def configure_static(o):
 
 
 def write(filename, data):
+  if options.lazy_generator and os.path.exists(filename):
+    with open(filename, 'r') as f:
+      if data == f.read():
+        print_verbose("%s is already up-to-date" % filename)
+        return
   print_verbose('creating %s' % filename)
   with open(filename, 'w+') as f:
     f.write(data)
@@ -1798,7 +1849,7 @@ def configure_intl(o):
   #   shlib_suffix = 'so.%s'
   if flavor == 'win':
     icu_config['variables']['icu_asm_ext'] = 'obj'
-    icu_config['variables']['icu_asm_opts'] = [ '-o ' ]
+    icu_config['variables']['icu_asm_opts'] = [ '-o' ]
   elif with_intl == 'small-icu' or options.cross_compiling:
     icu_config['variables']['icu_asm_ext'] = 'c'
     icu_config['variables']['icu_asm_opts'] = []

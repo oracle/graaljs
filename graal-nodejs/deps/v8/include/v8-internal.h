@@ -250,6 +250,9 @@ class Internals {
   static const int kTrueValueRootIndex = 7;
   static const int kFalseValueRootIndex = 8;
   static const int kEmptyStringRootIndex = 9;
+  static const int kInt32ReturnValuePlaceholderIndex = 10;
+  static const int kUint32ReturnValuePlaceholderIndex = 11;
+  static const int kDoubleReturnValuePlaceholderIndex = 12;
 
   static const int kNodeClassIdOffset = 1 * kApiSystemPointerSize;
   static const int kNodeFlagsOffset = 1 * kApiSystemPointerSize + 3;
@@ -371,7 +374,7 @@ class Internals {
     internal::Address addr = reinterpret_cast<internal::Address>(isolate) +
                              kIsolateRootsOffset +
                              index * kApiSystemPointerSize;
-    return reinterpret_cast<internal::Address*>(addr);
+    return *reinterpret_cast<internal::Address**>(addr);
   }
 
   template <typename T>

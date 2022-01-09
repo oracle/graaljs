@@ -5,3 +5,21 @@ prefix es-module
 # sample-test                        : PASS,FLAKY
 
 [true] # This section applies to all platforms
+
+### Graal.js-specific ###
+
+# Different error message expected:
+# 'Unexpected token export' versus 'Expected an operand but found export'
+test-esm-cjs-exports                 : FAIL
+test-esm-cjs-load-error-note         : FAIL
+# 'Unexpected token }' verus ': expected'
+test-esm-invalid-pjson               : FAIL
+
+# Invalid host defined options for a dynamic import in eval
+test-esm-dynamic-import              : FAIL
+
+# Module doesn't see const variable created in global scope by a custom loader
+test-esm-loader-side-effect          : FAIL
+
+# WebAssembly is not supported
+test-esm-wasm                        : FAIL

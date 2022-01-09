@@ -18,10 +18,6 @@ const {
   ERR_INSPECTOR_NOT_WORKER,
 } = require('internal/errors').codes;
 
-const { hasInspector } = internalBinding('config');
-if (!hasInspector)
-  throw new ERR_INSPECTOR_NOT_AVAILABLE();
-
 const EventEmitter = require('events');
 const { queueMicrotask } = require('internal/process/task_queues');
 const {
@@ -193,3 +189,14 @@ module.exports = {
   console: require('internal/util/inspector').consoleFromVM,
   Session
 };
+
+// Use the mockup provided by 'inspect' instrument
+const graalExport = typeof graalExtension === 'undefined' ? arguments[arguments.length - 1] : graalExtension;
+if (graalExport) {
+  // The object provided by 'inspect' instrument is a foreign object.
+  // This breaks some use-cases (insertion into WeakMap)
+  // => copy its members into JS object that is used instead.
+  const inspector = {};
+  Object.keys(graalExport).forEach(key => inspector[key] = graalExport[key]);
+  module.exports = inspector;
+}

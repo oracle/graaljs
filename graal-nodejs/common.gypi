@@ -147,6 +147,10 @@
             'cflags': [ '-fPIC' ],
             'ldflags': [ '-fPIC' ]
           }],
+          ['target_arch=="sparcv9"', {
+            'cflags': [ '-m64' ],
+            'ldflags': [ '-m64' ]
+          }],
         ],
         'msvs_settings': {
           'VCCLCompilerTool': {
@@ -227,6 +231,10 @@
           ['OS == "android"', {
             'cflags': [ '-fPIC' ],
             'ldflags': [ '-fPIC' ]
+          }],
+          ['target_arch=="sparcv9"', {
+            'cflags': [ '-m64' ],
+            'ldflags': [ '-m64' ]
           }],
         ],
         'msvs_settings': {

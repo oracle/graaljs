@@ -352,6 +352,9 @@ Environment* CreateEnvironment(
     env->InitializeInspector({});
   }
 #endif
+  if (env->options()->debug_options().break_node_first_line) {
+    isolate->SchedulePauseOnNextStatement();
+  }
 
   if (env->RunBootstrapping().IsEmpty()) {
     FreeEnvironment(env);
