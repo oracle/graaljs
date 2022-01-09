@@ -1,4 +1,0 @@
-include_rules = [
-  "+perfetto/tracing.h",
-  "+protos/perfetto"
-]

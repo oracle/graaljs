@@ -1,8 +1,0 @@
-[
-  {
-    "name" : "java.lang.System",
-    "methods" : [
-      { "name" : "getProperty", "parameterTypes" : ["java.lang.String"] }
-    ]
-  }
-]
