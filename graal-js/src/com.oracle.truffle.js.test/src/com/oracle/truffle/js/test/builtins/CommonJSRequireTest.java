@@ -47,6 +47,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.js.test.JSTest;
@@ -620,6 +621,8 @@ public class CommonJSRequireTest {
 
     @Test
     public void badModuleName() throws IOException {
+        // GR-36110
+        Assume.assumeFalse(System.getProperty("os.name").startsWith("Windows"));
         final String src = "import('__foo__ + /some/garbage.js').then(x => {throw 'unexpected'}).catch(console.log);";
         final String out = "TypeError: Cannot load module: '__foo__ + /some/garbage.js'\n";
         runAndExpectOutput(src, out);
