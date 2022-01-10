@@ -2238,7 +2238,7 @@ namespace v8 {
         return reinterpret_cast<GraalModule*> (this)->Evaluate(context);
     }
 
-    Maybe<bool> Module::InstantiateModule(Local<Context> context, ResolveCallback callback) {
+    Maybe<bool> Module::InstantiateModule(Local<Context> context, ResolveModuleCallback callback) {
         return reinterpret_cast<GraalModule*> (this)->InstantiateModule(context, callback);
     }
 

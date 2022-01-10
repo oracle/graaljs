@@ -729,7 +729,8 @@ jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong call
     v8::Local<v8::Context> v8_context = reinterpret_cast<v8::Context*> (graal_context);
     v8::Local<v8::String> v8_specifier = reinterpret_cast<v8::String*> (graal_specifier);
     v8::Local<v8::Module> v8_referrer = reinterpret_cast<v8::Module*> (graal_referrer);
-    v8::MaybeLocal<v8::Module> v8_result = ((v8::Module::ResolveCallback) callback)(v8_context, v8_specifier, v8_referrer);
+    v8::Local<v8::FixedArray> v8_import_assertions = reinterpret_cast<v8::FixedArray*> (*v8::Array::New(0));
+    v8::MaybeLocal<v8::Module> v8_result = ((v8::Module::ResolveModuleCallback) callback)(v8_context, v8_specifier, v8_import_assertions, v8_referrer);
     if (v8_result.IsEmpty()) {
         return NULL;
     } else {

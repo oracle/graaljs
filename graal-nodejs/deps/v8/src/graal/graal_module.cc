@@ -71,7 +71,7 @@ v8::MaybeLocal<v8::Module> GraalModule::Compile(v8::Local<v8::String> source, v8
     }
 }
 
-v8::Maybe<bool> GraalModule::InstantiateModule(v8::Local<v8::Context> context, v8::Module::ResolveCallback callback) {
+v8::Maybe<bool> GraalModule::InstantiateModule(v8::Local<v8::Context> context, v8::Module::ResolveModuleCallback callback) {
     GraalIsolate* graal_isolate = Isolate();
     GraalContext* graal_context = reinterpret_cast<GraalContext*> (*context);
     jobject java_context = graal_context->GetJavaObject();
