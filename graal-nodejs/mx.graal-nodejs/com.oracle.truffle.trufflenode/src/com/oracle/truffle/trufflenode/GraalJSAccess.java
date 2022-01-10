@@ -2240,17 +2240,17 @@ public final class GraalJSAccess {
             // NIO-based buffer APIs in internal/graal/buffer.js are initialized by passing one
             // extra argument to the module loading function.
             extraArgument = USE_NIO_BUFFER ? NIOBuffer.createInitFunction(realm) : Null.instance;
-        } else if ("internal/graal/debug.js".equals(moduleName)) {
+        } else if ("node:internal/graal/debug".equals(moduleName)) {
             JSFunctionData setBreakPointData = getContextEmbedderData(context).getOrCreateFunctionData(SetBreakPoint, (c) -> {
                 CallTarget setBreakPointCallTarget = new SetBreakPointNode().getCallTarget();
                 return JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
             });
             DynamicObject setBreakPoint = JSFunction.create(realm, setBreakPointData);
             extraArgument = setBreakPoint;
-        } else if ("internal/worker/io.js".equals(moduleName) || "internal/main/worker_thread.js".equals(moduleName)) {
+        } else if ("node:internal/worker/io".equals(moduleName) || "node:internal/main/worker_thread".equals(moduleName)) {
             // The Shared-mem channel initialization is similar to NIO-based buffers.
             extraArgument = SharedMemMessagingBindings.createInitFunction(realm);
-        } else if ("inspector.js".equals(moduleName)) {
+        } else if ("node:inspector".equals(moduleName)) {
             TruffleObject inspector = GraalJSAccess.get().lookupInstrument("inspect", TruffleObject.class);
             extraArgument = (inspector == null) ? Null.instance : inspector;
         }
