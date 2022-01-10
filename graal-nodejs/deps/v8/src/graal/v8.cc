@@ -71,11 +71,13 @@
 #include "graal_value.h"
 #include "uv.h"
 #include "v8.h"
+#include "v8-fast-api-calls.h"
 #include "v8-profiler.h"
 #include "v8-version-string.h"
 #ifdef __POSIX__
 #include "v8-wasm-trap-handler-posix.h"
 #endif
+#include "libplatform/libplatform.h"
 #include "libplatform/v8-tracing.h"
 #include "src/base/once.h"
 #include "src/base/platform/mutex.h"
@@ -445,6 +447,10 @@ namespace v8 {
         return GraalIsolate::GetCurrent();
     }
 
+    Isolate* Isolate::TryGetCurrent() {
+        return GraalIsolate::GetCurrent();
+    }
+
     Local<Context> Isolate::GetCurrentContext() {
         return reinterpret_cast<GraalIsolate*> (this)->GetCurrentContext();
     }
@@ -543,6 +549,12 @@ namespace v8 {
         heap_statistics->external_memory_ = 4096; // dummy value
     }
 
+    Isolate::CreateParams::CreateParams() {
+    }
+
+    Isolate::CreateParams::~CreateParams() {
+    }
+
     Isolate* Isolate::New(Isolate::CreateParams const& params) {
         return GraalIsolate::New(params);
     }
@@ -623,6 +635,10 @@ namespace v8 {
 
     Local<Context> Object::CreationContext() {
         return reinterpret_cast<GraalObject*> (this)->CreationContext();
+    }
+
+    MaybeLocal<Context> Object::GetCreationContext() {
+        return CreationContext();
     }
 
     Maybe<bool> Object::Delete(Local<Context> context, Local<Value> key) {
@@ -1527,6 +1543,11 @@ namespace v8 {
         return false;
     }
 
+    bool String::IsExternalTwoByte() const {
+        TRACE
+        return false;
+    }
+
     bool String::IsOneByte() const {
         return reinterpret_cast<const GraalString*> (this)->ContainsOnlyOneByte();
     }
@@ -2162,6 +2183,10 @@ namespace v8 {
     }
 
     Local<Value> Symbol::Description() const {
+        return reinterpret_cast<const GraalSymbol*> (this)->Name();
+    }
+
+    Local<Value> Symbol::Description(Isolate* isolate) const {
         return reinterpret_cast<const GraalSymbol*> (this)->Name();
     }
 
@@ -3661,6 +3686,80 @@ namespace v8 {
 
     void Context::SetPromiseHooks(Local<Function> init_hook, Local<Function> before_hook, Local<Function> after_hook, Local<Function> resolve_hook) {
         reinterpret_cast<GraalContext*> (this)->SetPromiseHooks(init_hook, before_hook, after_hook, resolve_hook);
+    }
+
+    MicrotaskQueue* Context::GetMicrotaskQueue() {
+        TRACE
+        return nullptr;
+    }
+
+    internal::Address* Context::GetDataFromSnapshotOnce(size_t index) {
+        TRACE
+        return nullptr;
+    }
+
+    size_t SnapshotCreator::AddData(Local<Context> context, internal::Address object) {
+        TRACE
+        return 0;
+    }
+
+    int64_t Isolate::AdjustAmountOfExternalAllocatedMemory(int64_t change_in_bytes) {
+        TRACE
+        return 1;
+    }
+
+    size_t SharedArrayBuffer::ByteLength() const {
+        TRACE
+        return 0;
+    }
+
+    int FixedArray::Length() const {
+        return reinterpret_cast<const GraalArray*> (this)->Length();
+    }
+
+    Local<Data> FixedArray::Get(Local<Context> context, int i) const {
+        TRACE
+        return nullptr;
+    }
+
+    Local<FixedArray> Module::GetModuleRequests() const {
+        TRACE
+        return nullptr;
+    }
+
+    Local<String> ModuleRequest::GetSpecifier() const {
+        TRACE
+        return nullptr;
+    }
+
+    Local<FixedArray> ModuleRequest::GetImportAssertions() const {
+        TRACE
+        return nullptr;
+    }
+
+    bool Object::IsConstructor() {
+        TRACE
+        return false;
+    }
+
+    CFunctionInfo::CFunctionInfo(const CTypeInfo& return_info, unsigned int arg_count, const CTypeInfo* arg_info) : return_info_(return_info), arg_count_(arg_count), arg_info_(arg_info) {
+    }
+
+    CFunction::CFunction(const void* address, const CFunctionInfo* type_info) : address_(address), type_info_(type_info) {
+    }
+
+    void Isolate::SetHostImportModuleDynamicallyCallback(HostImportModuleDynamicallyWithImportAssertionsCallback callback) {
+        TRACE
+    }
+
+    Local<Object> Object::New(Isolate* isolate, Local<Value> prototype_or_null, Local<Name>* names, Local<Value>* values, size_t length) {
+        TRACE
+        return nullptr;
+    }
+
+    std::unique_ptr<v8::JobHandle> v8::platform::NewDefaultJobHandle(v8::Platform* platform, v8::TaskPriority priority, std::unique_ptr<v8::JobTask> job_task, size_t num_worker_threads) {
+        TRACE
+        return nullptr;
     }
 
     void Object::CheckCast(v8::Value* obj) {}
