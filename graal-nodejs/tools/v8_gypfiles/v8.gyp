@@ -830,6 +830,7 @@
         '<(V8_ROOT)/src/graal/graal_template.cc',
         '<(V8_ROOT)/src/graal/graal_unbound_script.cc',
         '<(V8_ROOT)/src/graal/graal_value.cc',
+        '<(V8_ROOT)/src/graal/microtask_queue.cc',
         '<(V8_ROOT)/src/graal/v8.cc'
       ],
     },  # v8_base_without_compiler

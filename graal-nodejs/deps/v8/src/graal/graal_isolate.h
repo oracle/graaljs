@@ -47,6 +47,7 @@
 #include "include/v8.h"
 #include "include/v8-platform.h"
 #include "jni.h"
+#include "microtask_queue.h"
 #include <string.h>
 #include <vector>
 #ifdef DEBUG
@@ -662,6 +663,10 @@ public:
         return external_pool_;
     }
 
+    inline v8::MicrotaskQueue* GetMicrotaskQueue() {
+        return &microtask_queue_;
+    }
+
     static void SetFlags(int argc, char** argv) {
         char** old_argv = GraalIsolate::argv;
         int old_argc = GraalIsolate::argc;
@@ -782,6 +787,7 @@ private:
     v8::HostImportModuleDynamicallyCallback import_module_dynamically;
     v8::FatalErrorCallback fatal_error_handler_;
     v8::PrepareStackTraceCallback prepare_stack_trace_callback_;
+    v8::internal::MicrotaskQueue microtask_queue_;
 
     GraalObjectPool<GraalObject>* object_pool_;
     GraalObjectPool<GraalString>* string_pool_;

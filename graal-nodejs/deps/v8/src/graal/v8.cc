@@ -3689,8 +3689,7 @@ namespace v8 {
     }
 
     MicrotaskQueue* Context::GetMicrotaskQueue() {
-        TRACE
-        return nullptr;
+        return reinterpret_cast<GraalIsolate*> (GetIsolate())->GetMicrotaskQueue();
     }
 
     internal::Address* Context::GetDataFromSnapshotOnce(size_t index) {
