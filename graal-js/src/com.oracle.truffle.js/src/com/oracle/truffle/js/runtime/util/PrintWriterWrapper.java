@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,8 +43,7 @@ package com.oracle.truffle.js.runtime.util;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.io.Writer;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
 
 /**
  * Creation of PrintWriter is expensive, this is why we change just the delegate writer in this
@@ -54,31 +53,23 @@ public final class PrintWriterWrapper extends PrintWriter {
 
     private OutputStreamWrapper outWrapper;
 
-    public PrintWriterWrapper(OutputStream out, boolean autoFlush) {
-        this(new OutputStreamWrapper(out), autoFlush);
+    public PrintWriterWrapper(OutputStream out, boolean autoFlush, Charset charset) {
+        this(new OutputStreamWrapper(out), autoFlush, charset);
     }
 
-    private PrintWriterWrapper(OutputStreamWrapper outWrapper, boolean autoFlush) {
-        this(new OutputStreamWriter(outWrapper, StandardCharsets.UTF_8), autoFlush);
+    private PrintWriterWrapper(OutputStreamWrapper outWrapper, boolean autoFlush, Charset charset) {
+        super(new OutputStreamWriter(outWrapper, charset), autoFlush);
+        assert outWrapper != null;
         this.outWrapper = outWrapper;
-    }
-
-    private PrintWriterWrapper(Writer out, boolean autoFlush) {
-        super(out, autoFlush);
     }
 
     public void setDelegate(OutputStream out) {
         synchronized (this.lock) {
-            if (outWrapper != null) {
-                outWrapper.setDelegate(out);
-            } else {
-                outWrapper = new OutputStreamWrapper(out);
-                this.out = new OutputStreamWriter(outWrapper);
-            }
+            outWrapper.setDelegate(out);
         }
     }
 
     public OutputStream getDelegate() {
-        return outWrapper == null ? null : outWrapper.getDelegate();
+        return outWrapper.getDelegate();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_S
 
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.nio.charset.Charset;
 import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -767,8 +768,9 @@ public class JSRealm {
             this.javaImporterPrototype = null;
         }
 
-        this.outputWriter = new PrintWriterWrapper(env.out(), true);
-        this.errorWriter = new PrintWriterWrapper(env.err(), true);
+        Charset charset = context.getCharset();
+        this.outputWriter = new PrintWriterWrapper(env.out(), true, charset);
+        this.errorWriter = new PrintWriterWrapper(env.err(), true, charset);
         this.consoleUtil = new JSConsoleUtil();
 
         if (context.getContextOptions().isCommonJSRequire()) {
