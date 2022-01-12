@@ -2404,9 +2404,10 @@ public class JSRealm {
     @TruffleBoundary
     private ZoneId getTimeZoneFromEnv() {
         OptionValues options = getEnv().getOptions();
-        if (JSContextOptions.TIME_ZONE.hasBeenSet(options)) {
+        String zoneId = JSContextOptions.TIME_ZONE.getValue(options);
+        if (!zoneId.isEmpty()) {
             try {
-                return ZoneId.of(JSContextOptions.TIME_ZONE.getValue(options));
+                return ZoneId.of(zoneId);
             } catch (DateTimeException e) {
                 // The time zone ID should have already been validated by the OptionType.
                 throw CompilerDirectives.shouldNotReachHere(e);

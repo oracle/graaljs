@@ -210,6 +210,9 @@ public final class JSContextOptions {
     public static final OptionKey<String> TIME_ZONE = new OptionKey<>("", new OptionType<>("ZoneId", new Function<String, String>() {
         @Override
         public String apply(String tz) {
+            if (tz.isEmpty()) {
+                return "";
+            }
             // Validate the time zone ID and convert legacy short IDs to long IDs.
             try {
                 return ZoneId.of(tz, ZoneId.SHORT_IDS).getId();
@@ -580,6 +583,9 @@ public final class JSContextOptions {
     public static final OptionKey<String> CHARSET = new OptionKey<>("", new OptionType<>("CharsetName", new Function<String, String>() {
         @Override
         public String apply(String name) {
+            if (name.isEmpty()) {
+                return "";
+            }
             try {
                 return Charset.forName(name).name();
             } catch (Exception e) {
