@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -416,6 +417,7 @@ public class JSContext {
     private final int factoryCount;
 
     @CompilationFinal private Locale locale;
+    @CompilationFinal private Charset charset;
 
     private final PropertyProxy argumentsPropertyProxy;
     private final PropertyProxy callerPropertyProxy;
@@ -1704,6 +1706,26 @@ public class JSContext {
             return Locale.getDefault();
         } else {
             return Locale.forLanguageTag(name);
+        }
+    }
+
+    public Charset getCharset() {
+        Charset chrset = charset;
+        if (chrset == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            chrset = getCharsetImpl();
+            charset = chrset;
+        }
+        return chrset;
+    }
+
+    @TruffleBoundary
+    private Charset getCharsetImpl() {
+        String name = getContextOptions().getCharset();
+        if (name.isEmpty()) {
+            return Charset.defaultCharset();
+        } else {
+            return Charset.forName(name);
         }
     }
 

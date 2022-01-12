@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -92,6 +92,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private static final String JS_LOAD_OPTION = "js.load";
     private static final String JS_PRINT_OPTION = "js.print";
     private static final String JS_GLOBAL_ARGUMENTS_OPTION = "js.global-arguments";
+    private static final String JS_CHARSET_OPTION = "js.charset";
     private static final String NASHORN_COMPATIBILITY_MODE_SYSTEM_PROPERTY = "polyglot.js.nashorn-compat";
     private static final String INSECURE_SCRIPTENGINE_ACCESS_SYSTEM_PROPERTY = "graaljs.insecure-scriptengine-access";
     static final String MAGIC_OPTION_PREFIX = "polyglot.js.";
@@ -305,6 +306,13 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
             contextConfigToUse.option(JS_LOAD_OPTION, "true");
             contextConfigToUse.option(JS_PRINT_OPTION, "true");
             contextConfigToUse.option(JS_GLOBAL_ARGUMENTS_OPTION, "true");
+            // ScriptContext provides Reader/Writer while Context.Builder requires
+            // InputStream/OutpuStream. We use DelegatingInput/OutputStream for this conversion. We
+            // cannot use the default charset for that because it may not be able to represent all
+            // the needed characters. So, we hard-code the usage of UTF-8 in
+            // DelegatingInput/OutputStream => we have to tell the engine to use UTF-8 (not the
+            // default charset) to read input/output.
+            contextConfigToUse.option(JS_CHARSET_OPTION, "UTF-8");
             if (NASHORN_COMPATIBILITY_MODE) {
                 updateForNashornCompatibilityMode(contextConfigToUse);
             } else if (Boolean.getBoolean(INSECURE_SCRIPTENGINE_ACCESS_SYSTEM_PROPERTY)) {

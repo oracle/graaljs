@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.nio.charset.Charset;
 import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.Collections;
@@ -209,6 +210,9 @@ public final class JSContextOptions {
     public static final OptionKey<String> TIME_ZONE = new OptionKey<>("", new OptionType<>("ZoneId", new Function<String, String>() {
         @Override
         public String apply(String tz) {
+            if (tz.isEmpty()) {
+                return "";
+            }
             // Validate the time zone ID and convert legacy short IDs to long IDs.
             try {
                 return ZoneId.of(tz, ZoneId.SHORT_IDS).getId();
@@ -573,6 +577,22 @@ public final class JSContextOptions {
     @Option(name = ESM_BARE_SPECIFIER_RELATIVE_LOOKUP_NAME, category = OptionCategory.EXPERT, help = "Resolve ESM bare specifiers relative to the importing module's path instead of attempting an absolute path lookup.") //
     public static final OptionKey<Boolean> ESM_BARE_SPECIFIER_RELATIVE_LOOKUP = new OptionKey<>(false);
     @CompilationFinal private boolean esmBareSpecifierRelativeLookup;
+
+    public static final String CHARSET_NAME = JS_OPTION_PREFIX + "charset";
+    @Option(name = CHARSET_NAME, category = OptionCategory.EXPERT, help = "Charset used for decoding/encoding of the input/output streams.") //
+    public static final OptionKey<String> CHARSET = new OptionKey<>("", new OptionType<>("CharsetName", new Function<String, String>() {
+        @Override
+        public String apply(String name) {
+            if (name.isEmpty()) {
+                return "";
+            }
+            try {
+                return Charset.forName(name).name();
+            } catch (Exception e) {
+                throw new IllegalArgumentException(e);
+            }
+        }
+    }));
 
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
@@ -958,6 +978,10 @@ public final class JSContextOptions {
 
     public String getLocale() {
         return LOCALE.getValue(optionValues);
+    }
+
+    public String getCharset() {
+        return CHARSET.getValue(optionValues);
     }
 
     public int getFunctionConstructorCacheSize() {

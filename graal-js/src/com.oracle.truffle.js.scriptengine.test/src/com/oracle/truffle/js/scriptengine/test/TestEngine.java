@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,10 +61,9 @@ import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.proxy.ProxyObject;
+import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
@@ -252,14 +251,19 @@ public class TestEngine {
 
     @Test
     public void unicodeInput() throws ScriptException {
-        String text = "Tu\u010d\u0148\u00e1\u010d\u010d\u00ed \ud83d\udca9!";
-        ScriptEngine engine = GraalJSScriptEngine.create(
-                        Engine.newBuilder().build(),
-                        Context.newBuilder("js").allowExperimentalOptions(true).option("js.shell", "true"));
-        StringReader input = new StringReader(text);
-        engine.getContext().setReader(input);
-        Object result = engine.eval("readline()");
-        assertEquals(text, result);
+        String shellProperty = "polyglot.js.shell";
+        Assume.assumeTrue(System.getProperty(shellProperty) == null);
+        System.setProperty(shellProperty, "true");
+        try {
+            String text = "Tu\u010d\u0148\u00e1\u010d\u010d\u00ed \ud83d\udca9!";
+            ScriptEngine engine = getEngine();
+            StringReader input = new StringReader(text);
+            engine.getContext().setReader(input);
+            Object result = engine.eval("readline()");
+            assertEquals(text, result);
+        } finally {
+            System.clearProperty(shellProperty);
+        }
     }
 
     @Test

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -460,7 +460,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
                 process = builder.start();
 
-                try (OutputStreamWriter outputStream = new OutputStreamWriter(process.getOutputStream())) {
+                try (OutputStreamWriter outputStream = new OutputStreamWriter(process.getOutputStream(), getContext().getCharset())) {
                     if (input != null) {
                         outputStream.write(input, 0, input.length());
                     }
@@ -1538,7 +1538,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 getRealm().getOutputWriter().print(promptString);
             }
             try {
-                final BufferedReader inReader = new BufferedReader(new InputStreamReader(getRealm().getEnv().in(), StandardCharsets.UTF_8));
+                final BufferedReader inReader = new BufferedReader(new InputStreamReader(getRealm().getEnv().in(), getContext().getCharset()));
                 String result = inReader.readLine();
                 return result == null ? (returnNullWhenEmpty ? Null.instance : Undefined.instance) : result;
             } catch (Exception ex) {
