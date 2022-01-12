@@ -7,9 +7,9 @@ The goals of GraalVM JavaScript are:
 
 * Execute JavaScript code with best possible performance
 * [Full compatibility with the latest ECMAScript specification](docs/user/JavaScriptCompatibility.md)
-* Support Node.js applications, including native packages ([check](https://www.graalvm.org/docs/reference-manual/compatibility/))
+* Support Node.js applications, including native packages ([check](https://www.graalvm.org/compatibility/))
 * Allow simple upgrading from [Nashorn](docs/user/NashornMigrationGuide.md) or [Rhino](docs/user/RhinoMigrationGuide.md) based applications
-* [Fast interoperability](https://www.graalvm.org/docs/reference-manual/polyglot/) with Java, Scala, or Kotlin, or with other GraalVM languages like Ruby, Python, or R
+* [Fast interoperability](https://www.graalvm.org/reference-manual/polyglot-programming/) with Java, Scala, or Kotlin, or with other GraalVM languages like Ruby, Python, or R
 * Be embeddable in systems like [Oracle RDBMS](https://labs.oracle.com/pls/apex/f?p=LABS:project_details:0:15) or MySQL
 
 
@@ -28,7 +28,7 @@ If you prefer running it on a stock JVM, please have a look at the documentation
 
 ## Documentation
 
-Extensive documentation is available on [graalvm.org](https://www.graalvm.org/): how to [`Run JavaScript`](https://www.graalvm.org/docs/getting-started/#running-javascript) and the more extensive [`JavaScript & Node.js Reference Manual`](https://www.graalvm.org/docs/reference-manual/languages/js/).
+Extensive documentation is available on [graalvm.org](https://www.graalvm.org/): how to [`Run JavaScript`](https://www.graalvm.org/docs/getting-started/#running-javascript) and the more extensive [`JavaScript & Node.js Reference Manual`](https://www.graalvm.org/reference-manual/js/).
 In addition there is documentation in the source code repository in the [`docs`](https://github.com/graalvm/graaljs/tree/master/docs) folder, for [`users`](https://github.com/graalvm/graaljs/tree/master/docs/user) and [`contributors`](https://github.com/graalvm/graaljs/tree/master/docs/contributor) of the engine.
 
 For contributors, a guide how to build GraalVM JavaScript from source code can be found in [`Building.md`](https://github.com/graalvm/graaljs/tree/master/docs/Building.md).
@@ -65,7 +65,7 @@ Some features, including the Node.js support, are currently not supported on all
 
 ## GraalVM JavaScript Reference Manual
 
-A reference manual for GraalVM JavaScript is available on the [GraalVM website](https://www.graalvm.org/docs/reference-manual/languages/js/).
+A reference manual for GraalVM JavaScript is available on the [GraalVM website](https://www.graalvm.org/reference-manual/js/).
 
 ## Stay connected with the community
 
