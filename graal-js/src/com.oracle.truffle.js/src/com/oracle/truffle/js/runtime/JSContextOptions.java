@@ -262,6 +262,11 @@ public final class JSContextOptions {
     @Option(name = PRINT_NAME, category = OptionCategory.USER, help = "Provide 'print' global function.") //
     public static final OptionKey<Boolean> PRINT = new OptionKey<>(true);
 
+    public static final String PRINT_NO_NEWLINE_NAME = JS_OPTION_PREFIX + "print-no-newline";
+    @Option(name = PRINT_NO_NEWLINE_NAME, category = OptionCategory.USER, help = "Print function will not print new line char.") //
+    public static final OptionKey<Boolean> PRINT_NO_NEWLINE = new OptionKey<>(false);
+    @CompilationFinal private boolean printNoNewline;
+
     public static final String LOAD_NAME = JS_OPTION_PREFIX + "load";
     @Option(name = LOAD_NAME, category = OptionCategory.USER, help = "Provide 'load' global function.") //
     public static final OptionKey<Boolean> LOAD = new OptionKey<>(true);
@@ -690,6 +695,7 @@ public final class JSContextOptions {
         this.jsonModules = readBooleanOption(JSON_MODULES);
         this.wasmBigInt = readBooleanOption(WASM_BIG_INT);
         this.esmEvalReturnsExports = readBooleanOption(ESM_EVAL_RETURNS_EXPORTS);
+        this.printNoNewline = readBooleanOption(PRINT_NO_NEWLINE);
         this.mleMode = readBooleanOption(MLE_MODE) || readBooleanOption(INTEROP_COMPLETE_PROMISES);
         this.privateFieldsIn = PRIVATE_FIELDS_IN.hasBeenSet(optionValues) ? readBooleanOption(PRIVATE_FIELDS_IN) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
         this.esmBareSpecifierRelativeLookup = readBooleanOption(ESM_BARE_SPECIFIER_RELATIVE_LOOKUP);
@@ -897,6 +903,10 @@ public final class JSContextOptions {
     public boolean isPrint() {
         CompilerAsserts.neverPartOfCompilation("Context patchable option print was assumed not to be accessed in compiled code.");
         return PRINT.getValue(optionValues) || (!PRINT.hasBeenSet(optionValues) && (isShell() || isNashornCompatibilityMode()));
+    }
+
+    public boolean isPrintNoNewline() {
+        return printNoNewline;
     }
 
     public boolean isLoad() {
@@ -1161,6 +1171,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.jsonModules ? 1 : 0);
         hash = 53 * hash + (this.wasmBigInt ? 1 : 0);
         hash = 53 * hash + (this.esmEvalReturnsExports ? 1 : 0);
+        hash = 53 * hash + (this.printNoNewline ? 1 : 0);
         hash = 53 * hash + (this.mleMode ? 1 : 0);
         hash = 53 * hash + (this.privateFieldsIn ? 1 : 0);
         hash = 53 * hash + (this.esmBareSpecifierRelativeLookup ? 1 : 0);
@@ -1339,6 +1350,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.esmEvalReturnsExports != other.esmEvalReturnsExports) {
+            return false;
+        }
+        if (this.printNoNewline != other.printNoNewline) {
             return false;
         }
         if (this.mleMode != other.mleMode) {
