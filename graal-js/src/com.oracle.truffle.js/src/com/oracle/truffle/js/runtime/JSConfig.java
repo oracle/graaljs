@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,7 +88,7 @@ public final class JSConfig {
     /** Migrate objects to dictionary mode when the number of properties exceeds this threshold. */
     public static final int DictionaryObjectThreshold = 256;
     public static final int DictionaryObjectTransitionThreshold = 1024;
-    public static final boolean MergeShapes = true;
+    public static boolean MergeShapes = false;
 
     // LazyString options
     public static final boolean LazyStrings = true;
