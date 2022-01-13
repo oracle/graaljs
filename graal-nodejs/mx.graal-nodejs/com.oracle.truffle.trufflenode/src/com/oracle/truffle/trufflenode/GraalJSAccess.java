@@ -1283,7 +1283,13 @@ public final class GraalJSAccess {
             deallocator.register(byteBuffer, pointer);
         }
         JSRealm realm = (JSRealm) context;
-        DynamicObject arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(realm.getContext(), realm, byteBuffer);
+        JSContext jsContext = realm.getContext();
+        DynamicObject arrayBuffer;
+        if (buffer == null) {
+            arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(jsContext, realm, 0);
+        } else {
+            arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(jsContext, realm, byteBuffer);
+        }
         JSObjectUtil.putHiddenProperty(arrayBuffer, EXTERNALIZED_KEY, pointer == 0);
         return arrayBuffer;
     }
