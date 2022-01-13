@@ -675,6 +675,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::object_define_property, "objectDefineProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;ZZZZZZ)Z")
     ACCESS_METHOD(GraalAccessMethod::object_preview_entries, "objectPreviewEntries", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_set_integrity_level, "objectSetIntegrityLevel", "(Ljava/lang/Object;Z)V")
+    ACCESS_METHOD(GraalAccessMethod::object_is_constructor, "objectIsConstructor", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::array_new, "arrayNew", "(Ljava/lang/Object;I)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_new_from_elements, "arrayNewFromElements", "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_length, "arrayLength", "(Ljava/lang/Object;)J")

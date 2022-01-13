@@ -1263,6 +1263,10 @@ public final class GraalJSAccess {
         }
     }
 
+    public boolean objectIsConstructor(Object object) {
+        return JSRuntime.isConstructor(object);
+    }
+
     public Object arrayNew(Object context, int length) {
         JSRealm realm = (JSRealm) context;
         return JSArray.createConstantEmptyArray(realm.getContext(), realm, length);

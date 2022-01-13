@@ -161,6 +161,7 @@
       { "name": "objectHasOwnProperty" },
       { "name": "objectHasRealNamedProperty" },
       { "name": "objectInternalFieldCount" },
+      { "name": "objectIsConstructor" },
       { "name": "objectNew" },
       { "name": "objectPreviewEntries" },
       { "name": "objectSet" },

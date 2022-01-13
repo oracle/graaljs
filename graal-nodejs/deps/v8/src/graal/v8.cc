@@ -3734,8 +3734,7 @@ namespace v8 {
     }
 
     bool Object::IsConstructor() {
-        TRACE
-        return false;
+        return reinterpret_cast<GraalObject*> (this)->IsConstructor();
     }
 
     CFunctionInfo::CFunctionInfo(const CTypeInfo& return_info, unsigned int arg_count, const CTypeInfo* arg_info) : return_info_(return_info), arg_count_(arg_count), arg_info_(arg_info) {
