@@ -539,7 +539,7 @@ MessagePort.prototype.postMessage = function(...args) {
   if (messagePortData === undefined) {
     // Cannot retrieve message internal metadata. The channel is probably
     // closed, so we don't care about encoding Java messages.
-    originalPostMessage.apply(this, args);
+    return originalPostMessage.apply(this, args);
   } else {
     try {
       // Signal that we are ready to transfer Java objets.
@@ -554,6 +554,7 @@ MessagePort.prototype.postMessage = function(...args) {
         // message will anyway be discarded.
         this.sharedMemMessaging.free();
       }
+      return enqueued;
     } finally {
       this.sharedMemMessaging.leave();
     }
