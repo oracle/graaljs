@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -176,6 +177,8 @@ public class Serializer {
         } else if (JSRuntime.isBigInt(value)) {
             writeTag(SerializationTag.BIG_INT);
             writeBigIntContents((BigInt) value);
+        } else if (value instanceof Symbol) {
+            NativeAccess.throwDataCloneError(delegate, JSRuntime.safeToString(value) + " could not be cloned.");
         } else if (env.isHostObject(value) && access.getCurrentMessagePortData() != null) {
             JavaMessagePortData messagePort = access.getCurrentMessagePortData();
             writeTag(SerializationTag.SHARED_JAVA_OBJECT);
