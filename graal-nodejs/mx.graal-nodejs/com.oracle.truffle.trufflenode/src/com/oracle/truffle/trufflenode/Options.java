@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -225,6 +225,10 @@ public final class Options {
                 }
                 if ("harmony-top-level-await".equals(normalizedKey)) {
                     polyglotOptions.put("js.top-level-await", "true");
+                    continue;
+                }
+                if ("harmony-import-assertions".equals(normalizedKey)) {
+                    polyglotOptions.put("js.import-assertions", "true");
                     continue;
                 }
                 // Convert -h to --help
