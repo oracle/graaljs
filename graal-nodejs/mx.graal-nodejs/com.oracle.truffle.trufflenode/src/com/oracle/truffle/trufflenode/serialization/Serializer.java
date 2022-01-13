@@ -238,8 +238,15 @@ public class Serializer {
         } else if (JSError.isJSError(object)) {
             writeJSError((DynamicObject) object);
         } else if (JSProxy.isJSProxy(object)) {
-            boolean callable = JSRuntime.isCallableProxy((DynamicObject) object);
-            String message = (callable ? "[object Function]" : "[object Object]") + " could not be cloned.";
+            DynamicObject proxy = (DynamicObject) object;
+            boolean callable = JSRuntime.isCallableProxy(proxy);
+            String objectStr;
+            if (callable) {
+                objectStr = JSRuntime.safeToString(JSProxy.getTargetNonProxy(proxy));
+            } else {
+                objectStr = "#<Object>";
+            }
+            String message = objectStr + " could not be cloned.";
             NativeAccess.throwDataCloneError(delegate, message);
         } else if (JSFunction.isJSFunction(object)) {
             NativeAccess.throwDataCloneError(delegate, JSRuntime.safeToString(object) + " could not be cloned.");
