@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -158,7 +158,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         }
         Source source = Source.newBuilder(JavaScriptLanguage.ID, moduleFile).name(moduleRequest.getSpecifier()).mimeType(JavaScriptLanguage.MODULE_MIME_TYPE).build();
         Map<String, String> assertions = moduleRequest.getAssertions();
-        int moduleType = getModuleType(moduleFile.detectMimeType());
+        int moduleType = getModuleType(moduleFile.getName());
         String assertedType = assertions.get(JSContext.getTypeImportAssertion());
         if (!doesModuleTypeMatchAssertionType(assertedType, moduleType)) {
             throw Errors.createTypeError("Invalid module type was asserted");
@@ -188,8 +188,8 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         return false;
     }
 
-    private int getModuleType(String mimeType) {
-        if (JavaScriptLanguage.JSON_MIME_TYPE.equals(mimeType) && realm.getContext().getContextOptions().isJsonModules()) {
+    private int getModuleType(String moduleName) {
+        if (realm.getContext().getContextOptions().isJsonModules() && moduleName.endsWith(JavaScriptLanguage.JSON_SOURCE_NAME_SUFFIX)) {
             return JSON_MODULE_TYPE;
         }
         return JS_MODULE_TYPE;
