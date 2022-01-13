@@ -198,6 +198,7 @@
       { "name": "scriptRun" },
       { "name": "setAdd" },
       { "name": "setNew" },
+      { "name": "sharedArrayBufferByteLength" },
       { "name": "sharedArrayBufferExternalize" },
       { "name": "sharedArrayBufferGetContents" },
       { "name": "sharedArrayBufferIsExternal" },

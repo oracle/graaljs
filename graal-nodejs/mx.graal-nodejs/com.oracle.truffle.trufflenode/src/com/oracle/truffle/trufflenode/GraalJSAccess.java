@@ -1498,6 +1498,10 @@ public final class GraalJSAccess {
         }
     }
 
+    public long sharedArrayBufferByteLength(Object sharedArrayBuffer) {
+        return JSSharedArrayBuffer.getDirectByteBuffer((DynamicObject) sharedArrayBuffer).capacity();
+    }
+
     public int typedArrayLength(Object typedArray) {
         return JSArrayBufferView.typedArrayGetLength((DynamicObject) typedArray);
     }

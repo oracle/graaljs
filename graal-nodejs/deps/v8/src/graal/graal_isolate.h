@@ -366,6 +366,7 @@ enum GraalAccessMethod {
     shared_array_buffer_is_external,
     shared_array_buffer_get_contents,
     shared_array_buffer_externalize,
+    shared_array_buffer_byte_length,
     script_compiler_compile_function_in_context,
     backing_store_register_callback,
     fixed_array_length,

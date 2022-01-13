@@ -888,6 +888,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::backing_store_register_callback, "backingStoreRegisterCallback", "(Ljava/lang/Object;JIJJ)V")
     ACCESS_METHOD(GraalAccessMethod::fixed_array_length, "fixedArrayLength", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::fixed_array_get, "fixedArrayGet", "(Ljava/lang/Object;I)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_byte_length, "sharedArrayBufferByteLength", "(Ljava/lang/Object;)J")
 
     int root_offset = v8::internal::Internals::kIsolateRootsOffset / v8::internal::kApiSystemPointerSize;
 

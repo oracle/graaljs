@@ -3706,8 +3706,11 @@ namespace v8 {
     }
 
     size_t SharedArrayBuffer::ByteLength() const {
-        TRACE
-        return 0;
+        const GraalObject* graal_object = reinterpret_cast<const GraalObject*> (this);
+        GraalIsolate* graal_isolate = graal_object->Isolate();
+        jobject java_buffer = graal_object->GetJavaObject();
+        JNI_CALL(jlong, byte_length, graal_isolate, GraalAccessMethod::shared_array_buffer_byte_length, Long, java_buffer);
+        return byte_length;
     }
 
     int FixedArray::Length() const {
