@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,36 +39,20 @@
  * SOFTWARE.
  */
 
-#ifndef GRAAL_MODULE_H_
-#define GRAAL_MODULE_H_
+#ifndef GRAAL_FIXED_ARRAY_H_
+#define GRAAL_FIXED_ARRAY_H_
 
 #include "graal_handle_content.h"
 #include "graal_isolate.h"
 
-class GraalIsolate;
-
-class GraalModule : public GraalHandleContent {
+class GraalFixedArray : public GraalHandleContent {
 public:
-    inline static GraalModule* Allocate(GraalIsolate* isolate, jobject java_module);
-    static v8::MaybeLocal<v8::Module> Compile(v8::Local<v8::String> source, v8::Local<v8::String> name, v8::Local<v8::PrimitiveArray> options);
-    v8::Maybe<bool> InstantiateModule(v8::Local<v8::Context> context, v8::Module::ResolveModuleCallback callback);
-    v8::MaybeLocal<v8::Value> Evaluate(v8::Local<v8::Context> context);
-    v8::Module::Status GetStatus() const;
-    int GetModuleRequestsLength() const;
-    v8::Local<v8::String> GetModuleRequest(int index) const;
-    v8::Local<v8::Value> GetModuleNamespace();
-    v8::Local<v8::FixedArray> GetModuleRequests() const;
-    int GetIdentityHash() const;
-    v8::Local<v8::Value> GetException() const;
-    static v8::Local<v8::Module> CreateSyntheticModule(
-            v8::Isolate* isolate, v8::Local<v8::String> module_name,
-            const std::vector<v8::Local<v8::String>>&export_names,
-            v8::Module::SyntheticModuleEvaluationSteps evaluation_steps);
-    void SetSyntheticModuleExport(v8::Local<v8::String> export_name, v8::Local<v8::Value> export_value);
-    v8::Local<v8::UnboundModuleScript> GetUnboundModuleScript();
+    inline static GraalFixedArray* Allocate(GraalIsolate* isolate, jobject java_fixed_array);
+    int Length() const;
+    v8::Local<v8::Data> Get(v8::Local<v8::Context> context, int i) const;
 protected:
-    inline GraalModule(GraalIsolate* isolate, jobject java_module);
+    inline GraalFixedArray(GraalIsolate* isolate, jobject java_fixed_array);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 
-#endif /* GRAAL_MODULE_H_ */
+#endif /* GRAAL_FIXED_ARRAY_H_ */

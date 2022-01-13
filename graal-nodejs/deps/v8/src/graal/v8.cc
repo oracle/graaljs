@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,12 +48,14 @@
 #include "graal_context.h"
 #include "graal_date.h"
 #include "graal_external.h"
+#include "graal_fixed_array.h"
 #include "graal_function.h"
 #include "graal_function_template.h"
 #include "graal_isolate.h"
 #include "graal_map.h"
 #include "graal_message.h"
 #include "graal_module.h"
+#include "graal_module_request.h"
 #include "graal_number.h"
 #include "graal_object_template.h"
 #include "graal_primitive_array.h"
@@ -2863,10 +2865,6 @@ namespace v8 {
         return reinterpret_cast<const GraalModule*> (this)->GetException();
     }
 
-    void Isolate::SetHostImportModuleDynamicallyCallback(HostImportModuleDynamicallyCallback callback) {
-        reinterpret_cast<GraalIsolate*> (this)->SetImportModuleDynamicallyCallback(callback);
-    }
-
     void Isolate::SetHostInitializeImportMetaObjectCallback(HostInitializeImportMetaObjectCallback callback) {
         reinterpret_cast<GraalIsolate*> (this)->SetImportMetaInitializer(callback);
     }
@@ -3713,27 +3711,23 @@ namespace v8 {
     }
 
     int FixedArray::Length() const {
-        return reinterpret_cast<const GraalArray*> (this)->Length();
+        return reinterpret_cast<const GraalFixedArray*> (this)->Length();
     }
 
     Local<Data> FixedArray::Get(Local<Context> context, int i) const {
-        TRACE
-        return nullptr;
+        return reinterpret_cast<const GraalFixedArray*> (this)->Get(context, i);
     }
 
     Local<FixedArray> Module::GetModuleRequests() const {
-        TRACE
-        return nullptr;
+        return reinterpret_cast<const GraalModule*> (this)->GetModuleRequests();
     }
 
     Local<String> ModuleRequest::GetSpecifier() const {
-        TRACE
-        return nullptr;
+        return reinterpret_cast<const GraalModuleRequest*> (this)->GetSpecifier();
     }
 
     Local<FixedArray> ModuleRequest::GetImportAssertions() const {
-        TRACE
-        return nullptr;
+        return reinterpret_cast<const GraalModuleRequest*> (this)->GetImportAssertions();
     }
 
     bool Object::IsConstructor() {
@@ -3748,12 +3742,17 @@ namespace v8 {
     }
 
     void Isolate::SetHostImportModuleDynamicallyCallback(HostImportModuleDynamicallyWithImportAssertionsCallback callback) {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (this)->SetImportModuleDynamicallyCallback(callback);
     }
 
     Local<Object> Object::New(Isolate* isolate, Local<Value> prototype_or_null, Local<Name>* names, Local<Value>* values, size_t length) {
-        TRACE
-        return nullptr;
+        Local<Object> v8_object = Object::New(isolate);
+        GraalObject* graal_object = reinterpret_cast<GraalObject*> (*v8_object);
+        graal_object->SetPrototype(prototype_or_null);
+        for (int i = 0; i < length; i++) {
+            graal_object->Set(names[i], values[i]);
+        }
+        return v8_object;
     }
 
     std::unique_ptr<v8::JobHandle> v8::platform::NewDefaultJobHandle(v8::Platform* platform, v8::TaskPriority priority, std::unique_ptr<v8::JobTask> job_task, size_t num_worker_threads) {

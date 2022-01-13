@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,6 +81,7 @@ import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT8ARRAY_OBJECT
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT8CLAMPEDARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.LAZY_STRING_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.MAP_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.MODULE_REQUEST;
 import static com.oracle.truffle.trufflenode.ValueType.NULL_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.NUMBER_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.ORDINARY_OBJECT;
@@ -478,6 +479,8 @@ public final class GraalJSAccess {
             return BIG_INT_VALUE;
         } else if (value instanceof Boolean) {
             return ((Boolean) value).booleanValue() ? BOOLEAN_VALUE_TRUE : BOOLEAN_VALUE_FALSE;
+        } else if (value instanceof ModuleRequest) {
+            return MODULE_REQUEST;
         }
         if (value instanceof Throwable) {
             valueTypeError(value);
@@ -3254,8 +3257,9 @@ public final class GraalJSAccess {
 
     private static class NativeImportModuleDynamicallyCallback implements ImportModuleDynamicallyCallback {
         @Override
-        public DynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, Module.ModuleRequest moduleRequest) {
-            return (DynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, referrer, moduleRequest.getSpecifier());
+        public DynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest) {
+            Object importAssertions = moduleRequestGetImportAssertionsImpl(moduleRequest, false);
+            return (DynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, referrer, moduleRequest.getSpecifier(), importAssertions);
         }
     }
 
@@ -3679,6 +3683,11 @@ public final class GraalJSAccess {
         return record.getModule().getRequestedModules().get(index).getSpecifier();
     }
 
+    public Object moduleGetModuleRequests(Object module) {
+        JSModuleRecord record = (JSModuleRecord) module;
+        return record.getModule().getRequestedModules();
+    }
+
     public Object moduleGetNamespace(Object module) {
         JSModuleRecord record = (JSModuleRecord) module;
         GraalJSEvaluator graalEvaluator = (GraalJSEvaluator) record.getContext().getEvaluator();
@@ -3709,6 +3718,27 @@ public final class GraalJSAccess {
 
         final JSModuleData parsedModule = new JSModuleData(moduleNode, source, functionData, frameDescriptor);
         return new NativeBackedModuleRecord(parsedModule, getModuleLoader(), evaluationStepsCallback);
+    }
+
+    public String moduleRequestGetSpecifier(Object moduleRequest) {
+        return ((ModuleRequest) moduleRequest).getSpecifier();
+    }
+
+    private static List<Object> moduleRequestGetImportAssertionsImpl(ModuleRequest request, boolean withSourceOffset) {
+        List<Object> assertions = new ArrayList<>();
+        for (Map.Entry<String, String> entry : request.getAssertions().entrySet()) {
+            assertions.add(entry.getKey());
+            assertions.add(entry.getValue());
+            if (withSourceOffset) {
+                assertions.add(0);
+            }
+        }
+        return assertions;
+    }
+
+    public Object moduleRequestGetImportAssertions(Object moduleRequest) {
+        ModuleRequest request = (ModuleRequest) moduleRequest;
+        return moduleRequestGetImportAssertionsImpl(request, true);
     }
 
     public static final class NativeBackedModuleRecord extends JSModuleRecord {
@@ -3928,6 +3958,17 @@ public final class GraalJSAccess {
         }
     }
 
+    public int fixedArrayLength(Object fixedArray) {
+        List<?> list = (List<?>) fixedArray;
+        return list.size();
+    }
+
+    public Object fixedArrayGet(Object fixedArray, int index) {
+        List<?> list = (List<?>) fixedArray;
+        Object element = list.get(index);
+        return processReturnValue(element);
+    }
+
     public void backingStoreRegisterCallback(Object backingStore, long data, int byteLength, long deleterData, long callback) {
         weakCallbacks.add(new DeleterCallback(backingStore, data, byteLength, deleterData, callback, weakCallbackQueue));
     }
@@ -4007,8 +4048,9 @@ public final class GraalJSAccess {
                 System.err.println("Cannot resolve module outside module instantiation!");
                 System.exit(1);
             }
+            Object importAssertions = moduleRequestGetImportAssertionsImpl(moduleRequest, true);
             JSRealm realm = JSRealm.get(null);
-            JSModuleRecord result = (JSModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, referrer);
+            JSModuleRecord result = (JSModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, importAssertions, referrer);
             referrerCache.put(specifier, result);
             return result;
         }

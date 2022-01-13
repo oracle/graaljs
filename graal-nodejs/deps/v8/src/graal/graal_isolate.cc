@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -844,6 +844,9 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::module_get_unbound_module_script, "moduleGetUnboundModuleScript", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_create_synthetic_module, "moduleCreateSyntheticModule", "(Ljava/lang/String;[Ljava/lang/Object;J)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_set_synthetic_module_export, "moduleSetSyntheticModuleExport", "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::module_get_module_requests, "moduleGetModuleRequests", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::module_request_get_specifier, "moduleRequestGetSpecifier", "(Ljava/lang/Object;)Ljava/lang/String;")
+    ACCESS_METHOD(GraalAccessMethod::module_request_get_import_assertions, "moduleRequestGetImportAssertions", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::script_or_module_get_resource_name, "scriptOrModuleGetResourceName", "(Ljava/lang/Object;)Ljava/lang/String;")
     ACCESS_METHOD(GraalAccessMethod::script_or_module_get_host_defined_options, "scriptOrModuleGetHostDefinedOptions", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::value_serializer_new, "valueSerializerNew", "(J)Ljava/lang/Object;")
@@ -883,6 +886,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_externalize, "sharedArrayBufferExternalize", "(Ljava/lang/Object;J)V")
     ACCESS_METHOD(GraalAccessMethod::script_compiler_compile_function_in_context, "scriptCompilerCompileFunctionInContext", "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;[Ljava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::backing_store_register_callback, "backingStoreRegisterCallback", "(Ljava/lang/Object;JIJJ)V")
+    ACCESS_METHOD(GraalAccessMethod::fixed_array_length, "fixedArrayLength", "(Ljava/lang/Object;)I")
+    ACCESS_METHOD(GraalAccessMethod::fixed_array_get, "fixedArrayGet", "(Ljava/lang/Object;I)Ljava/lang/Object;")
 
     int root_offset = v8::internal::Internals::kIsolateRootsOffset / v8::internal::kApiSystemPointerSize;
 
@@ -1318,7 +1323,7 @@ void GraalIsolate::NotifyImportMetaInitializer(v8::Local<v8::Object> import_meta
     }
 }
 
-void GraalIsolate::SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyCallback callback) {
+void GraalIsolate::SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyWithImportAssertionsCallback callback) {
     bool wasNull = import_module_dynamically == nullptr;
     bool isNull = callback == nullptr;
     if (wasNull != isNull) {
@@ -1328,9 +1333,9 @@ void GraalIsolate::SetImportModuleDynamicallyCallback(v8::HostImportModuleDynami
     import_module_dynamically = callback;
 }
 
-v8::MaybeLocal<v8::Promise> GraalIsolate::NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::ScriptOrModule> referrer, v8::Local<v8::String> specifier) {
+v8::MaybeLocal<v8::Promise> GraalIsolate::NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::ScriptOrModule> referrer, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_assertions) {
     if (import_module_dynamically != nullptr) {
-        return import_module_dynamically(context, referrer, specifier);
+        return import_module_dynamically(context, referrer, specifier, import_assertions);
     } else {
         return v8::MaybeLocal<v8::Promise>();
     }

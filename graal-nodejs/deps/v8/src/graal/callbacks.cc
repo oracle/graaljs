@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@
 #include "graal_context.h"
 #include "graal_date.h"
 #include "graal_external.h"
+#include "graal_fixed_array.h"
 #include "graal_function.h"
 #include "graal_function_callback_info.h"
 #include "graal_isolate.h"
@@ -71,6 +72,7 @@
 #include <vector>
 
 #include "graal_context-inl.h"
+#include "graal_fixed_array-inl.h"
 #include "graal_function_callback_info-inl.h"
 #include "graal_missing_primitive-inl.h"
 #include "graal_module-inl.h"
@@ -110,8 +112,8 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("notifyPromiseHook", "(ILjava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyPromiseHook),
     CALLBACK("notifyPromiseRejectionTracker", "(Ljava/lang/Object;ILjava/lang/Object;)V", &GraalNotifyPromiseRejectionTracker),
     CALLBACK("notifyImportMetaInitializer", "(Ljava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyImportMetaInitializer),
-    CALLBACK("executeResolveCallback", "(JLjava/lang/Object;Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteResolveCallback),
-    CALLBACK("executeImportModuleDynamicallyCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;", &GraalExecuteImportModuleDynamicallyCallback),
+    CALLBACK("executeResolveCallback", "(JLjava/lang/Object;Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteResolveCallback),
+    CALLBACK("executeImportModuleDynamicallyCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteImportModuleDynamicallyCallback),
     CALLBACK("executePrepareStackTraceCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecutePrepareStackTraceCallback),
     CALLBACK("writeHostObject", "(JLjava/lang/Object;)V", &GraalWriteHostObject),
     CALLBACK("readHostObject", "(J)Ljava/lang/Object;", &GraalReadHostObject),
@@ -720,16 +722,17 @@ void GraalNotifyImportMetaInitializer(JNIEnv* env, jclass nativeAccess, jobject 
     graal_isolate->NotifyImportMetaInitializer(import_meta, module);
 }
 
-jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jstring java_specifier, jobject java_referrer) {
+jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jstring java_specifier, jobject java_import_assertions, jobject java_referrer) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
     GraalContext* graal_context = GraalContext::Allocate(graal_isolate, java_context);
     GraalString* graal_specifier = GraalString::Allocate(graal_isolate, java_specifier);
     GraalModule* graal_referrer = GraalModule::Allocate(graal_isolate, java_referrer);
+    GraalFixedArray* graal_import_assertions = GraalFixedArray::Allocate(graal_isolate, java_import_assertions);
     v8::Local<v8::Context> v8_context = reinterpret_cast<v8::Context*> (graal_context);
     v8::Local<v8::String> v8_specifier = reinterpret_cast<v8::String*> (graal_specifier);
     v8::Local<v8::Module> v8_referrer = reinterpret_cast<v8::Module*> (graal_referrer);
-    v8::Local<v8::FixedArray> v8_import_assertions = reinterpret_cast<v8::FixedArray*> (*v8::Array::New(0));
+    v8::Local<v8::FixedArray> v8_import_assertions = reinterpret_cast<v8::FixedArray*> (graal_import_assertions);
     v8::MaybeLocal<v8::Module> v8_result = ((v8::Module::ResolveModuleCallback) callback)(v8_context, v8_specifier, v8_import_assertions, v8_referrer);
     if (v8_result.IsEmpty()) {
         return NULL;
@@ -740,16 +743,18 @@ jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong call
     }
 }
 
-jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_referrer, jstring java_specifier) {
+jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_referrer, jstring java_specifier, jobject java_import_assertions) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
     GraalContext* graal_context = GraalContext::Allocate(graal_isolate, java_context);
     GraalScriptOrModule* graal_referrer = GraalScriptOrModule::Allocate(graal_isolate, java_referrer);
     GraalString* graal_specifier = GraalString::Allocate(graal_isolate, java_specifier);
+    GraalFixedArray* graal_import_assertions = GraalFixedArray::Allocate(graal_isolate, java_import_assertions);
     v8::Local<v8::Context> v8_context = reinterpret_cast<v8::Context*> (graal_context);
     v8::Local<v8::ScriptOrModule> v8_referrer = reinterpret_cast<v8::ScriptOrModule*> (graal_referrer);
     v8::Local<v8::String> v8_specifier = reinterpret_cast<v8::String*> (graal_specifier);
-    v8::MaybeLocal<v8::Promise> v8_result = graal_isolate->NotifyImportModuleDynamically(v8_context, v8_referrer, v8_specifier);
+    v8::Local<v8::FixedArray> v8_import_assertions = reinterpret_cast<v8::FixedArray*> (graal_import_assertions);
+    v8::MaybeLocal<v8::Promise> v8_result = graal_isolate->NotifyImportModuleDynamically(v8_context, v8_referrer, v8_specifier, v8_import_assertions);
     if (v8_result.IsEmpty()) {
         return NULL;
     } else {
