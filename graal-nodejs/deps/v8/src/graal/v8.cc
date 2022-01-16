@@ -2827,11 +2827,21 @@ namespace v8 {
     }
 
     Isolate::DisallowJavascriptExecutionScope::DisallowJavascriptExecutionScope(Isolate* isolate, OnFailure on_failure) {
-        TRACE
+        isolate_ = isolate;
+        was_execution_allowed_throws_ = reinterpret_cast<GraalIsolate*> (isolate)->SetJSExecutionAllowed(false);
     }
 
     Isolate::DisallowJavascriptExecutionScope::~DisallowJavascriptExecutionScope() {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (isolate_)->SetJSExecutionAllowed(was_execution_allowed_throws_);
+    }
+
+    Isolate::AllowJavascriptExecutionScope::AllowJavascriptExecutionScope(Isolate* isolate) {
+        isolate_ = isolate;
+        was_execution_allowed_throws_ = reinterpret_cast<GraalIsolate*> (isolate)->SetJSExecutionAllowed(true);
+    }
+
+    Isolate::AllowJavascriptExecutionScope::~AllowJavascriptExecutionScope() {
+        reinterpret_cast<GraalIsolate*> (isolate_)->SetJSExecutionAllowed(was_execution_allowed_throws_);
     }
 
     void HeapProfiler::RemoveBuildEmbedderGraphCallback(BuildEmbedderGraphCallback callback, void* data) {
@@ -3237,14 +3247,6 @@ namespace v8 {
     }
 
     HeapCodeStatistics::HeapCodeStatistics() {
-        TRACE
-    }
-
-    Isolate::AllowJavascriptExecutionScope::AllowJavascriptExecutionScope(Isolate* isolate) {
-        TRACE
-    }
-
-    Isolate::AllowJavascriptExecutionScope::~AllowJavascriptExecutionScope() {
         TRACE
     }
 

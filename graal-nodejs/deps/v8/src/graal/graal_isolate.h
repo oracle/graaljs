@@ -674,6 +674,16 @@ public:
         return &microtask_queue_;
     }
 
+    inline bool SetJSExecutionAllowed(bool allowed) {
+        bool old = js_execution_allowed_;
+        js_execution_allowed_ = allowed;
+        return old;
+    }
+
+    inline bool GetJSExecutionAllowed() {
+        return js_execution_allowed_;
+    }
+
     static void SetFlags(int argc, char** argv) {
         char** old_argv = GraalIsolate::argv;
         int old_argc = GraalIsolate::argc;
@@ -750,6 +760,7 @@ private:
     intptr_t stack_bottom_;
     size_t stack_size_limit_;
     bool main_;
+    bool js_execution_allowed_ = true;
     double return_value_;
     static bool abort_on_uncaught_exception_;
     static bool internal_error_check_;
