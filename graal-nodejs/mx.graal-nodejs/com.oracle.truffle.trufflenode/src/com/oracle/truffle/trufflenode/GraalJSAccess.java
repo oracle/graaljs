@@ -2096,8 +2096,8 @@ public final class GraalJSAccess {
         ByteBuffer snapshot = null;
         if (extraArgument == null) {
             extensions = exts;
-            if (USE_SNAPSHOTS && hostDefinedOptions == null && !auxEngineCacheMode) {
-                assert exts.length == 0 && UnboundScript.isCoreModule(sourceName);
+            if (USE_SNAPSHOTS && !auxEngineCacheMode && UnboundScript.isCoreModule(sourceName)) {
+                assert exts.length == 0;
                 snapshot = getCoreModuleBinarySnapshot(sourceName);
             }
         } else {
@@ -2315,13 +2315,16 @@ public final class GraalJSAccess {
         return new UnboundScript(source, functionNode);
     }
 
-    private static ByteBuffer getCoreModuleBinarySnapshot(String modulePath) {
+    private static ByteBuffer getCoreModuleBinarySnapshot(String moduleID) {
+        assert UnboundScript.isCoreModule(moduleID);
+        // remove 'node:' prefix and append '.js' suffix
+        String modulePath = moduleID.substring(5) + ".js";
         ByteBuffer snapshotBinary = NativeAccess.getCoreModuleBinarySnapshot(modulePath);
         if (VERBOSE) {
             if (snapshotBinary == null) {
-                System.err.printf("no snapshot for %s\n", modulePath);
+                System.err.printf("no snapshot for %s\n", moduleID);
             } else {
-                System.err.printf("successfully read snapshot for %s\n", modulePath);
+                System.err.printf("successfully read snapshot for %s\n", moduleID);
             }
         }
         return snapshotBinary;

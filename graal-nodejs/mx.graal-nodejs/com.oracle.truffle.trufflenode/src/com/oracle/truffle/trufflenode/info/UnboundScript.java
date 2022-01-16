@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,14 +90,7 @@ public final class UnboundScript {
     }
 
     public static boolean isCoreModule(String name) {
-        // All but core modules are represented by an absolute path
-        // NB: Returns true for repl, [eval], [eval]-wrapper and other
-        // names of scripts which are not in files.
-        if (IS_WINDOWS) {
-            return !name.contains(":");
-        } else {
-            return !name.startsWith("/");
-        }
+        return name.startsWith("node:");
     }
 
     private static String sourcefileName(String fileName) {
