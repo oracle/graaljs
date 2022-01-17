@@ -10,11 +10,6 @@ test-cpu-prof-dir-worker: PASS, FLAKY
 
 ### Graal.js-specific ###
 
-# suspicious memory-related test that does some conclusion based on rss
-# before and after some operation, this does not work on JVM (where heap
-# size does not decrease usually - despite there is no memory leak)
-test-net-bytes-per-incoming-chunk-overhead : SKIP
-
 # unstable timing-sensitive test
 test-perf-hooks : SKIP
 
