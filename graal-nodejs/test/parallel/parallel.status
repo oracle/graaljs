@@ -31,8 +31,12 @@ test-repl-pretty-custom-stack: FAIL
 test-repl-pretty-stack: FAIL
 # Cannot convert undefined or null to object versus String.prototype.match called on null or undefined
 test-errors-systemerror: FAIL
+# Cannot read properties of null (reading 'byteLength') versus Cannot read property 'byteLength' of null
+test-fs-read: FAIL
 # Invalid array buffer length versus Array buffer allocation failed
 test-fs-write-buffer-large: FAIL
+# ports is not iterable versus 0 is not iterable
+test-worker-message-event: FAIL
 
 # Suspicious (V8 specific?) test checking whether ArrayBufferView lives on heap
 test-buffer-backing-arraybuffer: FAIL
@@ -58,8 +62,6 @@ test-v8-flags: FAIL
 
 # heapsnapshot/heapdump/EmbedderGraph is not supported
 test-heapdump-async-hooks-init-promise: SKIP
-test-heapsnapshot-near-heap-limit: SKIP
-test-heapsnapshot-near-heap-limit-bounded: SKIP
 test-heapsnapshot-near-heap-limit-worker: SKIP
 test-http2-ping-settings-heapdump: SKIP
 test-v8-getheapsnapshot-twice: SKIP
@@ -69,6 +71,7 @@ test-https-agent-unref-socket: SKIP
 
 # Worker resource limits are not supported
 test-worker-resource-limits: FAIL
+test-worker-nearheaplimit-deadlock: SKIP
 
 # Custom v8::ArrayBuffer::Allocator is not supported
 test-worker-sharedarraybuffer-from-worker-thread: SKIP
@@ -102,6 +105,7 @@ test-vm-context: FAIL
 # WebAssembly is not supported
 test-vm-codegen: FAIL
 test-wasm-simple: FAIL
+test-whatwg-webstreams-transfer: FAIL
 test-worker-message-port-wasm-module: FAIL
 test-worker-message-port-wasm-threads: FAIL
 
@@ -130,7 +134,6 @@ test-trace-events-file-pattern: SKIP
 test-trace-events-fs-sync: SKIP
 test-trace-events-metadata: SKIP
 test-trace-events-none: SKIP
-test-trace-events-perf: SKIP
 test-trace-events-process-exit: SKIP
 test-trace-events-promises: SKIP
 test-trace-events-v8: SKIP
@@ -142,7 +145,6 @@ test-assert: FAIL
 test-async-hooks-async-await: FAIL
 test-async-local-storage-contexts: FAIL
 test-common-gc: FAIL
-test-crypto-fips: FAIL
 test-crypto-op-during-process-exit: SKIP
 test-crypto-sign-verify: FAIL
 test-domain-async-id-map-leak: FAIL
@@ -157,6 +159,7 @@ test-domain-no-error-handler-abort-on-uncaught-7: FAIL
 test-domain-no-error-handler-abort-on-uncaught-8: FAIL
 test-domain-no-error-handler-abort-on-uncaught-9: FAIL
 test-domain-throw-error-then-throw-from-uncaught-exception-handler: FAIL
+test-eventtarget: FAIL
 test-fs-promises-file-handle-close: FAIL
 test-gc-http-client-connaborted: SKIP
 test-gc-http-client-onerror: SKIP
