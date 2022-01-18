@@ -10,7 +10,9 @@ GraalVM includes a JavaScript language execution runtime and allows interoperabi
 This document describes the features and usage of this JavaScript-to-Java interoperability feature.
 
 For a reference of GraalVM public API, see [JavaScript Compatibility](JavaScriptCompatibility.md).
-Migration guides for [Rhino](RhinoMigrationGuide.md) and [Nashorn](NashornMigrationGuide.md) are also available.
+See the [Embedding Reference](https://www.graalvm.org/reference-manual/embed-languages/) on how to interact with a guest language like JavaScript from a Java host application.
+The [Polyglot Programming](https://www.graalvm.org/reference-manual/polyglot-programming/) guide can be of additional help in that area.
+Specific migration guides for [Rhino](RhinoMigrationGuide.md) and [Nashorn](NashornMigrationGuide.md) are also available.
 
 By default, GraalVM ships with `js` and `node` native launchers.
 Although other builds are possible, the following examples assume this setup is used.
@@ -43,7 +45,8 @@ Context context = Context.newBuilder("js")
 context.eval("js", jsSourceCode);
 ```
 
-See the [Polyglot Programming](https://github.com/oracle/graal/blob/master/docs/reference-manual/polyglot-programming.md) guide for more details.
+See the [Embedding Reference](https://www.graalvm.org/reference-manual/embed-languages/) on how to interact with a guest language like JavaScript from a Java host application.
+The [Polyglot Programming](https://www.graalvm.org/reference-manual/polyglot-programming/) guide can also be of help in that area.
 
 ## ScriptEngine (JSR 223)
 The `org.graalvm.polyglot.Context` is the preferred execution method for interoperability with GraalVM's languages and tools.
@@ -57,6 +60,8 @@ Object fn = eng.eval("(function() { return this; })");
 Invocable inv = (Invocable) eng;
 Object result = inv.invokeMethod(fn, "call", fn);
 ```
+
+See the [ScriptEngine guide](ScriptEngine.md) for more details on how to use it from GraalVM JavaScript.
 
 ## Access Java from JavaScript
 GraalVM provides a set of features to allow interoperability from `JavaScript` to `Java`.
