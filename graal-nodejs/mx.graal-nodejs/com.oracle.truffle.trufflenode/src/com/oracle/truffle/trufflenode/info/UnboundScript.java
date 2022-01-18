@@ -41,6 +41,7 @@
 package com.oracle.truffle.trufflenode.info;
 
 import java.nio.ByteBuffer;
+import java.nio.file.InvalidPathException;
 
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.truffle.api.TruffleFile;
@@ -83,8 +84,12 @@ public final class UnboundScript {
             // We have the content already, but we need to associate the Source
             // with the corresponding file so that debugger knows where to add
             // the breakpoints.
-            TruffleFile truffleFile = JavaScriptLanguage.getCurrentEnv().getPublicTruffleFile(name);
-            source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(code).name(name).build();
+            try {
+                TruffleFile truffleFile = JavaScriptLanguage.getCurrentEnv().getPublicTruffleFile(name);
+                source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(code).name(name).build();
+            } catch (InvalidPathException ex) {
+                source = Source.newBuilder(JavaScriptLanguage.ID, code, name).build();
+            }
         }
         return source;
     }
