@@ -781,7 +781,6 @@ public final class JSRuntime {
         return toInt8(number.longValue());
     }
 
-    @SuppressWarnings("cast")
     @TruffleBoundary
     public static int toInt8(long number) {
         int res = floorMod(number, 256);
@@ -838,7 +837,6 @@ public final class JSRuntime {
         return toInt16(number.longValue());
     }
 
-    @SuppressWarnings("cast")
     @TruffleBoundary()
     public static int toInt16(long number) {
         int res = floorMod(number, 65536);

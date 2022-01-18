@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -161,11 +161,11 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
     @TruffleBoundary
     public static String temporalYearMonthToString(JSTemporalPlainYearMonthObject ym, String showCalendar) {
         Object year = TemporalUtil.padISOYear(ym.getYear());
-        String month = String.format("%1$2d", ym.getMonth()).replace(" ", "0");
+        String month = String.format("%1$02d", ym.getMonth());
         String result = year + "-" + month;
         String calendarID = JSRuntime.toString(ym.getCalendar());
         if (!ISO8601.equals(calendarID)) {
-            String day = String.format("%1$2d", ym.getDay()).replace(" ", "0");
+            String day = String.format("%1$02d", ym.getDay());
             result += "-" + day;
         }
         String calendarString = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);

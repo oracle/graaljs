@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -351,7 +351,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
 
     @TruffleBoundary
     private static String buildISOMonthCode(long month) {
-        String monthCode = String.format("%1$2d", month).replace(" ", "0");
+        String monthCode = String.format("%1$02d", month);
         return "M".concat(monthCode);
     }
 

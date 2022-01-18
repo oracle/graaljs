@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,12 +51,10 @@ public final class JSTemporalYearMonthDayRecord {
         this.day = day;
     }
 
-    @SuppressWarnings("hiding")
     public static JSTemporalYearMonthDayRecord create(long year, long month, long day) {
         return new JSTemporalYearMonthDayRecord(year, month, day);
     }
 
-    @SuppressWarnings("hiding")
     public static JSTemporalYearMonthDayRecord create(long year, long month) {
         return new JSTemporalYearMonthDayRecord(year, month, 0);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -176,10 +176,10 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
     public static String temporalDateTimeToString(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
                     DynamicObject calendar, Object precision, String showCalendar) {
         String yearString = TemporalUtil.padISOYear(year);
-        String monthString = String.format("%1$2d", month).replace(" ", "0");
-        String dayString = String.format("%1$2d", day).replace(" ", "0");
-        String hourString = String.format("%1$2d", hour).replace(" ", "0");
-        String minuteString = String.format("%1$2d", minute).replace(" ", "0");
+        String monthString = String.format("%1$02d", month);
+        String dayString = String.format("%1$02d", day);
+        String hourString = String.format("%1$02d", hour);
+        String minuteString = String.format("%1$02d", minute);
         String secondString = TemporalUtil.formatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision);
         String calendarID = JSRuntime.toString(calendar);
         String calendarString = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);

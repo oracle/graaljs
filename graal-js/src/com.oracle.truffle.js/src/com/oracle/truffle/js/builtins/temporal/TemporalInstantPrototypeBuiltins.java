@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -195,12 +195,13 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalInstantObject instant = (JSTemporalInstantObject) thisObj;
             BigInteger ns = instant.getNanoseconds().bigIntegerValue();
             switch (property) {
+                // roundTowardsZero is a no-op for BigIntegers
                 case epochSeconds:
-                    return TemporalUtil.roundTowardsZero(ns.divide(BigInteger.valueOf(1_000_000_000L))).doubleValue();
+                    return ns.divide(BigInteger.valueOf(1_000_000_000L)).doubleValue();
                 case epochMilliseconds:
-                    return TemporalUtil.roundTowardsZero(ns.divide(BigInteger.valueOf(1_000_000L))).doubleValue();
+                    return ns.divide(BigInteger.valueOf(1_000_000L)).doubleValue();
                 case epochMicroseconds:
-                    return TemporalUtil.roundTowardsZero(ns.divide(BigInteger.valueOf(1_000L)));
+                    return new BigInt(ns.divide(BigInteger.valueOf(1_000L)));
                 case epochNanoseconds:
                     return instant.getNanoseconds();
             }
@@ -228,7 +229,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listPluralYMWD, isObjectNode, toString);
             BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
-            return TemporalUtil.createTemporalInstant(getContext(), ns);
+            return JSTemporalInstant.create(getContext(), ns);
         }
     }
 
@@ -245,7 +246,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listPluralYMWD, isObjectNode, toString);
             BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(),
                             -duration.getMilliseconds(), -duration.getMicroseconds(), -duration.getNanoseconds());
-            return TemporalUtil.createTemporalInstant(getContext(), ns);
+            return JSTemporalInstant.create(getContext(), ns);
         }
     }
 
@@ -326,7 +327,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             }
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(roundTo, maximum, true, isObjectNode, toNumber);
             long roundedNs = TemporalUtil.roundTemporalInstant(instant.getNanoseconds(), (long) roundingIncrement, smallestUnit, roundingMode);
-            return TemporalUtil.createTemporalInstant(getContext(), new BigInt(Boundaries.bigIntegerValueOf(roundedNs)));
+            return JSTemporalInstant.create(getContext(), new BigInt(Boundaries.bigIntegerValueOf(roundedNs)));
         }
     }
 
@@ -364,7 +365,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             String roundingMode = toTemporalRoundingMode(options, TRUNC);
             BigInt ns = instant.getNanoseconds();
             long roundedNs = TemporalUtil.roundTemporalInstant(ns, (long) precision.getIncrement(), precision.getUnit(), roundingMode);
-            DynamicObject roundedInstant = TemporalUtil.createTemporalInstant(getContext(), roundedNs);
+            DynamicObject roundedInstant = JSTemporalInstant.create(getContext(), BigInt.valueOf(roundedNs));
             return TemporalUtil.temporalInstantToString(getContext(), getRealm(), roundedInstant, timeZone, precision.getPrecision());
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -175,8 +175,8 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     @TruffleBoundary
     public static String temporalTimeToString(long hour, long minute, long second, long millisecond, long microsecond,
                     long nanosecond, Object precision) {
-        String hourString = String.format("%1$2d", hour).replace(" ", "0");
-        String minuteString = String.format("%1$2d", minute).replace(" ", "0");
+        String hourString = String.format("%1$02d", hour);
+        String minuteString = String.format("%1$02d", minute);
         String secondString = TemporalUtil.formatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision);
         return String.format("%s:%s%s", hourString, minuteString, secondString);
     }

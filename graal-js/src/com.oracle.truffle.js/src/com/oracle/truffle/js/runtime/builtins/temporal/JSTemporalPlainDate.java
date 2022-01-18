@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -257,8 +257,8 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     @TruffleBoundary
     public static String temporalDateToString(JSTemporalPlainDateObject date, String showCalendar) {
         String yearString = TemporalUtil.padISOYear(date.getYear());
-        String monthString = String.format("%1$2d", date.getMonth()).replace(" ", "0");
-        String dayString = String.format("%1$2d", date.getDay()).replace(" ", "0");
+        String monthString = String.format("%1$02d", date.getMonth());
+        String dayString = String.format("%1$02d", date.getDay());
 
         String calendarID = JSRuntime.toString(date.getCalendar());
         Object calendar = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);

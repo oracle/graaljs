@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -93,7 +93,6 @@ public class Test262 extends TestSuite {
         options.put(JSContextOptions.INTL_402_NAME, "true");
         options.put(JSContextOptions.TEST262_MODE_NAME, "true");
         options.put(JSContextOptions.GLOBAL_ARGUMENTS_NAME, "false");
-        options.put(JSContextOptions.TEMPORAL_NAME, "true");
         config.addCommonOptions(options);
         commonOptions = Collections.unmodifiableMap(options);
         commonOptionsExtLauncher = optionsToExtLauncherOptions(options);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -436,7 +436,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         if (seconds != 0 || milliseconds != 0 || microseconds != 0 || nanoseconds != 0 || (years == 0 && months == 0 && weeks == 0 && days == 0 && hours == 0 && minutes == 0) ||
                         !AUTO.equals(precision)) {
             long fraction = Math.abs(milliseconds) * 1_000_000L + Math.abs(microseconds) * 1_000 + Math.abs(nanoseconds);
-            String decimalPart = String.format("000000000%1$9d", fraction).replace(" ", "0");
+            String decimalPart = String.format("000000000%1$09d", fraction);
             decimalPart = decimalPart.substring(decimalPart.length() - 9);
 
             if (AUTO.equals(precision)) {

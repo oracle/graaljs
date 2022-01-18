@@ -1948,10 +1948,6 @@
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
   }, {
-    "filePath" : "intl402/NumberFormat/prototype/format/value-decimal-string.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test (expects '1.0000000000000001' to be formatted as 1.0000000000000001 but the correct result is 1)."
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -1967,6 +1963,10 @@
     "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/value-decimal-string.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test (expects '1.0000000000000001' to be formatted as 1.0000000000000001 but the correct result is 1)."
   }, {
     "filePath" : "intl402/Temporal/Calendar/from/basic.js",
     "status" : "FAIL",
