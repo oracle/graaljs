@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,6 +58,7 @@ public final class JSTemporalParserRecord {
     private final String timeZoneIANAName;
     private final String timeZoneEtcName;
     private final String timeZoneUTCOffsetName;
+    private final String timeZoneNumericUTCOffset;
 
     private final String offsetSign;
     private final long offsetHour;
@@ -66,7 +67,8 @@ public final class JSTemporalParserRecord {
     private final String offsetFraction;
 
     public JSTemporalParserRecord(boolean z, long year, long month, long day, long hour, long minute, long second, String fraction, String offsetSign, long offsetHour,
-                    long offsetMinute, long offsetSecond, String offsetFraction, String timeZoneIANAName, String timeZoneEtcName, String timeZoneUTCOffsetName, String calendar) {
+                    long offsetMinute, long offsetSecond, String offsetFraction, String timeZoneIANAName, String timeZoneEtcName, String timeZoneUTCOffsetName, String calendar,
+                    String timeZoneNumericUTCOffset) {
         this.z = z;
 
         this.year = year;
@@ -77,6 +79,7 @@ public final class JSTemporalParserRecord {
         this.second = second;
         this.fraction = fraction;
 
+        this.timeZoneNumericUTCOffset = timeZoneNumericUTCOffset;
         this.offsetSign = offsetSign;
         this.offsetHour = offsetHour;
         this.offsetMinute = offsetMinute;
@@ -168,6 +171,10 @@ public final class JSTemporalParserRecord {
 
     public String getOffsetFraction() {
         return offsetFraction;
+    }
+
+    public String getTimeZoneNumericUTCOffset() {
+        return timeZoneNumericUTCOffset;
     }
 
 }

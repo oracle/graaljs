@@ -550,20 +550,20 @@ public final class TemporalUtil {
     private static JSTemporalZonedDateTimeRecord parseTemporalRelativeToString(String isoString) {
         JSTemporalDateTimeRecord result = parseISODateTime(isoString, true, false);
         boolean z = false;
-        String offset = null;
+        String offsetString = null;
         String timeZone = null;
         if (isoString.length() > 0) {
             try {
                 JSTemporalTimeZoneRecord timeZoneResult = parseTemporalTimeZoneString(isoString);
                 z = timeZoneResult.isZ();
-                offset = timeZoneResult.getOffsetString();
+                offsetString = timeZoneResult.getOffsetString();
                 timeZone = timeZoneResult.getName();
             } catch (Exception ex) {
                 // fall-through
             }
         } // else handled with defaults above
         return JSTemporalZonedDateTimeRecord.create(result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
-                        result.getMicrosecond(), result.getNanosecond(), result.getCalendar(), z, offset, timeZone);
+                        result.getMicrosecond(), result.getNanosecond(), result.getCalendar(), z, offsetString, timeZone);
     }
 
     @TruffleBoundary
@@ -1198,15 +1198,14 @@ public final class TemporalUtil {
     }
 
     public static DynamicObject createTemporalTimeZone(JSContext ctx, String identifier) {
-        BigInt offset = null;
-        try {
-            long offsetLong = parseTimeZoneOffsetString(identifier);
-            offset = new BigInt(Boundaries.bigIntegerValueOf(offsetLong));
-        } catch (Exception ex) {
+        BigInt offsetNs;
+        if (canParseAsTimeZoneNumericUTCOffset(identifier)) {
+            offsetNs = new BigInt(Boundaries.bigIntegerValueOf(parseTimeZoneOffsetString(identifier)));
+        } else {
             assert canonicalizeTimeZoneName(identifier).equals(identifier);
-            offset = null;
+            offsetNs = null;
         }
-        return JSTemporalTimeZone.create(ctx, offset, identifier);
+        return JSTemporalTimeZone.create(ctx, offsetNs, identifier);
     }
 
     public static String canonicalizeTimeZoneName(String timeZone) {
@@ -3514,37 +3513,11 @@ public final class TemporalUtil {
                 throw TemporalErrors.createRangeErrorTimeZoneOffsetExpected();
             }
         }
-        // 3. Let z, sign, hours, minutes, seconds, fraction, and name;
-        if (rec.getZ()) {
-            return JSTemporalTimeZoneRecord.create(true, null, rec.getTimeZoneIANAName());
-        }
-
-        String offsetString = null;
-        if (rec.getOffsetHour() < 0) {
-            offsetString = null;
-        } else {
-            long nanoseconds;
-            if (rec.getOffsetFraction() == null) {
-                nanoseconds = 0;
-            } else {
-                String fraction = rec.getOffsetFraction() + "000000000";
-                fraction = fraction.substring(0, 9); // spec says 1-10, but includes dot!
-                assert !fraction.contains(".");
-                nanoseconds = Long.parseLong(fraction, 10);
-            }
-
-            String signS = rec.getOffsetSign();
-            int sign = ("-".equals(signS) || "\u2212".equals(signS)) ? -1 : 1;
-
-            long hours = rec.getOffsetHour() == Long.MIN_VALUE ? 0 : rec.getOffsetHour();
-            long minutes = rec.getOffsetMinute() == Long.MIN_VALUE ? 0 : rec.getOffsetMinute();
-            long seconds = rec.getOffsetSecond() == Long.MIN_VALUE ? 0 : rec.getOffsetSecond();
-
-            long offsetNanoseconds = sign * (((hours * 60 + minutes) * 60 + seconds) * 1_000_000_000L + nanoseconds);
-            offsetString = formatTimeZoneOffsetString(offsetNanoseconds);
-        }
-
         String name = rec.getTimeZoneIANAName();
+        String offsetString = rec.getTimeZoneNumericUTCOffset();
+        if (rec.getZ()) {
+            return JSTemporalTimeZoneRecord.create(true, null, name);
+        }
         return JSTemporalTimeZoneRecord.create(false, offsetString, name);
     }
 
@@ -4050,6 +4023,7 @@ public final class TemporalUtil {
         return trunc(in);
     }
 
+    @TruffleBoundary
     public static boolean canParseAsTimeZoneNumericUTCOffset(String string) {
         try {
             JSTemporalParserRecord rec = (new TemporalParser(string)).parseTimeZoneNumericUTCOffset();

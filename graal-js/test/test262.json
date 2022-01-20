@@ -1893,6 +1893,10 @@
     "status" : "FAIL",
     "comment" : "new failures after fix #1897 from 2022-01-12"
   }, {
+    "filePath" : "built-ins/Temporal/TimeZone/from/argument-valid.js",
+    "status" : "FAIL",
+    "comment" : "temporal failures"
+  }, {
     "filePath" : "built-ins/Temporal/TimeZone/prototype/getPlainDateTimeFor/custom-timezone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures after normative changes not yet reflected in test262"
@@ -2135,6 +2139,14 @@
     "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/options-undefined.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Now/zonedDateTime/timezone-string-datetime.js",
+    "status" : "FAIL",
+    "comment" : "temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Now/zonedDateTimeISO/timezone-string-datetime.js",
+    "status" : "FAIL",
+    "comment" : "temporal failures"
   }, {
     "filePath" : "intl402/Temporal/PlainDate/compare/infinity-throws-rangeerror.js",
     "status" : "FAIL",

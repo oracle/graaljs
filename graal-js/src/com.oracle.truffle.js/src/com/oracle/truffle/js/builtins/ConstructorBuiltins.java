@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1312,17 +1312,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected DynamicObject constructTemporalTimeZone(DynamicObject newTarget, Object identifier,
                         @Cached("create()") JSToStringNode toStringNode) {
             String id = toStringNode.executeString(identifier);
-            String canonical = null;
-            try {
-                long offsetNanoseconds = TemporalUtil.parseTimeZoneOffsetString(id);
-                canonical = TemporalUtil.formatTimeZoneOffsetString(offsetNanoseconds);
-            } catch (Exception ex) {
+            boolean canParse = TemporalUtil.canParseAsTimeZoneNumericUTCOffset(id);
+            if (!canParse) {
                 if (!TemporalUtil.isValidTimeZoneName(id)) {
-                    throw Errors.createRangeError("invalid TimeZone");
+                    throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
                 }
-                canonical = TemporalUtil.canonicalizeTimeZoneName(id);
+                id = TemporalUtil.canonicalizeTimeZoneName(id);
             }
-            return swapPrototype(TemporalUtil.createTemporalTimeZone(getContext(), canonical), newTarget);
+            return swapPrototype(TemporalUtil.createTemporalTimeZone(getContext(), id), newTarget);
         }
 
         @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,6 +78,7 @@ public final class TemporalParser {
     private String calendar;
     private String timeZoneIANAName;
     private String timeZoneUTCOffsetName;
+    private String timeZoneNumericUTCOffset;
     private String timeZoneEtcName;
     private String utcDesignator;
 
@@ -270,7 +271,7 @@ public final class TemporalParser {
             // TODO MinuteSecond has 59 seconds, TimeSecond has 60 seconds
             return new JSTemporalParserRecord(utcDesignator != null, prepare(year, Long.MAX_VALUE), prepare(month, 12), prepare(day, 31), prepare(hour, 23), prepare(minute, 59), prepare(second, 60),
                             fraction, offsetSign, prepare(offsetHour, 23), prepare(offsetMinute, 59), prepare(offsetSecond, 59), offsetFraction, timeZoneIANAName, timeZoneEtcName,
-                            timeZoneUTCOffsetName, calendar);
+                            timeZoneUTCOffsetName, calendar, timeZoneNumericUTCOffset);
         } catch (Exception ex) {
             return null;
         }
@@ -306,6 +307,7 @@ public final class TemporalParser {
         calendar = null;
         timeZoneIANAName = null;
         timeZoneUTCOffsetName = null;
+        timeZoneNumericUTCOffset = null;
         timeZoneEtcName = null;
         utcDesignator = null;
 
@@ -408,6 +410,7 @@ public final class TemporalParser {
             offsetMinute = matcher.group(4);
             offsetSecond = matcher.group(6);
             offsetFraction = matcher.group(8);
+            timeZoneNumericUTCOffset = rest.substring(matcher.start(1), matcher.end(3) != -1 ? matcher.end(3) : rest.length());
 
             move(matcher.end(3));
 
@@ -432,6 +435,7 @@ public final class TemporalParser {
             offsetMinute = matcher.group(4);
             offsetSecond = matcher.group(6);
             offsetFraction = matcher.group(8);
+            timeZoneNumericUTCOffset = rest.substring(matcher.start(1), matcher.end(3) != -1 ? matcher.end(3) : rest.length());
 
             if (offsetHour == null) {
                 return false;
