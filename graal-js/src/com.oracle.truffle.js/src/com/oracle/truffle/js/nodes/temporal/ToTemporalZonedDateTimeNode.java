@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.MatchBehaviour;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetBehaviour;
@@ -129,13 +130,21 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             String string = toStringNode.executeString(item);
             JSTemporalZonedDateTimeRecord resultZDT = TemporalUtil.parseTemporalZonedDateTimeString(string);
             result = resultZDT;
+            String timeZoneName = resultZDT.getTimeZoneName();
+            assert !TemporalUtil.isNullish(timeZoneName);
+            if (!TemporalUtil.canParseAsTimeZoneNumericUTCOffset(timeZoneName)) {
+                if (!TemporalUtil.isValidTimeZoneName(timeZoneName)) {
+                    throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
+                }
+                timeZoneName = TemporalUtil.canonicalizeTimeZoneName(timeZoneName);
+            }
+            offsetString = resultZDT.getTimeZoneOffsetString();
             if (resultZDT.getTimeZoneZ()) {
                 offsetBehaviour = OffsetBehaviour.EXACT;
             } else {
                 offsetBehaviour = OffsetBehaviour.WALL;
             }
-            timeZone = TemporalUtil.createTemporalTimeZone(ctx, resultZDT.getTimeZoneName());
-            offsetString = resultZDT.getTimeZoneOffsetString();
+            timeZone = TemporalUtil.createTemporalTimeZone(ctx, timeZoneName);
             calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, realm, result.getCalendar());
             matchBehaviour = MatchBehaviour.MATCH_MINUTES;
         }

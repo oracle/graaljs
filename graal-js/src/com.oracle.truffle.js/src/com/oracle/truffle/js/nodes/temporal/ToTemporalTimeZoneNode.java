@@ -41,18 +41,22 @@
 package com.oracle.truffle.js.nodes.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.UTC;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -64,6 +68,7 @@ public abstract class ToTemporalTimeZoneNode extends JavaScriptBaseNode {
     private final ConditionProfile isTimeZoneProfile = ConditionProfile.createBinaryProfile();
     private final ConditionProfile hasProperty1Profile = ConditionProfile.createBinaryProfile();
     private final ConditionProfile hasProperty2Profile = ConditionProfile.createBinaryProfile();
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     private final JSContext ctx;
     @Child protected PropertyGetNode getTimeZoneNode;
@@ -96,7 +101,27 @@ public abstract class ToTemporalTimeZoneNode extends JavaScriptBaseNode {
             }
         }
         String identifier = toStringNode.executeString(temporalTimeZoneLike);
-        return TemporalUtil.createTemporalTimeZone(ctx, TemporalUtil.parseTemporalTimeZone(identifier));
+        JSTemporalTimeZoneRecord parseResult = TemporalUtil.parseTemporalTimeZoneString(identifier);
+        if (!TemporalUtil.isNullish(parseResult.getName())) {
+            boolean canParse = TemporalUtil.canParseAsTimeZoneNumericUTCOffset(parseResult.getName());
+            if (canParse) {
+                if (!TemporalUtil.isNullish(parseResult.getOffsetString()) &&
+                                TemporalUtil.parseTimeZoneOffsetString(parseResult.getOffsetString()) != TemporalUtil.parseTimeZoneOffsetString(parseResult.getName())) {
+                    errorBranch.enter();
+                    throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
+                }
+            } else {
+                if (!TemporalUtil.isValidTimeZoneName(parseResult.getName())) {
+                    errorBranch.enter();
+                    throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
+                }
+            }
+            return TemporalUtil.createTemporalTimeZone(ctx, TemporalUtil.canonicalizeTimeZoneName(parseResult.getName()));
+        }
+        if (parseResult.isZ()) {
+            return TemporalUtil.createTemporalTimeZone(ctx, UTC);
+        }
+        return TemporalUtil.createTemporalTimeZone(ctx, parseResult.getOffsetString());
     }
 
     private Object getTimeZone(DynamicObject obj) {

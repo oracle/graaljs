@@ -1745,6 +1745,10 @@
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "built-ins/Temporal/Duration/compare/relativeto-string-plaindatetime.js",
+    "status" : "FAIL",
+    "comment" : "new failures after fix #1897 from 2022-01-12"
+  }, {
     "filePath" : "built-ins/Temporal/Duration/compare/relativeto-string-zoneddatetime-wrong-offset.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -1756,6 +1760,10 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-string-datetime.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-string-plaindatetime.js",
+    "status" : "FAIL",
+    "comment" : "new failures after fix #1897 from 2022-01-12"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-string-zoneddatetime-wrong-offset.js",
     "status" : "FAIL",
@@ -1773,6 +1781,10 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-string-plaindatetime.js",
+    "status" : "FAIL",
+    "comment" : "new failures after fix #1897 from 2022-01-12"
+  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-string-zoneddatetime-wrong-offset.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -1788,6 +1800,10 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-string-datetime.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-string-plaindatetime.js",
+    "status" : "FAIL",
+    "comment" : "new failures after fix #1897 from 2022-01-12"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-string-zoneddatetime-wrong-offset.js",
     "status" : "FAIL",
@@ -1805,15 +1821,15 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-string-plaindatetime.js",
+    "status" : "FAIL",
+    "comment" : "new failures after fix #1897 from 2022-01-12"
+  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-string-zoneddatetime-wrong-offset.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-sub-minute-offset.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/Instant/from/timezone-custom.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
@@ -1872,6 +1888,10 @@
     "filePath" : "built-ins/Temporal/TimeZone/basic.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/TimeZone/from/argument-primitive.js",
+    "status" : "FAIL",
+    "comment" : "new failures after fix #1897 from 2022-01-12"
   }, {
     "filePath" : "built-ins/Temporal/TimeZone/prototype/getPlainDateTimeFor/custom-timezone.js",
     "status" : "FAIL",

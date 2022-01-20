@@ -500,6 +500,9 @@ public final class TemporalUtil {
             result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, dateOptions);
             offset = JSObject.get(valueObj, OFFSET);
             timeZone = JSObject.get(valueObj, TIME_ZONE);
+            if (timeZone != Undefined.instance) {
+                timeZone = toTemporalTimeZone(ctx, timeZone);
+            }
             if (offset == Undefined.instance) {
                 offsetBehaviour = OffsetBehaviour.WALL;
             }
@@ -510,7 +513,17 @@ public final class TemporalUtil {
             calendar = toTemporalCalendarWithISODefault(ctx, realm, result.getCalendar());
 
             offset = resultZDT.getTimeZoneOffsetString();
-            timeZone = resultZDT.getTimeZoneName();
+            String timeZoneName = resultZDT.getTimeZoneName();
+            if (!isNullish(timeZoneName)) {
+                // If ParseText(! StringToCodePoints(timeZoneName), TimeZoneNumericUTCOffset)
+                // is not a List of errors
+                if (!isValidTimeZoneName(timeZoneName)) {
+                    throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
+                }
+                timeZoneName = canonicalizeTimeZoneName(timeZoneName);
+                timeZone = createTemporalTimeZone(ctx, timeZoneName);
+            }
+
             if (resultZDT.getTimeZoneZ()) {
                 offsetBehaviour = OffsetBehaviour.EXACT;
             } else {
@@ -519,8 +532,7 @@ public final class TemporalUtil {
             matchBehaviour = MatchBehaviour.MATCH_MINUTES;
         }
         if (!isNullish(timeZone)) {
-            DynamicObject timeZoneObj = toTemporalTimeZone(ctx, timeZone);
-            timeZone = timeZoneObj;
+            DynamicObject timeZoneObj = isNullish(timeZone) ? Undefined.instance : toDynamicObject(timeZone);
             Object offsetNs = 0;
             if (offsetBehaviour == OffsetBehaviour.OPTION) {
                 offsetNs = parseTimeZoneOffsetString(JSRuntime.toString(offset));
@@ -1164,7 +1176,25 @@ public final class TemporalUtil {
             }
         }
         String identifier = JSRuntime.toString(temporalTimeZoneLike);
-        return createTemporalTimeZone(ctx, parseTemporalTimeZone(identifier));
+
+        JSTemporalTimeZoneRecord parseResult = parseTemporalTimeZoneString(identifier);
+        if (!isNullish(parseResult.getName())) {
+            boolean canParse = canParseAsTimeZoneNumericUTCOffset(parseResult.getName());
+            if (canParse) {
+                if (!isNullish(parseResult.getOffsetString()) && parseTimeZoneOffsetString(parseResult.getOffsetString()) != parseTimeZoneOffsetString(parseResult.getName())) {
+                    throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
+                }
+            } else {
+                if (!isValidTimeZoneName(parseResult.getName())) {
+                    throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
+                }
+            }
+            return createTemporalTimeZone(ctx, canonicalizeTimeZoneName(parseResult.getName()));
+        }
+        if (parseResult.isZ()) {
+            return createTemporalTimeZone(ctx, UTC);
+        }
+        return createTemporalTimeZone(ctx, parseResult.getOffsetString());
     }
 
     public static DynamicObject createTemporalTimeZone(JSContext ctx, String identifier) {
@@ -3469,19 +3499,7 @@ public final class TemporalUtil {
         return result;
     }
 
-    @TruffleBoundary
-    public static String parseTemporalTimeZone(String string) {
-        JSTemporalTimeZoneRecord result = parseTemporalTimeZoneString(string);
-        if (!isNullish(result.getName())) {
-            return result.getName();
-        }
-        if (result.isZ()) {
-            return UTC;
-        }
-        return result.getOffsetString();
-    }
-
-    private static JSTemporalTimeZoneRecord parseTemporalTimeZoneString(String string) {
+    public static JSTemporalTimeZoneRecord parseTemporalTimeZoneString(String string) {
         return parseTemporalTimeZoneString(string, false);
     }
 
@@ -3527,12 +3545,6 @@ public final class TemporalUtil {
         }
 
         String name = rec.getTimeZoneIANAName();
-        if (!isNullish(name)) {
-            if (!isValidTimeZoneName(name)) {
-                throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
-            }
-            name = canonicalizeTimeZoneName(name);
-        }
         return JSTemporalTimeZoneRecord.create(false, offsetString, name);
     }
 
@@ -3583,23 +3595,34 @@ public final class TemporalUtil {
             String string = JSRuntime.toString(item);
             JSTemporalZonedDateTimeRecord resultZDT = parseTemporalZonedDateTimeString(string);
             result = resultZDT;
+            String timeZoneName = resultZDT.getTimeZoneName();
+            assert !isNullish(timeZoneName);
+            if (!canParseAsTimeZoneNumericUTCOffset(timeZoneName)) {
+                if (!isValidTimeZoneName(timeZoneName)) {
+                    throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
+                }
+                timeZoneName = canonicalizeTimeZoneName(timeZoneName);
+            }
+            offsetString = resultZDT.getTimeZoneOffsetString();
             if (resultZDT.getTimeZoneZ()) {
                 offsetBehaviour = OffsetBehaviour.EXACT;
             } else if (offsetString == null) {
                 offsetBehaviour = OffsetBehaviour.WALL;
             }
-            timeZone = createTemporalTimeZone(ctx, resultZDT.getTimeZoneName());
-            offsetString = resultZDT.getTimeZoneOffsetString();
+            timeZone = createTemporalTimeZone(ctx, timeZoneName);
             calendar = toTemporalCalendarWithISODefault(ctx, realm, result.getCalendar());
             matchBehaviour = MatchBehaviour.MATCH_MINUTES;
         }
-        long offsetNanoseconds = parseTimeZoneOffsetString(offsetString);
-        String disambiguation = toTemporalDisambiguation(options);
-        String offset = toTemporalOffset(options, REJECT);
-        BigInt epochNanoseconds = interpretISODateTimeOffset(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(),
+        long offsetNanoseconds = 0;
+        if (offsetBehaviour == OffsetBehaviour.OPTION) {
+            offsetNanoseconds = TemporalUtil.parseTimeZoneOffsetString(offsetString);
+        }
+        String disambiguation = TemporalUtil.toTemporalDisambiguation(options);
+        String offset = TemporalUtil.toTemporalOffset(options, REJECT);
+        BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(),
                         result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNanoseconds, timeZone, disambiguation, offset,
                         matchBehaviour);
-        return createTemporalZonedDateTime(ctx, epochNanoseconds, timeZone, calendar);
+        return TemporalUtil.createTemporalZonedDateTime(ctx, epochNanoseconds, timeZone, calendar);
     }
 
     public static String toTemporalOffset(DynamicObject options, String fallback, TemporalGetOptionNode getOptionNode) {
@@ -4025,5 +4048,17 @@ public final class TemporalUtil {
 
     public static long integralPartOf(double in) {
         return trunc(in);
+    }
+
+    public static boolean canParseAsTimeZoneNumericUTCOffset(String string) {
+        try {
+            JSTemporalParserRecord rec = (new TemporalParser(string)).parseTimeZoneNumericUTCOffset();
+            if (rec == null) {
+                return false; // it cannot be parsed
+            }
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
     }
 }
