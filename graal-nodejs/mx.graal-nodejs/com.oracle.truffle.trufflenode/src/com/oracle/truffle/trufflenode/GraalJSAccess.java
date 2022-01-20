@@ -2224,7 +2224,7 @@ public final class GraalJSAccess {
     }
 
     private static boolean isBootstrapSource(String sourceName) {
-        return sourceName.startsWith("internal/per_context") || sourceName.startsWith("internal/bootstrap");
+        return sourceName.startsWith("node:internal/per_context") || sourceName.startsWith("node:internal/bootstrap");
     }
 
     public Object scriptCompile(Object context, Object sourceCode, Object fileName, Object hostDefinedOptions) {
