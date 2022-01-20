@@ -80,7 +80,9 @@ public:
 
     inline void ReferenceAdded() {
         ref_count++;
-#ifdef DEBUG
+// A weird workaround for a weird crash of graal-nodejs compiled by devkit:VS2019-16.9.3+1.
+// node.exe terminates before! it reaches wmain() when this debugging code is commented out?!?
+#if defined(DEBUG) || (defined(_MSC_VER) && _MSC_FULL_VER == 192829913)
         if (ref_count > 1000 || ref_count <= 0) {
             fprintf(stderr, "Reference counting error (add)?\n");
         }
@@ -88,7 +90,7 @@ public:
     }
 
     inline void ReferenceRemoved() {
-#ifdef DEBUG
+#if defined(DEBUG) || (defined(_MSC_VER) && _MSC_FULL_VER == 192829913)
         if (ref_count > 1000 || ref_count <= 0) {
             fprintf(stderr, "Reference counting error (rem)?\n");
         }
