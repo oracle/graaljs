@@ -48,12 +48,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 
-/**
- *
- * @author Jan Stola
- */
 public final class UnboundScript {
-    private static final boolean IS_WINDOWS = System.getProperty("os.name").contains("Windows");
     private static int lastId;
     private final int id;
     private final Source source;
