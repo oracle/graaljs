@@ -85,13 +85,13 @@ EXPORT_TO_JS(ResourceConstraints) {
     ResourceConstraints* rc = new ResourceConstraints();
 
     rc->set_max_young_generation_size_in_bytes(1234);
-    rc->set_max_old_space_size(2345);
+    rc->set_max_old_generation_size_in_bytes(2345);
 
     if (rc->max_young_generation_size_in_bytes() != 1234) {
         Fail("get max_young_generation_size_in_bytes");
     }
-    if (rc->max_old_space_size() != 2345) {
-        Fail("get max_old_space_size");
+    if (rc->max_old_generation_size_in_bytes() != 2345) {
+        Fail("get max_old_generation_size_in_bytes");
     }
 
     delete rc;
