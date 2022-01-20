@@ -3764,28 +3764,70 @@ namespace v8 {
         return nullptr;
     }
 
-    void Object::CheckCast(v8::Value* obj) {}
-    void Promise::CheckCast(v8::Value* obj) {}
-    void Function::CheckCast(v8::Value* obj) {}
+    void String::ExternalStringResource::CheckCachedDataInvariants() const {
+    }
+
+    void String::ExternalOneByteStringResource::CheckCachedDataInvariants() const {
+    }
+
+    void String::VerifyExternalStringResourceBase(ExternalStringResourceBase* v, Encoding encoding) const {
+    }
+
+    void TracedReferenceBase::CheckValue() const {
+    }
+
+    void AccessorSignature::CheckCast(class v8::Data* that) {}
     void Array::CheckCast(v8::Value* obj) {}
-    void Uint32Array::CheckCast(v8::Value* obj) {}
-    void Float64Array::CheckCast(v8::Value* obj) {}
-    void Promise::Resolver::CheckCast(v8::Value* obj) {}
     void ArrayBuffer::CheckCast(v8::Value* obj) {}
-    void TypedArray::CheckCast(v8::Value* obj) {}
-    void DataView::CheckCast(v8::Value* obj) {}
     void ArrayBufferView::CheckCast(v8::Value* obj) {}
-    void Uint8Array::CheckCast(v8::Value* obj) {}
-    void SharedArrayBuffer::CheckCast(v8::Value* obj) {}
-    void Proxy::CheckCast(v8::Value* obj) {}
-    void Date::CheckCast(v8::Value* obj) {}
-    void RegExp::CheckCast(v8::Value* that) {}
-    void External::CheckCast(v8::Value* that) {}
     void BigInt64Array::CheckCast(v8::Value* that) {}
+    void BigInt::CheckCast(v8::Data* that) {}
+    void BigIntObject::CheckCast(class v8::Value* that) {}
     void BigUint64Array::CheckCast(v8::Value* that) {}
-    void Private::CheckCast(v8::Data* that) {}
+    void Boolean::CheckCast(v8::Data* that) {}
+    void BooleanObject::CheckCast(class v8::Value* that) {}
+    void Context::CheckCast(v8::Data* that) {}
+    void DataView::CheckCast(v8::Value* obj) {}
+    void Date::CheckCast(v8::Value* obj) {}
+    void External::CheckCast(v8::Value* that) {}
+    void Float32Array::CheckCast(class v8::Value* that) {}
+    void Float64Array::CheckCast(v8::Value* obj) {}
+    void Function::CheckCast(v8::Value* obj) {}
+    void FunctionTemplate::CheckCast(v8::Data* that) {}
+    void Int16Array::CheckCast(class v8::Value* that) {}
+    void Int32::CheckCast(v8::Data* that) {}
+    void Int32Array::CheckCast(v8::Value* that) {}
+    void Int8Array::CheckCast(class v8::Value* that) {}
+    void Integer::CheckCast(v8::Data* that) {}
     void Map::CheckCast(v8::Value* that) {}
+    void Module::CheckCast(class v8::Data* that) {}
+    void ModuleRequest::CheckCast(v8::Data* that) {}
+    void Name::CheckCast(v8::Data* that) {}
+    void Number::CheckCast(v8::Data* that) {}
+    void NumberObject::CheckCast(class v8::Value* that) {}
+    void Object::CheckCast(v8::Value* obj) {}
+    void ObjectTemplate::CheckCast(v8::Data* that) {}
+    void Private::CheckCast(v8::Data* that) {}
+    void Promise::CheckCast(v8::Value* obj) {}
+    void Promise::Resolver::CheckCast(v8::Value* obj) {}
+    void Proxy::CheckCast(v8::Value* obj) {}
+    void RegExp::CheckCast(v8::Value* that) {}
     void Set::CheckCast(v8::Value* that) {}
+    void SharedArrayBuffer::CheckCast(v8::Value* obj) {}
+    void Signature::CheckCast(class v8::Data* that) {}
+    void String::CheckCast(v8::Data* that) {}
+    void StringObject::CheckCast(class v8::Value* that) {}
+    void Symbol::CheckCast(v8::Data* that) {}
+    void SymbolObject::CheckCast(class v8::Value* that) {}
+    void TypedArray::CheckCast(v8::Value* obj) {}
+    void Uint16Array::CheckCast(class v8::Value* that) {}
+    void Uint32::CheckCast(v8::Data* that) {}
+    void Uint32Array::CheckCast(v8::Value* obj) {}
+    void Uint8Array::CheckCast(v8::Value* obj) {}
+    void Uint8ClampedArray::CheckCast(class v8::Value* that) {}
+    void Value::CheckCast(v8::Data* that) {}
+    void WasmMemoryObject::CheckCast(class v8::Value* that) {}
+    void WasmModuleObject::CheckCast(class v8::Value* that) {}
 
 }
 
