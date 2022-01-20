@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2015, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -128,7 +128,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         else:
             extra_flags = []
 
-        _mxrun(['python', join(_suite.dir, 'configure'),
+        _mxrun(['python3', join(_suite.dir, 'configure'),
                 '--partly-static',
                 '--without-dtrace',
                 '--without-inspector',
@@ -149,7 +149,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
 
         # put headers for native modules into out/headers
         _setEnvVar('HEADERS_ONLY', '1', build_env)
-        _mxrun(['python', join('tools', 'install.py'), 'install', join('out', 'headers'), sep], quiet_if_successful=not mx.get_opts().verbose, env=build_env)
+        _mxrun(['python3', join('tools', 'install.py'), 'install', join('out', 'headers'), sep], quiet_if_successful=not mx.get_opts().verbose, env=build_env)
 
         post_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=True)
         mx.logv('Newest time-stamp before building: {}\nNewest time-stamp after building: {}\nHas built? {}'.format(pre_ts, post_ts, post_ts.isNewerThan(pre_ts)))
@@ -315,14 +315,14 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         if not _is_windows:
             macroFiles.append(join('tools', 'js2c_macros', 'notrace_macros.py'))
 
-        mx.run(['python', join('tools', 'expand-js-modules.py'), outputDir] + [join('lib', m) for m in moduleSet] + macroFiles,
+        mx.run(['python3', join('tools', 'expand-js-modules.py'), outputDir] + [join('lib', m) for m in moduleSet] + macroFiles,
                cwd=_suite.dir)
         if not (hasattr(self.args, "jdt") and self.args.jdt and not self.args.force_javac):
             mx.run_java(['-cp', mx.classpath([snapshotToolDistribution]),
                     mx.distribution(snapshotToolDistribution).mainClass,
                     '--binary', '--wrapped', '--outdir=' + outputDirBin, '--indir=' + outputDirBin] + ['--file=' + m for m in moduleSet],
                     cwd=outputDirBin)
-        mx.run(['python', join(_suite.dir, 'tools', 'snapshot2c.py'), 'node_snapshots.h'] + [join('lib', m + '.bin') for m in moduleSet],
+        mx.run(['python3', join(_suite.dir, 'tools', 'snapshot2c.py'), 'node_snapshots.h'] + [join('lib', m + '.bin') for m in moduleSet],
                cwd=outputDir)
 
     def clean(self, forBuild=False):
@@ -361,7 +361,7 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-esa', '-Xrs'] + extraArgs + vmArgs))
     _setEnvVar('NODE_STACK_SIZE', '4000000')
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
-    return mx.run(['python', join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
+    return mx.run(['python3', join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
 
 def setLibraryPath():
     if _java_compliance() < '9' and _current_os not in ['darwin', 'windows']:
