@@ -44,7 +44,8 @@
 
 #include "include/v8.h"
 
-namespace v8::internal {
+namespace v8 {
+  namespace internal {
 
   class MicrotaskQueue : public v8::MicrotaskQueue {
   public:
@@ -57,6 +58,7 @@ namespace v8::internal {
     int GetMicrotasksScopeDepth() const;
   };
 
+  }
 }
 
 #endif /* MICROTASK_QUEUE_H_ */
