@@ -66,10 +66,12 @@ void v8::internal::MicrotaskQueue::PerformCheckpoint(v8::Isolate* isolate) {
 
 bool v8::internal::MicrotaskQueue::IsRunningMicrotasks() const {
     TRACE
+    return false;
 }
 
 int v8::internal::MicrotaskQueue::GetMicrotasksScopeDepth() const {
     TRACE
+    return 0;
 }
 
 #undef TRACE

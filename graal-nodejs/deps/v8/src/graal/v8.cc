@@ -3742,6 +3742,11 @@ namespace v8 {
     CFunctionInfo::CFunctionInfo(const CTypeInfo& return_info, unsigned int arg_count, const CTypeInfo* arg_info) : return_info_(return_info), arg_count_(arg_count), arg_info_(arg_info) {
     }
 
+    const CTypeInfo& CFunctionInfo::ArgumentInfo(unsigned int index) const {
+        TRACE
+        return *((CTypeInfo*) nullptr);
+    }
+
     CFunction::CFunction(const void* address, const CFunctionInfo* type_info) : address_(address), type_info_(type_info) {
     }
 
