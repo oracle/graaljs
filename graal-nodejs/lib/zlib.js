@@ -69,6 +69,10 @@ const {
   kMaxLength
 } = require('buffer');
 const { owner_symbol } = require('internal/async_hooks').symbols;
+const {
+  validateFunction,
+  validateNumber,
+} = require('internal/validators');
 
 const kFlushFlag = Symbol('kFlushFlag');
 const kError = Symbol('kError');
@@ -107,8 +111,7 @@ for (const ckey of ObjectKeys(codes)) {
 }
 
 function zlibBuffer(engine, buffer, callback) {
-  if (typeof callback !== 'function')
-    throw new ERR_INVALID_ARG_TYPE('callback', 'function', callback);
+  validateFunction(callback, 'callback');
   // Streams do not support non-Uint8Array ArrayBufferViews yet. Convert it to a
   // Buffer without copying.
   if (isArrayBufferView(buffer) && !isUint8Array(buffer)) {
@@ -209,10 +212,7 @@ const checkFiniteNumber = hideStackFrames((number, name) => {
     return false;
   }
 
-  // Other non-numbers
-  if (typeof number !== 'number') {
-    throw new ERR_INVALID_ARG_TYPE(name, 'number', number);
-  }
+  validateNumber(number, name);
 
   // Infinite numbers
   throw new ERR_OUT_OF_RANGE(name, 'a finite number', number);
@@ -343,6 +343,11 @@ ZlibBase.prototype.reset = function() {
 // internally, when the last chunk has been written.
 ZlibBase.prototype._flush = function(callback) {
   this._transform(Buffer.alloc(0), '', callback);
+};
+
+// Force Transform compat behavior.
+ZlibBase.prototype._final = function(callback) {
+  callback();
 };
 
 // If a flush is scheduled while another flush is still pending, a way to figure

@@ -577,7 +577,7 @@ class TestCase(object):
     full_command = self.context.processor(command)
     output = Execute(full_command,
                      self.context,
-                     self.context.GetTimeout(self.mode),
+                     self.context.GetTimeout(self.mode, self.config.section),
                      env,
                      disable_core_files = self.disable_core_files)
     return TestOutput(self,
@@ -896,8 +896,7 @@ class LiteralTestSuite(TestSuite):
 
 
 TIMEOUT_SCALEFACTOR = {
-    'armv6' : { 'debug' : 12, 'release' : 3 },  # The ARM buildbots are slow.
-    'arm'   : { 'debug' :  8, 'release' : 2 },
+    'arm'   : { 'debug' :  8, 'release' : 2 }, # The ARM buildbots are slow.
     'ia32'  : { 'debug' :  4, 'release' : 1 },
     'ppc'   : { 'debug' :  4, 'release' : 1 },
     's390'  : { 'debug' :  4, 'release' : 1 } }
@@ -943,8 +942,11 @@ class Context(object):
 
     return name
 
-  def GetTimeout(self, mode):
-    return self.timeout * TIMEOUT_SCALEFACTOR[ARCH_GUESS or 'ia32'][mode]
+  def GetTimeout(self, mode, section=''):
+    timeout = self.timeout * TIMEOUT_SCALEFACTOR[ARCH_GUESS or 'ia32'][mode]
+    if section == 'pummel' or section == 'benchmark':
+      timeout = timeout * 6
+    return timeout
 
 def RunTestCases(cases_to_run, progress, tasks, flaky_tests_mode):
   progress = PROGRESS_INDICATORS[progress](cases_to_run, flaky_tests_mode)

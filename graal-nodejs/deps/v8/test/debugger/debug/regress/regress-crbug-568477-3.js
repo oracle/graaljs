@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// Flags: --ignore-unhandled-promises
 
 var Debug = debug.Debug;
 var expected = ["debugger;", "var x = y;", "debugger;", "var x = y;"];
@@ -12,7 +13,7 @@ function listener(event, exec_state, event_data, data) {
   try {
     var line = exec_state.frame(0).sourceLineText().trimLeft();
     log.push(line);
-    if (line == "debugger;") exec_state.prepareStep(Debug.StepAction.StepNext);
+    if (line == "debugger;") exec_state.prepareStep(Debug.StepAction.StepOver);
   } catch (e) {
     %AbortJS(e + "\n" + e.stack);
   }

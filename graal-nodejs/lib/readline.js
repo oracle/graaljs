@@ -59,10 +59,19 @@ const {
   StringPrototypeStartsWith,
   StringPrototypeTrim,
   Promise,
+  PromiseReject,
   Symbol,
   SymbolAsyncIterator,
   SafeStringIterator,
 } = primordials;
+
+const {
+  clearLine,
+  clearScreenDown,
+  cursorTo,
+  moveCursor,
+} = require('internal/readline/callbacks');
+const emitKeypressEvents = require('internal/readline/emitKeypressEvents');
 
 const {
   AbortError,
@@ -70,9 +79,7 @@ const {
 } = require('internal/errors');
 
 const {
-  ERR_INVALID_CALLBACK,
-  ERR_INVALID_CURSOR_POS,
-  ERR_INVALID_OPT_VALUE,
+  ERR_INVALID_ARG_VALUE,
 } = codes;
 const {
   validateAbortSignal,
@@ -90,27 +97,20 @@ const {
   charLengthAt,
   charLengthLeft,
   commonPrefix,
-  CSI,
-  emitKeys,
   kSubstringSearch,
 } = require('internal/readline/utils');
 
 const { promisify } = require('internal/util');
 
-const { clearTimeout, setTimeout } = require('timers');
-const {
-  kEscape,
-  kClearToLineBeginning,
-  kClearToLineEnd,
-  kClearLine,
-  kClearScreenDown
-} = CSI;
-
-
 const { StringDecoder } = require('string_decoder');
 
 // Lazy load Readable for startup performance.
 let Readable;
+
+/**
+ * @typedef {import('./stream.js').Readable} Readable
+ * @typedef {import('./stream.js').Writable} Writable
+ */
 
 const kHistorySize = 30;
 const kMincrlfDelay = 100;
@@ -118,13 +118,32 @@ const kMincrlfDelay = 100;
 const lineEnding = /\r?\n|\r(?!\n)/;
 
 const kLineObjectStream = Symbol('line object stream');
-
-const KEYPRESS_DECODER = Symbol('keypress-decoder');
-const ESCAPE_DECODER = Symbol('escape-decoder');
+const kQuestionCancel = Symbol('kQuestionCancel');
 
 // GNU readline library - keyseq-timeout is 500ms (default)
 const ESCAPE_CODE_TIMEOUT = 500;
 
+/**
+ * Creates a new `readline.Interface` instance.
+ * @param {Readable | {
+ *   input: Readable;
+ *   output: Writable;
+ *   completer?: Function;
+ *   terminal?: boolean;
+ *   history?: string[];
+ *   historySize?: number;
+ *   removeHistoryDuplicates?: boolean;
+ *   prompt?: string;
+ *   crlfDelay?: number;
+ *   escapeCodeTimeout?: number;
+ *   tabSize?: number;
+ *   signal?: AbortSignal;
+ *   }} input
+ * @param {Writable} [output]
+ * @param {Function} [completer]
+ * @param {boolean} [terminal]
+ * @returns {Interface}
+ */
 function createInterface(input, output, completer, terminal) {
   return new Interface(input, output, completer, terminal);
 }
@@ -171,8 +190,8 @@ function Interface(input, output, completer, terminal) {
       if (NumberIsFinite(input.escapeCodeTimeout)) {
         this.escapeCodeTimeout = input.escapeCodeTimeout;
       } else {
-        throw new ERR_INVALID_OPT_VALUE(
-          'escapeCodeTimeout',
+        throw new ERR_INVALID_ARG_VALUE(
+          'input.escapeCodeTimeout',
           this.escapeCodeTimeout
         );
       }
@@ -187,7 +206,7 @@ function Interface(input, output, completer, terminal) {
   }
 
   if (completer !== undefined && typeof completer !== 'function') {
-    throw new ERR_INVALID_OPT_VALUE('completer', completer);
+    throw new ERR_INVALID_ARG_VALUE('completer', completer);
   }
 
   if (history === undefined) {
@@ -203,7 +222,7 @@ function Interface(input, output, completer, terminal) {
   if (typeof historySize !== 'number' ||
       NumberIsNaN(historySize) ||
       historySize < 0) {
-    throw new ERR_INVALID_OPT_VALUE.RangeError('historySize', historySize);
+    throw new ERR_INVALID_ARG_VALUE.RangeError('historySize', historySize);
   }
 
   // Backwards compat; check the isTTY prop of the output stream
@@ -232,7 +251,7 @@ function Interface(input, output, completer, terminal) {
       };
   }
 
-  this._questionCancel = FunctionPrototypeBind(_questionCancel, this);
+  this[kQuestionCancel] = FunctionPrototypeBind(_questionCancel, this);
 
   this.setPrompt(prompt);
 
@@ -240,6 +259,10 @@ function Interface(input, output, completer, terminal) {
 
   if (process.env.TERM === 'dumb') {
     this._ttyWrite = FunctionPrototypeBind(_ttyWriteDumb, this);
+  }
+
+  function onerror(err) {
+    self.emit('error', err);
   }
 
   function ondata(data) {
@@ -279,9 +302,12 @@ function Interface(input, output, completer, terminal) {
 
   this[kLineObjectStream] = undefined;
 
+  input.on('error', onerror);
+
   if (!this.terminal) {
     function onSelfCloseWithoutTerminal() {
       input.removeListener('data', ondata);
+      input.removeListener('error', onerror);
       input.removeListener('end', onend);
     }
 
@@ -292,6 +318,7 @@ function Interface(input, output, completer, terminal) {
   } else {
     function onSelfCloseWithTerminal() {
       input.removeListener('keypress', onkeypress);
+      input.removeListener('error', onerror);
       input.removeListener('end', ontermend);
       if (output !== null && output !== undefined) {
         output.removeListener('resize', onresize);
@@ -347,11 +374,19 @@ ObjectDefineProperty(Interface.prototype, 'columns', {
   }
 });
 
+/**
+ * Sets the prompt written to the output.
+ * @param {string} prompt
+ * @returns {void}
+ */
 Interface.prototype.setPrompt = function(prompt) {
   this._prompt = prompt;
 };
 
-
+/**
+ * Returns the current prompt used by `rl.prompt()`.
+ * @returns {string}
+ */
 Interface.prototype.getPrompt = function() {
   return this._prompt;
 };
@@ -367,7 +402,11 @@ Interface.prototype._setRawMode = function(mode) {
   return wasInRawMode;
 };
 
-
+/**
+ * Writes the configured `prompt` to a new line in `output`.
+ * @param {boolean} [preserveCursor]
+ * @returns {void}
+ */
 Interface.prototype.prompt = function(preserveCursor) {
   if (this.paused) this.resume();
   if (this.terminal && process.env.TERM !== 'dumb') {
@@ -378,14 +417,24 @@ Interface.prototype.prompt = function(preserveCursor) {
   }
 };
 
-
+/**
+ * Displays `query` by writing it to the `output`.
+ * @param {string} query
+ * @param {{ signal?: AbortSignal; }} [options]
+ * @param {Function} cb
+ * @returns {void}
+ */
 Interface.prototype.question = function(query, options, cb) {
   cb = typeof options === 'function' ? options : cb;
-  options = typeof options === 'object' ? options : {};
+  options = typeof options === 'object' && options !== null ? options : {};
 
   if (options.signal) {
+    if (options.signal.aborted) {
+      return;
+    }
+
     options.signal.addEventListener('abort', () => {
-      this._questionCancel();
+      this[kQuestionCancel]();
     }, { once: true });
   }
 
@@ -402,7 +451,11 @@ Interface.prototype.question = function(query, options, cb) {
 };
 
 Interface.prototype.question[promisify.custom] = function(query, options) {
-  options = typeof options === 'object' ? options : {};
+  options = typeof options === 'object' && options !== null ? options : {};
+
+  if (options.signal && options.signal.aborted) {
+    return PromiseReject(new AbortError());
+  }
 
   return new Promise((resolve, reject) => {
     this.question(query, options, resolve);
@@ -519,7 +572,10 @@ Interface.prototype._refreshLine = function() {
   this.prevRows = cursorPos.rows;
 };
 
-
+/**
+ * Closes the `readline.Interface` instance.
+ * @returns {void}
+ */
 Interface.prototype.close = function() {
   if (this.closed) return;
   this.pause();
@@ -530,7 +586,10 @@ Interface.prototype.close = function() {
   this.emit('close');
 };
 
-
+/**
+ * Pauses the `input` stream.
+ * @returns {void | Interface}
+ */
 Interface.prototype.pause = function() {
   if (this.paused) return;
   this.input.pause();
@@ -539,7 +598,10 @@ Interface.prototype.pause = function() {
   return this;
 };
 
-
+/**
+ * Resumes the `input` stream if paused.
+ * @returns {void | Interface}
+ */
 Interface.prototype.resume = function() {
   if (!this.paused) return;
   this.input.resume();
@@ -548,7 +610,18 @@ Interface.prototype.resume = function() {
   return this;
 };
 
-
+/**
+ * Writes either `data` or a `key` sequence identified by
+ * `key` to the `output`.
+ * @param {string} d
+ * @param {{
+ *   ctrl?: boolean;
+ *   meta?: boolean;
+ *   shift?: boolean;
+ *   name?: string;
+ *   }} [key]
+ * @returns {void}
+ */
 Interface.prototype.write = function(d, key) {
   if (this.paused) this.resume();
   if (this.terminal) {
@@ -871,7 +944,14 @@ Interface.prototype._getDisplayPos = function(str) {
   return { cols, rows };
 };
 
-// Returns current cursor's position and line
+/**
+ * Returns the real position of the cursor in relation
+ * to the input prompt + string.
+ * @returns {{
+ *   rows: number;
+ *   cols: number;
+ *   }}
+ */
 Interface.prototype.getCursorPos = function() {
   const strBeforeCursor = this._prompt +
                           StringPrototypeSlice(this.line, 0, this.cursor);
@@ -1200,6 +1280,11 @@ Interface.prototype._ttyWrite = function(s, key) {
   }
 };
 
+/**
+ * Creates an `AsyncIterator` object that iterates through
+ * each line in the input stream as a string.
+ * @returns {Symbol.AsyncIterator}
+ */
 Interface.prototype[SymbolAsyncIterator] = function() {
   if (this[kLineObjectStream] === undefined) {
     if (Readable === undefined) {
@@ -1219,12 +1304,17 @@ Interface.prototype[SymbolAsyncIterator] = function() {
     });
     const lineListener = (input) => {
       if (!readable.push(input)) {
+        // TODO(rexagod): drain to resume flow
         this.pause();
       }
     };
     const closeListener = () => {
       readable.push(null);
     };
+    const errorListener = (err) => {
+      readable.destroy(err);
+    };
+    this.on('error', errorListener);
     this.on('line', lineListener);
     this.on('close', closeListener);
     this[kLineObjectStream] = readable;
@@ -1232,174 +1322,6 @@ Interface.prototype[SymbolAsyncIterator] = function() {
 
   return this[kLineObjectStream][SymbolAsyncIterator]();
 };
-
-/**
- * accepts a readable Stream instance and makes it emit "keypress" events
- */
-
-function emitKeypressEvents(stream, iface = {}) {
-  if (stream[KEYPRESS_DECODER]) return;
-
-  stream[KEYPRESS_DECODER] = new StringDecoder('utf8');
-
-  stream[ESCAPE_DECODER] = emitKeys(stream);
-  stream[ESCAPE_DECODER].next();
-
-  const triggerEscape = () => stream[ESCAPE_DECODER].next('');
-  const { escapeCodeTimeout = ESCAPE_CODE_TIMEOUT } = iface;
-  let timeoutId;
-
-  function onData(input) {
-    if (stream.listenerCount('keypress') > 0) {
-      const string = stream[KEYPRESS_DECODER].write(input);
-      if (string) {
-        clearTimeout(timeoutId);
-
-        // This supports characters of length 2.
-        iface._sawKeyPress = charLengthAt(string, 0) === string.length;
-        iface.isCompletionEnabled = false;
-
-        let length = 0;
-        for (const character of new SafeStringIterator(string)) {
-          length += character.length;
-          if (length === string.length) {
-            iface.isCompletionEnabled = true;
-          }
-
-          try {
-            stream[ESCAPE_DECODER].next(character);
-            // Escape letter at the tail position
-            if (length === string.length && character === kEscape) {
-              timeoutId = setTimeout(triggerEscape, escapeCodeTimeout);
-            }
-          } catch (err) {
-            // If the generator throws (it could happen in the `keypress`
-            // event), we need to restart it.
-            stream[ESCAPE_DECODER] = emitKeys(stream);
-            stream[ESCAPE_DECODER].next();
-            throw err;
-          }
-        }
-      }
-    } else {
-      // Nobody's watching anyway
-      stream.removeListener('data', onData);
-      stream.on('newListener', onNewListener);
-    }
-  }
-
-  function onNewListener(event) {
-    if (event === 'keypress') {
-      stream.on('data', onData);
-      stream.removeListener('newListener', onNewListener);
-    }
-  }
-
-  if (stream.listenerCount('keypress') > 0) {
-    stream.on('data', onData);
-  } else {
-    stream.on('newListener', onNewListener);
-  }
-}
-
-/**
- * moves the cursor to the x and y coordinate on the given stream
- */
-
-function cursorTo(stream, x, y, callback) {
-  if (callback !== undefined && typeof callback !== 'function')
-    throw new ERR_INVALID_CALLBACK(callback);
-
-  if (typeof y === 'function') {
-    callback = y;
-    y = undefined;
-  }
-
-  if (stream == null || (typeof x !== 'number' && typeof y !== 'number')) {
-    if (typeof callback === 'function')
-      process.nextTick(callback, null);
-    return true;
-  }
-
-  if (typeof x !== 'number')
-    throw new ERR_INVALID_CURSOR_POS();
-
-  const data = typeof y !== 'number' ? CSI`${x + 1}G` : CSI`${y + 1};${x + 1}H`;
-  return stream.write(data, callback);
-}
-
-/**
- * moves the cursor relative to its current location
- */
-
-function moveCursor(stream, dx, dy, callback) {
-  if (callback !== undefined && typeof callback !== 'function')
-    throw new ERR_INVALID_CALLBACK(callback);
-
-  if (stream == null || !(dx || dy)) {
-    if (typeof callback === 'function')
-      process.nextTick(callback, null);
-    return true;
-  }
-
-  let data = '';
-
-  if (dx < 0) {
-    data += CSI`${-dx}D`;
-  } else if (dx > 0) {
-    data += CSI`${dx}C`;
-  }
-
-  if (dy < 0) {
-    data += CSI`${-dy}A`;
-  } else if (dy > 0) {
-    data += CSI`${dy}B`;
-  }
-
-  return stream.write(data, callback);
-}
-
-/**
- * clears the current line the cursor is on:
- *   -1 for left of the cursor
- *   +1 for right of the cursor
- *    0 for the entire line
- */
-
-function clearLine(stream, dir, callback) {
-  if (callback !== undefined && typeof callback !== 'function')
-    throw new ERR_INVALID_CALLBACK(callback);
-
-  if (stream === null || stream === undefined) {
-    if (typeof callback === 'function')
-      process.nextTick(callback, null);
-    return true;
-  }
-
-  const type = dir < 0 ?
-    kClearToLineBeginning :
-    dir > 0 ?
-      kClearToLineEnd :
-      kClearLine;
-  return stream.write(type, callback);
-}
-
-/**
- * clears the screen from the current position of the cursor down
- */
-
-function clearScreenDown(stream, callback) {
-  if (callback !== undefined && typeof callback !== 'function')
-    throw new ERR_INVALID_CALLBACK(callback);
-
-  if (stream === null || stream === undefined) {
-    if (typeof callback === 'function')
-      process.nextTick(callback, null);
-    return true;
-  }
-
-  return stream.write(kClearScreenDown, callback);
-}
 
 module.exports = {
   Interface,

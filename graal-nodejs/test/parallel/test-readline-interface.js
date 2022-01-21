@@ -19,7 +19,7 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-// Flags: --expose-internals --experimental-abortcontroller
+// Flags: --expose-internals
 'use strict';
 const common = require('../common');
 common.skipIfDumbTerminal();
@@ -87,34 +87,16 @@ function assertCursorRowsAndCols(rli, rows, cols) {
   const input = new FakeInput();
 
   // Constructor throws if completer is not a function or undefined
-  assert.throws(() => {
-    readline.createInterface({
-      input,
-      completer: 'string is not valid'
+  ['not an array', 123, 123n, {}, true, Symbol(), null].forEach((invalid) => {
+    assert.throws(() => {
+      readline.createInterface({
+        input,
+        completer: invalid
+      });
+    }, {
+      name: 'TypeError',
+      code: 'ERR_INVALID_ARG_VALUE'
     });
-  }, {
-    name: 'TypeError',
-    code: 'ERR_INVALID_OPT_VALUE'
-  });
-
-  assert.throws(() => {
-    readline.createInterface({
-      input,
-      completer: ''
-    });
-  }, {
-    name: 'TypeError',
-    code: 'ERR_INVALID_OPT_VALUE'
-  });
-
-  assert.throws(() => {
-    readline.createInterface({
-      input,
-      completer: false
-    });
-  }, {
-    name: 'TypeError',
-    code: 'ERR_INVALID_OPT_VALUE'
   });
 
   // Constructor throws if history is not an array
@@ -139,7 +121,7 @@ function assertCursorRowsAndCols(rli, rows, cols) {
       });
     }, {
       name: 'RangeError',
-      code: 'ERR_INVALID_OPT_VALUE'
+      code: 'ERR_INVALID_ARG_VALUE'
     });
   });
 
@@ -977,6 +959,31 @@ for (let i = 0; i < 12; i++) {
     }));
     ac.abort();
     rli.write('bar\n');
+    rli.close();
+  }
+
+  // pre-aborted signal
+  {
+    const signal = AbortSignal.abort();
+    const [rli] = getInterface({ terminal });
+    rli.pause();
+    rli.on('resume', common.mustNotCall());
+    rli.question('hello?', { signal }, common.mustNotCall());
+    rli.close();
+  }
+
+  // pre-aborted signal promisified question
+  {
+    const signal = AbortSignal.abort();
+    const [rli] = getInterface({ terminal });
+    const question = util.promisify(rli.question).bind(rli);
+    rli.on('resume', common.mustNotCall());
+    rli.pause();
+    question('hello?', { signal })
+    .then(common.mustNotCall())
+    .catch(common.mustCall((error) => {
+      assert.strictEqual(error.name, 'AbortError');
+    }));
     rli.close();
   }
 

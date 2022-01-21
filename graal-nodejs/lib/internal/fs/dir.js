@@ -1,6 +1,10 @@
 'use strict';
 
 const {
+  ArrayPrototypePush,
+  ArrayPrototypeSlice,
+  ArrayPrototypeSplice,
+  FunctionPrototypeBind,
   ObjectDefineProperty,
   PromiseReject,
   Symbol,
@@ -14,7 +18,6 @@ const {
   codes: {
     ERR_DIR_CLOSED,
     ERR_DIR_CONCURRENT_OPERATION,
-    ERR_INVALID_CALLBACK,
     ERR_MISSING_ARGS
   }
 } = require('internal/errors');
@@ -28,6 +31,7 @@ const {
   handleErrorFromBinding
 } = require('internal/fs/utils');
 const {
+  validateCallback,
   validateUint32
 } = require('internal/validators');
 
@@ -62,9 +66,10 @@ class Dir {
 
     validateUint32(this[kDirOptions].bufferSize, 'options.bufferSize', true);
 
-    this[kDirReadPromisified] =
-        internalUtil.promisify(this[kDirReadImpl]).bind(this, false);
-    this[kDirClosePromisified] = internalUtil.promisify(this.close).bind(this);
+    this[kDirReadPromisified] = FunctionPrototypeBind(
+      internalUtil.promisify(this[kDirReadImpl]), this, false);
+    this[kDirClosePromisified] = FunctionPrototypeBind(
+      internalUtil.promisify(this.close), this);
   }
 
   get path() {
@@ -82,19 +87,20 @@ class Dir {
 
     if (callback === undefined) {
       return this[kDirReadPromisified]();
-    } else if (typeof callback !== 'function') {
-      throw new ERR_INVALID_CALLBACK(callback);
     }
 
+    validateCallback(callback);
+
     if (this[kDirOperationQueue] !== null) {
-      this[kDirOperationQueue].push(() => {
+      ArrayPrototypePush(this[kDirOperationQueue], () => {
         this[kDirReadImpl](maybeSync, callback);
       });
       return;
     }
 
     if (this[kDirBufferedEntries].length > 0) {
-      const [ name, type ] = this[kDirBufferedEntries].splice(0, 2);
+      const { 0: name, 1: type } =
+        ArrayPrototypeSplice(this[kDirBufferedEntries], 0, 2);
       if (maybeSync)
         process.nextTick(getDirent, this[kDirPath], name, type, callback);
       else
@@ -114,7 +120,7 @@ class Dir {
         return callback(err, result);
       }
 
-      this[kDirBufferedEntries] = result.slice(2);
+      this[kDirBufferedEntries] = ArrayPrototypeSlice(result, 2);
       getDirent(this[kDirPath], result[0], result[1], callback);
     };
 
@@ -136,7 +142,8 @@ class Dir {
     }
 
     if (this[kDirBufferedEntries].length > 0) {
-      const [ name, type ] = this[kDirBufferedEntries].splice(0, 2);
+      const { 0: name, 1: type } =
+          ArrayPrototypeSplice(this[kDirBufferedEntries], 0, 2);
       return getDirent(this[kDirPath], name, type);
     }
 
@@ -153,7 +160,7 @@ class Dir {
       return result;
     }
 
-    this[kDirBufferedEntries] = result.slice(2);
+    this[kDirBufferedEntries] = ArrayPrototypeSlice(result, 2);
     return getDirent(this[kDirPath], result[0], result[1]);
   }
 
@@ -167,9 +174,7 @@ class Dir {
     }
 
     // callback
-    if (typeof callback !== 'function') {
-      throw new ERR_INVALID_CALLBACK(callback);
-    }
+    validateCallback(callback);
 
     if (this[kDirClosed] === true) {
       process.nextTick(callback, new ERR_DIR_CLOSED());
@@ -177,7 +182,7 @@ class Dir {
     }
 
     if (this[kDirOperationQueue] !== null) {
-      this[kDirOperationQueue].push(() => {
+      ArrayPrototypePush(this[kDirOperationQueue], () => {
         this.close(callback);
       });
       return;
@@ -229,9 +234,8 @@ ObjectDefineProperty(Dir.prototype, SymbolAsyncIterator, {
 
 function opendir(path, options, callback) {
   callback = typeof options === 'function' ? options : callback;
-  if (typeof callback !== 'function') {
-    throw new ERR_INVALID_CALLBACK(callback);
-  }
+  validateCallback(callback);
+
   path = getValidatedPath(path);
   options = getOptions(options, {
     encoding: 'utf8'

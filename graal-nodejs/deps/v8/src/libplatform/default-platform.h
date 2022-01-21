@@ -35,6 +35,9 @@ class V8_PLATFORM_EXPORT DefaultPlatform : public NON_EXPORTED_BASE(Platform) {
 
   ~DefaultPlatform() override;
 
+  DefaultPlatform(const DefaultPlatform&) = delete;
+  DefaultPlatform& operator=(const DefaultPlatform&) = delete;
+
   void EnsureBackgroundTaskRunnerInitialized();
 
   bool PumpMessageLoop(
@@ -58,13 +61,15 @@ class V8_PLATFORM_EXPORT DefaultPlatform : public NON_EXPORTED_BASE(Platform) {
   void CallDelayedOnWorkerThread(std::unique_ptr<Task> task,
                                  double delay_in_seconds) override;
   bool IdleTasksEnabled(Isolate* isolate) override;
-  /*std::unique_ptr<JobHandle> PostJob(
-      TaskPriority priority, std::unique_ptr<JobTask> job_state) override;*/
+  std::unique_ptr<JobHandle> PostJob(
+      TaskPriority priority, std::unique_ptr<JobTask> job_state) override;
   double MonotonicallyIncreasingTime() override;
   double CurrentClockTimeMillis() override;
   v8::TracingController* GetTracingController() override;
   StackTracePrinter GetStackTracePrinter() override;
   v8::PageAllocator* GetPageAllocator() override;
+
+  void NotifyIsolateShutdown(Isolate* isolate);
 
  private:
   base::Mutex lock_;
@@ -78,7 +83,6 @@ class V8_PLATFORM_EXPORT DefaultPlatform : public NON_EXPORTED_BASE(Platform) {
   std::unique_ptr<PageAllocator> page_allocator_;
 
   TimeFunction time_function_for_testing_ = nullptr;
-  DISALLOW_COPY_AND_ASSIGN(DefaultPlatform);
 };
 
 }  // namespace platform

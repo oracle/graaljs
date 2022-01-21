@@ -3,10 +3,18 @@
 const {
   Symbol,
   Date,
+  DatePrototypeGetMilliseconds,
+  DatePrototypeToUTCString,
 } = primordials;
 
 const { setUnrefTimeout } = require('internal/timers');
-const { PerformanceEntry, notify } = internalBinding('performance');
+
+const { InternalPerformanceEntry } = require('internal/perf/performance_entry');
+
+const {
+  enqueue,
+  hasObserver,
+} = require('internal/perf/observe');
 
 let utcCache;
 
@@ -17,33 +25,31 @@ function utcDate() {
 
 function cache() {
   const d = new Date();
-  utcCache = d.toUTCString();
-  setUnrefTimeout(resetCache, 1000 - d.getMilliseconds());
+  utcCache = DatePrototypeToUTCString(d);
+  setUnrefTimeout(resetCache, 1000 - DatePrototypeGetMilliseconds(d));
 }
 
 function resetCache() {
   utcCache = undefined;
 }
 
-class HttpRequestTiming extends PerformanceEntry {
-  constructor(statistics) {
-    super();
-    this.name = 'HttpRequest';
-    this.entryType = 'http';
-    const startTime = statistics.startTime;
-    const diff = process.hrtime(startTime);
-    this.duration = diff[0] * 1000 + diff[1] / 1e6;
-    this.startTime = startTime[0] * 1000 + startTime[1] / 1e6;
-  }
-}
-
 function emitStatistics(statistics) {
-  notify('http', new HttpRequestTiming(statistics));
+  if (!hasObserver('http') || statistics == null) return;
+  const startTime = statistics.startTime;
+  const diff = process.hrtime(startTime);
+  const entry = new InternalPerformanceEntry(
+    'HttpRequest',
+    'http',
+    startTime[0] * 1000 + startTime[1] / 1e6,
+    diff[0] * 1000 + diff[1] / 1e6,
+    undefined,
+  );
+  enqueue(entry);
 }
 
 module.exports = {
   kOutHeaders: Symbol('kOutHeaders'),
   kNeedDrain: Symbol('kNeedDrain'),
   utcDate,
-  emitStatistics
+  emitStatistics,
 };

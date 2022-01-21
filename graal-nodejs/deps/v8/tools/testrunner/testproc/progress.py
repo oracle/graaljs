@@ -4,34 +4,27 @@
 
 # for py2/py3 compatibility
 from __future__ import print_function
+from __future__ import absolute_import
 
 import datetime
 import json
 import os
 import platform
-import subprocess
 import sys
 import time
-import util
 
 from . import base
+from . import util
 from ..local import junit_output
 
 
-# Base dir of the build products for Release and Debug.
-OUT_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', '..', '..', 'out'))
-
-
-def print_failure_header(test):
+def print_failure_header(test, is_flaky=False):
+  text = [str(test)]
   if test.output_proc.negative:
-    negative_marker = '[negative] '
-  else:
-    negative_marker = ''
-  print("=== %(label)s %(negative)s===" % {
-    'label': test,
-    'negative': negative_marker,
-  })
+    text.append('[negative]')
+  if is_flaky:
+    text.append('(flaky)')
+  print('=== %s ===' % ' '.join(text))
 
 
 class ResultsTracker(base.TestProcObserver):
@@ -80,13 +73,18 @@ class SimpleProgressIndicator(ProgressIndicator):
   def _on_result_for(self, test, result):
     # TODO(majeski): Support for dummy/grouped results
     if result.has_unexpected_output:
-      self._failed.append((test, result))
+      self._failed.append((test, result, False))
+    elif result.is_rerun:
+      # Print only the first result of a flaky failure that was rerun.
+      self._failed.append((test, result.results[0], True))
 
   def finished(self):
     crashed = 0
+    flaky = 0
     print()
-    for test, result in self._failed:
-      print_failure_header(test)
+    for test, result, is_flaky in self._failed:
+      flaky += int(is_flaky)
+      print_failure_header(test, is_flaky=is_flaky)
       if result.output.stderr:
         print("--- stderr ---")
         print(result.output.stderr.strip())
@@ -107,10 +105,45 @@ class SimpleProgressIndicator(ProgressIndicator):
     else:
       print()
       print("===")
-      print("=== %i tests failed" % len(self._failed))
+      print("=== %d tests failed" % len(self._failed))
+      if flaky > 0:
+        print("=== %d tests were flaky" % flaky)
       if crashed > 0:
-        print("=== %i tests CRASHED" % crashed)
+        print("=== %d tests CRASHED" % crashed)
       print("===")
+
+
+class StreamProgressIndicator(ProgressIndicator):
+  def __init__(self):
+    super(StreamProgressIndicator, self).__init__()
+    self._requirement = base.DROP_PASS_OUTPUT
+
+  def _on_result_for(self, test, result):
+      if not result.has_unexpected_output:
+        self.print('PASS', test)
+      elif result.output.HasCrashed():
+        self.print("CRASH", test)
+      elif result.output.HasTimedOut():
+        self.print("TIMEOUT", test)
+      else:
+        if test.is_fail:
+          self.print("UNEXPECTED PASS", test)
+        else:
+          self.print("FAIL", test)
+
+  def print(self, prefix, test):
+    print('%s: %ss' % (prefix, test))
+    sys.stdout.flush()
+
+
+def format_result_status(result):
+  if result.has_unexpected_output:
+    if result.output.HasCrashed():
+      return 'CRASH'
+    else:
+      return 'FAIL'
+  else:
+    return 'PASS'
 
 
 class VerboseProgressIndicator(SimpleProgressIndicator):
@@ -125,14 +158,11 @@ class VerboseProgressIndicator(SimpleProgressIndicator):
 
   def _message(self, test, result):
     # TODO(majeski): Support for dummy/grouped results
-    if result.has_unexpected_output:
-      if result.output.HasCrashed():
-        outcome = 'CRASH'
-      else:
-        outcome = 'FAIL'
+    if result.is_rerun:
+      outcome = ' '.join(format_result_status(r) for r in result.results)
     else:
-      outcome = 'pass'
-    return 'Done running %s %s: %s' % (
+      outcome = format_result_status(result)
+    return '%s %s: %s' % (
       test, test.variant or 'default', outcome)
 
   def _on_result_for(self, test, result):
@@ -143,16 +173,10 @@ class VerboseProgressIndicator(SimpleProgressIndicator):
   # feedback channel from the workers, providing which tests are currently run.
   def _print_processes_linux(self):
     if platform.system() == 'Linux':
-      try:
-        cmd = 'ps -aux | grep "%s"' % OUT_DIR
-        output = subprocess.check_output(cmd, shell=True)
-        self._print('List of processes:')
-        for line in (output or '').splitlines():
-          # Show command with pid, but other process info cut off.
-          self._print('pid: %s cmd: %s' %
-                      (line.split()[1], line[line.index(OUT_DIR):]))
-      except:
-        pass
+      self._print('List of processes:')
+      for pid, cmd in util.list_processes_linux():
+        # Show command with pid, but other process info cut off.
+        self._print('pid: %d cmd: %s' % (pid, cmd))
 
   def _ensure_delay(self, delay):
     return time.time() - self._last_printed_time > delay
@@ -244,15 +268,24 @@ class CompactProgressIndicator(ProgressIndicator):
       self._clear_line(self._last_status_length)
       print_failure_header(test)
       if len(stdout):
-        print(self._templates['stdout'] % stdout)
+        self.printFormatted('stdout', stdout)
       if len(stderr):
-        print(self._templates['stderr'] % stderr)
-      print("Command: %s" % result.cmd.to_string(relative=True))
+        self.printFormatted('stderr', stderr)
+      self.printFormatted(
+          'command', "Command: %s" % result.cmd.to_string(relative=True))
       if output.HasCrashed():
-        print("exit code: %s" % output.exit_code_string)
-        print("--- CRASHED ---")
-      if output.HasTimedOut():
-        print("--- TIMEOUT ---")
+        self.printFormatted(
+            'failure', "exit code: %s" % output.exit_code_string)
+        self.printFormatted('failure', "--- CRASHED ---")
+      elif output.HasTimedOut():
+        self.printFormatted('failure', "--- TIMEOUT ---")
+      else:
+        if test.is_fail:
+          self.printFormatted('failure', "--- UNEXPECTED PASS ---")
+          if test.expected_failure_reason != None:
+            self.printFormatted('failure', test.expected_failure_reason)
+        else:
+          self.printFormatted('failure', "--- FAILED ---")
 
   def finished(self):
     self._print_progress('Done')
@@ -273,12 +306,12 @@ class CompactProgressIndicator(ProgressIndicator):
       'mins': int(elapsed) // 60,
       'secs': int(elapsed) % 60
     }
-    status = self._truncate(status, 78)
+    status = self._truncateStatusLine(status, 78)
     self._last_status_length = len(status)
     print(status, end='')
     sys.stdout.flush()
 
-  def _truncate(self, string, length):
+  def _truncateStatusLine(self, string, length):
     if length and len(string) > (length - 3):
       return string[:(length - 3)] + "..."
     else:
@@ -297,8 +330,18 @@ class ColorProgressIndicator(CompactProgressIndicator):
                       "\033[31m-%(failed) 4d\033[0m]: %(test)s"),
       'stdout': "\033[1m%s\033[0m",
       'stderr': "\033[31m%s\033[0m",
+      'failure': "\033[1;31m%s\033[0m",
+      'command': "\033[33m%s\033[0m",
     }
     super(ColorProgressIndicator, self).__init__(templates)
+
+  def printFormatted(self, format, string):
+    print(self._templates[format] % string)
+
+  def _truncateStatusLine(self, string, length):
+    # Add some slack for the color control chars
+    return super(ColorProgressIndicator, self)._truncateStatusLine(
+        string, length + 3*9)
 
   def _clear_line(self, last_length):
     print("\033[1K\r", end='')
@@ -306,13 +349,14 @@ class ColorProgressIndicator(CompactProgressIndicator):
 
 class MonochromeProgressIndicator(CompactProgressIndicator):
   def __init__(self):
-    templates = {
-      'status_line': ("[%(mins)02i:%(secs)02i|%%%(progress) 4d|"
-                      "+%(passed) 4d|-%(failed) 4d]: %(test)s"),
-      'stdout': '%s',
-      'stderr': '%s',
-    }
-    super(MonochromeProgressIndicator, self).__init__(templates)
+   templates = {
+     'status_line': ("[%(mins)02i:%(secs)02i|%%%(progress) 4d|"
+                     "+%(passed) 4d|-%(failed) 4d]: %(test)s"),
+   }
+   super(MonochromeProgressIndicator, self).__init__(templates)
+
+  def printFormatted(self, format, string):
+    print(string)
 
   def _clear_line(self, last_length):
     print(("\r" + (" " * last_length) + "\r"), end='')

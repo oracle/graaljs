@@ -1,7 +1,9 @@
 'use strict';
 
 const {
+  ArrayPrototypePush,
   MathMin,
+  ReflectApply,
 } = primordials;
 
 const {
@@ -15,15 +17,10 @@ const { Buffer } = require('buffer');
 
 const { FSReqCallback, close, read } = internalBinding('fs');
 
-const { hideStackFrames } = require('internal/errors');
-
-
-let DOMException;
-const lazyDOMException = hideStackFrames((message, name) => {
-  if (DOMException === undefined)
-    DOMException = internalBinding('messaging').DOMException;
-  return new DOMException(message, name);
-});
+const {
+  AbortError,
+  aggregateTwoErrors,
+} = require('internal/errors');
 
 function readFileAfterRead(err, bytesRead) {
   const context = this.context;
@@ -40,7 +37,7 @@ function readFileAfterRead(err, bytesRead) {
       // Unknown size, just read until we don't get bytes.
       const buffer = bytesRead === kReadFileUnknownBufferLength ?
         context.buffer : context.buffer.slice(0, bytesRead);
-      context.buffers.push(buffer);
+      ArrayPrototypePush(context.buffers, buffer);
     }
     context.read();
   }
@@ -52,7 +49,7 @@ function readFileAfterClose(err) {
   let buffer = null;
 
   if (context.err || err)
-    return callback(context.err || err);
+    return callback(aggregateTwoErrors(err, context.err));
 
   try {
     if (context.size === 0)
@@ -90,10 +87,8 @@ class ReadFileContext {
     let offset;
     let length;
 
-    if (this.signal && this.signal.aborted) {
-      return this.close(
-        lazyDOMException('The operation was aborted', 'AbortError')
-      );
+    if (this.signal?.aborted) {
+      return this.close(new AbortError());
     }
     if (this.size === 0) {
       buffer = Buffer.allocUnsafeSlow(kReadFileUnknownBufferLength);
@@ -116,7 +111,7 @@ class ReadFileContext {
   close(err) {
     if (this.isUserFd) {
       process.nextTick(function tick(context) {
-        readFileAfterClose.call({ context }, null);
+        ReflectApply(readFileAfterClose, { context }, [null]);
       }, this);
       return;
     }

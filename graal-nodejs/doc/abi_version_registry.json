@@ -1,5 +1,13 @@
 {
   "NODE_MODULE_VERSION": [
+    { "modules": 93, "runtime": "node",     "variant": "v8_9.0",               "versions": "16.0.0" },
+    { "modules": 92, "runtime": "node",     "variant": "v8_8.9",               "versions": "16.0.0-pre" },
+    { "modules": 91, "runtime": "node",     "variant": "v8_8.8",               "versions": "16.0.0-pre" },
+    { "modules": 90, "runtime": "node",     "variant": "v8_8.7",               "versions": "16.0.0-pre" },
+    { "modules": 89, "runtime": "electron", "variant": "electron",             "versions": "13" },
+    { "modules": 88, "runtime": "node",     "variant": "v8_8.6",               "versions": "15.0.0" },
+    { "modules": 87, "runtime": "electron", "variant": "electron",             "versions": "12" },
+    { "modules": 86, "runtime": "node",     "variant": "v8_8.4",               "versions": "15.0.0-pre" },
     { "modules": 85, "runtime": "electron", "variant": "electron",             "versions": "11" },
     { "modules": 84, "runtime": "node",     "variant": "v8_8.3",               "versions": "15.0.0-pre" },
     { "modules": 83, "runtime": "node",     "variant": "v8_8.1",               "versions": "14.0.0" },

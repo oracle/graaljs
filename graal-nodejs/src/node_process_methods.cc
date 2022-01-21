@@ -1,12 +1,15 @@
 #include "base_object-inl.h"
 #include "debug_utils-inl.h"
 #include "env-inl.h"
+#include "memory_tracker-inl.h"
 #include "node.h"
 #include "node_errors.h"
+#include "node_external_reference.h"
 #include "node_internals.h"
 #include "node_process-inl.h"
 #include "util-inl.h"
 #include "uv.h"
+#include "v8-fast-api-calls.h"
 #include "v8.h"
 
 #include <vector>
@@ -33,10 +36,14 @@ namespace node {
 
 using v8::Array;
 using v8::ArrayBuffer;
-using v8::BigUint64Array;
+using v8::BackingStore;
+using v8::CFunction;
+using v8::ConstructorBehavior;
 using v8::Context;
 using v8::Float64Array;
 using v8::FunctionCallbackInfo;
+using v8::FunctionTemplate;
+using v8::Global;
 using v8::HeapStatistics;
 using v8::Integer;
 using v8::Isolate;
@@ -44,9 +51,11 @@ using v8::Local;
 using v8::NewStringType;
 using v8::Number;
 using v8::Object;
+using v8::ObjectTemplate;
+using v8::SideEffectType;
+using v8::Signature;
 using v8::String;
 using v8::Uint32;
-using v8::Uint32Array;
 using v8::Value;
 
 namespace per_process {
@@ -103,15 +112,13 @@ inline Local<ArrayBuffer> get_fields_array_buffer(
 // Returns those values as Float64 microseconds in the elements of the array
 // passed to the function.
 static void CPUUsage(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
   uv_rusage_t rusage;
 
   // Call libuv to get the values we'll return.
   int err = uv_getrusage(&rusage);
-  if (err) {
-    // On error, return the strerror version of the error code.
-    Local<String> errmsg = OneByteString(args.GetIsolate(), uv_strerror(err));
-    return args.GetReturnValue().Set(errmsg);
-  }
+  if (err)
+    return env->ThrowUVException(err, "uv_getrusage");
 
   // Get the double array pointer from the Float64Array argument.
   Local<ArrayBuffer> ab = get_fields_array_buffer(args, 0, 2);
@@ -136,35 +143,6 @@ static void Cwd(const FunctionCallbackInfo<Value>& args) {
                                           NewStringType::kNormal,
                                           cwd_len).ToLocalChecked();
   args.GetReturnValue().Set(cwd);
-}
-
-
-// Hrtime exposes libuv's uv_hrtime() high-resolution timer.
-
-// This is the legacy version of hrtime before BigInt was introduced in
-// JavaScript.
-// The value returned by uv_hrtime() is a 64-bit int representing nanoseconds,
-// so this function instead fills in an Uint32Array with 3 entries,
-// to avoid any integer overflow possibility.
-// The first two entries contain the second part of the value
-// broken into the upper/lower 32 bits to be converted back in JS,
-// because there is no Uint64Array in JS.
-// The third entry contains the remaining nanosecond part of the value.
-static void Hrtime(const FunctionCallbackInfo<Value>& args) {
-  uint64_t t = uv_hrtime();
-
-  Local<ArrayBuffer> ab = args[0].As<Uint32Array>()->Buffer();
-  uint32_t* fields = static_cast<uint32_t*>(ab->GetBackingStore()->Data());
-
-  fields[0] = (t / NANOS_PER_SEC) >> 32;
-  fields[1] = (t / NANOS_PER_SEC) & 0xffffffff;
-  fields[2] = t % NANOS_PER_SEC;
-}
-
-static void HrtimeBigInt(const FunctionCallbackInfo<Value>& args) {
-  Local<ArrayBuffer> ab = args[0].As<BigUint64Array>()->Buffer();
-  uint64_t* fields = static_cast<uint64_t*>(ab->GetBackingStore()->Data());
-  fields[0] = uv_hrtime();
 }
 
 static void Kill(const FunctionCallbackInfo<Value>& args) {
@@ -224,12 +202,14 @@ static void MemoryUsage(const FunctionCallbackInfo<Value>& args) {
   if (err)
     return env->ThrowUVException(err, "uv_resident_set_memory");
 
-  fields[0] = rss;
-  fields[1] = v8_heap_stats.total_heap_size();
-  fields[2] = v8_heap_stats.used_heap_size();
-  fields[3] = v8_heap_stats.external_memory();
-  fields[4] = array_buffer_allocator == nullptr ?
-      0 : array_buffer_allocator->total_mem_usage();
+  fields[0] = static_cast<double>(rss);
+  fields[1] = static_cast<double>(v8_heap_stats.total_heap_size());
+  fields[2] = static_cast<double>(v8_heap_stats.used_heap_size());
+  fields[3] = static_cast<double>(v8_heap_stats.external_memory());
+  fields[4] =
+      array_buffer_allocator == nullptr
+          ? 0
+          : static_cast<double>(array_buffer_allocator->total_mem_usage());
 }
 
 void RawDebug(const FunctionCallbackInfo<Value>& args) {
@@ -312,20 +292,20 @@ static void ResourceUsage(const FunctionCallbackInfo<Value>& args) {
 
   fields[0] = MICROS_PER_SEC * rusage.ru_utime.tv_sec + rusage.ru_utime.tv_usec;
   fields[1] = MICROS_PER_SEC * rusage.ru_stime.tv_sec + rusage.ru_stime.tv_usec;
-  fields[2] = rusage.ru_maxrss;
-  fields[3] = rusage.ru_ixrss;
-  fields[4] = rusage.ru_idrss;
-  fields[5] = rusage.ru_isrss;
-  fields[6] = rusage.ru_minflt;
-  fields[7] = rusage.ru_majflt;
-  fields[8] = rusage.ru_nswap;
-  fields[9] = rusage.ru_inblock;
-  fields[10] = rusage.ru_oublock;
-  fields[11] = rusage.ru_msgsnd;
-  fields[12] = rusage.ru_msgrcv;
-  fields[13] = rusage.ru_nsignals;
-  fields[14] = rusage.ru_nvcsw;
-  fields[15] = rusage.ru_nivcsw;
+  fields[2] = static_cast<double>(rusage.ru_maxrss);
+  fields[3] = static_cast<double>(rusage.ru_ixrss);
+  fields[4] = static_cast<double>(rusage.ru_idrss);
+  fields[5] = static_cast<double>(rusage.ru_isrss);
+  fields[6] = static_cast<double>(rusage.ru_minflt);
+  fields[7] = static_cast<double>(rusage.ru_majflt);
+  fields[8] = static_cast<double>(rusage.ru_nswap);
+  fields[9] = static_cast<double>(rusage.ru_inblock);
+  fields[10] = static_cast<double>(rusage.ru_oublock);
+  fields[11] = static_cast<double>(rusage.ru_msgsnd);
+  fields[12] = static_cast<double>(rusage.ru_msgrcv);
+  fields[13] = static_cast<double>(rusage.ru_nsignals);
+  fields[14] = static_cast<double>(rusage.ru_nvcsw);
+  fields[15] = static_cast<double>(rusage.ru_nivcsw);
 }
 
 #ifdef __POSIX__
@@ -376,7 +356,7 @@ static void DebugProcess(const FunctionCallbackInfo<Value>& args) {
   });
 
   CHECK(args[0]->IsNumber());
-  pid = args[0].As<Integer>()->Value();
+  pid = static_cast<DWORD>(args[0].As<Integer>()->Value());
 
   process =
       OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION |
@@ -447,6 +427,119 @@ static void ReallyExit(const FunctionCallbackInfo<Value>& args) {
   }
 }
 
+class FastHrtime : public BaseObject {
+ public:
+  static Local<Object> New(Environment* env) {
+    Local<FunctionTemplate> ctor = FunctionTemplate::New(env->isolate());
+    ctor->Inherit(BaseObject::GetConstructorTemplate(env));
+    Local<ObjectTemplate> otmpl = ctor->InstanceTemplate();
+    otmpl->SetInternalFieldCount(FastHrtime::kInternalFieldCount);
+
+    auto create_func = [env](auto fast_func, auto slow_func) {
+      auto cfunc = CFunction::Make(fast_func);
+      return FunctionTemplate::New(env->isolate(),
+                                   slow_func,
+                                   Local<Value>(),
+                                   Local<Signature>(),
+                                   0,
+                                   ConstructorBehavior::kThrow,
+                                   SideEffectType::kHasNoSideEffect,
+                                   &cfunc);
+    };
+
+    otmpl->Set(FIXED_ONE_BYTE_STRING(env->isolate(), "hrtime"),
+               create_func(FastNumber, SlowNumber));
+    otmpl->Set(FIXED_ONE_BYTE_STRING(env->isolate(), "hrtimeBigInt"),
+               create_func(FastBigInt, SlowBigInt));
+
+    Local<Object> obj = otmpl->NewInstance(env->context()).ToLocalChecked();
+
+    Local<ArrayBuffer> ab =
+        ArrayBuffer::New(env->isolate(),
+            std::max(sizeof(uint64_t), sizeof(uint32_t) * 3));
+    new FastHrtime(env, obj, ab);
+    obj->Set(
+           env->context(), FIXED_ONE_BYTE_STRING(env->isolate(), "buffer"), ab)
+        .ToChecked();
+
+    return obj;
+  }
+
+ private:
+  FastHrtime(Environment* env,
+             Local<Object> object,
+             Local<ArrayBuffer> ab)
+      : BaseObject(env, object),
+        array_buffer_(env->isolate(), ab),
+        backing_store_(ab->GetBackingStore()) {
+    MakeWeak();
+  }
+
+  void MemoryInfo(MemoryTracker* tracker) const override {
+    tracker->TrackField("array_buffer", array_buffer_);
+  }
+  SET_MEMORY_INFO_NAME(FastHrtime)
+  SET_SELF_SIZE(FastHrtime)
+
+  static FastHrtime* FromV8Value(Local<Value> value) {
+    Local<Object> v8_object = value.As<Object>();
+    return static_cast<FastHrtime*>(
+        v8_object->GetAlignedPointerFromInternalField(BaseObject::kSlot));
+  }
+
+  // This is the legacy version of hrtime before BigInt was introduced in
+  // JavaScript.
+  // The value returned by uv_hrtime() is a 64-bit int representing nanoseconds,
+  // so this function instead fills in an Uint32Array with 3 entries,
+  // to avoid any integer overflow possibility.
+  // The first two entries contain the second part of the value
+  // broken into the upper/lower 32 bits to be converted back in JS,
+  // because there is no Uint64Array in JS.
+  // The third entry contains the remaining nanosecond part of the value.
+  static void NumberImpl(FastHrtime* receiver) {
+    uint64_t t = uv_hrtime();
+    uint32_t* fields = static_cast<uint32_t*>(receiver->backing_store_->Data());
+    fields[0] = (t / NANOS_PER_SEC) >> 32;
+    fields[1] = (t / NANOS_PER_SEC) & 0xffffffff;
+    fields[2] = t % NANOS_PER_SEC;
+  }
+
+  static void FastNumber(Local<Value> receiver) {
+    NumberImpl(FromV8Value(receiver));
+  }
+
+  static void SlowNumber(const FunctionCallbackInfo<Value>& args) {
+    NumberImpl(FromJSObject<FastHrtime>(args.Holder()));
+  }
+
+  static void BigIntImpl(FastHrtime* receiver) {
+    uint64_t t = uv_hrtime();
+    uint64_t* fields = static_cast<uint64_t*>(receiver->backing_store_->Data());
+    fields[0] = t;
+  }
+
+  static void FastBigInt(Local<Value> receiver) {
+    BigIntImpl(FromV8Value(receiver));
+  }
+
+  static void SlowBigInt(const FunctionCallbackInfo<Value>& args) {
+    BigIntImpl(FromJSObject<FastHrtime>(args.Holder()));
+  }
+
+  Global<ArrayBuffer> array_buffer_;
+  std::shared_ptr<BackingStore> backing_store_;
+};
+
+static void GetFastAPIs(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  Local<Object> ret = Object::New(env->isolate());
+  ret->Set(env->context(),
+           FIXED_ONE_BYTE_STRING(env->isolate(), "hrtime"),
+           FastHrtime::New(env))
+      .ToChecked();
+  args.GetReturnValue().Set(ret);
+}
+
 static void InitializeProcessMethods(Local<Object> target,
                                      Local<Value> unused,
                                      Local<Context> context,
@@ -467,8 +560,6 @@ static void InitializeProcessMethods(Local<Object> target,
   env->SetMethod(target, "memoryUsage", MemoryUsage);
   env->SetMethod(target, "rss", Rss);
   env->SetMethod(target, "cpuUsage", CPUUsage);
-  env->SetMethod(target, "hrtime", Hrtime);
-  env->SetMethod(target, "hrtimeBigInt", HrtimeBigInt);
   env->SetMethod(target, "resourceUsage", ResourceUsage);
 
   env->SetMethod(target, "_getActiveRequests", GetActiveRequests);
@@ -480,9 +571,39 @@ static void InitializeProcessMethods(Local<Object> target,
   env->SetMethod(target, "reallyExit", ReallyExit);
   env->SetMethodNoSideEffect(target, "uptime", Uptime);
   env->SetMethod(target, "patchProcessObject", PatchProcessObject);
+  env->SetMethod(target, "getFastAPIs", GetFastAPIs);
+}
+
+void RegisterProcessMethodsExternalReferences(
+    ExternalReferenceRegistry* registry) {
+  registry->Register(DebugProcess);
+  registry->Register(DebugEnd);
+  registry->Register(Abort);
+  registry->Register(CauseSegfault);
+  registry->Register(Chdir);
+
+  registry->Register(Umask);
+  registry->Register(RawDebug);
+  registry->Register(MemoryUsage);
+  registry->Register(Rss);
+  registry->Register(CPUUsage);
+  registry->Register(ResourceUsage);
+
+  registry->Register(GetActiveRequests);
+  registry->Register(GetActiveHandles);
+  registry->Register(Kill);
+
+  registry->Register(Cwd);
+  registry->Register(binding::DLOpen);
+  registry->Register(ReallyExit);
+  registry->Register(Uptime);
+  registry->Register(PatchProcessObject);
+  registry->Register(GetFastAPIs);
 }
 
 }  // namespace node
 
 NODE_MODULE_CONTEXT_AWARE_INTERNAL(process_methods,
                                    node::InitializeProcessMethods)
+NODE_MODULE_EXTERNAL_REFERENCE(process_methods,
+                               node::RegisterProcessMethodsExternalReferences)

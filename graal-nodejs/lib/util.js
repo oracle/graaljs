@@ -23,8 +23,16 @@
 
 const {
   ArrayIsArray,
+  ArrayPrototypeJoin,
+  ArrayPrototypePop,
   Date,
+  DatePrototypeGetDate,
+  DatePrototypeGetHours,
+  DatePrototypeGetMinutes,
+  DatePrototypeGetMonth,
+  DatePrototypeGetSeconds,
   Error,
+  FunctionPrototypeBind,
   NumberIsSafeInteger,
   ObjectDefineProperties,
   ObjectDefineProperty,
@@ -33,6 +41,7 @@ const {
   ObjectPrototypeToString,
   ObjectSetPrototypeOf,
   ReflectApply,
+  StringPrototypePadStart,
 } = primordials;
 
 const {
@@ -48,10 +57,14 @@ const {
 const {
   format,
   formatWithOptions,
-  inspect
+  inspect,
+  stripVTControlCharacters,
 } = require('internal/util/inspect');
 const { debuglog } = require('internal/util/debuglog');
-const { validateNumber } = require('internal/validators');
+const {
+  validateFunction,
+  validateNumber,
+} = require('internal/validators');
 const { TextDecoder, TextEncoder } = require('internal/encoding');
 const { isBuffer } = require('buffer').Buffer;
 const types = require('internal/util/types');
@@ -170,7 +183,7 @@ function isPrimitive(arg) {
  * @returns {string}
  */
 function pad(n) {
-  return n.toString().padStart(2, '0');
+  return StringPrototypePadStart(n.toString(), 2, '0');
 }
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
@@ -181,10 +194,12 @@ const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
  */
 function timestamp() {
   const d = new Date();
-  const time = [pad(d.getHours()),
-                pad(d.getMinutes()),
-                pad(d.getSeconds())].join(':');
-  return [d.getDate(), months[d.getMonth()], time].join(' ');
+  const t = ArrayPrototypeJoin([
+    pad(DatePrototypeGetHours(d)),
+    pad(DatePrototypeGetMinutes(d)),
+    pad(DatePrototypeGetSeconds(d)),
+  ], ':');
+  return `${DatePrototypeGetDate(d)} ${months[DatePrototypeGetMonth(d)]} ${t}`;
 }
 
 let console;
@@ -275,19 +290,15 @@ const callbackifyOnRejected = hideStackFrames((reason, cb) => {
  * }
  */
 function callbackify(original) {
-  if (typeof original !== 'function') {
-    throw new ERR_INVALID_ARG_TYPE('original', 'Function', original);
-  }
+  validateFunction(original, 'original');
 
   // We DO NOT return the promise as it gives the user a false sense that
   // the promise is actually somehow related to the callback's execution
   // and that the callback throwing will reject the promise.
   function callbackified(...args) {
-    const maybeCb = args.pop();
-    if (typeof maybeCb !== 'function') {
-      throw new ERR_INVALID_ARG_TYPE('last argument', 'Function', maybeCb);
-    }
-    const cb = (...args) => { ReflectApply(maybeCb, this, args); };
+    const maybeCb = ArrayPrototypePop(args);
+    validateFunction(maybeCb, 'last argument');
+    const cb = FunctionPrototypeBind(maybeCb, this);
     // In true node style we process the callback on `nextTick` with all the
     // implications (stack, `uncaughtException`, `async_hooks`)
     ReflectApply(original, this, args)
@@ -359,6 +370,7 @@ module.exports = {
   isPrimitive,
   log,
   promisify,
+  stripVTControlCharacters,
   toUSVString,
   TextDecoder,
   TextEncoder,

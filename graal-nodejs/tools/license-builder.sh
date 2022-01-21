@@ -59,6 +59,7 @@ fi
 
 addlicense "libuv" "deps/uv" "$(cat "${rootdir}"/deps/uv/LICENSE)"
 addlicense "llhttp" "deps/llhttp" "$(cat deps/llhttp/LICENSE-MIT)"
+addlicense "corepack" "deps/corepack" "$(cat "${rootdir}"/deps/corepack/LICENSE.md)"
 addlicense "OpenSSL" "deps/openssl" \
            "$(sed -e '/^ \*\/$/,$d' -e '/^ [^*].*$/d' -e '/\/\*.*$/d' -e '/^$/d' -e 's/^[/ ]\* *//' "${rootdir}"/deps/openssl/openssl/LICENSE)"
 addlicense "Punycode.js" "lib/punycode.js" \
@@ -109,5 +110,10 @@ addlicense "rimraf" "lib/internal/fs/rimraf.js" \
            "$(curl -sL https://raw.githubusercontent.com/isaacs/rimraf/0e365ac4e4d64a25aa2a3cc026348f13410210e1/LICENSE)"
 
 addlicense "uvwasi" "deps/uvwasi" "$(cat "${rootdir}"/deps/uvwasi/LICENSE)"
+addlicense "ngtcp2" "deps/ngtcp2/ngtcp2/" "$(cat "${rootdir}"/deps/ngtcp2/LICENSE_ngtcp2)"
+addlicense "nghttp3" "deps/ngtcp2/nghttp3/" "$(cat "${rootdir}"/deps/ngtcp2/LICENSE_nghttp3)"
+
+addlicense "node-fs-extra" "lib/internal/fs/cp" \
+           "$(curl -sL https://raw.githubusercontent.com/jprichardson/node-fs-extra/b34da2762a4865b025cac06d02d6a2f1f1027b65/LICENSE)"
 
 mv "$tmplicense" "$licensefile"

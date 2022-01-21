@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -138,9 +138,9 @@ void GraalNotifyPromiseRejectionTracker(JNIEnv* env, jclass nativeAccess, jobjec
 
 void GraalNotifyImportMetaInitializer(JNIEnv* env, jclass nativeAccess, jobject java_import_meta, jobject java_module);
 
-jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_referrer, jstring java_specifier);
+jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_referrer, jstring java_specifier, jobject java_import_assertions);
 
-jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jstring java_specifier, jobject java_referrer);
+jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jstring java_specifier, jobject java_import_assertions, jobject java_referrer);
 
 void GraalWriteHostObject(JNIEnv* env, jclass nativeAccess, jlong delegate, jobject java_object);
 

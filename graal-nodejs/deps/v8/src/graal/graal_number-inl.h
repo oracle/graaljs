@@ -76,7 +76,7 @@ inline void GraalNumber::Recycle() {
         pool->Push(this);
     } else {
         delete this;
-    }    
+    }
 }
 
 #endif /* GRAAL_NUMBER_INL_H_ */

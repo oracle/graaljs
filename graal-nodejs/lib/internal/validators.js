@@ -2,11 +2,17 @@
 
 const {
   ArrayIsArray,
+  ArrayPrototypeIncludes,
+  ArrayPrototypeJoin,
+  ArrayPrototypeMap,
   NumberIsInteger,
   NumberMAX_SAFE_INTEGER,
   NumberMIN_SAFE_INTEGER,
   NumberParseInt,
+  RegExpPrototypeTest,
   String,
+  StringPrototypeToUpperCase,
+  StringPrototypeTrim,
 } = primordials;
 
 const {
@@ -15,7 +21,6 @@ const {
     ERR_SOCKET_BAD_PORT,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
-    ERR_INVALID_OPT_VALUE,
     ERR_OUT_OF_RANGE,
     ERR_UNKNOWN_SIGNAL,
     ERR_INVALID_CALLBACK,
@@ -47,30 +52,20 @@ const modeDesc = 'must be a 32-bit unsigned integer or an octal string';
  *
  * @param {*} value Values to be validated
  * @param {string} name Name of the argument
- * @param {number} def If specified, will be returned for invalid values
+ * @param {number} [def] If specified, will be returned for invalid values
  * @returns {number}
  */
 function parseFileMode(value, name, def) {
-  if (value == null && def !== undefined) {
-    return def;
-  }
-
-  if (isUint32(value)) {
-    return value;
-  }
-
-  if (typeof value === 'number') {
-    validateInt32(value, name, 0, 2 ** 32 - 1);
-  }
-
+  value ??= def;
   if (typeof value === 'string') {
-    if (!octalReg.test(value)) {
+    if (!RegExpPrototypeTest(octalReg, value)) {
       throw new ERR_INVALID_ARG_VALUE(name, value, modeDesc);
     }
-    return NumberParseInt(value, 8);
+    value = NumberParseInt(value, 8);
   }
 
-  throw new ERR_INVALID_ARG_VALUE(name, value, modeDesc);
+  validateInt32(value, name, 0, 2 ** 32 - 1);
+  return value;
 }
 
 const validateInteger = hideStackFrames(
@@ -129,18 +124,14 @@ function validateNumber(value, name) {
     throw new ERR_INVALID_ARG_TYPE(name, 'number', value);
 }
 
-const validateOneOf = hideStackFrames((value, name, oneOf, option = false) => {
-  if (!oneOf.includes(value)) {
-    const allowed = oneOf
-      .map((v) => (typeof v === 'string' ? `'${v}'` : String(v)))
-      .join(', ');
-    if (!option) {
-      const reason = 'must be one of: ' + allowed;
-      throw new ERR_INVALID_ARG_VALUE(name, value, reason);
-    } else {
-      const reason = 'Must be one of: ' + allowed;
-      throw new ERR_INVALID_OPT_VALUE(name, value, reason);
-    }
+const validateOneOf = hideStackFrames((value, name, oneOf) => {
+  if (!ArrayPrototypeIncludes(oneOf, value)) {
+    const allowed = ArrayPrototypeJoin(
+      ArrayPrototypeMap(oneOf, (v) =>
+        (typeof v === 'string' ? `'${v}'` : String(v))),
+      ', ');
+    const reason = 'must be one of: ' + allowed;
+    throw new ERR_INVALID_ARG_VALUE(name, value, reason);
   }
 });
 
@@ -149,12 +140,21 @@ function validateBoolean(value, name) {
     throw new ERR_INVALID_ARG_TYPE(name, 'boolean', value);
 }
 
+/**
+ * @param {unknown} value
+ * @param {string} name
+ * @param {{
+ *   allowArray?: boolean,
+ *   allowFunction?: boolean,
+ *   nullable?: boolean
+ * }} [options]
+ */
 const validateObject = hideStackFrames(
-  (value, name, {
-    nullable = false,
-    allowArray = false,
-    allowFunction = false,
-  } = {}) => {
+  (value, name, options) => {
+    const useDefaultOptions = options == null;
+    const allowArray = useDefaultOptions ? false : options.allowArray;
+    const allowFunction = useDefaultOptions ? false : options.allowFunction;
+    const nullable = useDefaultOptions ? false : options.nullable;
     if ((!nullable && value === null) ||
         (!allowArray && ArrayIsArray(value)) ||
         (typeof value !== 'object' && (
@@ -178,7 +178,7 @@ function validateSignalName(signal, name = 'signal') {
   validateString(signal, name);
 
   if (signals[signal] === undefined) {
-    if (signals[signal.toUpperCase()] !== undefined) {
+    if (signals[StringPrototypeToUpperCase(signal)] !== undefined) {
       throw new ERR_UNKNOWN_SIGNAL(signal +
                                    ' (signals must use all capital letters)');
     }
@@ -209,7 +209,7 @@ function validateEncoding(data, encoding) {
 // is an integer and that it falls within the legal range of port numbers.
 function validatePort(port, name = 'Port', allowZero = true) {
   if ((typeof port !== 'number' && typeof port !== 'string') ||
-      (typeof port === 'string' && port.trim().length === 0) ||
+      (typeof port === 'string' && StringPrototypeTrim(port).length === 0) ||
       +port !== (+port >>> 0) ||
       port > 0xFFFF ||
       (port === 0 && !allowZero)) {
@@ -237,6 +237,11 @@ const validateFunction = hideStackFrames((value, name) => {
     throw new ERR_INVALID_ARG_TYPE(name, 'Function', value);
 });
 
+const validateUndefined = hideStackFrames((value, name) => {
+  if (value !== undefined)
+    throw new ERR_INVALID_ARG_TYPE(name, 'undefined', value);
+});
+
 module.exports = {
   isInt32,
   isUint32,
@@ -255,6 +260,7 @@ module.exports = {
   validateSignalName,
   validateString,
   validateUint32,
+  validateUndefined,
   validateCallback,
   validateAbortSignal,
 };

@@ -11,8 +11,10 @@
 // message may change, the code should not.
 
 const {
+  AggregateError,
   ArrayFrom,
   ArrayIsArray,
+  ArrayPrototypeFilter,
   ArrayPrototypeIncludes,
   ArrayPrototypeIndexOf,
   ArrayPrototypeJoin,
@@ -32,10 +34,15 @@ const {
   Number,
   NumberIsInteger,
   ObjectDefineProperty,
+  ObjectDefineProperties,
+  ObjectIsExtensible,
+  ObjectGetOwnPropertyDescriptor,
   ObjectKeys,
+  ObjectPrototypeHasOwnProperty,
   RangeError,
   ReflectApply,
   RegExpPrototypeTest,
+  SafeArrayIterator,
   SafeMap,
   SafeWeakMap,
   String,
@@ -52,6 +59,8 @@ const {
   TypeError,
   URIError,
 } = primordials;
+
+const kIsNodeError = Symbol('kIsNodeError');
 
 const isWindows = process.platform === 'win32';
 
@@ -111,7 +120,12 @@ const prepareStackTrace = (globalThis, error, trace) => {
   // Error: Message
   //     at function (file)
   //     at file
-  const errorString = ErrorPrototypeToString(error);
+  let errorString;
+  if (kIsNodeError in error) {
+    errorString = `${error.name} [${error.code}]: ${error.message}`;
+  } else {
+    errorString = ErrorPrototypeToString(error);
+  }
   if (trace.length === 0) {
     return errorString;
   }
@@ -135,6 +149,24 @@ const maybeOverridePrepareStackTrace = (globalThis, error, trace) => {
 
   return kNoOverride;
 };
+
+const aggregateTwoErrors = hideStackFrames((innerError, outerError) => {
+  if (innerError && outerError) {
+    if (ArrayIsArray(outerError.errors)) {
+      // If `outerError` is already an `AggregateError`.
+      ArrayPrototypePush(outerError.errors, innerError);
+      return outerError;
+    }
+    // eslint-disable-next-line no-restricted-syntax
+    const err = new AggregateError(new SafeArrayIterator([
+      outerError,
+      innerError,
+    ]), outerError.message);
+    err.code = outerError.code;
+    return err;
+  }
+  return innerError || outerError;
+});
 
 // Lazily loaded
 let util;
@@ -163,26 +195,16 @@ function lazyBuffer() {
   return buffer;
 }
 
-const addCodeToName = hideStackFrames(function addCodeToName(err, name, code) {
-  // Set the stack
-  err = captureLargerStackTrace(err);
-  // Add the error code to the name to include it in the stack trace.
-  err.name = `${name} [${code}]`;
-  // Access the stack to generate the error message including the error code
-  // from the name.
-  err.stack; // eslint-disable-line no-unused-expressions
-  // Reset the name to the actual name.
-  if (name === 'SystemError') {
-    ObjectDefineProperty(err, 'name', {
-      value: name,
-      enumerable: false,
-      writable: true,
-      configurable: true
-    });
-  } else {
-    delete err.name;
+function isErrorStackTraceLimitWritable() {
+  const desc = ObjectGetOwnPropertyDescriptor(Error, 'stackTraceLimit');
+  if (desc === undefined) {
+    return ObjectIsExtensible(Error);
   }
-});
+
+  return ObjectPrototypeHasOwnProperty(desc, 'writable') ?
+    desc.writable :
+    desc.set !== undefined;
+}
 
 // A specialized Error that includes an additional info property with
 // additional information about the error condition.
@@ -195,10 +217,10 @@ const addCodeToName = hideStackFrames(function addCodeToName(err, name, code) {
 class SystemError extends Error {
   constructor(key, context) {
     const limit = Error.stackTraceLimit;
-    Error.stackTraceLimit = 0;
+    if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = 0;
     super();
     // Reset the limit and setting the name property.
-    Error.stackTraceLimit = limit;
+    if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = limit;
     const prefix = getMessage(key, [], this);
     let message = `${prefix}: ${context.syscall} returned ` +
                   `${context.code} (${context.message})`;
@@ -208,43 +230,55 @@ class SystemError extends Error {
     if (context.dest !== undefined)
       message += ` => ${context.dest}`;
 
-    ObjectDefineProperty(this, 'message', {
-      value: message,
-      enumerable: false,
-      writable: true,
-      configurable: true
-    });
-    addCodeToName(this, 'SystemError', key);
+    captureLargerStackTrace(this);
 
     this.code = key;
 
-    ObjectDefineProperty(this, 'info', {
-      value: context,
-      enumerable: true,
-      configurable: true,
-      writable: false
-    });
-
-    ObjectDefineProperty(this, 'errno', {
-      get() {
-        return context.errno;
+    ObjectDefineProperties(this, {
+      [kIsNodeError]: {
+        value: true,
+        enumerable: false,
+        writable: false,
+        configurable: true,
       },
-      set: (value) => {
-        context.errno = value;
+      name: {
+        value: 'SystemError',
+        enumerable: false,
+        writable: true,
+        configurable: true,
       },
-      enumerable: true,
-      configurable: true
-    });
-
-    ObjectDefineProperty(this, 'syscall', {
-      get() {
-        return context.syscall;
+      message: {
+        value: message,
+        enumerable: false,
+        writable: true,
+        configurable: true,
       },
-      set: (value) => {
-        context.syscall = value;
+      info: {
+        value: context,
+        enumerable: true,
+        configurable: true,
+        writable: false,
       },
-      enumerable: true,
-      configurable: true
+      errno: {
+        get() {
+          return context.errno;
+        },
+        set: (value) => {
+          context.errno = value;
+        },
+        enumerable: true,
+        configurable: true,
+      },
+      syscall: {
+        get() {
+          return context.syscall;
+        },
+        set: (value) => {
+          context.syscall = value;
+        },
+        enumerable: true,
+        configurable: true,
+      },
     });
 
     if (context.path !== undefined) {
@@ -305,31 +339,46 @@ function makeSystemErrorWithCode(key) {
 }
 
 function makeNodeErrorWithCode(Base, key) {
-  return class NodeError extends Base {
-    constructor(...args) {
-      const limit = Error.stackTraceLimit;
-      Error.stackTraceLimit = 0;
-      super();
-      // Reset the limit and setting the name property.
-      Error.stackTraceLimit = limit;
-      const message = getMessage(key, args, this);
-      ObjectDefineProperty(this, 'message', {
+  return function NodeError(...args) {
+    const limit = Error.stackTraceLimit;
+    if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = 0;
+    const error = new Base();
+    // Reset the limit and setting the name property.
+    if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = limit;
+    const message = getMessage(key, args, error);
+    ObjectDefineProperties(error, {
+      [kIsNodeError]: {
+        value: true,
+        enumerable: false,
+        writable: false,
+        configurable: true,
+      },
+      message: {
         value: message,
         enumerable: false,
         writable: true,
-        configurable: true
-      });
-      addCodeToName(this, super.name, key);
-      this.code = key;
-    }
-
-    toString() {
-      return `${this.name} [${key}]: ${this.message}`;
-    }
+        configurable: true,
+      },
+      toString: {
+        value() {
+          return `${this.name} [${key}]: ${this.message}`;
+        },
+        enumerable: false,
+        writable: true,
+        configurable: true,
+      },
+    });
+    captureLargerStackTrace(error);
+    error.code = key;
+    return error;
   };
 }
 
-// This function removes unnecessary frames from Node.js core errors.
+/**
+ * This function removes unnecessary frames from Node.js core errors.
+ * @template {(...args: any[]) => any} T
+ * @type {(fn: T) => T}
+ */
 function hideStackFrames(fn) {
   // We rename the functions that will be hidden to cut off the stacktrace
   // at the outermost one
@@ -407,11 +456,14 @@ function uvErrmapGet(name) {
 
 const captureLargerStackTrace = hideStackFrames(
   function captureLargerStackTrace(err) {
-    userStackTraceLimit = Error.stackTraceLimit;
-    Error.stackTraceLimit = Infinity;
+    const stackTraceLimitIsWritable = isErrorStackTraceLimitWritable();
+    if (stackTraceLimitIsWritable) {
+      userStackTraceLimit = Error.stackTraceLimit;
+      Error.stackTraceLimit = Infinity;
+    }
     ErrorCaptureStackTrace(err);
     // Reset the limit
-    Error.stackTraceLimit = userStackTraceLimit;
+    if (stackTraceLimitIsWritable) Error.stackTraceLimit = userStackTraceLimit;
 
     return err;
   });
@@ -444,12 +496,12 @@ const uvException = hideStackFrames(function uvException(ctx) {
   // the stack frames due to the `captureStackTrace()` function that is called
   // later.
   const tmpLimit = Error.stackTraceLimit;
-  Error.stackTraceLimit = 0;
+  if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = 0;
   // Pass the message to the constructor instead of setting it on the object
   // to make sure it is the same as the one created in C++
   // eslint-disable-next-line no-restricted-syntax
   const err = new Error(message);
-  Error.stackTraceLimit = tmpLimit;
+  if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = tmpLimit;
 
   for (const prop of ObjectKeys(ctx)) {
     if (prop === 'message' || prop === 'path' || prop === 'dest') {
@@ -496,10 +548,10 @@ const uvExceptionWithHostPort = hideStackFrames(
     // lose the stack frames due to the `captureStackTrace()` function that
     // is called later.
     const tmpLimit = Error.stackTraceLimit;
-    Error.stackTraceLimit = 0;
+    if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = 0;
     // eslint-disable-next-line no-restricted-syntax
     const ex = new Error(`${message}${details}`);
-    Error.stackTraceLimit = tmpLimit;
+    if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = tmpLimit;
     ex.code = code;
     ex.errno = err;
     ex.syscall = syscall;
@@ -531,10 +583,10 @@ const errnoException = hideStackFrames(
       `${syscall} ${code} ${original}` : `${syscall} ${code}`;
 
     const tmpLimit = Error.stackTraceLimit;
-    Error.stackTraceLimit = 0;
+    if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = 0;
     // eslint-disable-next-line no-restricted-syntax
     const ex = new Error(message);
-    Error.stackTraceLimit = tmpLimit;
+    if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = tmpLimit;
     ex.errno = err;
     ex.code = code;
     ex.syscall = syscall;
@@ -575,10 +627,10 @@ const exceptionWithHostPort = hideStackFrames(
     // lose the stack frames due to the `captureStackTrace()` function that
     // is called later.
     const tmpLimit = Error.stackTraceLimit;
-    Error.stackTraceLimit = 0;
+    if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = 0;
     // eslint-disable-next-line no-restricted-syntax
     const ex = new Error(`${syscall} ${code}${details}`);
-    Error.stackTraceLimit = tmpLimit;
+    if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = tmpLimit;
     ex.errno = err;
     ex.code = code;
     ex.syscall = syscall;
@@ -620,10 +672,10 @@ const dnsException = hideStackFrames(function(code, syscall, hostname) {
   // the stack frames due to the `captureStackTrace()` function that is called
   // later.
   const tmpLimit = Error.stackTraceLimit;
-  Error.stackTraceLimit = 0;
+  if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = 0;
   // eslint-disable-next-line no-restricted-syntax
   const ex = new Error(message);
-  Error.stackTraceLimit = tmpLimit;
+  if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = tmpLimit;
   ex.errno = errno;
   ex.code = code;
   ex.syscall = syscall;
@@ -737,6 +789,34 @@ const fatalExceptionStackEnhancers = {
   }
 };
 
+// Ensures the printed error line is from user code.
+let _kArrowMessagePrivateSymbol, _setHiddenValue;
+function setArrowMessage(err, arrowMessage) {
+  if (!_kArrowMessagePrivateSymbol) {
+    ({
+      arrow_message_private_symbol: _kArrowMessagePrivateSymbol,
+      setHiddenValue: _setHiddenValue,
+    } = internalBinding('util'));
+  }
+  _setHiddenValue(err, _kArrowMessagePrivateSymbol, arrowMessage);
+}
+
+// Hide stack lines before the first user code line.
+function hideInternalStackFrames(error) {
+  overrideStackTrace.set(error, (error, stackFrames) => {
+    let frames = stackFrames;
+    if (typeof stackFrames === 'object') {
+      frames = ArrayPrototypeFilter(
+        stackFrames,
+        (frm) => !StringPrototypeStartsWith(frm.getFileName() || '',
+                                            'node:internal')
+      );
+    }
+    ArrayPrototypeUnshift(frames, error);
+    return ArrayPrototypeJoin(frames, '\n    at ');
+  });
+}
+
 // Node uses an AbortError that isn't exactly the same as the DOMException
 // to make usage of the error in userland and readable-stream easier.
 // It is a regular error with `.code` and `.name`.
@@ -748,14 +828,17 @@ class AbortError extends Error {
   }
 }
 module.exports = {
-  addCodeToName, // Exported for NghttpError
+  aggregateTwoErrors,
   codes,
   dnsException,
   errnoException,
   exceptionWithHostPort,
   getMessage,
   hideStackFrames,
+  hideInternalStackFrames,
+  isErrorStackTraceLimitWritable,
   isStackOverflowError,
+  setArrowMessage,
   connResetException,
   uvErrmapGet,
   uvException,
@@ -769,7 +852,9 @@ module.exports = {
   maybeOverridePrepareStackTrace,
   overrideStackTrace,
   kEnhanceStackBeforeInspector,
-  fatalExceptionStackEnhancers
+  fatalExceptionStackEnhancers,
+  kIsNodeError,
+  captureLargerStackTrace,
 };
 
 // To declare an error message, use the E(sym, val, def) function above. The sym
@@ -788,6 +873,7 @@ module.exports = {
 // Note: Please try to keep these in alphabetical order
 //
 // Note: Node.js specific errors must begin with the prefix ERR_
+
 E('ERR_AMBIGUOUS_ARGUMENT', 'The "%s" argument is ambiguous. %s', TypeError);
 E('ERR_ARG_NOT_ITERABLE', '%s must be iterable', TypeError);
 E('ERR_ASSERTION', '%s', Error);
@@ -817,7 +903,6 @@ E('ERR_CHILD_PROCESS_STDIO_MAXBUFFER', '%s maxBuffer length exceeded',
 E('ERR_CONSOLE_WRITABLE_STREAM',
   'Console expects a writable stream instance for %s', TypeError);
 E('ERR_CONTEXT_NOT_INITIALIZED', 'context used is not initialized', Error);
-E('ERR_CPU_USAGE', 'Unable to obtain cpu usage %s', Error);
 E('ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED',
   'Custom engines not supported by this OpenSSL', Error);
 E('ERR_CRYPTO_ECDH_INVALID_FORMAT', 'Invalid ECDH format: %s', TypeError);
@@ -834,6 +919,7 @@ E('ERR_CRYPTO_INCOMPATIBLE_KEY', 'Incompatible %s: %s', Error);
 E('ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS', 'The selected key encoding %s %s.',
   Error);
 E('ERR_CRYPTO_INVALID_DIGEST', 'Invalid digest: %s', TypeError);
+E('ERR_CRYPTO_INVALID_JWK', 'Invalid JWK data', TypeError);
 E('ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE',
   'Invalid key object type %s, expected %s.', TypeError);
 E('ERR_CRYPTO_INVALID_STATE', 'Invalid state for operation %s', Error);
@@ -875,6 +961,17 @@ E('ERR_FEATURE_UNAVAILABLE_ON_PLATFORM',
   'The feature %s is unavailable on the current platform' +
   ', which is being used to run Node.js',
   TypeError);
+E('ERR_FS_CP_DIR_TO_NON_DIR',
+  'Cannot overwrite directory with non-directory', SystemError);
+E('ERR_FS_CP_EEXIST', 'Target already exists', SystemError);
+E('ERR_FS_CP_EINVAL', 'Invalid src or dest', SystemError);
+E('ERR_FS_CP_FIFO_PIPE', 'Cannot copy a FIFO pipe', SystemError);
+E('ERR_FS_CP_NON_DIR_TO_DIR',
+  'Cannot overwrite non-directory with directory', SystemError);
+E('ERR_FS_CP_SOCKET', 'Cannot copy a socket file', SystemError);
+E('ERR_FS_CP_SYMLINK_TO_SUBDIRECTORY',
+  'Cannot overwrite symlink in subdirectory of self', SystemError);
+E('ERR_FS_CP_UNKNOWN', 'Cannot copy an unknown file type', SystemError);
 E('ERR_FS_EISDIR', 'Path is a directory', SystemError);
 E('ERR_FS_FILE_TOO_LARGE', 'File size (%s) is greater than 2 GB', RangeError);
 E('ERR_FS_INVALID_SYMLINK_TYPE',
@@ -968,6 +1065,7 @@ E('ERR_HTTP2_STREAM_CANCEL', function(error) {
 E('ERR_HTTP2_STREAM_ERROR', 'Stream closed with error code %s', Error);
 E('ERR_HTTP2_STREAM_SELF_DEPENDENCY',
   'A stream cannot depend on itself', Error);
+E('ERR_HTTP2_TOO_MANY_INVALID_FRAMES', 'Too many invalid HTTP/2 frames', Error);
 E('ERR_HTTP2_TRAILERS_ALREADY_SENT',
   'Trailing headers have already been sent', Error);
 E('ERR_HTTP2_TRAILERS_NOT_READY',
@@ -980,8 +1078,11 @@ E('ERR_HTTP_INVALID_HEADER_VALUE',
   'Invalid value "%s" for header "%s"', TypeError);
 E('ERR_HTTP_INVALID_STATUS_CODE', 'Invalid status code: %s', RangeError);
 E('ERR_HTTP_REQUEST_TIMEOUT', 'Request timeout', Error);
+E('ERR_HTTP_SOCKET_ENCODING',
+  'Changing the socket encoding is not allowed per RFC7230 Section 3.', Error);
 E('ERR_HTTP_TRAILER_INVALID',
   'Trailers are invalid with this transfer encoding', Error);
+E('ERR_ILLEGAL_CONSTRUCTOR', 'Illegal constructor', TypeError);
 E('ERR_INCOMPATIBLE_OPTION_PAIR',
   'Option "%s" cannot be used in combination with option "%s"', TypeError);
 E('ERR_INPUT_TYPE_NOT_ALLOWED', '--input-type can only be used with string ' +
@@ -1121,7 +1222,8 @@ E('ERR_INVALID_ARG_VALUE', (name, value, reason = 'is invalid') => {
   if (inspected.length > 128) {
     inspected = `${StringPrototypeSlice(inspected, 0, 128)}...`;
   }
-  return `The argument '${name}' ${reason}. Received ${inspected}`;
+  const type = StringPrototypeIncludes(name, '.') ? 'property' : 'argument';
+  return `The ${type} '${name}' ${reason}. Received ${inspected}`;
 }, TypeError, RangeError);
 E('ERR_INVALID_ASYNC_ID', 'Invalid %s value: %s', RangeError);
 E('ERR_INVALID_BUFFER_SIZE',
@@ -1153,15 +1255,6 @@ E('ERR_INVALID_MODULE_SPECIFIER', (request, reason, base = undefined) => {
   return `Invalid module "${request}" ${reason}${base ?
     ` imported from ${base}` : ''}`;
 }, TypeError);
-E('ERR_INVALID_OPT_VALUE', (name, value, reason = '') => {
-  let inspected = typeof value === 'string' ?
-    value : lazyInternalUtilInspect().inspect(value);
-  if (inspected.length > 128) inspected = `${inspected.slice(0, 128)}...`;
-  if (reason) reason = '. ' + reason;
-  return `The value "${inspected}" is invalid for option "${name}"` + reason;
-}, TypeError, RangeError);
-E('ERR_INVALID_OPT_VALUE_ENCODING',
-  'The value "%s" is invalid for option "encoding"', TypeError);
 E('ERR_INVALID_PACKAGE_CONFIG', (path, base, message) => {
   return `Invalid package config ${path}${base ? ` while importing ${base}` :
     ''}${message ? `. ${message}` : ''}`;
@@ -1182,8 +1275,6 @@ E('ERR_INVALID_PACKAGE_TARGET',
       pkgPath}package.json${base ? ` imported from ${base}` : ''}${relError ?
       '; targets must start with "./"' : ''}`;
   }, Error);
-E('ERR_INVALID_PERFORMANCE_MARK',
-  'The "%s" performance mark has not been set', Error);
 E('ERR_INVALID_PROTOCOL',
   'Protocol "%s" not supported. Expected "%s"',
   TypeError);
@@ -1213,7 +1304,8 @@ E('ERR_INVALID_RETURN_VALUE', (input, name, value) => {
   }
   return `Expected ${input} to be returned from the "${name}"` +
          ` function but got ${type}.`;
-}, TypeError);
+}, TypeError, RangeError);
+E('ERR_INVALID_STATE', 'Invalid state: %s', Error, TypeError, RangeError);
 E('ERR_INVALID_SYNC_FORK_INPUT',
   'Asynchronous forks do not support ' +
     'Buffer, TypedArray, DataView or string input: %s',
@@ -1223,7 +1315,9 @@ E('ERR_INVALID_TUPLE', '%s must be an iterable %s tuple', TypeError);
 E('ERR_INVALID_URI', 'URI malformed', URIError);
 E('ERR_INVALID_URL', function(input) {
   this.input = input;
-  return `Invalid URL: ${input}`;
+  // Don't include URL in message.
+  // (See https://github.com/nodejs/node/pull/38614)
+  return 'Invalid URL';
 }, TypeError);
 E('ERR_INVALID_URL_SCHEME',
   (expected) => {
@@ -1318,7 +1412,7 @@ E('ERR_NO_CRYPTO',
   'Node.js is not compiled with OpenSSL crypto support', Error);
 E('ERR_NO_ICU',
   '%s is not supported on Node.js compiled without ICU', TypeError);
-E('ERR_OPERATION_FAILED', 'Operation failed: %s', Error);
+E('ERR_OPERATION_FAILED', 'Operation failed: %s', Error, TypeError);
 E('ERR_OUT_OF_RANGE',
   (str, range, input, replaceDefaultBoolean = false) => {
     assert(range, 'Missing "range" argument');
@@ -1350,24 +1444,36 @@ E('ERR_PACKAGE_PATH_NOT_EXPORTED', (pkgPath, subpath, base = undefined) => {
   return `Package subpath '${subpath}' is not defined by "exports" in ${
     pkgPath}package.json${base ? ` imported from ${base}` : ''}`;
 }, Error);
+E('ERR_PERFORMANCE_INVALID_TIMESTAMP',
+  '%d is not a valid timestamp', TypeError);
+E('ERR_PERFORMANCE_MEASURE_INVALID_OPTIONS', '%s', TypeError);
 E('ERR_REQUIRE_ESM',
-  (filename, parentPath = null, packageJsonPath = null) => {
-    let msg = `Must use import to load ES Module: ${filename}`;
-    if (parentPath && packageJsonPath) {
-      const path = require('path');
-      const basename = path.basename(filename) === path.basename(parentPath) ?
-        filename : path.basename(filename);
-      msg +=
-        '\nrequire() of ES modules is not supported.\nrequire() of ' +
-        `${filename} from ${parentPath} ` +
-        'is an ES module file as it is a .js file whose nearest parent ' +
-        'package.json contains "type": "module" which defines all .js ' +
-        'files in that package scope as ES modules.\nInstead rename ' +
-        `${basename} to end in .cjs, change the requiring code to use ` +
-        'import(), or remove "type": "module" from ' +
-        `${packageJsonPath}.\n`;
+  function(filename, hasEsmSyntax, parentPath = null, packageJsonPath = null) {
+    hideInternalStackFrames(this);
+    let msg = `require() of ES Module ${filename}${parentPath ? ` from ${
+      parentPath}` : ''} not supported.`;
+    if (!packageJsonPath) {
+      if (StringPrototypeEndsWith(filename, '.mjs'))
+        msg += `\nInstead change the require of ${filename} to a dynamic ` +
+            'import() which is available in all CommonJS modules.';
       return msg;
     }
+    const path = require('path');
+    const basename = parentPath && path.basename(filename) ===
+      path.basename(parentPath) ? filename : path.basename(filename);
+    if (hasEsmSyntax) {
+      msg += `\nInstead change the require of ${basename} in ${parentPath} to` +
+        ' a dynamic import() which is available in all CommonJS modules.';
+      return msg;
+    }
+    msg += `\n${basename} is treated as an ES module file as it is a .js ` +
+      'file whose nearest parent package.json contains "type": "module" ' +
+      'which declares all .js files in that package scope as ES modules.' +
+      `\nInstead rename ${basename} to end in .cjs, change the requiring ` +
+      'code to use dynamic import() which is available in all CommonJS ' +
+      'modules, or change "type": "module" to "type": "commonjs" in ' +
+      `${packageJsonPath} to treat all .js files as CommonJS (using .mjs for ` +
+      'all ES modules instead).\n';
     return msg;
   }, Error);
 E('ERR_SCRIPT_EXECUTION_INTERRUPTED',
@@ -1410,6 +1516,8 @@ E('ERR_STREAM_WRAP', 'Stream has StringDecoder set or is in objectMode', Error);
 E('ERR_STREAM_WRITE_AFTER_END', 'write after end', Error);
 E('ERR_SYNTHETIC', 'JavaScript Callstack', Error);
 E('ERR_SYSTEM_ERROR', 'A system error occurred', SystemError);
+E('ERR_TLS_CERT_ALTNAME_FORMAT', 'Invalid subject alternative name string',
+  SyntaxError);
 E('ERR_TLS_CERT_ALTNAME_INVALID', function(reason, host, cert) {
   this.reason = reason;
   this.host = host;
@@ -1437,12 +1545,8 @@ E('ERR_TLS_SNI_FROM_SERVER',
 E('ERR_TRACE_EVENTS_CATEGORY_REQUIRED',
   'At least one category is required', TypeError);
 E('ERR_TRACE_EVENTS_UNAVAILABLE', 'Trace events are unavailable', Error);
-E('ERR_TRANSFORM_ALREADY_TRANSFORMING',
-  'Calling transform done when still transforming', Error);
 
 // This should probably be a `RangeError`.
-E('ERR_TRANSFORM_WITH_LENGTH_0',
-  'Calling transform done when writableState.length != 0', Error);
 E('ERR_TTY_INIT_FAILED', 'TTY initialization failed', SystemError);
 E('ERR_UNAVAILABLE_DURING_EXIT', 'Cannot call function in process exit ' +
   'handler', Error);
@@ -1515,9 +1619,6 @@ E('ERR_WORKER_PATH', (filename) =>
   TypeError);
 E('ERR_WORKER_UNSERIALIZABLE_ERROR',
   'Serializing an uncaught exception failed', Error);
-E('ERR_WORKER_UNSUPPORTED_EXTENSION',
-  'The worker script extension must be ".js", ".mjs", or ".cjs". Received "%s"',
-  TypeError);
 E('ERR_WORKER_UNSUPPORTED_OPERATION',
   '%s is not supported in workers', TypeError);
 E('ERR_ZLIB_INITIALIZATION_FAILED', 'Initialization failed', Error);

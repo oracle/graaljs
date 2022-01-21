@@ -15,6 +15,7 @@ const {
   MessageChannel,
   moveMessagePortToContext,
   receiveMessageOnPort,
+  BroadcastChannel,
 } = require('internal/worker/io');
 
 const {
@@ -34,6 +35,7 @@ module.exports = {
   Worker,
   parentPort: null,
   workerData: null,
+  BroadcastChannel,
   setEnvironmentData,
   getEnvironmentData,
 };

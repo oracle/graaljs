@@ -2,11 +2,12 @@
 
 const {
   ArrayIsArray,
+  ArrayPrototypeFilter,
+  ArrayPrototypePush,
   BigIntPrototypeValueOf,
   BooleanPrototypeValueOf,
   DatePrototypeGetTime,
   Error,
-  Map,
   NumberIsNaN,
   NumberPrototypeValueOf,
   ObjectGetOwnPropertySymbols,
@@ -16,10 +17,11 @@ const {
   ObjectPrototypeHasOwnProperty,
   ObjectPrototypePropertyIsEnumerable,
   ObjectPrototypeToString,
-  Set,
+  SafeMap,
+  SafeSet,
   StringPrototypeValueOf,
   SymbolPrototypeValueOf,
-  SymbolToStringTag,
+  TypedArrayPrototypeGetSymbolToStringTag,
   Uint8Array,
 } = primordials;
 
@@ -42,15 +44,6 @@ const {
   isSymbolObject,
   isFloat32Array,
   isFloat64Array,
-  isUint8Array,
-  isUint8ClampedArray,
-  isUint16Array,
-  isUint32Array,
-  isInt8Array,
-  isInt16Array,
-  isInt32Array,
-  isBigInt64Array,
-  isBigUint64Array
 } = types;
 const {
   getOwnNonIndexProperties,
@@ -122,37 +115,6 @@ function isEqualBoxedPrimitive(val1, val2) {
   }
   /* c8 ignore next */
   assert.fail(`Unknown boxed type ${val1}`);
-}
-
-function isIdenticalTypedArrayType(a, b) {
-  // Fast path to reduce type checks in the common case.
-  const check = types[`is${a[SymbolToStringTag]}`];
-  if (check !== undefined && check(a)) {
-    return check(b);
-  }
-  // Manipulated Symbol.toStringTag.
-  for (const check of [
-    isUint16Array,
-    isUint32Array,
-    isInt8Array,
-    isInt16Array,
-    isInt32Array,
-    isFloat32Array,
-    isFloat64Array,
-    isBigInt64Array,
-    isBigUint64Array,
-    isUint8ClampedArray,
-    isUint8Array,
-  ]) {
-    if (check(a)) {
-      return check(b);
-    }
-  }
-  /* c8 ignore next 4 */
-  assert.fail(
-    `Unknown TypedArray type checking ${a[SymbolToStringTag]} ${a}\n` +
-    `and ${b[SymbolToStringTag]} ${b}`
-  );
 }
 
 // Notes: Type tags are historical [[Class]] properties that can be set by
@@ -238,8 +200,10 @@ function innerDeepEqual(val1, val2, strict, memos) {
       return false;
     }
   } else if (isArrayBufferView(val1)) {
-    if (!isIdenticalTypedArrayType(val1, val2))
+    if (TypedArrayPrototypeGetSymbolToStringTag(val1) !==
+        TypedArrayPrototypeGetSymbolToStringTag(val2)) {
       return false;
+    }
     if (!strict && (isFloat32Array(val1) || isFloat64Array(val1))) {
       if (!areSimilarFloatArrays(val1, val2)) {
         return false;
@@ -291,7 +255,10 @@ function innerDeepEqual(val1, val2, strict, memos) {
 }
 
 function getEnumerables(val, keys) {
-  return keys.filter((k) => ObjectPrototypePropertyIsEnumerable(val, k));
+  return ArrayPrototypeFilter(
+    keys,
+    (k) => ObjectPrototypePropertyIsEnumerable(val, k)
+  );
 }
 
 function keyCheck(val1, val2, strict, memos, iterationType, aKeys) {
@@ -330,7 +297,7 @@ function keyCheck(val1, val2, strict, memos, iterationType, aKeys) {
           if (!ObjectPrototypePropertyIsEnumerable(val2, key)) {
             return false;
           }
-          aKeys.push(key);
+          ArrayPrototypePush(aKeys, key);
           count++;
         } else if (ObjectPrototypePropertyIsEnumerable(val2, key)) {
           return false;
@@ -360,8 +327,8 @@ function keyCheck(val1, val2, strict, memos, iterationType, aKeys) {
   // Use memos to handle cycles.
   if (memos === undefined) {
     memos = {
-      val1: new Map(),
-      val2: new Map(),
+      val1: new SafeMap(),
+      val2: new SafeMap(),
       position: 0
     };
   } else {
@@ -458,7 +425,7 @@ function setEquiv(a, b, strict, memo) {
     // to check this improves the worst case scenario instead.
     if (typeof val === 'object' && val !== null) {
       if (set === null) {
-        set = new Set();
+        set = new SafeSet();
       }
       // If the specified value doesn't exist in the second set it's a non-null
       // object (or non strict only: a not matching primitive) we'll need to go
@@ -475,7 +442,7 @@ function setEquiv(a, b, strict, memo) {
       }
 
       if (set === null) {
-        set = new Set();
+        set = new SafeSet();
       }
       set.add(val);
     }
@@ -521,7 +488,7 @@ function mapEquiv(a, b, strict, memo) {
   for (const { 0: key, 1: item1 } of a) {
     if (typeof key === 'object' && key !== null) {
       if (set === null) {
-        set = new Set();
+        set = new SafeSet();
       }
       set.add(key);
     } else {
@@ -537,7 +504,7 @@ function mapEquiv(a, b, strict, memo) {
         if (!mapMightHaveLoosePrim(a, b, key, item1, memo))
           return false;
         if (set === null) {
-          set = new Set();
+          set = new SafeSet();
         }
         set.add(key);
       }

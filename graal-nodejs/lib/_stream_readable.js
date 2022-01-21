@@ -1,5 +1,5 @@
 'use strict';
 
-// TODO(mcollina): deprecate this file
-const Readable = require('internal/streams/readable');
-module.exports = Readable;
+// Keep this file as an alias for the full stream module.
+
+module.exports = require('stream').Readable;

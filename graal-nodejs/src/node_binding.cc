@@ -1,7 +1,8 @@
 #include "node_binding.h"
-#include "node_errors.h"
 #include <atomic>
 #include "env-inl.h"
+#include "node_errors.h"
+#include "node_external_reference.h"
 #include "node_native_module_env.h"
 #include "util.h"
 
@@ -39,6 +40,7 @@
 // __attribute__((constructor)) like mechanism in GCC.
 #define NODE_BUILTIN_STANDARD_MODULES(V)                                       \
   V(async_wrap)                                                                \
+  V(blob)                                                                      \
   V(block_list)                                                                \
   V(buffer)                                                                    \
   V(cares_wrap)                                                                \
@@ -413,6 +415,12 @@ inline napi_addon_register_func GetNapiInitializerCallback(DLib* dlib) {
 // cache that's a plain C list or hash table that's shared across contexts?
 void DLOpen(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
+
+  if (env->no_native_addons()) {
+    return THROW_ERR_DLOPEN_DISABLED(
+      env, "Cannot load native addon because loading addons is disabled.");
+  }
+
   auto context = env->context();
 
   CHECK_NULL(thread_local_modpending);
@@ -592,6 +600,7 @@ void GetInternalBinding(const FunctionCallbackInfo<Value>& args) {
   node_module* mod = FindModule(modlist_internal, *module_v, NM_F_INTERNAL);
   if (mod != nullptr) {
     exports = InitModule(env, mod, module);
+    env->internal_bindings.insert(mod);
   } else if (!strcmp(*module_v, "constants")) {
     exports = Object::New(env->isolate());
     CHECK(
@@ -679,5 +688,13 @@ void RegisterBuiltinModules() {
 #undef V
 }
 
+void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
+  registry->Register(GetLinkedBinding);
+  registry->Register(GetInternalBinding);
+}
+
 }  // namespace binding
 }  // namespace node
+
+NODE_MODULE_EXTERNAL_REFERENCE(binding,
+                               node::binding::RegisterExternalReferences)

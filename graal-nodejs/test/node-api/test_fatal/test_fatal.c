@@ -21,7 +21,7 @@ static napi_value Test(napi_env env, napi_callback_info info) {
 }
 
 static napi_value TestThread(napi_env env, napi_callback_info info) {
-  NAPI_ASSERT(env,
+  NODE_API_ASSERT(env,
       (uv_thread_create(&uv_thread, work_thread, NULL) == 0),
       "Thread creation");
   return NULL;
@@ -34,12 +34,12 @@ static napi_value TestStringLength(napi_env env, napi_callback_info info) {
 
 static napi_value Init(napi_env env, napi_value exports) {
   napi_property_descriptor properties[] = {
-    DECLARE_NAPI_PROPERTY("Test", Test),
-    DECLARE_NAPI_PROPERTY("TestStringLength", TestStringLength),
-    DECLARE_NAPI_PROPERTY("TestThread", TestThread),
+    DECLARE_NODE_API_PROPERTY("Test", Test),
+    DECLARE_NODE_API_PROPERTY("TestStringLength", TestStringLength),
+    DECLARE_NODE_API_PROPERTY("TestThread", TestThread),
   };
 
-  NAPI_CALL(env, napi_define_properties(
+  NODE_API_CALL(env, napi_define_properties(
       env, exports, sizeof(properties) / sizeof(*properties), properties));
 
   return exports;

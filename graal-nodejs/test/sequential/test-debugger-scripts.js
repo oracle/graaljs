@@ -39,7 +39,7 @@ const assert = require('assert');
         'lists the user script');
       assert.match(
         cli.output,
-        /\d+: internal\/buffer/,
+        /\d+: node:internal\/buffer/,
         'includes node-internal scripts');
     })
     .then(() => cli.quit())

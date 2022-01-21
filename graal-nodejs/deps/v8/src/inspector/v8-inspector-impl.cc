@@ -32,7 +32,9 @@
 
 #include <vector>
 
+#include "include/v8-platform.h"
 #include "src/base/platform/mutex.h"
+#include "src/debug/debug-interface.h"
 #include "src/inspector/inspected-context.h"
 #include "src/inspector/string-util.h"
 #include "src/inspector/v8-console-agent-impl.h"
@@ -44,8 +46,6 @@
 #include "src/inspector/v8-profiler-agent-impl.h"
 #include "src/inspector/v8-runtime-agent-impl.h"
 #include "src/inspector/v8-stack-trace-impl.h"
-
-#include "include/v8-platform.h"
 
 namespace v8_inspector {
 
@@ -62,7 +62,7 @@ V8InspectorImpl::V8InspectorImpl(v8::Isolate* isolate,
       m_capturingStackTracesCount(0),
       m_lastExceptionId(0),
       m_lastContextId(0),
-      m_isolateId(v8::debug::GetNextRandomInt64(m_isolate)) {
+      m_isolateId(generateUniqueId()) {
   v8::debug::SetInspector(m_isolate, this);
   v8::debug::SetConsoleDelegate(m_isolate, console());
 }
@@ -81,6 +81,11 @@ int V8InspectorImpl::contextGroupId(int contextId) const {
   return it != m_contextIdToGroupIdMap.end() ? it->second : 0;
 }
 
+int V8InspectorImpl::resolveUniqueContextId(V8DebuggerId uniqueId) const {
+  auto it = m_uniqueIdToContextId.find(uniqueId.pair());
+  return it == m_uniqueIdToContextId.end() ? 0 : it->second;
+}
+
 v8::MaybeLocal<v8::Value> V8InspectorImpl::compileAndRunInternalScript(
     v8::Local<v8::Context> context, v8::Local<v8::String> source) {
   v8::Local<v8::UnboundScript> unboundScript;
@@ -97,12 +102,8 @@ v8::MaybeLocal<v8::Value> V8InspectorImpl::compileAndRunInternalScript(
 v8::MaybeLocal<v8::Script> V8InspectorImpl::compileScript(
     v8::Local<v8::Context> context, const String16& code,
     const String16& fileName) {
-  v8::ScriptOrigin origin(
-      toV8String(m_isolate, fileName), v8::Integer::New(m_isolate, 0),
-      v8::Integer::New(m_isolate, 0),
-      v8::False(m_isolate),                                         // sharable
-      v8::Local<v8::Integer>(), toV8String(m_isolate, String16()),  // sourceMap
-      v8::True(m_isolate));  // opaqueresource
+  v8::ScriptOrigin origin(m_isolate, toV8String(m_isolate, fileName), 0, 0,
+                          false);
   v8::ScriptCompiler::Source source(toV8String(m_isolate, code), origin);
   return v8::ScriptCompiler::Compile(context, &source,
                                      v8::ScriptCompiler::kNoCompileOptions);
@@ -131,8 +132,7 @@ void V8InspectorImpl::unmuteExceptions(int contextGroupId) {
 
 V8ConsoleMessageStorage* V8InspectorImpl::ensureConsoleMessageStorage(
     int contextGroupId) {
-  ConsoleStorageMap::iterator storageIt =
-      m_consoleStorageMap.find(contextGroupId);
+  auto storageIt = m_consoleStorageMap.find(contextGroupId);
   if (storageIt == m_consoleStorageMap.end())
     storageIt = m_consoleStorageMap
                     .insert(std::make_pair(
@@ -144,8 +144,7 @@ V8ConsoleMessageStorage* V8InspectorImpl::ensureConsoleMessageStorage(
 }
 
 bool V8InspectorImpl::hasConsoleMessageStorage(int contextGroupId) {
-  ConsoleStorageMap::iterator storageIt =
-      m_consoleStorageMap.find(contextGroupId);
+  auto storageIt = m_consoleStorageMap.find(contextGroupId);
   return storageIt != m_consoleStorageMap.end();
 }
 
@@ -174,10 +173,10 @@ InspectedContext* V8InspectorImpl::getContext(int groupId,
                                               int contextId) const {
   if (!groupId || !contextId) return nullptr;
 
-  ContextsByGroupMap::const_iterator contextGroupIt = m_contexts.find(groupId);
+  auto contextGroupIt = m_contexts.find(groupId);
   if (contextGroupIt == m_contexts.end()) return nullptr;
 
-  ContextByIdMap::iterator contextIt = contextGroupIt->second->find(contextId);
+  auto contextIt = contextGroupIt->second->find(contextId);
   if (contextIt == contextGroupIt->second->end()) return nullptr;
 
   return contextIt->second.get();
@@ -194,10 +193,15 @@ v8::MaybeLocal<v8::Context> V8InspectorImpl::contextById(int contextId) {
 
 void V8InspectorImpl::contextCreated(const V8ContextInfo& info) {
   int contextId = ++m_lastContextId;
-  InspectedContext* context = new InspectedContext(this, info, contextId);
+  auto* context = new InspectedContext(this, info, contextId);
   m_contextIdToGroupIdMap[contextId] = info.contextGroupId;
 
-  ContextsByGroupMap::iterator contextIt = m_contexts.find(info.contextGroupId);
+  DCHECK(m_uniqueIdToContextId.find(context->uniqueId().pair()) ==
+         m_uniqueIdToContextId.end());
+  m_uniqueIdToContextId.insert(
+      std::make_pair(context->uniqueId().pair(), contextId));
+
+  auto contextIt = m_contexts.find(info.contextGroupId);
   if (contextIt == m_contexts.end())
     contextIt = m_contexts
                     .insert(std::make_pair(
@@ -224,7 +228,7 @@ void V8InspectorImpl::contextDestroyed(v8::Local<v8::Context> context) {
 void V8InspectorImpl::contextCollected(int groupId, int contextId) {
   m_contextIdToGroupIdMap.erase(contextId);
 
-  ConsoleStorageMap::iterator storageIt = m_consoleStorageMap.find(groupId);
+  auto storageIt = m_consoleStorageMap.find(groupId);
   if (storageIt != m_consoleStorageMap.end())
     storageIt->second->contextDestroyed(contextId);
 
@@ -240,14 +244,15 @@ void V8InspectorImpl::contextCollected(int groupId, int contextId) {
 void V8InspectorImpl::resetContextGroup(int contextGroupId) {
   m_consoleStorageMap.erase(contextGroupId);
   m_muteExceptionsMap.erase(contextGroupId);
-  std::vector<int> contextIdsToClear;
-  forEachContext(contextGroupId,
-                 [&contextIdsToClear](InspectedContext* context) {
-                   contextIdsToClear.push_back(context->contextId());
-                 });
+  auto contextsIt = m_contexts.find(contextGroupId);
+  // Context might have been removed already by discardContextScript()
+  if (contextsIt != m_contexts.end()) {
+    for (const auto& map_entry : *contextsIt->second)
+      m_uniqueIdToContextId.erase(map_entry.second->uniqueId().pair());
+    m_contexts.erase(contextsIt);
+  }
   forEachSession(contextGroupId,
                  [](V8InspectorSessionImpl* session) { session->reset(); });
-  m_contexts.erase(contextGroupId);
 }
 
 void V8InspectorImpl::idleStarted() { m_isolate->SetIdle(true); }
@@ -330,7 +335,7 @@ void V8InspectorImpl::allAsyncTasksCanceled() {
 
 V8Inspector::Counters::Counters(v8::Isolate* isolate) : m_isolate(isolate) {
   CHECK(m_isolate);
-  V8InspectorImpl* inspector =
+  auto* inspector =
       static_cast<V8InspectorImpl*>(v8::debug::GetInspector(m_isolate));
   CHECK(inspector);
   CHECK(!inspector->m_counters);
@@ -339,7 +344,7 @@ V8Inspector::Counters::Counters(v8::Isolate* isolate) : m_isolate(isolate) {
 }
 
 V8Inspector::Counters::~Counters() {
-  V8InspectorImpl* inspector =
+  auto* inspector =
       static_cast<V8InspectorImpl*>(v8::debug::GetInspector(m_isolate));
   CHECK(inspector);
   inspector->m_counters = nullptr;
@@ -361,15 +366,33 @@ std::shared_ptr<V8Inspector::Counters> V8InspectorImpl::enableCounters() {
   return std::make_shared<Counters>(m_isolate);
 }
 
-v8::Local<v8::Context> V8InspectorImpl::regexContext() {
-  if (m_regexContext.IsEmpty())
+v8::MaybeLocal<v8::Context> V8InspectorImpl::regexContext() {
+  if (m_regexContext.IsEmpty()) {
     m_regexContext.Reset(m_isolate, v8::Context::New(m_isolate));
+    if (m_regexContext.IsEmpty()) {
+      DCHECK(m_isolate->IsExecutionTerminating());
+      return {};
+    }
+  }
   return m_regexContext.Get(m_isolate);
+}
+
+v8::MaybeLocal<v8::Context> V8InspectorImpl::exceptionMetaDataContext() {
+  if (m_exceptionMetaDataContext.IsEmpty()) {
+    m_exceptionMetaDataContext.Reset(m_isolate, v8::Context::New(m_isolate));
+    if (m_exceptionMetaDataContext.IsEmpty()) {
+      DCHECK(m_isolate->IsExecutionTerminating());
+      return {};
+    }
+  }
+  return m_exceptionMetaDataContext.Get(m_isolate);
 }
 
 void V8InspectorImpl::discardInspectedContext(int contextGroupId,
                                               int contextId) {
-  if (!getContext(contextGroupId, contextId)) return;
+  auto* context = getContext(contextGroupId, contextId);
+  if (!context) return;
+  m_uniqueIdToContextId.erase(context->uniqueId().pair());
   m_contexts[contextGroupId]->erase(contextId);
   if (m_contexts[contextGroupId]->empty()) m_contexts.erase(contextGroupId);
 }
@@ -423,6 +446,13 @@ void V8InspectorImpl::forEachSession(
   }
 }
 
+int64_t V8InspectorImpl::generateUniqueId() {
+  int64_t id = m_client->generateUniqueId();
+  if (!id) id = v8::debug::GetNextRandomInt64(m_isolate);
+  if (!id) id = 1;
+  return id;
+}
+
 V8InspectorImpl::EvaluateScope::EvaluateScope(
     const InjectedScript::Scope& scope)
     : m_scope(scope),
@@ -473,4 +503,56 @@ protocol::Response V8InspectorImpl::EvaluateScope::setTimeout(double timeout) {
   return protocol::Response::Success();
 }
 
+bool V8InspectorImpl::associateExceptionData(v8::Local<v8::Context>,
+                                             v8::Local<v8::Value> exception,
+                                             v8::Local<v8::Name> key,
+                                             v8::Local<v8::Value> value) {
+  if (!exception->IsObject()) {
+    return false;
+  }
+  v8::Local<v8::Context> context;
+  if (!exceptionMetaDataContext().ToLocal(&context)) return false;
+  v8::TryCatch tryCatch(m_isolate);
+  v8::Context::Scope contextScope(context);
+  v8::HandleScope handles(m_isolate);
+  if (m_exceptionMetaData.IsEmpty())
+    m_exceptionMetaData.Reset(m_isolate, v8::debug::WeakMap::New(m_isolate));
+
+  v8::Local<v8::debug::WeakMap> map = m_exceptionMetaData.Get(m_isolate);
+  v8::MaybeLocal<v8::Value> entry = map->Get(context, exception);
+  v8::Local<v8::Object> object;
+  if (entry.IsEmpty() || !entry.ToLocalChecked()->IsObject()) {
+    object =
+        v8::Object::New(m_isolate, v8::Null(m_isolate), nullptr, nullptr, 0);
+    v8::MaybeLocal<v8::debug::WeakMap> new_map =
+        map->Set(context, exception, object);
+    if (!new_map.IsEmpty()) {
+      m_exceptionMetaData.Reset(m_isolate, new_map.ToLocalChecked());
+    }
+  } else {
+    object = entry.ToLocalChecked().As<v8::Object>();
+  }
+  CHECK(object->IsObject());
+  v8::Maybe<bool> result = object->CreateDataProperty(context, key, value);
+  return result.FromMaybe(false);
+}
+
+v8::MaybeLocal<v8::Object> V8InspectorImpl::getAssociatedExceptionData(
+    v8::Local<v8::Value> exception) {
+  if (!exception->IsObject()) {
+    return v8::MaybeLocal<v8::Object>();
+  }
+  v8::EscapableHandleScope scope(m_isolate);
+  v8::Local<v8::Context> context;
+  if (m_exceptionMetaData.IsEmpty() ||
+      !exceptionMetaDataContext().ToLocal(&context)) {
+    return v8::MaybeLocal<v8::Object>();
+  }
+  v8::Local<v8::debug::WeakMap> map = m_exceptionMetaData.Get(m_isolate);
+  auto entry = map->Get(context, exception);
+  v8::Local<v8::Value> object;
+  if (!entry.ToLocal(&object) || !object->IsObject())
+    return v8::MaybeLocal<v8::Object>();
+  return scope.Escape(object.As<v8::Object>());
+}
 }  // namespace v8_inspector

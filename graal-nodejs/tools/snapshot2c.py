@@ -101,7 +101,7 @@ def JS2C(modules, target):
   for m in modules:
     contents = ReadBinaryFile(m)
 
-    data = ','.join(str(ord(c)) for c in contents)
+    data = ','.join(str(c) for c in contents)
 
     # On Windows, "./foo.bar" in the .gyp file is passed as "foo.bar"
     # so don't assume there is always a slash in the file path.
@@ -137,11 +137,11 @@ def JS2C(modules, target):
   }
 
   if new_content != old_content:
-    print 'creating %s' % target
+    print('creating %s' % target)
     with open(target, "w") as output:
       output.write(new_content)
   else:
-    print '%s is already up-to-date' % target
+    print('%s is already up-to-date' % target)
 
 
 def main():

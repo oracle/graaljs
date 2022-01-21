@@ -1,10 +1,11 @@
+// Flags: --no-warnings
 'use strict';
 
 const common = require('../common');
 const assert = require('assert');
 const { Blob } = require('buffer');
 const { inspect } = require('util');
-const { MessageChannel } = require('worker_threads');
+const { EOL } = require('os');
 
 {
   const b = new Blob();
@@ -44,15 +45,6 @@ assert.throws(() => new Blob({}), {
   assert.strictEqual(new Blob([], { type: 1 }).type, '1');
   assert.strictEqual(new Blob([], { type: false }).type, 'false');
   assert.strictEqual(new Blob([], { type: {} }).type, '[object object]');
-}
-
-{
-  const b = new Blob(['616263'], { encoding: 'hex', type: 'foo' });
-  assert.strictEqual(b.size, 3);
-  assert.strictEqual(b.type, 'foo');
-  b.text().then(common.mustCall((text) => {
-    assert.strictEqual(text, 'abc');
-  }));
 }
 
 {
@@ -198,4 +190,33 @@ assert.throws(() => new Blob({}), {
   assert.strictEqual(inspect(b, { depth: null }),
                      'Blob { size: 0, type: \'\' }');
   assert.strictEqual(inspect(b, { depth: -1 }), '[Blob]');
+}
+
+{
+  // The Blob has to be over a specific size for the data to
+  // be copied asynchronously..
+  const b = new Blob(['hello', 'there'.repeat(820)]);
+  assert.strictEqual(b.arrayBuffer(), b.arrayBuffer());
+  b.arrayBuffer().then(common.mustCall());
+}
+
+(async () => {
+  const b = new Blob(['hello']);
+  const reader = b.stream().getReader();
+  let res = await reader.read();
+  assert.strictEqual(res.value.byteLength, 5);
+  assert(!res.done);
+  res = await reader.read();
+  assert(res.done);
+})().then(common.mustCall());
+
+{
+  const b = new Blob(['hello\n'], { endings: 'native' });
+  assert.strictEqual(b.size, EOL.length + 5);
+
+  [1, {}, 'foo'].forEach((endings) => {
+    assert.throws(() => new Blob([], { endings }), {
+      code: 'ERR_INVALID_ARG_VALUE',
+    });
+  });
 }

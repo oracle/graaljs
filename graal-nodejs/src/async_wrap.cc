@@ -23,6 +23,7 @@
 #include "async_wrap-inl.h"
 #include "env-inl.h"
 #include "node_errors.h"
+#include "node_external_reference.h"
 #include "tracing/traced_value.h"
 #include "util-inl.h"
 
@@ -46,7 +47,6 @@ using v8::Object;
 using v8::PropertyAttribute;
 using v8::ReadOnly;
 using v8::String;
-using v8::Uint32;
 using v8::Undefined;
 using v8::Value;
 using v8::WeakCallbackInfo;
@@ -61,45 +61,6 @@ static const char* const provider_names[] = {
   #PROVIDER,
   NODE_ASYNC_PROVIDER_TYPES(V)
 #undef V
-};
-
-
-struct AsyncWrapObject : public AsyncWrap {
-  static inline void New(const FunctionCallbackInfo<Value>& args) {
-    Environment* env = Environment::GetCurrent(args);
-    CHECK(args.IsConstructCall());
-    CHECK(env->async_wrap_object_ctor_template()->HasInstance(args.This()));
-    CHECK(args[0]->IsUint32());
-    auto type = static_cast<ProviderType>(args[0].As<Uint32>()->Value());
-    new AsyncWrapObject(env, args.This(), type);
-  }
-
-  inline AsyncWrapObject(Environment* env, Local<Object> object,
-                         ProviderType type) : AsyncWrap(env, object, type) {}
-
-  static Local<FunctionTemplate> GetConstructorTemplate(Environment* env) {
-    Local<FunctionTemplate> tmpl = env->async_wrap_object_ctor_template();
-    if (tmpl.IsEmpty()) {
-      tmpl = env->NewFunctionTemplate(AsyncWrapObject::New);
-      tmpl->SetClassName(
-          FIXED_ONE_BYTE_STRING(env->isolate(), "AsyncWrap"));
-      tmpl->Inherit(AsyncWrap::GetConstructorTemplate(env));
-      tmpl->InstanceTemplate()->SetInternalFieldCount(
-          AsyncWrapObject::kInternalFieldCount);
-      env->set_async_wrap_object_ctor_template(tmpl);
-    }
-    return tmpl;
-  }
-
-  bool IsNotIndicativeOfMemoryLeakAtExit() const override {
-    // We can't really know what the underlying operation does. One of the
-    // signs that it's time to remove this class. :)
-    return true;
-  }
-
-  SET_NO_MEMORY_INFO()
-  SET_MEMORY_INFO_NAME(AsyncWrapObject)
-  SET_SELF_SIZE(AsyncWrapObject)
 };
 
 void AsyncWrap::DestroyAsyncIdsCallback(Environment* env) {
@@ -352,7 +313,7 @@ void AsyncWrap::EmitDestroy(bool from_gc) {
 
   if (!persistent().IsEmpty() && !from_gc) {
     HandleScope handle_scope(env()->isolate());
-    USE(object()->Set(env()->context(), env()->resource_symbol(), object()));
+    USE(object()->Set(env()->context(), env()->owner_symbol(), object()));
   }
 }
 
@@ -479,11 +440,22 @@ void AsyncWrap::Initialize(Local<Object> target,
   env->set_async_hooks_destroy_function(Local<Function>());
   env->set_async_hooks_promise_resolve_function(Local<Function>());
   env->set_async_hooks_binding(target);
+}
 
-  target->Set(env->context(),
-      FIXED_ONE_BYTE_STRING(env->isolate(), "AsyncWrap"),
-      AsyncWrapObject::GetConstructorTemplate(env)
-          ->GetFunction(env->context()).ToLocalChecked()).Check();
+void AsyncWrap::RegisterExternalReferences(
+    ExternalReferenceRegistry* registry) {
+  registry->Register(SetupHooks);
+  registry->Register(SetCallbackTrampoline);
+  registry->Register(PushAsyncContext);
+  registry->Register(PopAsyncContext);
+  registry->Register(ExecutionAsyncResource);
+  registry->Register(ClearAsyncIdStack);
+  registry->Register(QueueDestroyAsyncId);
+  registry->Register(SetPromiseHooks);
+  registry->Register(RegisterDestroyHook);
+  registry->Register(AsyncWrap::GetAsyncId);
+  registry->Register(AsyncWrap::AsyncReset);
+  registry->Register(AsyncWrap::GetProviderType);
 }
 
 AsyncWrap::AsyncWrap(Environment* env,
@@ -579,7 +551,8 @@ void AsyncWrap::EmitDestroy(Environment* env, double async_id) {
   // interrupt to get this Microtask scheduled as fast as possible.
   if (env->destroy_async_id_list()->size() == 16384) {
     env->RequestInterrupt([](Environment* env) {
-      env->isolate()->EnqueueMicrotask(
+      env->context()->GetMicrotaskQueue()->EnqueueMicrotask(
+        env->isolate(),
         [](void* arg) {
           DestroyAsyncIdsCallback(static_cast<Environment*>(arg));
         }, env);
@@ -613,7 +586,7 @@ void AsyncWrap::AsyncReset(Local<Object> resource, double execution_async_id,
     Local<Object> obj = object();
     CHECK(!obj.IsEmpty());
     if (resource != obj) {
-      USE(obj->Set(env()->context(), env()->resource_symbol(), resource));
+      USE(obj->Set(env()->context(), env()->owner_symbol(), resource));
     }
   }
 
@@ -726,3 +699,5 @@ Local<Object> AsyncWrap::GetOwner(Environment* env, Local<Object> obj) {
 }  // namespace node
 
 NODE_MODULE_CONTEXT_AWARE_INTERNAL(async_wrap, node::AsyncWrap::Initialize)
+NODE_MODULE_EXTERNAL_REFERENCE(async_wrap,
+                               node::AsyncWrap::RegisterExternalReferences)

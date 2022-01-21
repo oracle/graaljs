@@ -65,6 +65,8 @@ class BaseObject : public MemoryRetainer {
   // was also passed to the `BaseObject()` constructor initially.
   // This may return `nullptr` if the C++ object has not been constructed yet,
   // e.g. when the JS object used `MakeLazilyInitializedJSTemplate`.
+  static inline void LazilyInitializedJSTemplateConstructor(
+      const v8::FunctionCallbackInfo<v8::Value>& args);
   static inline BaseObject* FromJSObject(v8::Local<v8::Value> object);
   template <typename T>
   static inline T* FromJSObject(v8::Local<v8::Value> object);
@@ -101,7 +103,7 @@ class BaseObject : public MemoryRetainer {
   // This is a bit of a hack. See the override in async_wrap.cc for details.
   virtual bool IsDoneInitializing() const;
 
-  // Can be used to avoid this object keepling itself alive as a GC root
+  // Can be used to avoid this object keeping itself alive as a GC root
   // indefinitely, for example when this object is owned and deleted by another
   // BaseObject once that is torn down. This can only be called when there is
   // a BaseObjectPtr to this object.
@@ -157,6 +159,8 @@ class BaseObject : public MemoryRetainer {
   virtual bool IsNotIndicativeOfMemoryLeakAtExit() const;
 
   virtual inline void OnGCCollect();
+
+  virtual inline bool is_snapshotable() const { return false; }
 
  private:
   v8::Local<v8::Object> WrappedObject() const override;

@@ -3,6 +3,7 @@
 #include "histogram-inl.h"
 #include "memory_tracker-inl.h"
 #include "node_errors.h"
+#include "node_external_reference.h"
 #include "node_buffer.h"
 #include "node_options-inl.h"
 #include "node_perf.h"
@@ -27,6 +28,7 @@ using v8::Integer;
 using v8::Isolate;
 using v8::Local;
 using v8::Locker;
+using v8::Maybe;
 using v8::MaybeLocal;
 using v8::Null;
 using v8::Number;
@@ -98,7 +100,7 @@ void Worker::UpdateResourceConstraints(ResourceConstraints* constraints) {
 
   if (resource_limits_[kMaxYoungGenerationSizeMb] > 0) {
     constraints->set_max_young_generation_size_in_bytes(
-        resource_limits_[kMaxYoungGenerationSizeMb] * kMB);
+        static_cast<size_t>(resource_limits_[kMaxYoungGenerationSizeMb] * kMB));
   } else {
     resource_limits_[kMaxYoungGenerationSizeMb] =
         constraints->max_young_generation_size_in_bytes() / kMB;
@@ -106,7 +108,7 @@ void Worker::UpdateResourceConstraints(ResourceConstraints* constraints) {
 
   if (resource_limits_[kMaxOldGenerationSizeMb] > 0) {
     constraints->set_max_old_generation_size_in_bytes(
-        resource_limits_[kMaxOldGenerationSizeMb] * kMB);
+        static_cast<size_t>(resource_limits_[kMaxOldGenerationSizeMb] * kMB));
   } else {
     resource_limits_[kMaxOldGenerationSizeMb] =
         constraints->max_old_generation_size_in_bytes() / kMB;
@@ -114,7 +116,7 @@ void Worker::UpdateResourceConstraints(ResourceConstraints* constraints) {
 
   if (resource_limits_[kCodeRangeSizeMb] > 0) {
     constraints->set_code_range_size_in_bytes(
-        resource_limits_[kCodeRangeSizeMb] * kMB);
+        static_cast<size_t>(resource_limits_[kCodeRangeSizeMb] * kMB));
   } else {
     resource_limits_[kCodeRangeSizeMb] =
         constraints->code_range_size_in_bytes() / kMB;
@@ -148,9 +150,7 @@ class WorkerThreadData {
 
     Isolate* isolate = Isolate::Allocate();
     if (isolate == nullptr) {
-      // TODO(addaleax): This should be ERR_WORKER_INIT_FAILED,
-      // ERR_WORKER_OUT_OF_MEMORY is for reaching the per-Worker heap limit.
-      w->Exit(1, "ERR_WORKER_OUT_OF_MEMORY", "Failed to create new Isolate");
+      w->Exit(1, "ERR_WORKER_INIT_FAILED", "Failed to create new Isolate");
       return;
     }
 
@@ -281,10 +281,6 @@ void Worker::Run() {
         this->env_ = nullptr;
       }
 
-      // TODO(addaleax): Try moving DisallowJavascriptExecutionScope into
-      // FreeEnvironment().
-      Isolate::DisallowJavascriptExecutionScope disallow_js(isolate_,
-          Isolate::DisallowJavascriptExecutionScope::THROW_ON_FAILURE);
       env_.reset();
     });
 
@@ -300,9 +296,7 @@ void Worker::Run() {
         TryCatch try_catch(isolate_);
         context = NewContext(isolate_);
         if (context.IsEmpty()) {
-          // TODO(addaleax): This should be ERR_WORKER_INIT_FAILED,
-          // ERR_WORKER_OUT_OF_MEMORY is for reaching the per-Worker heap limit.
-          Exit(1, "ERR_WORKER_OUT_OF_MEMORY", "Failed to create new Context");
+          Exit(1, "ERR_WORKER_INIT_FAILED", "Failed to create new Context");
           return;
         }
       }
@@ -334,52 +328,24 @@ void Worker::Run() {
       Debug(this, "Created Environment for worker with id %llu", thread_id_.id);
       if (is_stopped()) return;
       {
-        CreateEnvMessagePort(env_.get());
+        if (!CreateEnvMessagePort(env_.get())) {
+          return;
+        }
+
         Debug(this, "Created message port for worker %llu", thread_id_.id);
         if (LoadEnvironment(env_.get(), StartExecutionCallback{}).IsEmpty())
           return;
 
         Debug(this, "Loaded environment for worker %llu", thread_id_.id);
       }
-
-      if (is_stopped()) return;
-      {
-        SealHandleScope seal(isolate_);
-        bool more;
-        env_->performance_state()->Mark(
-            node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_START);
-        do {
-          if (is_stopped()) break;
-          uv_run(&data.loop_, UV_RUN_DEFAULT);
-          if (is_stopped()) break;
-
-          platform_->DrainTasks(isolate_);
-
-          more = uv_loop_alive(&data.loop_);
-          if (more && !is_stopped()) continue;
-
-          if (EmitProcessBeforeExit(env_.get()).IsNothing())
-            break;
-
-          // Emit `beforeExit` if the loop became alive either after emitting
-          // event, or after running some callbacks.
-          more = uv_loop_alive(&data.loop_);
-        } while (more == true && !is_stopped());
-        env_->performance_state()->Mark(
-            node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
-      }
     }
 
     {
-      int exit_code;
-      bool stopped = is_stopped();
-      if (!stopped) {
-        env_->VerifyNoStrongBaseObjects();
-        exit_code = EmitProcessExit(env_.get()).FromMaybe(1);
-      }
+      Maybe<int> exit_code = SpinEventLoop(env_.get());
       Mutex::ScopedLock lock(mutex_);
-      if (exit_code_ == 0 && !stopped)
-        exit_code_ = exit_code;
+      if (exit_code_ == 0 && exit_code.IsJust()) {
+        exit_code_ = exit_code.FromJust();
+      }
 
       Debug(this, "Exiting thread for worker %llu with exit code %d",
             thread_id_.id, exit_code_);
@@ -389,17 +355,24 @@ void Worker::Run() {
   Debug(this, "Worker %llu thread stops", thread_id_.id);
 }
 
-void Worker::CreateEnvMessagePort(Environment* env) {
+bool Worker::CreateEnvMessagePort(Environment* env) {
   HandleScope handle_scope(isolate_);
-  Mutex::ScopedLock lock(mutex_);
+  std::unique_ptr<MessagePortData> data;
+  {
+    Mutex::ScopedLock lock(mutex_);
+    data = std::move(child_port_data_);
+  }
+
   // Set up the message channel for receiving messages in the child.
   MessagePort* child_port = MessagePort::New(env,
                                              env->context(),
-                                             std::move(child_port_data_));
+                                             std::move(data));
   // MessagePort::New() may return nullptr if execution is terminated
   // within it.
   if (child_port != nullptr)
     env->set_message_port(child_port->object(isolate_));
+
+  return child_port;
 }
 
 void Worker::JoinThread() {
@@ -597,6 +570,10 @@ void Worker::New(const FunctionCallbackInfo<Value>& args) {
     worker->environment_flags_ |= EnvironmentFlags::kTrackUnmanagedFds;
   if (env->hide_console_windows())
     worker->environment_flags_ |= EnvironmentFlags::kHideConsoleWindows;
+  if (env->no_native_addons())
+    worker->environment_flags_ |= EnvironmentFlags::kNoNativeAddons;
+  if (env->no_global_search_paths())
+    worker->environment_flags_ |= EnvironmentFlags::kNoGlobalSearchPaths;
 }
 
 void Worker::StartThread(const FunctionCallbackInfo<Value>& args) {
@@ -611,7 +588,8 @@ void Worker::StartThread(const FunctionCallbackInfo<Value>& args) {
       w->resource_limits_[kStackSizeMb] = kStackBufferSize / kMB;
       w->stack_size_ = kStackBufferSize;
     } else {
-      w->stack_size_ = w->resource_limits_[kStackSizeMb] * kMB;
+      w->stack_size_ =
+          static_cast<size_t>(w->resource_limits_[kStackSizeMb] * kMB);
     }
   } else {
     w->resource_limits_[kStackSizeMb] = w->stack_size_ / kMB;
@@ -824,7 +802,8 @@ void GetEnvMessagePort(const FunctionCallbackInfo<Value>& args) {
   Local<Object> port = env->message_port();
   CHECK_IMPLIES(!env->is_main_thread(), !port.IsEmpty());
   if (!port.IsEmpty()) {
-    CHECK_EQ(port->CreationContext()->GetIsolate(), args.GetIsolate());
+    CHECK_EQ(port->GetCreationContext().ToLocalChecked()->GetIsolate(),
+             args.GetIsolate());
     args.GetReturnValue().Set(port);
   }
 }
@@ -902,9 +881,22 @@ void InitWorker(Local<Object> target,
   NODE_DEFINE_CONSTANT(target, kTotalResourceLimitCount);
 }
 
-}  // anonymous namespace
+void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
+  registry->Register(GetEnvMessagePort);
+  registry->Register(Worker::New);
+  registry->Register(Worker::StartThread);
+  registry->Register(Worker::StopThread);
+  registry->Register(Worker::Ref);
+  registry->Register(Worker::Unref);
+  registry->Register(Worker::GetResourceLimits);
+  registry->Register(Worker::TakeHeapSnapshot);
+  registry->Register(Worker::LoopIdleTime);
+  registry->Register(Worker::LoopStartTime);
+}
 
+}  // anonymous namespace
 }  // namespace worker
 }  // namespace node
 
 NODE_MODULE_CONTEXT_AWARE_INTERNAL(worker, node::worker::InitWorker)
+NODE_MODULE_EXTERNAL_REFERENCE(worker, node::worker::RegisterExternalReferences)

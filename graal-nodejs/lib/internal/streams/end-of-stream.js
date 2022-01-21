@@ -4,13 +4,31 @@
 'use strict';
 
 const {
-  ERR_INVALID_ARG_TYPE,
+  AbortError,
+  codes,
+} = require('internal/errors');
+const {
   ERR_STREAM_PREMATURE_CLOSE
-} = require('internal/errors').codes;
+} = codes;
 const { once } = require('internal/util');
+const {
+  validateAbortSignal,
+  validateFunction,
+  validateObject,
+} = require('internal/validators');
 
 function isRequest(stream) {
   return stream.setHeader && typeof stream.abort === 'function';
+}
+
+function isServerResponse(stream) {
+  return (
+    typeof stream._sent100 === 'boolean' &&
+    typeof stream._removedConnection === 'boolean' &&
+    typeof stream._removedContLen === 'boolean' &&
+    typeof stream._removedTE === 'boolean' &&
+    typeof stream._closed === 'boolean'
+  );
 }
 
 function isReadable(stream) {
@@ -32,7 +50,7 @@ function isWritableFinished(stream) {
   return wState.finished || (wState.ended && wState.length === 0);
 }
 
-function nop() {}
+const nop = () => {};
 
 function isReadableEnded(stream) {
   if (stream.readableEnded) return true;
@@ -47,12 +65,11 @@ function eos(stream, options, callback) {
     options = {};
   } else if (options == null) {
     options = {};
-  } else if (typeof options !== 'object') {
-    throw new ERR_INVALID_ARG_TYPE('options', 'object', options);
+  } else {
+    validateObject(options, 'options');
   }
-  if (typeof callback !== 'function') {
-    throw new ERR_INVALID_ARG_TYPE('callback', 'function', callback);
-  }
+  validateFunction(callback, 'callback');
+  validateAbortSignal(options.signal, 'options.signal');
 
   callback = once(callback);
 
@@ -72,7 +89,7 @@ function eos(stream, options, callback) {
   // TODO (ronag): Improve soft detection to include core modules and
   // common ecosystem modules that do properly emit 'close' but fail
   // this generic check.
-  let willEmitClose = (
+  let willEmitClose = isServerResponse(stream) || (
     state &&
     state.autoDestroy &&
     state.emitClose &&
@@ -114,11 +131,13 @@ function eos(stream, options, callback) {
   const onclose = () => {
     if (readable && !readableEnded) {
       if (!isReadableEnded(stream))
-        return callback.call(stream, new ERR_STREAM_PREMATURE_CLOSE());
+        return callback.call(stream,
+                             new ERR_STREAM_PREMATURE_CLOSE());
     }
     if (writable && !writableFinished) {
       if (!isWritableFinished(stream))
-        return callback.call(stream, new ERR_STREAM_PREMATURE_CLOSE());
+        return callback.call(stream,
+                             new ERR_STREAM_PREMATURE_CLOSE());
     }
     callback.call(stream);
   };
@@ -149,13 +168,16 @@ function eos(stream, options, callback) {
   if (options.error !== false) stream.on('error', onerror);
   stream.on('close', onclose);
 
-  const closed = (
+  // _closed is for OutgoingMessage which is not a proper Writable.
+  const closed = (!wState && !rState && stream._closed === true) || (
     (wState && wState.closed) ||
     (rState && rState.closed) ||
     (wState && wState.errorEmitted) ||
     (rState && rState.errorEmitted) ||
     (rState && stream.req && stream.aborted) ||
     (
+      (!wState || !willEmitClose || typeof wState.closed !== 'boolean') &&
+      (!rState || !willEmitClose || typeof rState.closed !== 'boolean') &&
       (!writable || (wState && wState.finished)) &&
       (!readable || (rState && rState.endEmitted))
     )
@@ -173,7 +195,7 @@ function eos(stream, options, callback) {
     });
   }
 
-  return function() {
+  const cleanup = () => {
     callback = nop;
     stream.removeListener('aborted', onclose);
     stream.removeListener('complete', onfinish);
@@ -187,6 +209,27 @@ function eos(stream, options, callback) {
     stream.removeListener('error', onerror);
     stream.removeListener('close', onclose);
   };
+
+  if (options.signal && !closed) {
+    const abort = () => {
+      // Keep it because cleanup removes it.
+      const endCallback = callback;
+      cleanup();
+      endCallback.call(stream, new AbortError());
+    };
+    if (options.signal.aborted) {
+      process.nextTick(abort);
+    } else {
+      const originalCallback = callback;
+      callback = once((...args) => {
+        options.signal.removeEventListener('abort', abort);
+        originalCallback.apply(stream, args);
+      });
+      options.signal.addEventListener('abort', abort);
+    }
+  }
+
+  return cleanup;
 }
 
 module.exports = eos;

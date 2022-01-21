@@ -24,14 +24,7 @@
 
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
-#if (__GNUC__ >= 8) && !defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-function-type"
-#endif
 #include "v8.h"
-#if (__GNUC__ >= 8) && !defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
 
 #include <climits>
 #include <cstddef>
@@ -98,7 +91,7 @@ inline T MultiplyWithOverflowCheck(T a, T b);
 
 namespace per_process {
 // Tells whether the per-process V8::Initialize() is called and
-// if it is safe to call v8::Isolate::GetCurrent().
+// if it is safe to call v8::Isolate::TryGetCurrent().
 extern bool v8_initialized;
 }  // namespace per_process
 
@@ -329,6 +322,11 @@ inline bool StringEqualNoCaseN(const char* a, const char* b, size_t length);
 template <typename T, size_t N>
 constexpr size_t arraysize(const T (&)[N]) {
   return N;
+}
+
+template <typename T, size_t N>
+constexpr size_t strsize(const T (&)[N]) {
+  return N - 1;
 }
 
 // Allocates an array of member type T. For up to kStackStorageSize items,
@@ -704,6 +702,11 @@ struct MallocedBuffer {
     size = new_size;
   }
 
+  void Realloc(size_t new_size) {
+    Truncate(new_size);
+    data = UncheckedRealloc(data, new_size);
+  }
+
   inline bool is_empty() const { return data == nullptr; }
 
   MallocedBuffer() : data(nullptr), size(0) {}
@@ -733,6 +736,15 @@ class NonCopyableMaybe {
 
   bool IsEmpty() const {
     return empty_;
+  }
+
+  const T* get() const {
+    return empty_ ? nullptr : &value_;
+  }
+
+  const T* operator->() const {
+    CHECK(!empty_);
+    return &value_;
   }
 
   T&& Release() {
@@ -930,6 +942,8 @@ template <typename T, typename U>
 std::unique_ptr<T> static_unique_pointer_cast(std::unique_ptr<U>&& ptr) {
   return std::unique_ptr<T>(static_cast<T*>(ptr.release()));
 }
+
+#define MAYBE_FIELD_PTR(ptr, field) ptr == nullptr ? nullptr : &(ptr->field)
 
 // Returns a non-zero code if it fails to open or read the file,
 // aborts if it fails to close the file.

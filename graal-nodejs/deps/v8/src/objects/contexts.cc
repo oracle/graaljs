@@ -9,6 +9,7 @@
 #include "src/execution/isolate-inl.h"
 #include "src/init/bootstrapper.h"
 #include "src/objects/module-inl.h"
+#include "src/objects/string-set-inl.h"
 
 namespace v8 {
 namespace internal {
@@ -16,7 +17,7 @@ namespace internal {
 Handle<ScriptContextTable> ScriptContextTable::Extend(
     Handle<ScriptContextTable> table, Handle<Context> script_context) {
   Handle<ScriptContextTable> result;
-  int used = table->used();
+  int used = table->used(kAcquireLoad);
   int length = table->length();
   CHECK(used >= 0 && length > 0 && used < length);
   if (used + kFirstContextSlotIndex == length) {
@@ -29,10 +30,9 @@ Handle<ScriptContextTable> ScriptContextTable::Extend(
   } else {
     result = table;
   }
-  result->set_used(used + 1);
-
   DCHECK(script_context->IsScriptContext());
-  result->set(used + kFirstContextSlotIndex, *script_context);
+  result->set(used + kFirstContextSlotIndex, *script_context, kReleaseStore);
+  result->set_used(used + 1, kReleaseStore);
   return result;
 }
 
@@ -47,16 +47,14 @@ void Context::Initialize(Isolate* isolate) {
 }
 
 bool ScriptContextTable::Lookup(Isolate* isolate, ScriptContextTable table,
-                                String name, LookupResult* result) {
-  DisallowHeapAllocation no_gc;
+                                String name, VariableLookupResult* result) {
+  DisallowGarbageCollection no_gc;
   // Static variables cannot be in script contexts.
-  IsStaticFlag is_static_flag;
-  for (int i = 0; i < table.used(); i++) {
+  for (int i = 0; i < table.used(kAcquireLoad); i++) {
     Context context = table.get_context(i);
     DCHECK(context.IsScriptContext());
-    int slot_index = ScopeInfo::ContextSlotIndex(
-        context.scope_info(), name, &result->mode, &result->init_flag,
-        &result->maybe_assigned_flag, &is_static_flag);
+    int slot_index =
+        ScopeInfo::ContextSlotIndex(context.scope_info(), name, result);
 
     if (slot_index >= 0) {
       result->context_index = i;
@@ -159,13 +157,13 @@ static Maybe<bool> UnscopableLookup(LookupIterator* it, bool is_with_context) {
                               isolate->factory()->unscopables_symbol()),
       Nothing<bool>());
   if (!unscopables->IsJSReceiver()) return Just(true);
-  Handle<Object> blacklist;
+  Handle<Object> blocklist;
   ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, blacklist,
+      isolate, blocklist,
       JSReceiver::GetProperty(isolate, Handle<JSReceiver>::cast(unscopables),
                               it->name()),
       Nothing<bool>());
-  return Just(!blacklist->BooleanValue(isolate));
+  return Just(!blocklist->BooleanValue(isolate));
 }
 
 static PropertyAttributes GetAttributesForMode(VariableMode mode) {
@@ -215,14 +213,14 @@ Handle<Object> Context::Lookup(Handle<Context> context, Handle<String> name,
       Handle<JSReceiver> object(context->extension_receiver(), isolate);
 
       if (context->IsNativeContext()) {
-        DisallowHeapAllocation no_gc;
+        DisallowGarbageCollection no_gc;
         if (FLAG_trace_contexts) {
           PrintF(" - trying other script contexts\n");
         }
         // Try other script contexts.
         ScriptContextTable script_contexts =
             context->global_object().native_context().script_context_table();
-        ScriptContextTable::LookupResult r;
+        VariableLookupResult r;
         if (ScriptContextTable::Lookup(isolate, script_contexts, *name, &r)) {
           Context context = script_contexts.get_context(r.context_index);
           if (FLAG_trace_contexts) {
@@ -286,17 +284,13 @@ Handle<Object> Context::Lookup(Handle<Context> context, Handle<String> name,
     if (context->IsFunctionContext() || context->IsBlockContext() ||
         context->IsScriptContext() || context->IsEvalContext() ||
         context->IsModuleContext() || context->IsCatchContext()) {
-      DisallowHeapAllocation no_gc;
+      DisallowGarbageCollection no_gc;
       // Use serialized scope information of functions and blocks to search
       // for the context index.
       ScopeInfo scope_info = context->scope_info();
-      VariableMode mode;
-      InitializationFlag flag;
-      MaybeAssignedFlag maybe_assigned_flag;
-      IsStaticFlag is_static_flag;
+      VariableLookupResult lookup_result;
       int slot_index =
-          ScopeInfo::ContextSlotIndex(scope_info, *name, &mode, &flag,
-                                      &maybe_assigned_flag, &is_static_flag);
+          ScopeInfo::ContextSlotIndex(scope_info, *name, &lookup_result);
       DCHECK(slot_index < 0 || slot_index >= MIN_CONTEXT_SLOTS);
       if (slot_index >= 0) {
         // Re-direct lookup to the ScriptContextTable in case we find a hole in
@@ -312,12 +306,12 @@ Handle<Object> Context::Lookup(Handle<Context> context, Handle<String> name,
 
         if (FLAG_trace_contexts) {
           PrintF("=> found local in context slot %d (mode = %hhu)\n",
-                 slot_index, static_cast<uint8_t>(mode));
+                 slot_index, static_cast<uint8_t>(lookup_result.mode));
         }
         *index = slot_index;
-        *variable_mode = mode;
-        *init_flag = flag;
-        *attributes = GetAttributesForMode(mode);
+        *variable_mode = lookup_result.mode;
+        *init_flag = lookup_result.init_flag;
+        *attributes = GetAttributesForMode(lookup_result.mode);
         return context;
       }
 
@@ -377,12 +371,12 @@ Handle<Object> Context::Lookup(Handle<Context> context, Handle<String> name,
         }
       }
 
-      // Check blacklist. Names that are listed, cannot be resolved further.
-      Object blacklist = context->get(BLACK_LIST_INDEX);
-      if (blacklist.IsStringSet() &&
-          StringSet::cast(blacklist).Has(isolate, name)) {
+      // Check blocklist. Names that are listed, cannot be resolved further.
+      ScopeInfo scope_info = context->scope_info();
+      if (scope_info.HasLocalsBlockList() &&
+          scope_info.LocalsBlockList().Has(isolate, name)) {
         if (FLAG_trace_contexts) {
-          PrintF(" - name is blacklisted. Aborting.\n");
+          PrintF(" - name is blocklisted. Aborting.\n");
         }
         break;
       }
@@ -411,26 +405,11 @@ Handle<Object> Context::Lookup(Handle<Context> context, Handle<String> name,
 }
 
 void NativeContext::AddOptimizedCode(Code code) {
-  DCHECK(code.kind() == Code::OPTIMIZED_FUNCTION);
+  DCHECK(CodeKindCanDeoptimize(code.kind()));
   DCHECK(code.next_code_link().IsUndefined());
-  code.set_next_code_link(get(OPTIMIZED_CODE_LIST));
-  set(OPTIMIZED_CODE_LIST, code, UPDATE_WEAK_WRITE_BARRIER);
-}
-
-void NativeContext::SetOptimizedCodeListHead(Object head) {
-  set(OPTIMIZED_CODE_LIST, head, UPDATE_WEAK_WRITE_BARRIER);
-}
-
-Object NativeContext::OptimizedCodeListHead() {
-  return get(OPTIMIZED_CODE_LIST);
-}
-
-void NativeContext::SetDeoptimizedCodeListHead(Object head) {
-  set(DEOPTIMIZED_CODE_LIST, head, UPDATE_WEAK_WRITE_BARRIER);
-}
-
-Object NativeContext::DeoptimizedCodeListHead() {
-  return get(DEOPTIMIZED_CODE_LIST);
+  code.set_next_code_link(OptimizedCodeListHead());
+  set(OPTIMIZED_CODE_LIST, ToCodeT(code), UPDATE_WEAK_WRITE_BARRIER,
+      kReleaseStore);
 }
 
 Handle<Object> Context::ErrorMessageForCodeGenerationFromStrings() {
@@ -442,7 +421,7 @@ Handle<Object> Context::ErrorMessageForCodeGenerationFromStrings() {
 }
 
 #define COMPARE_NAME(index, type, name) \
-  if (string->IsOneByteEqualTo(StaticCharVector(#name))) return index;
+  if (string->IsOneByteEqualTo(base::StaticCharVector(#name))) return index;
 
 int Context::IntrinsicIndexForName(Handle<String> string) {
   NATIVE_CONTEXT_INTRINSIC_FUNCTIONS(COMPARE_NAME);

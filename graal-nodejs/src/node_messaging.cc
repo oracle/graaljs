@@ -3,9 +3,10 @@
 #include "async_wrap-inl.h"
 #include "debug_utils-inl.h"
 #include "memory_tracker-inl.h"
-#include "node_contextify.h"
 #include "node_buffer.h"
+#include "node_contextify.h"
 #include "node_errors.h"
+#include "node_external_reference.h"
 #include "node_process-inl.h"
 #include "util-inl.h"
 
@@ -125,11 +126,18 @@ class DeserializerDelegate : public ValueDeserializer::Delegate {
 }  // anonymous namespace
 
 MaybeLocal<Value> Message::Deserialize(Environment* env,
-                                       Local<Context> context) {
+                                       Local<Context> context,
+                                       Local<Value>* port_list) {
+  Context::Scope context_scope(context);
+
   CHECK(!IsCloseMessage());
+  if (port_list != nullptr && !transferables_.empty()) {
+    // Need to create this outside of the EscapableHandleScope, but inside
+    // the Context::Scope.
+    *port_list = Array::New(env->isolate());
+  }
 
   EscapableHandleScope handle_scope(env->isolate());
-  Context::Scope context_scope(context);
 
   // Create all necessary objects for transferables, e.g. MessagePort handles.
   std::vector<BaseObjectPtr<BaseObject>> host_objects(transferables_.size());
@@ -145,10 +153,27 @@ MaybeLocal<Value> Message::Deserialize(Environment* env,
   });
 
   for (uint32_t i = 0; i < transferables_.size(); ++i) {
+    HandleScope handle_scope(env->isolate());
     TransferData* data = transferables_[i].get();
     host_objects[i] = data->Deserialize(
         env, context, std::move(transferables_[i]));
     if (!host_objects[i]) return {};
+    if (port_list != nullptr) {
+      // If we gather a list of all message ports, and this transferred object
+      // is a message port, add it to that list. This is a bit of an odd case
+      // of special handling for MessagePorts (as opposed to applying to all
+      // transferables), but it's required for spec compliance.
+      DCHECK((*port_list)->IsArray());
+      Local<Array> port_list_array = port_list->As<Array>();
+      Local<Object> obj = host_objects[i]->object();
+      if (env->message_port_constructor_template()->HasInstance(obj)) {
+        if (port_list_array->Set(context,
+                                 port_list_array->Length(),
+                                 obj).IsNothing()) {
+          return {};
+        }
+      }
+    }
   }
   transferables_.clear();
 
@@ -156,11 +181,9 @@ MaybeLocal<Value> Message::Deserialize(Environment* env,
   // Attach all transferred SharedArrayBuffers to their new Isolate.
   for (uint32_t i = 0; i < shared_array_buffers_.size(); ++i) {
     Local<SharedArrayBuffer> sab =
-        SharedArrayBuffer::New(env->isolate(),
-                               std::move(shared_array_buffers_[i]));
+        SharedArrayBuffer::New(env->isolate(), shared_array_buffers_[i]);
     shared_array_buffers.push_back(sab);
   }
-  shared_array_buffers_.clear();
 
   DeserializerDelegate delegate(
       this, env, host_objects, shared_array_buffers, wasm_modules_);
@@ -177,7 +200,6 @@ MaybeLocal<Value> Message::Deserialize(Environment* env,
         ArrayBuffer::New(env->isolate(), std::move(array_buffers_[i]));
     deserializer.TransferArrayBuffer(i, ab);
   }
-  array_buffers_.clear();
 
   if (deserializer.ReadHeader(context).IsNothing())
     return {};
@@ -356,9 +378,7 @@ class SerializerDelegate : public ValueSerializer::Delegate {
     }
 
     if (mode == BaseObject::TransferMode::kTransferable) {
-      // TODO(addaleax): This message code is too specific. Fix that in a
-      // semver-major follow-up.
-      THROW_ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST(env_);
+      THROW_ERR_MISSING_TRANSFERABLE_IN_TRANSFER_LIST(env_);
       return Nothing<bool>();
     }
 
@@ -518,7 +538,9 @@ void Message::MemoryInfo(MemoryTracker* tracker) const {
   tracker->TrackField("transferables", transferables_);
 }
 
-MessagePortData::MessagePortData(MessagePort* owner) : owner_(owner) { }
+MessagePortData::MessagePortData(MessagePort* owner)
+    : owner_(owner) {
+}
 
 MessagePortData::~MessagePortData() {
   CHECK_NULL(owner_);
@@ -530,7 +552,7 @@ void MessagePortData::MemoryInfo(MemoryTracker* tracker) const {
   tracker->TrackField("incoming_messages", incoming_messages_);
 }
 
-void MessagePortData::AddToIncomingQueue(Message&& message) {
+void MessagePortData::AddToIncomingQueue(std::shared_ptr<Message> message) {
   // This function will be called by other threads.
   Mutex::ScopedLock lock(mutex_);
   incoming_messages_.emplace_back(std::move(message));
@@ -542,32 +564,13 @@ void MessagePortData::AddToIncomingQueue(Message&& message) {
 }
 
 void MessagePortData::Entangle(MessagePortData* a, MessagePortData* b) {
-  CHECK_NULL(a->sibling_);
-  CHECK_NULL(b->sibling_);
-  a->sibling_ = b;
-  b->sibling_ = a;
-  a->sibling_mutex_ = b->sibling_mutex_;
+  auto group = std::make_shared<SiblingGroup>();
+  group->Entangle({a, b});
 }
 
 void MessagePortData::Disentangle() {
-  // Grab a copy of the sibling mutex, then replace it so that each sibling
-  // has its own sibling_mutex_ now.
-  std::shared_ptr<Mutex> sibling_mutex = sibling_mutex_;
-  Mutex::ScopedLock sibling_lock(*sibling_mutex);
-  sibling_mutex_ = std::make_shared<Mutex>();
-
-  MessagePortData* sibling = sibling_;
-  if (sibling_ != nullptr) {
-    sibling_->sibling_ = nullptr;
-    sibling_ = nullptr;
-  }
-
-  // We close MessagePorts after disentanglement, so we enqueue a corresponding
-  // message and trigger the corresponding uv_async_t to let them know that
-  // this happened.
-  AddToIncomingQueue(Message());
-  if (sibling != nullptr) {
-    sibling->AddToIncomingQueue(Message());
+  if (group_) {
+    group_->Disentangle(this);
   }
 }
 
@@ -586,7 +589,7 @@ MessagePort::MessagePort(Environment* env,
   auto onmessage = [](uv_async_t* handle) {
     // Called when data has been put into the queue.
     MessagePort* channel = ContainerOf(&MessagePort::async_, handle);
-    channel->OnMessage();
+    channel->OnMessage(MessageProcessingMode::kNormalOperation);
   };
 
   CHECK_EQ(uv_async_init(env->event_loop(),
@@ -648,7 +651,8 @@ void MessagePort::New(const FunctionCallbackInfo<Value>& args) {
 MessagePort* MessagePort::New(
     Environment* env,
     Local<Context> context,
-    std::unique_ptr<MessagePortData> data) {
+    std::unique_ptr<MessagePortData> data,
+    std::shared_ptr<SiblingGroup> sibling_group) {
   Context::Scope context_scope(context);
   Local<FunctionTemplate> ctor_templ = GetMessagePortConstructorTemplate(env);
 
@@ -665,6 +669,7 @@ MessagePort* MessagePort::New(
   }
 
   if (data) {
+    CHECK(!sibling_group);
     port->Detach();
     port->data_ = std::move(data);
 
@@ -676,54 +681,62 @@ MessagePort* MessagePort::New(
     // If the existing MessagePortData object had pending messages, this is
     // the easiest way to run that queue.
     port->TriggerAsync();
+  } else if (sibling_group) {
+    sibling_group->Entangle(port->data_.get());
   }
   return port;
 }
 
 MaybeLocal<Value> MessagePort::ReceiveMessage(Local<Context> context,
-                                              bool only_if_receiving) {
-  Message received;
+                                              MessageProcessingMode mode,
+                                              Local<Value>* port_list) {
+  std::shared_ptr<Message> received;
   {
     // Get the head of the message queue.
     Mutex::ScopedLock lock(data_->mutex_);
 
     Debug(this, "MessagePort has message");
 
-    bool wants_message = receiving_messages_ || !only_if_receiving;
+    bool wants_message =
+        receiving_messages_ ||
+        mode == MessageProcessingMode::kForceReadMessages;
     // We have nothing to do if:
     // - There are no pending messages
     // - We are not intending to receive messages, and the message we would
     //   receive is not the final "close" message.
     if (data_->incoming_messages_.empty() ||
         (!wants_message &&
-         !data_->incoming_messages_.front().IsCloseMessage())) {
+         !data_->incoming_messages_.front()->IsCloseMessage())) {
       return env()->no_message_symbol();
     }
 
-    received = std::move(data_->incoming_messages_.front());
+    received = data_->incoming_messages_.front();
     data_->incoming_messages_.pop_front();
   }
 
-  if (received.IsCloseMessage()) {
+  if (received->IsCloseMessage()) {
     Close();
     return env()->no_message_symbol();
   }
 
   if (!env()->can_call_into_js()) return MaybeLocal<Value>();
 
-  return received.Deserialize(env(), context);
+  return received->Deserialize(env(), context, port_list);
 }
 
-void MessagePort::OnMessage() {
+void MessagePort::OnMessage(MessageProcessingMode mode) {
   Debug(this, "Running MessagePort::OnMessage()");
   HandleScope handle_scope(env()->isolate());
-  Local<Context> context = object(env()->isolate())->CreationContext();
+  Local<Context> context =
+      object(env()->isolate())->GetCreationContext().ToLocalChecked();
 
   size_t processing_limit;
-  {
+  if (mode == MessageProcessingMode::kNormalOperation) {
     Mutex::ScopedLock(data_->mutex_);
     processing_limit = std::max(data_->incoming_messages_.size(),
                                 static_cast<size_t>(1000));
+  } else {
+    processing_limit = std::numeric_limits<size_t>::max();
   }
 
   // data_ can only ever be modified by the owner thread, so no need to lock.
@@ -748,14 +761,15 @@ void MessagePort::OnMessage() {
     Local<Function> emit_message = PersistentToLocal::Strong(emit_message_fn_);
 
     Local<Value> payload;
+    Local<Value> port_list = Undefined(env()->isolate());
     Local<Value> message_error;
-    Local<Value> argv[2];
+    Local<Value> argv[3];
 
     {
       // Catch any exceptions from parsing the message itself (not from
       // emitting it) as 'messageeror' events.
       TryCatchScope try_catch(env());
-      if (!ReceiveMessage(context, true).ToLocal(&payload)) {
+      if (!ReceiveMessage(context, mode, &port_list).ToLocal(&payload)) {
         if (try_catch.HasCaught() && !try_catch.HasTerminated())
           message_error = try_catch.Exception();
         goto reschedule;
@@ -770,13 +784,15 @@ void MessagePort::OnMessage() {
     }
 
     argv[0] = payload;
-    argv[1] = env()->message_string();
+    argv[1] = port_list;
+    argv[2] = env()->message_string();
 
     if (MakeCallback(emit_message, arraysize(argv), argv).IsEmpty()) {
     reschedule:
       if (!message_error.IsEmpty()) {
         argv[0] = message_error;
-        argv[1] = env()->messageerror_string();
+        argv[1] = Undefined(env()->isolate());
+        argv[2] = env()->messageerror_string();
         USE(MakeCallback(emit_message, arraysize(argv), argv));
       }
 
@@ -830,13 +846,13 @@ Maybe<bool> MessagePort::PostMessage(Environment* env,
   Isolate* isolate = env->isolate();
   Local<Object> obj = object(isolate);
 
-  Message msg;
+  std::shared_ptr<Message> msg = std::make_shared<Message>();
 
   // Per spec, we need to both check if transfer list has the source port, and
   // serialize the input message, even if the MessagePort is closed or detached.
 
   Maybe<bool> serialization_maybe =
-      msg.Serialize(env, context, message_v, transfer_v, obj);
+      msg->Serialize(env, context, message_v, transfer_v, obj);
   if (data_ == nullptr) {
     return serialization_maybe;
   }
@@ -844,27 +860,27 @@ Maybe<bool> MessagePort::PostMessage(Environment* env,
     return Nothing<bool>();
   }
 
-  Mutex::ScopedLock lock(*data_->sibling_mutex_);
-  bool doomed = false;
+  std::string error;
+  Maybe<bool> res = data_->Dispatch(msg, &error);
+  if (res.IsNothing())
+    return res;
 
-  // Check if the target port is posted to itself.
-  if (data_->sibling_ != nullptr) {
-    for (const auto& transferable : msg.transferables()) {
-      if (data_->sibling_ == transferable.get()) {
-        doomed = true;
-        ProcessEmitWarning(env, "The target port was posted to itself, and "
-                                "the communication channel was lost");
-        break;
-      }
-    }
-  }
+  if (!error.empty())
+    ProcessEmitWarning(env, error.c_str());
 
-  if (data_->sibling_ == nullptr || doomed)
-    return Just(true);
-
-  data_->sibling_->AddToIncomingQueue(std::move(msg));
   message_was_enqueued_ = true;
-  return Just(true);
+  return res;
+}
+
+Maybe<bool> MessagePortData::Dispatch(
+    std::shared_ptr<Message> message,
+    std::string* error) {
+  if (!group_) {
+    if (error != nullptr)
+      *error = "MessagePortData is not entangled.";
+    return Nothing<bool>();
+  }
+  return group_->Dispatch(this, message, error);
 }
 
 static Maybe<bool> ReadIterable(Environment* env,
@@ -927,7 +943,7 @@ static Maybe<bool> ReadIterable(Environment* env,
 void MessagePort::PostMessage(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   Local<Object> obj = args.This();
-  Local<Context> context = obj->CreationContext();
+  Local<Context> context = obj->GetCreationContext().ToLocalChecked();
 
   if (args.Length() == 0) {
     return THROW_ERR_MISSING_ARGS(env, "Not enough arguments to "
@@ -1010,10 +1026,16 @@ void MessagePort::Stop(const FunctionCallbackInfo<Value>& args) {
   port->Stop();
 }
 
+void MessagePort::CheckType(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  args.GetReturnValue().Set(
+      GetMessagePortConstructorTemplate(env)->HasInstance(args[0]));
+}
+
 void MessagePort::Drain(const FunctionCallbackInfo<Value>& args) {
   MessagePort* port;
   ASSIGN_OR_RETURN_UNWRAP(&port, args[0].As<Object>());
-  port->OnMessage();
+  port->OnMessage(MessageProcessingMode::kForceReadMessages);
 }
 
 void MessagePort::MessageData(const FunctionCallbackInfo<Value>& args) {
@@ -1040,8 +1062,9 @@ void MessagePort::ReceiveMessage(const FunctionCallbackInfo<Value>& args) {
     return;
   }
 
-  MaybeLocal<Value> payload =
-      port->ReceiveMessage(port->object()->CreationContext(), false);
+  MaybeLocal<Value> payload = port->ReceiveMessage(
+      port->object()->GetCreationContext().ToLocalChecked(),
+      MessageProcessingMode::kForceReadMessages);
   if (!payload.IsEmpty())
     args.GetReturnValue().Set(payload.ToLocalChecked());
 }
@@ -1080,7 +1103,7 @@ void MessagePort::MoveToContext(const FunctionCallbackInfo<Value>& args) {
 }
 
 void MessagePort::Entangle(MessagePort* a, MessagePort* b) {
-  Entangle(a, b->data_.get());
+  MessagePortData::Entangle(a->data_.get(), b->data_.get());
 }
 
 void MessagePort::Entangle(MessagePort* a, MessagePortData* b) {
@@ -1287,6 +1310,108 @@ Maybe<bool> JSTransferable::Data::FinalizeTransferWrite(
   return ret;
 }
 
+std::shared_ptr<SiblingGroup> SiblingGroup::Get(const std::string& name) {
+  Mutex::ScopedLock lock(SiblingGroup::groups_mutex_);
+  std::shared_ptr<SiblingGroup> group;
+  auto i = groups_.find(name);
+  if (i == groups_.end() || i->second.expired()) {
+    group = std::make_shared<SiblingGroup>(name);
+    groups_[name] = group;
+  } else {
+    group = i->second.lock();
+  }
+  return group;
+}
+
+void SiblingGroup::CheckSiblingGroup(const std::string& name) {
+  Mutex::ScopedLock lock(SiblingGroup::groups_mutex_);
+  auto i = groups_.find(name);
+  if (i != groups_.end() && i->second.expired())
+    groups_.erase(name);
+}
+
+SiblingGroup::SiblingGroup(const std::string& name)
+    : name_(name) { }
+
+SiblingGroup::~SiblingGroup() {
+  // If this is a named group, check to see if we can remove the group
+  if (!name_.empty())
+    CheckSiblingGroup(name_);
+}
+
+Maybe<bool> SiblingGroup::Dispatch(
+    MessagePortData* source,
+    std::shared_ptr<Message> message,
+    std::string* error) {
+
+  RwLock::ScopedReadLock lock(group_mutex_);
+
+  // The source MessagePortData is not part of this group.
+  if (ports_.find(source) == ports_.end()) {
+    if (error != nullptr)
+      *error = "Source MessagePort is not entangled with this group.";
+    return Nothing<bool>();
+  }
+
+  // There are no destination ports.
+  if (size() <= 1)
+    return Just(false);
+
+  // Transferables cannot be used when there is more
+  // than a single destination.
+  if (size() > 2 && message->has_transferables()) {
+    if (error != nullptr)
+      *error = "Transferables cannot be used with multiple destinations.";
+    return Nothing<bool>();
+  }
+
+  for (MessagePortData* port : ports_) {
+    if (port == source)
+      continue;
+    // This loop should only be entered if there's only a single destination
+    for (const auto& transferable : message->transferables()) {
+      if (port == transferable.get()) {
+        if (error != nullptr) {
+          *error = "The target port was posted to itself, and the "
+                   "communication channel was lost";
+        }
+        return Just(true);
+      }
+    }
+    port->AddToIncomingQueue(message);
+  }
+
+  return Just(true);
+}
+
+void SiblingGroup::Entangle(MessagePortData* port) {
+  Entangle({ port });
+}
+
+void SiblingGroup::Entangle(std::initializer_list<MessagePortData*> ports) {
+  RwLock::ScopedWriteLock lock(group_mutex_);
+  for (MessagePortData* data : ports) {
+    ports_.insert(data);
+    CHECK(!data->group_);
+    data->group_ = shared_from_this();
+  }
+}
+
+void SiblingGroup::Disentangle(MessagePortData* data) {
+  auto self = shared_from_this();  // Keep alive until end of function.
+  RwLock::ScopedWriteLock lock(group_mutex_);
+  ports_.erase(data);
+  data->group_.reset();
+
+  data->AddToIncomingQueue(std::make_shared<Message>());
+  // If this is an anonymous group and there's another port, close it.
+  if (size() == 1 && name_.empty())
+    (*(ports_.begin()))->AddToIncomingQueue(std::make_shared<Message>());
+}
+
+SiblingGroup::Map SiblingGroup::groups_;
+Mutex SiblingGroup::groups_mutex_;
+
 namespace {
 
 static void SetDeserializerCreateObjectFunction(
@@ -1303,7 +1428,7 @@ static void MessageChannel(const FunctionCallbackInfo<Value>& args) {
     return;
   }
 
-  Local<Context> context = args.This()->CreationContext();
+  Local<Context> context = args.This()->GetCreationContext().ToLocalChecked();
   Context::Scope context_scope(context);
 
   MessagePort* port1 = MessagePort::New(env, context);
@@ -1320,6 +1445,18 @@ static void MessageChannel(const FunctionCallbackInfo<Value>& args) {
       .Check();
   args.This()->Set(context, env->port2_string(), port2->object())
       .Check();
+}
+
+static void BroadcastChannel(const FunctionCallbackInfo<Value>& args) {
+  CHECK(args[0]->IsString());
+  Environment* env = Environment::GetCurrent(args);
+  Context::Scope context_scope(env->context());
+  Utf8Value name(env->isolate(), args[0]);
+  MessagePort* port =
+      MessagePort::New(env, env->context(), {}, SiblingGroup::Get(*name));
+  if (port != nullptr) {
+    args.GetReturnValue().Set(port->object());
+  }
 }
 
 static void InitMessaging(Local<Object> target,
@@ -1351,12 +1488,14 @@ static void InitMessaging(Local<Object> target,
   // These are not methods on the MessagePort prototype, because
   // the browser equivalents do not provide them.
   env->SetMethod(target, "stopMessagePort", MessagePort::Stop);
+  env->SetMethod(target, "checkMessagePort", MessagePort::CheckType);
   env->SetMethod(target, "drainMessagePort", MessagePort::Drain);
   env->SetMethod(target, "receiveMessageOnPort", MessagePort::ReceiveMessage);
   env->SetMethod(target, "moveMessagePortToContext",
                  MessagePort::MoveToContext);
   env->SetMethod(target, "setDeserializerCreateObjectFunction",
                  SetDeserializerCreateObjectFunction);
+  env->SetMethod(target, "broadcastChannel", BroadcastChannel);
 
   {
     Local<Function> domexception = GetDOMException(context).ToLocalChecked();
@@ -1368,9 +1507,26 @@ static void InitMessaging(Local<Object> target,
   }
 }
 
+static void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
+  registry->Register(MessageChannel);
+  registry->Register(BroadcastChannel);
+  registry->Register(JSTransferable::New);
+  registry->Register(MessagePort::New);
+  registry->Register(MessagePort::PostMessage);
+  registry->Register(MessagePort::Start);
+  registry->Register(MessagePort::Stop);
+  registry->Register(MessagePort::CheckType);
+  registry->Register(MessagePort::Drain);
+  registry->Register(MessagePort::ReceiveMessage);
+  registry->Register(MessagePort::MoveToContext);
+  registry->Register(SetDeserializerCreateObjectFunction);
+}
+
 }  // anonymous namespace
 
 }  // namespace worker
 }  // namespace node
 
 NODE_MODULE_CONTEXT_AWARE_INTERNAL(messaging, node::worker::InitMessaging)
+NODE_MODULE_EXTERNAL_REFERENCE(messaging,
+                               node::worker::RegisterExternalReferences)

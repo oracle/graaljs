@@ -24,9 +24,18 @@
 const {
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
+  StringPrototypeCharCodeAt,
+  StringPrototypeSlice,
+  StringPrototypeToLowerCase,
+  Symbol
 } = primordials;
 
-const Stream = require('stream');
+const { Readable, finished } = require('stream');
+
+const kHeaders = Symbol('kHeaders');
+const kHeadersCount = Symbol('kHeadersCount');
+const kTrailers = Symbol('kTrailers');
+const kTrailersCount = Symbol('kTrailersCount');
 
 function readStart(socket) {
   if (socket && !socket._paused && socket.readable)
@@ -48,7 +57,7 @@ function IncomingMessage(socket) {
     };
   }
 
-  Stream.Readable.call(this, { autoDestroy: false, ...streamOptions });
+  Readable.call(this, streamOptions);
 
   this._readableState.readingMore = true;
 
@@ -58,9 +67,11 @@ function IncomingMessage(socket) {
   this.httpVersionMinor = null;
   this.httpVersion = null;
   this.complete = false;
-  this.headers = {};
+  this[kHeaders] = null;
+  this[kHeadersCount] = 0;
   this.rawHeaders = [];
-  this.trailers = {};
+  this[kTrailers] = null;
+  this[kTrailersCount] = 0;
   this.rawTrailers = [];
 
   this.aborted = false;
@@ -81,8 +92,8 @@ function IncomingMessage(socket) {
   // read by the user, so there's no point continuing to handle it.
   this._dumped = false;
 }
-ObjectSetPrototypeOf(IncomingMessage.prototype, Stream.Readable.prototype);
-ObjectSetPrototypeOf(IncomingMessage, Stream.Readable);
+ObjectSetPrototypeOf(IncomingMessage.prototype, Readable.prototype);
+ObjectSetPrototypeOf(IncomingMessage, Readable);
 
 ObjectDefineProperty(IncomingMessage.prototype, 'connection', {
   get: function() {
@@ -90,6 +101,44 @@ ObjectDefineProperty(IncomingMessage.prototype, 'connection', {
   },
   set: function(val) {
     this.socket = val;
+  }
+});
+
+ObjectDefineProperty(IncomingMessage.prototype, 'headers', {
+  get: function() {
+    if (!this[kHeaders]) {
+      this[kHeaders] = {};
+
+      const src = this.rawHeaders;
+      const dst = this[kHeaders];
+
+      for (let n = 0; n < this[kHeadersCount]; n += 2) {
+        this._addHeaderLine(src[n + 0], src[n + 1], dst);
+      }
+    }
+    return this[kHeaders];
+  },
+  set: function(val) {
+    this[kHeaders] = val;
+  }
+});
+
+ObjectDefineProperty(IncomingMessage.prototype, 'trailers', {
+  get: function() {
+    if (!this[kTrailers]) {
+      this[kTrailers] = {};
+
+      const src = this.rawTrailers;
+      const dst = this[kTrailers];
+
+      for (let n = 0; n < this[kTrailersCount]; n += 2) {
+        this._addHeaderLine(src[n + 0], src[n + 1], dst);
+      }
+    }
+    return this[kTrailers];
+  },
+  set: function(val) {
+    this[kTrailers] = val;
   }
 });
 
@@ -121,16 +170,30 @@ IncomingMessage.prototype._read = function _read(n) {
     readStart(this.socket);
 };
 
-
 // It's possible that the socket will be destroyed, and removed from
 // any messages, before ever calling this.  In that case, just skip
 // it, since something else is destroying this connection anyway.
-IncomingMessage.prototype.destroy = function destroy(error) {
-  if (this.socket)
-    this.socket.destroy(error);
-  return this;
-};
+IncomingMessage.prototype._destroy = function _destroy(err, cb) {
+  if (!this.readableEnded || !this.complete) {
+    this.aborted = true;
+    this.emit('aborted');
+  }
 
+  // If aborted and the underlying socket is not already destroyed,
+  // destroy it.
+  // We have to check if the socket is already destroyed because finished
+  // does not call the callback when this methdod is invoked from `_http_client`
+  // in `test/parallel/test-http-client-spurious-aborted.js`
+  if (this.socket && !this.socket.destroyed && this.aborted) {
+    this.socket.destroy(err);
+    const cleanup = finished(this.socket, (e) => {
+      cleanup();
+      onError(this, e || err, cb);
+    });
+  } else {
+    onError(this, err, cb);
+  }
+};
 
 IncomingMessage.prototype._addHeaderLines = _addHeaderLines;
 function _addHeaderLines(headers, n) {
@@ -138,14 +201,18 @@ function _addHeaderLines(headers, n) {
     let dest;
     if (this.complete) {
       this.rawTrailers = headers;
-      dest = this.trailers;
+      this[kTrailersCount] = n;
+      dest = this[kTrailers];
     } else {
       this.rawHeaders = headers;
-      dest = this.headers;
+      this[kHeadersCount] = n;
+      dest = this[kHeaders];
     }
 
-    for (let i = 0; i < n; i += 2) {
-      this._addHeaderLine(headers[i], headers[i + 1], dest);
+    if (dest) {
+      for (let i = 0; i < n; i += 2) {
+        this._addHeaderLine(headers[i], headers[i + 1], dest);
+      }
     }
   }
 }
@@ -255,7 +322,7 @@ function matchKnownFields(field, lowercased) {
   if (lowercased) {
     return '\u0000' + field;
   }
-  return matchKnownFields(field.toLowerCase(), true);
+  return matchKnownFields(StringPrototypeToLowerCase(field), true);
 }
 // Add the given (field, value) pair to the message
 //
@@ -269,9 +336,9 @@ function matchKnownFields(field, lowercased) {
 IncomingMessage.prototype._addHeaderLine = _addHeaderLine;
 function _addHeaderLine(field, value, dest) {
   field = matchKnownFields(field);
-  const flag = field.charCodeAt(0);
+  const flag = StringPrototypeCharCodeAt(field, 0);
   if (flag === 0 || flag === 2) {
-    field = field.slice(1);
+    field = StringPrototypeSlice(field, 1);
     // Make a delimited list
     if (typeof dest[field] === 'string') {
       dest[field] += (flag === 0 ? ', ' : '; ') + value;
@@ -303,6 +370,16 @@ IncomingMessage.prototype._dump = function _dump() {
     this.resume();
   }
 };
+
+function onError(self, error, cb) {
+  // This is to keep backward compatible behavior.
+  // An error is emitted only if there are listeners attached to the event.
+  if (self.listenerCount('error') === 0) {
+    cb();
+  } else {
+    cb(error);
+  }
+}
 
 module.exports = {
   IncomingMessage,

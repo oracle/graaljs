@@ -116,6 +116,7 @@ RegExpMacroAssemblerIA32::~RegExpMacroAssemblerIA32() {
   exit_label_.Unuse();
   check_preempt_label_.Unuse();
   stack_overflow_label_.Unuse();
+  fallback_label_.Unuse();
 }
 
 
@@ -148,8 +149,13 @@ void RegExpMacroAssemblerIA32::Backtrack() {
     __ cmp(Operand(ebp, kBacktrackCount), Immediate(backtrack_limit()));
     __ j(not_equal, &next);
 
-    // Exceeded limits are treated as a failed match.
-    Fail();
+    // Backtrack limit exceeded.
+    if (can_fallback()) {
+      __ jmp(&fallback_label_);
+    } else {
+      // Can't fallback, so we treat it as a failed match.
+      Fail();
+    }
 
     __ bind(&next);
   }
@@ -170,8 +176,8 @@ void RegExpMacroAssemblerIA32::CheckCharacter(uint32_t c, Label* on_equal) {
   BranchOrBacktrack(equal, on_equal);
 }
 
-
-void RegExpMacroAssemblerIA32::CheckCharacterGT(uc16 limit, Label* on_greater) {
+void RegExpMacroAssemblerIA32::CheckCharacterGT(base::uc16 limit,
+                                                Label* on_greater) {
   __ cmp(current_character(), limit);
   BranchOrBacktrack(greater, on_greater);
 }
@@ -189,12 +195,11 @@ void RegExpMacroAssemblerIA32::CheckNotAtStart(int cp_offset,
   BranchOrBacktrack(not_equal, on_not_at_start);
 }
 
-
-void RegExpMacroAssemblerIA32::CheckCharacterLT(uc16 limit, Label* on_less) {
+void RegExpMacroAssemblerIA32::CheckCharacterLT(base::uc16 limit,
+                                                Label* on_less) {
   __ cmp(current_character(), limit);
   BranchOrBacktrack(less, on_less);
 }
-
 
 void RegExpMacroAssemblerIA32::CheckGreedyLoop(Label* on_equal) {
   Label fallthrough;
@@ -206,7 +211,7 @@ void RegExpMacroAssemblerIA32::CheckGreedyLoop(Label* on_equal) {
 }
 
 void RegExpMacroAssemblerIA32::CheckNotBackReferenceIgnoreCase(
-    int start_reg, bool read_backward, Label* on_no_match) {
+    int start_reg, bool read_backward, bool unicode, Label* on_no_match) {
   Label fallthrough;
   __ mov(edx, register_location(start_reg));  // Index of start of capture
   __ mov(ebx, register_location(start_reg + 1));  // Index of end of capture
@@ -336,7 +341,10 @@ void RegExpMacroAssemblerIA32::CheckNotBackReferenceIgnoreCase(
     {
       AllowExternalCallThatCantCauseGC scope(masm_);
       ExternalReference compare =
-          ExternalReference::re_case_insensitive_compare_uc16(isolate());
+          unicode ? ExternalReference::re_case_insensitive_compare_unicode(
+                        isolate())
+                  : ExternalReference::re_case_insensitive_compare_non_unicode(
+                        isolate());
       __ CallCFunction(compare, argument_count);
     }
     // Pop original values before reacting on result value.
@@ -472,12 +480,8 @@ void RegExpMacroAssemblerIA32::CheckNotCharacterAfterAnd(uint32_t c,
   BranchOrBacktrack(not_equal, on_not_equal);
 }
 
-
 void RegExpMacroAssemblerIA32::CheckNotCharacterAfterMinusAnd(
-    uc16 c,
-    uc16 minus,
-    uc16 mask,
-    Label* on_not_equal) {
+    base::uc16 c, base::uc16 minus, base::uc16 mask, Label* on_not_equal) {
   DCHECK_GT(String::kMaxUtf16CodeUnit, minus);
   __ lea(eax, Operand(current_character(), -minus));
   if (c == 0) {
@@ -489,26 +493,20 @@ void RegExpMacroAssemblerIA32::CheckNotCharacterAfterMinusAnd(
   BranchOrBacktrack(not_equal, on_not_equal);
 }
 
-
-void RegExpMacroAssemblerIA32::CheckCharacterInRange(
-    uc16 from,
-    uc16 to,
-    Label* on_in_range) {
+void RegExpMacroAssemblerIA32::CheckCharacterInRange(base::uc16 from,
+                                                     base::uc16 to,
+                                                     Label* on_in_range) {
   __ lea(eax, Operand(current_character(), -from));
   __ cmp(eax, to - from);
   BranchOrBacktrack(below_equal, on_in_range);
 }
 
-
 void RegExpMacroAssemblerIA32::CheckCharacterNotInRange(
-    uc16 from,
-    uc16 to,
-    Label* on_not_in_range) {
+    base::uc16 from, base::uc16 to, Label* on_not_in_range) {
   __ lea(eax, Operand(current_character(), -from));
   __ cmp(eax, to - from);
   BranchOrBacktrack(above, on_not_in_range);
 }
-
 
 void RegExpMacroAssemblerIA32::CheckBitInTable(
     Handle<ByteArray> table,
@@ -525,8 +523,7 @@ void RegExpMacroAssemblerIA32::CheckBitInTable(
   BranchOrBacktrack(not_equal, on_bit_set);
 }
 
-
-bool RegExpMacroAssemblerIA32::CheckSpecialCharacterClass(uc16 type,
+bool RegExpMacroAssemblerIA32::CheckSpecialCharacterClass(base::uc16 type,
                                                           Label* on_no_match) {
   // Range checks (c in min..max) are generally implemented by an unsigned
   // (c - min) <= (max - min) check
@@ -649,7 +646,6 @@ bool RegExpMacroAssemblerIA32::CheckSpecialCharacterClass(uc16 type,
     return false;
   }
 }
-
 
 void RegExpMacroAssemblerIA32::Fail() {
   STATIC_ASSERT(FAILURE == 0);  // Return value for failure is zero.
@@ -937,11 +933,18 @@ Handle<HeapObject> RegExpMacroAssemblerIA32::GetCode(Handle<String> source) {
     __ jmp(&return_eax);
   }
 
+  if (fallback_label_.is_linked()) {
+    __ bind(&fallback_label_);
+    __ mov(eax, FALLBACK_TO_EXPERIMENTAL);
+    __ jmp(&return_eax);
+  }
+
   CodeDesc code_desc;
   masm_->GetCode(masm_->isolate(), &code_desc);
-  Handle<Code> code = Factory::CodeBuilder(isolate(), code_desc, Code::REGEXP)
-                          .set_self_reference(masm_->CodeObject())
-                          .Build();
+  Handle<Code> code =
+      Factory::CodeBuilder(isolate(), code_desc, CodeKind::REGEXP)
+          .set_self_reference(masm_->CodeObject())
+          .Build();
   PROFILE(masm_->isolate(),
           RegExpCodeCreateEvent(Handle<AbstractCode>::cast(code), source));
   return Handle<HeapObject>::cast(code);
@@ -1247,11 +1250,11 @@ void RegExpMacroAssemblerIA32::LoadCurrentCharacterUnchecked(int cp_offset,
     DCHECK(mode_ == UC16);
     if (characters == 2) {
       __ mov(current_character(),
-             Operand(esi, edi, times_1, cp_offset * sizeof(uc16)));
+             Operand(esi, edi, times_1, cp_offset * sizeof(base::uc16)));
     } else {
       DCHECK_EQ(1, characters);
       __ movzx_w(current_character(),
-                 Operand(esi, edi, times_1, cp_offset * sizeof(uc16)));
+                 Operand(esi, edi, times_1, cp_offset * sizeof(base::uc16)));
     }
   }
 }

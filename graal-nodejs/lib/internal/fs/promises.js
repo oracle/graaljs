@@ -7,8 +7,10 @@ const {
   MathMin,
   NumberIsSafeInteger,
   Promise,
-  PromisePrototypeFinally,
+  PromisePrototypeThen,
   PromiseResolve,
+  SafeArrayIterator,
+  SafePromisePrototypeFinally,
   Symbol,
   Uint8Array,
 } = primordials;
@@ -23,13 +25,14 @@ const {
 const binding = internalBinding('fs');
 const { Buffer } = require('buffer');
 
-const { AbortError, codes, hideStackFrames } = require('internal/errors');
 const {
-  ERR_FS_FILE_TOO_LARGE,
-  ERR_INVALID_ARG_TYPE,
-  ERR_INVALID_ARG_VALUE,
-  ERR_METHOD_NOT_IMPLEMENTED,
-} = codes;
+  codes: {
+    ERR_FS_FILE_TOO_LARGE,
+    ERR_INVALID_ARG_VALUE,
+    ERR_METHOD_NOT_IMPLEMENTED,
+  },
+  AbortError,
+} = require('internal/errors');
 const { isArrayBufferView } = require('internal/util/types');
 const { rimrafPromises } = require('internal/fs/rimraf');
 const {
@@ -41,6 +44,7 @@ const {
     kWriteFileMaxChunkSize,
   },
   copyObject,
+  emitRecursiveRmdirWarning,
   getDirents,
   getOptions,
   getStatsFromBinding,
@@ -52,25 +56,30 @@ const {
   stringToSymlinkType,
   toUnixTimestamp,
   validateBufferArray,
+  validateCpOptions,
   validateOffsetLengthRead,
   validateOffsetLengthWrite,
   validateRmOptions,
   validateRmdirOptions,
   validateStringAfterArrayBufferView,
-  warnOnNonPortableTemplate
+  warnOnNonPortableTemplate,
 } = require('internal/fs/utils');
 const { opendir } = require('internal/fs/dir');
 const {
   parseFileMode,
   validateAbortSignal,
+  validateBoolean,
   validateBuffer,
+  validateEncoding,
   validateInteger,
   validateString,
 } = require('internal/validators');
 const pathModule = require('path');
-const { promisify } = require('internal/util');
+const { lazyDOMException, promisify } = require('internal/util');
+const { EventEmitterMixin } = require('internal/event_target');
 const { watch } = require('internal/fs/watchers');
 const { isIterable } = require('internal/streams/utils');
+const assert = require('internal/assert');
 
 const kHandle = Symbol('kHandle');
 const kFd = Symbol('kFd');
@@ -78,6 +87,8 @@ const kRefs = Symbol('kRefs');
 const kClosePromise = Symbol('kClosePromise');
 const kCloseResolve = Symbol('kCloseResolve');
 const kCloseReject = Symbol('kCloseReject');
+const kRef = Symbol('kRef');
+const kUnref = Symbol('kUnref');
 
 const { kUsePromises } = binding;
 const {
@@ -87,14 +98,21 @@ const {
 const getDirectoryEntriesPromise = promisify(getDirents);
 const validateRmOptionsPromise = promisify(validateRmOptions);
 
-let DOMException;
-const lazyDOMException = hideStackFrames((message, name) => {
-  if (DOMException === undefined)
-    DOMException = internalBinding('messaging').DOMException;
-  return new DOMException(message, name);
-});
+let cpPromises;
+function lazyLoadCpPromises() {
+  return cpPromises ??= require('internal/fs/cp/cp').cpFn;
+}
 
-class FileHandle extends JSTransferable {
+// Lazy loaded to avoid circular dependency.
+let fsStreams;
+function lazyFsStreams() {
+  return fsStreams ??= require('internal/fs/streams');
+}
+
+class FileHandle extends EventEmitterMixin(JSTransferable) {
+  /**
+   * @param {InternalFSBinding.FileHandle | undefined} filehandle
+   */
   constructor(filehandle) {
     super();
     this[kHandle] = filehandle;
@@ -180,27 +198,64 @@ class FileHandle extends JSTransferable {
     this[kRefs]--;
     if (this[kRefs] === 0) {
       this[kFd] = -1;
-      this[kClosePromise] = this[kHandle].close().finally(() => {
-        this[kClosePromise] = undefined;
-      });
+      this[kClosePromise] = SafePromisePrototypeFinally(
+        this[kHandle].close(),
+        () => { this[kClosePromise] = undefined; }
+      );
     } else {
-      this[kClosePromise] = new Promise((resolve, reject) => {
-        this[kCloseResolve] = resolve;
-        this[kCloseReject] = reject;
-      }).finally(() => {
-        this[kClosePromise] = undefined;
-        this[kCloseReject] = undefined;
-        this[kCloseResolve] = undefined;
-      });
+      this[kClosePromise] = SafePromisePrototypeFinally(
+        new Promise((resolve, reject) => {
+          this[kCloseResolve] = resolve;
+          this[kCloseReject] = reject;
+        }), () => {
+          this[kClosePromise] = undefined;
+          this[kCloseReject] = undefined;
+          this[kCloseResolve] = undefined;
+        }
+      );
     }
 
+    this.emit('close');
     return this[kClosePromise];
+  }
+
+  /**
+   * @typedef {import('./streams').ReadStream
+   * } ReadStream
+   * @param {{
+   *   encoding?: string;
+   *   autoClose?: boolean;
+   *   emitClose?: boolean;
+   *   start: number;
+   *   end?: number;
+   *   highWaterMark?: number;
+   *   }} [options]
+   * @returns {ReadStream}
+   */
+  createReadStream(options = undefined) {
+    const { ReadStream } = lazyFsStreams();
+    return new ReadStream(undefined, { ...options, fd: this });
+  }
+
+  /**
+   * @typedef {import('./streams').WriteStream
+   * } WriteStream
+   * @param {{
+   *   encoding?: string;
+   *   autoClose?: boolean;
+   *   emitClose?: boolean;
+   *   start: number;
+   *   }} [options]
+   * @returns {WriteStream}
+   */
+  createWriteStream(options = undefined) {
+    const { WriteStream } = lazyFsStreams();
+    return new WriteStream(undefined, { ...options, fd: this });
   }
 
   [kTransfer]() {
     if (this[kClosePromise] || this[kRefs] > 1) {
-      const DOMException = internalBinding('messaging').DOMException;
-      throw new DOMException('Cannot transfer FileHandle while in use',
+      throw lazyDOMException('Cannot transfer FileHandle while in use',
                              'DataCloneError');
     }
 
@@ -223,12 +278,27 @@ class FileHandle extends JSTransferable {
     this[kHandle] = handle;
     this[kFd] = handle.fd;
   }
+
+  [kRef]() {
+    this[kRefs]++;
+  }
+
+  [kUnref]() {
+    this[kRefs]--;
+    if (this[kRefs] === 0) {
+      this[kFd] = -1;
+      PromisePrototypeThen(
+        this[kHandle].close(),
+        this[kCloseResolve],
+        this[kCloseReject]
+      );
+    }
+  }
 }
 
 async function fsCall(fn, handle, ...args) {
-  if (handle[kRefs] === undefined) {
-    throw new ERR_INVALID_ARG_TYPE('filehandle', 'FileHandle', handle);
-  }
+  assert(handle[kRefs] !== undefined,
+         'handle must be an instance of FileHandle');
 
   if (handle.fd === -1) {
     // eslint-disable-next-line no-restricted-syntax
@@ -239,21 +309,15 @@ async function fsCall(fn, handle, ...args) {
   }
 
   try {
-    handle[kRefs]++;
-    return await fn(handle, ...args);
+    handle[kRef]();
+    return await fn(handle, ...new SafeArrayIterator(args));
   } finally {
-    handle[kRefs]--;
-    if (handle[kRefs] === 0) {
-      handle[kFd] = -1;
-      handle[kHandle]
-        .close()
-        .then(handle[kCloseResolve], handle[kCloseReject]);
-    }
+    handle[kUnref]();
   }
 }
 
 function checkAborted(signal) {
-  if (signal && signal.aborted)
+  if (signal?.aborted)
     throw new AbortError();
 }
 
@@ -262,10 +326,16 @@ async function writeFileHandle(filehandle, data, signal, encoding) {
   if (isCustomIterable(data)) {
     for await (const buf of data) {
       checkAborted(signal);
-      await write(
-        filehandle, buf, undefined,
-        isArrayBufferView(buf) ? buf.byteLength : encoding);
-      checkAborted(signal);
+      const toWrite =
+        isArrayBufferView(buf) ? buf : Buffer.from(buf, encoding || 'utf8');
+      let remaining = toWrite.byteLength;
+      while (remaining > 0) {
+        const writeSize = MathMin(kWriteFileMaxChunkSize, remaining);
+        const { bytesWritten } = await write(
+          filehandle, toWrite, toWrite.byteLength - remaining, writeSize);
+        remaining -= bytesWritten;
+        checkAborted(signal);
+      }
     }
     return;
   }
@@ -273,9 +343,7 @@ async function writeFileHandle(filehandle, data, signal, encoding) {
   let remaining = data.byteLength;
   if (remaining === 0) return;
   do {
-    if (signal?.aborted) {
-      throw lazyDOMException('The operation was aborted', 'AbortError');
-    }
+    checkAborted(signal);
     const { bytesWritten } =
       await write(filehandle, data, 0,
                   MathMin(kWriteFileMaxChunkSize, data.byteLength));
@@ -289,16 +357,13 @@ async function writeFileHandle(filehandle, data, signal, encoding) {
 }
 
 async function readFileHandle(filehandle, options) {
-  const signal = options && options.signal;
+  const signal = options?.signal;
 
-  if (signal && signal.aborted) {
-    throw lazyDOMException('The operation was aborted', 'AbortError');
-  }
+  checkAborted(signal);
+
   const statFields = await binding.fstat(filehandle.fd, false, kUsePromises);
 
-  if (signal && signal.aborted) {
-    throw lazyDOMException('The operation was aborted', 'AbortError');
-  }
+  checkAborted(signal);
 
   let size;
   if ((statFields[1/* mode */] & S_IFMT) === S_IFREG) {
@@ -316,9 +381,7 @@ async function readFileHandle(filehandle, options) {
   const buffers = [];
   const fullBuffer = noSize ? undefined : Buffer.allocUnsafeSlow(size);
   do {
-    if (signal && signal.aborted) {
-      throw lazyDOMException('The operation was aborted', 'AbortError');
-    }
+    checkAborted(signal);
     let buffer;
     let offset;
     let length;
@@ -362,6 +425,13 @@ async function access(path, mode = F_OK) {
   mode = getValidMode(mode, 'access');
   return binding.access(pathModule.toNamespacedPath(path), mode,
                         kUsePromises);
+}
+
+async function cp(src, dest, options) {
+  options = validateCpOptions(options);
+  src = pathModule.toNamespacedPath(getValidatedPath(src, 'src'));
+  dest = pathModule.toNamespacedPath(getValidatedPath(dest, 'dest'));
+  return lazyLoadCpPromises()(src, dest, options);
 }
 
 async function copyFile(src, dest, mode) {
@@ -441,7 +511,7 @@ async function readv(handle, buffers, position) {
 }
 
 async function write(handle, buffer, offset, length, position) {
-  if (buffer && buffer.byteLength === 0)
+  if (buffer?.byteLength === 0)
     return { bytesWritten: 0, buffer };
 
   if (isArrayBufferView(buffer)) {
@@ -462,6 +532,7 @@ async function write(handle, buffer, offset, length, position) {
   }
 
   validateStringAfterArrayBufferView(buffer, 'buffer');
+  validateEncoding(buffer, length);
   const bytesWritten = (await binding.writeString(handle.fd, buffer, offset,
                                                   length, kUsePromises)) || 0;
   return { bytesWritten, buffer };
@@ -488,7 +559,7 @@ async function rename(oldPath, newPath) {
 
 async function truncate(path, len = 0) {
   const fd = await open(path, 'r+');
-  return PromisePrototypeFinally(ftruncate(fd, len), fd.close);
+  return SafePromisePrototypeFinally(ftruncate(fd, len), fd.close);
 }
 
 async function ftruncate(handle, len = 0) {
@@ -499,7 +570,7 @@ async function ftruncate(handle, len = 0) {
 
 async function rm(path, options) {
   path = pathModule.toNamespacedPath(getValidatedPath(path));
-  options = await validateRmOptionsPromise(path, options);
+  options = await validateRmOptionsPromise(path, options, false);
   return rimrafPromises(path, options);
 }
 
@@ -508,7 +579,11 @@ async function rmdir(path, options) {
   options = validateRmdirOptions(options);
 
   if (options.recursive) {
-    return rimrafPromises(path, options);
+    emitRecursiveRmdirWarning();
+    const stats = await stat(path);
+    if (stats.isDirectory()) {
+      return rimrafPromises(path, options);
+    }
   }
 
   return binding.rmdir(path, kUsePromises);
@@ -531,8 +606,7 @@ async function mkdir(path, options) {
     mode = 0o777
   } = options || {};
   path = getValidatedPath(path);
-  if (typeof recursive !== 'boolean')
-    throw new ERR_INVALID_ARG_TYPE('options.recursive', 'boolean', recursive);
+  validateBoolean(recursive, 'options.recursive');
 
   return binding.mkdir(pathModule.toNamespacedPath(path),
                        parseFileMode(mode, 'mode', 0o777), recursive,
@@ -616,7 +690,7 @@ async function lchmod(path, mode) {
     throw new ERR_METHOD_NOT_IMPLEMENTED('lchmod()');
 
   const fd = await open(path, O_WRONLY | O_SYMLINK);
-  return PromisePrototypeFinally(fchmod(fd, mode), fd.close);
+  return SafePromisePrototypeFinally(fchmod(fd, mode), fd.close);
 }
 
 async function lchown(path, uid, gid) {
@@ -691,12 +765,10 @@ async function writeFile(path, data, options) {
   if (path instanceof FileHandle)
     return writeFileHandle(path, data, options.signal, options.encoding);
 
-  if (options.signal?.aborted) {
-    throw lazyDOMException('The operation was aborted', 'AbortError');
-  }
+  checkAborted(options.signal);
 
   const fd = await open(path, flag, options.mode);
-  return PromisePrototypeFinally(
+  return SafePromisePrototypeFinally(
     writeFileHandle(fd, data, options.signal, options.encoding), fd.close);
 }
 
@@ -718,18 +790,17 @@ async function readFile(path, options) {
   if (path instanceof FileHandle)
     return readFileHandle(path, options);
 
-  if (options.signal?.aborted) {
-    throw lazyDOMException('The operation was aborted', 'AbortError');
-  }
+  checkAborted(options.signal);
 
   const fd = await open(path, flag, 0o666);
-  return PromisePrototypeFinally(readFileHandle(fd, options), fd.close);
+  return SafePromisePrototypeFinally(readFileHandle(fd, options), fd.close);
 }
 
 module.exports = {
   exports: {
     access,
     copyFile,
+    cp,
     open,
     opendir: promisify(opendir),
     rename,
@@ -758,5 +829,7 @@ module.exports = {
     watch,
   },
 
-  FileHandle
+  FileHandle,
+  kRef,
+  kUnref,
 };

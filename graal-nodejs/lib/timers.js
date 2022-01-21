@@ -171,7 +171,7 @@ ObjectDefineProperty(setTimeout, customPromisify, {
   enumerable: true,
   get() {
     if (!timersPromises)
-      timersPromises = require('internal/timers/promises');
+      timersPromises = require('timers/promises');
     return timersPromises.setTimeout;
   }
 });
@@ -305,7 +305,7 @@ ObjectDefineProperty(setImmediate, customPromisify, {
   enumerable: true,
   get() {
     if (!timersPromises)
-      timersPromises = require('internal/timers/promises');
+      timersPromises = require('timers/promises');
     return timersPromises.setImmediate;
   }
 });

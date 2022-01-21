@@ -39,7 +39,10 @@ const {
   ERR_VM_MODULE_STATUS,
 } = require('internal/errors').codes;
 const {
+  validateBoolean,
+  validateFunction,
   validateInt32,
+  validateObject,
   validateUint32,
   validateString,
 } = require('internal/validators');
@@ -90,9 +93,7 @@ class Module {
     } = options;
 
     if (context !== undefined) {
-      if (typeof context !== 'object' || context === null) {
-        throw new ERR_INVALID_ARG_TYPE('options.context', 'Object', context);
-      }
+      validateObject(context, 'context');
       if (!isContext(context)) {
         throw new ERR_INVALID_ARG_TYPE('options.context', 'vm.Context',
                                        context);
@@ -186,9 +187,7 @@ class Module {
     if (this[kWrap] === undefined) {
       throw new ERR_VM_MODULE_NOT_MODULE();
     }
-    if (typeof linker !== 'function') {
-      throw new ERR_INVALID_ARG_TYPE('linker', 'function', linker);
-    }
+    validateFunction(linker, 'linker');
     if (this.status === 'linked') {
       throw new ERR_VM_MODULE_ALREADY_LINKED();
     }
@@ -204,9 +203,7 @@ class Module {
       throw new ERR_VM_MODULE_NOT_MODULE();
     }
 
-    if (typeof options !== 'object' || options === null) {
-      throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
-    }
+    validateObject(options, 'options');
 
     let timeout = options.timeout;
     if (timeout === undefined) {
@@ -215,10 +212,7 @@ class Module {
       validateUint32(timeout, 'options.timeout', true);
     }
     const { breakOnSigint = false } = options;
-    if (typeof breakOnSigint !== 'boolean') {
-      throw new ERR_INVALID_ARG_TYPE('options.breakOnSigint', 'boolean',
-                                     breakOnSigint);
-    }
+    validateBoolean(breakOnSigint, 'options.breakOnSigint');
     const status = this[kWrap].getStatus();
     if (status !== kInstantiated &&
         status !== kEvaluated &&
@@ -264,10 +258,7 @@ class SourceTextModule extends Module {
 
   constructor(sourceText, options = {}) {
     validateString(sourceText, 'sourceText');
-
-    if (typeof options !== 'object' || options === null) {
-      throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
-    }
+    validateObject(options, 'options');
 
     const {
       lineOffset = 0,
@@ -317,8 +308,8 @@ class SourceTextModule extends Module {
     this[kLink] = async (linker) => {
       this.#statusOverride = 'linking';
 
-      const promises = this[kWrap].link(async (identifier) => {
-        const module = await linker(identifier, this);
+      const promises = this[kWrap].link(async (identifier, assert) => {
+        const module = await linker(identifier, this, { assert });
         if (module[kWrap] === undefined) {
           throw new ERR_VM_MODULE_NOT_MODULE();
         }
@@ -411,14 +402,9 @@ class SyntheticModule extends Module {
         }
       });
     }
-    if (typeof evaluateCallback !== 'function') {
-      throw new ERR_INVALID_ARG_TYPE('evaluateCallback', 'function',
-                                     evaluateCallback);
-    }
+    validateFunction(evaluateCallback, 'evaluateCallback');
 
-    if (typeof options !== 'object' || options === null) {
-      throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
-    }
+    validateObject(options, 'options');
 
     const { context, identifier } = options;
 

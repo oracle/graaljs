@@ -24,10 +24,22 @@ WasmCode*& WasmImportWrapperCache::operator[](
 }
 
 WasmCode* WasmImportWrapperCache::Get(compiler::WasmImportCallKind kind,
-                                      const FunctionSig* sig) const {
+                                      const FunctionSig* sig,
+                                      int expected_arity) const {
   base::MutexGuard lock(&mutex_);
-  auto it = entry_map_.find({kind, sig});
+
+  auto it = entry_map_.find({kind, sig, expected_arity});
   DCHECK(it != entry_map_.end());
+  return it->second;
+}
+
+WasmCode* WasmImportWrapperCache::MaybeGet(compiler::WasmImportCallKind kind,
+                                           const FunctionSig* sig,
+                                           int expected_arity) const {
+  base::MutexGuard lock(&mutex_);
+
+  auto it = entry_map_.find({kind, sig, expected_arity});
+  if (it == entry_map_.end()) return nullptr;
   return it->second;
 }
 
@@ -39,7 +51,7 @@ WasmImportWrapperCache::~WasmImportWrapperCache() {
       ptrs.push_back(e.second);
     }
   }
-  WasmCode::DecrementRefCount(VectorOf(ptrs));
+  WasmCode::DecrementRefCount(base::VectorOf(ptrs));
 }
 
 }  // namespace wasm

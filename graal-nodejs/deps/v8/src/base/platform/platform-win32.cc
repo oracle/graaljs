@@ -15,9 +15,15 @@
 #endif  // MINGW_HAS_SECURE_API
 #endif  // __MINGW32__
 
-#include <limits>
+#include <windows.h>
 
-#include "src/base/win32-headers.h"
+// This has to come after windows.h.
+#include <VersionHelpers.h>
+#include <dbghelp.h>   // For SymLoadModule64 and al.
+#include <mmsystem.h>  // For timeGetTime().
+#include <tlhelp32.h>  // For Module32First and al.
+
+#include <limits>
 
 #include "src/base/bits.h"
 #include "src/base/lazy-instance.h"
@@ -26,12 +32,33 @@
 #include "src/base/platform/time.h"
 #include "src/base/timezone-cache.h"
 #include "src/base/utils/random-number-generator.h"
-
-#include <VersionHelpers.h>
+#include "src/base/win32-headers.h"
 
 #if defined(_MSC_VER)
-#include <crtdbg.h>  // NOLINT
+#include <crtdbg.h>
 #endif               // defined(_MSC_VER)
+
+// Check that type sizes and alignments match.
+STATIC_ASSERT(sizeof(V8_CONDITION_VARIABLE) == sizeof(CONDITION_VARIABLE));
+STATIC_ASSERT(alignof(V8_CONDITION_VARIABLE) == alignof(CONDITION_VARIABLE));
+STATIC_ASSERT(sizeof(V8_SRWLOCK) == sizeof(SRWLOCK));
+STATIC_ASSERT(alignof(V8_SRWLOCK) == alignof(SRWLOCK));
+STATIC_ASSERT(sizeof(V8_CRITICAL_SECTION) == sizeof(CRITICAL_SECTION));
+STATIC_ASSERT(alignof(V8_CRITICAL_SECTION) == alignof(CRITICAL_SECTION));
+
+// Check that CRITICAL_SECTION offsets match.
+STATIC_ASSERT(offsetof(V8_CRITICAL_SECTION, DebugInfo) ==
+              offsetof(CRITICAL_SECTION, DebugInfo));
+STATIC_ASSERT(offsetof(V8_CRITICAL_SECTION, LockCount) ==
+              offsetof(CRITICAL_SECTION, LockCount));
+STATIC_ASSERT(offsetof(V8_CRITICAL_SECTION, RecursionCount) ==
+              offsetof(CRITICAL_SECTION, RecursionCount));
+STATIC_ASSERT(offsetof(V8_CRITICAL_SECTION, OwningThread) ==
+              offsetof(CRITICAL_SECTION, OwningThread));
+STATIC_ASSERT(offsetof(V8_CRITICAL_SECTION, LockSemaphore) ==
+              offsetof(CRITICAL_SECTION, LockSemaphore));
+STATIC_ASSERT(offsetof(V8_CRITICAL_SECTION, SpinCount) ==
+              offsetof(CRITICAL_SECTION, SpinCount));
 
 // Extra functions for MinGW. Most of these are the _s functions which are in
 // the Microsoft Visual Studio C++ CRT.
@@ -502,11 +529,15 @@ int OS::GetCurrentThreadId() {
 }
 
 void OS::ExitProcess(int exit_code) {
-  // Use TerminateProcess avoid races between isolate threads and
+  // Use TerminateProcess to avoid races between isolate threads and
   // static destructors.
   fflush(stdout);
   fflush(stderr);
   TerminateProcess(GetCurrentProcess(), exit_code);
+  // Termination the current process does not return. {TerminateProcess} is not
+  // marked [[noreturn]] though, since it can also be used to terminate another
+  // process.
+  UNREACHABLE();
 }
 
 // ----------------------------------------------------------------------------
@@ -603,8 +634,7 @@ FILE* OS::OpenTemporaryFile() {
 
 
 // Open log file in binary mode to avoid /n -> /r/n conversion.
-const char* const OS::LogFileOpenMode = "wb";
-
+const char* const OS::LogFileOpenMode = "wb+";
 
 // Print (debug) message to console.
 void OS::Print(const char* format, ...) {
@@ -926,7 +956,7 @@ void OS::Abort() {
   fflush(stderr);
 
   if (g_hard_abort) {
-    V8_IMMEDIATE_CRASH();
+    IMMEDIATE_CRASH();
   }
   // Make the MSVCRT do a silent abort.
   raise(SIGABRT);
@@ -1396,11 +1426,13 @@ void Thread::SetThreadLocal(LocalStorageKey key, void* value) {
 void OS::AdjustSchedulingParams() {}
 
 // static
-void* Stack::GetStackStart() {
+Stack::StackSlot Stack::GetStackStart() {
 #if defined(V8_TARGET_ARCH_X64)
-  return reinterpret_cast<void*>(__readgsqword(offsetof(NT_TIB64, StackBase)));
+  return reinterpret_cast<void*>(
+      reinterpret_cast<NT_TIB64*>(NtCurrentTeb())->StackBase);
 #elif defined(V8_TARGET_ARCH_32_BIT)
-  return reinterpret_cast<void*>(__readfsdword(offsetof(NT_TIB, StackBase)));
+  return reinterpret_cast<void*>(
+      reinterpret_cast<NT_TIB*>(NtCurrentTeb())->StackBase);
 #elif defined(V8_TARGET_ARCH_ARM64)
   // Windows 8 and later, see
   // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getcurrentthreadstacklimits
@@ -1413,7 +1445,7 @@ void* Stack::GetStackStart() {
 }
 
 // static
-void* Stack::GetCurrentStackPosition() {
+Stack::StackSlot Stack::GetCurrentStackPosition() {
 #if V8_CC_MSVC
   return _AddressOfReturnAddress();
 #else

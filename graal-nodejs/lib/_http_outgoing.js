@@ -24,13 +24,17 @@
 const {
   Array,
   ArrayIsArray,
+  ArrayPrototypeJoin,
+  MathFloor,
+  NumberPrototypeToString,
   ObjectCreate,
   ObjectDefineProperty,
   ObjectKeys,
   ObjectValues,
   ObjectPrototypeHasOwnProperty,
   ObjectSetPrototypeOf,
-  MathFloor,
+  RegExpPrototypeTest,
+  StringPrototypeToLowerCase,
   Symbol,
 } = primordials;
 
@@ -41,9 +45,11 @@ const Stream = require('stream');
 const internalUtil = require('internal/util');
 const { kOutHeaders, utcDate, kNeedDrain } = require('internal/http');
 const { Buffer } = require('buffer');
-const common = require('_http_common');
-const checkIsHttpToken = common._checkIsHttpToken;
-const checkInvalidHeaderChar = common._checkInvalidHeaderChar;
+const {
+  _checkIsHttpToken: checkIsHttpToken,
+  _checkInvalidHeaderChar: checkInvalidHeaderChar,
+  chunkExpression: RE_TE_CHUNKED,
+} = require('_http_common');
 const {
   defaultTriggerAsyncIdScope,
   symbols: { async_id_symbol }
@@ -60,29 +66,33 @@ const {
     ERR_METHOD_NOT_IMPLEMENTED,
     ERR_STREAM_CANNOT_PIPE,
     ERR_STREAM_ALREADY_FINISHED,
-    ERR_STREAM_WRITE_AFTER_END
+    ERR_STREAM_WRITE_AFTER_END,
+    ERR_STREAM_NULL_VALUES,
+    ERR_STREAM_DESTROYED
   },
   hideStackFrames
 } = require('internal/errors');
 const { validateString } = require('internal/validators');
 const { isUint8Array } = require('internal/util/types');
 
+let debug = require('internal/util/debuglog').debuglog('http', (fn) => {
+  debug = fn;
+});
+
 const HIGH_WATER_MARK = getDefaultHighWaterMark();
-const { CRLF, debug } = common;
 
 const kCorked = Symbol('corked');
 
+const nop = () => {};
+
 const RE_CONN_CLOSE = /(?:^|\W)close(?:$|\W)/i;
-const RE_TE_CHUNKED = common.chunkExpression;
 
 // isCookieField performs a case-insensitive comparison of a provided string
 // against the word "cookie." As of V8 6.6 this is faster than handrolling or
 // using a case-insensitive RegExp.
 function isCookieField(s) {
-  return s.length === 6 && s.toLowerCase() === 'cookie';
+  return s.length === 6 && StringPrototypeToLowerCase(s) === 'cookie';
 }
-
-function noopPendingOutput(amount) {}
 
 function OutgoingMessage() {
   Stream.call(this);
@@ -103,6 +113,7 @@ function OutgoingMessage() {
   this._last = false;
   this.chunkedEncoding = false;
   this.shouldKeepAlive = true;
+  this.maxRequestsOnConnectionReached = false;
   this._defaultKeepAlive = true;
   this.useChunkedEncodingByDefault = true;
   this.sendDate = false;
@@ -118,6 +129,7 @@ function OutgoingMessage() {
   this.finished = false;
   this._headerSent = false;
   this[kCorked] = 0;
+  this._closed = false;
 
   this.socket = null;
   this._header = null;
@@ -125,7 +137,7 @@ function OutgoingMessage() {
 
   this._keepAliveTimeout = 0;
 
-  this._onPendingData = noopPendingOutput;
+  this._onPendingData = nop;
 }
 ObjectSetPrototypeOf(OutgoingMessage.prototype, Stream.prototype);
 ObjectSetPrototypeOf(OutgoingMessage, Stream);
@@ -179,7 +191,7 @@ ObjectDefineProperty(OutgoingMessage.prototype, '_headers', {
       // Refs: https://github.com/nodejs/node/pull/30958
       for (let i = 0; i < keys.length; ++i) {
         const name = keys[i];
-        headers[name.toLowerCase()] = [name, val[name]];
+        headers[StringPrototypeToLowerCase(name)] = [name, val[name]];
       }
     }
   }, 'OutgoingMessage.prototype._headers is deprecated', 'DEP0066')
@@ -406,7 +418,7 @@ function _storeHeader(firstLine, headers) {
 
   // Date header
   if (this.sendDate && !state.date) {
-    header += 'Date: ' + utcDate() + CRLF;
+    header += 'Date: ' + utcDate() + '\r\n';
   }
 
   // Force the connection to close when the response is a 204 No Content or
@@ -435,7 +447,9 @@ function _storeHeader(firstLine, headers) {
   } else if (!state.connection) {
     const shouldSendKeepAlive = this.shouldKeepAlive &&
         (state.contLen || this.useChunkedEncodingByDefault || this.agent);
-    if (shouldSendKeepAlive) {
+    if (shouldSendKeepAlive && this.maxRequestsOnConnectionReached) {
+      header += 'Connection: close\r\n';
+    } else if (shouldSendKeepAlive) {
       header += 'Connection: keep-alive\r\n';
       if (this._keepAliveTimeout && this._defaultKeepAlive) {
         const timeoutSeconds = MathFloor(this._keepAliveTimeout / 1000);
@@ -456,7 +470,7 @@ function _storeHeader(firstLine, headers) {
     } else if (!state.trailer &&
                !this._removedContLen &&
                typeof this._contentLength === 'number') {
-      header += 'Content-Length: ' + this._contentLength + CRLF;
+      header += 'Content-Length: ' + this._contentLength + '\r\n';
     } else if (!this._removedTE) {
       header += 'Transfer-Encoding: chunked\r\n';
       this.chunkedEncoding = true;
@@ -476,7 +490,7 @@ function _storeHeader(firstLine, headers) {
     throw new ERR_HTTP_TRAILER_INVALID();
   }
 
-  this._header = header + CRLF;
+  this._header = header + '\r\n';
   this._headerSent = false;
 
   // Wait until the first body chunk, or close(), is sent to flush,
@@ -495,7 +509,7 @@ function processHeader(self, state, key, value, validate) {
         storeHeader(self, state, key, value[i], validate);
       return;
     }
-    value = value.join('; ');
+    value = ArrayPrototypeJoin(value, '; ');
   }
   storeHeader(self, state, key, value, validate);
 }
@@ -503,19 +517,19 @@ function processHeader(self, state, key, value, validate) {
 function storeHeader(self, state, key, value, validate) {
   if (validate)
     validateHeaderValue(key, value);
-  state.header += key + ': ' + value + CRLF;
+  state.header += key + ': ' + value + '\r\n';
   matchHeader(self, state, key, value);
 }
 
 function matchHeader(self, state, field, value) {
   if (field.length < 4 || field.length > 17)
     return;
-  field = field.toLowerCase();
+  field = StringPrototypeToLowerCase(field);
   switch (field) {
     case 'connection':
       state.connection = true;
       self._removedConnection = false;
-      if (RE_CONN_CLOSE.test(value))
+      if (RegExpPrototypeTest(RE_CONN_CLOSE, value))
         self._last = true;
       else
         self.shouldKeepAlive = true;
@@ -523,7 +537,8 @@ function matchHeader(self, state, field, value) {
     case 'transfer-encoding':
       state.te = true;
       self._removedTE = false;
-      if (RE_TE_CHUNKED.test(value)) self.chunkedEncoding = true;
+      if (RegExpPrototypeTest(RE_TE_CHUNKED, value))
+        self.chunkedEncoding = true;
       break;
     case 'content-length':
       state.contLen = true;
@@ -567,7 +582,7 @@ OutgoingMessage.prototype.setHeader = function setHeader(name, value) {
   if (headers === null)
     this[kOutHeaders] = headers = ObjectCreate(null);
 
-  headers[name.toLowerCase()] = [name, value];
+  headers[StringPrototypeToLowerCase(name)] = [name, value];
   return this;
 };
 
@@ -579,7 +594,7 @@ OutgoingMessage.prototype.getHeader = function getHeader(name) {
   if (headers === null)
     return;
 
-  const entry = headers[name.toLowerCase()];
+  const entry = headers[StringPrototypeToLowerCase(name)];
   return entry && entry[1];
 };
 
@@ -628,7 +643,7 @@ OutgoingMessage.prototype.getHeaders = function getHeaders() {
 OutgoingMessage.prototype.hasHeader = function hasHeader(name) {
   validateString(name, 'name');
   return this[kOutHeaders] !== null &&
-    !!this[kOutHeaders][name.toLowerCase()];
+    !!this[kOutHeaders][StringPrototypeToLowerCase(name)];
 };
 
 
@@ -639,7 +654,7 @@ OutgoingMessage.prototype.removeHeader = function removeHeader(name) {
     throw new ERR_HTTP_HEADERS_SENT('remove');
   }
 
-  const key = name.toLowerCase();
+  const key = StringPrototypeToLowerCase(name);
 
   switch (key) {
     case 'connection':
@@ -684,43 +699,78 @@ ObjectDefineProperty(OutgoingMessage.prototype, 'writableNeedDrain', {
 
 const crlf_buf = Buffer.from('\r\n');
 OutgoingMessage.prototype.write = function write(chunk, encoding, callback) {
+  if (typeof encoding === 'function') {
+    callback = encoding;
+    encoding = null;
+  }
+
   const ret = write_(this, chunk, encoding, callback, false);
   if (!ret)
     this[kNeedDrain] = true;
   return ret;
 };
 
-function writeAfterEnd(msg, callback) {
-  const err = new ERR_STREAM_WRITE_AFTER_END();
+function onError(msg, err, callback) {
   const triggerAsyncId = msg.socket ? msg.socket[async_id_symbol] : undefined;
   defaultTriggerAsyncIdScope(triggerAsyncId,
                              process.nextTick,
-                             writeAfterEndNT,
+                             emitErrorNt,
                              msg,
                              err,
                              callback);
 }
 
+function emitErrorNt(msg, err, callback) {
+  callback(err);
+  if (typeof msg.emit === 'function' && !msg._closed) {
+    msg.emit('error', err);
+  }
+}
+
 function write_(msg, chunk, encoding, callback, fromEnd) {
+  if (typeof callback !== 'function')
+    callback = nop;
+
+  let len;
+  if (chunk === null) {
+    throw new ERR_STREAM_NULL_VALUES();
+  } else if (typeof chunk === 'string') {
+    len = Buffer.byteLength(chunk, encoding);
+  } else if (isUint8Array(chunk)) {
+    len = chunk.length;
+  } else {
+    throw new ERR_INVALID_ARG_TYPE(
+      'chunk', ['string', 'Buffer', 'Uint8Array'], chunk);
+  }
+
+  let err;
   if (msg.finished) {
-    writeAfterEnd(msg, callback);
-    return true;
+    err = new ERR_STREAM_WRITE_AFTER_END();
+  } else if (msg.destroyed) {
+    err = new ERR_STREAM_DESTROYED('write');
+  }
+
+  if (err) {
+    if (!msg.destroyed) {
+      onError(msg, err, callback);
+    } else {
+      process.nextTick(callback, err);
+    }
+    return false;
   }
 
   if (!msg._header) {
+    if (fromEnd) {
+      msg._contentLength = len;
+    }
     msg._implicitHeader();
   }
 
   if (!msg._hasBody) {
     debug('This type of response MUST NOT have a body. ' +
           'Ignoring write() calls.');
-    if (callback) process.nextTick(callback);
+    process.nextTick(callback);
     return true;
-  }
-
-  if (!fromEnd && typeof chunk !== 'string' && !(isUint8Array(chunk))) {
-    throw new ERR_INVALID_ARG_TYPE('first argument',
-                                   ['string', 'Buffer', 'Uint8Array'], chunk);
   }
 
   if (!fromEnd && msg.socket && !msg.socket.writableCorked) {
@@ -730,13 +780,7 @@ function write_(msg, chunk, encoding, callback, fromEnd) {
 
   let ret;
   if (msg.chunkedEncoding && chunk.length !== 0) {
-    let len;
-    if (typeof chunk === 'string')
-      len = Buffer.byteLength(chunk, encoding);
-    else
-      len = chunk.length;
-
-    msg._send(len.toString(16), 'latin1', null);
+    msg._send(NumberPrototypeToString(len, 16), 'latin1', null);
     msg._send(crlf_buf, null, null);
     msg._send(chunk, encoding, null);
     ret = msg._send(crlf_buf, null, callback);
@@ -746,12 +790,6 @@ function write_(msg, chunk, encoding, callback, fromEnd) {
 
   debug('write ret = ' + ret);
   return ret;
-}
-
-
-function writeAfterEndNT(msg, err, callback) {
-  msg.emit('error', err);
-  if (callback) callback(err);
 }
 
 
@@ -783,7 +821,7 @@ OutgoingMessage.prototype.addTrailers = function addTrailers(headers) {
       debug('Trailer "%s" contains invalid characters', field);
       throw new ERR_INVALID_CHAR('trailer content', field);
     }
-    this._trailer += field + ': ' + value + CRLF;
+    this._trailer += field + ': ' + value + '\r\n';
   }
 };
 
@@ -796,32 +834,24 @@ OutgoingMessage.prototype.end = function end(chunk, encoding, callback) {
   if (typeof chunk === 'function') {
     callback = chunk;
     chunk = null;
+    encoding = null;
   } else if (typeof encoding === 'function') {
     callback = encoding;
     encoding = null;
   }
 
-  // Not finished, socket exists and data will be written (chunk or header)
-  if (this.socket && !this.finished && (chunk || !this._header)) {
-    this.socket.cork();
-  }
-
   if (chunk) {
-    if (typeof chunk !== 'string' && !(chunk instanceof Buffer)) {
-      throw new ERR_INVALID_ARG_TYPE('chunk', ['string', 'Buffer'], chunk);
-    }
-
     if (this.finished) {
-      writeAfterEnd(this, callback);
+      onError(this,
+              new ERR_STREAM_WRITE_AFTER_END(),
+              typeof callback !== 'function' ? nop : callback);
       return this;
     }
 
-    if (!this._header) {
-      if (typeof chunk === 'string')
-        this._contentLength = Buffer.byteLength(chunk, encoding);
-      else
-        this._contentLength = chunk.length;
+    if (this.socket) {
+      this.socket.cork();
     }
+
     write_(this, chunk, encoding, null, true);
   } else if (this.finished) {
     if (typeof callback === 'function') {
@@ -833,6 +863,10 @@ OutgoingMessage.prototype.end = function end(chunk, encoding, callback) {
     }
     return this;
   } else if (!this._header) {
+    if (this.socket) {
+      this.socket.cork();
+    }
+
     this._contentLength = 0;
     this._implicitHeader();
   }

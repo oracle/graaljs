@@ -64,8 +64,7 @@ const {
   swap32: _swap32,
   swap64: _swap64,
   kMaxLength,
-  kStringMaxLength,
-  zeroFill: bindingZeroFill
+  kStringMaxLength
 } = internalBinding('buffer');
 const {
   getOwnNonIndexProperties,
@@ -77,6 +76,7 @@ const {
 const {
   customInspectSymbol,
   isInsideNodeModules,
+  lazyDOMException,
   normalizeEncoding,
   kIsEncodingSymbol
 } = require('internal/util');
@@ -96,14 +96,15 @@ const {
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
     ERR_INVALID_BUFFER_SIZE,
-    ERR_INVALID_OPT_VALUE,
     ERR_OUT_OF_RANGE,
     ERR_UNKNOWN_ENCODING
   },
   hideStackFrames
 } = require('internal/errors');
 const {
+  validateArray,
   validateBuffer,
+  validateNumber,
   validateInteger,
   validateString
 } = require('internal/validators');
@@ -114,11 +115,13 @@ const validateOffset = (value, name, min = 0, max = kMaxLength) =>
 const {
   FastBuffer,
   markAsUntransferable,
-  addBufferPrototypeMethods
+  addBufferPrototypeMethods,
+  createUnsafeBuffer
 } = require('internal/buffer');
 
 const {
   Blob,
+  resolveObjectURL,
 } = require('internal/blob');
 
 FastBuffer.prototype.constructor = Buffer;
@@ -143,24 +146,9 @@ let poolSize, poolOffset, allocPool;
 
 graalBuffer.install(Buffer.prototype);
 
-// A toggle used to access the zero fill setting of the array buffer allocator
-// in C++.
-// |zeroFill| can be undefined when running inside an isolate where we
-// do not own the ArrayBuffer allocator.  Zero fill is always on in that case.
-const zeroFill = bindingZeroFill || [0];
-
 const encodingsMap = ObjectCreate(null);
 for (let i = 0; i < encodings.length; ++i)
   encodingsMap[encodings[i]] = i;
-
-function createUnsafeBuffer(size) {
-  zeroFill[0] = 0;
-  try {
-    return new FastBuffer(size);
-  } finally {
-    zeroFill[0] = 1;
-  }
-}
 
 function createPool() {
   poolSize = Buffer.poolSize;
@@ -361,11 +349,9 @@ ObjectSetPrototypeOf(Buffer, Uint8Array);
 // occurs. This is done simply to keep the internal details of the
 // implementation from bleeding out to users.
 const assertSize = hideStackFrames((size) => {
-  if (typeof size !== 'number') {
-    throw new ERR_INVALID_ARG_TYPE('size', 'number', size);
-  }
+  validateNumber(size, 'size');
   if (!(size >= 0 && size <= kMaxLength)) {
-    throw new ERR_INVALID_OPT_VALUE.RangeError('size', size);
+    throw new ERR_INVALID_ARG_VALUE.RangeError('size', size);
   }
 });
 
@@ -550,9 +536,7 @@ Buffer.isEncoding = function isEncoding(encoding) {
 Buffer[kIsEncodingSymbol] = Buffer.isEncoding;
 
 Buffer.concat = function concat(list, length) {
-  if (!ArrayIsArray(list)) {
-    throw new ERR_INVALID_ARG_TYPE('list', 'Array', list);
-  }
+  validateArray(list, 'list');
 
   if (list.length === 0)
     return new FastBuffer();
@@ -1229,14 +1213,6 @@ if (internalBinding('config').hasIntl) {
   };
 }
 
-let DOMException;
-
-const lazyInvalidCharError = hideStackFrames((message, name) => {
-  if (DOMException === undefined)
-    DOMException = internalBinding('messaging').DOMException;
-  throw new DOMException('Invalid character', 'InvalidCharacterError');
-});
-
 function btoa(input) {
   // The implementation here has not been performance optimized in any way and
   // should not be.
@@ -1244,7 +1220,7 @@ function btoa(input) {
   input = `${input}`;
   for (let n = 0; n < input.length; n++) {
     if (input[n].charCodeAt(0) > 0xff)
-      lazyInvalidCharError();
+      throw lazyDOMException('Invalid character', 'InvalidCharacterError');
   }
   const buf = Buffer.from(input, 'latin1');
   return buf.toString('base64');
@@ -1260,13 +1236,14 @@ function atob(input) {
   input = `${input}`;
   for (let n = 0; n < input.length; n++) {
     if (!kBase64Digits.includes(input[n]))
-      lazyInvalidCharError();
+      throw lazyDOMException('Invalid character', 'InvalidCharacterError');
   }
   return Buffer.from(input, 'base64').toString('latin1');
 }
 
 module.exports = {
   Blob,
+  resolveObjectURL,
   Buffer,
   SlowBuffer,
   transcode,

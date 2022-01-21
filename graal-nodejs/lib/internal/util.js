@@ -3,8 +3,10 @@
 const {
   ArrayFrom,
   ArrayIsArray,
+  ArrayPrototypePush,
+  ArrayPrototypeSlice,
+  ArrayPrototypeSort,
   Error,
-  Map,
   ObjectCreate,
   ObjectDefineProperties,
   ObjectDefineProperty,
@@ -13,18 +15,21 @@ const {
   ObjectGetPrototypeOf,
   ObjectSetPrototypeOf,
   Promise,
+  ReflectApply,
   ReflectConstruct,
   RegExpPrototypeExec,
-  Set,
+  RegExpPrototypeTest,
+  SafeMap,
+  SafeSet,
+  StringPrototypeReplace,
+  StringPrototypeToLowerCase,
+  StringPrototypeToUpperCase,
   Symbol,
   SymbolFor,
 } = primordials;
 
 const {
-  toUSVString: _toUSVString,
-} = internalBinding('url');
-
-const {
+  hideStackFrames,
   codes: {
     ERR_NO_CRYPTO,
     ERR_UNKNOWN_SIGNAL
@@ -38,13 +43,14 @@ const {
   setHiddenValue,
   arrow_message_private_symbol: kArrowMessagePrivateSymbolIndex,
   decorated_private_symbol: kDecoratedPrivateSymbolIndex,
-  sleep: _sleep
+  sleep: _sleep,
+  toUSVString: _toUSVString,
 } = internalBinding('util');
 const { isNativeError } = internalBinding('types');
 
 const noCrypto = !process.versions.openssl;
 
-const experimentalWarnings = new Set();
+const experimentalWarnings = new SafeSet();
 
 const colorRegExp = /\u001b\[\d\d?m/g; // eslint-disable-line no-control-regex
 
@@ -63,12 +69,12 @@ function toUSVString(val) {
 let uvBinding;
 
 function lazyUv() {
-  uvBinding = uvBinding ?? internalBinding('uv');
+  uvBinding ??= internalBinding('uv');
   return uvBinding;
 }
 
 function removeColors(str) {
-  return str.replace(colorRegExp, '');
+  return StringPrototypeReplace(str, colorRegExp, '');
 }
 
 function isError(e) {
@@ -80,7 +86,7 @@ function isError(e) {
 
 // Keep a list of deprecation codes that have been warned on so we only warn on
 // each one once.
-const codesWarned = new Set();
+const codesWarned = new SafeSet();
 
 let validateString;
 
@@ -115,7 +121,7 @@ function deprecate(fn, msg, code) {
     if (new.target) {
       return ReflectConstruct(fn, args, new.target);
     }
-    return fn.apply(this, args);
+    return ReflectApply(fn, this, args);
   }
 
   // The wrapper will keep the same prototype as fn to maintain prototype chain
@@ -166,7 +172,8 @@ function slowCases(enc) {
       if (enc === 'ucs2') return 'utf16le';
       break;
     case 3:
-      if (enc === 'hex' || enc === 'HEX' || `${enc}`.toLowerCase() === 'hex')
+      if (enc === 'hex' || enc === 'HEX' ||
+          `${enc}`.toLowerCase() === 'hex')
         return 'hex';
       break;
     case 5:
@@ -191,7 +198,7 @@ function slowCases(enc) {
       break;
     case 7:
       if (enc === 'utf16le' || enc === 'UTF16LE' ||
-        `${enc}`.toLowerCase() === 'utf16le')
+          `${enc}`.toLowerCase() === 'utf16le')
         return 'utf16le';
       break;
     case 8:
@@ -218,17 +225,17 @@ function emitExperimentalWarning(feature) {
 }
 
 function filterDuplicateStrings(items, low) {
-  const map = new Map();
+  const map = new SafeMap();
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
-    const key = item.toLowerCase();
+    const key = StringPrototypeToLowerCase(item);
     if (low) {
       map.set(key, key);
     } else {
       map.set(key, item);
     }
   }
-  return ArrayFrom(map.values()).sort();
+  return ArrayPrototypeSort(ArrayFrom(map.values()));
 }
 
 function cachedResult(fn) {
@@ -236,7 +243,7 @@ function cachedResult(fn) {
   return () => {
     if (result === undefined)
       result = fn();
-    return result.slice();
+    return ArrayPrototypeSlice(result);
   };
 }
 
@@ -278,7 +285,7 @@ function convertToValidSignal(signal) {
     return signal;
 
   if (typeof signal === 'string') {
-    const signalName = signals[signal.toUpperCase()];
+    const signalName = signals[StringPrototypeToUpperCase(signal)];
     if (signalName) return signalName;
   }
 
@@ -337,7 +344,7 @@ function promisify(original) {
 
   function fn(...args) {
     return new Promise((resolve, reject) => {
-      original.call(this, ...args, (err, ...values) => {
+      ArrayPrototypePush(args, (err, ...values) => {
         if (err) {
           return reject(err);
         }
@@ -350,6 +357,7 @@ function promisify(original) {
           resolve(values[0]);
         }
       });
+      ReflectApply(original, this, args);
     });
   }
 
@@ -401,7 +409,7 @@ function isInsideNodeModules() {
     // side-effect-free. Since this is currently only used for a deprecated API,
     // the perf implications should be okay.
     getStructuredStack = runInNewContext(`(function() {
-      Error.stackTraceLimit = Infinity;
+      try { Error.stackTraceLimit = Infinity; } catch {}
       return function structuredStack() {
         const e = new Error();
         overrideStackTrace.set(e, (err, trace) => trace);
@@ -419,9 +427,9 @@ function isInsideNodeModules() {
       const filename = frame.getFileName();
       // If a filename does not start with / or contain \,
       // it's likely from Node.js core.
-      if (!/^\/|\\/.test(filename))
+      if (!RegExpPrototypeTest(/^\/|\\/, filename))
         continue;
-      return kNodeModulesRE.test(filename);
+      return RegExpPrototypeTest(kNodeModulesRE, filename);
     }
   }
   return false;
@@ -432,7 +440,7 @@ function once(callback) {
   return function(...args) {
     if (called) return;
     called = true;
-    callback.apply(this, args);
+    ReflectApply(callback, this, args);
   };
 }
 
@@ -458,6 +466,28 @@ function createDeferredPromise() {
   return { promise, resolve, reject };
 }
 
+let DOMException;
+const lazyDOMException = hideStackFrames((message, name) => {
+  if (DOMException === undefined)
+    DOMException = internalBinding('messaging').DOMException;
+  return new DOMException(message, name);
+});
+
+function structuredClone(value) {
+  const {
+    DefaultSerializer,
+    DefaultDeserializer,
+  } = require('v8');
+  const ser = new DefaultSerializer();
+  ser._getDataCloneError = hideStackFrames((message) =>
+    lazyDOMException(message, 'DataCloneError'));
+  ser.writeValue(value);
+  const serialized = ser.releaseBuffer();
+
+  const des = new DefaultDeserializer(serialized);
+  return des.readValue();
+}
+
 module.exports = {
   assertCrypto,
   cachedResult,
@@ -474,11 +504,13 @@ module.exports = {
   isError,
   isInsideNodeModules,
   join,
+  lazyDOMException,
   normalizeEncoding,
   once,
   promisify,
   sleep,
   spliceOne,
+  structuredClone,
   toUSVString,
   removeColors,
 

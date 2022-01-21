@@ -36,7 +36,7 @@
 
     # Reset this number to 0 on major V8 upgrades.
     # Increment by one for each non-official patch applied to deps/v8.
-    'v8_embedder_string': '-node.84',
+    'v8_embedder_string': '-node.14',
 
     ##### V8 defaults for Node.js #####
 
@@ -99,7 +99,7 @@
         'v8_base': '<(PRODUCT_DIR)/obj.target/tools/v8_gypfiles/libv8_snapshot.a',
       }],
       ['openssl_fips != ""', {
-        'openssl_product': '<(STATIC_LIB_PREFIX)crypto<(STATIC_LIB_SUFFIX)',
+        'openssl_product': '<(STATIC_LIB_PREFIX)openssl<(STATIC_LIB_SUFFIX)',
       }, {
         'openssl_product': '<(STATIC_LIB_PREFIX)openssl<(STATIC_LIB_SUFFIX)',
       }],
@@ -107,6 +107,11 @@
         'clang%': 1,
         'obj_dir%': '<(PRODUCT_DIR)/obj.target',
         'v8_base': '<(PRODUCT_DIR)/libv8_snapshot.a',
+      }],
+      # V8 pointer compression only supports 64bit architectures.
+      ['target_arch in "arm ia32 mips mipsel ppc x32"', {
+        'v8_enable_pointer_compression': 0,
+        'v8_enable_31bit_smis_on_64bit_arch': 0,
       }],
       ['target_arch in "ppc64 s390x"', {
         'v8_enable_backtrace': 1,
@@ -260,6 +265,7 @@
     'defines': [
       'V8_DEPRECATION_WARNINGS',
       'V8_IMMINENT_DEPRECATION_WARNINGS',
+      '_GLIBCXX_USE_CXX11_ABI=1',
     ],
 
     # Forcibly disable -Werror.  We support a wide range of compilers, it's
@@ -275,6 +281,7 @@
     ],
     'msvs_settings': {
       'VCCLCompilerTool': {
+        'AdditionalOptions': ['/Zc:__cplusplus'],
         'BufferSecurityCheck': 'true',
         'DebugInformationFormat': 1,          # /Z7 embed info in .obj files
         'ExceptionHandling': 0,               # /EHsc
@@ -363,7 +370,10 @@
         ],
       }],
       ['v8_enable_pointer_compression == 1', {
-        'defines': ['V8_COMPRESS_POINTERS'],
+        'defines': [
+          'V8_COMPRESS_POINTERS',
+          'V8_COMPRESS_POINTERS_IN_ISOLATE_CAGE',
+        ],
       }],
       ['v8_enable_pointer_compression == 1 or v8_enable_31bit_smis_on_64bit_arch == 1', {
         'defines': ['V8_31BIT_SMIS_ON_64BIT_ARCH'],
@@ -389,7 +399,7 @@
       }],
       [ 'OS in "linux freebsd openbsd solaris android aix cloudabi"', {
         'cflags': [ '-Wall', '-Wextra', '-Wno-unused-parameter', ],
-        'cflags_cc': [ '-fno-rtti', '-fno-exceptions', '-std=gnu++1y' ],
+        'cflags_cc': [ '-fno-rtti', '-fno-exceptions', '-std=gnu++14' ],
         'defines': [ '__STDC_FORMAT_MACROS' ],
         'ldflags': [ '-rdynamic' ],
         'target_conditions': [
@@ -510,8 +520,7 @@
           ['_type!="static_library"', {
             'xcode_settings': {
               'OTHER_LDFLAGS': [
-                '-Wl,-no_pie',
-                '-Wl,-search_paths_first',
+                '-Wl,-search_paths_first'
               ],
             },
           }],
@@ -534,7 +543,7 @@
           ['clang==1', {
             'xcode_settings': {
               'GCC_VERSION': 'com.apple.compilers.llvm.clang.1_0',
-              'CLANG_CXX_LANGUAGE_STANDARD': 'gnu++1y',  # -std=gnu++1y
+              'CLANG_CXX_LANGUAGE_STANDARD': 'gnu++14',  # -std=gnu++14
               'CLANG_CXX_LIBRARY': 'libc++',
             },
           }],

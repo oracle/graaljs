@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "src/base/strings.h"
 #include "src/heap/factory-inl.h"
 #include "src/objects/objects-inl.h"
 #include "src/parsing/scanner-character-streams.h"
@@ -36,7 +37,7 @@ class ChunkSource : public v8::ScriptCompiler::ExternalSourceStream {
     // aligned to char-size though.
     size_t chunk_size = extra_chunky ? char_size : len;
     for (size_t i = 0; i < len; i += chunk_size, chunk_size += char_size) {
-      chunks_.push_back({data + i, i::Min(chunk_size, len - i)});
+      chunks_.push_back({data + i, std::min(chunk_size, len - i)});
     }
     chunks_.push_back({nullptr, 0});
   }
@@ -160,7 +161,7 @@ TEST(Utf8StreamAsciiOnly) {
           &chunk_source, v8::ScriptCompiler::StreamedSource::UTF8));
 
   // Read the data without dying.
-  v8::internal::uc32 c;
+  v8::base::uc32 c;
   do {
     c = stream->Advance();
   } while (c != v8::internal::Utf16CharacterStream::kEndOfInput);
@@ -448,17 +449,17 @@ void TestCharacterStream(const char* reference, i::Utf16CharacterStream* stream,
     CHECK_EQU(reference[i], stream->Advance());
   }
   CHECK_EQU(i, stream->pos());
-  CHECK_LT(stream->Advance(), 0);
+  CHECK(i::Scanner::IsInvalid(stream->Advance()));
 
   // Seek back, then seek beyond end of stream.
   stream->Seek(start);
   if (start < length) {
     CHECK_EQU(stream->Advance(), reference[start]);
   } else {
-    CHECK_LT(stream->Advance(), 0);
+    CHECK(i::Scanner::IsInvalid(stream->Advance()));
   }
   stream->Seek(length + 5);
-  CHECK_LT(stream->Advance(), 0);
+  CHECK(i::Scanner::IsInvalid(stream->Advance()));
 }
 
 void TestCloneCharacterStream(const char* reference,
@@ -491,12 +492,12 @@ void TestCharacterStreams(const char* one_byte_source, unsigned length,
   i::Factory* factory = isolate->factory();
 
   // 2-byte external string
-  std::unique_ptr<i::uc16[]> uc16_buffer(new i::uc16[length]);
-  i::Vector<const i::uc16> two_byte_vector(uc16_buffer.get(),
-                                           static_cast<int>(length));
+  std::unique_ptr<v8::base::uc16[]> uc16_buffer(new v8::base::uc16[length]);
+  v8::base::Vector<const v8::base::uc16> two_byte_vector(
+      uc16_buffer.get(), static_cast<int>(length));
   {
     for (unsigned i = 0; i < length; i++) {
-      uc16_buffer[i] = static_cast<i::uc16>(one_byte_source[i]);
+      uc16_buffer[i] = static_cast<v8::base::uc16>(one_byte_source[i]);
     }
     TestExternalResource resource(uc16_buffer.get(), length);
     i::Handle<i::String> uc16_string(
@@ -512,8 +513,8 @@ void TestCharacterStreams(const char* one_byte_source, unsigned length,
   }
 
   // 1-byte external string
-  i::Vector<const uint8_t> one_byte_vector =
-      i::OneByteVector(one_byte_source, static_cast<int>(length));
+  v8::base::Vector<const uint8_t> one_byte_vector =
+      v8::base::OneByteVector(one_byte_source, static_cast<int>(length));
   i::Handle<i::String> one_byte_string =
       factory->NewStringFromOneByte(one_byte_vector).ToHandleChecked();
   {
@@ -746,6 +747,8 @@ TEST(TestOverlongAndInvalidSequences) {
 }
 
 TEST(RelocatingCharacterStream) {
+  // This test relies on the invariant that the scavenger will move objects
+  if (i::FLAG_single_generation) return;
   ManualGCScope manual_gc_scope;
   CcTest::InitializeVM();
   i::Isolate* i_isolate = CcTest::i_isolate();
@@ -753,11 +756,12 @@ TEST(RelocatingCharacterStream) {
 
   const char* string = "abcd";
   int length = static_cast<int>(strlen(string));
-  std::unique_ptr<i::uc16[]> uc16_buffer(new i::uc16[length]);
+  std::unique_ptr<v8::base::uc16[]> uc16_buffer(new v8::base::uc16[length]);
   for (int i = 0; i < length; i++) {
     uc16_buffer[i] = string[i];
   }
-  i::Vector<const i::uc16> two_byte_vector(uc16_buffer.get(), length);
+  v8::base::Vector<const v8::base::uc16> two_byte_vector(uc16_buffer.get(),
+                                                         length);
   i::Handle<i::String> two_byte_string =
       i_isolate->factory()
           ->NewStringFromTwoByte(two_byte_vector, i::AllocationType::kYoung)
@@ -777,6 +781,8 @@ TEST(RelocatingCharacterStream) {
 }
 
 TEST(RelocatingUnbufferedCharacterStream) {
+  // This test relies on the invariant that the scavenger will move objects
+  if (i::FLAG_single_generation) return;
   ManualGCScope manual_gc_scope;
   CcTest::InitializeVM();
   i::Isolate* i_isolate = CcTest::i_isolate();
@@ -784,11 +790,12 @@ TEST(RelocatingUnbufferedCharacterStream) {
 
   const char16_t* string = u"abc\u2603";
   int length = static_cast<int>(std::char_traits<char16_t>::length(string));
-  std::unique_ptr<i::uc16[]> uc16_buffer(new i::uc16[length]);
+  std::unique_ptr<v8::base::uc16[]> uc16_buffer(new v8::base::uc16[length]);
   for (int i = 0; i < length; i++) {
     uc16_buffer[i] = string[i];
   }
-  i::Vector<const i::uc16> two_byte_vector(uc16_buffer.get(), length);
+  v8::base::Vector<const v8::base::uc16> two_byte_vector(uc16_buffer.get(),
+                                                         length);
   i::Handle<i::String> two_byte_string =
       i_isolate->factory()
           ->NewStringFromTwoByte(two_byte_vector, i::AllocationType::kYoung)
@@ -827,12 +834,12 @@ TEST(CloneCharacterStreams) {
   // Check that cloning a character stream does not update
 
   // 2-byte external string
-  std::unique_ptr<i::uc16[]> uc16_buffer(new i::uc16[length]);
-  i::Vector<const i::uc16> two_byte_vector(uc16_buffer.get(),
-                                           static_cast<int>(length));
+  std::unique_ptr<v8::base::uc16[]> uc16_buffer(new v8::base::uc16[length]);
+  v8::base::Vector<const v8::base::uc16> two_byte_vector(
+      uc16_buffer.get(), static_cast<int>(length));
   {
     for (unsigned i = 0; i < length; i++) {
-      uc16_buffer[i] = static_cast<i::uc16>(one_byte_source[i]);
+      uc16_buffer[i] = static_cast<v8::base::uc16>(one_byte_source[i]);
     }
     TestExternalResource resource(uc16_buffer.get(), length);
     i::Handle<i::String> uc16_string(
@@ -856,8 +863,8 @@ TEST(CloneCharacterStreams) {
   }
 
   // 1-byte external string
-  i::Vector<const uint8_t> one_byte_vector =
-      i::OneByteVector(one_byte_source, static_cast<int>(length));
+  v8::base::Vector<const uint8_t> one_byte_vector =
+      v8::base::OneByteVector(one_byte_source, static_cast<int>(length));
   i::Handle<i::String> one_byte_string =
       factory->NewStringFromOneByte(one_byte_vector).ToHandleChecked();
   {

@@ -62,7 +62,7 @@ const {
   Boolean,
   Error,
   FunctionPrototypeBind,
-  MathMax,
+  MathMaxApply,
   NumberIsNaN,
   NumberParseFloat,
   ObjectAssign,
@@ -136,15 +136,19 @@ let debug = require('internal/util/debuglog').debuglog('repl', (fn) => {
 const {
   codes: {
     ERR_CANNOT_WATCH_SIGINT,
-    ERR_INVALID_ARG_TYPE,
     ERR_INVALID_REPL_EVAL_CONFIG,
     ERR_INVALID_REPL_INPUT,
     ERR_SCRIPT_EXECUTION_INTERRUPTED,
   },
+  isErrorStackTraceLimitWritable,
   overrideStackTrace,
 } = require('internal/errors');
 const { sendInspectorCommand } = require('internal/util/inspector');
 const { getOptionValue } = require('internal/options');
+const {
+  validateFunction,
+  validateObject,
+} = require('internal/validators');
 const experimentalREPLAwait = getOptionValue(
   '--experimental-repl-await'
 );
@@ -355,16 +359,6 @@ function REPLServer(prompt,
 
   domainSet.add(this._domain);
 
-  let rli = this;
-  ObjectDefineProperty(this, 'rli', {
-    get: deprecate(() => rli,
-                   'REPLServer.rli is deprecated', 'DEP0124'),
-    set: deprecate((val) => rli = val,
-                   'REPLServer.rli is deprecated', 'DEP0124'),
-    enumerable: true,
-    configurable: true
-  });
-
   const savedRegExMatches = ['', '', '', '', '', '', '', '', '', ''];
   const sep = '\u0000\u0000\u0000';
   const regExMatcher = new RegExp(`^${sep}(.*)${sep}(.*)${sep}(.*)${sep}(.*)` +
@@ -427,6 +421,8 @@ function REPLServer(prompt,
       wrappedCmd = true;
     }
 
+    // `experimentalREPLAwait` is set to true by default.
+    // Shall be false in case `--no-experimental-repl-await` flag is used.
     if (experimentalREPLAwait && StringPrototypeIncludes(code, 'await')) {
       if (processTopLevelAwait === undefined) {
         ({ processTopLevelAwait } = require('internal/repl/await'));
@@ -459,7 +455,7 @@ function REPLServer(prompt,
               filename: file,
               displayErrors: true,
               importModuleDynamically: async (specifier) => {
-                return asyncESM.ESMLoader.import(specifier, parentURL);
+                return asyncESM.esmLoader.import(specifier, parentURL);
               }
             });
           } catch (fallbackError) {
@@ -501,7 +497,7 @@ function REPLServer(prompt,
             filename: file,
             displayErrors: true,
             importModuleDynamically: async (specifier) => {
-              return asyncESM.ESMLoader.import(specifier, parentURL);
+              return asyncESM.esmLoader.import(specifier, parentURL);
             }
           });
         } catch (e) {
@@ -598,9 +594,9 @@ function REPLServer(prompt,
           const interrupt = new Promise((resolve, reject) => {
             sigintListener = () => {
               const tmp = Error.stackTraceLimit;
-              Error.stackTraceLimit = 0;
+              if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = 0;
               const err = new ERR_SCRIPT_EXECUTION_INTERRUPTED();
-              Error.stackTraceLimit = tmp;
+              if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = tmp;
               reject(err);
             };
             prioritizedSigintQueue.add(sigintListener);
@@ -753,15 +749,6 @@ function REPLServer(prompt,
   });
 
   self.clearBufferedCommand();
-  ObjectDefineProperty(this, 'bufferedCommand', {
-    get: deprecate(() => self[kBufferedCommandSymbol],
-                   'REPLServer.bufferedCommand is deprecated',
-                   'DEP0074'),
-    set: deprecate((val) => self[kBufferedCommandSymbol] = val,
-                   'REPLServer.bufferedCommand is deprecated',
-                   'DEP0074'),
-    enumerable: true
-  });
 
   function completer(text, cb) {
     ReflectApply(complete, self,
@@ -795,9 +782,7 @@ function REPLServer(prompt,
           return writer.options;
         },
         set(options) {
-          if (options === null || typeof options !== 'object') {
-            throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
-          }
+          validateObject(options, 'options');
           return ObjectAssign(writer.options, options);
         },
         enumerable: true,
@@ -814,11 +799,6 @@ function REPLServer(prompt,
     }
     return false;
   }
-
-  self.parseREPLKeyword = deprecate(
-    _parseREPLKeyword,
-    'REPLServer.parseREPLKeyword() is deprecated',
-    'DEP0075');
 
   self.on('close', function emitExit() {
     if (paused) {
@@ -1122,7 +1102,7 @@ REPLServer.prototype.createContext = function() {
     value: makeRequireFunction(replModule)
   });
 
-  addBuiltinLibsToObject(context);
+  addBuiltinLibsToObject(context, '<REPL>');
 
   return context;
 };
@@ -1183,11 +1163,6 @@ REPLServer.prototype.setPrompt = function setPrompt(prompt) {
   this._initialPrompt = prompt;
   ReflectApply(Interface.prototype.setPrompt, this, [prompt]);
 };
-
-REPLServer.prototype.turnOffEditorMode = deprecate(
-  function() { _turnOffEditorMode(this); },
-  'REPLServer.turnOffEditorMode() is deprecated',
-  'DEP0078');
 
 const importRE = /\bimport\s*\(\s*['"`](([\w@./:-]+\/)?(?:[\w@./:-]*))(?![^'"`])$/;
 const requireRE = /\brequire\s*\(\s*['"`](([\w@./:-]+\/)?(?:[\w@./:-]*))(?![^'"`])$/;
@@ -1610,16 +1585,11 @@ REPLServer.prototype.completeOnEditorMode = (callback) => (err, results) => {
 REPLServer.prototype.defineCommand = function(keyword, cmd) {
   if (typeof cmd === 'function') {
     cmd = { action: cmd };
-  } else if (typeof cmd.action !== 'function') {
-    throw new ERR_INVALID_ARG_TYPE('cmd.action', 'Function', cmd.action);
+  } else {
+    validateFunction(cmd.action, 'cmd.action');
   }
   this.commands[keyword] = cmd;
 };
-
-REPLServer.prototype.memory = deprecate(
-  _memory,
-  'REPLServer.memory() is deprecated',
-  'DEP0082');
 
 // TODO(BridgeAR): This should be replaced with acorn to build an AST. The
 // language became more complex and using a simple approach like this is not
@@ -1749,8 +1719,8 @@ function defineDefaultCommands(repl) {
     help: 'Print this help message',
     action: function() {
       const names = ArrayPrototypeSort(ObjectKeys(this.commands));
-      const longestNameLength = MathMax(
-        ...ArrayPrototypeMap(names, (name) => name.length)
+      const longestNameLength = MathMaxApply(
+        ArrayPrototypeMap(names, (name) => name.length)
       );
       ArrayPrototypeForEach(names, (name) => {
         const cmd = this.commands[name];

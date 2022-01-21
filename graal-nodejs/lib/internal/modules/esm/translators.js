@@ -1,20 +1,20 @@
 'use strict';
 
 const {
+  ArrayPrototypeForEach,
   ArrayPrototypeMap,
   Boolean,
   JSONParse,
   ObjectGetPrototypeOf,
   ObjectPrototypeHasOwnProperty,
   ObjectKeys,
-  PromisePrototypeCatch,
+  PromisePrototypeThen,
   PromiseReject,
-  RegExpPrototypeTest,
+  SafeArrayIterator,
   SafeMap,
   SafeSet,
   StringPrototypeReplace,
   StringPrototypeSlice,
-  StringPrototypeSplit,
   StringPrototypeStartsWith,
   SyntaxErrorPrototype,
   globalThis: { WebAssembly },
@@ -29,18 +29,15 @@ function lazyTypes() {
 const { readFileSync } = require('fs');
 const { extname, isAbsolute } = require('path');
 const {
+  hasEsmSyntax,
+  loadNativeModule,
   stripBOM,
-  loadNativeModule
 } = require('internal/modules/cjs/helpers');
 const {
   Module: CJSModule,
   cjsParseCache
 } = require('internal/modules/cjs/loader');
 const internalURLModule = require('internal/url');
-const { defaultGetSource } = require(
-  'internal/modules/esm/get_source');
-const { defaultTransformSource } = require(
-  'internal/modules/esm/transform_source');
 const createDynamicModule = require(
   'internal/modules/esm/create_dynamic_module');
 const { fileURLToPath, URL } = require('url');
@@ -111,13 +108,14 @@ function errPath(url) {
 }
 
 async function importModuleDynamically(specifier, { url }) {
-  return asyncESM.ESMLoader.import(specifier, url);
+  return asyncESM.esmLoader.import(specifier, url);
 }
 
 function createImportMetaResolve(defaultParentUrl) {
   return async function resolve(specifier, parentUrl = defaultParentUrl) {
-    return PromisePrototypeCatch(
-      asyncESM.ESMLoader.resolve(specifier, parentUrl),
+    return PromisePrototypeThen(
+      asyncESM.esmLoader.resolve(specifier, parentUrl),
+      ({ url }) => url,
       (error) => (
         error.code === 'ERR_UNSUPPORTED_DIR_IMPORT' ?
           error.url : PromiseReject(error))
@@ -133,12 +131,8 @@ function initializeImportMeta(meta, { url }) {
 }
 
 // Strategy for loading a standard JavaScript module.
-translators.set('module', async function moduleStrategy(url) {
-  let { source } = await this._getSource(
-    url, { format: 'module' }, defaultGetSource);
-  assertBufferSource(source, true, 'getSource');
-  ({ source } = await this._transformSource(
-    source, { url, format: 'module' }, defaultTransformSource));
+translators.set('module', async function moduleStrategy(url, source, isMain) {
+  assertBufferSource(source, true, 'load');
   source = stringify(source);
   maybeCacheSourceMap(url, source);
   debug(`Translating StandardModule ${url}`);
@@ -150,18 +144,14 @@ translators.set('module', async function moduleStrategy(url) {
   return module;
 });
 
-function enrichCJSError(err) {
-  if (err == null || ObjectGetPrototypeOf(err) !== SyntaxErrorPrototype) {
-    return;
-  }
-  const stack = StringPrototypeSplit(err.stack, '\n');
-  /*
-  * The regular expression below targets the most common import statement
-  * usage. However, some cases are not matching, cases like import statement
-  * after a comment block and/or after a variable definition.
-  */
-  if (StringPrototypeStartsWith(err.message, 'Unexpected token \'export\'') ||
-    RegExpPrototypeTest(/^\s*import(?=[ {'"*])\s*(?![ (])/, stack[1])) {
+/**
+ * @param {Error | any} err
+ * @param {string} [content] Content of the file, if known.
+ * @param {string} [filename] Useful only if `content` is unknown.
+ */
+function enrichCJSError(err, content, filename) {
+  if (err != null && ObjectGetPrototypeOf(err) === SyntaxErrorPrototype &&
+      hasEsmSyntax(content || readFileSync(filename, 'utf-8'))) {
     // Emit the warning synchronously because we are in the middle of handling
     // a SyntaxError that will throw and likely terminate the process before an
     // asynchronous warning would be emitted.
@@ -175,7 +165,8 @@ function enrichCJSError(err) {
 // Strategy for loading a node-style CommonJS module
 const isWindows = process.platform === 'win32';
 const winSepRegEx = /\//g;
-translators.set('commonjs', async function commonjsStrategy(url, isMain) {
+translators.set('commonjs', async function commonjsStrategy(url, source,
+                                                            isMain) {
   debug(`Translating CJSModule ${url}`);
 
   let filename = internalURLModule.fileURLToPath(new URL(url));
@@ -191,14 +182,14 @@ translators.set('commonjs', async function commonjsStrategy(url, isMain) {
     debug(`Loading CJSModule ${url}`);
 
     let exports;
-    if (asyncESM.ESMLoader.cjsCache.has(module)) {
-      exports = asyncESM.ESMLoader.cjsCache.get(module);
-      asyncESM.ESMLoader.cjsCache.delete(module);
+    if (asyncESM.esmLoader.cjsCache.has(module)) {
+      exports = asyncESM.esmLoader.cjsCache.get(module);
+      asyncESM.esmLoader.cjsCache.delete(module);
     } else {
       try {
         exports = CJSModule._load(filename, undefined, isMain);
       } catch (err) {
-        enrichCJSError(err);
+        enrichCJSError(err, undefined, filename);
         throw err;
       }
     }
@@ -246,7 +237,7 @@ function cjsPreparseModuleExports(filename) {
     reexports = [];
   }
 
-  const exportNames = new SafeSet(exports);
+  const exportNames = new SafeSet(new SafeArrayIterator(exports));
 
   // Set first for cycles.
   cjsParseCache.set(module, { source, exportNames, loaded });
@@ -255,12 +246,12 @@ function cjsPreparseModuleExports(filename) {
     module.filename = filename;
     module.paths = CJSModule._nodeModulePaths(module.path);
   }
-  for (const reexport of reexports) {
+  ArrayPrototypeForEach(reexports, (reexport) => {
     let resolved;
     try {
       resolved = CJSModule._resolveFilename(reexport, module);
     } catch {
-      continue;
+      return;
     }
     const ext = extname(resolved);
     if ((ext === '.js' || ext === '.cjs' || !CJSModule._extensions[ext]) &&
@@ -269,7 +260,7 @@ function cjsPreparseModuleExports(filename) {
       for (const name of reexportNames)
         exportNames.add(name);
     }
-  }
+  });
 
   return { module, exportNames };
 }
@@ -289,9 +280,9 @@ translators.set('builtin', async function builtinStrategy(url) {
 });
 
 // Strategy for loading a JSON file
-translators.set('json', async function jsonStrategy(url) {
+translators.set('json', async function jsonStrategy(url, source) {
   emitExperimentalWarning('Importing JSON modules');
-  debug(`Translating JSONModule ${url}`);
+  assertBufferSource(source, true, 'load');
   debug(`Loading JSONModule ${url}`);
   const pathname = StringPrototypeStartsWith(url, 'file:') ?
     fileURLToPath(url) : null;
@@ -308,11 +299,6 @@ translators.set('json', async function jsonStrategy(url) {
       });
     }
   }
-  let { source } = await this._getSource(
-    url, { format: 'json' }, defaultGetSource);
-  assertBufferSource(source, true, 'getSource');
-  ({ source } = await this._transformSource(
-    source, { url, format: 'json' }, defaultTransformSource));
   source = stringify(source);
   if (pathname) {
     // A require call could have been called on the same file during loading and
@@ -350,15 +336,13 @@ translators.set('json', async function jsonStrategy(url) {
 });
 
 // Strategy for loading a wasm module
-translators.set('wasm', async function(url) {
+translators.set('wasm', async function(url, source) {
   emitExperimentalWarning('Importing Web Assembly modules');
-  let { source } = await this._getSource(
-    url, { format: 'wasm' }, defaultGetSource);
-  assertBufferSource(source, false, 'getSource');
-  ({ source } = await this._transformSource(
-    source, { url, format: 'wasm' }, defaultTransformSource));
-  assertBufferSource(source, false, 'transformSource');
+
+  assertBufferSource(source, false, 'load');
+
   debug(`Translating WASMModule ${url}`);
+
   let compiled;
   try {
     compiled = await WebAssembly.compile(source);

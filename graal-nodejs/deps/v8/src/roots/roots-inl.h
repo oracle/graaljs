@@ -5,10 +5,8 @@
 #ifndef V8_ROOTS_ROOTS_INL_H_
 #define V8_ROOTS_ROOTS_INL_H_
 
-#include "src/roots/roots.h"
-
 #include "src/execution/isolate.h"
-#include "src/execution/off-thread-isolate.h"
+#include "src/execution/local-isolate.h"
 #include "src/handles/handles.h"
 #include "src/heap/read-only-heap.h"
 #include "src/objects/api-callbacks.h"
@@ -23,6 +21,8 @@
 #include "src/objects/scope-info.h"
 #include "src/objects/slots.h"
 #include "src/objects/string.h"
+#include "src/objects/swiss-name-dictionary.h"
+#include "src/roots/roots.h"
 
 namespace v8 {
 namespace internal {
@@ -32,8 +32,7 @@ V8_INLINE constexpr bool operator<(RootIndex lhs, RootIndex rhs) {
   return static_cast<type>(lhs) < static_cast<type>(rhs);
 }
 
-V8_INLINE RootIndex
-operator++(RootIndex& index) {  // NOLINT(runtime/references)
+V8_INLINE RootIndex operator++(RootIndex& index) {
   using type = typename std::underlying_type<RootIndex>::type;
   index = static_cast<RootIndex>(static_cast<type>(index) + 1);
   return index;
@@ -62,17 +61,12 @@ bool RootsTable::IsRootHandle(Handle<T> handle, RootIndex* index) const {
 ReadOnlyRoots::ReadOnlyRoots(Heap* heap)
     : ReadOnlyRoots(Isolate::FromHeap(heap)) {}
 
-ReadOnlyRoots::ReadOnlyRoots(OffThreadHeap* heap)
-    : ReadOnlyRoots(OffThreadIsolate::FromHeap(heap)) {}
-
 ReadOnlyRoots::ReadOnlyRoots(Isolate* isolate)
     : read_only_roots_(reinterpret_cast<Address*>(
           isolate->roots_table().read_only_roots_begin().address())) {}
 
-ReadOnlyRoots::ReadOnlyRoots(OffThreadIsolate* isolate)
+ReadOnlyRoots::ReadOnlyRoots(LocalIsolate* isolate)
     : ReadOnlyRoots(isolate->factory()->read_only_roots()) {}
-
-ReadOnlyRoots::ReadOnlyRoots(Address* ro_roots) : read_only_roots_(ro_roots) {}
 
 // We use unchecked_cast below because we trust our read-only roots to
 // have the right type, and to avoid the heavy #includes that would be

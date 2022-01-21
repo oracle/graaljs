@@ -30,6 +30,12 @@ struct TorqueCompilerOptions {
   // architectures. Note that this does not needed in Chromium/V8 land, since we
   // always build with the same bit width as the target architecture.
   bool force_32bit_output = false;
+
+  // Adds extra comments in output that show Torque intermediate representation.
+  bool annotate_ir = false;
+
+  // Strips the v8-root in case the source path contains it as a prefix.
+  bool strip_v8_root = false;
 };
 
 struct TorqueCompilerResult {

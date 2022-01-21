@@ -2,14 +2,19 @@
 
 const {
   ArrayIsArray,
+  ArrayPrototypeIncludes,
+  ArrayPrototypeMap,
+  ArrayPrototypePush,
   Error,
   MathMax,
   Number,
   ObjectCreate,
+  ObjectDefineProperty,
   ObjectKeys,
-  Set,
+  SafeSet,
   String,
   StringFromCharCode,
+  StringPrototypeIncludes,
   StringPrototypeToLowerCase,
   Symbol,
 } = primordials;
@@ -21,10 +26,13 @@ const {
     ERR_HTTP2_INVALID_CONNECTION_HEADERS,
     ERR_HTTP2_INVALID_PSEUDOHEADER,
     ERR_HTTP2_INVALID_SETTING_VALUE,
-    ERR_INVALID_ARG_TYPE
+    ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_HTTP_TOKEN
   },
-  addCodeToName,
-  hideStackFrames
+  captureLargerStackTrace,
+  getMessage,
+  hideStackFrames,
+  kIsNodeError,
 } = require('internal/errors');
 
 const kSensitiveHeaders = Symbol('nodejs.http2.sensitiveHeaders');
@@ -62,6 +70,7 @@ const {
   HTTP2_HEADER_ETAG,
   HTTP2_HEADER_EXPIRES,
   HTTP2_HEADER_FROM,
+  HTTP2_HEADER_HOST,
   HTTP2_HEADER_IF_MATCH,
   HTTP2_HEADER_IF_NONE_MATCH,
   HTTP2_HEADER_IF_MODIFIED_SINCE,
@@ -85,7 +94,6 @@ const {
   HTTP2_HEADER_HTTP2_SETTINGS,
   HTTP2_HEADER_TE,
   HTTP2_HEADER_TRANSFER_ENCODING,
-  HTTP2_HEADER_HOST,
   HTTP2_HEADER_KEEP_ALIVE,
   HTTP2_HEADER_PROXY_CONNECTION,
 
@@ -97,7 +105,7 @@ const {
 // This set is defined strictly by the HTTP/2 specification. Only
 // :-prefixed headers defined by that specification may be added to
 // this set.
-const kValidPseudoHeaders = new Set([
+const kValidPseudoHeaders = new SafeSet([
   HTTP2_HEADER_STATUS,
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_AUTHORITY,
@@ -108,7 +116,7 @@ const kValidPseudoHeaders = new Set([
 
 // This set contains headers that are permitted to have only a single
 // value. Multiple instances must not be specified.
-const kSingleValueHeaders = new Set([
+const kSingleValueHeaders = new SafeSet([
   HTTP2_HEADER_STATUS,
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_AUTHORITY,
@@ -132,6 +140,7 @@ const kSingleValueHeaders = new Set([
   HTTP2_HEADER_ETAG,
   HTTP2_HEADER_EXPIRES,
   HTTP2_HEADER_FROM,
+  HTTP2_HEADER_HOST,
   HTTP2_HEADER_IF_MATCH,
   HTTP2_HEADER_IF_MODIFIED_SINCE,
   HTTP2_HEADER_IF_NONE_MATCH,
@@ -154,7 +163,7 @@ const kSingleValueHeaders = new Set([
 // meaning to the request payload. By default, unless the user explicitly
 // overrides the endStream option on the request method, the endStream
 // option will be defaulted to true when these methods are used.
-const kNoPayloadMethods = new Set([
+const kNoPayloadMethods = new SafeSet([
   HTTP2_METHOD_DELETE,
   HTTP2_METHOD_GET,
   HTTP2_METHOD_HEAD,
@@ -430,7 +439,6 @@ function isIllegalConnectionSpecificHeader(name, value) {
   switch (name) {
     case HTTP2_HEADER_CONNECTION:
     case HTTP2_HEADER_UPGRADE:
-    case HTTP2_HEADER_HOST:
     case HTTP2_HEADER_HTTP2_SETTINGS:
     case HTTP2_HEADER_KEEP_ALIVE:
     case HTTP2_HEADER_PROXY_CONNECTION:
@@ -467,7 +475,7 @@ function mapToHeaders(map,
   let ret = '';
   let count = 0;
   const keys = ObjectKeys(map);
-  const singles = new Set();
+  const singles = new SafeSet();
   let i, j;
   let isArray;
   let key;
@@ -475,13 +483,14 @@ function mapToHeaders(map,
   let isSingleValueHeader;
   let err;
   const neverIndex =
-    (map[kSensitiveHeaders] || emptyArray).map(StringPrototypeToLowerCase);
+    ArrayPrototypeMap(map[kSensitiveHeaders] || emptyArray,
+                      StringPrototypeToLowerCase);
   for (i = 0; i < keys.length; ++i) {
     key = keys[i];
     value = map[key];
     if (value === undefined || key === '')
       continue;
-    key = key.toLowerCase();
+    key = StringPrototypeToLowerCase(key);
     isSingleValueHeader = kSingleValueHeaders.has(key);
     isArray = ArrayIsArray(value);
     if (isArray) {
@@ -504,7 +513,9 @@ function mapToHeaders(map,
         throw new ERR_HTTP2_HEADER_SINGLE_VALUE(key);
       singles.add(key);
     }
-    const flags = neverIndex.includes(key) ? kNeverIndexFlag : kNoHeaderFlags;
+    const flags = ArrayPrototypeIncludes(neverIndex, key) ?
+      kNeverIndexFlag :
+      kNoHeaderFlags;
     if (key[0] === ':') {
       err = assertValuePseudoHeader(key);
       if (err !== undefined)
@@ -512,6 +523,9 @@ function mapToHeaders(map,
       ret = `${key}\0${value}\0${flags}${ret}`;
       count++;
       continue;
+    }
+    if (StringPrototypeIncludes(key, ' ')) {
+      throw new ERR_INVALID_HTTP_TOKEN('Header name', key);
     }
     if (isIllegalConnectionSpecificHeader(key, value)) {
       throw new ERR_HTTP2_INVALID_CONNECTION_HEADERS(key);
@@ -532,11 +546,19 @@ function mapToHeaders(map,
 }
 
 class NghttpError extends Error {
-  constructor(ret) {
-    super(binding.nghttp2ErrorString(ret));
-    this.code = 'ERR_HTTP2_ERROR';
-    this.errno = ret;
-    addCodeToName(this, super.name, 'ERR_HTTP2_ERROR');
+  constructor(integerCode, customErrorCode) {
+    super(customErrorCode ?
+      getMessage(customErrorCode, [], null) :
+      binding.nghttp2ErrorString(integerCode));
+    this.code = customErrorCode || 'ERR_HTTP2_ERROR';
+    this.errno = integerCode;
+    captureLargerStackTrace(this);
+    ObjectDefineProperty(this, kIsNodeError, {
+      value: true,
+      enumerable: false,
+      writable: false,
+      configurable: true,
+    });
   }
 
   toString() {
@@ -591,7 +613,7 @@ function toHeaderObject(headers, sensitiveHeaders) {
           // fields with the same name.  Since it cannot be combined into a
           // single field-value, recipients ought to handle "Set-Cookie" as a
           // special case while processing header fields."
-          existing.push(value);
+          ArrayPrototypePush(existing, value);
           break;
         default:
           // https://tools.ietf.org/html/rfc7230#section-3.2.2
@@ -623,11 +645,24 @@ function sessionName(type) {
   }
 }
 
+function getAuthority(headers) {
+  // For non-CONNECT requests, HTTP/2 allows either :authority
+  // or Host to be used equivalently. The first is preferred
+  // when making HTTP/2 requests, and the latter is preferred
+  // when converting from an HTTP/1 message.
+  if (headers[HTTP2_HEADER_AUTHORITY] !== undefined)
+    return headers[HTTP2_HEADER_AUTHORITY];
+  if (headers[HTTP2_HEADER_HOST] !== undefined)
+    return headers[HTTP2_HEADER_HOST];
+}
+
 module.exports = {
   assertIsObject,
+  assertValidPseudoHeader,
   assertValidPseudoHeaderResponse,
   assertValidPseudoHeaderTrailer,
   assertWithinRange,
+  getAuthority,
   getDefaultSettings,
   getSessionState,
   getSettings,

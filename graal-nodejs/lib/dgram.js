@@ -40,6 +40,7 @@ const {
 } = require('internal/dgram');
 const { guessHandleType } = internalBinding('util');
 const {
+  ERR_BUFFER_OUT_OF_BOUNDS,
   ERR_INVALID_ARG_TYPE,
   ERR_MISSING_ARGS,
   ERR_SOCKET_ALREADY_BOUND,
@@ -176,13 +177,13 @@ function replaceHandle(self, newHandle) {
   const state = self[kStateSymbol];
   const oldHandle = state.handle;
 
-  // Set up the handle that we got from master.
+  // Set up the handle that we got from primary.
   newHandle.lookup = oldHandle.lookup;
   newHandle.bind = oldHandle.bind;
   newHandle.send = oldHandle.send;
   newHandle[owner_symbol] = self;
 
-  // Replace the existing handle by the handle we got from master.
+  // Replace the existing handle by the handle we got from primary.
   oldHandle.close();
   state.handle = newHandle;
   // Check if the udp handle was connected and set the state accordingly
@@ -202,7 +203,7 @@ function bufferSize(self, size, buffer) {
   return ret;
 }
 
-// Query master process to get the server handle and utilize it.
+// Query primary process to get the server handle and utilize it.
 function bindServerHandle(self, options, errCb) {
   const cluster = lazyLoadCluster();
 
@@ -487,6 +488,13 @@ function sliceBuffer(buffer, offset, length) {
 
   offset = offset >>> 0;
   length = length >>> 0;
+  if (offset > buffer.byteLength) {
+    throw new ERR_BUFFER_OUT_OF_BOUNDS('offset');
+  }
+
+  if (offset + length > buffer.byteLength) {
+    throw new ERR_BUFFER_OUT_OF_BOUNDS('length');
+  }
 
   return Buffer.from(buffer.buffer, buffer.byteOffset + offset, length);
 }

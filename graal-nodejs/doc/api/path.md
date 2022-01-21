@@ -63,6 +63,7 @@ example, `path.resolve('C:\\')` can potentially return a different result than
 [this MSDN page][MSDN-Rel-Path].
 
 ## `path.basename(path[, ext])`
+
 <!-- YAML
 added: v0.1.25
 changes:
@@ -104,6 +105,7 @@ A [`TypeError`][] is thrown if `path` is not a string or if `ext` is given
 and is not a string.
 
 ## `path.delimiter`
+
 <!-- YAML
 added: v0.9.3
 -->
@@ -136,6 +138,7 @@ process.env.PATH.split(path.delimiter);
 ```
 
 ## `path.dirname(path)`
+
 <!-- YAML
 added: v0.1.16
 changes:
@@ -159,6 +162,7 @@ path.dirname('/foo/bar/baz/asdf/quux');
 A [`TypeError`][] is thrown if `path` is not a string.
 
 ## `path.extname(path)`
+
 <!-- YAML
 added: v0.1.25
 changes:
@@ -199,6 +203,7 @@ path.extname('.index.md');
 A [`TypeError`][] is thrown if `path` is not a string.
 
 ## `path.format(pathObject)`
+
 <!-- YAML
 added: v0.11.15
 -->
@@ -263,6 +268,7 @@ path.format({
 ```
 
 ## `path.isAbsolute(path)`
+
 <!-- YAML
 added: v0.11.2
 -->
@@ -298,6 +304,7 @@ path.isAbsolute('.');           // false
 A [`TypeError`][] is thrown if `path` is not a string.
 
 ## `path.join([...paths])`
+
 <!-- YAML
 added: v0.1.16
 -->
@@ -323,6 +330,7 @@ path.join('foo', {}, 'bar');
 A [`TypeError`][] is thrown if any of the path segments is not a string.
 
 ## `path.normalize(path)`
+
 <!-- YAML
 added: v0.1.23
 -->
@@ -366,6 +374,7 @@ path.win32.normalize('C:////temp\\\\/\\/\\/foo/bar');
 A [`TypeError`][] is thrown if `path` is not a string.
 
 ## `path.parse(path)`
+
 <!-- YAML
 added: v0.11.15
 -->
@@ -432,8 +441,13 @@ path.parse('C:\\path\\dir\\file.txt');
 A [`TypeError`][] is thrown if `path` is not a string.
 
 ## `path.posix`
+
 <!-- YAML
 added: v0.11.15
+changes:
+  - version: v15.3.0
+    pr-url: https://github.com/nodejs/node/pull/34962
+    description: Exposed as `require('path/posix')`.
 -->
 
 * {Object}
@@ -441,7 +455,10 @@ added: v0.11.15
 The `path.posix` property provides access to POSIX specific implementations
 of the `path` methods.
 
+The API is accessible via `require('path').posix` or `require('path/posix')`.
+
 ## `path.relative(from, to)`
+
 <!-- YAML
 added: v0.5.0
 changes:
@@ -479,6 +496,7 @@ path.relative('C:\\orandea\\test\\aaa', 'C:\\orandea\\impl\\bbb');
 A [`TypeError`][] is thrown if either `from` or `to` is not a string.
 
 ## `path.resolve([...paths])`
+
 <!-- YAML
 added: v0.3.4
 -->
@@ -521,6 +539,7 @@ path.resolve('wwwroot', 'static_files/png/', '../gif/image.gif');
 A [`TypeError`][] is thrown if any of the arguments is not a string.
 
 ## `path.sep`
+
 <!-- YAML
 added: v0.7.9
 -->
@@ -551,6 +570,7 @@ as path segment separators; however, the `path` methods only add backward
 slashes (`\`).
 
 ## `path.toNamespacedPath(path)`
+
 <!-- YAML
 added: v9.0.0
 -->
@@ -566,8 +586,13 @@ This method is meaningful only on Windows systems. On POSIX systems, the
 method is non-operational and always returns `path` without modifications.
 
 ## `path.win32`
+
 <!-- YAML
 added: v0.11.15
+changes:
+  - version: v15.3.0
+    pr-url: https://github.com/nodejs/node/pull/34962
+    description: Exposed as `require('path/win32')`.
 -->
 
 * {Object}
@@ -575,10 +600,12 @@ added: v0.11.15
 The `path.win32` property provides access to Windows-specific implementations
 of the `path` methods.
 
+The API is accessible via `require('path').win32` or `require('path/win32')`.
+
 [MSDN-Rel-Path]: https://docs.microsoft.com/en-us/windows/desktop/FileIO/naming-a-file#fully-qualified-vs-relative-paths
-[`TypeError`]: errors.md#errors_class_typeerror
-[`path.parse()`]: #path_path_parse_path
-[`path.posix`]: #path_path_posix
-[`path.sep`]: #path_path_sep
-[`path.win32`]: #path_path_win32
+[`TypeError`]: errors.md#class-typeerror
+[`path.parse()`]: #pathparsepath
+[`path.posix`]: #pathposix
+[`path.sep`]: #pathsep
+[`path.win32`]: #pathwin32
 [namespace-prefixed path]: https://docs.microsoft.com/en-us/windows/desktop/FileIO/naming-a-file#namespaces

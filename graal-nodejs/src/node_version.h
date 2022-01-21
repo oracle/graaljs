@@ -22,12 +22,12 @@
 #ifndef SRC_NODE_VERSION_H_
 #define SRC_NODE_VERSION_H_
 
-#define NODE_MAJOR_VERSION 14
-#define NODE_MINOR_VERSION 18
-#define NODE_PATCH_VERSION 1
+#define NODE_MAJOR_VERSION 16
+#define NODE_MINOR_VERSION 13
+#define NODE_PATCH_VERSION 2
 
 #define NODE_VERSION_IS_LTS 1
-#define NODE_VERSION_LTS_CODENAME "Fermium"
+#define NODE_VERSION_LTS_CODENAME "Gallium"
 
 #define NODE_VERSION_IS_RELEASE 1
 
@@ -89,7 +89,7 @@
  * version matching should open a pull request to reserve a number in this
  * registry.
  */
-#define NODE_MODULE_VERSION 83
+#define NODE_MODULE_VERSION 93
 
 // The NAPI_VERSION provided by this version of the runtime. This is the version
 // which the Node binary being built supports.

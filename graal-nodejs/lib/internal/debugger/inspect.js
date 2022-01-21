@@ -27,16 +27,12 @@ const { EventEmitter } = require('events');
 const net = require('net');
 const util = require('util');
 const {
+  setInterval: pSetInterval,
+  setTimeout: pSetTimeout,
+} = require('timers/promises');
+const {
   AbortController,
 } = require('internal/abort_controller');
-
-const pSetTimeout = util.promisify(require('timers').setTimeout);
-async function* pSetInterval(delay) {
-  while (true) {
-    await pSetTimeout(delay);
-    yield;
-  }
-}
 
 // TODO(aduh95): remove console calls
 const console = require('internal/console/global');

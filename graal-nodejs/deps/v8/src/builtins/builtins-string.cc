@@ -11,6 +11,7 @@
 #ifdef V8_INTL_SUPPORT
 #include "src/objects/intl-objects.h"
 #endif
+#include "src/base/strings.h"
 #include "src/regexp/regexp-utils.h"
 #include "src/strings/string-builder-inl.h"
 #include "src/strings/string-case.h"
@@ -40,14 +41,16 @@ bool IsValidCodePoint(Isolate* isolate, Handle<Object> value) {
   return true;
 }
 
-uc32 NextCodePoint(Isolate* isolate, BuiltinArguments args, int index) {
+static constexpr base::uc32 kInvalidCodePoint = static_cast<base::uc32>(-1);
+
+base::uc32 NextCodePoint(Isolate* isolate, BuiltinArguments args, int index) {
   Handle<Object> value = args.at(1 + index);
-  ASSIGN_RETURN_ON_EXCEPTION_VALUE(isolate, value,
-                                   Object::ToNumber(isolate, value), -1);
+  ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+      isolate, value, Object::ToNumber(isolate, value), kInvalidCodePoint);
   if (!IsValidCodePoint(isolate, value)) {
     isolate->Throw(*isolate->factory()->NewRangeError(
         MessageTemplate::kInvalidCodePoint, value));
-    return -1;
+    return kInvalidCodePoint;
   }
   return DoubleToUint32(value->Number());
 }
@@ -65,11 +68,11 @@ BUILTIN(StringFromCodePoint) {
   // characters.
   std::vector<uint8_t> one_byte_buffer;
   one_byte_buffer.reserve(length);
-  uc32 code = 0;
+  base::uc32 code = 0;
   int index;
   for (index = 0; index < length; index++) {
     code = NextCodePoint(isolate, args, index);
-    if (code < 0) {
+    if (code == kInvalidCodePoint) {
       return ReadOnlyRoots(isolate).exception();
     }
     if (code > String::kMaxOneByteCharCode) {
@@ -80,15 +83,16 @@ BUILTIN(StringFromCodePoint) {
 
   if (index == length) {
     RETURN_RESULT_OR_FAILURE(
-        isolate, isolate->factory()->NewStringFromOneByte(Vector<uint8_t>(
+        isolate, isolate->factory()->NewStringFromOneByte(base::Vector<uint8_t>(
                      one_byte_buffer.data(), one_byte_buffer.size())));
   }
 
-  std::vector<uc16> two_byte_buffer;
+  std::vector<base::uc16> two_byte_buffer;
   two_byte_buffer.reserve(length - index);
 
   while (true) {
-    if (code <= static_cast<uc32>(unibrow::Utf16::kMaxNonSurrogateCharCode)) {
+    if (code <=
+        static_cast<base::uc32>(unibrow::Utf16::kMaxNonSurrogateCharCode)) {
       two_byte_buffer.push_back(code);
     } else {
       two_byte_buffer.push_back(unibrow::Utf16::LeadSurrogate(code));
@@ -99,7 +103,7 @@ BUILTIN(StringFromCodePoint) {
       break;
     }
     code = NextCodePoint(isolate, args, index);
-    if (code < 0) {
+    if (code == kInvalidCodePoint) {
       return ReadOnlyRoots(isolate).exception();
     }
   }
@@ -110,7 +114,7 @@ BUILTIN(StringFromCodePoint) {
       isolate->factory()->NewRawTwoByteString(
           static_cast<int>(one_byte_buffer.size() + two_byte_buffer.size())));
 
-  DisallowHeapAllocation no_gc;
+  DisallowGarbageCollection no_gc;
   CopyChars(result->GetChars(no_gc), one_byte_buffer.data(),
             one_byte_buffer.size());
   CopyChars(result->GetChars(no_gc) + one_byte_buffer.size(),
@@ -148,7 +152,7 @@ BUILTIN(StringPrototypeLocaleCompare) {
                    isolate, str1, str2, args.atOrUndefined(isolate, 2),
                    args.atOrUndefined(isolate, 3), method));
 #else
-  DCHECK_EQ(2, args.length());
+  DCHECK_LE(2, args.length());
 
   TO_THIS_STRING(str1, method);
   Handle<String> str2;
@@ -178,7 +182,7 @@ BUILTIN(StringPrototypeLocaleCompare) {
   str1 = String::Flatten(isolate, str1);
   str2 = String::Flatten(isolate, str2);
 
-  DisallowHeapAllocation no_gc;
+  DisallowGarbageCollection no_gc;
   String::FlatContent flat1 = str1->GetFlatContent(no_gc);
   String::FlatContent flat2 = str2->GetFlatContent(no_gc);
 
@@ -228,11 +232,11 @@ BUILTIN(StringPrototypeNormalize) {
 #ifndef V8_INTL_SUPPORT
 namespace {
 
-inline bool ToUpperOverflows(uc32 character) {
+inline bool ToUpperOverflows(base::uc32 character) {
   // y with umlauts and the micro sign are the only characters that stop
   // fitting into one-byte when converting to uppercase.
-  static const uc32 yuml_code = 0xFF;
-  static const uc32 micro_code = 0xB5;
+  static const base::uc32 yuml_code = 0xFF;
+  static const base::uc32 micro_code = 0xB5;
   return (character == yuml_code || character == micro_code);
 }
 
@@ -240,7 +244,7 @@ template <class Converter>
 V8_WARN_UNUSED_RESULT static Object ConvertCaseHelper(
     Isolate* isolate, String string, SeqString result, int result_length,
     unibrow::Mapping<Converter, 128>* mapping) {
-  DisallowHeapAllocation no_gc;
+  DisallowGarbageCollection no_gc;
   // We try this twice, once with the assumption that the result is no longer
   // than the input and, if that assumption breaks, again with the exact
   // length.  This may not be pretty, but it is nicer than what was here before
@@ -257,11 +261,11 @@ V8_WARN_UNUSED_RESULT static Object ConvertCaseHelper(
   StringCharacterStream stream(string);
   unibrow::uchar chars[Converter::kMaxWidth];
   // We can assume that the string is not empty
-  uc32 current = stream.GetNext();
+  base::uc32 current = stream.GetNext();
   bool ignore_overflow = Converter::kIsToLower || result.IsSeqTwoByteString();
   for (int i = 0; i < result_length;) {
     bool has_next = stream.HasMore();
-    uc32 next = has_next ? stream.GetNext() : 0;
+    base::uc32 next = has_next ? stream.GetNext() : 0;
     int char_length = mapping->get(current, next, chars);
     if (char_length == 0) {
       // The case conversion of this character is the character itself.
@@ -270,7 +274,7 @@ V8_WARN_UNUSED_RESULT static Object ConvertCaseHelper(
     } else if (char_length == 1 &&
                (ignore_overflow || !ToUpperOverflows(current))) {
       // Common case: converting the letter resulted in one character.
-      DCHECK(static_cast<uc32>(chars[0]) != current);
+      DCHECK(static_cast<base::uc32>(chars[0]) != current);
       result.Set(i, chars[0]);
       has_changed_character = true;
       i++;
@@ -304,7 +308,7 @@ V8_WARN_UNUSED_RESULT static Object ConvertCaseHelper(
         if (char_length == 0) char_length = 1;
         current_length += char_length;
         if (current_length > String::kMaxLength) {
-          AllowHeapAllocation allocate_error_and_return;
+          AllowGarbageCollection allocate_error_and_return;
           THROW_NEW_ERROR_RETURN_FAILURE(isolate,
                                          NewInvalidStringLengthError());
         }
@@ -352,7 +356,7 @@ V8_WARN_UNUSED_RESULT static Object ConvertCase(
     // Same length as input.
     Handle<SeqOneByteString> result =
         isolate->factory()->NewRawOneByteString(length).ToHandleChecked();
-    DisallowHeapAllocation no_gc;
+    DisallowGarbageCollection no_gc;
     String::FlatContent flat_content = s->GetFlatContent(no_gc);
     DCHECK(flat_content.IsFlat());
     bool has_changed_character = false;

@@ -69,7 +69,7 @@ inline void GraalString::ReInitialize(jobject java_object) {
 }
 
 inline void GraalString::Recycle() {
-    GraalObjectPool<GraalString>* pool = Isolate()->GetGraalStringPool();    
+    GraalObjectPool<GraalString>* pool = Isolate()->GetGraalStringPool();
     if (!pool->IsFull()) {
         DeleteJavaRef();
         pool->Push(this);

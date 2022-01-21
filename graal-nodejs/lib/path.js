@@ -24,11 +24,13 @@
 const {
   FunctionPrototypeBind,
   StringPrototypeCharCodeAt,
+  StringPrototypeIndexOf,
   StringPrototypeLastIndexOf,
+  StringPrototypeReplace,
   StringPrototypeSlice,
   StringPrototypeToLowerCase,
 } = primordials;
-const { ERR_INVALID_ARG_TYPE } = require('internal/errors').codes;
+
 const {
   CHAR_UPPERCASE_A,
   CHAR_LOWERCASE_A,
@@ -40,7 +42,12 @@ const {
   CHAR_COLON,
   CHAR_QUESTION_MARK,
 } = require('internal/constants');
-const { validateString } = require('internal/validators');
+const {
+  validateObject,
+  validateString,
+} = require('internal/validators');
+
+const platformIsWin32 = (process.platform === 'win32');
 
 function isPathSeparator(code) {
   return code === CHAR_FORWARD_SLASH || code === CHAR_BACKWARD_SLASH;
@@ -132,9 +139,7 @@ function normalizeString(path, allowAboveRoot, separator, isPathSeparator) {
  * @returns {string}
  */
 function _format(sep, pathObject) {
-  if (pathObject === null || typeof pathObject !== 'object') {
-    throw new ERR_INVALID_ARG_TYPE('pathObject', 'Object', pathObject);
-  }
+  validateObject(pathObject, 'pathObject');
   const dir = pathObject.dir || pathObject.root;
   const base = pathObject.base ||
     `${pathObject.name || ''}${pathObject.ext || ''}`;
@@ -606,6 +611,10 @@ const win32 = {
     return StringPrototypeSlice(toOrig, toStart, toEnd);
   },
 
+  /**
+   * @param {string} path
+   * @returns {string}
+   */
   toNamespacedPath(path) {
     // Note: this will *probably* throw somewhere.
     if (typeof path !== 'string' || path.length === 0)
@@ -1058,6 +1067,21 @@ const win32 = {
   posix: null
 };
 
+const posixCwd = (() => {
+  if (platformIsWin32) {
+    // Converts Windows' backslash path separators to POSIX forward slashes
+    // and truncates any drive indicator
+    const regexp = /\\/g;
+    return () => {
+      const cwd = StringPrototypeReplace(process.cwd(), regexp, '/');
+      return StringPrototypeSlice(cwd, StringPrototypeIndexOf(cwd, '/'));
+    };
+  }
+
+  // We're already on POSIX, no need for any transformations
+  return () => process.cwd();
+})();
+
 const posix = {
   /**
    * path.resolve([from ...], to)
@@ -1069,7 +1093,7 @@ const posix = {
     let resolvedAbsolute = false;
 
     for (let i = args.length - 1; i >= -1 && !resolvedAbsolute; i--) {
-      const path = i >= 0 ? args[i] : process.cwd();
+      const path = i >= 0 ? args[i] : posixCwd();
 
       validateString(path, 'path');
 
@@ -1235,6 +1259,10 @@ const posix = {
     return `${out}${StringPrototypeSlice(to, toStart + lastCommonSep)}`;
   },
 
+  /**
+   * @param {string} path
+   * @returns {string}
+   */
   toNamespacedPath(path) {
     // Non-op on posix systems
     return path;
@@ -1512,4 +1540,4 @@ posix.posix = win32.posix = posix;
 win32._makeLong = win32.toNamespacedPath;
 posix._makeLong = posix.toNamespacedPath;
 
-module.exports = process.platform === 'win32' ? win32 : posix;
+module.exports = platformIsWin32 ? win32 : posix;

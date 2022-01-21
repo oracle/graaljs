@@ -167,8 +167,46 @@ class V8_EXPORT_PRIVATE Assembler : public AssemblerBase {
     GetCode(isolate, desc, kNoSafepointTable, kNoHandlerTable);
   }
 
+  // This function is called when on-heap-compilation invariants are
+  // invalidated. For instance, when the assembler buffer grows or a GC happens
+  // between Code object allocation and Code object finalization.
+  void FixOnHeapReferences(bool update_embedded_objects = true);
+
+  // This function is called when we fallback from on-heap to off-heap
+  // compilation and patch on-heap references to handles.
+  void FixOnHeapReferencesToHandles();
+
   // Unused on this architecture.
   void MaybeEmitOutOfLineConstantPool() {}
+
+  // Mips uses BlockTrampolinePool to prevent generating trampoline inside a
+  // continuous instruction block. For Call instrution, it prevents generating
+  // trampoline between jalr and delay slot instruction. In the destructor of
+  // BlockTrampolinePool, it must check if it needs to generate trampoline
+  // immediately, if it does not do this, the branch range will go beyond the
+  // max branch offset, that means the pc_offset after call CheckTrampolinePool
+  // may be not the Call instruction's location. So we use last_call_pc here for
+  // safepoint record.
+  int pc_offset_for_safepoint() {
+#ifdef DEBUG
+    Instr instr1 =
+        instr_at(static_cast<int>(last_call_pc_ - buffer_start_ - kInstrSize));
+    Instr instr2 = instr_at(
+        static_cast<int>(last_call_pc_ - buffer_start_ - kInstrSize * 2));
+    if (GetOpcodeField(instr1) != SPECIAL) {  // instr1 == jialc.
+      DCHECK(IsMipsArchVariant(kMips32r6) && GetOpcodeField(instr1) == POP76 &&
+             GetRs(instr1) == 0);
+    } else {
+      if (GetFunctionField(instr1) == SLL) {  // instr1 == nop, instr2 == jalr.
+        DCHECK(GetOpcodeField(instr2) == SPECIAL &&
+               GetFunctionField(instr2) == JALR);
+      } else {  // instr1 == jalr.
+        DCHECK(GetFunctionField(instr1) == JALR);
+      }
+    }
+#endif
+    return static_cast<int>(last_call_pc_ - buffer_start_);
+  }
 
   // Label operations & relative jumps (PPUM Appendix D).
   //
@@ -331,6 +369,7 @@ class V8_EXPORT_PRIVATE Assembler : public AssemblerBase {
   void DataAlign(int m);
   // Aligns code to something that's optimal for a jump target for the platform.
   void CodeTargetAlign();
+  void LoopHeaderAlign() { CodeTargetAlign(); }
 
   // Different nop operations are used by the code generator to detect certain
   // states of the generated code.
@@ -1343,7 +1382,7 @@ class V8_EXPORT_PRIVATE Assembler : public AssemblerBase {
   }
 
   // Class for scoping postponing the trampoline pool generation.
-  class BlockTrampolinePoolScope {
+  class V8_NODISCARD BlockTrampolinePoolScope {
    public:
     explicit BlockTrampolinePoolScope(Assembler* assem) : assem_(assem) {
       assem_->StartBlockTrampolinePool();
@@ -1360,7 +1399,7 @@ class V8_EXPORT_PRIVATE Assembler : public AssemblerBase {
   // sequences of instructions that must be emitted as a unit, before
   // buffer growth (and relocation) can occur.
   // This blocking scope is not nestable.
-  class BlockGrowBufferScope {
+  class V8_NODISCARD BlockGrowBufferScope {
    public:
     explicit BlockGrowBufferScope(Assembler* assem) : assem_(assem) {
       assem_->StartBlockGrowBuffer();
@@ -1375,8 +1414,8 @@ class V8_EXPORT_PRIVATE Assembler : public AssemblerBase {
 
   // Record a deoptimization reason that can be used by a log or cpu profiler.
   // Use --trace-deopt to enable.
-  void RecordDeoptReason(DeoptimizeReason reason, SourcePosition position,
-                         int id);
+  void RecordDeoptReason(DeoptimizeReason reason, uint32_t node_id,
+                         SourcePosition position, int id);
 
   static int RelocateInternalReference(RelocInfo::Mode rmode, Address pc,
                                        intptr_t pc_delta);
@@ -1387,9 +1426,11 @@ class V8_EXPORT_PRIVATE Assembler : public AssemblerBase {
   // Writes a single byte or word of data in the code stream.  Used for
   // inline tables, e.g., jump-tables.
   void db(uint8_t data);
-  void dd(uint32_t data);
-  void dq(uint64_t data);
-  void dp(uintptr_t data) { dd(data); }
+  void dd(uint32_t data, RelocInfo::Mode rmode = RelocInfo::NONE);
+  void dq(uint64_t data, RelocInfo::Mode rmode = RelocInfo::NONE);
+  void dp(uintptr_t data, RelocInfo::Mode rmode = RelocInfo::NONE) {
+    dd(data, rmode);
+  }
   void dd(Label* label);
 
   // Postpone the generation of the trampoline pool for the specified number of
@@ -1592,6 +1633,16 @@ class V8_EXPORT_PRIVATE Assembler : public AssemblerBase {
                          RelocInfo::Mode rmode, BranchDelaySlot bdslot);
   void GenPCRelativeJumpAndLink(Register t, int32_t imm32,
                                 RelocInfo::Mode rmode, BranchDelaySlot bdslot);
+
+  void set_last_call_pc_(byte* pc) { last_call_pc_ = pc; }
+
+#ifdef DEBUG
+  bool EmbeddedObjectMatches(int pc_offset, Handle<Object> object) {
+    return target_address_at(
+               reinterpret_cast<Address>(buffer_->start() + pc_offset)) ==
+           (IsOnHeap() ? object->ptr() : object.address());
+  }
+#endif
 
  private:
   // Avoid overflows for displacements etc.
@@ -1856,6 +1907,11 @@ class V8_EXPORT_PRIVATE Assembler : public AssemblerBase {
   Trampoline trampoline_;
   bool internal_trampoline_exception_;
 
+  // Keep track of the last Call's position to ensure that safepoint can get the
+  // correct information even if there is a trampoline immediately after the
+  // Call.
+  byte* last_call_pc_;
+
  private:
   void AllocateAndInstallRequestedHeapObjects(Isolate* isolate);
 
@@ -1869,16 +1925,27 @@ class V8_EXPORT_PRIVATE Assembler : public AssemblerBase {
 
 class EnsureSpace {
  public:
-  explicit inline EnsureSpace(Assembler* assembler);
+  explicit V8_INLINE EnsureSpace(Assembler* assembler);
 };
 
-class V8_EXPORT_PRIVATE UseScratchRegisterScope {
+class V8_EXPORT_PRIVATE V8_NODISCARD UseScratchRegisterScope {
  public:
   explicit UseScratchRegisterScope(Assembler* assembler);
   ~UseScratchRegisterScope();
 
   Register Acquire();
   bool hasAvailable() const;
+
+  void Include(const RegList& list) { *available_ |= list; }
+  void Exclude(const RegList& list) { *available_ &= ~list; }
+  void Include(const Register& reg1, const Register& reg2 = no_reg) {
+    RegList list(reg1.bit() | reg2.bit());
+    Include(list);
+  }
+  void Exclude(const Register& reg1, const Register& reg2 = no_reg) {
+    RegList list(reg1.bit() | reg2.bit());
+    Exclude(list);
+  }
 
  private:
   RegList* available_;

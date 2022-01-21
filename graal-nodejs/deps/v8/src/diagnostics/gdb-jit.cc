@@ -8,16 +8,20 @@
 #include <memory>
 #include <vector>
 
+#include "include/v8.h"
 #include "src/api/api-inl.h"
 #include "src/base/bits.h"
+#include "src/base/hashmap.h"
 #include "src/base/platform/platform.h"
+#include "src/base/platform/wrappers.h"
+#include "src/base/strings.h"
+#include "src/base/vector.h"
 #include "src/execution/frames-inl.h"
 #include "src/execution/frames.h"
 #include "src/handles/global-handles.h"
 #include "src/init/bootstrapper.h"
 #include "src/objects/objects.h"
 #include "src/utils/ostreams.h"
-#include "src/utils/vector.h"
 #include "src/zone/zone-chunk-list.h"
 
 namespace v8 {
@@ -46,9 +50,9 @@ class Writer {
       : debug_object_(debug_object),
         position_(0),
         capacity_(1024),
-        buffer_(reinterpret_cast<byte*>(malloc(capacity_))) {}
+        buffer_(reinterpret_cast<byte*>(base::Malloc(capacity_))) {}
 
-  ~Writer() { free(buffer_); }
+  ~Writer() { base::Free(buffer_); }
 
   uintptr_t position() const { return position_; }
 
@@ -97,7 +101,7 @@ class Writer {
   void Ensure(uintptr_t pos) {
     if (capacity_ < pos) {
       while (capacity_ < pos) capacity_ *= 2;
-      buffer_ = reinterpret_cast<byte*>(realloc(buffer_, capacity_));
+      buffer_ = reinterpret_cast<byte*>(base::Realloc(buffer_, capacity_));
     }
   }
 
@@ -569,8 +573,8 @@ class MachO {
 class ELF {
  public:
   explicit ELF(Zone* zone) : sections_(zone) {
-    sections_.push_back(new (zone) ELFSection("", ELFSection::TYPE_NULL, 0));
-    sections_.push_back(new (zone) ELFStringTable(".shstrtab"));
+    sections_.push_back(zone->New<ELFSection>("", ELFSection::TYPE_NULL, 0));
+    sections_.push_back(zone->New<ELFStringTable>(".shstrtab"));
   }
 
   void Write(Writer* w) {
@@ -901,8 +905,7 @@ class CodeDescription {
   LineInfo* lineinfo() const { return lineinfo_; }
 
   bool is_function() const {
-    Code::Kind kind = code_.kind();
-    return kind == Code::OPTIMIZED_FUNCTION;
+    return CodeKindIsOptimizedJSFunction(code_.kind());
   }
 
   bool has_scope_info() const { return !shared_info_.is_null(); }
@@ -973,8 +976,8 @@ class CodeDescription {
 #if defined(__ELF)
 static void CreateSymbolsTable(CodeDescription* desc, Zone* zone, ELF* elf,
                                size_t text_section_index) {
-  ELFSymbolTable* symtab = new (zone) ELFSymbolTable(".symtab", zone);
-  ELFStringTable* strtab = new (zone) ELFStringTable(".strtab");
+  ELFSymbolTable* symtab = zone->New<ELFSymbolTable>(".symtab", zone);
+  ELFStringTable* strtab = zone->New<ELFStringTable>(".strtab");
 
   // Symbol table should be followed by the linked string table.
   elf->AddSection(symtab);
@@ -1092,14 +1095,10 @@ class DebugInfoSection : public DebugSection {
       int internal_slots = Context::MIN_CONTEXT_SLOTS;
       int current_abbreviation = 4;
 
-      EmbeddedVector<char, 256> buffer;
-      StringBuilder builder(buffer.begin(), buffer.length());
-
       for (int param = 0; param < params; ++param) {
         w->WriteULEB128(current_abbreviation++);
-        builder.Reset();
-        builder.AddFormatted("param%d", param);
-        w->WriteString(builder.Finalize());
+        w->WriteString("param");
+        w->Write(std::to_string(param).c_str());
         w->Write<uint32_t>(ty_offset);
         Writer::Slot<uint32_t> block_size = w->CreateSlotHere<uint32_t>();
         uintptr_t block_start = w->position();
@@ -1123,9 +1122,8 @@ class DebugInfoSection : public DebugSection {
 
       for (int context_slot = 0; context_slot < context_slots; ++context_slot) {
         w->WriteULEB128(current_abbreviation++);
-        builder.Reset();
-        builder.AddFormatted("context_slot%d", context_slot + internal_slots);
-        w->WriteString(builder.Finalize());
+        w->WriteString("context_slot");
+        w->Write(std::to_string(context_slot + internal_slots).c_str());
       }
 
       {
@@ -1691,12 +1689,12 @@ bool UnwindInfoSection::WriteBodyInternal(Writer* w) {
 static void CreateDWARFSections(CodeDescription* desc, Zone* zone,
                                 DebugObject* obj) {
   if (desc->IsLineInfoAvailable()) {
-    obj->AddSection(new (zone) DebugInfoSection(desc));
-    obj->AddSection(new (zone) DebugAbbrevSection(desc));
-    obj->AddSection(new (zone) DebugLineSection(desc));
+    obj->AddSection(zone->New<DebugInfoSection>(desc));
+    obj->AddSection(zone->New<DebugAbbrevSection>(desc));
+    obj->AddSection(zone->New<DebugLineSection>(desc));
   }
 #if V8_TARGET_ARCH_X64
-  obj->AddSection(new (zone) UnwindInfoSection(desc));
+  obj->AddSection(zone->New<UnwindInfoSection>(desc));
 #endif
 }
 
@@ -1741,8 +1739,8 @@ void __gdb_print_v8_object(Object object) {
 
 static JITCodeEntry* CreateCodeEntry(Address symfile_addr,
                                      uintptr_t symfile_size) {
-  JITCodeEntry* entry =
-      static_cast<JITCodeEntry*>(malloc(sizeof(JITCodeEntry) + symfile_size));
+  JITCodeEntry* entry = static_cast<JITCodeEntry*>(
+      base::Malloc(sizeof(JITCodeEntry) + symfile_size));
 
   entry->symfile_addr_ = reinterpret_cast<Address>(entry + 1);
   entry->symfile_size_ = symfile_size;
@@ -1754,7 +1752,7 @@ static JITCodeEntry* CreateCodeEntry(Address symfile_addr,
   return entry;
 }
 
-static void DestroyCodeEntry(JITCodeEntry* entry) { free(entry); }
+static void DestroyCodeEntry(JITCodeEntry* entry) { base::Free(entry); }
 
 static void RegisterCodeEntry(JITCodeEntry* entry) {
   entry->next_ = __jit_debug_descriptor.first_entry_;
@@ -1788,8 +1786,11 @@ static JITCodeEntry* CreateELFObject(CodeDescription* desc, Isolate* isolate) {
   MachO mach_o(&zone);
   Writer w(&mach_o);
 
-  mach_o.AddSection(new (&zone) MachOTextSection(
-      kCodeAlignment, desc->CodeStart(), desc->CodeSize()));
+  const uint32_t code_alignment = static_cast<uint32_t>(kCodeAlignment);
+  static_assert(code_alignment == kCodeAlignment,
+                "Unsupported code alignment value");
+  mach_o.AddSection(zone.New<MachOTextSection>(
+      code_alignment, desc->CodeStart(), desc->CodeSize()));
 
   CreateDWARFSections(desc, &zone, &mach_o);
 
@@ -1799,7 +1800,7 @@ static JITCodeEntry* CreateELFObject(CodeDescription* desc, Isolate* isolate) {
   ELF elf(&zone);
   Writer w(&elf);
 
-  size_t text_section_index = elf.AddSection(new (&zone) FullHeaderELFSection(
+  size_t text_section_index = elf.AddSection(zone.New<FullHeaderELFSection>(
       ".text", ELFSection::TYPE_NOBITS, kCodeAlignment, desc->CodeStart(), 0,
       desc->CodeSize(), ELFSection::FLAG_ALLOC | ELFSection::FLAG_EXEC));
 
@@ -1958,8 +1959,9 @@ static void AddJITCodeEntry(CodeMap* map, const AddressRange& range,
     static const int kMaxFileNameSize = 64;
     char file_name[64];
 
-    SNPrintF(Vector<char>(file_name, kMaxFileNameSize), "/tmp/elfdump%s%d.o",
-             (name_hint != nullptr) ? name_hint : "", file_num++);
+    SNPrintF(base::Vector<char>(file_name, kMaxFileNameSize),
+             "/tmp/elfdump%s%d.o", (name_hint != nullptr) ? name_hint : "",
+             file_num++);
     WriteBytes(file_name, reinterpret_cast<byte*>(entry->symfile_addr_),
                static_cast<int>(entry->symfile_size_));
   }
@@ -1974,7 +1976,7 @@ static void AddJITCodeEntry(CodeMap* map, const AddressRange& range,
 
 static void AddCode(const char* name, Code code, SharedFunctionInfo shared,
                     LineInfo* lineinfo) {
-  DisallowHeapAllocation no_gc;
+  DisallowGarbageCollection no_gc;
 
   CodeMap* code_map = GetCodeMap();
   AddressRange range;
@@ -2019,14 +2021,12 @@ void EventHandler(const v8::JitCodeEvent* event) {
       Isolate* isolate = reinterpret_cast<Isolate*>(event->isolate);
       Code code = isolate->heap()->GcSafeFindCodeForInnerPointer(addr);
       LineInfo* lineinfo = GetLineInfo(addr);
-      EmbeddedVector<char, 256> buffer;
-      StringBuilder builder(buffer.begin(), buffer.length());
-      builder.AddSubstring(event->name.str, static_cast<int>(event->name.len));
+      std::string event_name(event->name.str, event->name.len);
       // It's called UnboundScript in the API but it's a SharedFunctionInfo.
       SharedFunctionInfo shared = event->script.IsEmpty()
                                       ? SharedFunctionInfo()
                                       : *Utils::OpenHandle(*event->script);
-      AddCode(builder.Finalize(), code, shared, lineinfo);
+      AddCode(event_name.c_str(), code, shared, lineinfo);
       break;
     }
     case v8::JitCodeEvent::CODE_MOVED:

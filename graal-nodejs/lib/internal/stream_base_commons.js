@@ -17,9 +17,6 @@ const {
 } = internalBinding('stream_wrap');
 const { UV_EOF } = internalBinding('uv');
 const {
-  codes: {
-    ERR_INVALID_CALLBACK
-  },
   errnoException
 } = require('internal/errors');
 const { owner_symbol } = require('internal/async_hooks').symbols;
@@ -30,6 +27,7 @@ const {
 } = require('internal/timers');
 const { isUint8Array } = require('internal/util/types');
 const { clearTimeout } = require('timers');
+const { validateCallback } = require('internal/validators');
 
 const kMaybeDestroy = Symbol('kMaybeDestroy');
 const kUpdateTimer = Symbol('kUpdateTimer');
@@ -82,7 +80,11 @@ function handleWriteReq(req, data, encoding) {
 function onWriteComplete(status) {
   debug('onWriteComplete', status, this.error);
 
-  const stream = this.handle[owner_symbol];
+  let stream = this.handle[owner_symbol];
+
+  if (stream.constructor.name === 'ReusedHandle') {
+    stream = stream.handle;
+  }
 
   if (stream.destroyed) {
     if (typeof this.callback === 'function')
@@ -90,9 +92,14 @@ function onWriteComplete(status) {
     return;
   }
 
+  // TODO (ronag): This should be moved before if(stream.destroyed)
+  // in order to avoid swallowing error.
   if (status < 0) {
     const ex = errnoException(status, 'write', this.error);
-    stream.destroy(ex, this.callback);
+    if (typeof this.callback === 'function')
+      this.callback(ex);
+    else
+      stream.destroy(ex);
     return;
   }
 
@@ -103,7 +110,7 @@ function onWriteComplete(status) {
     this.callback(null);
 }
 
-function createWriteWrap(handle) {
+function createWriteWrap(handle, callback) {
   const req = new WriteWrap();
 
   req.handle = handle;
@@ -111,12 +118,13 @@ function createWriteWrap(handle) {
   req.async = false;
   req.bytes = 0;
   req.buffer = null;
+  req.callback = callback;
 
   return req;
 }
 
 function writevGeneric(self, data, cb) {
-  const req = createWriteWrap(self[kHandle]);
+  const req = createWriteWrap(self[kHandle], cb);
   const allBuffers = data.allBuffers;
   let chunks;
   if (allBuffers) {
@@ -136,29 +144,27 @@ function writevGeneric(self, data, cb) {
   // Retain chunks
   if (err === 0) req._chunks = chunks;
 
-  afterWriteDispatched(self, req, err, cb);
+  afterWriteDispatched(req, err, cb);
   return req;
 }
 
 function writeGeneric(self, data, encoding, cb) {
-  const req = createWriteWrap(self[kHandle]);
+  const req = createWriteWrap(self[kHandle], cb);
   const err = handleWriteReq(req, data, encoding);
 
-  afterWriteDispatched(self, req, err, cb);
+  afterWriteDispatched(req, err, cb);
   return req;
 }
 
-function afterWriteDispatched(self, req, err, cb) {
+function afterWriteDispatched(req, err, cb) {
   req.bytes = streamBaseState[kBytesWritten];
   req.async = !!streamBaseState[kLastWriteWasAsync];
 
   if (err !== 0)
-    return self.destroy(errnoException(err, 'write', req.error), cb);
+    return cb(errnoException(err, 'write', req.error));
 
-  if (!req.async) {
-    cb();
-  } else {
-    req.callback = cb;
+  if (!req.async && typeof req.callback === 'function') {
+    req.callback();
   }
 }
 
@@ -166,7 +172,12 @@ function onStreamRead(arrayBuffer) {
   const nread = streamBaseState[kReadBytesOrError];
 
   const handle = this;
-  const stream = this[owner_symbol];
+
+  let stream = this[owner_symbol];
+
+  if (stream.constructor.name === 'ReusedHandle') {
+    stream = stream.handle;
+  }
 
   stream[kUpdateTimer]();
 
@@ -255,8 +266,7 @@ function setStreamTimeout(msecs, callback) {
 
   if (msecs === 0) {
     if (callback !== undefined) {
-      if (typeof callback !== 'function')
-        throw new ERR_INVALID_CALLBACK(callback);
+      validateCallback(callback);
       this.removeListener('timeout', callback);
     }
   } else {
@@ -264,8 +274,7 @@ function setStreamTimeout(msecs, callback) {
     if (this[kSession]) this[kSession][kUpdateTimer]();
 
     if (callback !== undefined) {
-      if (typeof callback !== 'function')
-        throw new ERR_INVALID_CALLBACK(callback);
+      validateCallback(callback);
       this.once('timeout', callback);
     }
   }
@@ -273,7 +282,6 @@ function setStreamTimeout(msecs, callback) {
 }
 
 module.exports = {
-  createWriteWrap,
   writevGeneric,
   writeGeneric,
   onStreamRead,

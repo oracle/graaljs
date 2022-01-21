@@ -10,7 +10,6 @@ const {
   ObjectDefineProperty,
   Symbol,
   SymbolToStringTag,
-  TypeError,
 } = primordials;
 
 const {
@@ -21,11 +20,11 @@ const {
 } = require('internal/event_target');
 const {
   customInspectSymbol,
-  emitExperimentalWarning
 } = require('internal/util');
 const { inspect } = require('internal/util/inspect');
 const {
   codes: {
+    ERR_ILLEGAL_CONSTRUCTOR,
     ERR_INVALID_THIS,
   }
 } = require('internal/errors');
@@ -50,8 +49,7 @@ function validateAbortSignal(obj) {
 
 class AbortSignal extends EventTarget {
   constructor() {
-    // eslint-disable-next-line no-restricted-syntax
-    throw new TypeError('Illegal constructor');
+    throw new ERR_ILLEGAL_CONSTRUCTOR();
   }
 
   get aborted() {
@@ -112,7 +110,6 @@ function validateAbortController(obj) {
 class AbortController {
   constructor() {
     this[kSignal] = createAbortSignal();
-    emitExperimentalWarning('AbortController');
   }
 
   get signal() {
@@ -145,6 +142,7 @@ ObjectDefineProperty(AbortController.prototype, SymbolToStringTag, {
 });
 
 module.exports = {
+  kAborted,
   AbortController,
   AbortSignal,
 };

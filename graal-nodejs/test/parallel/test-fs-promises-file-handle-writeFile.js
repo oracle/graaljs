@@ -1,4 +1,3 @@
-// Flags: --experimental-abortcontroller
 'use strict';
 
 const common = require('../common');
@@ -34,17 +33,13 @@ async function validateWriteFile() {
 async function doWriteAndCancel() {
   const filePathForHandle = path.resolve(tmpDir, 'dogs-running.txt');
   const fileHandle = await open(filePathForHandle, 'w+');
-  try {
-    const buffer = Buffer.from('dogs running'.repeat(512 * 1024), 'utf8');
-    const controller = new AbortController();
-    const { signal } = controller;
-    process.nextTick(() => controller.abort());
-    await assert.rejects(writeFile(fileHandle, buffer, { signal }), {
-      name: 'AbortError'
-    });
-  } finally {
-    await fileHandle.close();
-  }
+  const buffer = Buffer.from('dogs running'.repeat(512 * 1024), 'utf8');
+  const controller = new AbortController();
+  const { signal } = controller;
+  process.nextTick(() => controller.abort());
+  await assert.rejects(writeFile(fileHandle, buffer, { signal }), {
+    name: 'AbortError'
+  });
 }
 
 const dest = path.resolve(tmpDir, 'tmp.txt');

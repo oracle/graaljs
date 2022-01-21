@@ -105,7 +105,7 @@ const path = require('path');
     .then(() => {
       assert.match(
         cli.output,
-        /break in timers/,
+        /break in node:timers/,
         'entered timers.js');
     })
     .then(() => cli.stepCommand('cont'))

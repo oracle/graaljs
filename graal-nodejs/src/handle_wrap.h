@@ -32,6 +32,7 @@
 namespace node {
 
 class Environment;
+class ExternalReferenceRegistry;
 
 // Rules:
 //
@@ -77,6 +78,7 @@ class HandleWrap : public AsyncWrap {
 
   static v8::Local<v8::FunctionTemplate> GetConstructorTemplate(
       Environment* env);
+  static void RegisterExternalReferences(ExternalReferenceRegistry* registry);
 
  protected:
   HandleWrap(Environment* env,
@@ -94,10 +96,11 @@ class HandleWrap : public AsyncWrap {
     return state_ == kClosing || state_ == kClosed;
   }
 
+  static void OnClose(uv_handle_t* handle);
+
  private:
   friend class Environment;
   friend void GetActiveHandles(const v8::FunctionCallbackInfo<v8::Value>&);
-  static void OnClose(uv_handle_t* handle);
 
   // handle_wrap_queue_ needs to be at a fixed offset from the start of the
   // class because it is used by src/node_postmortem_metadata.cc to calculate

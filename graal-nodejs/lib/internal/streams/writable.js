@@ -26,10 +26,13 @@
 'use strict';
 
 const {
-  FunctionPrototype,
+  ArrayPrototypeSlice,
+  Error,
+  FunctionPrototypeSymbolHasInstance,
   ObjectDefineProperty,
   ObjectDefineProperties,
   ObjectSetPrototypeOf,
+  StringPrototypeToLowerCase,
   Symbol,
   SymbolHasInstance,
 } = primordials;
@@ -41,6 +44,11 @@ const EE = require('events');
 const Stream = require('internal/streams/legacy').Stream;
 const { Buffer } = require('buffer');
 const destroyImpl = require('internal/streams/destroy');
+
+const {
+  addAbortSignalNoValidate,
+} = require('internal/streams/add-abort-signal');
+
 const {
   getHighWaterMark,
   getDefaultHighWaterMark
@@ -63,6 +71,8 @@ ObjectSetPrototypeOf(Writable.prototype, Stream.prototype);
 ObjectSetPrototypeOf(Writable, Stream);
 
 function nop() {}
+
+const kOnFinished = Symbol('kOnFinished');
 
 function WritableState(options, stream, isDuplex) {
   // Duplex streams are both readable and writable, but share
@@ -155,6 +165,12 @@ function WritableState(options, stream, isDuplex) {
   // this must be 0 before 'finish' can be emitted.
   this.pendingcb = 0;
 
+  // Stream is still being constructed and cannot be
+  // destroyed until construction finished or failed.
+  // Async construction is opt in, therefore we start as
+  // constructed.
+  this.constructed = true;
+
   // Emit prefinish if the only thing we're waiting for is _write cbs
   // This is relevant for synchronous Transform streams.
   this.prefinished = false;
@@ -175,6 +191,12 @@ function WritableState(options, stream, isDuplex) {
 
   // Indicates whether the stream has finished destroying.
   this.closed = false;
+
+  // True if close has been emitted or would have been emitted
+  // depending on emitClose.
+  this.closeEmitted = false;
+
+  this[kOnFinished] = [];
 }
 
 function resetBuffer(state) {
@@ -185,7 +207,7 @@ function resetBuffer(state) {
 }
 
 WritableState.prototype.getBuffer = function getBuffer() {
-  return this.buffered.slice(this.bufferedIndex);
+  return ArrayPrototypeSlice(this.buffered, this.bufferedIndex);
 };
 
 ObjectDefineProperty(WritableState.prototype, 'bufferedRequestCount', {
@@ -193,27 +215,6 @@ ObjectDefineProperty(WritableState.prototype, 'bufferedRequestCount', {
     return this.buffered.length - this.bufferedIndex;
   }
 });
-
-// Test _writableState for inheritance to account for Duplex streams,
-// whose prototype chain only points to Readable.
-let realHasInstance;
-if (typeof Symbol === 'function' && SymbolHasInstance) {
-  realHasInstance = FunctionPrototype[SymbolHasInstance];
-  ObjectDefineProperty(Writable, SymbolHasInstance, {
-    value: function(object) {
-      if (realHasInstance.call(this, object))
-        return true;
-      if (this !== Writable)
-        return false;
-
-      return object && object._writableState instanceof WritableState;
-    }
-  });
-} else {
-  realHasInstance = function(object) {
-    return object instanceof this;
-  };
-}
 
 function Writable(options) {
   // Writable ctor is applied to Duplexes, too.
@@ -228,7 +229,7 @@ function Writable(options) {
   // the WritableState constructor, at least with V8 6.5.
   const isDuplex = (this instanceof Stream.Duplex);
 
-  if (!isDuplex && !realHasInstance.call(Writable, this))
+  if (!isDuplex && !FunctionPrototypeSymbolHasInstance(Writable, this))
     return new Writable(options);
 
   this._writableState = new WritableState(options, this, isDuplex);
@@ -245,18 +246,42 @@ function Writable(options) {
 
     if (typeof options.final === 'function')
       this._final = options.final;
+
+    if (typeof options.construct === 'function')
+      this._construct = options.construct;
+    if (options.signal)
+      addAbortSignalNoValidate(options.signal, this);
   }
 
   Stream.call(this, options);
+
+  destroyImpl.construct(this, () => {
+    const state = this._writableState;
+
+    if (!state.writing) {
+      clearBuffer(this, state);
+    }
+
+    finishMaybe(this, state);
+  });
 }
+
+ObjectDefineProperty(Writable, SymbolHasInstance, {
+  value: function(object) {
+    if (FunctionPrototypeSymbolHasInstance(this, object)) return true;
+    if (this !== Writable) return false;
+
+    return object && object._writableState instanceof WritableState;
+  },
+});
 
 // Otherwise people can pipe Writable streams, which is just wrong.
 Writable.prototype.pipe = function() {
   errorOrDestroy(this, new ERR_STREAM_CANNOT_PIPE());
 };
 
-Writable.prototype.write = function(chunk, encoding, cb) {
-  const state = this._writableState;
+function _write(stream, chunk, encoding, cb) {
+  const state = stream._writableState;
 
   if (typeof encoding === 'function') {
     cb = encoding;
@@ -264,6 +289,8 @@ Writable.prototype.write = function(chunk, encoding, cb) {
   } else {
     if (!encoding)
       encoding = state.defaultEncoding;
+    else if (encoding !== 'buffer' && !Buffer.isEncoding(encoding))
+      throw new ERR_UNKNOWN_ENCODING(encoding);
     if (typeof cb !== 'function')
       cb = nop;
   }
@@ -296,11 +323,15 @@ Writable.prototype.write = function(chunk, encoding, cb) {
 
   if (err) {
     process.nextTick(cb, err);
-    errorOrDestroy(this, err, true);
-    return false;
+    errorOrDestroy(stream, err, true);
+    return err;
   }
   state.pendingcb++;
-  return writeOrBuffer(this, state, chunk, encoding, cb);
+  return writeOrBuffer(stream, state, chunk, encoding, cb);
+}
+
+Writable.prototype.write = function(chunk, encoding, cb) {
+  return _write(this, chunk, encoding, cb) === true;
 };
 
 Writable.prototype.cork = function() {
@@ -321,7 +352,7 @@ Writable.prototype.uncork = function() {
 Writable.prototype.setDefaultEncoding = function setDefaultEncoding(encoding) {
   // node::ParseEncoding() requires lower case.
   if (typeof encoding === 'string')
-    encoding = encoding.toLowerCase();
+    encoding = StringPrototypeToLowerCase(encoding);
   if (!Buffer.isEncoding(encoding))
     throw new ERR_UNKNOWN_ENCODING(encoding);
   this._writableState.defaultEncoding = encoding;
@@ -342,7 +373,7 @@ function writeOrBuffer(stream, state, chunk, encoding, callback) {
   if (!ret)
     state.needDrain = true;
 
-  if (state.writing || state.corked || state.errored) {
+  if (state.writing || state.corked || state.errored || !state.constructed) {
     state.buffered.push({ chunk, encoding, callback });
     if (state.allBuffers && encoding !== 'buffer') {
       state.allBuffers = false;
@@ -386,7 +417,7 @@ function onwriteError(stream, state, er, cb) {
   // not enabled. Passing `er` here doesn't make sense since
   // it's related to one specific write, not to the buffered
   // writes.
-  errorBuffer(state, new ERR_STREAM_DESTROYED('write'));
+  errorBuffer(state);
   // This can emit error, but error must always follow cb.
   errorOrDestroy(stream, er);
 }
@@ -467,14 +498,14 @@ function afterWrite(stream, state, count, cb) {
   }
 
   if (state.destroyed) {
-    errorBuffer(state, new ERR_STREAM_DESTROYED('write'));
+    errorBuffer(state);
   }
 
   finishMaybe(stream, state);
 }
 
 // If there's something in the buffer waiting, then invoke callbacks.
-function errorBuffer(state, err) {
+function errorBuffer(state) {
   if (state.writing) {
     return;
   }
@@ -483,7 +514,12 @@ function errorBuffer(state, err) {
     const { chunk, callback } = state.buffered[n];
     const len = state.objectMode ? 1 : chunk.length;
     state.length -= len;
-    callback(err);
+    callback(new ERR_STREAM_DESTROYED('write'));
+  }
+
+  const onfinishCallbacks = state[kOnFinished].splice(0);
+  for (let i = 0; i < onfinishCallbacks.length; i++) {
+    onfinishCallbacks[i](new ERR_STREAM_DESTROYED('end'));
   }
 
   resetBuffer(state);
@@ -491,7 +527,10 @@ function errorBuffer(state, err) {
 
 // If there's something in the buffer waiting, then process it.
 function clearBuffer(stream, state) {
-  if (state.corked || state.bufferProcessing || state.destroyed) {
+  if (state.corked ||
+      state.bufferProcessing ||
+      state.destroyed ||
+      !state.constructed) {
     return;
   }
 
@@ -515,7 +554,8 @@ function clearBuffer(stream, state) {
     };
     // Make a copy of `buffered` if it's going to be used by `callback` above,
     // since `doWrite` will mutate the array.
-    const chunks = state.allNoop && i === 0 ? buffered : buffered.slice(i);
+    const chunks = state.allNoop && i === 0 ?
+      buffered : ArrayPrototypeSlice(buffered, i);
     chunks.allBuffers = state.allBuffers;
 
     doWrite(stream, state, true, state.length, chunks, '', callback);
@@ -563,8 +603,14 @@ Writable.prototype.end = function(chunk, encoding, cb) {
     encoding = null;
   }
 
-  if (chunk !== null && chunk !== undefined)
-    this.write(chunk, encoding);
+  let err;
+
+  if (chunk !== null && chunk !== undefined) {
+    const ret = _write(this, chunk, encoding);
+    if (ret instanceof Error) {
+      err = ret;
+    }
+  }
 
   // .end() fully uncorks.
   if (state.corked) {
@@ -572,12 +618,15 @@ Writable.prototype.end = function(chunk, encoding, cb) {
     this.uncork();
   }
 
-  // This is forgiving in terms of unnecessary calls to end() and can hide
-  // logic errors. However, usually such errors are harmless and causing a
-  // hard error can be disproportionately destructive. It is not always
-  // trivial for the user to determine whether end() needs to be called or not.
-  let err;
-  if (!state.errored && !state.ending) {
+  if (err) {
+    // Do nothing...
+  } else if (!state.errored && !state.ending) {
+    // This is forgiving in terms of unnecessary calls to end() and can hide
+    // logic errors. However, usually such errors are harmless and causing a
+    // hard error can be disproportionately destructive. It is not always
+    // trivial for the user to determine whether end() needs to be called
+    // or not.
+
     state.ending = true;
     finishMaybe(this, state, true);
     state.ended = true;
@@ -588,10 +637,11 @@ Writable.prototype.end = function(chunk, encoding, cb) {
   }
 
   if (typeof cb === 'function') {
-    if (err || state.finished)
+    if (err || state.finished) {
       process.nextTick(cb, err);
-    else
-      onFinished(this, cb);
+    } else {
+      state[kOnFinished].push(cb);
+    }
   }
 
   return this;
@@ -599,32 +649,74 @@ Writable.prototype.end = function(chunk, encoding, cb) {
 
 function needFinish(state) {
   return (state.ending &&
+          state.constructed &&
           state.length === 0 &&
           !state.errored &&
           state.buffered.length === 0 &&
           !state.finished &&
-          !state.writing);
+          !state.writing &&
+          !state.errorEmitted &&
+          !state.closeEmitted);
 }
 
 function callFinal(stream, state) {
-  stream._final((err) => {
+  let called = false;
+
+  function onFinish(err) {
+    if (called) {
+      errorOrDestroy(stream, err ?? ERR_MULTIPLE_CALLBACK());
+      return;
+    }
+    called = true;
+
     state.pendingcb--;
     if (err) {
-      errorOrDestroy(stream, err);
-    } else {
+      const onfinishCallbacks = state[kOnFinished].splice(0);
+      for (let i = 0; i < onfinishCallbacks.length; i++) {
+        onfinishCallbacks[i](err);
+      }
+      errorOrDestroy(stream, err, state.sync);
+    } else if (needFinish(state)) {
       state.prefinished = true;
       stream.emit('prefinish');
-      finishMaybe(stream, state);
+      // Backwards compat. Don't check state.sync here.
+      // Some streams assume 'finish' will be emitted
+      // asynchronously relative to _final callback.
+      state.pendingcb++;
+      process.nextTick(finish, stream, state);
     }
-  });
+  }
+
+  state.sync = true;
+  state.pendingcb++;
+
+  try {
+    const result = stream._final(onFinish);
+    if (result != null) {
+      const then = result.then;
+      if (typeof then === 'function') {
+        then.call(
+          result,
+          function() {
+            process.nextTick(onFinish, null);
+          },
+          function(err) {
+            process.nextTick(onFinish, err);
+          });
+      }
+    }
+  } catch (err) {
+    onFinish(stream, state, err);
+  }
+
+  state.sync = false;
 }
 
 function prefinish(stream, state) {
   if (!state.prefinished && !state.finalCalled) {
     if (typeof stream._final === 'function' && !state.destroyed) {
-      state.pendingcb++;
       state.finalCalled = true;
-      process.nextTick(callFinal, stream, state);
+      callFinal(stream, state);
     } else {
       state.prefinished = true;
       stream.emit('prefinish');
@@ -633,10 +725,9 @@ function prefinish(stream, state) {
 }
 
 function finishMaybe(stream, state, sync) {
-  const need = needFinish(state);
-  if (need) {
+  if (needFinish(state)) {
     prefinish(stream, state);
-    if (state.pendingcb === 0) {
+    if (state.pendingcb === 0 && needFinish(state)) {
       state.pendingcb++;
       if (sync) {
         process.nextTick(finish, stream, state);
@@ -645,15 +736,17 @@ function finishMaybe(stream, state, sync) {
       }
     }
   }
-  return need;
 }
 
 function finish(stream, state) {
   state.pendingcb--;
-  if (state.errorEmitted)
-    return;
-
   state.finished = true;
+
+  const onfinishCallbacks = state[kOnFinished].splice(0);
+  for (let i = 0; i < onfinishCallbacks.length; i++) {
+    onfinishCallbacks[i]();
+  }
+
   stream.emit('finish');
 
   if (state.autoDestroy) {
@@ -670,26 +763,6 @@ function finish(stream, state) {
       stream.destroy();
     }
   }
-}
-
-// TODO(ronag): Avoid using events to implement internal logic.
-function onFinished(stream, cb) {
-  function onerror(err) {
-    stream.removeListener('finish', onfinish);
-    stream.removeListener('error', onerror);
-    cb(err);
-    if (stream.listenerCount('error') === 0) {
-      stream.emit('error', err);
-    }
-  }
-
-  function onfinish() {
-    stream.removeListener('finish', onfinish);
-    stream.removeListener('error', onerror);
-    cb();
-  }
-  stream.on('finish', onfinish);
-  stream.prependListener('error', onerror);
 }
 
 ObjectDefineProperties(Writable.prototype, {
@@ -779,9 +852,13 @@ const destroy = destroyImpl.destroy;
 Writable.prototype.destroy = function(err, cb) {
   const state = this._writableState;
 
-  if (!state.destroyed) {
-    process.nextTick(errorBuffer, state, new ERR_STREAM_DESTROYED('write'));
+  // Invoke pending callbacks.
+  if (!state.destroyed &&
+    (state.bufferedIndex < state.buffered.length ||
+      state[kOnFinished].length)) {
+    process.nextTick(errorBuffer, state);
   }
+
   destroy.call(this, err, cb);
   return this;
 };

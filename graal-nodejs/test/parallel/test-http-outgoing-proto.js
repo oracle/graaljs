@@ -74,15 +74,13 @@ assert.throws(() => {
   );
 }
 
-assert(OutgoingMessage.prototype.write.call({ _header: 'test' }));
-
 assert.throws(() => {
   const outgoingMessage = new OutgoingMessage();
   outgoingMessage.write.call({ _header: 'test', _hasBody: 'test' });
 }, {
   code: 'ERR_INVALID_ARG_TYPE',
   name: 'TypeError',
-  message: 'The first argument must be of type string or an instance of ' +
+  message: 'The "chunk" argument must be of type string or an instance of ' +
            'Buffer or Uint8Array. Received undefined'
 });
 
@@ -92,8 +90,16 @@ assert.throws(() => {
 }, {
   code: 'ERR_INVALID_ARG_TYPE',
   name: 'TypeError',
-  message: 'The first argument must be of type string or an instance of ' +
+  message: 'The "chunk" argument must be of type string or an instance of ' +
            'Buffer or Uint8Array. Received type number (1)'
+});
+
+assert.throws(() => {
+  const outgoingMessage = new OutgoingMessage();
+  outgoingMessage.write.call({ _header: 'test', _hasBody: 'test' }, null);
+}, {
+  code: 'ERR_STREAM_NULL_VALUES',
+  name: 'TypeError'
 });
 
 // addTrailers()

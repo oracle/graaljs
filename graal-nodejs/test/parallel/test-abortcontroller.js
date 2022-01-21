@@ -1,11 +1,10 @@
-// Flags: --no-warnings --expose-internals --experimental-abortcontroller
+// Flags: --no-warnings
 'use strict';
 
 const common = require('../common');
 const { inspect } = require('util');
 
 const { ok, strictEqual, throws } = require('assert');
-const { Event } = require('internal/event_target');
 
 {
   // Tests that abort is fired with the correct event type on AbortControllers
@@ -57,10 +56,9 @@ const { Event } = require('internal/event_target');
 {
   // Tests that AbortSignal is impossible to construct manually
   const ac = new AbortController();
-  throws(
-    () => new ac.signal.constructor(),
-    /^TypeError: Illegal constructor$/
-  );
+  throws(() => new ac.signal.constructor(), {
+    code: 'ERR_ILLEGAL_CONSTRUCTOR',
+  });
 }
 {
   // Symbol.toStringTag

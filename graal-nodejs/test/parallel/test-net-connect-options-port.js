@@ -60,13 +60,13 @@ const net = require('net');
 {
   // connect({hint}, cb) and connect({hint})
   const hints = (dns.ADDRCONFIG | dns.V4MAPPED | dns.ALL) + 42;
-  const hintOptBlocks = doConnect([{ hints }],
+  const hintOptBlocks = doConnect([{ port: 42, hints }],
                                   () => common.mustNotCall());
   for (const fn of hintOptBlocks) {
     assert.throws(fn, {
-      code: 'ERR_INVALID_OPT_VALUE',
+      code: 'ERR_INVALID_ARG_VALUE',
       name: 'TypeError',
-      message: /The value "\d+" is invalid for option "hints"/
+      message: /The argument 'hints' is invalid\. Received \d+/
     });
   }
 }
@@ -95,7 +95,6 @@ const net = require('net');
   // Try connecting to random ports, but do so once the server is closed
   server.on('close', () => {
     asyncFailToConnect(0);
-    asyncFailToConnect(/* undefined */);
   });
 }
 
@@ -195,7 +194,7 @@ function canConnect(port) {
 function asyncFailToConnect(port) {
   const onError = () => common.mustCall((err) => {
     const regexp = /^Error: connect E\w+.+$/;
-    assert(regexp.test(String(err)), String(err));
+    assert.match(String(err), regexp);
   });
 
   const dont = () => common.mustNotCall();

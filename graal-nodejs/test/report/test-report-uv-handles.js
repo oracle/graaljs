@@ -273,8 +273,7 @@ if (process.argv[2] === 'child') {
       assert(found_udp.includes(socket), `${socket} UDP socket was not found`);
     }
     for (const socket of ['listening', 'inbound']) {
-      assert(found_named_pipe.includes(socket),
-             `${socket} named pipe socket was not found`);
+      assert(found_named_pipe.includes(socket), `${socket} named pipe socket was not found`);
     }
 
     // Common report tests.

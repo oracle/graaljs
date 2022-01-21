@@ -1,6 +1,6 @@
 # Diagnostics Channel
 
-<!--introduced_in=v14.17.0-->
+<!--introduced_in=v15.1.0-->
 
 > Stability: 1 - Experimental
 
@@ -11,7 +11,11 @@ to report arbitrary message data for diagnostics purposes.
 
 It can be accessed using:
 
-```js
+```mjs
+import diagnostics_channel from 'diagnostics_channel';
+```
+
+```cjs
 const diagnostics_channel = require('diagnostics_channel');
 ```
 
@@ -33,7 +37,27 @@ other modules.
 
 Following is a simple overview of the public API.
 
-```js
+```mjs
+import diagnostics_channel from 'diagnostics_channel';
+
+// Get a reusable channel object
+const channel = diagnostics_channel.channel('my-channel');
+
+// Subscribe to the channel
+channel.subscribe((message, name) => {
+  // Received data
+});
+
+// Check if the channel has an active subscriber
+if (channel.hasSubscribers) {
+  // Publish data to the channel
+  channel.publish({
+    some: 'data'
+  });
+}
+```
+
+```cjs
 const diagnostics_channel = require('diagnostics_channel');
 
 // Get a reusable channel object
@@ -55,6 +79,12 @@ if (channel.hasSubscribers) {
 
 #### `diagnostics_channel.hasSubscribers(name)`
 
+<!-- YAML
+added:
+ - v15.1.0
+ - v14.17.0
+-->
+
 * `name` {string|symbol} The channel name
 * Returns: {boolean} If there are active subscribers
 
@@ -64,7 +94,15 @@ the message you want to send might be expensive to prepare.
 This API is optional but helpful when trying to publish messages from very
 performance-sensitive code.
 
-```js
+```mjs
+import diagnostics_channel from 'diagnostics_channel';
+
+if (diagnostics_channel.hasSubscribers('my-channel')) {
+  // There are subscribers, prepare and publish message
+}
+```
+
+```cjs
 const diagnostics_channel = require('diagnostics_channel');
 
 if (diagnostics_channel.hasSubscribers('my-channel')) {
@@ -74,6 +112,12 @@ if (diagnostics_channel.hasSubscribers('my-channel')) {
 
 #### `diagnostics_channel.channel(name)`
 
+<!-- YAML
+added:
+ - v15.1.0
+ - v14.17.0
+-->
+
 * `name` {string|symbol} The channel name
 * Returns: {Channel} The named channel object
 
@@ -81,13 +125,25 @@ This is the primary entry-point for anyone wanting to interact with a named
 channel. It produces a channel object which is optimized to reduce overhead at
 publish time as much as possible.
 
-```js
+```mjs
+import diagnostics_channel from 'diagnostics_channel';
+
+const channel = diagnostics_channel.channel('my-channel');
+```
+
+```cjs
 const diagnostics_channel = require('diagnostics_channel');
 
 const channel = diagnostics_channel.channel('my-channel');
 ```
 
 ### Class: `Channel`
+
+<!-- YAML
+added:
+ - v15.1.0
+ - v14.17.0
+-->
 
 The class `Channel` represents an individual named channel within the data
 pipeline. It is use to track subscribers and to publish messages when there
@@ -99,6 +155,12 @@ with `new Channel(name)` is not supported.
 
 #### `channel.hasSubscribers`
 
+<!-- YAML
+added:
+ - v15.1.0
+ - v14.17.0
+-->
+
 * Returns: {boolean} If there are active subscribers
 
 Check if there are active subscribers to this channel. This is helpful if
@@ -107,7 +169,17 @@ the message you want to send might be expensive to prepare.
 This API is optional but helpful when trying to publish messages from very
 performance-sensitive code.
 
-```js
+```mjs
+import diagnostics_channel from 'diagnostics_channel';
+
+const channel = diagnostics_channel.channel('my-channel');
+
+if (channel.hasSubscribers) {
+  // There are subscribers, prepare and publish message
+}
+```
+
+```cjs
 const diagnostics_channel = require('diagnostics_channel');
 
 const channel = diagnostics_channel.channel('my-channel');
@@ -119,12 +191,28 @@ if (channel.hasSubscribers) {
 
 #### `channel.publish(message)`
 
+<!-- YAML
+added:
+ - v15.1.0
+ - v14.17.0
+-->
+
 * `message` {any} The message to send to the channel subscribers
 
 Publish a message to any subscribers to the channel. This will trigger
 message handlers synchronously so they will execute within the same context.
 
-```js
+```mjs
+import diagnostics_channel from 'diagnostics_channel';
+
+const channel = diagnostics_channel.channel('my-channel');
+
+channel.publish({
+  some: 'message'
+});
+```
+
+```cjs
 const diagnostics_channel = require('diagnostics_channel');
 
 const channel = diagnostics_channel.channel('my-channel');
@@ -136,6 +224,12 @@ channel.publish({
 
 #### `channel.subscribe(onMessage)`
 
+<!-- YAML
+added:
+ - v15.1.0
+ - v14.17.0
+-->
+
 * `onMessage` {Function} The handler to receive channel messages
   * `message` {any} The message data
   * `name` {string|symbol} The name of the channel
@@ -144,7 +238,17 @@ Register a message handler to subscribe to this channel. This message handler
 will be run synchronously whenever a message is published to the channel. Any
 errors thrown in the message handler will trigger an [`'uncaughtException'`][].
 
-```js
+```mjs
+import diagnostics_channel from 'diagnostics_channel';
+
+const channel = diagnostics_channel.channel('my-channel');
+
+channel.subscribe((message, name) => {
+  // Received data
+});
+```
+
+```cjs
 const diagnostics_channel = require('diagnostics_channel');
 
 const channel = diagnostics_channel.channel('my-channel');
@@ -156,12 +260,32 @@ channel.subscribe((message, name) => {
 
 #### `channel.unsubscribe(onMessage)`
 
+<!-- YAML
+added:
+ - v15.1.0
+ - v14.17.0
+-->
+
 * `onMessage` {Function} The previous subscribed handler to remove
 
 Remove a message handler previously registered to this channel with
 [`channel.subscribe(onMessage)`][].
 
-```js
+```mjs
+import diagnostics_channel from 'diagnostics_channel';
+
+const channel = diagnostics_channel.channel('my-channel');
+
+function onMessage(message, name) {
+  // Received data
+}
+
+channel.subscribe(onMessage);
+
+channel.unsubscribe(onMessage);
+```
+
+```cjs
 const diagnostics_channel = require('diagnostics_channel');
 
 const channel = diagnostics_channel.channel('my-channel');
@@ -175,6 +299,6 @@ channel.subscribe(onMessage);
 channel.unsubscribe(onMessage);
 ```
 
-[`'uncaughtException'`]: process.md#process_event_uncaughtexception
-[`channel.subscribe(onMessage)`]: #diagnostics_channel_channel_subscribe_onmessage
-[`diagnostics_channel.channel(name)`]: #diagnostics_channel_diagnostics_channel_channel_name
+[`'uncaughtException'`]: process.md#event-uncaughtexception
+[`channel.subscribe(onMessage)`]: #channelsubscribeonmessage
+[`diagnostics_channel.channel(name)`]: #diagnostics_channelchannelname

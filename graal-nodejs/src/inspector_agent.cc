@@ -87,7 +87,6 @@ inline void* StartIoThreadMain(void* unused) {
     if (agent != nullptr)
       agent->RequestIoThreadStart();
   }
-  return nullptr;
 }
 
 static int StartDebugSignalHandler() {
@@ -496,7 +495,7 @@ class NodeInspectorClient : public V8InspectorClient {
     Isolate* isolate = env_->isolate();
     Local<Context> context = env_->context();
 
-    int script_id = message->GetScriptOrigin().ScriptID()->Value();
+    int script_id = message->GetScriptOrigin().ScriptId();
 
     Local<v8::StackTrace> stack_trace = message->GetStackTrace();
 
@@ -637,9 +636,7 @@ class NodeInspectorClient : public V8InspectorClient {
     if (!IsFilePath(resource_name))
       return nullptr;
     node::url::URL url = node::url::URL::FromFilePath(resource_name);
-    // TODO(ak239spb): replace this code with url.href().
-    // Refs: https://github.com/nodejs/node/issues/22610
-    return Utf8ToStringView(url.protocol() + "//" + url.path());
+    return Utf8ToStringView(url.href());
   }
 
   node::Environment* env_;

@@ -37,7 +37,6 @@ const {
 require('internal/util').assertCrypto();
 
 const tls = require('tls');
-const url = require('url');
 const { Agent: HttpAgent } = require('_http_agent');
 const {
   Server: HttpServer,
@@ -327,8 +326,6 @@ Agent.prototype._evictSession = function _evictSession(key) {
 
 const globalAgent = new Agent();
 
-let urlWarningEmitted = false;
-
 /**
  * Makes a request to a secure web server.
  * @param {...any} args
@@ -339,21 +336,7 @@ function request(...args) {
 
   if (typeof args[0] === 'string') {
     const urlStr = ArrayPrototypeShift(args);
-    try {
-      options = urlToHttpOptions(new URL(urlStr));
-    } catch (err) {
-      options = url.parse(urlStr);
-      if (!options.hostname) {
-        throw err;
-      }
-      if (!urlWarningEmitted && !process.noDeprecation) {
-        urlWarningEmitted = true;
-        process.emitWarning(
-          `The provided URL ${urlStr} is not a valid URL, and is supported ` +
-          'in the https module solely for compatibility.',
-          'DeprecationWarning', 'DEP0109');
-      }
-    }
+    options = urlToHttpOptions(new URL(urlStr));
   } else if (args[0] && args[0][searchParamsSymbol] &&
              args[0][searchParamsSymbol][searchParamsSymbol]) {
     // url.URL instance

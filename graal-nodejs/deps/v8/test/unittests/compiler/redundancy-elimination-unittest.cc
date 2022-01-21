@@ -35,12 +35,13 @@ class RedundancyEliminationTest : public GraphTest {
     Handle<FeedbackMetadata> metadata = FeedbackMetadata::New(isolate(), &spec);
     Handle<SharedFunctionInfo> shared =
         isolate()->factory()->NewSharedFunctionInfoForBuiltin(
-            isolate()->factory()->empty_string(), Builtins::kIllegal);
+            isolate()->factory()->empty_string(), Builtin::kIllegal);
     shared->set_raw_outer_scope_info_or_feedback_metadata(*metadata);
     Handle<ClosureFeedbackCellArray> closure_feedback_cell_array =
         ClosureFeedbackCellArray::New(isolate(), shared);
-    Handle<FeedbackVector> feedback_vector =
-        FeedbackVector::New(isolate(), shared, closure_feedback_cell_array);
+    IsCompiledScope is_compiled_scope(shared->is_compiled_scope(isolate()));
+    Handle<FeedbackVector> feedback_vector = FeedbackVector::New(
+        isolate(), shared, closure_feedback_cell_array, &is_compiled_scope);
     vector_slot_pairs_.push_back(FeedbackSource());
     vector_slot_pairs_.push_back(FeedbackSource(feedback_vector, slot1));
     vector_slot_pairs_.push_back(FeedbackSource(feedback_vector, slot2));
@@ -76,7 +77,6 @@ const CheckTaggedInputMode kCheckTaggedInputModes[] = {
 const NumberOperationHint kNumberOperationHints[] = {
     NumberOperationHint::kSignedSmall,
     NumberOperationHint::kSignedSmallInputs,
-    NumberOperationHint::kSigned32,
     NumberOperationHint::kNumber,
     NumberOperationHint::kNumberOrOddball,
 };

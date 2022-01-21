@@ -83,7 +83,7 @@ interface InstructionsPhase {
   instructionOffsetToPCOffset?: any;
   blockIdtoInstructionRange?: any;
   nodeIdToInstructionRange?: any;
-  codeOffsetsInfo?: CodeOffsetsInfo
+  codeOffsetsInfo?: CodeOffsetsInfo;
 }
 
 interface GraphPhase {
@@ -100,8 +100,44 @@ export interface Schedule {
   nodes: Array<any>;
 }
 
+export class Interval {
+  start: number;
+  end: number;
+
+  constructor(numbers: [number, number]) {
+    this.start = numbers[0];
+    this.end = numbers[1];
+  }
+}
+
+export interface ChildRange {
+  id: string;
+  type: string;
+  op: any;
+  intervals: Array<[number, number]>;
+  uses: Array<number>;
+}
+
+export interface Range {
+  child_ranges: Array<ChildRange>;
+  is_deferred: boolean;
+}
+
+export class RegisterAllocation {
+  fixedDoubleLiveRanges: Map<string, Range>;
+  fixedLiveRanges: Map<string, Range>;
+  liveRanges: Map<string, Range>;
+
+  constructor(registerAllocation) {
+    this.fixedDoubleLiveRanges = new Map<string, Range>(Object.entries(registerAllocation.fixed_double_live_ranges));
+    this.fixedLiveRanges = new Map<string, Range>(Object.entries(registerAllocation.fixed_live_ranges));
+    this.liveRanges = new Map<string, Range>(Object.entries(registerAllocation.live_ranges));
+  }
+}
+
 export interface Sequence {
   blocks: Array<any>;
+  register_allocation: RegisterAllocation;
 }
 
 class CodeOffsetsInfo {
@@ -129,7 +165,7 @@ export class SourceResolver {
   phases: Array<Phase>;
   phaseNames: Map<string, number>;
   disassemblyPhase: Phase;
-  lineToSourcePositions: Map<string, Array<AnyPosition>>;
+  linePositionMap: Map<string, Array<AnyPosition>>;
   nodeIdToInstructionRange: Array<[number, number]>;
   blockIdToInstructionRange: Array<[number, number]>;
   instructionToPCOffset: Array<TurbolizerInstructionStartInfo>;
@@ -157,7 +193,7 @@ export class SourceResolver {
     // The disassembly phase is stored separately.
     this.disassemblyPhase = undefined;
     // Maps line numbers to source positions
-    this.lineToSourcePositions = new Map();
+    this.linePositionMap = new Map();
     // Maps node ids to instruction ranges.
     this.nodeIdToInstructionRange = [];
     // Maps block ids to instruction ranges.
@@ -240,7 +276,7 @@ export class SourceResolver {
   }
 
   sourcePositionsToNodeIds(sourcePositions) {
-    const nodeIds = new Set();
+    const nodeIds = new Set<string>();
     for (const sp of sourcePositions) {
       const key = sourcePositionToStringKey(sp);
       const nodeIdsForPosition = this.positionToNodes.get(key);
@@ -490,7 +526,8 @@ export class SourceResolver {
   instructionsToKeyPcOffsets(instructionIds: Iterable<number>): Array<number> {
     const keyPcOffsets = [];
     for (const instructionId of instructionIds) {
-      keyPcOffsets.push(this.instructionToPCOffset[instructionId].gap);
+      const pcOffset = this.instructionToPCOffset[instructionId];
+      if (pcOffset !== undefined) keyPcOffsets.push(pcOffset.gap);
     }
     return keyPcOffsets;
   }
@@ -616,10 +653,10 @@ export class SourceResolver {
 
   addAnyPositionToLine(lineNumber: number | string, sourcePosition: AnyPosition) {
     const lineNumberString = anyToString(lineNumber);
-    if (!this.lineToSourcePositions.has(lineNumberString)) {
-      this.lineToSourcePositions.set(lineNumberString, []);
+    if (!this.linePositionMap.has(lineNumberString)) {
+      this.linePositionMap.set(lineNumberString, []);
     }
-    const A = this.lineToSourcePositions.get(lineNumberString);
+    const A = this.linePositionMap.get(lineNumberString);
     if (!A.includes(sourcePosition)) A.push(sourcePosition);
   }
 
@@ -630,8 +667,8 @@ export class SourceResolver {
     });
   }
 
-  linetoSourcePositions(lineNumber: number | string) {
-    const positions = this.lineToSourcePositions.get(anyToString(lineNumber));
+  lineToSourcePositions(lineNumber: number | string) {
+    const positions = this.linePositionMap.get(anyToString(lineNumber));
     if (positions === undefined) return [];
     return positions;
   }
@@ -720,8 +757,11 @@ export class SourceResolver {
     phase.schedule = state;
     return phase;
   }
+
   parseSequence(phase) {
-    phase.sequence = { blocks: phase.blocks };
+    phase.sequence = { blocks: phase.blocks,
+                       register_allocation: phase.register_allocation ? new RegisterAllocation(phase.register_allocation)
+                                                                      : undefined };
     return phase;
   }
 }

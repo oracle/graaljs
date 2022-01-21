@@ -27,7 +27,7 @@ function startCLI(args, flags = [], spawnOpts = {}) {
   }
 
   function getOutput() {
-    return outputBuffer.join('\n').replace(/\b/g, '');
+    return outputBuffer.join('\n').replaceAll('\b', '');
   }
 
   child.stdout.setEncoding('utf8');
@@ -103,14 +103,13 @@ function startCLI(args, flags = [], spawnOpts = {}) {
       return this.waitFor(/>\s+$/);
     },
 
-    waitForInitialBreak() {
-      return this.waitFor(/break (?:on start )?in/i)
-        .then(() => {
-          if (isPreBreak(this.output)) {
-            return this.command('next', false)
-              .then(() => this.waitFor(/break in/));
-          }
-        });
+    async waitForInitialBreak() {
+      await this.waitFor(/break (?:on start )?in/i);
+
+      if (isPreBreak(this.output)) {
+        await this.command('next', false);
+        return this.waitFor(/break in/);
+      }
     },
 
     get breakInfo() {

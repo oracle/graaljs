@@ -19,7 +19,6 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-// Flags: --experimental-abortcontroller
 'use strict';
 const common = require('../common');
 const assert = require('assert');
@@ -95,4 +94,14 @@ fs.open(filename4, 'w+', common.mustSucceed((fd) => {
   }));
 
   process.nextTick(() => controller.abort());
+}
+
+{
+  // Test read-only mode
+  const filename = join(tmpdir.path, 'test6.txt');
+  fs.writeFileSync(filename, '');
+
+  // TODO: Correct the error type
+  const expectedError = common.isWindows ? /EPERM/ : /EBADF/;
+  fs.writeFile(filename, s, { flag: 'r' }, common.expectsError(expectedError));
 }

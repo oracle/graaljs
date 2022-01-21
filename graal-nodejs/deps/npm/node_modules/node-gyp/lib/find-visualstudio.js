@@ -151,7 +151,7 @@ VisualStudioFinder.prototype = {
 
     const failPowershell = () => {
       this.addLog(
-        'could not use PowerShell to find Visual Studio 2017 or newer')
+        'could not use PowerShell to find Visual Studio 2017 or newer, try re-running with \'--loglevel silly\' for more details')
       cb(null)
     }
 
@@ -399,7 +399,7 @@ VisualStudioFinder.prototype = {
     })
   },
 
-  // After finding a usable version of Visual Stuido:
+  // After finding a usable version of Visual Studio:
   // - add it to validVersions to be displayed at the end if a specific
   //   version was requested and not found;
   // - check if this is the version that was requested.

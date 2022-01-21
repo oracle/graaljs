@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@
 #include "include/v8.h"
 #include "include/v8-platform.h"
 #include "jni.h"
+#include "microtask_queue.h"
 #include <string.h>
 #include <vector>
 #ifdef DEBUG
@@ -156,6 +157,7 @@ enum GraalAccessMethod {
     object_define_property,
     object_preview_entries,
     object_set_integrity_level,
+    object_is_constructor,
     array_new,
     array_new_from_elements,
     array_length,
@@ -325,6 +327,9 @@ enum GraalAccessMethod {
     module_get_unbound_module_script,
     module_create_synthetic_module,
     module_set_synthetic_module_export,
+    module_get_module_requests,
+    module_request_get_specifier,
+    module_request_get_import_assertions,
     script_or_module_get_resource_name,
     script_or_module_get_host_defined_options,
     value_serializer_new,
@@ -362,8 +367,11 @@ enum GraalAccessMethod {
     shared_array_buffer_is_external,
     shared_array_buffer_get_contents,
     shared_array_buffer_externalize,
+    shared_array_buffer_byte_length,
     script_compiler_compile_function_in_context,
     backing_store_register_callback,
+    fixed_array_length,
+    fixed_array_get,
 
     count // Should be the last item of GraalAccessMethod
 };
@@ -418,8 +426,8 @@ public:
     void NotifyPromiseRejectCallback(v8::PromiseRejectMessage message);
     void SetImportMetaInitializer(v8::HostInitializeImportMetaObjectCallback callback);
     void NotifyImportMetaInitializer(v8::Local<v8::Object> import_meta, v8::Local<v8::Module> module);
-    void SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyCallback callback);
-    v8::MaybeLocal<v8::Promise> NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::ScriptOrModule> referrer, v8::Local<v8::String> specifier);
+    void SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyWithImportAssertionsCallback callback);
+    v8::MaybeLocal<v8::Promise> NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::ScriptOrModule> referrer, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_assertions);
     void SetPrepareStackTraceCallback(v8::PrepareStackTraceCallback callback);
     v8::MaybeLocal<v8::Value> NotifyPrepareStackTraceCallback(v8::Local<v8::Context> context, v8::Local<v8::Value> error, v8::Local<v8::Array> sites);
     void EnqueueMicrotask(v8::MicrotaskCallback microtask, void* data);
@@ -662,6 +670,20 @@ public:
         return external_pool_;
     }
 
+    inline v8::MicrotaskQueue* GetMicrotaskQueue() {
+        return &microtask_queue_;
+    }
+
+    inline bool SetJSExecutionAllowed(bool allowed) {
+        bool old = js_execution_allowed_;
+        js_execution_allowed_ = allowed;
+        return old;
+    }
+
+    inline bool GetJSExecutionAllowed() {
+        return js_execution_allowed_;
+    }
+
     static void SetFlags(int argc, char** argv) {
         char** old_argv = GraalIsolate::argv;
         int old_argc = GraalIsolate::argc;
@@ -738,6 +760,7 @@ private:
     intptr_t stack_bottom_;
     size_t stack_size_limit_;
     bool main_;
+    bool js_execution_allowed_ = true;
     double return_value_;
     static bool abort_on_uncaught_exception_;
     static bool internal_error_check_;
@@ -779,9 +802,10 @@ private:
     v8::PromiseHook promise_hook_;
     v8::PromiseRejectCallback promise_reject_callback_;
     v8::HostInitializeImportMetaObjectCallback import_meta_initializer;
-    v8::HostImportModuleDynamicallyCallback import_module_dynamically;
+    v8::HostImportModuleDynamicallyWithImportAssertionsCallback import_module_dynamically;
     v8::FatalErrorCallback fatal_error_handler_;
     v8::PrepareStackTraceCallback prepare_stack_trace_callback_;
+    v8::internal::MicrotaskQueue microtask_queue_;
 
     GraalObjectPool<GraalObject>* object_pool_;
     GraalObjectPool<GraalString>* string_pool_;

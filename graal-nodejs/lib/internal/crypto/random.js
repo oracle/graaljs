@@ -1,34 +1,59 @@
 'use strict';
 
 const {
+  Array,
+  ArrayPrototypeForEach,
+  ArrayPrototypePush,
+  ArrayPrototypeShift,
+  ArrayPrototypeSplice,
+  BigInt,
+  FunctionPrototypeBind,
+  FunctionPrototypeCall,
   MathMin,
   NumberIsNaN,
-  NumberIsSafeInteger
+  NumberIsSafeInteger,
+  NumberPrototypeToString,
+  StringPrototypePadStart,
 } = primordials;
 
-const { AsyncWrap, Providers } = internalBinding('async_wrap');
 const {
-  Buffer,
-  kMaxLength,
-} = require('buffer');
-const {
-  randomBytes: _randomBytes,
+  RandomBytesJob,
+  RandomPrimeJob,
+  CheckPrimeJob,
+  kCryptoJobAsync,
+  kCryptoJobSync,
   secureBuffer,
 } = internalBinding('crypto');
+
+const {
+  lazyDOMException,
+} = require('internal/util');
+
+const { Buffer, kMaxLength } = require('buffer');
+
 const {
   codes: {
     ERR_INVALID_ARG_TYPE,
-    ERR_INVALID_CALLBACK,
     ERR_OUT_OF_RANGE,
     ERR_OPERATION_FAILED,
   }
 } = require('internal/errors');
+
 const {
-  validateBoolean,
   validateNumber,
+  validateBoolean,
+  validateCallback,
   validateObject,
+  validateUint32,
 } = require('internal/validators');
-const { isArrayBufferView } = require('internal/util/types');
+
+const {
+  isArrayBufferView,
+  isAnyArrayBuffer,
+  isFloat32Array,
+  isFloat64Array,
+} = require('internal/util/types');
+
 const { FastBuffer } = require('internal/buffer');
 
 const kMaxInt32 = 2 ** 31 - 1;
@@ -64,25 +89,30 @@ function assertSize(size, elementSize, offset, length) {
 
 function randomBytes(size, callback) {
   size = assertSize(size, 1, 0, Infinity);
-  if (callback !== undefined && typeof callback !== 'function')
-    throw new ERR_INVALID_CALLBACK(callback);
+  if (callback !== undefined) {
+    validateCallback(callback);
+  }
 
   const buf = new FastBuffer(size);
 
-  if (!callback) return handleError(_randomBytes(buf, 0, size), buf);
+  if (callback === undefined) {
+    randomFillSync(buf.buffer, 0, size);
+    return buf;
+  }
 
-  const wrap = new AsyncWrap(Providers.RANDOMBYTESREQUEST);
-  wrap.ondone = (ex) => {  // Retains buf while request is in flight.
-    if (ex) return callback.call(wrap, ex);
-    callback.call(wrap, null, buf);
-  };
-
-  _randomBytes(buf, 0, size, wrap);
+  // Keep the callback as a regular function so this is propagated.
+  randomFill(buf.buffer, 0, size, function(error) {
+    if (error) return FunctionPrototypeCall(callback, this, error);
+    FunctionPrototypeCall(callback, this, null, buf);
+  });
 }
 
 function randomFillSync(buf, offset = 0, size) {
-  if (!isArrayBufferView(buf)) {
-    throw new ERR_INVALID_ARG_TYPE('buf', 'ArrayBufferView', buf);
+  if (!isAnyArrayBuffer(buf) && !isArrayBufferView(buf)) {
+    throw new ERR_INVALID_ARG_TYPE(
+      'buf',
+      ['ArrayBuffer', 'ArrayBufferView'],
+      buf);
   }
 
   const elementSize = buf.BYTES_PER_ELEMENT || 1;
@@ -95,12 +125,28 @@ function randomFillSync(buf, offset = 0, size) {
     size = assertSize(size, elementSize, offset, buf.byteLength);
   }
 
-  return handleError(_randomBytes(buf, offset, size), buf);
+  if (size === 0)
+    return buf;
+
+  const job = new RandomBytesJob(
+    kCryptoJobSync,
+    buf,
+    offset,
+    size);
+
+  const err = job.run()[0];
+  if (err)
+    throw err;
+
+  return buf;
 }
 
 function randomFill(buf, offset, size, callback) {
-  if (!isArrayBufferView(buf)) {
-    throw new ERR_INVALID_ARG_TYPE('buf', 'ArrayBufferView', buf);
+  if (!isAnyArrayBuffer(buf) && !isArrayBufferView(buf)) {
+    throw new ERR_INVALID_ARG_TYPE(
+      'buf',
+      ['ArrayBuffer', 'ArrayBufferView'],
+      buf);
   }
 
   const elementSize = buf.BYTES_PER_ELEMENT || 1;
@@ -108,12 +154,13 @@ function randomFill(buf, offset, size, callback) {
   if (typeof offset === 'function') {
     callback = offset;
     offset = 0;
-    size = buf.bytesLength;
+    // Size is a length here, assertSize() call turns it into a number of bytes
+    size = buf.length;
   } else if (typeof size === 'function') {
     callback = size;
-    size = buf.byteLength - offset;
-  } else if (typeof callback !== 'function') {
-    throw new ERR_INVALID_CALLBACK(callback);
+    size = buf.length - offset;
+  } else {
+    validateCallback(callback);
   }
 
   offset = assertOffset(offset, elementSize, buf.byteLength);
@@ -124,18 +171,30 @@ function randomFill(buf, offset, size, callback) {
     size = assertSize(size, elementSize, offset, buf.byteLength);
   }
 
-  const wrap = new AsyncWrap(Providers.RANDOMBYTESREQUEST);
-  wrap.ondone = (ex) => {  // Retains buf while request is in flight.
-    if (ex) return callback.call(wrap, ex);
-    callback.call(wrap, null, buf);
-  };
+  if (size === 0) {
+    callback(null, buf);
+    return;
+  }
 
-  _randomBytes(buf, offset, size, wrap);
+  const job = new RandomBytesJob(
+    kCryptoJobAsync,
+    buf,
+    offset,
+    size);
+  job.ondone = FunctionPrototypeBind(onJobDone, job, buf, callback);
+  job.run();
 }
 
 // Largest integer we can read from a buffer.
 // e.g.: Buffer.from("ff".repeat(6), "hex").readUIntBE(0, 6);
 const RAND_MAX = 0xFFFF_FFFF_FFFF;
+
+// Cache random data to use in randomInt. The cache size must be evenly
+// divisible by 6 because each attempt to obtain a random int uses 6 bytes.
+const randomCache = new FastBuffer(6 * 1024);
+let randomCacheOffset = randomCache.length;
+let asyncCacheFillInProgress = false;
+const asyncCachePendingTasks = [];
 
 // Generates an integer in [min, max) range where min is inclusive and max is
 // exclusive.
@@ -153,8 +212,8 @@ function randomInt(min, max, callback) {
   }
 
   const isSync = typeof callback === 'undefined';
-  if (!isSync && typeof callback !== 'function') {
-    throw new ERR_INVALID_CALLBACK(callback);
+  if (!isSync) {
+    validateCallback(callback);
   }
   if (!NumberIsSafeInteger(min)) {
     throw new ERR_INVALID_ARG_TYPE('min', 'a safe integer', min);
@@ -181,67 +240,156 @@ function randomInt(min, max, callback) {
   // than or equal to 0 and less than randLimit.
   const randLimit = RAND_MAX - (RAND_MAX % range);
 
-  if (isSync) {
-    // Sync API
-    while (true) {
-      const x = randomBytes(6).readUIntBE(0, 6);
-      if (x >= randLimit) {
-        // Try again.
-        continue;
-      }
-      return (x % range) + min;
+  // If we don't have a callback, or if there is still data in the cache, we can
+  // do this synchronously, which is super fast.
+  while (isSync || (randomCacheOffset < randomCache.length)) {
+    if (randomCacheOffset === randomCache.length) {
+      // This might block the thread for a bit, but we are in sync mode.
+      randomFillSync(randomCache);
+      randomCacheOffset = 0;
     }
-  } else {
-    // Async API
-    const pickAttempt = () => {
-      randomBytes(6, (err, bytes) => {
-        if (err) return callback(err);
-        const x = bytes.readUIntBE(0, 6);
-        if (x >= randLimit) {
-          // Try again.
-          return pickAttempt();
-        }
-        const n = (x % range) + min;
-        callback(null, n);
-      });
-    };
 
-    pickAttempt();
+    const x = randomCache.readUIntBE(randomCacheOffset, 6);
+    randomCacheOffset += 6;
+
+    if (x < randLimit) {
+      const n = (x % range) + min;
+      if (isSync) return n;
+      process.nextTick(callback, undefined, n);
+      return;
+    }
   }
+
+  // At this point, we are in async mode with no data in the cache. We cannot
+  // simply refill the cache, because another async call to randomInt might
+  // already be doing that. Instead, queue this call for when the cache has
+  // been refilled.
+  ArrayPrototypePush(asyncCachePendingTasks, { min, max, callback });
+  asyncRefillRandomIntCache();
 }
 
-function handleError(ex, buf) {
-  if (ex) throw ex;
-  return buf;
+function asyncRefillRandomIntCache() {
+  if (asyncCacheFillInProgress)
+    return;
+
+  asyncCacheFillInProgress = true;
+  randomFill(randomCache, (err) => {
+    asyncCacheFillInProgress = false;
+
+    const tasks = asyncCachePendingTasks;
+    const errorReceiver = err && ArrayPrototypeShift(tasks);
+    if (!err)
+      randomCacheOffset = 0;
+
+    // Restart all pending tasks. If an error occurred, we only notify a single
+    // callback (errorReceiver) about it. This way, every async call to
+    // randomInt has a chance of being successful, and it avoids complex
+    // exception handling here.
+    ArrayPrototypeForEach(ArrayPrototypeSplice(tasks, 0), (task) => {
+      randomInt(task.min, task.max, task.callback);
+    });
+
+    // This is the only call that might throw, and is therefore done at the end.
+    if (errorReceiver)
+      errorReceiver.callback(err);
+  });
+}
+
+
+function onJobDone(buf, callback, error) {
+  if (error) return FunctionPrototypeCall(callback, this, error);
+  FunctionPrototypeCall(callback, this, null, buf);
+}
+
+// Really just the Web Crypto API alternative
+// to require('crypto').randomFillSync() with an
+// additional limitation that the input buffer is
+// not allowed to exceed 65536 bytes, and can only
+// be an integer-type TypedArray.
+function getRandomValues(data) {
+  if (!isArrayBufferView(data) ||
+      isFloat32Array(data) ||
+      isFloat64Array(data)) {
+    // Ordinarily this would be an ERR_INVALID_ARG_TYPE. However,
+    // the Web Crypto API and web platform tests expect this to
+    // be a DOMException with type TypeMismatchError.
+    throw lazyDOMException(
+      'The data argument must be an integer-type TypedArray',
+      'TypeMismatchError');
+  }
+  if (data.byteLength > 65536) {
+    throw lazyDOMException(
+      'The requested length exceeds 65,536 bytes',
+      'QuotaExceededError');
+  }
+  randomFillSync(data, 0);
+  return data;
 }
 
 // Implements an RFC 4122 version 4 random UUID.
 // To improve performance, random data is generated in batches
 // large enough to cover kBatchSize UUID's at a time. The uuidData
-// and uuid buffers are reused. Each call to randomUUID() consumes
-// 16 bytes from the buffer.
-
-const kHexDigits = [
-  48, 49, 50, 51, 52, 53, 54, 55,
-  56, 57, 97, 98, 99, 100, 101, 102,
-];
+// buffer is reused. Each call to randomUUID() consumes 16 bytes
+// from the buffer.
 
 const kBatchSize = 128;
 let uuidData;
 let uuidNotBuffered;
-let uuid;
 let uuidBatch = 0;
 
-function getBufferedUUID() {
-  if (uuidData === undefined) {
-    uuidData = secureBuffer(16 * kBatchSize);
-    if (uuidData === undefined)
-      throw new ERR_OPERATION_FAILED('Out of memory');
+let hexBytesCache;
+function getHexBytes() {
+  if (hexBytesCache === undefined) {
+    hexBytesCache = new Array(256);
+    for (let i = 0; i < hexBytesCache.length; i++) {
+      const hex = NumberPrototypeToString(i, 16);
+      hexBytesCache[i] = StringPrototypePadStart(hex, 2, '0');
+    }
   }
+  return hexBytesCache;
+}
+
+function serializeUUID(buf, offset = 0) {
+  const kHexBytes = getHexBytes();
+  // xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  return kHexBytes[buf[offset]] +
+    kHexBytes[buf[offset + 1]] +
+    kHexBytes[buf[offset + 2]] +
+    kHexBytes[buf[offset + 3]] +
+    '-' +
+    kHexBytes[buf[offset + 4]] +
+    kHexBytes[buf[offset + 5]] +
+    '-' +
+    kHexBytes[(buf[offset + 6] & 0x0f) | 0x40] +
+    kHexBytes[buf[offset + 7]] +
+    '-' +
+    kHexBytes[(buf[offset + 8] & 0x3f) | 0x80] +
+    kHexBytes[buf[offset + 9]] +
+    '-' +
+    kHexBytes[buf[offset + 10]] +
+    kHexBytes[buf[offset + 11]] +
+    kHexBytes[buf[offset + 12]] +
+    kHexBytes[buf[offset + 13]] +
+    kHexBytes[buf[offset + 14]] +
+    kHexBytes[buf[offset + 15]];
+}
+
+function getBufferedUUID() {
+  uuidData ??= secureBuffer(16 * kBatchSize);
+  if (uuidData === undefined)
+    throw new ERR_OPERATION_FAILED('Out of memory');
 
   if (uuidBatch === 0) randomFillSync(uuidData);
   uuidBatch = (uuidBatch + 1) % kBatchSize;
-  return uuidData.slice(uuidBatch * 16, (uuidBatch * 16) + 16);
+  return serializeUUID(uuidData, uuidBatch * 16);
+}
+
+function getUnbufferedUUID() {
+  uuidNotBuffered ??= secureBuffer(16);
+  if (uuidNotBuffered === undefined)
+    throw new ERR_OPERATION_FAILED('Out of memory');
+  randomFillSync(uuidNotBuffered);
+  return serializeUUID(uuidNotBuffered);
 }
 
 function randomUUID(options) {
@@ -249,79 +397,186 @@ function randomUUID(options) {
     validateObject(options, 'options');
   const {
     disableEntropyCache = false,
-  } = { ...options };
+  } = options || {};
 
   validateBoolean(disableEntropyCache, 'options.disableEntropyCache');
 
-  if (uuid === undefined) {
-    uuid = Buffer.alloc(36, '-');
-    uuid[14] = 52; // '4', identifies the UUID version
+  return disableEntropyCache ? getUnbufferedUUID() : getBufferedUUID();
+}
+
+function createRandomPrimeJob(type, size, options) {
+  validateObject(options, 'options');
+
+  const {
+    safe = false,
+    bigint = false,
+  } = options;
+  let {
+    add,
+    rem,
+  } = options;
+
+  validateBoolean(safe, 'options.safe');
+  validateBoolean(bigint, 'options.bigint');
+
+  if (add !== undefined) {
+    if (typeof add === 'bigint') {
+      add = unsignedBigIntToBuffer(add, 'options.add');
+    } else if (!isAnyArrayBuffer(add) && !isArrayBufferView(add)) {
+      throw new ERR_INVALID_ARG_TYPE(
+        'options.add',
+        [
+          'ArrayBuffer',
+          'TypedArray',
+          'Buffer',
+          'DataView',
+          'bigint',
+        ],
+        add);
+    }
   }
 
-  let uuidBuf;
-  if (!disableEntropyCache) {
-    uuidBuf = getBufferedUUID();
-  } else {
-    uuidBuf = uuidNotBuffered;
-    if (uuidBuf === undefined)
-      uuidBuf = uuidNotBuffered = secureBuffer(16);
-    if (uuidBuf === undefined)
-      throw new ERR_OPERATION_FAILED('Out of memory');
-    randomFillSync(uuidBuf);
+  if (rem !== undefined) {
+    if (typeof rem === 'bigint') {
+      rem = unsignedBigIntToBuffer(rem, 'options.rem');
+    } else if (!isAnyArrayBuffer(rem) && !isArrayBufferView(rem)) {
+      throw new ERR_INVALID_ARG_TYPE(
+        'options.rem',
+        [
+          'ArrayBuffer',
+          'TypedArray',
+          'Buffer',
+          'DataView',
+          'bigint',
+        ],
+        rem);
+    }
   }
 
-  // Variant byte: 10xxxxxx (variant 1)
-  uuidBuf[8] = (uuidBuf[8] & 0x3f) | 0x80;
+  const job = new RandomPrimeJob(type, size, safe, add, rem);
+  job.result = bigint ? arrayBufferToUnsignedBigInt : (p) => p;
+  return job;
+}
 
-  // This function is structured the way it is for performance.
-  // The uuid buffer stores the serialization of the random
-  // bytes from uuidData.
-  // xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-  let n = 0;
-  uuid[0] = kHexDigits[uuidBuf[n] >> 4];
-  uuid[1] = kHexDigits[uuidBuf[n++] & 0xf];
-  uuid[2] = kHexDigits[uuidBuf[n] >> 4];
-  uuid[3] = kHexDigits[uuidBuf[n++] & 0xf];
-  uuid[4] = kHexDigits[uuidBuf[n] >> 4];
-  uuid[5] = kHexDigits[uuidBuf[n++] & 0xf];
-  uuid[6] = kHexDigits[uuidBuf[n] >> 4];
-  uuid[7] = kHexDigits[uuidBuf[n++] & 0xf];
-  // -
-  uuid[9] = kHexDigits[uuidBuf[n] >> 4];
-  uuid[10] = kHexDigits[uuidBuf[n++] & 0xf];
-  uuid[11] = kHexDigits[uuidBuf[n] >> 4];
-  uuid[12] = kHexDigits[uuidBuf[n++] & 0xf];
-  // -
-  // 4, uuid[14] is set already...
-  uuid[15] = kHexDigits[uuidBuf[n++] & 0xf];
-  uuid[16] = kHexDigits[uuidBuf[n] >> 4];
-  uuid[17] = kHexDigits[uuidBuf[n++] & 0xf];
-  // -
-  uuid[19] = kHexDigits[uuidBuf[n] >> 4];
-  uuid[20] = kHexDigits[uuidBuf[n++] & 0xf];
-  uuid[21] = kHexDigits[uuidBuf[n] >> 4];
-  uuid[22] = kHexDigits[uuidBuf[n++] & 0xf];
-  // -
-  uuid[24] = kHexDigits[uuidBuf[n] >> 4];
-  uuid[25] = kHexDigits[uuidBuf[n++] & 0xf];
-  uuid[26] = kHexDigits[uuidBuf[n] >> 4];
-  uuid[27] = kHexDigits[uuidBuf[n++] & 0xf];
-  uuid[28] = kHexDigits[uuidBuf[n] >> 4];
-  uuid[29] = kHexDigits[uuidBuf[n++] & 0xf];
-  uuid[30] = kHexDigits[uuidBuf[n] >> 4];
-  uuid[31] = kHexDigits[uuidBuf[n++] & 0xf];
-  uuid[32] = kHexDigits[uuidBuf[n] >> 4];
-  uuid[33] = kHexDigits[uuidBuf[n++] & 0xf];
-  uuid[34] = kHexDigits[uuidBuf[n] >> 4];
-  uuid[35] = kHexDigits[uuidBuf[n] & 0xf];
+function generatePrime(size, options, callback) {
+  validateUint32(size, 'size', true);
+  if (typeof options === 'function') {
+    callback = options;
+    options = {};
+  }
+  validateCallback(callback);
 
-  return uuid.latin1Slice(0, 36);
+  const job = createRandomPrimeJob(kCryptoJobAsync, size, options);
+  job.ondone = (err, prime) => {
+    if (err) {
+      callback(err);
+      return;
+    }
+
+    callback(
+      undefined,
+      job.result(prime));
+  };
+  job.run();
+}
+
+function generatePrimeSync(size, options = {}) {
+  validateUint32(size, 'size', true);
+
+  const job = createRandomPrimeJob(kCryptoJobSync, size, options);
+  const { 0: err, 1: prime } = job.run();
+  if (err)
+    throw err;
+  return job.result(prime);
+}
+
+function arrayBufferToUnsignedBigInt(arrayBuffer) {
+  return BigInt(`0x${Buffer.from(arrayBuffer).toString('hex')}`);
+}
+
+function unsignedBigIntToBuffer(bigint, name) {
+  if (bigint < 0) {
+    throw new ERR_OUT_OF_RANGE(name, '>= 0', bigint);
+  }
+
+  const hex = bigint.toString(16);
+  const padded = hex.padStart(hex.length + (hex.length % 2), 0);
+  return Buffer.from(padded, 'hex');
+}
+
+function checkPrime(candidate, options = {}, callback) {
+  if (typeof candidate === 'bigint')
+    candidate = unsignedBigIntToBuffer(candidate, 'candidate');
+  if (!isAnyArrayBuffer(candidate) && !isArrayBufferView(candidate)) {
+    throw new ERR_INVALID_ARG_TYPE(
+      'candidate',
+      [
+        'ArrayBuffer',
+        'TypedArray',
+        'Buffer',
+        'DataView',
+        'bigint',
+      ],
+      candidate
+    );
+  }
+  if (typeof options === 'function') {
+    callback = options;
+    options = {};
+  }
+  validateCallback(callback);
+  validateObject(options, 'options');
+  const {
+    checks = 0,
+  } = options;
+
+  validateUint32(checks, 'options.checks');
+
+  const job = new CheckPrimeJob(kCryptoJobAsync, candidate, checks);
+  job.ondone = callback;
+  job.run();
+}
+
+function checkPrimeSync(candidate, options = {}) {
+  if (typeof candidate === 'bigint')
+    candidate = unsignedBigIntToBuffer(candidate, 'candidate');
+  if (!isAnyArrayBuffer(candidate) && !isArrayBufferView(candidate)) {
+    throw new ERR_INVALID_ARG_TYPE(
+      'candidate',
+      [
+        'ArrayBuffer',
+        'TypedArray',
+        'Buffer',
+        'DataView',
+        'bigint',
+      ],
+      candidate
+    );
+  }
+  validateObject(options, 'options');
+  const {
+    checks = 0,
+  } = options;
+
+  validateUint32(checks, 'options.checks');
+
+  const job = new CheckPrimeJob(kCryptoJobSync, candidate, checks);
+  const { 0: err, 1: result } = job.run();
+  if (err)
+    throw err;
+
+  return result;
 }
 
 module.exports = {
+  checkPrime,
+  checkPrimeSync,
   randomBytes,
   randomFill,
   randomFillSync,
   randomInt,
+  getRandomValues,
   randomUUID,
+  generatePrime,
+  generatePrimeSync,
 };

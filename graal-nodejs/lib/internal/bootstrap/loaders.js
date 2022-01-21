@@ -106,6 +106,19 @@ const internalBindingAllowlist = new SafeSet([
   'zlib',
 ]);
 
+const runtimeDeprecatedList = new SafeSet([
+  'async_wrap',
+  'crypto',
+  'http_parser',
+  'signal_wrap',
+  'url',
+  'v8',
+]);
+
+const legacyWrapperList = new SafeSet([
+  'util',
+]);
+
 // Set up process.binding() and process._linkedBinding().
 {
   const bindingObj = ObjectCreate(null);
@@ -115,6 +128,16 @@ const internalBindingAllowlist = new SafeSet([
     // Deprecated specific process.binding() modules, but not all, allow
     // selective fallback to internalBinding for the deprecated ones.
     if (internalBindingAllowlist.has(module)) {
+      if (runtimeDeprecatedList.has(module)) {
+        runtimeDeprecatedList.delete(module);
+        process.emitWarning(
+          `Access to process.binding('${module}') is deprecated.`,
+          'DeprecationWarning',
+          'DEP0111');
+      }
+      if (legacyWrapperList.has(module)) {
+        return nativeModuleRequire('internal/legacy/processbinding')[module]();
+      }
       return internalBinding(module);
     }
     // eslint-disable-next-line no-restricted-syntax
@@ -131,6 +154,9 @@ const internalBindingAllowlist = new SafeSet([
 }
 
 // Set up internalBinding() in the closure.
+/**
+ * @type {InternalBinding}
+ */
 let internalBinding;
 {
   const bindingObj = ObjectCreate(null);

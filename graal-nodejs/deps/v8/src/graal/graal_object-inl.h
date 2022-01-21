@@ -65,7 +65,7 @@ inline GraalObject* GraalObject::Allocate(GraalIsolate* isolate, jobject java_ob
 }
 
 inline void GraalObject::ReInitialize(jobject java_object) {
-    internal_field_count_cache_ = -1;    
+    internal_field_count_cache_ = -1;
     GraalHandleContent::ReInitialize(java_object);
 }
 
@@ -76,7 +76,7 @@ inline void GraalObject::Recycle() {
         pool->Push(this);
     } else {
         delete this;
-    }    
+    }
 }
 
 inline v8::Local<v8::Value> GraalObject::HandleCallResult(jobject java_object) {

@@ -1,7 +1,6 @@
 'use strict';
 
 const {
-  ArrayFrom,
   ArrayPrototypeForEach,
   ArrayPrototypeIncludes,
   ArrayPrototypeJoin,
@@ -155,7 +154,7 @@ for (const nodeType of ObjectKeys(walk.base)) {
 function processTopLevelAwait(src) {
   const wrapPrefix = '(async () => { ';
   const wrapped = `${wrapPrefix}${src} })()`;
-  const wrappedArray = ArrayFrom(wrapped);
+  const wrappedArray = StringPrototypeSplit(wrapped, '');
   let root;
   try {
     root = parser.parse(wrapped, { ecmaVersion: 'latest' });
@@ -222,22 +221,26 @@ function processTopLevelAwait(src) {
     return null;
   }
 
-  const last = body.body[body.body.length - 1];
-  if (last.type === 'ExpressionStatement') {
-    // For an expression statement of the form
-    // ( expr ) ;
-    // ^^^^^^^^^^   // last
-    //   ^^^^       // last.expression
-    //
-    // We do not want the left parenthesis before the `return` keyword;
-    // therefore we prepend the `return (` to `last`.
-    //
-    // On the other hand, we do not want the right parenthesis after the
-    // semicolon. Since there can only be more right parentheses between
-    // last.expression.end and the semicolon, appending one more to
-    // last.expression should be fine.
-    state.prepend(last, 'return (');
-    state.append(last.expression, ')');
+  for (let i = body.body.length - 1; i >= 0; i--) {
+    const node = body.body[i];
+    if (node.type === 'EmptyStatement') continue;
+    if (node.type === 'ExpressionStatement') {
+      // For an expression statement of the form
+      // ( expr ) ;
+      // ^^^^^^^^^^   // node
+      //   ^^^^       // node.expression
+      //
+      // We do not want the left parenthesis before the `return` keyword;
+      // therefore we prepend the `return (` to `node`.
+      //
+      // On the other hand, we do not want the right parenthesis after the
+      // semicolon. Since there can only be more right parentheses between
+      // node.expression.end and the semicolon, appending one more to
+      // node.expression should be fine.
+      state.prepend(node, 'return (');
+      state.append(node.expression, ')');
+    }
+    break;
   }
 
   return (

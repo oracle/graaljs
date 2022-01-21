@@ -1,14 +1,14 @@
-// Flags: --expose-internals
 'use strict';
-
+// Flags: --expose-internals --no-warnings
 const common = require('../common');
+const { kWeakHandler } = require('internal/event_target');
 
 const {
   deepStrictEqual,
+  throws
 } = require('assert');
 
 const { getEventListeners, EventEmitter } = require('events');
-const { EventTarget } = require('internal/event_target');
 
 // Test getEventListeners on EventEmitter
 {
@@ -35,4 +35,18 @@ const { EventTarget } = require('internal/event_target');
   deepStrictEqual(getEventListeners(target, 'foo'), [fn1, fn2]);
   deepStrictEqual(getEventListeners(target, 'bar'), []);
   deepStrictEqual(getEventListeners(target, 'baz'), [fn1]);
+}
+
+{
+  throws(() => {
+    getEventListeners('INVALID_EMITTER');
+  }, /ERR_INVALID_ARG_TYPE/);
+}
+{
+  // Test weak listeners
+  const target = new EventTarget();
+  const fn = common.mustNotCall();
+  target.addEventListener('foo', fn, { [kWeakHandler]: {} });
+  const listeners = getEventListeners(target, 'foo');
+  deepStrictEqual(listeners, [fn]);
 }

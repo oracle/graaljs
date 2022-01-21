@@ -22,13 +22,15 @@
 'use strict';
 
 const {
+  ArrayPrototypeIndexOf,
   NumberIsInteger,
   NumberIsNaN,
   NumberParseInt,
   ObjectDefineProperties,
+  ObjectKeys,
   ObjectSetPrototypeOf,
   Promise,
-  Set,
+  SafeSet,
   SymbolAsyncIterator,
   Symbol
 } = primordials;
@@ -40,6 +42,10 @@ const EE = require('events');
 const { Stream, prependListener } = require('internal/streams/legacy');
 const { Buffer } = require('buffer');
 
+const {
+  addAbortSignalNoValidate,
+} = require('internal/streams/add-abort-signal');
+
 let debug = require('internal/util/debuglog').debuglog('stream', (fn) => {
   debug = fn;
 });
@@ -49,22 +55,23 @@ const {
   getHighWaterMark,
   getDefaultHighWaterMark
 } = require('internal/streams/state');
+
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_STREAM_PUSH_AFTER_EOF,
   ERR_METHOD_NOT_IMPLEMENTED,
   ERR_STREAM_UNSHIFT_AFTER_END_EVENT
 } = require('internal/errors').codes;
+const { validateObject } = require('internal/validators');
 
 const kPaused = Symbol('kPaused');
 
-// Lazy loaded to improve the startup performance.
-let StringDecoder;
-let from;
+const { StringDecoder } = require('string_decoder');
+const from = require('internal/streams/from');
 
 ObjectSetPrototypeOf(Readable.prototype, Stream.prototype);
 ObjectSetPrototypeOf(Readable, Stream);
-function nop() {}
+const nop = () => {};
 
 const { errorOrDestroy } = destroyImpl;
 
@@ -101,6 +108,12 @@ function ReadableState(options, stream, isDuplex) {
   this.ended = false;
   this.endEmitted = false;
   this.reading = false;
+
+  // Stream is still being constructed and cannot be
+  // destroyed until construction finished or failed.
+  // Async construction is opt in, therefore we start as
+  // constructed.
+  this.constructed = true;
 
   // A flag to be able to tell if the event 'readable'/'data' is emitted
   // immediately, or on a later tick.  We set this to true at first, because
@@ -159,8 +172,6 @@ function ReadableState(options, stream, isDuplex) {
   this.decoder = null;
   this.encoding = null;
   if (options && options.encoding) {
-    if (!StringDecoder)
-      StringDecoder = require('string_decoder').StringDecoder;
     this.decoder = new StringDecoder(options.encoding);
     this.encoding = options.encoding;
   }
@@ -183,9 +194,20 @@ function Readable(options) {
 
     if (typeof options.destroy === 'function')
       this._destroy = options.destroy;
+
+    if (typeof options.construct === 'function')
+      this._construct = options.construct;
+    if (options.signal && !isDuplex)
+      addAbortSignalNoValidate(options.signal, this);
   }
 
   Stream.call(this, options);
+
+  destroyImpl.construct(this, () => {
+    if (this._readableState.needReadable) {
+      maybeReadMore(this, this._readableState);
+    }
+  });
 }
 
 Readable.prototype.destroy = destroyImpl.destroy;
@@ -253,7 +275,7 @@ function readableAddChunk(stream, chunk, encoding, addToFront) {
         addChunk(stream, state, chunk, true);
     } else if (state.ended) {
       errorOrDestroy(stream, new ERR_STREAM_PUSH_AFTER_EOF());
-    } else if (state.destroyed) {
+    } else if (state.destroyed || state.errored) {
       return false;
     } else {
       state.reading = false;
@@ -312,8 +334,6 @@ Readable.prototype.isPaused = function() {
 
 // Backwards compatibility.
 Readable.prototype.setEncoding = function(enc) {
-  if (!StringDecoder)
-    StringDecoder = require('string_decoder').StringDecoder;
   const decoder = new StringDecoder(enc);
   this._readableState.decoder = decoder;
   // If setEncoding(null), decoder.encoding equals utf8.
@@ -373,7 +393,7 @@ function howMuchToRead(n, state) {
 // You can override either this method, or the async _read(n) below.
 Readable.prototype.read = function(n) {
   debug('read', n);
-  // Same as NumberParseInt(undefined, 10), however V8 7.3 performance regressed
+  // Same as parseInt(undefined, 10), however V8 7.3 performance regressed
   // in this scenario, so we are doing it manually.
   if (n === undefined) {
     n = NaN;
@@ -449,11 +469,12 @@ Readable.prototype.read = function(n) {
   }
 
   // However, if we've ended, then there's no point, if we're already
-  // reading, then it's unnecessary, and if we're destroyed, then it's
-  // not allowed.
-  if (state.ended || state.reading || state.destroyed) {
+  // reading, then it's unnecessary, if we're constructing we have to wait,
+  // and if we're destroyed or errored, then it's not allowed,
+  if (state.ended || state.reading || state.destroyed || state.errored ||
+      !state.constructed) {
     doRead = false;
-    debug('reading or ended', doRead);
+    debug('reading, ended or constructing', doRead);
   } else if (doRead) {
     debug('do read');
     state.reading = true;
@@ -461,8 +482,10 @@ Readable.prototype.read = function(n) {
     // If the length is currently zero, then we *need* a readable event.
     if (state.length === 0)
       state.needReadable = true;
+
     // Call internal read method
     this._read(state.highWaterMark);
+
     state.sync = false;
     // If _read pushed data synchronously, then `reading` will be false,
     // and we need to re-evaluate how much data we can return to the user.
@@ -551,7 +574,7 @@ function emitReadable(stream) {
 function emitReadable_(stream) {
   const state = stream._readableState;
   debug('emitReadable_', state.destroyed, state.length, state.ended);
-  if (!state.destroyed && (state.length || state.ended)) {
+  if (!state.destroyed && !state.errored && (state.length || state.ended)) {
     stream.emit('readable');
     state.emittedReadable = false;
   }
@@ -577,7 +600,7 @@ function emitReadable_(stream) {
 // However, if we're not ended, or reading, and the length < hwm,
 // then go ahead and try to read some more preemptively.
 function maybeReadMore(stream, state) {
-  if (!state.readingMore) {
+  if (!state.readingMore && state.constructed) {
     state.readingMore = true;
     process.nextTick(maybeReadMore_, stream, state);
   }
@@ -635,7 +658,7 @@ Readable.prototype.pipe = function(dest, pipeOpts) {
   if (state.pipes.length === 1) {
     if (!state.multiAwaitDrain) {
       state.multiAwaitDrain = true;
-      state.awaitDrainWriters = new Set(
+      state.awaitDrainWriters = new SafeSet(
         state.awaitDrainWriters ? [state.awaitDrainWriters] : []
       );
     }
@@ -834,7 +857,7 @@ Readable.prototype.unpipe = function(dest) {
   }
 
   // Try to find the right one.
-  const index = state.pipes.indexOf(dest);
+  const index = ArrayPrototypeIndexOf(state.pipes, dest);
   if (index === -1)
     return this;
 
@@ -880,7 +903,8 @@ Readable.prototype.on = function(ev, fn) {
 Readable.prototype.addListener = Readable.prototype.on;
 
 Readable.prototype.removeListener = function(ev, fn) {
-  const res = Stream.prototype.removeListener.call(this, ev, fn);
+  const res = Stream.prototype.removeListener.call(this,
+                                                   ev, fn);
 
   if (ev === 'readable') {
     // We need to check if there is someone still listening to
@@ -897,7 +921,8 @@ Readable.prototype.removeListener = function(ev, fn) {
 Readable.prototype.off = Readable.prototype.removeListener;
 
 Readable.prototype.removeAllListeners = function(ev) {
-  const res = Stream.prototype.removeAllListeners.apply(this, arguments);
+  const res = Stream.prototype.removeAllListeners.apply(this,
+                                                        arguments);
 
   if (ev === 'readable' || ev === undefined) {
     // We need to check if there is someone still listening to
@@ -991,108 +1016,83 @@ function flow(stream) {
 // This is *not* part of the readable stream interface.
 // It is an ugly unfortunate mess of history.
 Readable.prototype.wrap = function(stream) {
-  const state = this._readableState;
   let paused = false;
 
-  stream.on('end', () => {
-    debug('wrapped end');
-    if (state.decoder && !state.ended) {
-      const chunk = state.decoder.end();
-      if (chunk && chunk.length)
-        this.push(chunk);
-    }
-
-    this.push(null);
-  });
+  // TODO (ronag): Should this.destroy(err) emit
+  // 'error' on the wrapped stream? Would require
+  // a static factory method, e.g. Readable.wrap(stream).
 
   stream.on('data', (chunk) => {
-    debug('wrapped data');
-    if (state.decoder)
-      chunk = state.decoder.write(chunk);
-
-    // Don't skip over falsy values in objectMode.
-    if (state.objectMode && (chunk === null || chunk === undefined))
-      return;
-    else if (!state.objectMode && (!chunk || !chunk.length))
-      return;
-
-    const ret = this.push(chunk);
-    if (!ret) {
+    if (!this.push(chunk) && stream.pause) {
       paused = true;
       stream.pause();
     }
   });
 
-  // Proxy all the other methods. Important when wrapping filters and duplexes.
-  for (const i in stream) {
-    if (this[i] === undefined && typeof stream[i] === 'function') {
-      this[i] = function methodWrap(method) {
-        return function methodWrapReturnFunction() {
-          return stream[method].apply(stream, arguments);
-        };
-      }(i);
-    }
-  }
+  stream.on('end', () => {
+    this.push(null);
+  });
 
   stream.on('error', (err) => {
     errorOrDestroy(this, err);
   });
 
   stream.on('close', () => {
-    // TODO(ronag): Update readable state?
-    this.emit('close');
+    this.destroy();
   });
 
   stream.on('destroy', () => {
-    // TODO(ronag): this.destroy()?
-    this.emit('destroy');
+    this.destroy();
   });
 
-  stream.on('pause', () => {
-    // TODO(ronag): this.pause()?
-    this.emit('pause');
-  });
-
-  stream.on('resume', () => {
-    // TODO(ronag): this.resume()?
-    this.emit('resume');
-  });
-
-  // When we try to consume some more bytes, simply unpause the
-  // underlying stream.
-  this._read = (n) => {
-    debug('wrapped _read', n);
-    if (paused) {
+  this._read = () => {
+    if (paused && stream.resume) {
       paused = false;
       stream.resume();
     }
   };
 
+  // Proxy all the other methods. Important when wrapping filters and duplexes.
+  const streamKeys = ObjectKeys(stream);
+  for (let j = 1; j < streamKeys.length; j++) {
+    const i = streamKeys[j];
+    if (this[i] === undefined && typeof stream[i] === 'function') {
+      this[i] = stream[i].bind(stream);
+    }
+  }
+
   return this;
 };
 
 Readable.prototype[SymbolAsyncIterator] = function() {
-  let stream = this;
-
-  if (typeof stream.read !== 'function') {
-    // v1 stream
-    const src = stream;
-    stream = new Readable({
-      objectMode: true,
-      destroy(err, callback) {
-        destroyImpl.destroyer(src, err);
-        callback(err);
-      }
-    }).wrap(src);
-  }
-
-  const iter = createAsyncIterator(stream);
-  iter.stream = stream;
-  return iter;
+  return streamToAsyncIterator(this);
 };
 
-async function* createAsyncIterator(stream) {
+Readable.prototype.iterator = function(options) {
+  if (options !== undefined) {
+    validateObject(options, 'options');
+  }
+  return streamToAsyncIterator(this, options);
+};
+
+function streamToAsyncIterator(stream, options) {
+  if (typeof stream.read !== 'function') {
+    stream = Readable.wrap(stream, { objectMode: true });
+  }
+
+  const iter = createAsyncIterator(stream, options);
+  iter.stream = stream;
+  return iter;
+}
+
+async function* createAsyncIterator(stream, options) {
   let callback = nop;
+
+  const opts = {
+    destroyOnReturn: true,
+    destroyOnError: true,
+    ...options,
+  };
 
   function next(resolve) {
     if (this === stream) {
@@ -1126,6 +1126,7 @@ async function* createAsyncIterator(stream) {
       next.call(this);
     });
 
+  let errorThrown = false;
   try {
     while (true) {
       const chunk = stream.destroyed ? null : stream.read();
@@ -1142,12 +1143,17 @@ async function* createAsyncIterator(stream) {
       }
     }
   } catch (err) {
-    destroyImpl.destroyer(stream, err);
+    if (opts.destroyOnError) {
+      destroyImpl.destroyer(stream, err);
+    }
+    errorThrown = true;
     throw err;
   } finally {
-    if (state.autoDestroy || !endEmitted) {
-      // TODO(ronag): ERR_PREMATURE_CLOSE?
-      destroyImpl.destroyer(stream, null);
+    if (!errorThrown && opts.destroyOnReturn) {
+      if (state.autoDestroy || !endEmitted) {
+        // TODO(ronag): ERR_PREMATURE_CLOSE?
+        destroyImpl.destroyer(stream, null);
+      }
     }
   }
 }
@@ -1177,12 +1183,15 @@ ObjectDefineProperties(Readable.prototype, {
   readableDidRead: {
     enumerable: false,
     get: function() {
-      return (
-        this._readableState.dataEmitted ||
-        this._readableState.endEmitted ||
-        this._readableState.errorEmitted ||
-        this._readableState.closeEmitted
-      );
+      return this._readableState.dataEmitted;
+    }
+  },
+
+  readableAborted: {
+    enumerable: false,
+    get: function() {
+      return !!(this._readableState.destroyed || this._readableState.errored) &&
+        !this._readableState.endEmitted;
     }
   },
 
@@ -1362,8 +1371,16 @@ function endWritableNT(stream) {
 }
 
 Readable.from = function(iterable, opts) {
-  if (from === undefined) {
-    from = require('internal/streams/from');
-  }
   return from(Readable, iterable, opts);
+};
+
+Readable.wrap = function(src, options) {
+  return new Readable({
+    objectMode: src.readableObjectMode ?? src.objectMode ?? true,
+    ...options,
+    destroy(err, callback) {
+      destroyImpl.destroyer(src, err);
+      callback(err);
+    }
+  }).wrap(src);
 };

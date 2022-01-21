@@ -23,7 +23,7 @@ const obs = new PerformanceObserver((items) => {
   console.log(items.getEntries()[0].duration);
   performance.clearMarks();
 });
-obs.observe({ entryTypes: ['measure'] });
+obs.observe({ type: 'measure' });
 performance.measure('Start to Now');
 
 performance.mark('A');
@@ -36,6 +36,7 @@ doSomeLongRunningProcess(() => {
 ```
 
 ## `perf_hooks.performance`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -44,6 +45,7 @@ An object that can be used to collect performance metrics from the current
 Node.js instance. It is similar to [`window.performance`][] in browsers.
 
 ### `performance.clearMarks([name])`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -54,6 +56,7 @@ If `name` is not provided, removes all `PerformanceMark` objects from the
 Performance Timeline. If `name` is provided, removes only the named mark.
 
 ### `performance.eventLoopUtilization([utilization1[, utilization2]])`
+
 <!-- YAML
 added:
  - v14.10.0
@@ -61,9 +64,9 @@ added:
 -->
 
 * `utilization1` {Object} The result of a previous call to
-    `eventLoopUtilization()`.
+  `eventLoopUtilization()`.
 * `utilization2` {Object} The result of a previous call to
-    `eventLoopUtilization()` prior to `utilization1`.
+  `eventLoopUtilization()` prior to `utilization1`.
 * Returns {Object}
   * `idle` {number}
   * `active` {number}
@@ -115,12 +118,21 @@ Passing in a user-defined object instead of the result of a previous call to
 `eventLoopUtilization()` will lead to undefined behavior. The return values
 are not guaranteed to reflect any correct state of the event loop.
 
-### `performance.mark([name])`
+### `performance.mark([name[, options]])`
+
 <!-- YAML
 added: v8.5.0
+changes:
+  - version: v16.0.0
+    pr-url: https://github.com/nodejs/node/pull/37136
+    description: Updated to conform to the User Timing Level 3 specification.
 -->
 
 * `name` {string}
+* `options` {Object}
+  * `detail` {any} Additional optional detail to include with the mark.
+  * `startTime` {number} An optional timestamp to be used as the mark time.
+    **Defaults**: `performance.now()`.
 
 Creates a new `PerformanceMark` entry in the Performance Timeline. A
 `PerformanceMark` is a subclass of `PerformanceEntry` whose
@@ -128,18 +140,31 @@ Creates a new `PerformanceMark` entry in the Performance Timeline. A
 `performanceEntry.duration` is always `0`. Performance marks are used
 to mark specific significant moments in the Performance Timeline.
 
-### `performance.measure(name[, startMark[, endMark]])`
+### `performance.measure(name[, startMarkOrOptions[, endMark]])`
+
 <!-- YAML
 added: v8.5.0
 changes:
-  - version: v14.0.0
+  - version: v16.0.0
+    pr-url: https://github.com/nodejs/node/pull/37136
+    description: Updated to conform to the User Timing Level 3 specification.
+  - version:
+      - v13.13.0
+      - v12.16.3
     pr-url: https://github.com/nodejs/node/pull/32651
     description: Make `startMark` and `endMark` parameters optional.
 -->
 
 * `name` {string}
-* `startMark` {string} Optional.
-* `endMark` {string} Optional.
+* `startMarkOrOptions` {string|Object} Optional.
+  * `detail` {any} Additional optional detail to include with the measure.
+  * `duration` {number} Duration between start and end times.
+  * `end` {number|string} Timestamp to be used as the end time, or a string
+    identifying a previously recorded mark.
+  * `start` {number|string} Timestamp to be used as the start time, or a string
+    identifying a previously recorded mark.
+* `endMark` {string} Optional. Must be omitted if `startMarkOrOptions` is an
+  {Object}.
 
 Creates a new `PerformanceMeasure` entry in the Performance Timeline. A
 `PerformanceMeasure` is a subclass of `PerformanceEntry` whose
@@ -147,18 +172,19 @@ Creates a new `PerformanceMeasure` entry in the Performance Timeline. A
 `performanceEntry.duration` measures the number of milliseconds elapsed since
 `startMark` and `endMark`.
 
-The `startMark` argument may identify any *existing* `PerformanceMark` in the
-Performance Timeline, or *may* identify any of the timestamp properties
+The `startMark` argument may identify any _existing_ `PerformanceMark` in the
+Performance Timeline, or _may_ identify any of the timestamp properties
 provided by the `PerformanceNodeTiming` class. If the named `startMark` does
-not exist, then `startMark` is set to [`timeOrigin`][] by default.
+not exist, an error is thrown.
 
-The optional `endMark` argument must identify any *existing* `PerformanceMark`
+The optional `endMark` argument must identify any _existing_ `PerformanceMark`
 in the Performance Timeline or any of the timestamp properties provided by the
 `PerformanceNodeTiming` class. `endMark` will be `performance.now()`
 if no parameter is passed, otherwise if the named `endMark` does not exist, an
 error will be thrown.
 
 ### `performance.nodeTiming`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -171,6 +197,7 @@ An instance of the `PerformanceNodeTiming` class that provides performance
 metrics for specific Node.js operational milestones.
 
 ### `performance.now()`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -181,6 +208,7 @@ Returns the current high resolution millisecond timestamp, where 0 represents
 the start of the current `node` process.
 
 ### `performance.timeOrigin`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -190,12 +218,25 @@ added: v8.5.0
 The [`timeOrigin`][] specifies the high resolution millisecond timestamp at
 which the current `node` process began, measured in Unix time.
 
-### `performance.timerify(fn)`
+### `performance.timerify(fn[, options])`
+
 <!-- YAML
 added: v8.5.0
+changes:
+  - version: v16.0.0
+    pr-url: https://github.com/nodejs/node/pull/37475
+    description: Added the histogram option.
+  - version: v16.0.0
+    pr-url: https://github.com/nodejs/node/pull/37136
+    description: Re-implemented to use pure-JavaScript and the ability
+                 to time async functions.
 -->
 
 * `fn` {Function}
+* `options` {Object}
+  * `histogram` {RecordableHistogram} A histogram object created using
+    `perf_hooks.createHistogram()` that will record runtime durations in
+    nanoseconds.
 
 _This property is an extension by Node.js. It is not available in Web browsers._
 
@@ -225,12 +266,37 @@ obs.observe({ entryTypes: ['function'] });
 wrapped();
 ```
 
+If the wrapped function returns a promise, a finally handler will be attached
+to the promise and the duration will be reported once the finally handler is
+invoked.
+
+### `performance.toJSON()`
+
+<!-- YAML
+added: v16.1.0
+-->
+
+An object which is JSON representation of the `performance` object. It
+is similar to [`window.performance.toJSON`][] in browsers.
+
 ## Class: `PerformanceEntry`
+
 <!-- YAML
 added: v8.5.0
 -->
 
+### `performanceEntry.detail`
+
+<!-- YAML
+added: v16.0.0
+-->
+
+* {any}
+
+Additional detail specific to the `entryType`.
+
 ### `performanceEntry.duration`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -241,6 +307,7 @@ The total number of milliseconds elapsed for this entry. This value will not
 be meaningful for all Performance Entry types.
 
 ### `performanceEntry.entryType`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -258,10 +325,16 @@ The type of the performance entry. It may be one of:
 * `'http'` (Node.js only)
 
 ### `performanceEntry.flags`
+
 <!-- YAML
 added:
  - v13.9.0
  - v12.17.0
+changes:
+  - version: v16.0.0
+    pr-url: https://github.com/nodejs/node/pull/37136
+    description: Runtime deprecated. Now moved to the detail property
+                 when entryType is 'gc'.
 -->
 
 * {number}
@@ -281,6 +354,7 @@ The value may be one of:
 * `perf_hooks.constants.NODE_PERFORMANCE_GC_FLAGS_SCHEDULE_IDLE`
 
 ### `performanceEntry.name`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -290,8 +364,14 @@ added: v8.5.0
 The name of the performance entry.
 
 ### `performanceEntry.kind`
+
 <!-- YAML
 added: v8.5.0
+changes:
+  - version: v16.0.0
+    pr-url: https://github.com/nodejs/node/pull/37136
+    description: Runtime deprecated. Now moved to the detail property
+                 when entryType is 'gc'.
 -->
 
 * {number}
@@ -308,6 +388,7 @@ The value may be one of:
 * `perf_hooks.constants.NODE_PERFORMANCE_GC_WEAKCB`
 
 ### `performanceEntry.startTime`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -317,7 +398,74 @@ added: v8.5.0
 The high resolution millisecond timestamp marking the starting time of the
 Performance Entry.
 
+### Garbage Collection ('gc') Details
+
+When `performanceEntry.type` is equal to `'gc'`, the `performanceEntry.detail`
+property will be an {Object} with two properties:
+
+* `kind` {number} One of:
+  * `perf_hooks.constants.NODE_PERFORMANCE_GC_MAJOR`
+  * `perf_hooks.constants.NODE_PERFORMANCE_GC_MINOR`
+  * `perf_hooks.constants.NODE_PERFORMANCE_GC_INCREMENTAL`
+  * `perf_hooks.constants.NODE_PERFORMANCE_GC_WEAKCB`
+* `flags` {number} One of:
+  * `perf_hooks.constants.NODE_PERFORMANCE_GC_FLAGS_NO`
+  * `perf_hooks.constants.NODE_PERFORMANCE_GC_FLAGS_CONSTRUCT_RETAINED`
+  * `perf_hooks.constants.NODE_PERFORMANCE_GC_FLAGS_FORCED`
+  * `perf_hooks.constants.NODE_PERFORMANCE_GC_FLAGS_SYNCHRONOUS_PHANTOM_PROCESSING`
+  * `perf_hooks.constants.NODE_PERFORMANCE_GC_FLAGS_ALL_AVAILABLE_GARBAGE`
+  * `perf_hooks.constants.NODE_PERFORMANCE_GC_FLAGS_ALL_EXTERNAL_MEMORY`
+  * `perf_hooks.constants.NODE_PERFORMANCE_GC_FLAGS_SCHEDULE_IDLE`
+
+### HTTP/2 ('http2') Details
+
+When `performanceEntry.type` is equal to `'http2'`, the
+`performanceEntry.detail` property will be an {Object} containing
+additional performance information.
+
+If `performanceEntry.name` is equal to `Http2Stream`, the `detail`
+will contain the following properties:
+
+* `bytesRead` {number} The number of `DATA` frame bytes received for this
+  `Http2Stream`.
+* `bytesWritten` {number} The number of `DATA` frame bytes sent for this
+  `Http2Stream`.
+* `id` {number} The identifier of the associated `Http2Stream`
+* `timeToFirstByte` {number} The number of milliseconds elapsed between the
+  `PerformanceEntry` `startTime` and the reception of the first `DATA` frame.
+* `timeToFirstByteSent` {number} The number of milliseconds elapsed between
+  the `PerformanceEntry` `startTime` and sending of the first `DATA` frame.
+* `timeToFirstHeader` {number} The number of milliseconds elapsed between the
+  `PerformanceEntry` `startTime` and the reception of the first header.
+
+If `performanceEntry.name` is equal to `Http2Session`, the `detail` will
+contain the following properties:
+
+* `bytesRead` {number} The number of bytes received for this `Http2Session`.
+* `bytesWritten` {number} The number of bytes sent for this `Http2Session`.
+* `framesReceived` {number} The number of HTTP/2 frames received by the
+  `Http2Session`.
+* `framesSent` {number} The number of HTTP/2 frames sent by the `Http2Session`.
+* `maxConcurrentStreams` {number} The maximum number of streams concurrently
+  open during the lifetime of the `Http2Session`.
+* `pingRTT` {number} The number of milliseconds elapsed since the transmission
+  of a `PING` frame and the reception of its acknowledgment. Only present if
+  a `PING` frame has been sent on the `Http2Session`.
+* `streamAverageDuration` {number} The average duration (in milliseconds) for
+  all `Http2Stream` instances.
+* `streamCount` {number} The number of `Http2Stream` instances processed by
+  the `Http2Session`.
+* `type` {string} Either `'server'` or `'client'` to identify the type of
+  `Http2Session`.
+
+### Timerify ('function') Details
+
+When `performanceEntry.type` is equal to `'function'`, the
+`performanceEntry.detail` property will be an {Array} listing
+the input arguments to the timed function.
+
 ## Class: `PerformanceNodeTiming`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -330,6 +478,7 @@ Provides timing details for Node.js itself. The constructor of this class
 is not exposed to users.
 
 ### `performanceNodeTiming.bootstrapComplete`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -341,6 +490,7 @@ completed bootstrapping. If bootstrapping has not yet finished, the property
 has the value of -1.
 
 ### `performanceNodeTiming.environment`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -351,6 +501,7 @@ The high resolution millisecond timestamp at which the Node.js environment was
 initialized.
 
 ### `performanceNodeTiming.idleTime`
+
 <!-- YAML
 added:
   - v14.10.0
@@ -366,6 +517,7 @@ started (e.g., in the first tick of the main script), the property has the
 value of 0.
 
 ### `performanceNodeTiming.loopExit`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -377,6 +529,7 @@ exited. If the event loop has not yet exited, the property has the value of -1.
 It can only have a value of not -1 in a handler of the [`'exit'`][] event.
 
 ### `performanceNodeTiming.loopStart`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -388,6 +541,7 @@ started. If the event loop has not yet started (e.g., in the first tick of the
 main script), the property has the value of -1.
 
 ### `performanceNodeTiming.nodeStart`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -398,6 +552,7 @@ The high resolution millisecond timestamp at which the Node.js process was
 initialized.
 
 ### `performanceNodeTiming.v8Start`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -410,6 +565,7 @@ initialized.
 ## Class: `perf_hooks.PerformanceObserver`
 
 ### `new PerformanceObserver(callback)`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -447,30 +603,42 @@ notified about new `PerformanceEntry` instances. The callback receives a
 `PerformanceObserver`.
 
 ### `performanceObserver.disconnect()`
+
 <!-- YAML
 added: v8.5.0
 -->
+
 Disconnects the `PerformanceObserver` instance from all notifications.
 
 ### `performanceObserver.observe(options)`
+
 <!-- YAML
 added: v8.5.0
+changes:
+  - version: v16.7.0
+    pr-url: https://github.com/nodejs/node/pull/39297
+    description: Updated to conform to Performance Timeline Level 2. The
+                 buffered option has been added back.
+  - version: v16.0.0
+    pr-url: https://github.com/nodejs/node/pull/37136
+    description: Updated to conform to User Timing Level 3. The
+                 buffered option has been removed.
 -->
 
 * `options` {Object}
-  * `entryTypes` {string[]} An array of strings identifying the types of
-    `PerformanceEntry` instances the observer is interested in. If not
+  * `type` {string} A single {PerformanceEntry} type. Must not be given
+    if `entryTypes` is already specified.
+  * `entryTypes` {string\[]} An array of strings identifying the types of
+    {PerformanceEntry} instances the observer is interested in. If not
     provided an error will be thrown.
-  * `buffered` {boolean} If true, the notification callback will be
-    called using `setImmediate()` and multiple `PerformanceEntry` instance
-    notifications will be buffered internally. If `false`, notifications will
-    be immediate and synchronous. **Default:** `false`.
+  * `buffered` {boolean} If true, the observer callback is called with a
+    list global `PerformanceEntry` buffered entries. If false, only
+    `PerformanceEntry`s created after the time point are sent to the
+    observer callback. **Default:** `false`.
 
-Subscribes the `PerformanceObserver` instance to notifications of new
-`PerformanceEntry` instances identified by `options.entryTypes`.
-
-When `options.buffered` is `false`, the `callback` will be invoked once for
-every `PerformanceEntry` instance:
+Subscribes the {PerformanceObserver} instance to notifications of new
+{PerformanceEntry} instances identified either by `options.entryTypes`
+or `options.type`:
 
 ```js
 const {
@@ -481,28 +649,14 @@ const {
 const obs = new PerformanceObserver((list, observer) => {
   // Called three times synchronously. `list` contains one item.
 });
-obs.observe({ entryTypes: ['mark'] });
-
-for (let n = 0; n < 3; n++)
-  performance.mark(`test${n}`);
-```
-
-```js
-const {
-  performance,
-  PerformanceObserver
-} = require('perf_hooks');
-
-const obs = new PerformanceObserver((list, observer) => {
-  // Called once. `list` contains three items.
-});
-obs.observe({ entryTypes: ['mark'], buffered: true });
+obs.observe({ type: 'mark' });
 
 for (let n = 0; n < 3; n++)
   performance.mark(`test${n}`);
 ```
 
 ## Class: `PerformanceObserverEntryList`
+
 <!-- YAML
 added: v8.5.0
 -->
@@ -512,11 +666,12 @@ The `PerformanceObserverEntryList` class is used to provide access to the
 The constructor of this class is not exposed to users.
 
 ### `performanceObserverEntryList.getEntries()`
+
 <!-- YAML
 added: v8.5.0
 -->
 
-* Returns: {PerformanceEntry[]}
+* Returns: {PerformanceEntry\[]}
 
 Returns a list of `PerformanceEntry` objects in chronological order
 with respect to `performanceEntry.startTime`.
@@ -547,20 +702,21 @@ const obs = new PerformanceObserver((perfObserverList, observer) => {
    */
   observer.disconnect();
 });
-obs.observe({ entryTypes: ['mark'], buffered: true });
+obs.observe({ type: 'mark' });
 
 performance.mark('test');
 performance.mark('meow');
 ```
 
 ### `performanceObserverEntryList.getEntriesByName(name[, type])`
+
 <!-- YAML
 added: v8.5.0
 -->
 
 * `name` {string}
 * `type` {string}
-* Returns: {PerformanceEntry[]}
+* Returns: {PerformanceEntry\[]}
 
 Returns a list of `PerformanceEntry` objects in chronological order
 with respect to `performanceEntry.startTime` whose `performanceEntry.name` is
@@ -601,19 +757,20 @@ const obs = new PerformanceObserver((perfObserverList, observer) => {
   console.log(perfObserverList.getEntriesByName('test', 'measure')); // []
   observer.disconnect();
 });
-obs.observe({ entryTypes: ['mark', 'measure'], buffered: true });
+obs.observe({ entryTypes: ['mark', 'measure'] });
 
 performance.mark('test');
 performance.mark('meow');
 ```
 
 ### `performanceObserverEntryList.getEntriesByType(type)`
+
 <!-- YAML
 added: v8.5.0
 -->
 
 * `type` {string}
-* Returns: {PerformanceEntry[]}
+* Returns: {PerformanceEntry\[]}
 
 Returns a list of `PerformanceEntry` objects in chronological order
 with respect to `performanceEntry.startTime` whose `performanceEntry.entryType`
@@ -645,29 +802,31 @@ const obs = new PerformanceObserver((perfObserverList, observer) => {
    */
   observer.disconnect();
 });
-obs.observe({ entryTypes: ['mark'], buffered: true });
+obs.observe({ type: 'mark' });
 
 performance.mark('test');
 performance.mark('meow');
 ```
 
 ## `perf_hooks.createHistogram([options])`
+
 <!-- YAML
-added: v14.18.0
+added: v15.9.0
 -->
 
 * `options` {Object}
   * `min` {number|bigint} The minimum recordable value. Must be an integer
-    value greater than 0. **Defaults**: `1`.
+    value greater than 0. **Default:** `1`.
   * `max` {number|bigint} The maximum recordable value. Must be an integer
-    value greater than `min`. **Defaults**: `Number.MAX_SAFE_INTEGER`.
+    value greater than `min`. **Default:** `Number.MAX_SAFE_INTEGER`.
   * `figures` {number} The number of accuracy digits. Must be a number between
-    `1` and `5`. **Defaults**: `3`.
+    `1` and `5`. **Default:** `3`.
 * Returns {RecordableHistogram}
 
 Returns a {RecordableHistogram}.
 
 ## `perf_hooks.monitorEventLoopDelay([options])`
+
 <!-- YAML
 added: v11.10.0
 -->
@@ -704,11 +863,13 @@ console.log(h.percentile(99));
 ```
 
 ## Class: `Histogram`
+
 <!-- YAML
 added: v11.10.0
 -->
 
 ### `histogram.exceeds`
+
 <!-- YAML
 added: v11.10.0
 -->
@@ -719,6 +880,7 @@ The number of times the event loop delay exceeded the maximum 1 hour event
 loop delay threshold.
 
 ### `histogram.max`
+
 <!-- YAML
 added: v11.10.0
 -->
@@ -728,6 +890,7 @@ added: v11.10.0
 The maximum recorded event loop delay.
 
 ### `histogram.mean`
+
 <!-- YAML
 added: v11.10.0
 -->
@@ -737,6 +900,7 @@ added: v11.10.0
 The mean of the recorded event loop delays.
 
 ### `histogram.min`
+
 <!-- YAML
 added: v11.10.0
 -->
@@ -746,6 +910,7 @@ added: v11.10.0
 The minimum recorded event loop delay.
 
 ### `histogram.percentile(percentile)`
+
 <!-- YAML
 added: v11.10.0
 -->
@@ -756,6 +921,7 @@ added: v11.10.0
 Returns the value at the given percentile.
 
 ### `histogram.percentiles`
+
 <!-- YAML
 added: v11.10.0
 -->
@@ -765,6 +931,7 @@ added: v11.10.0
 Returns a `Map` object detailing the accumulated percentile distribution.
 
 ### `histogram.reset()`
+
 <!-- YAML
 added: v11.10.0
 -->
@@ -772,6 +939,7 @@ added: v11.10.0
 Resets the collected histogram data.
 
 ### `histogram.stddev`
+
 <!-- YAML
 added: v11.10.0
 -->
@@ -785,6 +953,7 @@ The standard deviation of the recorded event loop delays.
 A `Histogram` that is periodically updated on a given interval.
 
 ### `histogram.disable()`
+
 <!-- YAML
 added: v11.10.0
 -->
@@ -795,6 +964,7 @@ Disables the update interval timer. Returns `true` if the timer was
 stopped, `false` if it was already stopped.
 
 ### `histogram.enable()`
+
 <!-- YAML
 added: v11.10.0
 -->
@@ -811,20 +981,23 @@ end, the histogram is cloned as a plain {Histogram} object that does not
 implement the `enable()` and `disable()` methods.
 
 ## Class: `RecordableHistogram extends Histogram`
+
 <!-- YAML
-added: v14.18.0
+added: v15.9.0
 -->
 
 ### `histogram.record(val)`
+
 <!-- YAML
-added: v14.18.0
+added: v15.9.0
 -->
 
 * `val` {number|bigint} The amount to record in the histogram.
 
 ### `histogram.recordDelta()`
+
 <!-- YAML
-added: v14.18.0
+added: v15.9.0
 -->
 
 Calculates the amount of time (in nanoseconds) that has passed since the
@@ -882,6 +1055,7 @@ The following example measures the duration of `require()` operations to load
 dependencies:
 
 <!-- eslint-disable no-global-assign -->
+
 ```js
 'use strict';
 const {
@@ -913,9 +1087,10 @@ require('some-module');
 [Performance Timeline]: https://w3c.github.io/performance-timeline/
 [User Timing]: https://www.w3.org/TR/user-timing/
 [Web Performance APIs]: https://w3c.github.io/perf-timing-primer/
-[Worker threads]: worker_threads.md#worker_threads_worker_threads
-[`'exit'`]: process.md#process_event_exit
-[`child_process.spawnSync()`]: child_process.md#child_process_child_process_spawnsync_command_args_options
-[`process.hrtime()`]: process.md#process_process_hrtime_time
+[Worker threads]: worker_threads.md#worker-threads
+[`'exit'`]: process.md#event-exit
+[`child_process.spawnSync()`]: child_process.md#child_processspawnsynccommand-args-options
+[`process.hrtime()`]: process.md#processhrtimetime
 [`timeOrigin`]: https://w3c.github.io/hr-time/#dom-performance-timeorigin
+[`window.performance.toJSON`]: https://developer.mozilla.org/en-US/docs/Web/API/Performance/toJSON
 [`window.performance`]: https://developer.mozilla.org/en-US/docs/Web/API/Window/performance

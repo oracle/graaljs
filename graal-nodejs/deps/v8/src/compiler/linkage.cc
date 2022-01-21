@@ -17,6 +17,10 @@ namespace compiler {
 
 namespace {
 
+// Offsets from callee to caller frame, in slots.
+constexpr int kFirstCallerSlotOffset = 1;
+constexpr int kNoCallerSlotOffset = 0;
+
 inline LinkageLocation regloc(Register reg, MachineType type) {
   return LinkageLocation::ForRegister(reg.code(), type);
 }
@@ -39,6 +43,7 @@ std::ostream& operator<<(std::ostream& os, const CallDescriptor::Kind& k) {
     case CallDescriptor::kCallAddress:
       os << "Addr";
       break;
+#if V8_ENABLE_WEBASSEMBLY
     case CallDescriptor::kCallWasmCapiFunction:
       os << "WasmExit";
       break;
@@ -48,6 +53,7 @@ std::ostream& operator<<(std::ostream& os, const CallDescriptor::Kind& k) {
     case CallDescriptor::kCallWasmImportWrapper:
       os << "WasmImportWrapper";
       break;
+#endif  // V8_ENABLE_WEBASSEMBLY
     case CallDescriptor::kCallBuiltinPointer:
       os << "BuiltinPointer";
       break;
@@ -59,7 +65,7 @@ std::ostream& operator<<(std::ostream& os, const CallDescriptor::Kind& k) {
 std::ostream& operator<<(std::ostream& os, const CallDescriptor& d) {
   // TODO(svenpanne) Output properties etc. and be less cryptic.
   return os << d.kind() << ":" << d.debug_name() << ":r" << d.ReturnCount()
-            << "s" << d.StackParameterCount() << "i" << d.InputCount() << "f"
+            << "s" << d.ParameterSlotCount() << "i" << d.InputCount() << "f"
             << d.FrameStateCount();
 }
 
@@ -74,61 +80,101 @@ MachineSignature* CallDescriptor::GetMachineSignature(Zone* zone) const {
   for (size_t i = 0; i < param_count; ++i) {
     types[current++] = GetParameterType(i);
   }
-  return new (zone) MachineSignature(return_count, param_count, types);
-}
-
-int CallDescriptor::GetFirstUnusedStackSlot() const {
-  int slots_above_sp = 0;
-  for (size_t i = 0; i < InputCount(); ++i) {
-    LinkageLocation operand = GetInputLocation(i);
-    if (!operand.IsRegister()) {
-      int new_candidate =
-          -operand.GetLocation() + operand.GetSizeInPointers() - 1;
-      if (new_candidate > slots_above_sp) {
-        slots_above_sp = new_candidate;
-      }
-    }
-  }
-  return slots_above_sp;
+  return zone->New<MachineSignature>(return_count, param_count, types);
 }
 
 int CallDescriptor::GetStackParameterDelta(
     CallDescriptor const* tail_caller) const {
-  int callee_slots_above_sp = GetFirstUnusedStackSlot();
-  int tail_caller_slots_above_sp = tail_caller->GetFirstUnusedStackSlot();
+  // In the IsTailCallForTierUp case, the callee has
+  // identical linkage and runtime arguments to the caller, thus the stack
+  // parameter delta is 0. We don't explicitly pass the runtime arguments as
+  // inputs to the TailCall node, since they already exist on the stack.
+  if (IsTailCallForTierUp()) return 0;
+
+  // Add padding if necessary before computing the stack parameter delta.
+  int callee_slots_above_sp = AddArgumentPaddingSlots(GetOffsetToReturns());
+  int tail_caller_slots_above_sp =
+      AddArgumentPaddingSlots(tail_caller->GetOffsetToReturns());
   int stack_param_delta = callee_slots_above_sp - tail_caller_slots_above_sp;
-  if (ShouldPadArguments(stack_param_delta)) {
-    if (callee_slots_above_sp % 2 != 0) {
-      // The delta is odd due to the callee - we will need to add one slot
-      // of padding.
-      ++stack_param_delta;
-    } else {
-      // The delta is odd because of the caller. We already have one slot of
-      // padding that we can reuse for arguments, so we will need one fewer
-      // slot.
-      --stack_param_delta;
-    }
-  }
+  DCHECK(!ShouldPadArguments(stack_param_delta));
   return stack_param_delta;
 }
 
-int CallDescriptor::GetTaggedParameterSlots() const {
-  int result = 0;
+int CallDescriptor::GetOffsetToFirstUnusedStackSlot() const {
+  int offset = kFirstCallerSlotOffset;
+  for (size_t i = 0; i < InputCount(); ++i) {
+    LinkageLocation operand = GetInputLocation(i);
+    if (!operand.IsRegister()) {
+      DCHECK(operand.IsCallerFrameSlot());
+      int slot_offset = -operand.GetLocation();
+      offset = std::max(offset, slot_offset + operand.GetSizeInPointers());
+    }
+  }
+  return offset;
+}
+
+int CallDescriptor::GetOffsetToReturns() const {
+  // Find the return slot with the least offset relative to the callee.
+  int offset = kNoCallerSlotOffset;
+  for (size_t i = 0; i < ReturnCount(); ++i) {
+    LinkageLocation operand = GetReturnLocation(i);
+    if (!operand.IsRegister()) {
+      DCHECK(operand.IsCallerFrameSlot());
+      int slot_offset = -operand.GetLocation();
+      offset = std::min(offset, slot_offset);
+    }
+  }
+  // If there was a return slot, return the offset minus 1 slot.
+  if (offset != kNoCallerSlotOffset) {
+    return offset - 1;
+  }
+
+  // Otherwise, return the first slot after the parameters area, including
+  // optional padding slots.
+  int last_argument_slot = GetOffsetToFirstUnusedStackSlot() - 1;
+  offset = AddArgumentPaddingSlots(last_argument_slot);
+
+  DCHECK_IMPLIES(offset == 0, ParameterSlotCount() == 0);
+  return offset;
+}
+
+uint32_t CallDescriptor::GetTaggedParameterSlots() const {
+  uint32_t count = 0;
+  uint32_t first_offset = kMaxInt;
   for (size_t i = 0; i < InputCount(); ++i) {
     LinkageLocation operand = GetInputLocation(i);
     if (!operand.IsRegister() && operand.GetType().IsTagged()) {
-      ++result;
+      ++count;
+      // Caller frame slots have negative indices and start at -1. Flip it
+      // back to a positive offset (to be added to the frame's SP to find the
+      // slot).
+      int slot_offset = -operand.GetLocation() - 1;
+      DCHECK_GE(slot_offset, 0);
+      first_offset = std::min(first_offset, static_cast<uint32_t>(slot_offset));
     }
   }
-  return result;
+  if (count > 0) {
+    DCHECK(first_offset != kMaxInt);
+    return (first_offset << 16) | (count & 0xFFFFu);
+  }
+  return 0;
 }
 
 bool CallDescriptor::CanTailCall(const CallDescriptor* callee) const {
   if (ReturnCount() != callee->ReturnCount()) return false;
+  const int stack_returns_delta =
+      GetOffsetToReturns() - callee->GetOffsetToReturns();
   for (size_t i = 0; i < ReturnCount(); ++i) {
-    if (!LinkageLocation::IsSameLocation(GetReturnLocation(i),
-                                         callee->GetReturnLocation(i)))
+    if (GetReturnLocation(i).IsCallerFrameSlot() &&
+        callee->GetReturnLocation(i).IsCallerFrameSlot()) {
+      if (GetReturnLocation(i).AsCallerFrameSlot() + stack_returns_delta !=
+          callee->GetReturnLocation(i).AsCallerFrameSlot()) {
+        return false;
+      }
+    } else if (!LinkageLocation::IsSameLocation(GetReturnLocation(i),
+                                                callee->GetReturnLocation(i))) {
       return false;
+    }
   }
   return true;
 }
@@ -136,33 +182,39 @@ bool CallDescriptor::CanTailCall(const CallDescriptor* callee) const {
 // TODO(jkummerow, sigurds): Arguably frame size calculation should be
 // keyed on code/frame type, not on CallDescriptor kind. Think about a
 // good way to organize this logic.
-int CallDescriptor::CalculateFixedFrameSize(Code::Kind code_kind) const {
+int CallDescriptor::CalculateFixedFrameSize(CodeKind code_kind) const {
   switch (kind_) {
     case kCallJSFunction:
-      return PushArgumentCount()
-                 ? OptimizedBuiltinFrameConstants::kFixedSlotCount
-                 : StandardFrameConstants::kFixedSlotCount;
+      return StandardFrameConstants::kFixedSlotCount;
     case kCallAddress:
-      if (code_kind == Code::C_WASM_ENTRY) {
+#if V8_ENABLE_WEBASSEMBLY
+      if (code_kind == CodeKind::C_WASM_ENTRY) {
         return CWasmEntryFrameConstants::kFixedSlotCount;
       }
+#endif  // V8_ENABLE_WEBASSEMBLY
       return CommonFrameConstants::kFixedSlotCountAboveFp +
              CommonFrameConstants::kCPSlotCount;
     case kCallCodeObject:
     case kCallBuiltinPointer:
       return TypedFrameConstants::kFixedSlotCount;
+#if V8_ENABLE_WEBASSEMBLY
     case kCallWasmFunction:
     case kCallWasmImportWrapper:
       return WasmFrameConstants::kFixedSlotCount;
     case kCallWasmCapiFunction:
       return WasmExitFrameConstants::kFixedSlotCount;
+#endif  // V8_ENABLE_WEBASSEMBLY
   }
   UNREACHABLE();
 }
 
 CallDescriptor* Linkage::ComputeIncoming(Zone* zone,
                                          OptimizedCompilationInfo* info) {
-  DCHECK(!info->IsNotOptimizedFunctionOrWasmFunction());
+#if V8_ENABLE_WEBASSEMBLY
+  DCHECK(info->IsOptimizing() || info->IsWasm());
+#else
+  DCHECK(info->IsOptimizing());
+#endif  // V8_ENABLE_WEBASSEMBLY
   if (!info->closure().is_null()) {
     // If we are compiling a JS function, use a JS call descriptor,
     // plus the receiver.
@@ -180,7 +232,7 @@ bool Linkage::NeedsFrameStateInput(Runtime::FunctionId function) {
   switch (function) {
     // Most runtime functions need a FrameState. A few chosen ones that we know
     // not to call into arbitrary JavaScript, not to throw, and not to lazily
-    // deoptimize are whitelisted here and can be called without a FrameState.
+    // deoptimize are allowlisted here and can be called without a FrameState.
     case Runtime::kAbort:
     case Runtime::kAllocateInOldGeneration:
     case Runtime::kCreateIterResultObject:
@@ -208,31 +260,15 @@ bool Linkage::NeedsFrameStateInput(Runtime::FunctionId function) {
     case Runtime::kInlineGeneratorClose:
     case Runtime::kInlineGeneratorGetResumeMode:
     case Runtime::kInlineCreateJSGeneratorObject:
-    case Runtime::kInlineIsArray:
-    case Runtime::kInlineIsJSReceiver:
-    case Runtime::kInlineIsRegExp:
-    case Runtime::kInlineIsSmi:
       return false;
 
     default:
       break;
   }
 
-  // For safety, default to needing a FrameState unless whitelisted.
+  // For safety, default to needing a FrameState unless allowlisted.
   return true;
 }
-
-
-bool CallDescriptor::UsesOnlyRegisters() const {
-  for (size_t i = 0; i < InputCount(); ++i) {
-    if (!GetInputLocation(i).IsRegister()) return false;
-  }
-  for (size_t i = 0; i < ReturnCount(); ++i) {
-    if (!GetReturnLocation(i).IsRegister()) return false;
-  }
-  return true;
-}
-
 
 CallDescriptor* Linkage::GetRuntimeCallDescriptor(
     Zone* zone, Runtime::FunctionId function_id, int js_parameter_count,
@@ -253,7 +289,7 @@ CallDescriptor* Linkage::GetRuntimeCallDescriptor(
 CallDescriptor* Linkage::GetCEntryStubCallDescriptor(
     Zone* zone, int return_count, int js_parameter_count,
     const char* debug_name, Operator::Properties properties,
-    CallDescriptor::Flags flags) {
+    CallDescriptor::Flags flags, StackArgumentOrder stack_order) {
   const size_t function_count = 1;
   const size_t num_args_count = 1;
   const size_t context_count = 1;
@@ -295,7 +331,7 @@ CallDescriptor* Linkage::GetCEntryStubCallDescriptor(
   MachineType target_type = MachineType::AnyTagged();
   LinkageLocation target_loc =
       LinkageLocation::ForAnyRegister(MachineType::AnyTagged());
-  return new (zone) CallDescriptor(     // --
+  return zone->New<CallDescriptor>(     // --
       CallDescriptor::kCallCodeObject,  // kind
       target_type,                      // target MachineType
       target_loc,                       // target location
@@ -305,7 +341,8 @@ CallDescriptor* Linkage::GetCEntryStubCallDescriptor(
       kNoCalleeSaved,                   // callee-saved
       kNoCalleeSaved,                   // callee-saved fp
       flags,                            // flags
-      debug_name);                      // debug name
+      debug_name,                       // debug name
+      stack_order);                     // stack order
 }
 
 CallDescriptor* Linkage::GetJSCallDescriptor(Zone* zone, bool is_osr,
@@ -325,7 +362,7 @@ CallDescriptor* Linkage::GetJSCallDescriptor(Zone* zone, bool is_osr,
 
   // All parameters to JS calls go on the stack.
   for (int i = 0; i < js_parameter_count; i++) {
-    int spill_slot_index = i - js_parameter_count;
+    int spill_slot_index = -i - 1;
     locations.AddParam(LinkageLocation::ForCallerFrameSlot(
         spill_slot_index, MachineType::AnyTagged()));
   }
@@ -348,7 +385,7 @@ CallDescriptor* Linkage::GetJSCallDescriptor(Zone* zone, bool is_osr,
   LinkageLocation target_loc =
       is_osr ? LinkageLocation::ForSavedCallerFunction()
              : regloc(kJSFunctionRegister, MachineType::AnyTagged());
-  return new (zone) CallDescriptor(     // --
+  return zone->New<CallDescriptor>(     // --
       CallDescriptor::kCallJSFunction,  // kind
       target_type,                      // target MachineType
       target_loc,                       // target location
@@ -358,7 +395,7 @@ CallDescriptor* Linkage::GetJSCallDescriptor(Zone* zone, bool is_osr,
       kNoCalleeSaved,                   // callee-saved
       kNoCalleeSaved,                   // callee-saved fp
       flags,                            // flags
-      "js-call");
+      "js-call");                       // debug name
 }
 
 // TODO(turbofan): cache call descriptors for code stub calls.
@@ -436,29 +473,38 @@ CallDescriptor* Linkage::GetStubCallDescriptor(
       kind = CallDescriptor::kCallCodeObject;
       target_type = MachineType::AnyTagged();
       break;
+#if V8_ENABLE_WEBASSEMBLY
     case StubCallMode::kCallWasmRuntimeStub:
       kind = CallDescriptor::kCallWasmFunction;
       target_type = MachineType::Pointer();
       break;
+#endif  // V8_ENABLE_WEBASSEMBLY
     case StubCallMode::kCallBuiltinPointer:
       kind = CallDescriptor::kCallBuiltinPointer;
       target_type = MachineType::AnyTagged();
       break;
   }
 
+  RegList allocatable_registers = descriptor.allocatable_registers();
+  RegList callee_saved_registers = kNoCalleeSaved;
+  if (descriptor.CalleeSaveRegisters()) {
+    callee_saved_registers = allocatable_registers;
+    DCHECK(callee_saved_registers);
+  }
   LinkageLocation target_loc = LinkageLocation::ForAnyRegister(target_type);
-  return new (zone) CallDescriptor(          // --
+  return zone->New<CallDescriptor>(          // --
       kind,                                  // kind
       target_type,                           // target MachineType
       target_loc,                            // target location
       locations.Build(),                     // location_sig
       stack_parameter_count,                 // stack_parameter_count
       properties,                            // properties
-      kNoCalleeSaved,                        // callee-saved registers
+      callee_saved_registers,                // callee-saved registers
       kNoCalleeSaved,                        // callee-saved fp
       CallDescriptor::kCanUseRoots | flags,  // flags
       descriptor.DebugName(),                // debug name
-      descriptor.allocatable_registers());
+      descriptor.GetStackArgumentOrder(),    // stack order
+      allocatable_registers);
 }
 
 // static
@@ -493,7 +539,7 @@ CallDescriptor* Linkage::GetBytecodeDispatchCallDescriptor(
   LinkageLocation target_loc = LinkageLocation::ForAnyRegister(target_type);
   const CallDescriptor::Flags kFlags =
       CallDescriptor::kCanUseRoots | CallDescriptor::kFixedTargetRegister;
-  return new (zone) CallDescriptor(  // --
+  return zone->New<CallDescriptor>(  // --
       CallDescriptor::kCallAddress,  // kind
       target_type,                   // target MachineType
       target_loc,                    // target location
@@ -545,10 +591,12 @@ bool Linkage::ParameterHasSecondaryLocation(int index) const {
     return IsTaggedReg(loc, kJSFunctionRegister) ||
            IsTaggedReg(loc, kContextRegister);
   }
+#if V8_ENABLE_WEBASSEMBLY
   if (incoming_->IsWasmFunctionCall()) {
     LinkageLocation loc = GetParameterLocation(index);
     return IsTaggedReg(loc, kWasmInstanceRegister);
   }
+#endif  // V8_ENABLE_WEBASSEMBLY
   return false;
 }
 
@@ -556,7 +604,6 @@ LinkageLocation Linkage::GetParameterSecondaryLocation(int index) const {
   // TODO(titzer): these constants are necessary due to offset/slot# mismatch
   static const int kJSContextSlot = 2 + StandardFrameConstants::kCPSlotCount;
   static const int kJSFunctionSlot = 3 + StandardFrameConstants::kCPSlotCount;
-  static const int kWasmInstanceSlot = 3 + StandardFrameConstants::kCPSlotCount;
 
   DCHECK(ParameterHasSecondaryLocation(index));
   LinkageLocation loc = GetParameterLocation(index);
@@ -572,13 +619,15 @@ LinkageLocation Linkage::GetParameterSecondaryLocation(int index) const {
                                                  MachineType::AnyTagged());
     }
   }
+#if V8_ENABLE_WEBASSEMBLY
+  static const int kWasmInstanceSlot = 3 + StandardFrameConstants::kCPSlotCount;
   if (incoming_->IsWasmFunctionCall()) {
     DCHECK(IsTaggedReg(loc, kWasmInstanceRegister));
     return LinkageLocation::ForCalleeFrameSlot(kWasmInstanceSlot,
                                                MachineType::AnyTagged());
   }
+#endif  // V8_ENABLE_WEBASSEMBLY
   UNREACHABLE();
-  return LinkageLocation::ForCalleeFrameSlot(0, MachineType::AnyTagged());
 }
 
 

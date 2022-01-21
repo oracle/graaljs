@@ -64,51 +64,19 @@
 'use strict';
 
 const {
-  ObjectDefineProperty,
   ObjectSetPrototypeOf,
   Symbol
 } = primordials;
 
 module.exports = Transform;
 const {
-  ERR_METHOD_NOT_IMPLEMENTED,
-  ERR_MULTIPLE_CALLBACK,
-  ERR_TRANSFORM_ALREADY_TRANSFORMING,
-  ERR_TRANSFORM_WITH_LENGTH_0
+  ERR_METHOD_NOT_IMPLEMENTED
 } = require('internal/errors').codes;
 const Duplex = require('internal/streams/duplex');
-const internalUtil = require('internal/util');
-
 ObjectSetPrototypeOf(Transform.prototype, Duplex.prototype);
 ObjectSetPrototypeOf(Transform, Duplex);
 
-const kTransformState = Symbol('kTransformState');
-
-function afterTransform(er, data) {
-  const ts = this[kTransformState];
-  ts.transforming = false;
-
-  const cb = ts.writecb;
-
-  if (cb === null) {
-    return this.emit('error', new ERR_MULTIPLE_CALLBACK());
-  }
-
-  ts.writechunk = null;
-  ts.writecb = null;
-
-  if (data != null) // Single equals check for both `null` and `undefined`
-    this.push(data);
-
-  cb(er);
-
-  const rs = this._readableState;
-  rs.reading = false;
-  if (rs.needReadable || rs.length < rs.highWaterMark) {
-    this._read(rs.highWaterMark);
-  }
-}
-
+const kCallback = Symbol('kCallback');
 
 function Transform(options) {
   if (!(this instanceof Transform))
@@ -116,19 +84,12 @@ function Transform(options) {
 
   Duplex.call(this, options);
 
-  this[kTransformState] = {
-    afterTransform: afterTransform.bind(this),
-    needTransform: false,
-    transforming: false,
-    writecb: null,
-    writechunk: null,
-    writeencoding: null
-  };
-
   // We have implemented the _read method, and done the other things
   // that Readable wants before the first _read call, so unset the
   // sync guard flag.
   this._readableState.sync = false;
+
+  this[kCallback] = null;
 
   if (options) {
     if (typeof options.transform === 'function')
@@ -139,97 +100,147 @@ function Transform(options) {
   }
 
   // When the writable side finishes, then flush out anything remaining.
+  // Backwards compat. Some Transform streams incorrectly implement _final
+  // instead of or in addition to _flush. By using 'prefinish' instead of
+  // implementing _final we continue supporting this unfortunate use case.
   this.on('prefinish', prefinish);
 }
 
-function prefinish() {
-  if (typeof this._flush === 'function' && !this._readableState.destroyed) {
-    this._flush((er, data) => {
-      done(this, er, data);
+function final(cb) {
+  let called = false;
+  if (typeof this._flush === 'function' && !this.destroyed) {
+    const result = this._flush((er, data) => {
+      called = true;
+      if (er) {
+        if (cb) {
+          cb(er);
+        } else {
+          this.destroy(er);
+        }
+        return;
+      }
+
+      if (data != null) {
+        this.push(data);
+      }
+      this.push(null);
+      if (cb) {
+        cb();
+      }
     });
+    if (result !== undefined && result !== null) {
+      try {
+        const then = result.then;
+        if (typeof then === 'function') {
+          then.call(
+            result,
+            (data) => {
+              if (called)
+                return;
+              if (data != null)
+                this.push(data);
+              this.push(null);
+              if (cb)
+                process.nextTick(cb);
+            },
+            (err) => {
+              if (cb) {
+                process.nextTick(cb, err);
+              } else {
+                process.nextTick(() => this.destroy(err));
+              }
+            });
+        }
+      } catch (err) {
+        process.nextTick(() => this.destroy(err));
+      }
+    }
   } else {
-    done(this, null, null);
+    this.push(null);
+    if (cb) {
+      cb();
+    }
   }
 }
 
-ObjectDefineProperty(Transform.prototype, '_transformState', {
-  get: internalUtil.deprecate(function() {
-    return this[kTransformState];
-  }, 'Transform.prototype._transformState is deprecated', 'DEP0143'),
-  set: internalUtil.deprecate(function(val) {
-    this[kTransformState] = val;
-  }, 'Transform.prototype._transformState is deprecated', 'DEP0143')
-});
+function prefinish() {
+  if (this._final !== final) {
+    final.call(this);
+  }
+}
 
-Transform.prototype.push = function(chunk, encoding) {
-  this[kTransformState].needTransform = false;
-  return Duplex.prototype.push.call(this, chunk, encoding);
-};
+Transform.prototype._final = final;
 
-// This is the part where you do stuff!
-// override this function in implementation classes.
-// 'chunk' is an input chunk.
-//
-// Call `push(newChunk)` to pass along transformed output
-// to the readable side.  You may call 'push' zero or more times.
-//
-// Call `cb(err)` when you are done with this chunk.  If you pass
-// an error, then that'll put the hurt on the whole operation.  If you
-// never call cb(), then you'll never get another chunk.
-Transform.prototype._transform = function(chunk, encoding, cb) {
+Transform.prototype._transform = function(chunk, encoding, callback) {
   throw new ERR_METHOD_NOT_IMPLEMENTED('_transform()');
 };
 
-Transform.prototype._write = function(chunk, encoding, cb) {
-  const ts = this[kTransformState];
-  ts.writecb = cb;
-  ts.writechunk = chunk;
-  ts.writeencoding = encoding;
-  if (!ts.transforming) {
-    const rs = this._readableState;
-    if (ts.needTransform ||
-        rs.needReadable ||
-        rs.length < rs.highWaterMark)
-      this._read(rs.highWaterMark);
-  }
-};
+Transform.prototype._write = function(chunk, encoding, callback) {
+  const rState = this._readableState;
+  const wState = this._writableState;
+  const length = rState.length;
 
-// Doesn't matter what the args are here.
-// _transform does all the work.
-// That we got here means that the readable side wants more data.
-Transform.prototype._read = function(n) {
-  const ts = this[kTransformState];
+  let called = false;
+  const result = this._transform(chunk, encoding, (err, val) => {
+    called = true;
+    if (err) {
+      callback(err);
+      return;
+    }
 
-  if (ts.writechunk !== null && !ts.transforming) {
-    ts.transforming = true;
-    this._transform(ts.writechunk, ts.writeencoding, ts.afterTransform);
-  } else {
-    // Mark that we need a transform, so that any data that comes in
-    // will get processed, now that we've asked for it.
-    ts.needTransform = true;
-  }
-};
+    if (val != null) {
+      this.push(val);
+    }
 
-
-Transform.prototype._destroy = function(err, cb) {
-  Duplex.prototype._destroy.call(this, err, (err2) => {
-    cb(err2);
+    if (
+      wState.ended || // Backwards compat.
+      length === rState.length || // Backwards compat.
+      rState.length < rState.highWaterMark ||
+      rState.length === 0
+    ) {
+      callback();
+    } else {
+      this[kCallback] = callback;
+    }
   });
+  if (result !== undefined && result != null) {
+    try {
+      const then = result.then;
+      if (typeof then === 'function') {
+        then.call(
+          result,
+          (val) => {
+            if (called)
+              return;
+
+            if (val != null) {
+              this.push(val);
+            }
+
+            if (
+              wState.ended ||
+              length === rState.length ||
+              rState.length < rState.highWaterMark ||
+              rState.length === 0) {
+              process.nextTick(callback);
+            } else {
+              this[kCallback] = callback;
+            }
+          },
+          (err) => {
+            process.nextTick(callback, err);
+          });
+      }
+    } catch (err) {
+      process.nextTick(callback, err);
+    }
+  }
 };
 
-
-function done(stream, er, data) {
-  if (er)
-    return stream.emit('error', er);
-
-  if (data != null) // Single equals check for both `null` and `undefined`
-    stream.push(data);
-
-  // These two error cases are coherence checks that can likely not be tested.
-  if (stream._writableState.length)
-    throw new ERR_TRANSFORM_WITH_LENGTH_0();
-
-  if (stream[kTransformState].transforming)
-    throw new ERR_TRANSFORM_ALREADY_TRANSFORMING();
-  return stream.push(null);
-}
+Transform.prototype._read = function() {
+  if (this[kCallback]) {
+    const callback = this[kCallback];
+    this[kCallback] = null;
+    callback();
+  }
+};

@@ -83,12 +83,13 @@ function getHeapSnapshot() {
   return new HeapSnapshotStream(handle);
 }
 
+// We need to get the buffer from the binding at the callsite since
+// it's re-initialized after deserialization.
+const binding = internalBinding('v8');
+
 const {
   cachedDataVersionTag,
   setFlagsFromString: _setFlagsFromString,
-  heapStatisticsBuffer,
-  heapSpaceStatisticsBuffer,
-  heapCodeStatisticsBuffer,
   updateHeapStatisticsBuffer,
   updateHeapSpaceStatisticsBuffer,
   updateHeapCodeStatisticsBuffer,
@@ -117,7 +118,7 @@ const {
   kCodeAndMetadataSizeIndex,
   kBytecodeAndMetadataSizeIndex,
   kExternalScriptSourceSizeIndex
-} = internalBinding('v8');
+} = binding;
 
 const kNumberOfHeapSpaces = kHeapSpaces.length;
 
@@ -148,22 +149,22 @@ function setFlagsFromString(flags) {
  *   }}
  */
 function getHeapStatistics() {
-  const buffer = heapStatisticsBuffer;
+  const buffer = binding.heapStatisticsBuffer;
 
   updateHeapStatisticsBuffer();
 
   return {
-    'total_heap_size': buffer[kTotalHeapSizeIndex],
-    'total_heap_size_executable': buffer[kTotalHeapSizeExecutableIndex],
-    'total_physical_size': buffer[kTotalPhysicalSizeIndex],
-    'total_available_size': buffer[kTotalAvailableSize],
-    'used_heap_size': buffer[kUsedHeapSizeIndex],
-    'heap_size_limit': buffer[kHeapSizeLimitIndex],
-    'malloced_memory': buffer[kMallocedMemoryIndex],
-    'peak_malloced_memory': buffer[kPeakMallocedMemoryIndex],
-    'does_zap_garbage': buffer[kDoesZapGarbageIndex],
-    'number_of_native_contexts': buffer[kNumberOfNativeContextsIndex],
-    'number_of_detached_contexts': buffer[kNumberOfDetachedContextsIndex]
+    total_heap_size: buffer[kTotalHeapSizeIndex],
+    total_heap_size_executable: buffer[kTotalHeapSizeExecutableIndex],
+    total_physical_size: buffer[kTotalPhysicalSizeIndex],
+    total_available_size: buffer[kTotalAvailableSize],
+    used_heap_size: buffer[kUsedHeapSizeIndex],
+    heap_size_limit: buffer[kHeapSizeLimitIndex],
+    malloced_memory: buffer[kMallocedMemoryIndex],
+    peak_malloced_memory: buffer[kPeakMallocedMemoryIndex],
+    does_zap_garbage: buffer[kDoesZapGarbageIndex],
+    number_of_native_contexts: buffer[kNumberOfNativeContextsIndex],
+    number_of_detached_contexts: buffer[kNumberOfDetachedContextsIndex]
   };
 }
 
@@ -179,7 +180,7 @@ function getHeapStatistics() {
  */
 function getHeapSpaceStatistics() {
   const heapSpaceStatistics = new Array(kNumberOfHeapSpaces);
-  const buffer = heapSpaceStatisticsBuffer;
+  const buffer = binding.heapSpaceStatisticsBuffer;
 
   for (let i = 0; i < kNumberOfHeapSpaces; i++) {
     updateHeapSpaceStatisticsBuffer(i);
@@ -204,13 +205,13 @@ function getHeapSpaceStatistics() {
  *   }}
  */
 function getHeapCodeStatistics() {
-  const buffer = heapCodeStatisticsBuffer;
+  const buffer = binding.heapCodeStatisticsBuffer;
 
   updateHeapCodeStatisticsBuffer();
   return {
-    'code_and_metadata_size': buffer[kCodeAndMetadataSizeIndex],
-    'bytecode_and_metadata_size': buffer[kBytecodeAndMetadataSizeIndex],
-    'external_script_source_size': buffer[kExternalScriptSourceSizeIndex]
+    code_and_metadata_size: buffer[kCodeAndMetadataSizeIndex],
+    bytecode_and_metadata_size: buffer[kBytecodeAndMetadataSizeIndex],
+    external_script_source_size: buffer[kExternalScriptSourceSizeIndex]
   };
 }
 

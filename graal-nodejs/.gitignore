@@ -8,10 +8,13 @@
 # Exclude specific dotfiles that we want to track.
 !deps/**/.*
 !test/fixtures/**/.*
+!.checkstyle_checks.xml
 !.clang-format
+!.cpplint
 !.editorconfig
 !.eslintignore
 !.eslintrc.js
+!.eslintrc.yaml
 !.flake8
 !.gitattributes
 !.github
@@ -19,9 +22,7 @@
 !.gitkeep
 !.mailmap
 !.nycrc
-!.eslintrc.yaml
-!.cpplint
-!.checkstyle_checks.xml
+!.yamllint.yaml
 
 # === Rules for root dir ===
 /core
@@ -73,6 +74,7 @@ _UpgradeReport_Files/
 *.wixobj
 /tools/msvs/genfiles/
 /npm.wxs
+/corepack.wxs
 /tools/msvs/msi/Release/
 /tools/msvs/msi/obj/
 /tools/msvs/msi/x64/
@@ -148,7 +150,7 @@ tools/*/*.i.tmp
 /deps/uv/.github/
 /deps/uv/docs/code/
 /deps/uv/docs/src/guide/
-# Ignore dependencies fetched by deps/v8/tools/node/fetch_deps.py
+# Ignore dependencies fetched by tools/v8/fetch_deps.py
 /deps/.cipd
 
 # === Rules for Windows vcbuild.bat ===

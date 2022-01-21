@@ -1,4 +1,3 @@
-// Flags: --experimental-abortcontroller
 'use strict';
 
 const common = require('../common');
@@ -44,9 +43,7 @@ async function validateReadFileProc() {
 }
 
 function validateReadFileAbortLogicBefore() {
-  const controller = new AbortController();
-  const signal = controller.signal;
-  controller.abort();
+  const signal = AbortSignal.abort();
   assert.rejects(readFile(fn, { signal }), {
     name: 'AbortError'
   });

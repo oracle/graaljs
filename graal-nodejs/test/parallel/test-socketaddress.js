@@ -9,9 +9,6 @@ const {
 const {
   SocketAddress,
 } = require('net');
-const {
-  MessageChannel,
-} = require('worker_threads');
 
 {
   const sa = new SocketAddress();

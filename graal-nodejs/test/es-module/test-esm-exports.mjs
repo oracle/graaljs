@@ -35,14 +35,25 @@ import fromInside from '../fixtures/node_modules/pkgexports/lib/hole.js';
     ['pkgexports-sugar', { default: 'main' }],
     // Path patterns
     ['pkgexports/subpath/sub-dir1', { default: 'main' }],
+    ['pkgexports/subpath/sub-dir1.js', { default: 'main' }],
     ['pkgexports/features/dir1', { default: 'main' }],
+    ['pkgexports/dir1/dir1/trailer', { default: 'main' }],
+    ['pkgexports/dir2/dir2/trailer', { default: 'index' }],
+    ['pkgexports/a/dir1/dir1', { default: 'main' }],
+    ['pkgexports/a/b/dir1/dir1', { default: 'main' }],
+
+    // Deprecated:
+    ['pkgexports/trailing-pattern-slash/',
+     { default: 'trailing-pattern-slash' }],
   ]);
 
   if (isRequire) {
     validSpecifiers.set('pkgexports/subpath/file', { default: 'file' });
     validSpecifiers.set('pkgexports/subpath/dir1', { default: 'main' });
+    // Deprecated:
     validSpecifiers.set('pkgexports/subpath/dir1/', { default: 'main' });
     validSpecifiers.set('pkgexports/subpath/dir2', { default: 'index' });
+    // Deprecated:
     validSpecifiers.set('pkgexports/subpath/dir2/', { default: 'index' });
   } else {
     // No exports or main field
@@ -77,6 +88,8 @@ import fromInside from '../fixtures/node_modules/pkgexports/lib/hole.js';
     ['pkgexports/null/subpath', './null/subpath'],
     // Empty fallback
     ['pkgexports/nofallback1', './nofallback1'],
+    // Non pattern matches
+    ['pkgexports/trailer', './trailer'],
   ]);
 
   const invalidExports = new Map([
@@ -147,6 +160,10 @@ import fromInside from '../fixtures/node_modules/pkgexports/lib/hole.js';
     ['pkgexports/sub/not-a-file.js', `pkgexports${sep}not-a-file.js`],
     // No extension lookups
     ['pkgexports/no-ext', `pkgexports${sep}asdf`],
+    // Pattern specificity
+    ['pkgexports/dir2/trailer', `subpath${sep}dir2.js`],
+    // Pattern double $$ escaping!
+    ['pkgexports/a/$$', `subpath${sep}$$.js`],
   ]);
 
   if (!isRequire) {
@@ -167,8 +184,11 @@ import fromInside from '../fixtures/node_modules/pkgexports/lib/hole.js';
     }));
   }
 
-  // The use of %2F escapes in paths fails loading
+  // The use of %2F and %5C escapes in paths fails loading
   loadFixture('pkgexports/sub/..%2F..%2Fbar.js').catch(mustCall((err) => {
+    strictEqual(err.code, 'ERR_INVALID_MODULE_SPECIFIER');
+  }));
+  loadFixture('pkgexports/sub/..%5C..%5Cbar.js').catch(mustCall((err) => {
     strictEqual(err.code, 'ERR_INVALID_MODULE_SPECIFIER');
   }));
 

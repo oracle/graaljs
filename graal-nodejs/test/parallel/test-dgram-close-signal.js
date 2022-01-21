@@ -1,4 +1,3 @@
-// Flags: --experimental-abortcontroller
 'use strict';
 
 const common = require('../common');
@@ -26,9 +25,7 @@ const dgram = require('dgram');
 
 {
   // Test close with pre-aborted signal.
-  const controller = new AbortController();
-  controller.abort();
-  const { signal } = controller;
+  const signal = AbortSignal.abort();
   const server = dgram.createSocket({ type: 'udp4', signal });
   server.on('close', common.mustCall());
 }

@@ -42,8 +42,12 @@ const {
   FunctionPrototypeCall,
   JSONParse,
   ObjectDefineProperty,
+  ObjectDefineProperties,
   ObjectGetPrototypeOf,
+  ObjectPreventExtensions,
   ObjectSetPrototypeOf,
+  ReflectGet,
+  ReflectSet,
   SymbolToStringTag,
   globalThis,
 } = primordials;
@@ -65,7 +69,78 @@ process.domain = null;
 process._exiting = false;
 
 // process.config is serialized config.gypi
-process.config = JSONParse(internalBinding('native_module').config);
+const nativeModule = internalBinding('native_module');
+
+// TODO(@jasnell): Once this has gone through one full major
+// release cycle, remove the Proxy and setter and update the
+// getter to either return a read-only object or always return
+// a freshly parsed version of nativeModule.config.
+
+const deprecationHandler = {
+  warned: false,
+  message: 'Setting process.config is deprecated. ' +
+           'In the future the property will be read-only.',
+  code: 'DEP0150',
+  maybeWarn() {
+    if (!this.warned) {
+      process.emitWarning(this.message, {
+        type: 'DeprecationWarning',
+        code: this.code
+      });
+      this.warned = true;
+    }
+  },
+
+  defineProperty(target, key, descriptor) {
+    this.maybeWarn();
+    return ObjectDefineProperty(target, key, descriptor);
+  },
+
+  deleteProperty(target, key) {
+    this.maybeWarn();
+    delete target[key];
+  },
+
+  preventExtensions(target) {
+    this.maybeWarn();
+    return ObjectPreventExtensions(target);
+  },
+
+  set(target, key, value) {
+    this.maybeWarn();
+    return ReflectSet(target, key, value);
+  },
+
+  get(target, key, receiver) {
+    const val = ReflectGet(target, key, receiver);
+    if (val != null && typeof val === 'object') {
+      // eslint-disable-next-line node-core/prefer-primordials
+      return new Proxy(val, deprecationHandler);
+    }
+    return val;
+  },
+
+  setPrototypeOf(target, proto) {
+    this.maybeWarn();
+    return ObjectSetPrototypeOf(target, proto);
+  }
+};
+
+// eslint-disable-next-line node-core/prefer-primordials
+let processConfig = new Proxy(
+  JSONParse(nativeModule.config),
+  deprecationHandler);
+
+ObjectDefineProperty(process, 'config', {
+  enumerable: true,
+  configurable: true,
+  get() { return processConfig; },
+  set(value) {
+    deprecationHandler.maybeWarn();
+    processConfig = value;
+  }
+});
+
 require('internal/worker/js_transferable').setup();
 
 // Bootstrappers for all threads, including worker threads and main thread
@@ -87,8 +162,6 @@ const rawMethods = internalBinding('process_methods');
 
   const wrapped = perThreadSetup.wrapProcessMethods(rawMethods);
   process._rawDebug = wrapped._rawDebug;
-  process.hrtime = wrapped.hrtime;
-  process.hrtime.bigint = wrapped.hrtimeBigInt;
   process.cpuUsage = wrapped.cpuUsage;
   process.resourceUsage = wrapped.resourceUsage;
   process.memoryUsage = wrapped.memoryUsage;
@@ -143,6 +216,28 @@ if (!config.noBrowserGlobals) {
   // https://encoding.spec.whatwg.org/#textdecoder
   exposeInterface(globalThis, 'TextDecoder', TextDecoder);
 
+  const {
+    AbortController,
+    AbortSignal,
+  } = require('internal/abort_controller');
+  exposeInterface(globalThis, 'AbortController', AbortController);
+  exposeInterface(globalThis, 'AbortSignal', AbortSignal);
+
+  const {
+    EventTarget,
+    Event,
+  } = require('internal/event_target');
+  exposeInterface(globalThis, 'EventTarget', EventTarget);
+  exposeInterface(globalThis, 'Event', Event);
+  const {
+    MessageChannel,
+    MessagePort,
+    MessageEvent,
+  } = require('internal/worker/io');
+  exposeInterface(globalThis, 'MessageChannel', MessageChannel);
+  exposeInterface(globalThis, 'MessagePort', MessagePort);
+  exposeInterface(globalThis, 'MessageEvent', MessageEvent);
+
   // https://html.spec.whatwg.org/multipage/webappapis.html#windoworworkerglobalscope
   const timers = require('timers');
   defineOperation(globalThis, 'clearInterval', timers.clearInterval);
@@ -151,6 +246,10 @@ if (!config.noBrowserGlobals) {
   defineOperation(globalThis, 'setTimeout', timers.setTimeout);
 
   defineOperation(globalThis, 'queueMicrotask', queueMicrotask);
+
+  // https://www.w3.org/TR/hr-time-2/#the-performance-attribute
+  defineReplacableAttribute(globalThis, 'performance',
+                            require('perf_hooks').performance);
 
   // Non-standard extensions:
   defineOperation(globalThis, 'clearImmediate', timers.clearImmediate);
@@ -194,21 +293,28 @@ process.assert = deprecate(
 // TODO(joyeecheung): this property has not been well-maintained, should we
 // deprecate it in favor of a better API?
 const { isDebugBuild, hasOpenSSL, hasInspector } = config;
+const features = {
+  inspector: hasInspector,
+  debug: isDebugBuild,
+  uv: true,
+  ipv6: true,  // TODO(bnoordhuis) ping libuv
+  tls_alpn: hasOpenSSL,
+  tls_sni: hasOpenSSL,
+  tls_ocsp: hasOpenSSL,
+  tls: hasOpenSSL,
+  // This needs to be dynamic because snapshot is built without code cache.
+  // TODO(joyeecheung): https://github.com/nodejs/node/issues/31074
+  // Make it possible to build snapshot with code cache
+  get cached_builtins() {
+    return nativeModule.hasCachedBuiltins();
+  }
+};
+
 ObjectDefineProperty(process, 'features', {
   enumerable: true,
   writable: false,
   configurable: false,
-  value: {
-    inspector: hasInspector,
-    debug: isDebugBuild,
-    uv: true,
-    ipv6: true,  // TODO(bnoordhuis) ping libuv
-    tls_alpn: hasOpenSSL,
-    tls_sni: hasOpenSSL,
-    tls_ocsp: hasOpenSSL,
-    tls: hasOpenSSL,
-    cached_builtins: config.hasCachedBuiltins,
-  }
+  value: features
 });
 
 {
@@ -256,6 +362,12 @@ process.emitWarning = emitWarning;
   setupTimers(processImmediate, processTimers);
   // Note: only after this point are the timers effective
 }
+
+// Preload modules so that they are included in the builtin snapshot.
+require('fs');
+require('v8');
+require('vm');
+require('url');
 
 function setupPrepareStackTrace() {
   const {
@@ -306,7 +418,11 @@ function setupGlobalProxy() {
 }
 
 function setupBuffer() {
-  const { Buffer } = require('buffer');
+  const {
+    Buffer,
+    atob,
+    btoa,
+  } = require('buffer');
   const bufferBinding = internalBinding('buffer');
 
   // Only after this point can C++ use Buffer::New()
@@ -314,11 +430,25 @@ function setupBuffer() {
   delete bufferBinding.setBufferPrototype;
   delete bufferBinding.zeroFill;
 
-  ObjectDefineProperty(globalThis, 'Buffer', {
-    value: Buffer,
-    enumerable: false,
-    writable: true,
-    configurable: true
+  ObjectDefineProperties(globalThis, {
+    'Buffer': {
+      value: Buffer,
+      enumerable: false,
+      writable: true,
+      configurable: true,
+    },
+    'atob': {
+      value: atob,
+      enumerable: false,
+      writable: true,
+      configurable: true,
+    },
+    'btoa': {
+      value: btoa,
+      enumerable: false,
+      writable: true,
+      configurable: true,
+    },
   });
 }
 
@@ -366,5 +496,15 @@ function defineOperation(target, name, method) {
     enumerable: true,
     configurable: true,
     value: method
+  });
+}
+
+// https://heycam.github.io/webidl/#Replaceable
+function defineReplacableAttribute(target, name, value) {
+  ObjectDefineProperty(target, name, {
+    writable: true,
+    enumerable: true,
+    configurable: true,
+    value,
   });
 }

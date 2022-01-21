@@ -23,11 +23,24 @@
 
 const {
   ArrayIsArray,
+  ArrayPrototypeFilter,
+  ArrayPrototypeIncludes,
+  ArrayPrototypeJoin,
+  ArrayPrototypeLastIndexOf,
+  ArrayPrototypePush,
+  ArrayPrototypeSlice,
+  ArrayPrototypeSort,
+  ArrayPrototypeSplice,
+  ArrayPrototypeUnshift,
   Error,
   NumberIsInteger,
   ObjectAssign,
   ObjectDefineProperty,
   ObjectPrototypeHasOwnProperty,
+  RegExpPrototypeTest,
+  SafeSet,
+  StringPrototypeSlice,
+  StringPrototypeToUpperCase,
 } = primordials;
 
 const {
@@ -60,10 +73,11 @@ const {
 const { clearTimeout, setTimeout } = require('timers');
 const { getValidatedPath } = require('internal/fs/utils');
 const {
-  validateString,
   isInt32,
   validateAbortSignal,
   validateBoolean,
+  validateObject,
+  validateString,
 } = require('internal/validators');
 const child_process = require('internal/child_process');
 const {
@@ -125,15 +139,15 @@ function fork(modulePath /* , args, options */) {
   execArgv = options.execArgv || process.execArgv;
 
   if (execArgv === process.execArgv && process._eval != null) {
-    const index = execArgv.lastIndexOf(process._eval);
+    const index = ArrayPrototypeLastIndexOf(execArgv, process._eval);
     if (index > 0) {
       // Remove the -e switch to avoid fork bombing ourselves.
-      execArgv = execArgv.slice();
-      execArgv.splice(index - 1, 2);
+      execArgv = ArrayPrototypeSlice(execArgv);
+      ArrayPrototypeSplice(execArgv, index - 1, 2);
     }
   }
 
-  args = execArgv.concat([modulePath], args);
+  args = [...execArgv, modulePath, ...args];
 
   if (typeof options.stdio === 'string') {
     options.stdio = stdioStringToArray(options.stdio, 'ipc');
@@ -143,7 +157,7 @@ function fork(modulePath /* , args, options */) {
     options.stdio = stdioStringToArray(
       options.silent ? 'pipe' : 'inherit',
       'ipc');
-  } else if (!options.stdio.includes('ipc')) {
+  } else if (!ArrayPrototypeIncludes(options.stdio, 'ipc')) {
     throw new ERR_CHILD_PROCESS_IPC_REQUIRED('options.stdio');
   }
 
@@ -356,7 +370,7 @@ function execFile(file /* , args, options, callback */) {
         child.stdout &&
         child.stdout.readableEncoding
       )) {
-      stdout = _stdout.join('');
+      stdout = ArrayPrototypeJoin(_stdout, '');
     } else {
       stdout = Buffer.concat(_stdout);
     }
@@ -365,7 +379,7 @@ function execFile(file /* , args, options, callback */) {
         child.stderr &&
         child.stderr.readableEncoding
       )) {
-      stderr = _stderr.join('');
+      stderr = ArrayPrototypeJoin(_stderr, '');
     } else {
       stderr = Buffer.concat(_stderr);
     }
@@ -376,7 +390,7 @@ function execFile(file /* , args, options, callback */) {
     }
 
     if (args.length !== 0)
-      cmd += ` ${args.join(' ')}`;
+      cmd += ` ${ArrayPrototypeJoin(args, ' ')}`;
 
     if (!ex) {
       // eslint-disable-next-line no-restricted-syntax
@@ -434,16 +448,18 @@ function execFile(file /* , args, options, callback */) {
       const length = encoding ?
         Buffer.byteLength(chunk, encoding) :
         chunk.length;
+      const slice = encoding ? StringPrototypeSlice :
+        (buf, ...args) => buf.slice(...args);
       stdoutLen += length;
 
       if (stdoutLen > options.maxBuffer) {
         const truncatedLen = options.maxBuffer - (stdoutLen - length);
-        _stdout.push(chunk.slice(0, truncatedLen));
+        ArrayPrototypePush(_stdout, slice(chunk, 0, truncatedLen));
 
         ex = new ERR_CHILD_PROCESS_STDIO_MAXBUFFER('stdout');
         kill();
       } else {
-        _stdout.push(chunk);
+        ArrayPrototypePush(_stdout, chunk);
       }
     });
   }
@@ -461,7 +477,8 @@ function execFile(file /* , args, options, callback */) {
 
       if (stderrLen > options.maxBuffer) {
         const truncatedLen = options.maxBuffer - (stderrLen - length);
-        _stderr.push(chunk.slice(0, truncatedLen));
+        ArrayPrototypePush(_stderr,
+                           chunk.slice(0, truncatedLen));
 
         ex = new ERR_CHILD_PROCESS_STDIO_MAXBUFFER('stderr');
         kill();
@@ -489,7 +506,7 @@ function normalizeSpawnArguments(file, args, options) {
     throw new ERR_INVALID_ARG_VALUE('file', file, 'cannot be empty');
 
   if (ArrayIsArray(args)) {
-    args = args.slice(0);
+    args = ArrayPrototypeSlice(args);
   } else if (args == null) {
     args = [];
   } else if (typeof args !== 'object') {
@@ -501,8 +518,8 @@ function normalizeSpawnArguments(file, args, options) {
 
   if (options === undefined)
     options = {};
-  else if (options === null || typeof options !== 'object')
-    throw new ERR_INVALID_ARG_TYPE('options', 'object', options);
+  else
+    validateObject(options, 'options');
 
   let cwd = options.cwd;
 
@@ -552,7 +569,7 @@ function normalizeSpawnArguments(file, args, options) {
   }
 
   if (options.shell) {
-    const command = [file].concat(args).join(' ');
+    const command = ArrayPrototypeJoin([file, ...args], ' ');
     // Set the shell, switches, and commands.
     if (process.platform === 'win32') {
       if (typeof options.shell === 'string')
@@ -560,7 +577,7 @@ function normalizeSpawnArguments(file, args, options) {
       else
         file = process.env.comspec || 'cmd.exe';
       // '/d /s /c' is used only for cmd.exe.
-      if (/^(?:.*\\)?cmd(?:\.exe)?$/i.test(file)) {
+      if (RegExpPrototypeTest(/^(?:.*\\)?cmd(?:\.exe)?$/i, file)) {
         args = ['/d', '/s', '/c', `"${command}"`];
         windowsVerbatimArguments = true;
       } else {
@@ -578,9 +595,9 @@ function normalizeSpawnArguments(file, args, options) {
   }
 
   if (typeof options.argv0 === 'string') {
-    args.unshift(options.argv0);
+    ArrayPrototypeUnshift(args, options.argv0);
   } else {
-    args.unshift(file);
+    ArrayPrototypeUnshift(args, file);
   }
 
   const env = options.env || process.env;
@@ -593,11 +610,33 @@ function normalizeSpawnArguments(file, args, options) {
     env.NODE_V8_COVERAGE = process.env.NODE_V8_COVERAGE;
   }
 
+  let envKeys = [];
   // Prototype values are intentionally included.
   for (const key in env) {
+    ArrayPrototypePush(envKeys, key);
+  }
+
+  if (process.platform === 'win32') {
+    // On Windows env keys are case insensitive. Filter out duplicates,
+    // keeping only the first one (in lexicographic order)
+    const sawKey = new SafeSet();
+    envKeys = ArrayPrototypeFilter(
+      ArrayPrototypeSort(envKeys),
+      (key) => {
+        const uppercaseKey = StringPrototypeToUpperCase(key);
+        if (sawKey.has(uppercaseKey)) {
+          return false;
+        }
+        sawKey.add(uppercaseKey);
+        return true;
+      }
+    );
+  }
+
+  for (const key of envKeys) {
     const value = env[key];
     if (value !== undefined) {
-      envPairs.push(`${key}=${value}`);
+      ArrayPrototypePush(envPairs, `${key}=${value}`);
     }
   }
 
@@ -636,7 +675,6 @@ function abortChildProcess(child, killSignal) {
   }
 }
 
-
 /**
  * Spawns a new process using the given `file`.
  * @param {string} file
@@ -661,27 +699,10 @@ function abortChildProcess(child, killSignal) {
  */
 function spawn(file, args, options) {
   options = normalizeSpawnArguments(file, args, options);
-  validateTimeout(options.timeout, 'options.timeout');
+  validateTimeout(options.timeout);
   validateAbortSignal(options.signal, 'options.signal');
   const killSignal = sanitizeKillSignal(options.killSignal);
   const child = new ChildProcess();
-
-  if (options.signal) {
-    const signal = options.signal;
-    if (signal.aborted) {
-      onAbortListener();
-    } else {
-      signal.addEventListener('abort', onAbortListener, { once: true });
-      child.once('exit',
-                 () => signal.removeEventListener('abort', onAbortListener));
-    }
-
-    function onAbortListener() {
-      process.nextTick(() => {
-        abortChildProcess(child, killSignal);
-      });
-    }
-  }
 
   debug('spawn', options);
   child.spawn(options);
@@ -704,6 +725,21 @@ function spawn(file, args, options) {
         timeoutId = null;
       }
     });
+  }
+
+  if (options.signal) {
+    const signal = options.signal;
+    if (signal.aborted) {
+      process.nextTick(onAbortListener);
+    } else {
+      signal.addEventListener('abort', onAbortListener, { once: true });
+      child.once('exit',
+                 () => signal.removeEventListener('abort', onAbortListener));
+    }
+
+    function onAbortListener() {
+      abortChildProcess(child, killSignal);
+    }
   }
 
   return child;
@@ -793,7 +829,7 @@ function checkExecSyncError(ret, args, cmd) {
     err = ret.error;
   } else if (ret.status !== 0) {
     let msg = 'Command failed: ';
-    msg += cmd || args.join(' ');
+    msg += cmd || ArrayPrototypeJoin(args, ' ');
     if (ret.stderr && ret.stderr.length > 0)
       msg += `\n${ret.stderr.toString()}`;
     // eslint-disable-next-line no-restricted-syntax
@@ -829,7 +865,8 @@ function execFileSync(command, args, options) {
   options = normalizeSpawnArguments(command, args, options);
 
   const inheritStderr = !options.stdio;
-  const ret = spawnSync(options.file, options.args.slice(1), options);
+  const ret = spawnSync(options.file,
+                        ArrayPrototypeSlice(options.args, 1), options);
 
   if (inheritStderr && ret.stderr)
     process.stderr.write(ret.stderr);
@@ -905,37 +942,6 @@ function sanitizeKillSignal(killSignal) {
   }
 }
 
-// This level of indirection is here because the other child_process methods
-// call spawn internally but should use different cancellation logic.
-function spawnWithSignal(file, args, options) {
-  // Remove signal from options to spawn
-  // to avoid double emitting of AbortError
-  const opts = options && typeof options === 'object' && ('signal' in options) ?
-    { ...options, signal: undefined } :
-    options;
-
-  if (options?.signal) {
-    // Validate signal, if present
-    validateAbortSignal(options.signal, 'options.signal');
-  }
-  const child = spawn(file, args, opts);
-
-  if (options?.signal) {
-    const killSignal = sanitizeKillSignal(options.killSignal);
-
-    function kill() {
-      abortChildProcess(child, killSignal);
-    }
-    if (options.signal.aborted) {
-      process.nextTick(kill);
-    } else {
-      options.signal.addEventListener('abort', kill, { once: true });
-      const remove = () => options.signal.removeEventListener('abort', kill);
-      child.once('exit', remove);
-    }
-  }
-  return child;
-}
 module.exports = {
   _forkChild,
   ChildProcess,
@@ -944,6 +950,6 @@ module.exports = {
   execFileSync,
   execSync,
   fork,
-  spawn: spawnWithSignal,
+  spawn,
   spawnSync
 };

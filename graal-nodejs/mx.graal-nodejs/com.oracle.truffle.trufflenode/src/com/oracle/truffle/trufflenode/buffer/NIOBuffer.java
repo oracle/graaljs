@@ -58,7 +58,7 @@ import com.oracle.truffle.trufflenode.RealmData;
 public final class NIOBuffer extends JSNonProxy {
     private static final JSBuiltinsContainer NIO_BUFFER_BUILTINS = new NIOBufferBuiltins();
 
-    public static final String NIO_BUFFER_MODULE_NAME = "internal/graal/buffer.js";
+    public static final String NIO_BUFFER_MODULE_NAME = "node:internal/graal/buffer";
 
     private static final String CLASS_NAME = "NIOBuffer";
 

@@ -5,9 +5,6 @@ const common = require('../common');
 const {
   BlockList,
 } = require('net');
-const {
-  MessageChannel,
-} = require('worker_threads');
 
 const {
   ok,

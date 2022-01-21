@@ -90,11 +90,12 @@ public:
     v8::Maybe<bool> DefineProperty(v8::Local<v8::Context> context, v8::Local<v8::Name> key, v8::PropertyDescriptor& descriptor);
     v8::MaybeLocal<v8::Array> PreviewEntries(bool* is_key_value);
     v8::Maybe<bool> SetIntegrityLevel(v8::Local<v8::Context> context, v8::IntegrityLevel level);
+    bool IsConstructor();
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
     inline v8::Local<v8::Value> HandleCallResult(jobject java_object);
     inline void Recycle() override;
-    inline GraalObject(GraalIsolate* isolate, jobject java_object);    
+    inline GraalObject(GraalIsolate* isolate, jobject java_object);
 private:
     int internal_field_count_cache_;
 };

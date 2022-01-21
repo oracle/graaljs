@@ -5,6 +5,7 @@
 #ifndef INCLUDE_CPPGC_SOURCE_LOCATION_H_
 #define INCLUDE_CPPGC_SOURCE_LOCATION_H_
 
+#include <cstddef>
 #include <string>
 
 #include "v8config.h"  // NOLINT(build/include_directory)
@@ -23,10 +24,16 @@
 
 namespace cppgc {
 
-// Encapsulates source location information. Mimics C++20's
-// std::source_location.
+/**
+ * Encapsulates source location information. Mimics C++20's
+ * `std::source_location`.
+ */
 class V8_EXPORT SourceLocation final {
  public:
+  /**
+   * Construct source location information corresponding to the location of the
+   * call site.
+   */
 #if CPPGC_SUPPORTS_SOURCE_LOCATION
   static constexpr SourceLocation Current(
       const char* function = __builtin_FUNCTION(),
@@ -37,12 +44,38 @@ class V8_EXPORT SourceLocation final {
   static constexpr SourceLocation Current() { return SourceLocation(); }
 #endif  // CPPGC_SUPPORTS_SOURCE_LOCATION
 
+  /**
+   * Constructs unspecified source location information.
+   */
   constexpr SourceLocation() = default;
 
+  /**
+   * Returns the name of the function associated with the position represented
+   * by this object, if any.
+   *
+   * \returns the function name as cstring.
+   */
   constexpr const char* Function() const { return function_; }
+
+  /**
+   * Returns the name of the current source file represented by this object.
+   *
+   * \returns the file name as cstring.
+   */
   constexpr const char* FileName() const { return file_; }
+
+  /**
+   * Returns the line number represented by this object.
+   *
+   * \returns the line number.
+   */
   constexpr size_t Line() const { return line_; }
 
+  /**
+   * Returns a human-readable string representing this object.
+   *
+   * \returns a human-readable string representing source location information.
+   */
   std::string ToString() const;
 
  private:

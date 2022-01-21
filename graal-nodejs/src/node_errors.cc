@@ -3,9 +3,10 @@
 
 #include "debug_utils-inl.h"
 #include "node_errors.h"
+#include "node_external_reference.h"
 #include "node_internals.h"
-#include "node_report.h"
 #include "node_process-inl.h"
+#include "node_report.h"
 #include "node_v8_platform-inl.h"
 #include "util-inl.h"
 
@@ -97,8 +98,8 @@ static std::string GetErrorSource(Isolate* isolate,
   const char* filename_string = *filename;
   int linenum = message->GetLineNumber(context).FromJust();
 
-  int script_start = (linenum - origin.ResourceLineOffset()->Value()) == 1
-                         ? origin.ResourceColumnOffset()->Value()
+  int script_start = (linenum - origin.LineOffset()) == 1
+                         ? origin.ColumnOffset()
                          : 0;
   int start = message->GetStartColumn(context).FromMaybe(0);
   int end = message->GetEndColumn(context).FromMaybe(0);
@@ -214,6 +215,12 @@ void AppendExceptionLine(Environment* env,
   Local<Object> err_obj;
   if (!er.IsEmpty() && er->IsObject()) {
     err_obj = er.As<Object>();
+    // If arrow_message is already set, skip.
+    auto maybe_value = err_obj->GetPrivate(env->context(),
+                                          env->arrow_message_private_symbol());
+    Local<Value> lvalue;
+    if (!maybe_value.ToLocal(&lvalue) || lvalue->IsString())
+      return;
   }
 
   bool added_exception_line = false;
@@ -423,7 +430,7 @@ void OnFatalError(const char* location, const char* message) {
     FPrintF(stderr, "FATAL ERROR: %s\n", message);
   }
 
-  Isolate* isolate = Isolate::GetCurrent();
+  Isolate* isolate = Isolate::TryGetCurrent();
   Environment* env = nullptr;
   if (isolate != nullptr) {
     env = Environment::GetCurrent(isolate);
@@ -856,6 +863,14 @@ static void TriggerUncaughtException(const FunctionCallbackInfo<Value>& args) {
   errors::TriggerUncaughtException(isolate, exception, message, from_promise);
 }
 
+void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
+  registry->Register(SetPrepareStackTraceCallback);
+  registry->Register(SetSourceMapsEnabled);
+  registry->Register(SetEnhanceStackForFatalException);
+  registry->Register(NoSideEffectsToString);
+  registry->Register(TriggerUncaughtException);
+}
+
 void Initialize(Local<Object> target,
                 Local<Value> unused,
                 Local<Context> context,
@@ -1028,3 +1043,4 @@ void TriggerUncaughtException(Isolate* isolate, const v8::TryCatch& try_catch) {
 }  // namespace node
 
 NODE_MODULE_CONTEXT_AWARE_INTERNAL(errors, node::errors::Initialize)
+NODE_MODULE_EXTERNAL_REFERENCE(errors, node::errors::RegisterExternalReferences)

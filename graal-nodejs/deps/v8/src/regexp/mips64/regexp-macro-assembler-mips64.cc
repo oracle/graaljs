@@ -165,6 +165,7 @@ RegExpMacroAssemblerMIPS::~RegExpMacroAssemblerMIPS() {
   check_preempt_label_.Unuse();
   stack_overflow_label_.Unuse();
   internal_failure_label_.Unuse();
+  fallback_label_.Unuse();
 }
 
 
@@ -201,8 +202,13 @@ void RegExpMacroAssemblerMIPS::Backtrack() {
     __ Sd(a0, MemOperand(frame_pointer(), kBacktrackCount));
     __ Branch(&next, ne, a0, Operand(backtrack_limit()));
 
-    // Exceeded limits are treated as a failed match.
-    Fail();
+    // Backtrack limit exceeded.
+    if (can_fallback()) {
+      __ jmp(&fallback_label_);
+    } else {
+      // Can't fallback, so we treat it as a failed match.
+      Fail();
+    }
 
     __ bind(&next);
   }
@@ -222,11 +228,10 @@ void RegExpMacroAssemblerMIPS::CheckCharacter(uint32_t c, Label* on_equal) {
   BranchOrBacktrack(on_equal, eq, current_character(), Operand(c));
 }
 
-
-void RegExpMacroAssemblerMIPS::CheckCharacterGT(uc16 limit, Label* on_greater) {
+void RegExpMacroAssemblerMIPS::CheckCharacterGT(base::uc16 limit,
+                                                Label* on_greater) {
   BranchOrBacktrack(on_greater, gt, current_character(), Operand(limit));
 }
-
 
 void RegExpMacroAssemblerMIPS::CheckAtStart(int cp_offset, Label* on_at_start) {
   __ Ld(a1, MemOperand(frame_pointer(), kStringStartMinusOne));
@@ -244,11 +249,10 @@ void RegExpMacroAssemblerMIPS::CheckNotAtStart(int cp_offset,
   BranchOrBacktrack(on_not_at_start, ne, a0, Operand(a1));
 }
 
-
-void RegExpMacroAssemblerMIPS::CheckCharacterLT(uc16 limit, Label* on_less) {
+void RegExpMacroAssemblerMIPS::CheckCharacterLT(base::uc16 limit,
+                                                Label* on_less) {
   BranchOrBacktrack(on_less, lt, current_character(), Operand(limit));
 }
-
 
 void RegExpMacroAssemblerMIPS::CheckGreedyLoop(Label* on_equal) {
   Label backtrack_non_equal;
@@ -262,7 +266,7 @@ void RegExpMacroAssemblerMIPS::CheckGreedyLoop(Label* on_equal) {
 }
 
 void RegExpMacroAssemblerMIPS::CheckNotBackReferenceIgnoreCase(
-    int start_reg, bool read_backward, Label* on_no_match) {
+    int start_reg, bool read_backward, bool unicode, Label* on_no_match) {
   Label fallthrough;
   __ Ld(a0, register_location(start_reg));      // Index of start of capture.
   __ Ld(a1, register_location(start_reg + 1));  // Index of end of capture.
@@ -376,7 +380,10 @@ void RegExpMacroAssemblerMIPS::CheckNotBackReferenceIgnoreCase(
     {
       AllowExternalCallThatCantCauseGC scope(masm_);
       ExternalReference function =
-          ExternalReference::re_case_insensitive_compare_uc16(masm_->isolate());
+          unicode ? ExternalReference::re_case_insensitive_compare_unicode(
+                        isolate())
+                  : ExternalReference::re_case_insensitive_compare_non_unicode(
+                        isolate());
       __ CallCFunction(function, argument_count);
     }
 
@@ -483,38 +490,28 @@ void RegExpMacroAssemblerMIPS::CheckNotCharacterAfterAnd(uint32_t c,
   BranchOrBacktrack(on_not_equal, ne, a0, rhs);
 }
 
-
 void RegExpMacroAssemblerMIPS::CheckNotCharacterAfterMinusAnd(
-    uc16 c,
-    uc16 minus,
-    uc16 mask,
-    Label* on_not_equal) {
+    base::uc16 c, base::uc16 minus, base::uc16 mask, Label* on_not_equal) {
   DCHECK_GT(String::kMaxUtf16CodeUnit, minus);
   __ Dsubu(a0, current_character(), Operand(minus));
   __ And(a0, a0, Operand(mask));
   BranchOrBacktrack(on_not_equal, ne, a0, Operand(c));
 }
 
-
-void RegExpMacroAssemblerMIPS::CheckCharacterInRange(
-    uc16 from,
-    uc16 to,
-    Label* on_in_range) {
+void RegExpMacroAssemblerMIPS::CheckCharacterInRange(base::uc16 from,
+                                                     base::uc16 to,
+                                                     Label* on_in_range) {
   __ Dsubu(a0, current_character(), Operand(from));
   // Unsigned lower-or-same condition.
   BranchOrBacktrack(on_in_range, ls, a0, Operand(to - from));
 }
 
-
 void RegExpMacroAssemblerMIPS::CheckCharacterNotInRange(
-    uc16 from,
-    uc16 to,
-    Label* on_not_in_range) {
+    base::uc16 from, base::uc16 to, Label* on_not_in_range) {
   __ Dsubu(a0, current_character(), Operand(from));
   // Unsigned higher condition.
   BranchOrBacktrack(on_not_in_range, hi, a0, Operand(to - from));
 }
-
 
 void RegExpMacroAssemblerMIPS::CheckBitInTable(
     Handle<ByteArray> table,
@@ -531,8 +528,7 @@ void RegExpMacroAssemblerMIPS::CheckBitInTable(
   BranchOrBacktrack(on_bit_set, ne, a0, Operand(zero_reg));
 }
 
-
-bool RegExpMacroAssemblerMIPS::CheckSpecialCharacterClass(uc16 type,
+bool RegExpMacroAssemblerMIPS::CheckSpecialCharacterClass(base::uc16 type,
                                                           Label* on_no_match) {
   // Range checks (c in min..max) are generally implemented by an unsigned
   // (c - min) <= (max - min) check.
@@ -635,7 +631,6 @@ bool RegExpMacroAssemblerMIPS::CheckSpecialCharacterClass(uc16 type,
     return false;
   }
 }
-
 
 void RegExpMacroAssemblerMIPS::Fail() {
   __ li(v0, Operand(FAILURE));
@@ -854,9 +849,8 @@ Handle<HeapObject> RegExpMacroAssemblerMIPS::GetCode(Handle<String> source) {
           // Advance current position after a zero-length match.
           Label advance;
           __ bind(&advance);
-          __ Daddu(current_input_offset(),
-                  current_input_offset(),
-                  Operand((mode_ == UC16) ? 2 : 1));
+          __ Daddu(current_input_offset(), current_input_offset(),
+                   Operand((mode_ == UC16) ? 2 : 1));
           if (global_unicode()) CheckNotInSurrogatePair(0, &advance);
         }
 
@@ -943,13 +937,20 @@ Handle<HeapObject> RegExpMacroAssemblerMIPS::GetCode(Handle<String> source) {
       __ li(v0, Operand(EXCEPTION));
       __ jmp(&return_v0);
     }
+
+    if (fallback_label_.is_linked()) {
+      __ bind(&fallback_label_);
+      __ li(v0, Operand(FALLBACK_TO_EXPERIMENTAL));
+      __ jmp(&return_v0);
+    }
   }
 
   CodeDesc code_desc;
   masm_->GetCode(isolate(), &code_desc);
-  Handle<Code> code = Factory::CodeBuilder(isolate(), code_desc, Code::REGEXP)
-                          .set_self_reference(masm_->CodeObject())
-                          .Build();
+  Handle<Code> code =
+      Factory::CodeBuilder(isolate(), code_desc, CodeKind::REGEXP)
+          .set_self_reference(masm_->CodeObject())
+          .Build();
   LOG(masm_->isolate(),
       RegExpCodeCreateEvent(Handle<AbstractCode>::cast(code), source));
   return Handle<HeapObject>::cast(code);
@@ -1157,8 +1158,8 @@ void RegExpMacroAssemblerMIPS::CallCheckStackGuardState(Register scratch) {
   __ li(t9, Operand(stack_guard_check));
 
   EmbeddedData d = EmbeddedData::FromBlob();
-  CHECK(Builtins::IsIsolateIndependent(Builtins::kDirectCEntry));
-  Address entry = d.InstructionStartOfBuiltin(Builtins::kDirectCEntry);
+  CHECK(Builtins::IsIsolateIndependent(Builtin::kDirectCEntry));
+  Address entry = d.InstructionStartOfBuiltin(Builtin::kDirectCEntry);
   __ li(kScratchReg, Operand(entry, RelocInfo::OFF_HEAP_TARGET));
   __ Call(kScratchReg);
 

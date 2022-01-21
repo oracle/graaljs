@@ -24,6 +24,7 @@
 const {
   MathMin,
   Symbol,
+  RegExpPrototypeTest,
 } = primordials;
 const { setImmediate } = require('timers');
 
@@ -64,7 +65,7 @@ function parserOnHeaders(headers, url) {
   // Once we exceeded headers limit - stop collecting them
   if (this.maxHeaderPairs <= 0 ||
       this._headers.length < this.maxHeaderPairs) {
-    this._headers = this._headers.concat(headers);
+    this._headers.push(...headers);
   }
   this._url += url;
 }
@@ -218,7 +219,7 @@ const tokenRegExp = /^[\^_`a-zA-Z\-0-9!#$%&'*+.|~]+$/;
  * See https://tools.ietf.org/html/rfc7230#section-3.2.6
  */
 function checkIsHttpToken(val) {
-  return tokenRegExp.test(val);
+  return RegExpPrototypeTest(tokenRegExp, val);
 }
 
 const headerCharRegex = /[^\t\x20-\x7e\x80-\xff]/;
@@ -229,7 +230,7 @@ const headerCharRegex = /[^\t\x20-\x7e\x80-\xff]/;
  *  field-vchar    = VCHAR / obs-text
  */
 function checkInvalidHeaderChar(val) {
-  return headerCharRegex.test(val);
+  return RegExpPrototypeTest(headerCharRegex, val);
 }
 
 function cleanParser(parser) {
@@ -267,8 +268,7 @@ module.exports = {
   _checkIsHttpToken: checkIsHttpToken,
   chunkExpression: /(?:^|\W)chunked(?:$|\W)/i,
   continueExpression: /(?:^|\W)100-continue(?:$|\W)/i,
-  CRLF: '\r\n',
-  debug,
+  CRLF: '\r\n', // TODO: Deprecate this.
   freeParser,
   methods,
   parsers,

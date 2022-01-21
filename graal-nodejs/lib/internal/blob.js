@@ -5,10 +5,14 @@ const {
   MathMax,
   MathMin,
   ObjectDefineProperty,
-  ObjectSetPrototypeOf,
   PromiseResolve,
+  PromiseReject,
+  SafePromisePrototypeFinally,
+  ReflectConstruct,
+  RegExpPrototypeSymbolReplace,
   RegExpPrototypeTest,
   StringPrototypeToLowerCase,
+  StringPrototypeSplit,
   Symbol,
   SymbolIterator,
   SymbolToStringTag,
@@ -16,14 +20,18 @@ const {
 } = primordials;
 
 const {
-  createBlob,
+  createBlob: _createBlob,
   FixedSizeBlobCopyJob,
-} = internalBinding('buffer');
-
-const { TextDecoder } = require('internal/encoding');
+  getDataObject,
+} = internalBinding('blob');
 
 const {
-  JSTransferable,
+  TextDecoder,
+  TextEncoder,
+} = require('internal/encoding');
+
+const {
+  makeTransferable,
   kClone,
   kDeserialize,
 } = require('internal/worker/js_transferable');
@@ -44,6 +52,8 @@ const {
   AbortError,
   codes: {
     ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_ARG_VALUE,
+    ERR_INVALID_THIS,
     ERR_BUFFER_TOO_LARGE,
   }
 } = require('internal/errors');
@@ -54,31 +64,59 @@ const {
 } = require('internal/validators');
 
 const kHandle = Symbol('kHandle');
+const kState = Symbol('kState');
 const kType = Symbol('kType');
 const kLength = Symbol('kLength');
+const kArrayBufferPromise = Symbol('kArrayBufferPromise');
+
+const kMaxChunkSize = 65536;
 
 const disallowedTypeCharacters = /[^\u{0020}-\u{007E}]/u;
 
-let Buffer;
+let ReadableStream;
+let URL;
+let EOL;
 
-function lazyBuffer() {
-  if (Buffer === undefined)
-    Buffer = require('buffer').Buffer;
-  return Buffer;
+const enc = new TextEncoder();
+
+// Yes, lazy loading is annoying but because of circular
+// references between the url, internal/blob, and buffer
+// modules, lazy loading here makes sure that things work.
+
+function lazyURL(id) {
+  URL ??= require('internal/url').URL;
+  return new URL(id);
+}
+
+function lazyReadableStream(options) {
+  ReadableStream ??=
+    require('internal/webstreams/readablestream').ReadableStream;
+  return new ReadableStream(options);
+}
+
+// TODO(@jasnell): This is annoying but this has to be lazy because
+// requiring the 'os' module too early causes building Node.js to
+// fail with an unknown reference failure.
+function lazyEOL() {
+  EOL ??= require('os').EOL;
+  return EOL;
 }
 
 function isBlob(object) {
   return object?.[kHandle] !== undefined;
 }
 
-function getSource(source, encoding) {
+function getSource(source, endings) {
   if (isBlob(source))
     return [source.size, source[kHandle]];
 
   if (isAnyArrayBuffer(source)) {
     source = new Uint8Array(source);
   } else if (!isArrayBufferView(source)) {
-    source = lazyBuffer().from(`${source}`, encoding);
+    source = `${source}`;
+    if (endings === 'native')
+      source = RegExpPrototypeSymbolReplace(/\n|\r\n/g, source, lazyEOL());
+    source = enc.encode(source);
   }
 
   // We copy into a new Uint8Array because the underlying
@@ -89,16 +127,17 @@ function getSource(source, encoding) {
   return [source.byteLength, source];
 }
 
-class InternalBlob extends JSTransferable {
-  constructor(handle, length, type = '') {
-    super();
-    this[kHandle] = handle;
-    this[kType] = type;
-    this[kLength] = length;
-  }
-}
-
-class Blob extends JSTransferable {
+class Blob {
+  /**
+   * @typedef {string|ArrayBuffer|ArrayBufferView|Blob} SourcePart
+   *
+   * @param {SourcePart[]} [sources]
+   * @param {{
+   *   endings? : string,
+   *   type? : string,
+   * }} [options]
+   * @returns
+   */
   constructor(sources = [], options = {}) {
     emitExperimentalWarning('buffer.Blob');
     if (sources === null ||
@@ -107,12 +146,18 @@ class Blob extends JSTransferable {
       throw new ERR_INVALID_ARG_TYPE('sources', 'Iterable', sources);
     }
     validateObject(options, 'options');
-    const { encoding = 'utf8' } = options;
-    let { type = '' } = options;
+    let {
+      type = '',
+      endings = 'transparent',
+    } = options;
+
+    endings = `${endings}`;
+    if (endings !== 'transparent' && endings !== 'native')
+      throw new ERR_INVALID_ARG_VALUE('options.endings', endings);
 
     let length = 0;
     const sources_ = ArrayFrom(sources, (source) => {
-      const { 0: len, 1: src } = getSource(source, encoding);
+      const { 0: len, 1: src } = getSource(source, endings);
       length += len;
       return src;
     });
@@ -120,13 +165,15 @@ class Blob extends JSTransferable {
     if (!isUint32(length))
       throw new ERR_BUFFER_TOO_LARGE(0xFFFFFFFF);
 
-    super();
-    this[kHandle] = createBlob(sources_, length);
+    this[kHandle] = _createBlob(sources_, length);
     this[kLength] = length;
 
     type = `${type}`;
     this[kType] = RegExpPrototypeTest(disallowedTypeCharacters, type) ?
       '' : StringPrototypeToLowerCase(type);
+
+    // eslint-disable-next-line no-constructor-return
+    return makeTransferable(this);
   }
 
   [kInspect](depth, options) {
@@ -150,7 +197,7 @@ class Blob extends JSTransferable {
     const length = this[kLength];
     return {
       data: { handle, type, length },
-      deserializeInfo: 'internal/blob:InternalBlob'
+      deserializeInfo: 'internal/blob:ClonedBlob'
     };
   }
 
@@ -160,11 +207,35 @@ class Blob extends JSTransferable {
     this[kLength] = length;
   }
 
-  get type() { return this[kType]; }
+  /**
+   * @readonly
+   * @type {string}
+   */
+  get type() {
+    if (!isBlob(this))
+      throw new ERR_INVALID_THIS('Blob');
+    return this[kType];
+  }
 
-  get size() { return this[kLength]; }
+  /**
+   * @readonly
+   * @type {number}
+   */
+  get size() {
+    if (!isBlob(this))
+      throw new ERR_INVALID_THIS('Blob');
+    return this[kLength];
+  }
 
+  /**
+   * @param {number} [start]
+   * @param {number} [end]
+   * @param {string} [contentType]
+   * @returns {Blob}
+   */
   slice(start = 0, end = this[kLength], contentType = '') {
+    if (!isBlob(this))
+      throw new ERR_INVALID_THIS('Blob');
     if (start < 0) {
       start = MathMax(this[kLength] + start, 0);
     } else {
@@ -188,35 +259,105 @@ class Blob extends JSTransferable {
 
     const span = MathMax(end - start, 0);
 
-    return new InternalBlob(
-      this[kHandle].slice(start, start + span), span, contentType);
+    return createBlob(
+      this[kHandle].slice(start, start + span),
+      span,
+      contentType);
   }
 
-  async arrayBuffer() {
+  /**
+   * @returns {Promise<ArrayBuffer>}
+   */
+  arrayBuffer() {
+    if (!isBlob(this))
+      return PromiseReject(new ERR_INVALID_THIS('Blob'));
+
+    // If there's already a promise in flight for the content,
+    // reuse it, but only while it's in flight. After the cached
+    // promise resolves it will be cleared, allowing it to be
+    // garbage collected as soon as possible.
+    if (this[kArrayBufferPromise])
+      return this[kArrayBufferPromise];
+
     const job = new FixedSizeBlobCopyJob(this[kHandle]);
 
     const ret = job.run();
+
+    // If the job returns a value immediately, the ArrayBuffer
+    // was generated synchronously and should just be returned
+    // directly.
     if (ret !== undefined)
       return PromiseResolve(ret);
 
     const {
       promise,
       resolve,
-      reject
+      reject,
     } = createDeferredPromise();
+
     job.ondone = (err, ab) => {
       if (err !== undefined)
         return reject(new AbortError());
       resolve(ab);
     };
+    this[kArrayBufferPromise] =
+    SafePromisePrototypeFinally(
+      promise,
+      () => this[kArrayBufferPromise] = undefined);
 
-    return promise;
+    return this[kArrayBufferPromise];
   }
 
+  /**
+   * @returns {Promise<string>}
+   */
   async text() {
+    if (!isBlob(this))
+      throw new ERR_INVALID_THIS('Blob');
+
     const dec = new TextDecoder();
     return dec.decode(await this.arrayBuffer());
   }
+
+  /**
+   * @returns {ReadableStream}
+   */
+  stream() {
+    if (!isBlob(this))
+      throw new ERR_INVALID_THIS('Blob');
+
+    const self = this;
+    return new lazyReadableStream({
+      async start() {
+        this[kState] = await self.arrayBuffer();
+      },
+
+      pull(controller) {
+        if (this[kState].byteLength <= kMaxChunkSize) {
+          controller.enqueue(new Uint8Array(this[kState]));
+          controller.close();
+          this[kState] = undefined;
+        } else {
+          const slice = this[kState].slice(0, kMaxChunkSize);
+          this[kState] = this[kState].slice(kMaxChunkSize);
+          controller.enqueue(new Uint8Array(slice));
+        }
+      }
+    });
+  }
+}
+
+function ClonedBlob() {
+  return makeTransferable(ReflectConstruct(function() {}, [], Blob));
+}
+ClonedBlob.prototype[kDeserialize] = () => {};
+
+function createBlob(handle, length, type = '') {
+  return makeTransferable(ReflectConstruct(function() {
+    this[kHandle] = handle;
+    this[kType] = type;
+    this[kLength] = length;
+  }, [], Blob));
 }
 
 ObjectDefineProperty(Blob.prototype, SymbolToStringTag, {
@@ -224,13 +365,47 @@ ObjectDefineProperty(Blob.prototype, SymbolToStringTag, {
   value: 'Blob',
 });
 
-InternalBlob.prototype.constructor = Blob;
-ObjectSetPrototypeOf(
-  InternalBlob.prototype,
-  Blob.prototype);
+function resolveObjectURL(url) {
+  url = `${url}`;
+  try {
+    const parsed = new lazyURL(url);
+
+    const split = StringPrototypeSplit(parsed.pathname, ':');
+
+    if (split.length !== 2)
+      return;
+
+    const {
+      0: base,
+      1: id,
+    } = split;
+
+    if (base !== 'nodedata')
+      return;
+
+    const ret = getDataObject(id);
+
+    if (ret === undefined)
+      return;
+
+    const {
+      0: handle,
+      1: length,
+      2: type,
+    } = ret;
+
+    if (handle !== undefined)
+      return createBlob(handle, length, type);
+  } catch {
+    // If there's an error, it's ignored and nothing is returned
+  }
+}
 
 module.exports = {
   Blob,
-  InternalBlob,
+  ClonedBlob,
+  createBlob,
   isBlob,
+  kHandle,
+  resolveObjectURL,
 };

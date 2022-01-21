@@ -5,15 +5,23 @@ const {
   BigInt,
   Date,
   DateNow,
+  DatePrototypeGetTime,
   ErrorCaptureStackTrace,
-  ObjectPrototypeHasOwnProperty,
+  FunctionPrototypeCall,
   Number,
   NumberIsFinite,
   NumberIsInteger,
   MathMin,
+  ObjectIs,
+  ObjectPrototypeHasOwnProperty,
   ObjectSetPrototypeOf,
+  ReflectApply,
   ReflectOwnKeys,
+  StringPrototypeEndsWith,
+  StringPrototypeIncludes,
+  StringPrototypeReplace,
   Symbol,
+  TypedArrayPrototypeIncludes,
 } = primordials;
 
 const { Buffer } = require('buffer');
@@ -23,8 +31,6 @@ const {
     ERR_FS_INVALID_SYMLINK_TYPE,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
-    ERR_INVALID_OPT_VALUE,
-    ERR_INVALID_OPT_VALUE_ENCODING,
     ERR_OUT_OF_RANGE
   },
   hideStackFrames,
@@ -41,8 +47,10 @@ const { toPathIfFileURL } = require('internal/url');
 const {
   validateAbortSignal,
   validateBoolean,
+  validateFunction,
   validateInt32,
   validateInteger,
+  validateObject,
   validateUint32,
 } = require('internal/validators');
 const pathModule = require('path');
@@ -142,7 +150,8 @@ function lazyLoadFs() {
 
 function assertEncoding(encoding) {
   if (encoding && !Buffer.isEncoding(encoding)) {
-    throw new ERR_INVALID_OPT_VALUE_ENCODING(encoding);
+    const reason = 'is invalid encoding';
+    throw new ERR_INVALID_ARG_VALUE(encoding, 'encoding', reason);
   }
 }
 
@@ -229,7 +238,7 @@ function join(path, name) {
     'path', ['string', 'Buffer'], path);
 }
 
-function getDirents(path, [names, types], callback) {
+function getDirents(path, { 0: names, 1: types }, callback) {
   let i;
   if (typeof callback === 'function') {
     const len = names.length;
@@ -325,6 +334,9 @@ function getOptions(options, defaultOptions) {
   return options;
 }
 
+/**
+ * @param {InternalFSBinding.FSSyncContext} ctx
+ */
 function handleErrorFromBinding(ctx) {
   if (ctx.errno !== undefined) {  // libuv error numbers
     const err = uvException(ctx);
@@ -348,8 +360,8 @@ const nullCheck = hideStackFrames((path, propName, throwError = true) => {
 
   // We can only perform meaningful checks on strings and Uint8Arrays.
   if ((!pathIsString && !pathIsUint8Array) ||
-      (pathIsString && !path.includes('\u0000')) ||
-      (pathIsUint8Array && !path.includes(0))) {
+      (pathIsString && !StringPrototypeIncludes(path, '\u0000')) ||
+      (pathIsUint8Array && !TypedArrayPrototypeIncludes(path, 0))) {
     return;
   }
 
@@ -381,7 +393,7 @@ function preprocessSymlinkDestination(path, type, linkPath) {
     return pathModule.toNamespacedPath(path);
   }
   // Windows symlinks don't tolerate forward slashes.
-  return path.replace(/\//g, '\\');
+  return StringPrototypeReplace(path, /\//g, '\\');
 }
 
 // Constructor for file stats.
@@ -452,8 +464,8 @@ function dateFromMs(ms) {
 function BigIntStats(dev, mode, nlink, uid, gid, rdev, blksize,
                      ino, size, blocks,
                      atimeNs, mtimeNs, ctimeNs, birthtimeNs) {
-  StatsBase.call(this, dev, mode, nlink, uid, gid, rdev, blksize,
-                 ino, size, blocks);
+  ReflectApply(StatsBase, this, [dev, mode, nlink, uid, gid, rdev, blksize,
+                                 ino, size, blocks]);
 
   this.atimeMs = atimeNs / kNsPerMsBigInt;
   this.mtimeMs = mtimeNs / kNsPerMsBigInt;
@@ -483,8 +495,8 @@ BigIntStats.prototype._checkModeProperty = function(property) {
 function Stats(dev, mode, nlink, uid, gid, rdev, blksize,
                ino, size, blocks,
                atimeMs, mtimeMs, ctimeMs, birthtimeMs) {
-  StatsBase.call(this, dev, mode, nlink, uid, gid, rdev, blksize,
-                 ino, size, blocks);
+  FunctionPrototypeCall(StatsBase, this, dev, mode, nlink, uid, gid, rdev,
+                        blksize, ino, size, blocks);
   this.atimeMs = atimeMs;
   this.mtimeMs = mtimeMs;
   this.ctimeMs = ctimeMs;
@@ -510,6 +522,11 @@ Stats.prototype._checkModeProperty = function(property) {
   return (this.mode & S_IFMT) === property;
 };
 
+/**
+ * @param {Float64Array | BigUint64Array} stats
+ * @param {number} offset
+ * @returns
+ */
 function getStatsFromBinding(stats, offset = 0) {
   if (isBigUint64Array(stats)) {
     return new BigIntStats(
@@ -535,8 +552,9 @@ function getStatsFromBinding(stats, offset = 0) {
   );
 }
 
-function stringToFlags(flags) {
+function stringToFlags(flags, name = 'flags') {
   if (typeof flags === 'number') {
+    validateInt32(flags, name);
     return flags;
   }
 
@@ -573,7 +591,7 @@ function stringToFlags(flags) {
     case 'sa+': return O_APPEND | O_CREAT | O_RDWR | O_SYNC;
   }
 
-  throw new ERR_INVALID_OPT_VALUE('flags', flags);
+  throw new ERR_INVALID_ARG_VALUE('flags', flags);
 }
 
 const stringToSymlinkType = hideStackFrames((type) => {
@@ -609,7 +627,7 @@ function toUnixTimestamp(time, name = 'time') {
   }
   if (isDate(time)) {
     // Convert to 123.456 UNIX timestamp
-    return time.getTime() / 1000;
+    return DatePrototypeGetTime(time) / 1000;
   }
   throw new ERR_INVALID_ARG_TYPE(name, ['Date', 'Time in seconds'], time);
 }
@@ -665,6 +683,16 @@ const getValidatedPath = hideStackFrames((fileURLOrPath, propName = 'path') => {
   return path;
 });
 
+const getValidatedFd = hideStackFrames((fd, propName = 'fd') => {
+  if (ObjectIs(fd, -0)) {
+    return 0;
+  }
+
+  validateInt32(fd, propName, 0);
+
+  return fd;
+});
+
 const validateBufferArray = hideStackFrames((buffers, propName = 'buffers') => {
   if (!ArrayIsArray(buffers))
     throw new ERR_INVALID_ARG_TYPE(propName, 'ArrayBufferView[]', buffers);
@@ -682,12 +710,21 @@ let nonPortableTemplateWarn = true;
 function warnOnNonPortableTemplate(template) {
   // Template strings passed to the mkdtemp() family of functions should not
   // end with 'X' because they are handled inconsistently across platforms.
-  if (nonPortableTemplateWarn && template.endsWith('X')) {
+  if (nonPortableTemplateWarn && StringPrototypeEndsWith(template, 'X')) {
     process.emitWarning('mkdtemp() templates ending with X are not portable. ' +
                         'For details see: https://nodejs.org/api/fs.html');
     nonPortableTemplateWarn = false;
   }
 }
+
+const defaultCpOptions = {
+  dereference: false,
+  errorOnExist: false,
+  filter: undefined,
+  force: true,
+  preserveTimestamps: false,
+  recursive: false,
+};
 
 const defaultRmOptions = {
   recursive: false,
@@ -702,20 +739,40 @@ const defaultRmdirOptions = {
   recursive: false,
 };
 
-const validateRmOptions = hideStackFrames((path, options, callback) => {
+const validateCpOptions = hideStackFrames((options) => {
+  if (options === undefined)
+    return { ...defaultCpOptions };
+  validateObject(options, 'options');
+  options = { ...defaultCpOptions, ...options };
+  validateBoolean(options.dereference, 'options.dereference');
+  validateBoolean(options.errorOnExist, 'options.errorOnExist');
+  validateBoolean(options.force, 'options.force');
+  validateBoolean(options.preserveTimestamps, 'options.preserveTimestamps');
+  validateBoolean(options.recursive, 'options.recursive');
+  if (options.filter !== undefined) {
+    validateFunction(options.filter, 'options.filter');
+  }
+  return options;
+});
+
+const validateRmOptions = hideStackFrames((path, options, expectDir, cb) => {
   options = validateRmdirOptions(options, defaultRmOptions);
   validateBoolean(options.force, 'options.force');
 
   lazyLoadFs().stat(path, (err, stats) => {
     if (err) {
       if (options.force && err.code === 'ENOENT') {
-        return callback(null, options);
+        return cb(null, options);
       }
-      return callback(err, options);
+      return cb(err, options);
+    }
+
+    if (expectDir && !stats.isDirectory()) {
+      return cb(false);
     }
 
     if (stats.isDirectory() && !options.recursive) {
-      return callback(new ERR_FS_EISDIR({
+      return cb(new ERR_FS_EISDIR({
         code: 'EISDIR',
         message: 'is a directory',
         path,
@@ -723,18 +780,23 @@ const validateRmOptions = hideStackFrames((path, options, callback) => {
         errno: EISDIR
       }));
     }
-    return callback(null, options);
+    return cb(null, options);
   });
 });
 
-const validateRmOptionsSync = hideStackFrames((path, options) => {
+const validateRmOptionsSync = hideStackFrames((path, options, expectDir) => {
   options = validateRmdirOptions(options, defaultRmOptions);
   validateBoolean(options.force, 'options.force');
 
-  try {
-    const stats = lazyLoadFs().statSync(path);
+  if (!options.force || expectDir || !options.recursive) {
+    const isDirectory = lazyLoadFs()
+      .statSync(path, { throwIfNoEntry: !options.force })?.isDirectory();
 
-    if (stats.isDirectory() && !options.recursive) {
+    if (expectDir && !isDirectory) {
+      return false;
+    }
+
+    if (isDirectory && !options.recursive) {
       throw new ERR_FS_EISDIR({
         code: 'EISDIR',
         message: 'is a directory',
@@ -743,23 +805,29 @@ const validateRmOptionsSync = hideStackFrames((path, options) => {
         errno: EISDIR
       });
     }
-  } catch (err) {
-    if (err.code !== 'ENOENT') {
-      throw err;
-    } else if (err.code === 'ENOENT' && !options.force) {
-      throw err;
-    }
   }
 
   return options;
 });
 
+let recursiveRmdirWarned = process.noDeprecation;
+function emitRecursiveRmdirWarning() {
+  if (!recursiveRmdirWarned) {
+    process.emitWarning(
+      'In future versions of Node.js, fs.rmdir(path, { recursive: true }) ' +
+      'will be removed. Use fs.rm(path, { recursive: true }) instead',
+      'DeprecationWarning',
+      'DEP0147'
+    );
+    recursiveRmdirWarned = true;
+  }
+}
+
 const validateRmdirOptions = hideStackFrames(
   (options, defaults = defaultRmdirOptions) => {
     if (options === undefined)
       return defaults;
-    if (options === null || typeof options !== 'object')
-      throw new ERR_INVALID_ARG_TYPE('options', 'object', options);
+    validateObject(options, 'options');
 
     options = { ...defaults, ...options };
 
@@ -843,9 +911,11 @@ module.exports = {
   BigIntStats,  // for testing
   copyObject,
   Dirent,
+  emitRecursiveRmdirWarning,
   getDirent,
   getDirents,
   getOptions,
+  getValidatedFd,
   getValidatedPath,
   getValidMode,
   handleErrorFromBinding,
@@ -858,6 +928,7 @@ module.exports = {
   Stats,
   toUnixTimestamp,
   validateBufferArray,
+  validateCpOptions,
   validateOffsetLengthRead,
   validateOffsetLengthWrite,
   validatePath,

@@ -50,11 +50,11 @@ inline GraalRegExp::GraalRegExp(GraalIsolate* isolate, jobject java_regexp) : Gr
 }
 
 inline GraalRegExp* GraalRegExp::Allocate(GraalIsolate* isolate, jobject java_regexp) {
-    return new GraalRegExp(isolate, java_regexp);    
+    return new GraalRegExp(isolate, java_regexp);
 }
 
 inline GraalRegExp* GraalRegExp::Allocate(GraalIsolate* isolate, jobject java_regexp, void* plcaement) {
-    return new(plcaement) GraalRegExp(isolate, java_regexp);    
+    return new(plcaement) GraalRegExp(isolate, java_regexp);
 }
 
 #endif /* GRAAL_REGEXP_INL_H_ */

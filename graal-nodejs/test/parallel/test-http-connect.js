@@ -62,13 +62,16 @@ server.listen(0, common.mustCall(() => {
     assert.strictEqual(socket._httpMessage, req);
   }));
 
-  req.on('close', common.mustCall());
+  assert.strictEqual(req.destroyed, false);
+  req.on('close', common.mustCall(() => {
+    assert.strictEqual(req.destroyed, true);
+  }));
 
   req.on('connect', common.mustCall((res, socket, firstBodyChunk) => {
     // Make sure this request got removed from the pool.
     const name = `localhost:${server.address().port}`;
-    assert(!http.globalAgent.sockets.hasOwnProperty(name));
-    assert(!http.globalAgent.requests.hasOwnProperty(name));
+    assert(!(name in http.globalAgent.sockets));
+    assert(!(name in http.globalAgent.requests));
 
     // Make sure this socket has detached.
     assert(!socket.ondata);

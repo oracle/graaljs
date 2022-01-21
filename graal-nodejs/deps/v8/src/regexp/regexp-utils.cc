@@ -84,7 +84,7 @@ MaybeHandle<Object> RegExpUtils::RegExpExec(Isolate* isolate,
 
   if (exec->IsCallable()) {
     const int argc = 1;
-    ScopedVector<Handle<Object>> argv(argc);
+    base::ScopedVector<Handle<Object>> argv(argc);
     argv[0] = string;
 
     Handle<Object> result;
@@ -113,7 +113,7 @@ MaybeHandle<Object> RegExpUtils::RegExpExec(Isolate* isolate,
     Handle<JSFunction> regexp_exec = isolate->regexp_exec_function();
 
     const int argc = 1;
-    ScopedVector<Handle<Object>> argv(argc);
+    base::ScopedVector<Handle<Object>> argv(argc);
     argv[0] = string;
 
     return Execution::Call(isolate, regexp_exec, regexp, argc, argv.begin());
@@ -173,9 +173,10 @@ bool RegExpUtils::IsUnmodifiedRegExp(Isolate* isolate, Handle<Object> obj) {
   // with the init order in the bootstrapper).
   InternalIndex kExecIndex(JSRegExp::kExecFunctionDescriptorIndex);
   DCHECK_EQ(*(isolate->factory()->exec_string()),
-            proto_map.instance_descriptors().GetKey(kExecIndex));
-  if (proto_map.instance_descriptors().GetDetails(kExecIndex).constness() !=
-      PropertyConstness::kConst) {
+            proto_map.instance_descriptors(isolate).GetKey(kExecIndex));
+  if (proto_map.instance_descriptors(isolate)
+          .GetDetails(kExecIndex)
+          .constness() != PropertyConstness::kConst) {
     return false;
   }
 

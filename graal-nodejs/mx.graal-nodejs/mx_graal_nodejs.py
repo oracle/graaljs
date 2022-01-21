@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2015, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import mx, mx_gate, mx_subst, mx_sdk, mx_sdk_vm, mx_graal_js, os, tarfile, tempfile, subprocess, sys
+import mx, mx_gate, mx_subst, mx_sdk, mx_sdk_vm, mx_graal_js, os, tarfile, tempfile
 
 import mx_graal_nodejs_benchmark
 
@@ -84,34 +84,6 @@ def _graal_nodejs_post_gate_runner(args, tasks):
 
 mx_gate.add_gate_runner(_suite, _graal_nodejs_post_gate_runner)
 
-
-_python_cmd = None
-def python_cmd():
-    """:rtype: list[str]"""
-    global _python_cmd
-
-    def _can_exec(cmd):
-        try:
-            subprocess.check_output(cmd + ['--version'], stderr=subprocess.STDOUT)
-            return True
-        except OSError:
-            return False
-
-    def _get_python_cmd():
-        if _is_windows:
-            if sys.version_info[0] >= 3:
-                for _cmd in ['py', '-2'], ['python2']:
-                    if _can_exec(_cmd):
-                        return _cmd
-            return ['python']
-        else:
-            return [join(_suite.mxDir, 'python2', 'python')]
-
-    if _python_cmd is None:
-        _python_cmd = _get_python_cmd()
-    return _python_cmd
-
-
 class GraalNodeJsProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, results, output, **args):
         self.suite = suite
@@ -139,7 +111,6 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         pre_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=False)
 
         build_env = os.environ.copy()
-        _setEnvVar('PATH', '%s%s%s' % (join(_suite.mxDir, 'python2'), pathsep, build_env['PATH']), build_env)
 
         debug = ['--debug'] if self._debug_mode else []
         shared_library = ['--enable-shared-library'] if hasattr(self.args, 'sharedlibrary') and self.args.sharedlibrary else []
@@ -157,7 +128,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         else:
             extra_flags = []
 
-        _mxrun(python_cmd() + [join(_suite.dir, 'configure'),
+        _mxrun(['python3', join(_suite.dir, 'configure'),
                 '--partly-static',
                 '--without-dtrace',
                 '--without-inspector',
@@ -178,7 +149,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
 
         # put headers for native modules into out/headers
         _setEnvVar('HEADERS_ONLY', '1', build_env)
-        _mxrun(python_cmd() + [join('tools', 'install.py'), 'install', join('out', 'headers'), sep], quiet_if_successful=not mx.get_opts().verbose, env=build_env)
+        _mxrun(['python3', join('tools', 'install.py'), 'install', join('out', 'headers'), sep], quiet_if_successful=not mx.get_opts().verbose, env=build_env)
 
         post_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=True)
         mx.logv('Newest time-stamp before building: {}\nNewest time-stamp after building: {}\nHas built? {}'.format(pre_ts, post_ts, post_ts.isNewerThan(pre_ts)))
@@ -287,26 +258,37 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         brokenModules = [                                        # Uses:
             'assert.js',                                         # await
             join('internal', 'blob.js'),                         # await
+            join('internal', 'crypto', 'diffiehellman.js'),      # await
+            join('internal', 'crypto', 'webcrypto.js'),          # await
             join('internal', 'child_process', 'serialization.js'), # yield
             join('internal', 'debugger', 'inspect.js'),          # await
             join('internal', 'debugger', 'inspect_client.js'),   # await
             join('internal', 'debugger', 'inspect_repl.js'),     # await
+            join('internal', 'fs', 'cp', 'cp.js'),               # await
             join('internal', 'fs', 'dir.js'),                    # await
             join('internal', 'fs', 'promises.js'),               # await
             join('internal', 'fs', 'watchers.js'),               # await
             join('internal', 'modules', 'esm', 'get_source.js'), # await
+            join('internal', 'modules', 'esm', 'load.js'),       # await
             join('internal', 'modules', 'esm', 'loader.js'),     # await
             join('internal', 'modules', 'esm', 'module_job.js'), # await
             join('internal', 'modules', 'esm', 'translators.js'),# await
+            join('internal', 'modules', 'run_main.js'),          # await
             join('internal', 'process', 'esm_loader.js'),        # await
             join('internal', 'process', 'execution.js'),         # await
             join('internal', 'readline', 'utils.js'),            # yield
             join('internal', 'streams', 'buffer_list.js'),       # yield
+            join('internal', 'streams', 'duplexify.js'),         # await
             join('internal', 'streams', 'from.js'),              # await
             join('internal', 'streams', 'pipeline.js'),          # await
             join('internal', 'streams', 'readable.js'),          # await
+            join('internal', 'v8_prof_processor.js'),            # await
             join('internal', 'vm', 'module.js'),                 # await
+            join('internal', 'webstreams', 'readablestream.js'), # await
+            join('internal', 'webstreams', 'transfer.js'),       # await
             'repl.js',                                           # await
+            join('stream', 'consumers.js'),                      # await
+            join('timers', 'promises.js'),                       # await
         ]
 
         allModules = []
@@ -333,14 +315,14 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         if not _is_windows:
             macroFiles.append(join('tools', 'js2c_macros', 'notrace_macros.py'))
 
-        mx.run(python_cmd() + [join('tools', 'expand-js-modules.py'), outputDir] + [join('lib', m) for m in moduleSet] + macroFiles,
+        mx.run(['python3', join('tools', 'expand-js-modules.py'), outputDir] + [join('lib', m) for m in moduleSet] + macroFiles,
                cwd=_suite.dir)
         if not (hasattr(self.args, "jdt") and self.args.jdt and not self.args.force_javac):
             mx.run_java(['-cp', mx.classpath([snapshotToolDistribution]),
                     mx.distribution(snapshotToolDistribution).mainClass,
                     '--binary', '--wrapped', '--outdir=' + outputDirBin, '--indir=' + outputDirBin] + ['--file=' + m for m in moduleSet],
                     cwd=outputDirBin)
-        mx.run(python_cmd() + [join(_suite.dir, 'tools', 'snapshot2c.py'), 'node_snapshots.h'] + [join('lib', m + '.bin') for m in moduleSet],
+        mx.run(['python3', join(_suite.dir, 'tools', 'snapshot2c.py'), 'node_snapshots.h'] + [join('lib', m + '.bin') for m in moduleSet],
                cwd=outputDir)
 
     def clean(self, forBuild=False):
@@ -379,7 +361,7 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-esa', '-Xrs'] + extraArgs + vmArgs))
     _setEnvVar('NODE_STACK_SIZE', '4000000')
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
-    return mx.run(python_cmd() + [join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
+    return mx.run(['python3', join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
 
 def setLibraryPath():
     if _java_compliance() < '9' and _current_os not in ['darwin', 'windows']:

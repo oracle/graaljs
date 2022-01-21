@@ -28,6 +28,7 @@ if (!common.hasCrypto)
 
 const assert = require('assert');
 const crypto = require('crypto');
+const cryptop = require('crypto').webcrypto;
 const { kMaxLength } = require('buffer');
 const { inspect } = require('util');
 
@@ -102,6 +103,30 @@ common.expectWarning('DeprecationWarning',
 }
 
 {
+  [
+    new Uint16Array(10),
+    new Uint32Array(10),
+  ].forEach((buf) => {
+    const before = Buffer.from(buf.buffer).toString('hex');
+    cryptop.getRandomValues(buf);
+    const after = Buffer.from(buf.buffer).toString('hex');
+    assert.notStrictEqual(before, after);
+  });
+}
+
+{
+  [
+    new ArrayBuffer(10),
+    new SharedArrayBuffer(10),
+  ].forEach((buf) => {
+    const before = Buffer.from(buf).toString('hex');
+    crypto.randomFillSync(buf);
+    const after = Buffer.from(buf).toString('hex');
+    assert.notStrictEqual(before, after);
+  });
+}
+
+{
   const buf = Buffer.alloc(10);
   const before = buf.toString('hex');
   crypto.randomFill(buf, common.mustSucceed((buf) => {
@@ -130,6 +155,19 @@ common.expectWarning('DeprecationWarning',
     const before = Buffer.from(buf.buffer).toString('hex');
     crypto.randomFill(buf, common.mustSucceed((buf) => {
       const after = Buffer.from(buf.buffer).toString('hex');
+      assert.notStrictEqual(before, after);
+    }));
+  });
+}
+
+{
+  [
+    new ArrayBuffer(10),
+    new SharedArrayBuffer(10),
+  ].forEach((buf) => {
+    const before = Buffer.from(buf).toString('hex');
+    crypto.randomFill(buf, common.mustSucceed((buf) => {
+      const after = Buffer.from(buf).toString('hex');
       assert.notStrictEqual(before, after);
     }));
   });
@@ -298,7 +336,6 @@ assert.throws(
     }
   );
 });
-
 
 ['pseudoRandomBytes', 'prng', 'rng'].forEach((f) => {
   const desc = Object.getOwnPropertyDescriptor(crypto, f);
@@ -487,4 +524,11 @@ assert.throws(
     };
     assert.throws(() => crypto.randomInt(0, 1, i), cbError);
   });
+}
+
+{
+  // Verify that it doesn't throw or abort
+  crypto.randomFill(new Uint16Array(10), 0, common.mustSucceed());
+  crypto.randomFill(new Uint32Array(10), 0, common.mustSucceed());
+  crypto.randomFill(new Uint32Array(10), 0, 1, common.mustSucceed());
 }

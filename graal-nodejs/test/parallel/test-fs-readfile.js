@@ -1,4 +1,3 @@
-// Flags: --experimental-abortcontroller
 'use strict';
 const common = require('../common');
 
@@ -53,11 +52,26 @@ for (const e of fileInfo) {
     assert.deepStrictEqual(buf, e.contents);
   }));
 }
+// Test readFile size too large
+{
+  const kIoMaxLength = 2 ** 31 - 1;
+
+  const file = path.join(tmpdir.path, `${prefix}-too-large.txt`);
+  fs.writeFileSync(file, Buffer.from('0'));
+  fs.truncateSync(file, kIoMaxLength + 1);
+
+  fs.readFile(file, common.expectsError({
+    code: 'ERR_FS_FILE_TOO_LARGE',
+    name: 'RangeError',
+  }));
+  assert.throws(() => {
+    fs.readFileSync(file);
+  }, { code: 'ERR_FS_FILE_TOO_LARGE', name: 'RangeError' });
+}
+
 {
   // Test cancellation, before
-  const controller = new AbortController();
-  const signal = controller.signal;
-  controller.abort();
+  const signal = AbortSignal.abort();
   fs.readFile(fileInfo[0].name, { signal }, common.mustCall((err, buf) => {
     assert.strictEqual(err.name, 'AbortError');
   }));

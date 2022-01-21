@@ -44,6 +44,7 @@ const {
   StringPrototypeReplace,
   StringPrototypeSlice,
   StringPrototypeSplit,
+  StringPrototypeStartsWith,
 } = primordials;
 
 const { Buffer } = require('buffer');
@@ -55,6 +56,7 @@ const {
     ERR_INVALID_RETURN_VALUE,
     ERR_MISSING_ARGS,
   },
+  isErrorStackTraceLimitWritable,
   overrideStackTrace,
 } = require('internal/errors');
 const AssertionError = require('internal/assert/assertion_error');
@@ -67,6 +69,9 @@ const { isError } = require('internal/util');
 
 const errorCache = new SafeMap();
 const CallTracker = require('internal/assert/calltracker');
+const {
+  validateFunction,
+} = require('internal/validators');
 
 let isDeepEqual;
 let isDeepStrictEqual;
@@ -274,14 +279,15 @@ function parseCode(code, offset) {
 
 function getErrMessage(message, fn) {
   const tmpLimit = Error.stackTraceLimit;
+  const errorStackTraceLimitIsWritable = isErrorStackTraceLimitWritable();
   // Make sure the limit is set to 1. Otherwise it could fail (<= 0) or it
   // does to much work.
-  Error.stackTraceLimit = 1;
+  if (errorStackTraceLimitIsWritable) Error.stackTraceLimit = 1;
   // We only need the stack trace. To minimize the overhead use an object
   // instead of an error.
   const err = {};
   ErrorCaptureStackTrace(err, fn);
-  Error.stackTraceLimit = tmpLimit;
+  if (errorStackTraceLimitIsWritable) Error.stackTraceLimit = tmpLimit;
 
   overrideStackTrace.set(err, (_, stack) => stack);
   const call = err.stack[0];
@@ -296,8 +302,8 @@ function getErrMessage(message, fn) {
     identifier = `${filename}${line}${column}`;
 
     // Skip Node.js modules!
-    if (filename.endsWith('.js') &&
-        NativeModule.exists(filename.slice(0, -3))) {
+    if (StringPrototypeStartsWith(filename, 'node:') &&
+        NativeModule.exists(StringPrototypeSlice(filename, 5))) {
       errorCache.set(identifier, undefined);
       return;
     }
@@ -318,7 +324,7 @@ function getErrMessage(message, fn) {
   try {
     // Set the stack trace limit to zero. This makes sure unexpected token
     // errors are handled faster.
-    Error.stackTraceLimit = 0;
+    if (errorStackTraceLimitIsWritable) Error.stackTraceLimit = 0;
 
     if (filename) {
       if (decoder === undefined) {
@@ -363,7 +369,7 @@ function getErrMessage(message, fn) {
     errorCache.set(identifier, undefined);
   } finally {
     // Reset limit.
-    Error.stackTraceLimit = tmpLimit;
+    if (errorStackTraceLimitIsWritable) Error.stackTraceLimit = tmpLimit;
     if (fd !== undefined)
       closeSync(fd);
   }
@@ -746,9 +752,7 @@ function expectedException(actual, expected, message, fn) {
 }
 
 function getActual(fn) {
-  if (typeof fn !== 'function') {
-    throw new ERR_INVALID_ARG_TYPE('fn', 'Function', fn);
-  }
+  validateFunction(fn, 'fn');
   try {
     fn();
   } catch (e) {

@@ -4,6 +4,7 @@
 #include "env-inl.h"
 #include "node_buffer.h"
 #include "node_errors.h"
+#include "node_external_reference.h"
 #include "string_bytes.h"
 #include "util.h"
 
@@ -333,7 +334,15 @@ void InitializeStringDecoder(Local<Object> target,
 
 }  // anonymous namespace
 
+void RegisterStringDecoderExternalReferences(
+    ExternalReferenceRegistry* registry) {
+  registry->Register(DecodeData);
+  registry->Register(FlushData);
+}
+
 }  // namespace node
 
 NODE_MODULE_CONTEXT_AWARE_INTERNAL(string_decoder,
                                    node::InitializeStringDecoder)
+NODE_MODULE_EXTERNAL_REFERENCE(string_decoder,
+                               node::RegisterStringDecoderExternalReferences)

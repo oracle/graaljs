@@ -46,14 +46,15 @@ const {
   isArrayBufferView,
 } = require('internal/util/types');
 const {
-  validateInt32,
-  validateUint32,
-  validateString,
   validateArray,
   validateBoolean,
   validateBuffer,
+  validateFunction,
+  validateInt32,
   validateObject,
   validateOneOf,
+  validateString,
+  validateUint32,
 } = require('internal/validators');
 const {
   kVmBreakFirstLineSymbol,
@@ -66,8 +67,8 @@ class Script extends ContextifyScript {
     code = `${code}`;
     if (typeof options === 'string') {
       options = { filename: options };
-    } else if (typeof options !== 'object' || options === null) {
-      throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
+    } else {
+      validateObject(options, 'options');
     }
 
     const {
@@ -90,10 +91,7 @@ class Script extends ContextifyScript {
         cachedData
       );
     }
-    if (typeof produceCachedData !== 'boolean') {
-      throw new ERR_INVALID_ARG_TYPE('options.produceCachedData', 'boolean',
-                                     produceCachedData);
-    }
+    validateBoolean(produceCachedData, 'options.produceCachedData');
 
     // Calling `ReThrow()` on a native TryCatch does not generate a new
     // abort-on-uncaught-exception check. A dummy try/catch in JS land
@@ -111,11 +109,8 @@ class Script extends ContextifyScript {
     }
 
     if (importModuleDynamically !== undefined) {
-      if (typeof importModuleDynamically !== 'function') {
-        throw new ERR_INVALID_ARG_TYPE('options.importModuleDynamically',
-                                       'function',
-                                       importModuleDynamically);
-      }
+      validateFunction(importModuleDynamically,
+                       'options.importModuleDynamically');
       const { importModuleDynamicallyWrap } =
         require('internal/vm/module');
       const { callbackMap } = internalBinding('module_wrap');
@@ -326,6 +321,7 @@ function compileFunction(code, params, options = {}) {
     produceCachedData = false,
     parsingContext = undefined,
     contextExtensions = [],
+    importModuleDynamically,
   } = options;
 
   validateString(filename, 'options.filename');
@@ -373,6 +369,19 @@ function compileFunction(code, params, options = {}) {
     result.function.cachedData = result.cachedData;
   }
 
+  if (importModuleDynamically !== undefined) {
+    validateFunction(importModuleDynamically,
+                     'options.importModuleDynamically');
+    const { importModuleDynamicallyWrap } =
+      require('internal/vm/module');
+    const { callbackMap } = internalBinding('module_wrap');
+    const wrapped = importModuleDynamicallyWrap(importModuleDynamically);
+    const func = result.function;
+    callbackMap.set(result.cacheKey, {
+      importModuleDynamically: (s, _k, i) => wrapped(s, func, i),
+    });
+  }
+
   return result.function;
 }
 
@@ -412,11 +421,6 @@ module.exports = {
   measureMemory,
 };
 
-if (require('internal/options').getOptionValue('--experimental-vm-modules')) {
-  const {
-    Module, SourceTextModule, SyntheticModule,
-  } = require('internal/vm/module');
-  module.exports.Module = Module;
-  module.exports.SourceTextModule = SourceTextModule;
-  module.exports.SyntheticModule = SyntheticModule;
-}
+// The vm module is patched to include vm.Module, vm.SourceTextModule
+// and vm.SyntheticModule in the pre-execution phase when
+// --experimental-vm-modules is on.

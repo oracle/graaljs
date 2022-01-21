@@ -38,14 +38,14 @@ console.
 * `wait` {boolean} Block until a client has connected. Optional.
   **Default:** `false`.
 
-Activate inspector on host and port. Equivalent to `node
---inspect=[[host:]port]`, but can be done programmatically after node has
+Activate inspector on host and port. Equivalent to
+`node --inspect=[[host:]port]`, but can be done programmatically after node has
 started.
 
 If wait is `true`, will block until a client has connected to the inspect port
 and flow control has been passed to the debugger client.
 
-See the [security warning](cli.md#inspector_security) regarding the `host`
+See the [security warning][] regarding the `host`
 parameter usage.
 
 ## `inspector.url()`
@@ -70,6 +70,7 @@ undefined
 ```
 
 ## `inspector.waitForDebugger()`
+
 <!-- YAML
 added: v12.7.0
 -->
@@ -87,6 +88,7 @@ The `inspector.Session` is used for dispatching messages to the V8 inspector
 back-end and receiving message responses and notifications.
 
 ### `new inspector.Session()`
+
 <!-- YAML
 added: v8.0.0
 -->
@@ -96,6 +98,7 @@ needs to be connected through [`session.connect()`][] before the messages
 can be dispatched to the inspector backend.
 
 ### Event: `'inspectorNotification'`
+
 <!-- YAML
 added: v8.0.0
 -->
@@ -113,6 +116,7 @@ session.on('inspectorNotification', (message) => console.log(message.method));
 It is also possible to subscribe only to notifications with specific method:
 
 ### Event: `<inspector-protocol-method>`;
+
 <!-- YAML
 added: v8.0.0
 -->
@@ -134,6 +138,7 @@ session.on('Debugger.paused', ({ params }) => {
 ```
 
 ### `session.connect()`
+
 <!-- YAML
 added: v8.0.0
 -->
@@ -141,6 +146,7 @@ added: v8.0.0
 Connects a session to the inspector back-end.
 
 ### `session.connectToMainThread()`
+
 <!-- YAML
 added: v12.11.0
 -->
@@ -149,6 +155,7 @@ Connects a session to the main thread inspector back-end. An exception will
 be thrown if this API was not called on a Worker thread.
 
 ### `session.disconnect()`
+
 <!-- YAML
 added: v8.0.0
 -->
@@ -159,6 +166,7 @@ messages again. Reconnected session will lose all inspector state, such as
 enabled agents or configured breakpoints.
 
 ### `session.post(method[, params][, callback])`
+
 <!-- YAML
 added: v8.0.0
 -->
@@ -243,4 +251,5 @@ session.post('HeapProfiler.takeHeapSnapshot', null, (err, r) => {
 [Chrome DevTools Protocol Viewer]: https://chromedevtools.github.io/devtools-protocol/v8/
 [Heap Profiler]: https://chromedevtools.github.io/devtools-protocol/v8/HeapProfiler
 [`'Debugger.paused'`]: https://chromedevtools.github.io/devtools-protocol/v8/Debugger#event-paused
-[`session.connect()`]: #inspector_session_connect
+[`session.connect()`]: #sessionconnect
+[security warning]: cli.md#warning-binding-inspector-to-a-public-ipport-combination-is-insecure

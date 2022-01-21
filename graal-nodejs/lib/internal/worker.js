@@ -1,7 +1,7 @@
 'use strict';
 
 const {
-  ArrayIsArray,
+  ArrayPrototypeForEach,
   ArrayPrototypeMap,
   ArrayPrototypePush,
   Float64Array,
@@ -12,7 +12,9 @@ const {
   ObjectEntries,
   Promise,
   PromiseResolve,
+  ReflectApply,
   RegExpPrototypeTest,
+  SafeArrayIterator,
   SafeMap,
   String,
   Symbol,
@@ -25,14 +27,13 @@ const {
 const EventEmitter = require('events');
 const assert = require('internal/assert');
 const path = require('path');
-const { timeOrigin } = internalBinding('performance');
+const { now } = require('internal/perf/utils');
 
 const errorCodes = require('internal/errors').codes;
 const {
   ERR_WORKER_NOT_RUNNING,
   ERR_WORKER_PATH,
   ERR_WORKER_UNSERIALIZABLE_ERROR,
-  ERR_WORKER_UNSUPPORTED_EXTENSION,
   ERR_WORKER_INVALID_EXEC_ARGV,
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
@@ -54,6 +55,7 @@ const {
 } = workerIo;
 const { deserializeError } = require('internal/error_serdes');
 const { fileURLToPath, isURLInstance, pathToFileURL } = require('internal/url');
+const { validateArray } = require('internal/validators');
 
 const {
   ownsProcessState,
@@ -119,16 +121,12 @@ class Worker extends EventEmitter {
   constructor(filename, options = {}) {
     super();
     debug(`[${threadId}] create new worker`, filename, options);
-    if (options.execArgv && !ArrayIsArray(options.execArgv)) {
-      throw new ERR_INVALID_ARG_TYPE('options.execArgv',
-                                     'Array',
-                                     options.execArgv);
-    }
+    if (options.execArgv)
+      validateArray(options.execArgv, 'options.execArgv');
+
     let argv;
     if (options.argv) {
-      if (!ArrayIsArray(options.argv)) {
-        throw new ERR_INVALID_ARG_TYPE('options.argv', 'Array', options.argv);
-      }
+      validateArray(options.argv, 'options.argv');
       argv = ArrayPrototypeMap(options.argv, String);
     }
 
@@ -165,18 +163,15 @@ class Worker extends EventEmitter {
       } else {
         throw new ERR_WORKER_PATH(filename);
       }
-
-      const ext = path.extname(filename);
-      if (ext !== '.js' && ext !== '.mjs' && ext !== '.cjs') {
-        throw new ERR_WORKER_UNSUPPORTED_EXTENSION(ext);
-      }
     }
 
     let env;
     if (typeof options.env === 'object' && options.env !== null) {
       env = ObjectCreate(null);
-      for (const [ key, value ] of ObjectEntries(options.env))
-        env[key] = `${value}`;
+      ArrayPrototypeForEach(
+        ObjectEntries(options.env),
+        ({ 0: key, 1: value }) => { env[key] = `${value}`; }
+      );
     } else if (options.env == null) {
       env = process.env;
     } else if (options.env !== SHARE_ENV) {
@@ -191,7 +186,7 @@ class Worker extends EventEmitter {
                                    env === process.env ? null : env,
                                    options.execArgv,
                                    parseResourceLimits(options.resourceLimits),
-                                   !!options.trackUnmanagedFds);
+                                   !!(options.trackUnmanagedFds ?? true));
     if (this[kHandle].invalidExecArgv) {
       throw new ERR_WORKER_INVALID_EXEC_ARGV(this[kHandle].invalidExecArgv);
     }
@@ -229,12 +224,13 @@ class Worker extends EventEmitter {
     const transferList = [port2];
     // If transferList is provided.
     if (options.transferList)
-      ArrayPrototypePush(transferList, ...options.transferList);
+      ArrayPrototypePush(transferList,
+                         ...new SafeArrayIterator(options.transferList));
 
     this[kPublicPort] = port1;
-    for (const event of ['message', 'messageerror']) {
+    ArrayPrototypeForEach(['message', 'messageerror'], (event) => {
       this[kPublicPort].on(event, (message) => this.emit(event, message));
-    }
+    });
     setupPortReferencing(this[kPublicPort], this, 'message');
     this[kPort].postMessage({
       argv,
@@ -269,6 +265,10 @@ class Worker extends EventEmitter {
     debug(`[${threadId}] hears end event for Worker ${this.threadId}`);
     drainMessagePort(this[kPublicPort]);
     drainMessagePort(this[kPort]);
+    this.removeAllListeners('message');
+    this.removeAllListeners('messageerrors');
+    this[kPublicPort].unref();
+    this[kPort].unref();
     this[kDispose]();
     if (customErr) {
       debug(`[${threadId}] failing with custom error ${customErr} \
@@ -302,8 +302,9 @@ class Worker extends EventEmitter {
       {
         const { stream, chunks } = message;
         const readable = this[kParentSideStdio][stream];
-        for (const { chunk, encoding } of chunks)
+        ArrayPrototypeForEach(chunks, ({ chunk, encoding }) => {
           readable.push(chunk, encoding);
+        });
         return;
       }
       case messageTypes.STDIO_WANTS_MORE_DATA:
@@ -337,7 +338,7 @@ class Worker extends EventEmitter {
   postMessage(...args) {
     if (this[kPublicPort] === null) return;
 
-    this[kPublicPort].postMessage(...args);
+    ReflectApply(this[kPublicPort].postMessage, this[kPublicPort], args);
   }
 
   terminate(callback) {
@@ -492,12 +493,6 @@ function eventLoopUtilization(util1, util2) {
   const active_delta = active - util1.active;
   const utilization = active_delta / (idle_delta + active_delta);
   return { idle: idle_delta, active: active_delta, utilization };
-}
-
-// Duplicate code from performance.now() so don't need to require perf_hooks.
-function now() {
-  const hr = process.hrtime();
-  return (hr[0] * 1000 + hr[1] / 1e6) - timeOrigin;
 }
 
 module.exports = {

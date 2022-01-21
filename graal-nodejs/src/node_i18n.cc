@@ -41,6 +41,7 @@
 
 
 #include "node_i18n.h"
+#include "node_external_reference.h"
 
 #if defined(NODE_HAVE_I18N_SUPPORT)
 
@@ -554,6 +555,16 @@ bool InitializeICUDirectory(const std::string& path) {
   return status == U_ZERO_ERROR;
 }
 
+void SetDefaultTimeZone(const char* tzid) {
+  size_t tzidlen = strlen(tzid) + 1;
+  UErrorCode status = U_ZERO_ERROR;
+  MaybeStackBuffer<UChar, 256> id(tzidlen);
+  u_charsToUChars(tzid, id.out(), tzidlen);
+  // This is threadsafe:
+  ucal_setDefaultTimeZone(id.out(), &status);
+  CHECK(U_SUCCESS(status));
+}
+
 int32_t ToUnicode(MaybeStackBuffer<char>* buf,
                   const char* input,
                   size_t length) {
@@ -847,9 +858,21 @@ void Initialize(Local<Object> target,
   env->SetMethod(target, "hasConverter", ConverterObject::Has);
 }
 
+void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
+  registry->Register(ToUnicode);
+  registry->Register(ToASCII);
+  registry->Register(GetStringWidth);
+  registry->Register(ICUErrorName);
+  registry->Register(Transcode);
+  registry->Register(ConverterObject::Create);
+  registry->Register(ConverterObject::Decode);
+  registry->Register(ConverterObject::Has);
+}
+
 }  // namespace i18n
 }  // namespace node
 
 NODE_MODULE_CONTEXT_AWARE_INTERNAL(icu, node::i18n::Initialize)
+NODE_MODULE_EXTERNAL_REFERENCE(icu, node::i18n::RegisterExternalReferences)
 
 #endif  // NODE_HAVE_I18N_SUPPORT

@@ -15,6 +15,7 @@ const {
   MathFloor,
   Number,
   NumberPrototypeToFixed,
+  ObjectCreate,
   ObjectDefineProperties,
   ObjectDefineProperty,
   ObjectKeys,
@@ -42,12 +43,15 @@ const {
   isStackOverflowError,
   codes: {
     ERR_CONSOLE_WRITABLE_STREAM,
-    ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
     ERR_INCOMPATIBLE_OPTION_PAIR,
   },
 } = require('internal/errors');
-const { validateInteger } = require('internal/validators');
+const {
+  validateArray,
+  validateInteger,
+  validateObject,
+} = require('internal/validators');
 const { previewEntries } = internalBinding('util');
 const { Buffer: { isBuffer } } = require('buffer');
 const {
@@ -58,18 +62,14 @@ const {
   isTypedArray, isSet, isMap, isSetIterator, isMapIterator,
 } = require('internal/util/types');
 const {
-  CHAR_LOWERCASE_B,
-  CHAR_LOWERCASE_E,
-  CHAR_LOWERCASE_N,
-  CHAR_UPPERCASE_C,
+  CHAR_LOWERCASE_B: kTraceBegin,
+  CHAR_LOWERCASE_E: kTraceEnd,
+  CHAR_LOWERCASE_N: kTraceInstant,
+  CHAR_UPPERCASE_C: kTraceCount,
 } = require('internal/constants');
 const kCounts = Symbol('counts');
 
 const kTraceConsoleCategory = 'node,node.console';
-const kTraceCount = CHAR_UPPERCASE_C;
-const kTraceBegin = CHAR_LOWERCASE_B;
-const kTraceEnd = CHAR_LOWERCASE_E;
-const kTraceInstant = CHAR_LOWERCASE_N;
 
 const kSecond = 1000;
 const kMinute = 60 * kSecond;
@@ -136,18 +136,15 @@ function Console(options /* or: stdout, stderr, ignoreErrors = true */) {
                     0, kMaxGroupIndentation);
   }
 
-  if (typeof inspectOptions === 'object' && inspectOptions !== null) {
+  if (inspectOptions !== undefined) {
+    validateObject(inspectOptions, 'options.inspectOptions');
+
     if (inspectOptions.colors !== undefined &&
         options.colorMode !== undefined) {
       throw new ERR_INCOMPATIBLE_OPTION_PAIR(
         'options.inspectOptions.color', 'colorMode');
     }
     optionsMap.set(this, inspectOptions);
-  } else if (inspectOptions !== undefined) {
-    throw new ERR_INVALID_ARG_TYPE(
-      'options.inspectOptions',
-      'object',
-      inspectOptions);
   }
 
   // Bind the prototype functions to this Console instance
@@ -429,7 +426,10 @@ const consoleMethods = {
     if (this._stdout.isTTY && process.env.TERM !== 'dumb') {
       // The require is here intentionally to avoid readline being
       // required too early when console is first loaded.
-      const { cursorTo, clearScreenDown } = require('readline');
+      const {
+        cursorTo,
+        clearScreenDown,
+      } = require('internal/readline/callbacks');
       cursorTo(this._stdout, 0, 0);
       clearScreenDown(this._stdout);
     }
@@ -480,8 +480,8 @@ const consoleMethods = {
 
   // https://console.spec.whatwg.org/#table
   table(tabularData, properties) {
-    if (properties !== undefined && !ArrayIsArray(properties))
-      throw new ERR_INVALID_ARG_TYPE('properties', 'Array', properties);
+    if (properties !== undefined)
+      validateArray(properties, 'properties');
 
     if (tabularData === null || typeof tabularData !== 'object')
       return this.log(tabularData);
@@ -555,7 +555,7 @@ const consoleMethods = {
       return final([iterKey, valuesKey], [getIndexArray(length), values]);
     }
 
-    const map = {};
+    const map = ObjectCreate(null);
     let hasPrimitives = false;
     const valuesKeyArray = [];
     const indexKeyArray = ObjectKeys(tabularData);

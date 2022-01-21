@@ -27,9 +27,6 @@ bool BinaryOperationHintToNumberOperationHint(
     case BinaryOperationHint::kSignedSmallInputs:
       *number_hint = NumberOperationHint::kSignedSmallInputs;
       return true;
-    case BinaryOperationHint::kSigned32:
-      *number_hint = NumberOperationHint::kSigned32;
-      return true;
     case BinaryOperationHint::kNumber:
       *number_hint = NumberOperationHint::kNumber;
       return true;
@@ -50,7 +47,6 @@ bool BinaryOperationHintToBigIntOperationHint(
   switch (binop_hint) {
     case BinaryOperationHint::kSignedSmall:
     case BinaryOperationHint::kSignedSmallInputs:
-    case BinaryOperationHint::kSigned32:
     case BinaryOperationHint::kNumber:
     case BinaryOperationHint::kNumberOrOddball:
     case BinaryOperationHint::kAny:
@@ -97,6 +93,9 @@ class JSSpeculativeBinopBuilder final {
       case CompareOperationHint::kNumber:
         *hint = NumberOperationHint::kNumber;
         return true;
+      case CompareOperationHint::kNumberOrBoolean:
+        *hint = NumberOperationHint::kNumberOrBoolean;
+        return true;
       case CompareOperationHint::kNumberOrOddball:
         *hint = NumberOperationHint::kNumberOrOddball;
         return true;
@@ -116,21 +115,21 @@ class JSSpeculativeBinopBuilder final {
   const Operator* SpeculativeNumberOp(NumberOperationHint hint) {
     switch (op_->opcode()) {
       case IrOpcode::kJSAdd:
-        if (hint == NumberOperationHint::kSignedSmall ||
-            hint == NumberOperationHint::kSigned32) {
+        if (hint == NumberOperationHint::kSignedSmall) {
           return simplified()->SpeculativeSafeIntegerAdd(hint);
         } else {
           return simplified()->SpeculativeNumberAdd(hint);
         }
       case IrOpcode::kJSSubtract:
-        if (hint == NumberOperationHint::kSignedSmall ||
-            hint == NumberOperationHint::kSigned32) {
+        if (hint == NumberOperationHint::kSignedSmall) {
           return simplified()->SpeculativeSafeIntegerSubtract(hint);
         } else {
           return simplified()->SpeculativeNumberSubtract(hint);
         }
       case IrOpcode::kJSMultiply:
         return simplified()->SpeculativeNumberMultiply(hint);
+      case IrOpcode::kJSExponentiate:
+        return simplified()->SpeculativeNumberPow(hint);
       case IrOpcode::kJSDivide:
         return simplified()->SpeculativeNumberDivide(hint);
       case IrOpcode::kJSModulus:
@@ -282,31 +281,33 @@ JSTypeHintLowering::LoweringResult JSTypeHintLowering::ReduceUnaryOperation(
     return LoweringResult::Exit(node);
   }
 
+  // Note: Unary and binary operations collect the same kind of feedback.
+  FeedbackSource feedback(feedback_vector(), slot);
+
   Node* node;
   switch (op->opcode()) {
     case IrOpcode::kJSBitwiseNot: {
       // Lower to a speculative xor with -1 if we have some kind of Number
       // feedback.
-      JSSpeculativeBinopBuilder b(this, jsgraph()->javascript()->BitwiseXor(),
-                                  operand, jsgraph()->SmiConstant(-1), effect,
-                                  control, slot);
+      JSSpeculativeBinopBuilder b(
+          this, jsgraph()->javascript()->BitwiseXor(feedback), operand,
+          jsgraph()->SmiConstant(-1), effect, control, slot);
       node = b.TryBuildNumberBinop();
       break;
     }
     case IrOpcode::kJSDecrement: {
       // Lower to a speculative subtraction of 1 if we have some kind of Number
       // feedback.
-      JSSpeculativeBinopBuilder b(this, jsgraph()->javascript()->Subtract(),
-                                  operand, jsgraph()->SmiConstant(1), effect,
-                                  control, slot);
+      JSSpeculativeBinopBuilder b(
+          this, jsgraph()->javascript()->Subtract(feedback), operand,
+          jsgraph()->SmiConstant(1), effect, control, slot);
       node = b.TryBuildNumberBinop();
       break;
     }
     case IrOpcode::kJSIncrement: {
       // Lower to a speculative addition of 1 if we have some kind of Number
       // feedback.
-      BinaryOperationHint hint = BinaryOperationHint::kAny;  // Dummy.
-      JSSpeculativeBinopBuilder b(this, jsgraph()->javascript()->Add(hint),
+      JSSpeculativeBinopBuilder b(this, jsgraph()->javascript()->Add(feedback),
                                   operand, jsgraph()->SmiConstant(1), effect,
                                   control, slot);
       node = b.TryBuildNumberBinop();
@@ -315,9 +316,9 @@ JSTypeHintLowering::LoweringResult JSTypeHintLowering::ReduceUnaryOperation(
     case IrOpcode::kJSNegate: {
       // Lower to a speculative multiplication with -1 if we have some kind of
       // Number feedback.
-      JSSpeculativeBinopBuilder b(this, jsgraph()->javascript()->Multiply(),
-                                  operand, jsgraph()->SmiConstant(-1), effect,
-                                  control, slot);
+      JSSpeculativeBinopBuilder b(
+          this, jsgraph()->javascript()->Multiply(feedback), operand,
+          jsgraph()->SmiConstant(-1), effect, control, slot);
       node = b.TryBuildNumberBinop();
       if (!node) {
         if (GetBinaryOperationHint(slot) == BinaryOperationHint::kBigInt) {
@@ -389,7 +390,8 @@ JSTypeHintLowering::LoweringResult JSTypeHintLowering::ReduceBinaryOperation(
     case IrOpcode::kJSSubtract:
     case IrOpcode::kJSMultiply:
     case IrOpcode::kJSDivide:
-    case IrOpcode::kJSModulus: {
+    case IrOpcode::kJSModulus:
+    case IrOpcode::kJSExponentiate: {
       if (Node* node = TryBuildSoftDeopt(
               slot, effect, control,
               DeoptimizeReason::kInsufficientTypeFeedbackForBinaryOperation)) {
@@ -405,15 +407,6 @@ JSTypeHintLowering::LoweringResult JSTypeHintLowering::ReduceBinaryOperation(
           return LoweringResult::SideEffectFree(node, node, control);
         }
       }
-      break;
-    }
-    case IrOpcode::kJSExponentiate: {
-      if (Node* node = TryBuildSoftDeopt(
-              slot, effect, control,
-              DeoptimizeReason::kInsufficientTypeFeedbackForBinaryOperation)) {
-        return LoweringResult::Exit(node);
-      }
-      // TODO(neis): Introduce a SpeculativeNumberPow operator?
       break;
     }
     default:
@@ -508,9 +501,9 @@ JSTypeHintLowering::ReduceGetIteratorOperation(const Operator* op,
 }
 
 JSTypeHintLowering::LoweringResult JSTypeHintLowering::ReduceLoadNamedOperation(
-    const Operator* op, Node* receiver, Node* effect, Node* control,
-    FeedbackSlot slot) const {
-  DCHECK_EQ(IrOpcode::kJSLoadNamed, op->opcode());
+    const Operator* op, Node* effect, Node* control, FeedbackSlot slot) const {
+  DCHECK(op->opcode() == IrOpcode::kJSLoadNamed ||
+         op->opcode() == IrOpcode::kJSLoadNamedFromSuper);
   if (Node* node = TryBuildSoftDeopt(
           slot, effect, control,
           DeoptimizeReason::kInsufficientTypeFeedbackForGenericNamedAccess)) {
@@ -568,13 +561,6 @@ Node* JSTypeHintLowering::TryBuildSoftDeopt(FeedbackSlot slot, Node* effect,
   if (!(flags() & kBailoutOnUninitialized)) return nullptr;
 
   FeedbackSource source(feedback_vector(), slot);
-  // TODO(mythria): Think of adding flags to specify if we need a soft deopt for
-  // calls instead of using FLAG_turboprop here.
-  if (FLAG_turboprop &&
-      broker()->GetFeedbackSlotKind(source) == FeedbackSlotKind::kCall) {
-    return nullptr;
-  }
-
   if (!broker()->FeedbackIsInsufficient(source)) return nullptr;
 
   Node* deoptimize = jsgraph()->graph()->NewNode(

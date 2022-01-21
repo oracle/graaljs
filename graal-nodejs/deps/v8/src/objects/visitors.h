@@ -23,7 +23,7 @@ class CodeDataContainer;
   V(kStrongRootList, "(Strong roots)")                \
   V(kSmiRootList, "(Smi roots)")                      \
   V(kBootstrapper, "(Bootstrapper)")                  \
-  V(kTop, "(Isolate)")                                \
+  V(kStackRoots, "(Stack roots)")                     \
   V(kRelocatable, "(Relocatable)")                    \
   V(kDebug, "(Debugger)")                             \
   V(kCompilationCache, "(Compilation cache)")         \
@@ -39,6 +39,8 @@ class CodeDataContainer;
   V(kReadOnlyObjectCache, "(Read-only object cache)") \
   V(kWeakCollections, "(Weak collections)")           \
   V(kWrapperTracing, "(Wrapper tracing)")             \
+  V(kWriteBarrier, "(Write barrier)")                 \
+  V(kRetainMaps, "(Retain maps)")                     \
   V(kUnknown, "(Unknown)")
 
 class VisitorSynchronization : public AllStatic {
@@ -72,10 +74,23 @@ class RootVisitor {
     VisitRootPointers(root, description, p, p + 1);
   }
 
+  // Visits a contiguous arrays of off-heap pointers in the half-open range
+  // [start, end). Any or all of the values may be modified on return.
+  virtual void VisitRootPointers(Root root, const char* description,
+                                 OffHeapObjectSlot start,
+                                 OffHeapObjectSlot end) {
+    // This should be implemented for any visitor that visits the string table.
+    // If we ever add new off-heap data-structures that we want to walk as roots
+    // using this function, we should make it generic, by
+    //
+    //   1) Making this function pure virtual, and
+    //   2) Implementing it for all visitors.
+    UNREACHABLE();
+  }
+
   // Intended for serialization/deserialization checking: insert, or
   // check for the presence of, a tag at this position in the stream.
   // Also used for marking up GC roots in heap snapshots.
-  // TODO(ulan): Remove this.
   virtual void Synchronize(VisitorSynchronization::SyncTag tag) {}
 
   static const char* RootName(Root root);
@@ -95,6 +110,12 @@ class ObjectVisitor {
                              ObjectSlot end) = 0;
   virtual void VisitPointers(HeapObject host, MaybeObjectSlot start,
                              MaybeObjectSlot end) = 0;
+  // When V8_EXTERNAL_CODE_SPACE is enabled, visits a Code pointer slot.
+  // The values may be modified on return.
+  // Not used when V8_EXTERNAL_CODE_SPACE is not enabled (the Code pointer
+  // slots are visited as a part of on-heap slot visitation - via
+  // VisitPointers()).
+  virtual void VisitCodePointer(HeapObject host, CodeObjectSlot slot) = 0;
 
   // Custom weak pointers must be ignored by the GC but not other
   // visitors. They're used for e.g., lists that are recreated after GC. The
@@ -148,6 +169,9 @@ class ObjectVisitor {
 
   // Visits the relocation info using the given iterator.
   virtual void VisitRelocInfo(RelocIterator* it);
+
+  // Visits the object's map pointer, decoding as necessary
+  virtual void VisitMapPointer(HeapObject host) { UNREACHABLE(); }
 };
 
 }  // namespace internal

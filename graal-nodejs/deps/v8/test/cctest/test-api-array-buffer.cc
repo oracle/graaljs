@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "test/cctest/test-api.h"
-
 #include "src/api/api-inl.h"
+#include "src/base/strings.h"
+#include "src/objects/js-array-buffer-inl.h"
+#include "test/cctest/test-api.h"
 
 using ::v8::Array;
 using ::v8::Context;
@@ -25,13 +26,12 @@ void CheckIsDetached(v8::Local<v8::TypedArray> ta) {
 }
 
 void CheckIsTypedArrayVarDetached(const char* name) {
-  i::ScopedVector<char> source(1024);
-  i::SNPrintF(source,
-              "%s.byteLength == 0 && %s.byteOffset == 0 && %s.length == 0",
-              name, name, name);
+  v8::base::ScopedVector<char> source(1024);
+  v8::base::SNPrintF(
+      source, "%s.byteLength == 0 && %s.byteOffset == 0 && %s.length == 0",
+      name, name, name);
   CHECK(CompileRun(source.begin())->IsTrue());
-  v8::Local<v8::TypedArray> ta =
-      v8::Local<v8::TypedArray>::Cast(CompileRun(name));
+  v8::Local<v8::TypedArray> ta = CompileRun(name).As<v8::TypedArray>();
   CheckIsDetached(ta);
 }
 
@@ -122,7 +122,7 @@ THREADED_TEST(ArrayBuffer_JSInternalToExternal) {
       "var u8_a = new Uint8Array(ab1);"
       "u8_a[0] = 0xAA;"
       "u8_a[1] = 0xFF; u8_a.buffer");
-  Local<v8::ArrayBuffer> ab1 = Local<v8::ArrayBuffer>::Cast(result);
+  Local<v8::ArrayBuffer> ab1 = result.As<v8::ArrayBuffer>();
   CheckInternalFieldsAreZero(ab1);
   CHECK_EQ(2, ab1->ByteLength());
   std::shared_ptr<v8::BackingStore> backing_store = Externalize(ab1);
@@ -156,7 +156,7 @@ THREADED_TEST(ArrayBuffer_External) {
   v8::Isolate* isolate = env->GetIsolate();
   v8::HandleScope handle_scope(isolate);
 
-  i::ScopedVector<uint8_t> my_data(100);
+  v8::base::ScopedVector<uint8_t> my_data(100);
   memset(my_data.begin(), 0, 100);
   // Keep the tests until the deprecated functions are removed.
 #if __clang__
@@ -272,10 +272,8 @@ THREADED_TEST(ArrayBuffer_DetachingScript) {
       "var f64a = new Float64Array(ab, 8, 127);"
       "var dv = new DataView(ab, 1, 1023);");
 
-  v8::Local<v8::ArrayBuffer> ab =
-      Local<v8::ArrayBuffer>::Cast(CompileRun("ab"));
-
-  v8::Local<v8::DataView> dv = v8::Local<v8::DataView>::Cast(CompileRun("dv"));
+  v8::Local<v8::ArrayBuffer> ab = CompileRun("ab").As<v8::ArrayBuffer>();
+  v8::Local<v8::DataView> dv = CompileRun("dv").As<v8::DataView>();
 
   Externalize(ab);
   ab->Detach();
@@ -389,7 +387,7 @@ THREADED_TEST(ArrayBuffer_ExternalReused) {
   v8::Isolate* isolate = env->GetIsolate();
   v8::HandleScope handle_scope(isolate);
 
-  i::ScopedVector<uint8_t> data(100);
+  v8::base::ScopedVector<uint8_t> data(100);
   Local<v8::ArrayBuffer> ab1 = v8::ArrayBuffer::New(isolate, data.begin(), 100);
   std::shared_ptr<v8::BackingStore> bs1 = ab1->GetBackingStore();
   ab1->Detach();
@@ -403,7 +401,7 @@ THREADED_TEST(SharedArrayBuffer_ExternalReused) {
   v8::Isolate* isolate = env->GetIsolate();
   v8::HandleScope handle_scope(isolate);
 
-  i::ScopedVector<uint8_t> data(100);
+  v8::base::ScopedVector<uint8_t> data(100);
   Local<v8::SharedArrayBuffer> ab1 =
       v8::SharedArrayBuffer::New(isolate, data.begin(), 100);
   std::shared_ptr<v8::BackingStore> bs1 = ab1->GetBackingStore();
@@ -424,7 +422,7 @@ THREADED_TEST(SharedArrayBuffer_JSInternalToExternal) {
       "var u8_a = new Uint8Array(ab1);"
       "u8_a[0] = 0xAA;"
       "u8_a[1] = 0xFF; u8_a.buffer");
-  Local<v8::SharedArrayBuffer> ab1 = Local<v8::SharedArrayBuffer>::Cast(result);
+  Local<v8::SharedArrayBuffer> ab1 = result.As<v8::SharedArrayBuffer>();
   CheckInternalFieldsAreZero(ab1);
   CHECK_EQ(2, ab1->ByteLength());
   CHECK(!ab1->IsExternal());
@@ -460,7 +458,7 @@ THREADED_TEST(SharedArrayBuffer_External) {
   v8::Isolate* isolate = env->GetIsolate();
   v8::HandleScope handle_scope(isolate);
 
-  i::ScopedVector<uint8_t> my_data(100);
+  v8::base::ScopedVector<uint8_t> my_data(100);
   memset(my_data.begin(), 0, 100);
   Local<v8::SharedArrayBuffer> ab3 =
       v8::SharedArrayBuffer::New(isolate, my_data.begin(), 100);
@@ -705,6 +703,30 @@ THREADED_TEST(BackingStore_Shared) {
             BackingStoreCustomDeleter,
             reinterpret_cast<void*>(backing_store_custom_deleter_data))
             ->IsShared());
+}
+
+THREADED_TEST(ArrayBuffer_NewBackingStore_NullData) {
+  // This test creates a BackingStore with nullptr as data. The test then
+  // creates an ArrayBuffer and a TypedArray from this BackingStore. Writing
+  // into that TypedArray at index 0 is expected to be a no-op, reading from
+  // that TypedArray at index 0 should result in the default value '0'.
+  LocalContext env;
+  v8::Isolate* isolate = env->GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+  std::unique_ptr<v8::BackingStore> backing_store =
+      v8::ArrayBuffer::NewBackingStore(nullptr, 0,
+                                       v8::BackingStore::EmptyDeleter, nullptr);
+  v8::Local<v8::ArrayBuffer> buffer =
+      v8::ArrayBuffer::New(isolate, std::move(backing_store));
+
+  CHECK(env->Global()->Set(env.local(), v8_str("buffer"), buffer).FromJust());
+
+  v8::Local<v8::Value> result =
+      CompileRunChecked(isolate,
+                        "const view = new Int32Array(buffer);"
+                        "view[0] = 14;"
+                        "view[0];");
+  CHECK_EQ(0, result->Int32Value(env.local()).FromJust());
 }
 
 class DummyAllocator final : public v8::ArrayBuffer::Allocator {

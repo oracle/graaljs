@@ -20,6 +20,7 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "env-inl.h"
+#include "node_external_reference.h"
 #include "string_bytes.h"
 
 #ifdef __MINGW32__
@@ -118,11 +119,16 @@ static void GetCPUInfo(const FunctionCallbackInfo<Value>& args) {
     uv_cpu_info_t* ci = cpu_infos + i;
     result.emplace_back(OneByteString(isolate, ci->model));
     result.emplace_back(Number::New(isolate, ci->speed));
-    result.emplace_back(Number::New(isolate, ci->cpu_times.user));
-    result.emplace_back(Number::New(isolate, ci->cpu_times.nice));
-    result.emplace_back(Number::New(isolate, ci->cpu_times.sys));
-    result.emplace_back(Number::New(isolate, ci->cpu_times.idle));
-    result.emplace_back(Number::New(isolate, ci->cpu_times.irq));
+    result.emplace_back(
+        Number::New(isolate, static_cast<double>(ci->cpu_times.user)));
+    result.emplace_back(
+        Number::New(isolate, static_cast<double>(ci->cpu_times.nice)));
+    result.emplace_back(
+        Number::New(isolate, static_cast<double>(ci->cpu_times.sys)));
+    result.emplace_back(
+        Number::New(isolate, static_cast<double>(ci->cpu_times.idle)));
+    result.emplace_back(
+        Number::New(isolate, static_cast<double>(ci->cpu_times.irq)));
   }
 
   uv_free_cpu_info(cpu_infos, count);
@@ -131,13 +137,13 @@ static void GetCPUInfo(const FunctionCallbackInfo<Value>& args) {
 
 
 static void GetFreeMemory(const FunctionCallbackInfo<Value>& args) {
-  double amount = uv_get_free_memory();
+  double amount = static_cast<double>(uv_get_free_memory());
   args.GetReturnValue().Set(amount);
 }
 
 
 static void GetTotalMemory(const FunctionCallbackInfo<Value>& args) {
-  double amount = uv_get_total_memory();
+  double amount = static_cast<double>(uv_get_total_memory());
   args.GetReturnValue().Set(amount);
 }
 
@@ -393,7 +399,23 @@ void Initialize(Local<Object> target,
               Boolean::New(env->isolate(), IsBigEndian())).Check();
 }
 
+void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
+  registry->Register(GetHostname);
+  registry->Register(GetLoadAvg);
+  registry->Register(GetUptime);
+  registry->Register(GetTotalMemory);
+  registry->Register(GetFreeMemory);
+  registry->Register(GetCPUInfo);
+  registry->Register(GetInterfaceAddresses);
+  registry->Register(GetHomeDirectory);
+  registry->Register(GetUserInfo);
+  registry->Register(SetPriority);
+  registry->Register(GetPriority);
+  registry->Register(GetOSInformation);
+}
+
 }  // namespace os
 }  // namespace node
 
 NODE_MODULE_CONTEXT_AWARE_INTERNAL(os, node::os::Initialize)
+NODE_MODULE_EXTERNAL_REFERENCE(os, node::os::RegisterExternalReferences)

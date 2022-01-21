@@ -68,10 +68,17 @@ Handle<JSObject> CreateKey(const char* key_prop_value, Isolate* isolate) {
 
 Handle<WeakCell> FinalizationRegistryRegister(
     Handle<JSFinalizationRegistry> finalization_registry,
-    Handle<JSObject> target, Handle<Object> holdings, Handle<Object> key,
-    Isolate* isolate) {
-  JSFinalizationRegistry::Register(finalization_registry, target, holdings, key,
-                                   isolate);
+    Handle<JSObject> target, Handle<Object> held_value,
+    Handle<Object> unregister_token, Isolate* isolate) {
+  Factory* factory = isolate->factory();
+  Handle<JSFunction> regfunc = Handle<JSFunction>::cast(
+      Object::GetProperty(isolate, finalization_registry,
+                          factory->NewStringFromStaticChars("register"))
+          .ToHandleChecked());
+  Handle<Object> args[] = {target, held_value, unregister_token};
+  Execution::Call(isolate, regfunc, finalization_registry, arraysize(args),
+                  args)
+      .ToHandleChecked();
   CHECK(finalization_registry->active_cells().IsWeakCell());
   Handle<WeakCell> weak_cell =
       handle(WeakCell::cast(finalization_registry->active_cells()), isolate);
@@ -202,7 +209,6 @@ Handle<JSWeakRef> MakeWeakRefAndKeepDuringJob(Isolate* isolate) {
 }  // namespace
 
 TEST(TestRegister) {
-  FLAG_harmony_weak_refs = true;
   CcTest::InitializeVM();
   LocalContext context;
   Isolate* isolate = CcTest::i_isolate();
@@ -240,7 +246,6 @@ TEST(TestRegister) {
 }
 
 TEST(TestRegisterWithKey) {
-  FLAG_harmony_weak_refs = true;
   CcTest::InitializeVM();
   LocalContext context;
   Isolate* isolate = CcTest::i_isolate();
@@ -293,7 +298,6 @@ TEST(TestRegisterWithKey) {
 }
 
 TEST(TestWeakCellNullify1) {
-  FLAG_harmony_weak_refs = true;
   CcTest::InitializeVM();
   LocalContext context;
   Isolate* isolate = CcTest::i_isolate();
@@ -328,7 +332,6 @@ TEST(TestWeakCellNullify1) {
 }
 
 TEST(TestWeakCellNullify2) {
-  FLAG_harmony_weak_refs = true;
   CcTest::InitializeVM();
   LocalContext context;
   Isolate* isolate = CcTest::i_isolate();
@@ -362,7 +365,6 @@ TEST(TestWeakCellNullify2) {
 }
 
 TEST(TestJSFinalizationRegistryPopClearedCellHoldings1) {
-  FLAG_harmony_weak_refs = true;
   CcTest::InitializeVM();
   LocalContext context;
   Isolate* isolate = CcTest::i_isolate();
@@ -418,7 +420,6 @@ TEST(TestJSFinalizationRegistryPopClearedCellHoldings1) {
 TEST(TestJSFinalizationRegistryPopClearedCellHoldings2) {
   // Test that when all WeakCells for a key are popped, the key is removed from
   // the key map.
-  FLAG_harmony_weak_refs = true;
   CcTest::InitializeVM();
   LocalContext context;
   Isolate* isolate = CcTest::i_isolate();
@@ -469,7 +470,6 @@ TEST(TestJSFinalizationRegistryPopClearedCellHoldings2) {
 }
 
 TEST(TestUnregisterActiveCells) {
-  FLAG_harmony_weak_refs = true;
   CcTest::InitializeVM();
   LocalContext context;
   Isolate* isolate = CcTest::i_isolate();
@@ -522,7 +522,6 @@ TEST(TestUnregisterActiveCells) {
 }
 
 TEST(TestUnregisterActiveAndClearedCells) {
-  FLAG_harmony_weak_refs = true;
   CcTest::InitializeVM();
   LocalContext context;
   Isolate* isolate = CcTest::i_isolate();
@@ -578,7 +577,6 @@ TEST(TestUnregisterActiveAndClearedCells) {
 }
 
 TEST(TestWeakCellUnregisterTwice) {
-  FLAG_harmony_weak_refs = true;
   CcTest::InitializeVM();
   LocalContext context;
   Isolate* isolate = CcTest::i_isolate();
@@ -626,7 +624,6 @@ TEST(TestWeakCellUnregisterTwice) {
 }
 
 TEST(TestWeakCellUnregisterPopped) {
-  FLAG_harmony_weak_refs = true;
   CcTest::InitializeVM();
   LocalContext context;
   Isolate* isolate = CcTest::i_isolate();
@@ -667,7 +664,6 @@ TEST(TestWeakCellUnregisterPopped) {
 }
 
 TEST(TestWeakCellUnregisterNonexistentKey) {
-  FLAG_harmony_weak_refs = true;
   CcTest::InitializeVM();
   LocalContext context;
   Isolate* isolate = CcTest::i_isolate();
@@ -680,7 +676,6 @@ TEST(TestWeakCellUnregisterNonexistentKey) {
 }
 
 TEST(TestJSWeakRef) {
-  FLAG_harmony_weak_refs = true;
   CcTest::InitializeVM();
   LocalContext context;
 
@@ -709,7 +704,6 @@ TEST(TestJSWeakRef) {
 }
 
 TEST(TestJSWeakRefIncrementalMarking) {
-  FLAG_harmony_weak_refs = true;
   if (!FLAG_incremental_marking) {
     return;
   }
@@ -745,7 +739,6 @@ TEST(TestJSWeakRefIncrementalMarking) {
 }
 
 TEST(TestJSWeakRefKeepDuringJob) {
-  FLAG_harmony_weak_refs = true;
   CcTest::InitializeVM();
   LocalContext context;
 
@@ -783,7 +776,6 @@ TEST(TestJSWeakRefKeepDuringJob) {
 }
 
 TEST(TestJSWeakRefKeepDuringJobIncrementalMarking) {
-  FLAG_harmony_weak_refs = true;
   if (!FLAG_incremental_marking) {
     return;
   }
@@ -812,7 +804,6 @@ TEST(TestJSWeakRefKeepDuringJobIncrementalMarking) {
 }
 
 TEST(TestRemoveUnregisterToken) {
-  FLAG_harmony_weak_refs = true;
   CcTest::InitializeVM();
   LocalContext context;
   Isolate* isolate = CcTest::i_isolate();
@@ -824,7 +815,7 @@ TEST(TestRemoveUnregisterToken) {
 
   Handle<JSObject> token1 = CreateKey("token1", isolate);
   Handle<JSObject> token2 = CreateKey("token2", isolate);
-  Handle<Object> undefined =
+  Handle<HeapObject> undefined =
       handle(ReadOnlyRoots(isolate).undefined_value(), isolate);
 
   Handle<WeakCell> weak_cell1a = FinalizationRegistryRegister(
@@ -876,8 +867,7 @@ TEST(TestRemoveUnregisterToken) {
 }
 
 TEST(JSWeakRefScavengedInWorklist) {
-  FLAG_harmony_weak_refs = true;
-  if (!FLAG_incremental_marking) {
+  if (!FLAG_incremental_marking || FLAG_single_generation) {
     return;
   }
 
@@ -902,6 +892,11 @@ TEST(JSWeakRefScavengedInWorklist) {
       weak_ref = inner_scope.CloseAndEscape(inner_weak_ref);
     }
 
+    // Store weak_ref in Global such that it is part of the root set when
+    // starting incremental marking.
+    v8::Global<Value> global_weak_ref(
+        CcTest::isolate(), Utils::ToLocal(Handle<Object>::cast(weak_ref)));
+
     // Do marking. This puts the WeakRef above into the js_weak_refs worklist
     // since its target isn't marked.
     CHECK(
@@ -921,8 +916,7 @@ TEST(JSWeakRefScavengedInWorklist) {
 }
 
 TEST(JSWeakRefTenuredInWorklist) {
-  FLAG_harmony_weak_refs = true;
-  if (!FLAG_incremental_marking) {
+  if (!FLAG_incremental_marking || FLAG_single_generation) {
     return;
   }
 
@@ -945,6 +939,10 @@ TEST(JSWeakRefTenuredInWorklist) {
 
     weak_ref = inner_scope.CloseAndEscape(inner_weak_ref);
   }
+  // Store weak_ref such that it is part of the root set when starting
+  // incremental marking.
+  v8::Global<Value> global_weak_ref(
+      CcTest::isolate(), Utils::ToLocal(Handle<Object>::cast(weak_ref)));
   JSWeakRef old_weak_ref_location = *weak_ref;
 
   // Do marking. This puts the WeakRef above into the js_weak_refs worklist
@@ -969,7 +967,6 @@ TEST(JSWeakRefTenuredInWorklist) {
 }
 
 TEST(UnregisterTokenHeapVerifier) {
-  FLAG_harmony_weak_refs = true;
   if (!FLAG_incremental_marking) return;
   ManualGCScope manual_gc_scope;
 #ifdef VERIFY_HEAP
@@ -982,15 +979,17 @@ TEST(UnregisterTokenHeapVerifier) {
   v8::HandleScope outer_scope(isolate);
 
   {
-    // Make a new FinalizationRegistry and register an object with an unregister
-    // token that's unreachable after the IIFE returns.
+    // Make a new FinalizationRegistry and register two objects with the same
+    // unregister token that's unreachable after the IIFE returns.
     v8::HandleScope scope(isolate);
     CompileRun(
         "var token = {}; "
         "var registry = new FinalizationRegistry(function ()  {}); "
         "(function () { "
-        "  let o = {}; "
-        "  registry.register(o, {}, token); "
+        "  let o1 = {}; "
+        "  let o2 = {}; "
+        "  registry.register(o1, {}, token); "
+        "  registry.register(o2, {}, token); "
         "})();");
   }
 

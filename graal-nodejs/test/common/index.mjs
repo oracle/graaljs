@@ -16,7 +16,6 @@ const {
   isLinux,
   isOSX,
   enoughTestMem,
-  enoughTestCpu,
   buildType,
   localIPv6Hosts,
   opensslCli,
@@ -45,7 +44,6 @@ const {
   skipIf32Bits,
   getArrayBufferViews,
   getBufferSources,
-  disableCrashOnUnhandledRejection,
   getTTYfd,
   runWithInvalidFD
 } = common;
@@ -63,7 +61,6 @@ export {
   isLinux,
   isOSX,
   enoughTestMem,
-  enoughTestCpu,
   buildType,
   localIPv6Hosts,
   opensslCli,
@@ -92,7 +89,6 @@ export {
   skipIf32Bits,
   getArrayBufferViews,
   getBufferSources,
-  disableCrashOnUnhandledRejection,
   getTTYfd,
   runWithInvalidFD,
   createRequire

@@ -40,7 +40,7 @@ class IntlBuiltinsAssembler : public CodeStubAssembler {
 };
 
 TF_BUILTIN(StringToLowerCaseIntl, IntlBuiltinsAssembler) {
-  const TNode<String> string = CAST(Parameter(Descriptor::kString));
+  const auto string = Parameter<String>(Descriptor::kString);
 
   Label call_c(this), return_string(this), runtime(this, Label::kDeferred);
 
@@ -136,13 +136,13 @@ TF_BUILTIN(StringToLowerCaseIntl, IntlBuiltinsAssembler) {
 }
 
 TF_BUILTIN(StringPrototypeToLowerCaseIntl, IntlBuiltinsAssembler) {
-  TNode<Object> maybe_string = CAST(Parameter(Descriptor::kReceiver));
-  TNode<Context> context = CAST(Parameter(Descriptor::kContext));
+  auto maybe_string = Parameter<Object>(Descriptor::kReceiver);
+  auto context = Parameter<Context>(Descriptor::kContext);
 
   TNode<String> string =
       ToThisString(context, maybe_string, "String.prototype.toLowerCase");
 
-  Return(CallBuiltin(Builtins::kStringToLowerCaseIntl, context, string));
+  Return(CallBuiltin(Builtin::kStringToLowerCaseIntl, context, string));
 }
 
 void IntlBuiltinsAssembler::ListFormatCommon(TNode<Context> context,
@@ -165,7 +165,7 @@ void IntlBuiltinsAssembler::ListFormatCommon(TNode<Context> context,
   {
     // 4. Let stringList be ? StringListFromIterable(list).
     TNode<Object> string_list =
-        CallBuiltin(Builtins::kStringListFromIterable, context, list);
+        CallBuiltin(Builtin::kStringListFromIterable, context, list);
 
     // 6. Return ? FormatList(lf, stringList).
     args.PopAndReturn(
@@ -183,15 +183,15 @@ TNode<JSArray> IntlBuiltinsAssembler::AllocateEmptyJSArray(
 
 TF_BUILTIN(ListFormatPrototypeFormat, IntlBuiltinsAssembler) {
   ListFormatCommon(
-      CAST(Parameter(Descriptor::kContext)),
-      UncheckedCast<Int32T>(Parameter(Descriptor::kJSActualArgumentsCount)),
+      Parameter<Context>(Descriptor::kContext),
+      UncheckedParameter<Int32T>(Descriptor::kJSActualArgumentsCount),
       Runtime::kFormatList, "Intl.ListFormat.prototype.format");
 }
 
 TF_BUILTIN(ListFormatPrototypeFormatToParts, IntlBuiltinsAssembler) {
   ListFormatCommon(
-      CAST(Parameter(Descriptor::kContext)),
-      UncheckedCast<Int32T>(Parameter(Descriptor::kJSActualArgumentsCount)),
+      Parameter<Context>(Descriptor::kContext),
+      UncheckedParameter<Int32T>(Descriptor::kJSActualArgumentsCount),
       Runtime::kFormatListToParts, "Intl.ListFormat.prototype.formatToParts");
 }
 

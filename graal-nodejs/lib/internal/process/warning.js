@@ -9,7 +9,12 @@ const {
 } = primordials;
 
 const assert = require('internal/assert');
-const { ERR_INVALID_ARG_TYPE } = require('internal/errors').codes;
+const {
+  codes: {
+    ERR_INVALID_ARG_TYPE,
+  },
+  isErrorStackTraceLimitWritable,
+} = require('internal/errors');
 const { validateString } = require('internal/validators');
 
 // Lazily loaded
@@ -137,8 +142,13 @@ function emitWarning(warning, type, code, ctor) {
   if (warning.name === 'DeprecationWarning') {
     if (process.noDeprecation)
       return;
-    if (process.throwDeprecation)
-      throw warning;
+    if (process.throwDeprecation) {
+      // Delay throwing the error to guarantee that all former warnings were
+      // properly logged.
+      return process.nextTick(() => {
+        throw warning;
+      });
+    }
   }
   process.nextTick(doEmitWarning, warning);
 }
@@ -152,10 +162,10 @@ function createWarningObject(warning, type, code, ctor, detail) {
   // Improve error creation performance by skipping the error frames.
   // They are added in the `captureStackTrace()` function below.
   const tmpStackLimit = Error.stackTraceLimit;
-  Error.stackTraceLimit = 0;
+  if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = 0;
   // eslint-disable-next-line no-restricted-syntax
   warning = new Error(warning);
-  Error.stackTraceLimit = tmpStackLimit;
+  if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = tmpStackLimit;
   warning.name = String(type || 'Warning');
   if (code !== undefined) warning.code = code;
   if (detail !== undefined) warning.detail = detail;

@@ -9,6 +9,8 @@
 #include "src/heap/objects-visiting-inl.h"
 #include "src/heap/objects-visiting.h"
 #include "src/heap/spaces.h"
+#include "src/objects/objects.h"
+#include "src/objects/smi.h"
 
 namespace v8 {
 namespace internal {
@@ -20,9 +22,10 @@ namespace internal {
 template <typename ConcreteVisitor, typename MarkingState>
 void MarkingVisitorBase<ConcreteVisitor, MarkingState>::MarkObject(
     HeapObject host, HeapObject object) {
+  DCHECK(ReadOnlyHeap::Contains(object) || heap_->Contains(object));
   concrete_visitor()->SynchronizePageAccess(object);
   if (concrete_visitor()->marking_state()->WhiteToGrey(object)) {
-    marking_worklists_->Push(object);
+    local_marking_worklists_->Push(object);
     if (V8_UNLIKELY(concrete_visitor()->retaining_path_mode() ==
                     TraceRetainingPathMode::kEnabled)) {
       heap_->AddRetainer(host, object);
@@ -36,6 +39,9 @@ template <typename ConcreteVisitor, typename MarkingState>
 template <typename THeapObjectSlot>
 void MarkingVisitorBase<ConcreteVisitor, MarkingState>::ProcessStrongHeapObject(
     HeapObject host, THeapObjectSlot slot, HeapObject heap_object) {
+  concrete_visitor()->SynchronizePageAccess(heap_object);
+  BasicMemoryChunk* target_page = BasicMemoryChunk::FromHeapObject(heap_object);
+  if (!is_shared_heap_ && target_page->InSharedHeap()) return;
   MarkObject(host, heap_object);
   concrete_visitor()->RecordSlot(host, slot, heap_object);
 }
@@ -83,6 +89,23 @@ MarkingVisitorBase<ConcreteVisitor, MarkingState>::VisitPointersImpl(
 }
 
 template <typename ConcreteVisitor, typename MarkingState>
+V8_INLINE void
+MarkingVisitorBase<ConcreteVisitor, MarkingState>::VisitCodePointerImpl(
+    HeapObject host, CodeObjectSlot slot) {
+  CHECK(V8_EXTERNAL_CODE_SPACE_BOOL);
+  // TODO(v8:11880): support external code space.
+  PtrComprCageBase code_cage_base = GetPtrComprCageBase(host);
+  Object object = slot.Relaxed_Load(code_cage_base);
+  HeapObject heap_object;
+  if (object.GetHeapObjectIfStrong(&heap_object)) {
+    // If the reference changes concurrently from strong to weak, the write
+    // barrier will treat the weak reference as strong, so we won't miss the
+    // weak reference.
+    ProcessStrongHeapObject(host, HeapObjectSlot(slot), heap_object);
+  }
+}
+
+template <typename ConcreteVisitor, typename MarkingState>
 void MarkingVisitorBase<ConcreteVisitor, MarkingState>::VisitEmbeddedPointer(
     Code host, RelocInfo* rinfo) {
   DCHECK(RelocInfo::IsEmbeddedObjectMode(rinfo->rmode()));
@@ -126,12 +149,20 @@ int MarkingVisitorBase<ConcreteVisitor, MarkingState>::VisitBytecodeArray(
 
 template <typename ConcreteVisitor, typename MarkingState>
 int MarkingVisitorBase<ConcreteVisitor, MarkingState>::VisitJSFunction(
-    Map map, JSFunction object) {
-  int size = concrete_visitor()->VisitJSObjectSubclass(map, object);
-  // Check if the JSFunction needs reset due to bytecode being flushed.
-  if (bytecode_flush_mode_ != BytecodeFlushMode::kDoNotFlushBytecode &&
-      object.NeedsResetDueToFlushedBytecode()) {
-    weak_objects_->flushed_js_functions.Push(task_id_, object);
+    Map map, JSFunction js_function) {
+  int size = concrete_visitor()->VisitJSObjectSubclass(map, js_function);
+  if (js_function.ShouldFlushBaselineCode(code_flush_mode_)) {
+    DCHECK(IsBaselineCodeFlushingEnabled(code_flush_mode_));
+    weak_objects_->baseline_flushing_candidates.Push(task_id_, js_function);
+  } else {
+    VisitPointer(js_function, js_function.RawField(JSFunction::kCodeOffset));
+    // TODO(mythria): Consider updating the check for ShouldFlushBaselineCode to
+    // also include cases where there is old bytecode even when there is no
+    // baseline code and remove this check here.
+    if (IsByteCodeFlushingEnabled(code_flush_mode_) &&
+        js_function.NeedsResetDueToFlushedBytecode()) {
+      weak_objects_->flushed_js_functions.Push(task_id_, js_function);
+    }
   }
   return size;
 }
@@ -145,13 +176,25 @@ int MarkingVisitorBase<ConcreteVisitor, MarkingState>::VisitSharedFunctionInfo(
   this->VisitMapPointer(shared_info);
   SharedFunctionInfo::BodyDescriptor::IterateBody(map, shared_info, size, this);
 
-  // If the SharedFunctionInfo has old bytecode, mark it as flushable,
-  // otherwise visit the function data field strongly.
-  if (shared_info.ShouldFlushBytecode(bytecode_flush_mode_)) {
-    weak_objects_->bytecode_flushing_candidates.Push(task_id_, shared_info);
-  } else {
+  if (!shared_info.ShouldFlushCode(code_flush_mode_)) {
+    // If the SharedFunctionInfo doesn't have old bytecode visit the function
+    // data strongly.
     VisitPointer(shared_info,
                  shared_info.RawField(SharedFunctionInfo::kFunctionDataOffset));
+  } else if (!IsByteCodeFlushingEnabled(code_flush_mode_)) {
+    // If bytecode flushing is disabled but baseline code flushing is enabled
+    // then we have to visit the bytecode but not the baseline code.
+    DCHECK(IsBaselineCodeFlushingEnabled(code_flush_mode_));
+    BaselineData baseline_data =
+        BaselineData::cast(shared_info.function_data(kAcquireLoad));
+    // Visit the bytecode hanging off baseline data.
+    VisitPointer(baseline_data,
+                 baseline_data.RawField(BaselineData::kDataOffset));
+    weak_objects_->code_flushing_candidates.Push(task_id_, shared_info);
+  } else {
+    // In other cases, record as a flushing candidate since we have old
+    // bytecode.
+    weak_objects_->code_flushing_candidates.Push(task_id_, shared_info);
   }
   return size;
 }
@@ -175,7 +218,7 @@ int MarkingVisitorBase<ConcreteVisitor, MarkingState>::
     this->VisitMapPointer(object);
     start = FixedArray::BodyDescriptor::kStartOffset;
   }
-  int end = Min(size, start + kProgressBarScanningChunk);
+  int end = std::min(size, start + kProgressBarScanningChunk);
   if (start < end) {
     VisitPointers(object, object.RawField(start), object.RawField(end));
     bool success = chunk->TrySetProgressBar(current_progress_bar, end);
@@ -183,7 +226,7 @@ int MarkingVisitorBase<ConcreteVisitor, MarkingState>::
     if (end < size) {
       // The object can be pushed back onto the marking worklist only after
       // progress bar was updated.
-      marking_worklists_->Push(object);
+      local_marking_worklists_->Push(object);
     }
   }
   return end - start;
@@ -220,7 +263,7 @@ int MarkingVisitorBase<ConcreteVisitor,
   if (size && is_embedder_tracing_enabled_) {
     // Success: The object needs to be processed for embedder references on
     // the main thread.
-    marking_worklists_->PushEmbedder(object);
+    local_marking_worklists_->PushEmbedder(object);
   }
   return size;
 }
@@ -324,7 +367,7 @@ int MarkingVisitorBase<ConcreteVisitor, MarkingState>::VisitWeakCell(
   this->VisitMapPointer(weak_cell);
   WeakCell::BodyDescriptor::IterateBody(map, weak_cell, size, this);
   HeapObject target = weak_cell.relaxed_target();
-  HeapObject unregister_token = HeapObject::cast(weak_cell.unregister_token());
+  HeapObject unregister_token = weak_cell.relaxed_unregister_token();
   concrete_visitor()->SynchronizePageAccess(target);
   concrete_visitor()->SynchronizePageAccess(unregister_token);
   if (concrete_visitor()->marking_state()->IsBlackOrGrey(target) &&
@@ -349,12 +392,11 @@ int MarkingVisitorBase<ConcreteVisitor, MarkingState>::VisitWeakCell(
 // ===========================================================================
 
 template <typename ConcreteVisitor, typename MarkingState>
-size_t
-MarkingVisitorBase<ConcreteVisitor, MarkingState>::MarkDescriptorArrayBlack(
-    HeapObject host, DescriptorArray descriptors) {
+int MarkingVisitorBase<ConcreteVisitor, MarkingState>::MarkDescriptorArrayBlack(
+    DescriptorArray descriptors) {
   concrete_visitor()->marking_state()->WhiteToGrey(descriptors);
   if (concrete_visitor()->marking_state()->GreyToBlack(descriptors)) {
-    VisitPointer(descriptors, descriptors.map_slot());
+    VisitMapPointer(descriptors);
     VisitPointers(descriptors, descriptors.GetFirstPointerSlot(),
                   descriptors.GetDescriptorSlot(0));
     return DescriptorArray::BodyDescriptor::SizeOf(descriptors.map(),
@@ -389,36 +431,64 @@ int MarkingVisitorBase<ConcreteVisitor, MarkingState>::VisitDescriptorArray(
 }
 
 template <typename ConcreteVisitor, typename MarkingState>
+int MarkingVisitorBase<ConcreteVisitor, MarkingState>::VisitDescriptorsForMap(
+    Map map) {
+  if (!map.CanTransition()) return 0;
+
+  // Maps that can transition share their descriptor arrays and require
+  // special visiting logic to avoid memory leaks.
+  // Since descriptor arrays are potentially shared, ensure that only the
+  // descriptors that belong to this map are marked. The first time a
+  // non-empty descriptor array is marked, its header is also visited. The
+  // slot holding the descriptor array will be implicitly recorded when the
+  // pointer fields of this map are visited.
+
+  Object maybe_descriptors =
+      TaggedField<Object, Map::kInstanceDescriptorsOffset>::Acquire_Load(
+          heap_->isolate(), map);
+
+  // If the descriptors are a Smi, then this Map is in the process of being
+  // deserialized, and doesn't yet have an initialized descriptor field.
+  if (maybe_descriptors.IsSmi()) {
+    DCHECK_EQ(maybe_descriptors, Smi::uninitialized_deserialization_value());
+    return 0;
+  }
+
+  DescriptorArray descriptors = DescriptorArray::cast(maybe_descriptors);
+
+  // Don't do any special processing of strong descriptor arrays, let them get
+  // marked through the normal visitor mechanism.
+  if (descriptors.IsStrongDescriptorArray()) {
+    return 0;
+  }
+  concrete_visitor()->SynchronizePageAccess(descriptors);
+  int size = MarkDescriptorArrayBlack(descriptors);
+  int number_of_own_descriptors = map.NumberOfOwnDescriptors();
+  if (number_of_own_descriptors) {
+    // It is possible that the concurrent marker observes the
+    // number_of_own_descriptors out of sync with the descriptors. In that
+    // case the marking write barrier for the descriptor array will ensure
+    // that all required descriptors are marked. The concurrent marker
+    // just should avoid crashing in that case. That's why we need the
+    // std::min<int>() below.
+    VisitDescriptors(descriptors,
+                     std::min<int>(number_of_own_descriptors,
+                                   descriptors.number_of_descriptors()));
+  }
+
+  return size;
+}
+
+template <typename ConcreteVisitor, typename MarkingState>
 int MarkingVisitorBase<ConcreteVisitor, MarkingState>::VisitMap(Map meta_map,
                                                                 Map map) {
   if (!concrete_visitor()->ShouldVisit(map)) return 0;
   int size = Map::BodyDescriptor::SizeOf(meta_map, map);
-  if (map.CanTransition()) {
-    // Maps that can transition share their descriptor arrays and require
-    // special visiting logic to avoid memory leaks.
-    // Since descriptor arrays are potentially shared, ensure that only the
-    // descriptors that belong to this map are marked. The first time a
-    // non-empty descriptor array is marked, its header is also visited. The
-    // slot holding the descriptor array will be implicitly recorded when the
-    // pointer fields of this map are visited.
-    DescriptorArray descriptors = map.synchronized_instance_descriptors();
-    size += MarkDescriptorArrayBlack(map, descriptors);
-    int number_of_own_descriptors = map.NumberOfOwnDescriptors();
-    if (number_of_own_descriptors) {
-      // It is possible that the concurrent marker observes the
-      // number_of_own_descriptors out of sync with the descriptors. In that
-      // case the marking write barrier for the descriptor array will ensure
-      // that all required descriptors are marked. The concurrent marker
-      // just should avoid crashing in that case. That's why we need the
-      // std::min<int>() below.
-      VisitDescriptors(descriptors,
-                       std::min<int>(number_of_own_descriptors,
-                                     descriptors.number_of_descriptors()));
-    }
-    // Mark the pointer fields of the Map. Since the transitions array has
-    // been marked already, it is fine that one of these fields contains a
-    // pointer to it.
-  }
+  size += VisitDescriptorsForMap(map);
+
+  // Mark the pointer fields of the Map. If there is a transitions array, it has
+  // been marked already, so it is fine that one of these fields contains a
+  // pointer to it.
   Map::BodyDescriptor::IterateBody(meta_map, map, size, this);
   return size;
 }

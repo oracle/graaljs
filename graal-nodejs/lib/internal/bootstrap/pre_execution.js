@@ -3,7 +3,6 @@
 const {
   NumberParseInt,
   ObjectDefineProperty,
-  ObjectDefineProperties,
   SafeMap,
   SafeWeakMap,
   StringPrototypeStartsWith,
@@ -12,16 +11,23 @@ const {
 
 const {
   getOptionValue,
-  shouldNotRegisterESMLoader
+  getEmbedderOptions,
 } = require('internal/options');
+const { reconnectZeroFillToggle } = require('internal/buffer');
+
 const { Buffer } = require('buffer');
 const { ERR_MANIFEST_ASSERT_INTEGRITY } = require('internal/errors').codes;
 const assert = require('internal/assert');
 
 function prepareMainThreadExecution(expandArgv1 = false) {
+  // TODO(joyeecheung): this is also necessary for workers when they deserialize
+  // this toggle from the snapshot.
+  reconnectZeroFillToggle();
+
   // Patch the process object with legacy properties and normalizations
   patchProcessObject(expandArgv1);
   setupTraceCategoryState();
+  setupPerfHooks();
   setupInspectorHooks();
   setupWarningHandler();
 
@@ -60,7 +66,6 @@ function prepareMainThreadExecution(expandArgv1 = false) {
   // (including preload modules).
   initializeClusterIPC();
 
-  initializeAbortController();
   initializeSourceMapsHandlers();
   initializeDeprecations();
   initializeWASI();
@@ -74,11 +79,19 @@ function prepareMainThreadExecution(expandArgv1 = false) {
 }
 
 function patchProcessObject(expandArgv1) {
-  const {
-    patchProcessObject: patchProcessObjectNative
-  } = internalBinding('process_methods');
+  const binding = internalBinding('process_methods');
+  binding.patchProcessObject(process);
 
-  patchProcessObjectNative(process);
+  // TODO(joyeecheung): snapshot fast APIs (which need to work with
+  // array buffers, whose connection with C++ needs to be rebuilt after
+  // deserialization).
+  const {
+    hrtime,
+    hrtimeBigInt
+  } = require('internal/process/per_thread').getFastAPIs(binding);
+
+  process.hrtime = hrtime;
+  process.hrtime.bigint = hrtimeBigInt;
 
   ObjectDefineProperty(process, 'argv0', {
     enumerable: true,
@@ -218,6 +231,11 @@ function setupTraceCategoryState() {
   toggleTraceCategoryState(isTraceCategoryEnabled('node.async_hooks'));
 }
 
+function setupPerfHooks() {
+  require('internal/perf/performance').refreshTimeOrigin();
+  require('internal/perf/utils').refreshTimeOrigin();
+}
+
 function setupInspectorHooks() {
   // If Debugger.setAsyncCallStackDepth is sent during bootstrap,
   // we cannot immediately call into JS to enable the hooks, which could
@@ -323,30 +341,6 @@ function initializeDeprecations() {
   });
 }
 
-function initializeAbortController() {
-  const abortController = getOptionValue('--experimental-abortcontroller');
-  if (abortController) {
-    const {
-      AbortController,
-      AbortSignal
-    } = require('internal/abort_controller');
-    ObjectDefineProperties(globalThis, {
-      AbortController: {
-        writable: true,
-        enumerable: false,
-        configurable: true,
-        value: AbortController
-      },
-      AbortSignal: {
-        writable: true,
-        enumerable: false,
-        configurable: true,
-        value: AbortSignal
-      }
-    });
-  }
-}
-
 function setupChildProcessIpcChannel() {
   if (process.env.NODE_CHANNEL_FD) {
     const assert = require('internal/assert');
@@ -385,7 +379,7 @@ function initializePolicy() {
     // no bare specifiers for now
     let manifestURL;
     if (require('path').isAbsolute(experimentalPolicy)) {
-      manifestURL = new URL(`file:///${experimentalPolicy}`);
+      manifestURL = new URL(`file://${experimentalPolicy}`);
     } else {
       const cwdURL = pathToFileURL(process.cwd());
       cwdURL.pathname += '/';
@@ -433,7 +427,9 @@ function initializeWASI() {
 
 function initializeCJSLoader() {
   const CJSLoader = require('internal/modules/cjs/loader');
-  CJSLoader.Module._initPaths();
+  if (!getEmbedderOptions().noGlobalSearchPaths) {
+    CJSLoader.Module._initPaths();
+  }
   // TODO(joyeecheung): deprecate this in favor of a proper hook?
   CJSLoader.Module.runMain =
     require('internal/modules/run_main').executeUserEntryPoint;
@@ -443,7 +439,7 @@ function initializeESMLoader() {
   // Create this WeakMap in js-land because V8 has no C++ API for WeakMap.
   internalBinding('module_wrap').callbackMap = new SafeWeakMap();
 
-  if (shouldNotRegisterESMLoader) return;
+  if (getEmbedderOptions().shouldNotRegisterESMLoader) return;
 
   const {
     setImportModuleDynamicallyCallback,
@@ -454,6 +450,18 @@ function initializeESMLoader() {
   // track of for different ESM modules.
   setInitializeImportMetaObjectCallback(esm.initializeImportMetaObject);
   setImportModuleDynamicallyCallback(esm.importModuleDynamicallyCallback);
+
+  // Patch the vm module when --experimental-vm-modules is on.
+  // Please update the comments in vm.js when this block changes.
+  if (getOptionValue('--experimental-vm-modules')) {
+    const {
+      Module, SourceTextModule, SyntheticModule,
+    } = require('internal/vm/module');
+    const vm = require('vm');
+    vm.Module = Module;
+    vm.SourceTextModule = SourceTextModule;
+    vm.SyntheticModule = SyntheticModule;
+  }
 }
 
 function initializeSourceMapsHandlers() {
@@ -488,8 +496,8 @@ module.exports = {
   setupCoverageHooks,
   setupWarningHandler,
   setupDebugEnv,
+  setupPerfHooks,
   prepareMainThreadExecution,
-  initializeAbortController,
   initializeDeprecations,
   initializeESMLoader,
   initializeFrozenIntrinsics,

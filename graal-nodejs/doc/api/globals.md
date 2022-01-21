@@ -1,6 +1,7 @@
 # Global objects
 
 <!--introduced_in=v0.10.0-->
+
 <!-- type=misc -->
 
 These objects are available in all modules. The following variables may appear
@@ -18,18 +19,19 @@ that are part of the JavaScript language itself, which are also globally
 accessible.
 
 ## Class: `AbortController`
-<!-- YAML
-added: v14.17.0
--->
 
-> Stability: 1 - Experimental
+<!-- YAML
+added: v15.0.0
+changes:
+  - version: v15.4.0
+    pr-url: https://github.com/nodejs/node/pull/35949
+    description: No longer experimental.
+-->
 
 <!-- type=global -->
 
 A utility class used to signal cancelation in selected `Promise`-based APIs.
 The API is based on the Web API [`AbortController`][].
-
-To use, launch Node.js using the `--experimental-abortcontroller` flag.
 
 ```js
 const ac = new AbortController();
@@ -43,23 +45,26 @@ console.log(ac.signal.aborted);  // Prints True
 ```
 
 ### `abortController.abort()`
+
 <!-- YAML
-added: v14.17.0
+added: v15.0.0
 -->
 
 Triggers the abort signal, causing the `abortController.signal` to emit
 the `'abort'` event.
 
 ### `abortController.signal`
+
 <!-- YAML
-added: v14.17.0
+added: v15.0.0
 -->
 
 * Type: {AbortSignal}
 
 ### Class: `AbortSignal`
+
 <!-- YAML
-added: v14.17.0
+added: v15.0.0
 -->
 
 * Extends: {EventTarget}
@@ -68,8 +73,9 @@ The `AbortSignal` is used to notify observers when the
 `abortController.abort()` method is called.
 
 #### Static method: `AbortSignal.abort()`
+
 <!-- YAML
-added: v14.17.0
+added: v15.12.0
 -->
 
 * Returns: {AbortSignal}
@@ -77,8 +83,9 @@ added: v14.17.0
 Returns a new already aborted `AbortSignal`.
 
 #### Event: `'abort'`
+
 <!-- YAML
-added: v14.17.0
+added: v15.0.0
 -->
 
 The `'abort'` event is emitted when the `abortController.abort()` method
@@ -111,15 +118,17 @@ removed as soon as the `'abort'` event is handled. Failure to do so may
 result in memory leaks.
 
 #### `abortSignal.aborted`
+
 <!-- YAML
-added: v14.17.0
+added: v15.0.0
 -->
 
 * Type: {boolean} True after the `AbortController` has been aborted.
 
 #### `abortSignal.onabort`
+
 <!-- YAML
-added: v14.17.0
+added: v15.0.0
 -->
 
 * Type: {Function}
@@ -128,6 +137,7 @@ An optional callback function that may be set by user code to be notified
 when the `abortController.abort()` function has been called.
 
 ## Class: `Buffer`
+
 <!-- YAML
 added: v0.1.103
 -->
@@ -146,7 +156,28 @@ This variable may appear to be global but is not. See [`__dirname`][].
 
 This variable may appear to be global but is not. See [`__filename`][].
 
+## `atob(data)`
+
+<!-- YAML
+added: v16.0.0
+-->
+
+> Stability: 3 - Legacy. Use `Buffer.from(data, 'base64')` instead.
+
+Global alias for [`buffer.atob()`][].
+
+## `btoa(data)`
+
+<!-- YAML
+added: v16.0.0
+-->
+
+> Stability: 3 - Legacy. Use `buf.toString('base64')` instead.
+
+Global alias for [`buffer.btoa()`][].
+
 ## `clearImmediate(immediateObject)`
+
 <!-- YAML
 added: v0.9.1
 -->
@@ -156,6 +187,7 @@ added: v0.9.1
 [`clearImmediate`][] is described in the [timers][] section.
 
 ## `clearInterval(intervalObject)`
+
 <!-- YAML
 added: v0.0.1
 -->
@@ -165,6 +197,7 @@ added: v0.0.1
 [`clearInterval`][] is described in the [timers][] section.
 
 ## `clearTimeout(timeoutObject)`
+
 <!-- YAML
 added: v0.0.1
 -->
@@ -174,6 +207,7 @@ added: v0.0.1
 [`clearTimeout`][] is described in the [timers][] section.
 
 ## `console`
+
 <!-- YAML
 added: v0.1.100
 -->
@@ -184,11 +218,42 @@ added: v0.1.100
 
 Used to print to stdout and stderr. See the [`console`][] section.
 
+## `Event`
+
+<!-- YAML
+added: v15.0.0
+changes:
+  - version: v15.4.0
+    pr-url: https://github.com/nodejs/node/pull/35949
+    description: No longer experimental.
+-->
+
+<!-- type=global -->
+
+A browser-compatible implementation of the `Event` class. See
+[`EventTarget` and `Event` API][] for more details.
+
+## `EventTarget`
+
+<!-- YAML
+added: v15.0.0
+changes:
+  - version: v15.4.0
+    pr-url: https://github.com/nodejs/node/pull/35949
+    description: No longer experimental.
+-->
+
+<!-- type=global -->
+
+A browser-compatible implementation of the `EventTarget` class. See
+[`EventTarget` and `Event` API][] for more details.
+
 ## `exports`
 
 This variable may appear to be global but is not. See [`exports`][].
 
 ## `global`
+
 <!-- YAML
 added: v0.1.27
 -->
@@ -202,11 +267,46 @@ within the browser `var something` will define a new global variable. In
 Node.js this is different. The top-level scope is not the global scope;
 `var something` inside a Node.js module will be local to that module.
 
+## `MessageChannel`
+
+<!-- YAML
+added: v15.0.0
+-->
+
+<!-- type=global -->
+
+The `MessageChannel` class. See [`MessageChannel`][] for more details.
+
+## `MessageEvent`
+
+<!-- YAML
+added: v15.0.0
+-->
+
+<!-- type=global -->
+
+The `MessageEvent` class. See [`MessageEvent`][] for more details.
+
+## `MessagePort`
+
+<!-- YAML
+added: v15.0.0
+-->
+
+<!-- type=global -->
+
+The `MessagePort` class. See [`MessagePort`][] for more details.
+
 ## `module`
 
 This variable may appear to be global but is not. See [`module`][].
 
+## `performance`
+
+The [`perf_hooks.performance`][] object.
+
 ## `process`
+
 <!-- YAML
 added: v0.1.7
 -->
@@ -218,6 +318,7 @@ added: v0.1.7
 The process object. See the [`process` object][] section.
 
 ## `queueMicrotask(callback)`
+
 <!-- YAML
 added: v11.0.0
 -->
@@ -261,6 +362,7 @@ DataHandler.prototype.load = async function load(key) {
 This variable may appear to be global but is not. See [`require()`][].
 
 ## `setImmediate(callback[, ...args])`
+
 <!-- YAML
 added: v0.9.1
 -->
@@ -270,6 +372,7 @@ added: v0.9.1
 [`setImmediate`][] is described in the [timers][] section.
 
 ## `setInterval(callback, delay[, ...args])`
+
 <!-- YAML
 added: v0.0.1
 -->
@@ -279,6 +382,7 @@ added: v0.0.1
 [`setInterval`][] is described in the [timers][] section.
 
 ## `setTimeout(callback, delay[, ...args])`
+
 <!-- YAML
 added: v0.0.1
 -->
@@ -288,6 +392,7 @@ added: v0.0.1
 [`setTimeout`][] is described in the [timers][] section.
 
 ## `TextDecoder`
+
 <!-- YAML
 added: v11.0.0
 -->
@@ -297,6 +402,7 @@ added: v11.0.0
 The WHATWG `TextDecoder` class. See the [`TextDecoder`][] section.
 
 ## `TextEncoder`
+
 <!-- YAML
 added: v11.0.0
 -->
@@ -306,6 +412,7 @@ added: v11.0.0
 The WHATWG `TextEncoder` class. See the [`TextEncoder`][] section.
 
 ## `URL`
+
 <!-- YAML
 added: v10.0.0
 -->
@@ -315,6 +422,7 @@ added: v10.0.0
 The WHATWG `URL` class. See the [`URL`][] section.
 
 ## `URLSearchParams`
+
 <!-- YAML
 added: v10.0.0
 -->
@@ -324,6 +432,7 @@ added: v10.0.0
 The WHATWG `URLSearchParams` class. See the [`URLSearchParams`][] section.
 
 ## `WebAssembly`
+
 <!-- YAML
 added: v8.0.0
 -->
@@ -337,24 +446,31 @@ The object that acts as the namespace for all W3C
 [Mozilla Developer Network][webassembly-mdn] for usage and compatibility.
 
 [`AbortController`]: https://developer.mozilla.org/en-US/docs/Web/API/AbortController
-[`TextDecoder`]: util.md#util_class_util_textdecoder
-[`TextEncoder`]: util.md#util_class_util_textencoder
-[`URLSearchParams`]: url.md#url_class_urlsearchparams
-[`URL`]: url.md#url_class_url
-[`__dirname`]: modules.md#modules_dirname
-[`__filename`]: modules.md#modules_filename
-[`clearImmediate`]: timers.md#timers_clearimmediate_immediate
-[`clearInterval`]: timers.md#timers_clearinterval_timeout
-[`clearTimeout`]: timers.md#timers_cleartimeout_timeout
+[`EventTarget` and `Event` API]: events.md#eventtarget-and-event-api
+[`MessageChannel`]: worker_threads.md#class-messagechannel
+[`MessageEvent`]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/MessageEvent
+[`MessagePort`]: worker_threads.md#class-messageport
+[`TextDecoder`]: util.md#class-utiltextdecoder
+[`TextEncoder`]: util.md#class-utiltextencoder
+[`URLSearchParams`]: url.md#class-urlsearchparams
+[`URL`]: url.md#class-url
+[`__dirname`]: modules.md#__dirname
+[`__filename`]: modules.md#__filename
+[`buffer.atob()`]: buffer.md#bufferatobdata
+[`buffer.btoa()`]: buffer.md#bufferbtoadata
+[`clearImmediate`]: timers.md#clearimmediateimmediate
+[`clearInterval`]: timers.md#clearintervaltimeout
+[`clearTimeout`]: timers.md#cleartimeouttimeout
 [`console`]: console.md
-[`exports`]: modules.md#modules_exports
-[`module`]: modules.md#modules_module
-[`process.nextTick()`]: process.md#process_process_nexttick_callback_args
-[`process` object]: process.md#process_process
-[`require()`]: modules.md#modules_require_id
-[`setImmediate`]: timers.md#timers_setimmediate_callback_args
-[`setInterval`]: timers.md#timers_setinterval_callback_delay_args
-[`setTimeout`]: timers.md#timers_settimeout_callback_delay_args
+[`exports`]: modules.md#exports
+[`module`]: modules.md#module
+[`perf_hooks.performance`]: perf_hooks.md#perf_hooksperformance
+[`process.nextTick()`]: process.md#processnexttickcallback-args
+[`process` object]: process.md#process
+[`require()`]: modules.md#requireid
+[`setImmediate`]: timers.md#setimmediatecallback-args
+[`setInterval`]: timers.md#setintervalcallback-delay-args
+[`setTimeout`]: timers.md#settimeoutcallback-delay-args
 [buffer section]: buffer.md
 [built-in objects]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects
 [module system documentation]: modules.md

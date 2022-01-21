@@ -4,16 +4,17 @@
 
 #include "src/parsing/literal-buffer.h"
 
+#include "src/base/strings.h"
 #include "src/execution/isolate.h"
-#include "src/execution/off-thread-isolate.h"
+#include "src/execution/local-isolate.h"
 #include "src/heap/factory.h"
 #include "src/utils/memcopy.h"
 
 namespace v8 {
 namespace internal {
 
-template <typename LocalIsolate>
-Handle<String> LiteralBuffer::Internalize(LocalIsolate* isolate) const {
+template <typename IsolateT>
+Handle<String> LiteralBuffer::Internalize(IsolateT* isolate) const {
   if (is_one_byte()) {
     return isolate->factory()->InternalizeString(one_byte_literal());
   }
@@ -21,8 +22,7 @@ Handle<String> LiteralBuffer::Internalize(LocalIsolate* isolate) const {
 }
 
 template Handle<String> LiteralBuffer::Internalize(Isolate* isolate) const;
-template Handle<String> LiteralBuffer::Internalize(
-    OffThreadIsolate* isolate) const;
+template Handle<String> LiteralBuffer::Internalize(LocalIsolate* isolate) const;
 
 int LiteralBuffer::NewCapacity(int min_capacity) {
   return min_capacity < (kMaxGrowth / (kGrowthFactor - 1))
@@ -31,8 +31,9 @@ int LiteralBuffer::NewCapacity(int min_capacity) {
 }
 
 void LiteralBuffer::ExpandBuffer() {
-  int min_capacity = Max(kInitialCapacity, backing_store_.length());
-  Vector<byte> new_store = Vector<byte>::New(NewCapacity(min_capacity));
+  int min_capacity = std::max({kInitialCapacity, backing_store_.length()});
+  base::Vector<byte> new_store =
+      base::Vector<byte>::New(NewCapacity(min_capacity));
   if (position_ > 0) {
     MemCopy(new_store.begin(), backing_store_.begin(), position_);
   }
@@ -42,12 +43,12 @@ void LiteralBuffer::ExpandBuffer() {
 
 void LiteralBuffer::ConvertToTwoByte() {
   DCHECK(is_one_byte());
-  Vector<byte> new_store;
-  int new_content_size = position_ * kUC16Size;
+  base::Vector<byte> new_store;
+  int new_content_size = position_ * base::kUC16Size;
   if (new_content_size >= backing_store_.length()) {
     // Ensure room for all currently read code units as UC16 as well
     // as the code unit about to be stored.
-    new_store = Vector<byte>::New(NewCapacity(new_content_size));
+    new_store = base::Vector<byte>::New(NewCapacity(new_content_size));
   } else {
     new_store = backing_store_;
   }
@@ -64,21 +65,21 @@ void LiteralBuffer::ConvertToTwoByte() {
   is_one_byte_ = false;
 }
 
-void LiteralBuffer::AddTwoByteChar(uc32 code_unit) {
+void LiteralBuffer::AddTwoByteChar(base::uc32 code_unit) {
   DCHECK(!is_one_byte());
   if (position_ >= backing_store_.length()) ExpandBuffer();
   if (code_unit <=
-      static_cast<uc32>(unibrow::Utf16::kMaxNonSurrogateCharCode)) {
+      static_cast<base::uc32>(unibrow::Utf16::kMaxNonSurrogateCharCode)) {
     *reinterpret_cast<uint16_t*>(&backing_store_[position_]) = code_unit;
-    position_ += kUC16Size;
+    position_ += base::kUC16Size;
   } else {
     *reinterpret_cast<uint16_t*>(&backing_store_[position_]) =
         unibrow::Utf16::LeadSurrogate(code_unit);
-    position_ += kUC16Size;
+    position_ += base::kUC16Size;
     if (position_ >= backing_store_.length()) ExpandBuffer();
     *reinterpret_cast<uint16_t*>(&backing_store_[position_]) =
         unibrow::Utf16::TrailSurrogate(code_unit);
-    position_ += kUC16Size;
+    position_ += base::kUC16Size;
   }
 }
 

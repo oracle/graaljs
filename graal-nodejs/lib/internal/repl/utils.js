@@ -35,7 +35,7 @@ const {
   clearScreenDown,
   cursorTo,
   moveCursor,
-} = require('readline');
+} = require('internal/readline/callbacks');
 
 const {
   commonPrefix,
@@ -94,6 +94,10 @@ function isRecoverableError(e, code) {
     .extend(
       (Parser) => {
         return class extends Parser {
+          // eslint-disable-next-line no-useless-constructor
+          constructor(options, input, startPos) {
+            super(options, input, startPos);
+          }
           nextToken() {
             super.nextToken();
             if (this.type === tt.eof)
@@ -338,7 +342,11 @@ function setupPreview(repl, contextSymbol, bufferSymbol, active) {
             breakLength: Infinity
           }, previewOptions);
           session.post('Runtime.callFunctionOn', {
-            functionDeclaration: `(v) => util.inspect(v, ${inspectOptions})`,
+            functionDeclaration:
+              `(v) =>
+                    Reflect
+                    .getOwnPropertyDescriptor(globalThis, 'util')
+                    .get().inspect(v, ${inspectOptions})`,
             objectId: result.objectId,
             arguments: [result]
           }, (error, preview) => {
@@ -381,7 +389,7 @@ function setupPreview(repl, contextSymbol, bufferSymbol, active) {
     }
 
     const inputPreviewCallback = (error, inspected) => {
-      if (inspected === null) {
+      if (inspected == null) {
         return;
       }
 

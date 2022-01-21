@@ -1,8 +1,12 @@
 'use strict';
 
 const {
+  ArrayFrom,
+  ArrayPrototypeSlice,
   ObjectDefineProperty,
+  ObjectSetPrototypeOf,
   Symbol,
+  Uint8Array,
 } = primordials;
 
 const {
@@ -13,24 +17,61 @@ const {
   kKeyTypePrivate,
   kKeyFormatPEM,
   kKeyFormatDER,
+  kKeyFormatJWK,
   kKeyEncodingPKCS1,
   kKeyEncodingPKCS8,
   kKeyEncodingSPKI,
-  kKeyEncodingSEC1
+  kKeyEncodingSEC1,
 } = internalBinding('crypto');
+
 const {
-  ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS,
-  ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE,
-  ERR_INVALID_ARG_TYPE,
-  ERR_INVALID_ARG_VALUE,
-  ERR_INVALID_OPT_VALUE,
-  ERR_OUT_OF_RANGE
-} = require('internal/errors').codes;
-const { kHandle } = require('internal/crypto/util');
+  validateObject,
+  validateOneOf,
+  validateString,
+} = require('internal/validators');
 
-const { isArrayBufferView } = require('internal/util/types');
+const {
+  codes: {
+    ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS,
+    ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE,
+    ERR_CRYPTO_INVALID_JWK,
+    ERR_ILLEGAL_CONSTRUCTOR,
+    ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_ARG_VALUE,
+    ERR_OUT_OF_RANGE,
+  }
+} = require('internal/errors');
 
+const {
+  kHandle,
+  kKeyObject,
+  getArrayBufferOrView,
+  bigIntArrayToUnsignedBigInt,
+} = require('internal/crypto/util');
+
+const {
+  isAnyArrayBuffer,
+  isArrayBufferView,
+} = require('internal/util/types');
+
+const {
+  JSTransferable,
+  kClone,
+  kDeserialize,
+} = require('internal/worker/js_transferable');
+
+const {
+  customInspectSymbol: kInspect,
+} = require('internal/util');
+
+const { inspect } = require('internal/util/inspect');
+
+const { Buffer } = require('buffer');
+
+const kAlgorithm = Symbol('kAlgorithm');
+const kExtractable = Symbol('kExtractable');
 const kKeyType = Symbol('kKeyType');
+const kKeyUsages = Symbol('kKeyUsages');
 
 // Key input contexts.
 const kConsumePublic = 0;
@@ -77,6 +118,12 @@ const {
     get type() {
       return this[kKeyType];
     }
+
+    static from(key) {
+      if (!isCryptoKey(key))
+        throw new ERR_INVALID_ARG_TYPE('key', 'CryptoKey', key);
+      return key[kKeyObject];
+    }
   }
 
   class SecretKeyObject extends KeyObject {
@@ -88,17 +135,57 @@ const {
       return this[kHandle].getSymmetricKeySize();
     }
 
-    export() {
+    export(options) {
+      if (options !== undefined) {
+        validateObject(options, 'options');
+        validateOneOf(
+          options.format, 'options.format', [undefined, 'buffer', 'jwk']);
+        if (options.format === 'jwk') {
+          return this[kHandle].exportJwk({}, false);
+        }
+      }
       return this[kHandle].export();
     }
   }
 
   const kAsymmetricKeyType = Symbol('kAsymmetricKeyType');
+  const kAsymmetricKeyDetails = Symbol('kAsymmetricKeyDetails');
+
+  function normalizeKeyDetails(details = {}) {
+    if (details.publicExponent !== undefined) {
+      return {
+        ...details,
+        publicExponent:
+          bigIntArrayToUnsignedBigInt(new Uint8Array(details.publicExponent))
+      };
+    }
+    return details;
+  }
 
   class AsymmetricKeyObject extends KeyObject {
+    // eslint-disable-next-line no-useless-constructor
+    constructor(type, handle) {
+      super(type, handle);
+    }
+
     get asymmetricKeyType() {
       return this[kAsymmetricKeyType] ||
              (this[kAsymmetricKeyType] = this[kHandle].getAsymmetricKeyType());
+    }
+
+    get asymmetricKeyDetails() {
+      switch (this.asymmetricKeyType) {
+        case 'rsa':
+        case 'rsa-pss':
+        case 'dsa':
+        case 'ec':
+          return this[kAsymmetricKeyDetails] ||
+             (this[kAsymmetricKeyDetails] = normalizeKeyDetails(
+               this[kHandle].keyDetail({})
+             ));
+        default:
+          return {};
+      }
     }
   }
 
@@ -107,11 +194,14 @@ const {
       super('public', handle);
     }
 
-    export(encoding) {
+    export(options) {
+      if (options && options.format === 'jwk') {
+        return this[kHandle].exportJwk({}, false);
+      }
       const {
         format,
         type
-      } = parsePublicKeyEncoding(encoding, this.asymmetricKeyType);
+      } = parsePublicKeyEncoding(options, this.asymmetricKeyType);
       return this[kHandle].export(format, type);
     }
   }
@@ -121,13 +211,20 @@ const {
       super('private', handle);
     }
 
-    export(encoding) {
+    export(options) {
+      if (options && options.format === 'jwk') {
+        if (options.passphrase !== undefined) {
+          throw new ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS(
+            'jwk', 'does not support encryption');
+        }
+        return this[kHandle].exportJwk({}, false);
+      }
       const {
         format,
         type,
         cipher,
         passphrase
-      } = parsePrivateKeyEncoding(encoding, this.asymmetricKeyType);
+      } = parsePrivateKeyEncoding(options, this.asymmetricKeyType);
       return this[kHandle].export(format, type, cipher, passphrase);
     }
   }
@@ -142,7 +239,9 @@ function parseKeyFormat(formatStr, defaultFormat, optionName) {
     return kKeyFormatPEM;
   else if (formatStr === 'der')
     return kKeyFormatDER;
-  throw new ERR_INVALID_OPT_VALUE(optionName, formatStr);
+  else if (formatStr === 'jwk')
+    return kKeyFormatJWK;
+  throw new ERR_INVALID_ARG_VALUE(optionName, formatStr);
 }
 
 function parseKeyType(typeStr, required, keyType, isPublic, optionName) {
@@ -166,11 +265,12 @@ function parseKeyType(typeStr, required, keyType, isPublic, optionName) {
     return kKeyEncodingSEC1;
   }
 
-  throw new ERR_INVALID_OPT_VALUE(optionName, typeStr);
+  throw new ERR_INVALID_ARG_VALUE(optionName, typeStr);
 }
 
 function option(name, objName) {
-  return objName === undefined ? name : `${objName}.${name}`;
+  return objName === undefined ?
+    `options.${name}` : `options.${objName}.${name}`;
 }
 
 function parseKeyFormatAndType(enc, keyType, isPublic, objName) {
@@ -181,22 +281,25 @@ function parseKeyFormatAndType(enc, keyType, isPublic, objName) {
                                 isInput ? kKeyFormatPEM : undefined,
                                 option('format', objName));
 
+  const isRequired = (!isInput ||
+                      format === kKeyFormatDER) &&
+                      format !== kKeyFormatJWK;
   const type = parseKeyType(typeStr,
-                            !isInput || format === kKeyFormatDER,
+                            isRequired,
                             keyType,
                             isPublic,
                             option('type', objName));
-
   return { format, type };
 }
 
 function isStringOrBuffer(val) {
-  return typeof val === 'string' || isArrayBufferView(val);
+  return typeof val === 'string' ||
+         isArrayBufferView(val) ||
+         isAnyArrayBuffer(val);
 }
 
 function parseKeyEncoding(enc, keyType, isPublic, objName) {
-  if (enc === null || typeof enc !== 'object')
-    throw new ERR_INVALID_ARG_TYPE('options', 'object', enc);
+  validateObject(enc, 'options');
 
   const isInput = keyType === undefined;
 
@@ -205,14 +308,14 @@ function parseKeyEncoding(enc, keyType, isPublic, objName) {
     type
   } = parseKeyFormatAndType(enc, keyType, isPublic, objName);
 
-  let cipher, passphrase;
+  let cipher, passphrase, encoding;
   if (isPublic !== true) {
-    ({ cipher, passphrase } = enc);
+    ({ cipher, passphrase, encoding } = enc);
 
     if (!isInput) {
       if (cipher != null) {
         if (typeof cipher !== 'string')
-          throw new ERR_INVALID_OPT_VALUE(option('cipher', objName), cipher);
+          throw new ERR_INVALID_ARG_VALUE(option('cipher', objName), cipher);
         if (format === kKeyFormatDER &&
             (type === kKeyEncodingPKCS1 ||
              type === kKeyEncodingSEC1)) {
@@ -220,17 +323,20 @@ function parseKeyEncoding(enc, keyType, isPublic, objName) {
             encodingNames[type], 'does not support encryption');
         }
       } else if (passphrase !== undefined) {
-        throw new ERR_INVALID_OPT_VALUE(option('cipher', objName), cipher);
+        throw new ERR_INVALID_ARG_VALUE(option('cipher', objName), cipher);
       }
     }
 
     if ((isInput && passphrase !== undefined &&
          !isStringOrBuffer(passphrase)) ||
         (!isInput && cipher != null && !isStringOrBuffer(passphrase))) {
-      throw new ERR_INVALID_OPT_VALUE(option('passphrase', objName),
+      throw new ERR_INVALID_ARG_VALUE(option('passphrase', objName),
                                       passphrase);
     }
   }
+
+  if (passphrase !== undefined)
+    passphrase = getArrayBufferOrView(passphrase, 'key.passphrase', encoding);
 
   return { format, type, cipher, passphrase };
 }
@@ -253,7 +359,7 @@ function getKeyObjectHandle(key, ctx) {
   if (ctx === kCreatePrivate) {
     throw new ERR_INVALID_ARG_TYPE(
       'key',
-      ['string', 'Buffer', 'TypedArray', 'DataView'],
+      ['string', 'ArrayBuffer', 'Buffer', 'TypedArray', 'DataView'],
       key
     );
   }
@@ -270,38 +376,172 @@ function getKeyObjectHandle(key, ctx) {
   return key[kHandle];
 }
 
+function getKeyTypes(allowKeyObject, bufferOnly = false) {
+  const types = [
+    'ArrayBuffer',
+    'Buffer',
+    'TypedArray',
+    'DataView',
+    'string', // Only if bufferOnly == false
+    'KeyObject', // Only if allowKeyObject == true && bufferOnly == false
+    'CryptoKey', // Only if allowKeyObject == true && bufferOnly == false
+  ];
+  if (bufferOnly) {
+    return ArrayPrototypeSlice(types, 0, 4);
+  } else if (!allowKeyObject) {
+    return ArrayPrototypeSlice(types, 0, 5);
+  }
+  return types;
+}
+
+function getKeyObjectHandleFromJwk(key, ctx) {
+  validateObject(key, 'key');
+  validateOneOf(
+    key.kty, 'key.kty', ['RSA', 'EC', 'OKP']);
+  const isPublic = ctx === kConsumePublic || ctx === kCreatePublic;
+
+  if (key.kty === 'OKP') {
+    validateString(key.crv, 'key.crv');
+    validateOneOf(
+      key.crv, 'key.crv', ['Ed25519', 'Ed448', 'X25519', 'X448']);
+    validateString(key.x, 'key.x');
+
+    if (!isPublic)
+      validateString(key.d, 'key.d');
+
+    let keyData;
+    if (isPublic)
+      keyData = Buffer.from(key.x, 'base64');
+    else
+      keyData = Buffer.from(key.d, 'base64');
+
+    switch (key.crv) {
+      case 'Ed25519':
+      case 'X25519':
+        if (keyData.byteLength !== 32) {
+          throw new ERR_CRYPTO_INVALID_JWK();
+        }
+        break;
+      case 'Ed448':
+        if (keyData.byteLength !== 57) {
+          throw new ERR_CRYPTO_INVALID_JWK();
+        }
+        break;
+      case 'X448':
+        if (keyData.byteLength !== 56) {
+          throw new ERR_CRYPTO_INVALID_JWK();
+        }
+        break;
+    }
+
+    const handle = new KeyObjectHandle();
+
+    const keyType = isPublic ? kKeyTypePublic : kKeyTypePrivate;
+    if (!handle.initEDRaw(`NODE-${key.crv.toUpperCase()}`, keyData, keyType)) {
+      throw new ERR_CRYPTO_INVALID_JWK();
+    }
+
+    return handle;
+  }
+
+  if (key.kty === 'EC') {
+    validateString(key.crv, 'key.crv');
+    validateOneOf(
+      key.crv, 'key.crv', ['P-256', 'secp256k1', 'P-384', 'P-521']);
+    validateString(key.x, 'key.x');
+    validateString(key.y, 'key.y');
+
+    const jwk = {
+      kty: key.kty,
+      crv: key.crv,
+      x: key.x,
+      y: key.y
+    };
+
+    if (!isPublic) {
+      validateString(key.d, 'key.d');
+      jwk.d = key.d;
+    }
+
+    const handle = new KeyObjectHandle();
+    const type = handle.initJwk(jwk, jwk.crv);
+    if (type === undefined)
+      throw new ERR_CRYPTO_INVALID_JWK();
+
+    return handle;
+  }
+
+  // RSA
+  validateString(key.n, 'key.n');
+  validateString(key.e, 'key.e');
+
+  const jwk = {
+    kty: key.kty,
+    n: key.n,
+    e: key.e
+  };
+
+  if (!isPublic) {
+    validateString(key.d, 'key.d');
+    validateString(key.p, 'key.p');
+    validateString(key.q, 'key.q');
+    validateString(key.dp, 'key.dp');
+    validateString(key.dq, 'key.dq');
+    validateString(key.qi, 'key.qi');
+    jwk.d = key.d;
+    jwk.p = key.p;
+    jwk.q = key.q;
+    jwk.dp = key.dp;
+    jwk.dq = key.dq;
+    jwk.qi = key.qi;
+  }
+
+  const handle = new KeyObjectHandle();
+  const type = handle.initJwk(jwk);
+  if (type === undefined)
+    throw new ERR_CRYPTO_INVALID_JWK();
+
+  return handle;
+}
+
 function prepareAsymmetricKey(key, ctx) {
   if (isKeyObject(key)) {
     // Best case: A key object, as simple as that.
     return { data: getKeyObjectHandle(key, ctx) };
-  } else if (typeof key === 'string' || isArrayBufferView(key)) {
+  } else if (isCryptoKey(key)) {
+    return { data: getKeyObjectHandle(key[kKeyObject], ctx) };
+  } else if (isStringOrBuffer(key)) {
     // Expect PEM by default, mostly for backward compatibility.
-    return { format: kKeyFormatPEM, data: key };
+    return { format: kKeyFormatPEM, data: getArrayBufferOrView(key, 'key') };
   } else if (typeof key === 'object') {
-    const data = key.key;
+    const { key: data, encoding, format } = key;
     // The 'key' property can be a KeyObject as well to allow specifying
     // additional options such as padding along with the key.
     if (isKeyObject(data))
       return { data: getKeyObjectHandle(data, ctx) };
+    else if (isCryptoKey(data))
+      return { data: getKeyObjectHandle(data[kKeyObject], ctx) };
+    else if (isJwk(data) && format === 'jwk')
+      return { data: getKeyObjectHandleFromJwk(data, ctx), format: 'jwk' };
     // Either PEM or DER using PKCS#1 or SPKI.
     if (!isStringOrBuffer(data)) {
       throw new ERR_INVALID_ARG_TYPE(
         'key.key',
-        ['string', 'Buffer', 'TypedArray', 'DataView',
-         ...(ctx !== kCreatePrivate ? ['KeyObject'] : [])],
+        getKeyTypes(ctx !== kCreatePrivate),
         data);
     }
 
     const isPublic =
       (ctx === kConsumePrivate || ctx === kCreatePrivate) ? false : undefined;
-    return { data, ...parseKeyEncoding(key, undefined, isPublic) };
+    return {
+      data: getArrayBufferOrView(data, 'key', encoding),
+      ...parseKeyEncoding(key, undefined, isPublic)
+    };
   }
   throw new ERR_INVALID_ARG_TYPE(
     'key',
-    ['string', 'Buffer', 'TypedArray', 'DataView',
-     ...(ctx !== kCreatePrivate ? ['KeyObject'] : [])],
-    key
-  );
+    getKeyTypes(ctx !== kCreatePrivate),
+    key);
 }
 
 function preparePrivateKey(key) {
@@ -312,24 +552,31 @@ function preparePublicOrPrivateKey(key) {
   return prepareAsymmetricKey(key, kConsumePublic);
 }
 
-function prepareSecretKey(key, bufferOnly = false) {
-  if (!isArrayBufferView(key) && (bufferOnly || typeof key !== 'string')) {
-    if (isKeyObject(key) && !bufferOnly) {
+function prepareSecretKey(key, encoding, bufferOnly = false) {
+  if (!bufferOnly) {
+    if (isKeyObject(key)) {
       if (key.type !== 'secret')
         throw new ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE(key.type, 'secret');
       return key[kHandle];
+    } else if (isCryptoKey(key)) {
+      if (key.type !== 'secret')
+        throw new ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE(key.type, 'secret');
+      return key[kKeyObject][kHandle];
     }
+  }
+  if (typeof key !== 'string' &&
+      !isArrayBufferView(key) &&
+      !isAnyArrayBuffer(key)) {
     throw new ERR_INVALID_ARG_TYPE(
       'key',
-      ['Buffer', 'TypedArray', 'DataView',
-       ...(bufferOnly ? [] : ['string', 'KeyObject'])],
+      getKeyTypes(!bufferOnly, bufferOnly),
       key);
   }
-  return key;
+  return getArrayBufferOrView(key, 'key', encoding);
 }
 
-function createSecretKey(key) {
-  key = prepareSecretKey(key, true);
+function createSecretKey(key, encoding) {
+  key = prepareSecretKey(key, encoding, true);
   if (key.byteLength === 0)
     throw new ERR_OUT_OF_RANGE('key.byteLength', '> 0', key.byteLength);
   const handle = new KeyObjectHandle();
@@ -338,22 +585,135 @@ function createSecretKey(key) {
 }
 
 function createPublicKey(key) {
-  const { format, type, data } = prepareAsymmetricKey(key, kCreatePublic);
-  const handle = new KeyObjectHandle();
-  handle.init(kKeyTypePublic, data, format, type);
+  const { format, type, data, passphrase } =
+    prepareAsymmetricKey(key, kCreatePublic);
+  let handle;
+  if (format === 'jwk') {
+    handle = data;
+  } else {
+    handle = new KeyObjectHandle();
+    handle.init(kKeyTypePublic, data, format, type, passphrase);
+  }
   return new PublicKeyObject(handle);
 }
 
 function createPrivateKey(key) {
   const { format, type, data, passphrase } =
     prepareAsymmetricKey(key, kCreatePrivate);
-  const handle = new KeyObjectHandle();
-  handle.init(kKeyTypePrivate, data, format, type, passphrase);
+  let handle;
+  if (format === 'jwk') {
+    handle = data;
+  } else {
+    handle = new KeyObjectHandle();
+    handle.init(kKeyTypePrivate, data, format, type, passphrase);
+  }
   return new PrivateKeyObject(handle);
 }
 
-function isKeyObject(key) {
-  return key instanceof KeyObject;
+function isKeyObject(obj) {
+  return obj != null && obj[kKeyType] !== undefined;
+}
+
+// Our implementation of CryptoKey is a simple wrapper around a KeyObject
+// that adapts it to the standard interface. This implementation also
+// extends the JSTransferable class, allowing the CryptoKey to be cloned
+// to Workers.
+// TODO(@jasnell): Embedder environments like electron may have issues
+// here similar to other things like URL. A chromium provided CryptoKey
+// will not be recognized as a Node.js CryptoKey, and vice versa. It
+// would be fantastic if we could find a way of making those interop.
+class CryptoKey extends JSTransferable {
+  constructor() {
+    throw new ERR_ILLEGAL_CONSTRUCTOR();
+  }
+
+  [kInspect](depth, options) {
+    if (depth < 0)
+      return this;
+
+    const opts = {
+      ...options,
+      depth: options.depth == null ? null : options.depth - 1
+    };
+
+    return `CryptoKey ${inspect({
+      type: this.type,
+      extractable: this.extractable,
+      algorithm: this.algorithm,
+      usages: this.usages
+    }, opts)}`;
+  }
+
+  get type() {
+    return this[kKeyObject].type;
+  }
+
+  get extractable() {
+    return this[kExtractable];
+  }
+
+  get algorithm() {
+    return this[kAlgorithm];
+  }
+
+  get usages() {
+    return ArrayFrom(this[kKeyUsages]);
+  }
+
+  [kClone]() {
+    const keyObject = this[kKeyObject];
+    const algorithm = this.algorithm;
+    const extractable = this.extractable;
+    const usages = this.usages;
+
+    return {
+      data: {
+        keyObject,
+        algorithm,
+        usages,
+        extractable,
+      },
+      deserializeInfo: 'internal/crypto/keys:InternalCryptoKey'
+    };
+  }
+
+  [kDeserialize]({ keyObject, algorithm, usages, extractable }) {
+    this[kKeyObject] = keyObject;
+    this[kAlgorithm] = algorithm;
+    this[kKeyUsages] = usages;
+    this[kExtractable] = extractable;
+  }
+}
+
+// All internal code must use new InternalCryptoKey to create
+// CryptoKey instances. The CryptoKey class is exposed to end
+// user code but is not permitted to be constructed directly.
+class InternalCryptoKey extends JSTransferable {
+  constructor(
+    keyObject,
+    algorithm,
+    keyUsages,
+    extractable) {
+    super();
+    // Using symbol properties here currently instead of private
+    // properties because (for now) the performance penalty of
+    // private fields is still too high.
+    this[kKeyObject] = keyObject;
+    this[kAlgorithm] = algorithm;
+    this[kExtractable] = extractable;
+    this[kKeyUsages] = keyUsages;
+  }
+}
+
+InternalCryptoKey.prototype.constructor = CryptoKey;
+ObjectSetPrototypeOf(InternalCryptoKey.prototype, CryptoKey.prototype);
+
+function isCryptoKey(obj) {
+  return obj != null && obj[kKeyObject] !== undefined;
+}
+
+function isJwk(obj) {
+  return obj != null && obj.kty !== undefined;
 }
 
 module.exports = {
@@ -362,15 +722,20 @@ module.exports = {
   createPublicKey,
   createPrivateKey,
   KeyObject,
+  CryptoKey,
+  InternalCryptoKey,
 
   // These are designed for internal use only and should not be exposed.
   parsePublicKeyEncoding,
   parsePrivateKeyEncoding,
+  parseKeyEncoding,
   preparePrivateKey,
   preparePublicOrPrivateKey,
   prepareSecretKey,
   SecretKeyObject,
   PublicKeyObject,
   PrivateKeyObject,
-  isKeyObject
+  isKeyObject,
+  isCryptoKey,
+  isJwk,
 };

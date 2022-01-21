@@ -336,3 +336,8 @@ v8::Maybe<bool> GraalObject::SetIntegrityLevel(v8::Local<v8::Context> context, v
     JNI_CALL_VOID(graal_isolate, GraalAccessMethod::object_set_integrity_level, GetJavaObject(), freeze);
     return graal_isolate->GetJNIEnv()->ExceptionCheck() ? v8::Nothing<bool>() : v8::Just<bool>(true);
 }
+
+bool GraalObject::IsConstructor() {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::object_is_constructor, Boolean, GetJavaObject());
+    return result;
+}

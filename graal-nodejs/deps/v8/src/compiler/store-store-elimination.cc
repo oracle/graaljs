@@ -94,6 +94,8 @@ class UnobservablesSet final {
   // can probably be optimized to use a global singleton.
   static UnobservablesSet VisitedEmpty(Zone* zone);
   UnobservablesSet(const UnobservablesSet& other) V8_NOEXCEPT = default;
+  UnobservablesSet& operator=(const UnobservablesSet& other)
+      V8_NOEXCEPT = default;
 
   // Computes the intersection of two UnobservablesSets. If one of the sets is
   // empty, will return empty.
@@ -143,8 +145,7 @@ class UnobservablesSet final {
   explicit UnobservablesSet(const SetT* set) : set_(set) {}
 
   static SetT* NewSet(Zone* zone) {
-    return new (zone->New(sizeof(UnobservablesSet::SetT)))
-        UnobservablesSet::SetT(zone, kNotPresent);
+    return zone->New<UnobservablesSet::SetT>(zone, kNotPresent);
   }
 
   static void SetAdd(SetT* set, const KeyT& key) { set->Set(key, kPresent); }
@@ -154,6 +155,11 @@ class UnobservablesSet final {
 
   const SetT* set_ = nullptr;
 };
+
+// These definitions are here in order to please the linker, which in debug mode
+// sometimes requires static constants to be defined in .cc files.
+constexpr UnobservablesSet::ValueT UnobservablesSet::kNotPresent;
+constexpr UnobservablesSet::ValueT UnobservablesSet::kPresent;
 
 class RedundantStoreFinder final {
  public:
@@ -239,7 +245,7 @@ void RedundantStoreFinder::Find() {
   Visit(jsgraph()->graph()->end());
 
   while (!revisit_.empty()) {
-    tick_counter_->DoTick();
+    tick_counter_->TickAndMaybeEnterSafepoint();
     Node* next = revisit_.top();
     revisit_.pop();
     DCHECK_LT(next->id(), in_revisit_.size());
@@ -327,8 +333,8 @@ UnobservablesSet RedundantStoreFinder::RecomputeSet(
 bool RedundantStoreFinder::CannotObserveStoreField(Node* node) {
   IrOpcode::Value opcode = node->opcode();
   return opcode == IrOpcode::kLoadElement || opcode == IrOpcode::kLoad ||
-         opcode == IrOpcode::kStore || opcode == IrOpcode::kEffectPhi ||
-         opcode == IrOpcode::kStoreElement ||
+         opcode == IrOpcode::kLoadImmutable || opcode == IrOpcode::kStore ||
+         opcode == IrOpcode::kEffectPhi || opcode == IrOpcode::kStoreElement ||
          opcode == IrOpcode::kUnsafePointerAdd || opcode == IrOpcode::kRetain;
 }
 
@@ -387,12 +393,13 @@ UnobservablesSet RedundantStoreFinder::RecomputeUseIntersection(Node* node) {
     IrOpcode::Value opcode = node->opcode();
     // List of opcodes that may end this effect chain. The opcodes are not
     // important to the soundness of this optimization; this serves as a
-    // general sanity check. Add opcodes to this list as it suits you.
+    // general check. Add opcodes to this list as it suits you.
     //
     // Everything is observable after these opcodes; return the empty set.
     DCHECK_EXTRA(
         opcode == IrOpcode::kReturn || opcode == IrOpcode::kTerminate ||
-            opcode == IrOpcode::kDeoptimize || opcode == IrOpcode::kThrow,
+            opcode == IrOpcode::kDeoptimize || opcode == IrOpcode::kThrow ||
+            opcode == IrOpcode::kTailCall,
         "for #%d:%s", node->id(), node->op()->mnemonic());
     USE(opcode);
 
@@ -443,7 +450,7 @@ UnobservablesSet UnobservablesSet::Intersect(const UnobservablesSet& other,
   if (IsEmpty() || other.IsEmpty()) return empty;
 
   UnobservablesSet::SetT* intersection = NewSet(zone);
-  for (const auto& triple : set()->Zip(*other.set())) {
+  for (auto triple : set()->Zip(*other.set())) {
     if (std::get<1>(triple) && std::get<2>(triple)) {
       intersection->Set(std::get<0>(triple), kPresent);
     }
@@ -469,7 +476,7 @@ UnobservablesSet UnobservablesSet::RemoveSameOffset(StoreOffset offset,
   *new_set = *set();
 
   // Remove elements with the given offset.
-  for (const auto& entry : *new_set) {
+  for (auto entry : *new_set) {
     const UnobservableStore& obs = entry.first;
     if (obs.offset_ == offset) SetErase(new_set, obs);
   }

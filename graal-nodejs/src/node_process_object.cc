@@ -1,7 +1,9 @@
 #include "env-inl.h"
+#include "node_errors.h"
+#include "node_external_reference.h"
 #include "node_internals.h"
-#include "node_options-inl.h"
 #include "node_metadata.h"
+#include "node_options-inl.h"
 #include "node_process-inl.h"
 #include "node_revert.h"
 #include "util-inl.h"
@@ -59,6 +61,13 @@ static void DebugPortSetter(Local<Name> property,
                             const PropertyCallbackInfo<void>& info) {
   Environment* env = Environment::GetCurrent(info);
   int32_t port = value->Int32Value(env->context()).FromMaybe(0);
+
+  if ((port != 0 && port < 1024) || port > 65535) {
+    return THROW_ERR_OUT_OF_RANGE(
+      env,
+      "process.debugPort must be 0 or in range 1024 to 65535");
+  }
+
   ExclusiveAccess<HostPort>::Scoped host_port(env->inspector_host_port());
   host_port->set_port(static_cast<int>(port));
 }
@@ -200,4 +209,16 @@ void PatchProcessObject(const FunctionCallbackInfo<Value>& args) {
             .FromJust());
 }
 
+void RegisterProcessExternalReferences(ExternalReferenceRegistry* registry) {
+  registry->Register(RawDebug);
+  registry->Register(GetParentProcessId);
+  registry->Register(DebugPortSetter);
+  registry->Register(DebugPortGetter);
+  registry->Register(ProcessTitleSetter);
+  registry->Register(ProcessTitleGetter);
+}
+
 }  // namespace node
+
+NODE_MODULE_EXTERNAL_REFERENCE(process_object,
+                               node::RegisterProcessExternalReferences)

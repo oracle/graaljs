@@ -10,7 +10,30 @@
 
 The `dgram` module provides an implementation of UDP datagram sockets.
 
-```js
+```mjs
+import dgram from 'dgram';
+
+const server = dgram.createSocket('udp4');
+
+server.on('error', (err) => {
+  console.log(`server error:\n${err.stack}`);
+  server.close();
+});
+
+server.on('message', (msg, rinfo) => {
+  console.log(`server got: ${msg} from ${rinfo.address}:${rinfo.port}`);
+});
+
+server.on('listening', () => {
+  const address = server.address();
+  console.log(`server listening ${address.address}:${address.port}`);
+});
+
+server.bind(41234);
+// Prints: server listening 0.0.0.0:41234
+```
+
+```cjs
 const dgram = require('dgram');
 const server = dgram.createSocket('udp4');
 
@@ -33,6 +56,7 @@ server.bind(41234);
 ```
 
 ## Class: `dgram.Socket`
+
 <!-- YAML
 added: v0.1.99
 -->
@@ -45,6 +69,7 @@ New instances of `dgram.Socket` are created using [`dgram.createSocket()`][].
 The `new` keyword is not to be used to create `dgram.Socket` instances.
 
 ### Event: `'close'`
+
 <!-- YAML
 added: v0.1.99
 -->
@@ -53,6 +78,7 @@ The `'close'` event is emitted after a socket is closed with [`close()`][].
 Once triggered, no new `'message'` events will be emitted on this socket.
 
 ### Event: `'connect'`
+
 <!-- YAML
 added: v12.0.0
 -->
@@ -61,6 +87,7 @@ The `'connect'` event is emitted after a socket is associated to a remote
 address as a result of a successful [`connect()`][] call.
 
 ### Event: `'error'`
+
 <!-- YAML
 added: v0.1.99
 -->
@@ -71,6 +98,7 @@ The `'error'` event is emitted whenever any error occurs. The event handler
 function is passed a single `Error` object.
 
 ### Event: `'listening'`
+
 <!-- YAML
 added: v0.1.99
 -->
@@ -82,6 +110,7 @@ Until the `dgram.Socket` is listening, the underlying system resources do not
 exist and calls such as `socket.address()` and `socket.setTTL()` will fail.
 
 ### Event: `'message'`
+
 <!-- YAML
 added: v0.1.99
 -->
@@ -103,6 +132,7 @@ address field set to `'fe80::2618:1234:ab11:3b9c%en0'`, where `'%en0'`
 is the interface name as a zone ID suffix.
 
 ### `socket.addMembership(multicastAddress[, multicastInterface])`
+
 <!-- YAML
 added: v0.6.9
 -->
@@ -123,10 +153,26 @@ When sharing a UDP socket across multiple `cluster` workers, the
 `socket.addMembership()` function must be called only once or an
 `EADDRINUSE` error will occur:
 
-```js
+```mjs
+import cluster from 'cluster';
+import dgram from 'dgram';
+
+if (cluster.isPrimary) {
+  cluster.fork(); // Works ok.
+  cluster.fork(); // Fails with EADDRINUSE.
+} else {
+  const s = dgram.createSocket('udp4');
+  s.bind(1234, () => {
+    s.addMembership('224.0.0.114');
+  });
+}
+```
+
+```cjs
 const cluster = require('cluster');
 const dgram = require('dgram');
-if (cluster.isMaster) {
+
+if (cluster.isPrimary) {
   cluster.fork(); // Works ok.
   cluster.fork(); // Fails with EADDRINUSE.
 } else {
@@ -138,11 +184,13 @@ if (cluster.isMaster) {
 ```
 
 ### `socket.addSourceSpecificMembership(sourceAddress, groupAddress[, multicastInterface])`
+
 <!-- YAML
 added:
  - v13.1.0
  - v12.16.0
 -->
+
 * `sourceAddress` {string}
 * `groupAddress` {string}
 * `multicastInterface` {string}
@@ -158,6 +206,7 @@ When called on an unbound socket, this method will implicitly bind to a random
 port, listening on all interfaces.
 
 ### `socket.address()`
+
 <!-- YAML
 added: v0.1.99
 -->
@@ -171,6 +220,7 @@ properties.
 This method throws `EBADF` if called on an unbound socket.
 
 ### `socket.bind([port][, address][, callback])`
+
 <!-- YAML
 added: v0.1.99
 changes:
@@ -205,7 +255,30 @@ attempting to bind with a closed socket), an [`Error`][] may be thrown.
 
 Example of a UDP server listening on port 41234:
 
-```js
+```mjs
+import dgram from 'dgram';
+
+const server = dgram.createSocket('udp4');
+
+server.on('error', (err) => {
+  console.log(`server error:\n${err.stack}`);
+  server.close();
+});
+
+server.on('message', (msg, rinfo) => {
+  console.log(`server got: ${msg} from ${rinfo.address}:${rinfo.port}`);
+});
+
+server.on('listening', () => {
+  const address = server.address();
+  console.log(`server listening ${address.address}:${address.port}`);
+});
+
+server.bind(41234);
+// Prints: server listening 0.0.0.0:41234
+```
+
+```cjs
 const dgram = require('dgram');
 const server = dgram.createSocket('udp4');
 
@@ -228,6 +301,7 @@ server.bind(41234);
 ```
 
 ### `socket.bind(options[, callback])`
+
 <!-- YAML
 added: v0.11.14
 -->
@@ -281,6 +355,7 @@ socket.bind({
 ```
 
 ### `socket.close([callback])`
+
 <!-- YAML
 added: v0.1.99
 -->
@@ -291,6 +366,7 @@ Close the underlying socket and stop listening for data on it. If a callback is
 provided, it is added as a listener for the [`'close'`][] event.
 
 ### `socket.connect(port[, address][, callback])`
+
 <!-- YAML
 added: v12.0.0
 -->
@@ -310,6 +386,7 @@ is emitted and the optional `callback` function is called. In case of failure,
 the `callback` is called or, failing this, an `'error'` event is emitted.
 
 ### `socket.disconnect()`
+
 <!-- YAML
 added: v12.0.0
 -->
@@ -320,6 +397,7 @@ disconnected socket will result in an [`ERR_SOCKET_DGRAM_NOT_CONNECTED`][]
 exception.
 
 ### `socket.dropMembership(multicastAddress[, multicastInterface])`
+
 <!-- YAML
 added: v0.6.9
 -->
@@ -336,6 +414,7 @@ If `multicastInterface` is not specified, the operating system will attempt to
 drop membership on all valid interfaces.
 
 ### `socket.dropSourceSpecificMembership(sourceAddress, groupAddress[, multicastInterface])`
+
 <!-- YAML
 added:
  - v13.1.0
@@ -356,6 +435,7 @@ If `multicastInterface` is not specified, the operating system will attempt to
 drop membership on all valid interfaces.
 
 ### `socket.getRecvBufferSize()`
+
 <!-- YAML
 added: v8.7.0
 -->
@@ -365,6 +445,7 @@ added: v8.7.0
 This method throws [`ERR_SOCKET_BUFFER_SIZE`][] if called on an unbound socket.
 
 ### `socket.getSendBufferSize()`
+
 <!-- YAML
 added: v8.7.0
 -->
@@ -374,6 +455,7 @@ added: v8.7.0
 This method throws [`ERR_SOCKET_BUFFER_SIZE`][] if called on an unbound socket.
 
 ### `socket.ref()`
+
 <!-- YAML
 added: v0.9.1
 -->
@@ -392,6 +474,7 @@ The `socket.ref()` method returns a reference to the socket so calls can be
 chained.
 
 ### `socket.remoteAddress()`
+
 <!-- YAML
 added: v12.0.0
 -->
@@ -403,10 +486,13 @@ endpoint. This method throws an [`ERR_SOCKET_DGRAM_NOT_CONNECTED`][] exception
 if the socket is not connected.
 
 ### `socket.send(msg[, offset, length][, port][, address][, callback])`
+
 <!-- YAML
 added: v0.1.99
 changes:
-  - version: v14.5.0
+  - version:
+    - v14.5.0
+    - v12.19.0
     pr-url: https://github.com/nodejs/node/pull/22413
     description: The `msg` parameter can now be any `TypedArray` or `DataView`.
   - version: v12.0.0
@@ -470,7 +556,7 @@ The only way to know for sure that the datagram has been sent is by using a
 passed as the first argument to the `callback`. If a `callback` is not given,
 the error is emitted as an `'error'` event on the `socket` object.
 
-Offset and length are optional but both *must* be set if either are used.
+Offset and length are optional but both _must_ be set if either are used.
 They are supported only when the first argument is a `Buffer`, a `TypedArray`,
 or a `DataView`.
 
@@ -478,8 +564,21 @@ This method throws [`ERR_SOCKET_BAD_PORT`][] if called on an unbound socket.
 
 Example of sending a UDP packet to a port on `localhost`;
 
-```js
+```mjs
+import dgram from 'dgram';
+import { Buffer } from 'buffer';
+
+const message = Buffer.from('Some bytes');
+const client = dgram.createSocket('udp4');
+client.send(message, 41234, 'localhost', (err) => {
+  client.close();
+});
+```
+
+```cjs
 const dgram = require('dgram');
+const { Buffer } = require('buffer');
+
 const message = Buffer.from('Some bytes');
 const client = dgram.createSocket('udp4');
 client.send(message, 41234, 'localhost', (err) => {
@@ -490,8 +589,22 @@ client.send(message, 41234, 'localhost', (err) => {
 Example of sending a UDP packet composed of multiple buffers to a port on
 `127.0.0.1`;
 
-```js
+```mjs
+import dgram from 'dgram';
+import { Buffer } from 'buffer';
+
+const buf1 = Buffer.from('Some ');
+const buf2 = Buffer.from('bytes');
+const client = dgram.createSocket('udp4');
+client.send([buf1, buf2], 41234, (err) => {
+  client.close();
+});
+```
+
+```cjs
 const dgram = require('dgram');
+const { Buffer } = require('buffer');
+
 const buf1 = Buffer.from('Some ');
 const buf2 = Buffer.from('bytes');
 const client = dgram.createSocket('udp4');
@@ -508,8 +621,23 @@ however, sending multiple buffers is faster.
 Example of sending a UDP packet using a socket connected to a port on
 `localhost`:
 
-```js
+```mjs
+import dgram from 'dgram';
+import { Buffer } from 'buffer';
+
+const message = Buffer.from('Some bytes');
+const client = dgram.createSocket('udp4');
+client.connect(41234, 'localhost', (err) => {
+  client.send(message, (err) => {
+    client.close();
+  });
+});
+```
+
+```cjs
 const dgram = require('dgram');
+const { Buffer } = require('buffer');
+
 const message = Buffer.from('Some bytes');
 const client = dgram.createSocket('udp4');
 client.connect(41234, 'localhost', (err) => {
@@ -547,6 +675,7 @@ not work because the packet will get silently dropped without informing the
 source that the data did not reach its intended recipient.
 
 ### `socket.setBroadcast(flag)`
+
 <!-- YAML
 added: v0.6.9
 -->
@@ -559,16 +688,17 @@ packets may be sent to a local interface's broadcast address.
 This method throws `EBADF` if called on an unbound socket.
 
 ### `socket.setMulticastInterface(multicastInterface)`
+
 <!-- YAML
 added: v8.6.0
 -->
 
 * `multicastInterface` {string}
 
-*All references to scope in this section are referring to
+_All references to scope in this section are referring to
 [IPv6 Zone Indices][], which are defined by [RFC 4007][]. In string form, an IP
 with a scope index is written as `'IP%scope'` where scope is an interface name
-or interface number.*
+or interface number._
 
 Sets the default outgoing multicast interface of the socket to a chosen
 interface or back to system interface selection. The `multicastInterface` must
@@ -609,6 +739,7 @@ socket.bind(1234, () => {
 ```
 
 #### Example: IPv4 outgoing multicast interface
+
 All systems use an IP of the host on the desired physical interface:
 
 ```js
@@ -621,10 +752,10 @@ socket.bind(1234, () => {
 
 #### Call results
 
-A call on a socket that is not ready to send or no longer open may throw a *Not
-running* [`Error`][].
+A call on a socket that is not ready to send or no longer open may throw a _Not
+running_ [`Error`][].
 
-If `multicastInterface` can not be parsed into an IP then an *EINVAL*
+If `multicastInterface` can not be parsed into an IP then an _EINVAL_
 [`System Error`][] is thrown.
 
 On IPv4, if `multicastInterface` is a valid address but does not match any
@@ -639,6 +770,7 @@ used to return control of the sockets default outgoing interface to the system
 for future multicast packets.
 
 ### `socket.setMulticastLoopback(flag)`
+
 <!-- YAML
 added: v0.3.8
 -->
@@ -651,6 +783,7 @@ multicast packets will also be received on the local interface.
 This method throws `EBADF` if called on an unbound socket.
 
 ### `socket.setMulticastTTL(ttl)`
+
 <!-- YAML
 added: v0.3.8
 -->
@@ -668,6 +801,7 @@ The `ttl` argument may be between 0 and 255. The default on most systems is `1`.
 This method throws `EBADF` if called on an unbound socket.
 
 ### `socket.setRecvBufferSize(size)`
+
 <!-- YAML
 added: v8.7.0
 -->
@@ -680,6 +814,7 @@ in bytes.
 This method throws [`ERR_SOCKET_BUFFER_SIZE`][] if called on an unbound socket.
 
 ### `socket.setSendBufferSize(size)`
+
 <!-- YAML
 added: v8.7.0
 -->
@@ -692,6 +827,7 @@ in bytes.
 This method throws [`ERR_SOCKET_BUFFER_SIZE`][] if called on an unbound socket.
 
 ### `socket.setTTL(ttl)`
+
 <!-- YAML
 added: v0.1.101
 -->
@@ -710,6 +846,7 @@ is 64.
 This method throws `EBADF` if called on an unbound socket.
 
 ### `socket.unref()`
+
 <!-- YAML
 added: v0.9.1
 -->
@@ -730,10 +867,11 @@ chained.
 ## `dgram` module functions
 
 ### `dgram.createSocket(options[, callback])`
+
 <!-- YAML
 added: v0.11.13
 changes:
-  - version: v14.17.0
+  - version: v15.8.0
     pr-url: https://github.com/nodejs/node/pull/37026
     description: AbortSignal support was added.
   - version: v11.4.0
@@ -787,6 +925,7 @@ controller.abort();
 ```
 
 ### `dgram.createSocket(type[, callback])`
+
 <!-- YAML
 added: v0.1.99
 -->
@@ -806,19 +945,19 @@ and `udp6` sockets). The bound address and port can be retrieved using
 
 [IPv6 Zone Indices]: https://en.wikipedia.org/wiki/IPv6_address#Scoped_literal_IPv6_addresses
 [RFC 4007]: https://tools.ietf.org/html/rfc4007
-[`'close'`]: #dgram_event_close
-[`ERR_SOCKET_BAD_PORT`]: errors.md#errors_err_socket_bad_port
-[`ERR_SOCKET_BUFFER_SIZE`]: errors.md#errors_err_socket_buffer_size
-[`ERR_SOCKET_DGRAM_IS_CONNECTED`]: errors.md#errors_err_socket_dgram_is_connected
-[`ERR_SOCKET_DGRAM_NOT_CONNECTED`]: errors.md#errors_err_socket_dgram_not_connected
-[`Error`]: errors.md#errors_class_error
-[`System Error`]: errors.md#errors_class_systemerror
-[`close()`]: #dgram_socket_close_callback
+[`'close'`]: #event-close
+[`ERR_SOCKET_BAD_PORT`]: errors.md#err_socket_bad_port
+[`ERR_SOCKET_BUFFER_SIZE`]: errors.md#err_socket_buffer_size
+[`ERR_SOCKET_DGRAM_IS_CONNECTED`]: errors.md#err_socket_dgram_is_connected
+[`ERR_SOCKET_DGRAM_NOT_CONNECTED`]: errors.md#err_socket_dgram_not_connected
+[`Error`]: errors.md#class-error
+[`System Error`]: errors.md#class-systemerror
+[`close()`]: #socketclosecallback
 [`cluster`]: cluster.md
-[`connect()`]: #dgram_socket_connect_port_address_callback
-[`dgram.createSocket()`]: #dgram_dgram_createsocket_options_callback
-[`dns.lookup()`]: dns.md#dns_dns_lookup_hostname_options_callback
-[`socket.address().address`]: #dgram_socket_address
-[`socket.address().port`]: #dgram_socket_address
-[`socket.bind()`]: #dgram_socket_bind_port_address_callback
-[byte length]: buffer.md#buffer_static_method_buffer_bytelength_string_encoding
+[`connect()`]: #socketconnectport-address-callback
+[`dgram.createSocket()`]: #dgramcreatesocketoptions-callback
+[`dns.lookup()`]: dns.md#dnslookuphostname-options-callback
+[`socket.address().address`]: #socketaddress
+[`socket.address().port`]: #socketaddress
+[`socket.bind()`]: #socketbindport-address-callback
+[byte length]: buffer.md#static-method-bufferbytelengthstring-encoding

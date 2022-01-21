@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,6 +81,7 @@ import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT8ARRAY_OBJECT
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT8CLAMPEDARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.LAZY_STRING_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.MAP_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.MODULE_REQUEST;
 import static com.oracle.truffle.trufflenode.ValueType.NULL_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.NUMBER_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.ORDINARY_OBJECT;
@@ -478,6 +479,8 @@ public final class GraalJSAccess {
             return BIG_INT_VALUE;
         } else if (value instanceof Boolean) {
             return ((Boolean) value).booleanValue() ? BOOLEAN_VALUE_TRUE : BOOLEAN_VALUE_FALSE;
+        } else if (value instanceof ModuleRequest) {
+            return MODULE_REQUEST;
         }
         if (value instanceof Throwable) {
             valueTypeError(value);
@@ -1260,6 +1263,10 @@ public final class GraalJSAccess {
         }
     }
 
+    public boolean objectIsConstructor(Object object) {
+        return JSRuntime.isConstructor(object);
+    }
+
     public Object arrayNew(Object context, int length) {
         JSRealm realm = (JSRealm) context;
         return JSArray.createConstantEmptyArray(realm.getContext(), realm, length);
@@ -1280,7 +1287,13 @@ public final class GraalJSAccess {
             deallocator.register(byteBuffer, pointer);
         }
         JSRealm realm = (JSRealm) context;
-        DynamicObject arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(realm.getContext(), realm, byteBuffer);
+        JSContext jsContext = realm.getContext();
+        DynamicObject arrayBuffer;
+        if (buffer == null) {
+            arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(jsContext, realm, 0);
+        } else {
+            arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(jsContext, realm, byteBuffer);
+        }
         JSObjectUtil.putHiddenProperty(arrayBuffer, EXTERNALIZED_KEY, pointer == 0);
         return arrayBuffer;
     }
@@ -1493,6 +1506,10 @@ public final class GraalJSAccess {
             JSObjectUtil.putHiddenProperty(dynamicObject, EXTERNALIZED_KEY, true);
             updateWaiterList(dynamicObject, pointer);
         }
+    }
+
+    public long sharedArrayBufferByteLength(Object sharedArrayBuffer) {
+        return JSSharedArrayBuffer.getDirectByteBuffer((DynamicObject) sharedArrayBuffer).capacity();
     }
 
     public int typedArrayLength(Object typedArray) {
@@ -2079,8 +2096,8 @@ public final class GraalJSAccess {
         ByteBuffer snapshot = null;
         if (extraArgument == null) {
             extensions = exts;
-            if (USE_SNAPSHOTS && hostDefinedOptions == null && !auxEngineCacheMode) {
-                assert exts.length == 0 && UnboundScript.isCoreModule(sourceName);
+            if (USE_SNAPSHOTS && !auxEngineCacheMode && UnboundScript.isCoreModule(sourceName)) {
+                assert exts.length == 0;
                 snapshot = getCoreModuleBinarySnapshot(sourceName);
             }
         } else {
@@ -2207,7 +2224,7 @@ public final class GraalJSAccess {
     }
 
     private static boolean isBootstrapSource(String sourceName) {
-        return sourceName.startsWith("internal/per_context") || sourceName.startsWith("internal/bootstrap");
+        return sourceName.startsWith("node:internal/per_context") || sourceName.startsWith("node:internal/bootstrap");
     }
 
     public Object scriptCompile(Object context, Object sourceCode, Object fileName, Object hostDefinedOptions) {
@@ -2240,17 +2257,17 @@ public final class GraalJSAccess {
             // NIO-based buffer APIs in internal/graal/buffer.js are initialized by passing one
             // extra argument to the module loading function.
             extraArgument = USE_NIO_BUFFER ? NIOBuffer.createInitFunction(realm) : Null.instance;
-        } else if ("internal/graal/debug.js".equals(moduleName)) {
+        } else if ("node:internal/graal/debug".equals(moduleName)) {
             JSFunctionData setBreakPointData = getContextEmbedderData(context).getOrCreateFunctionData(SetBreakPoint, (c) -> {
                 CallTarget setBreakPointCallTarget = new SetBreakPointNode().getCallTarget();
                 return JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
             });
             DynamicObject setBreakPoint = JSFunction.create(realm, setBreakPointData);
             extraArgument = setBreakPoint;
-        } else if ("internal/worker/io.js".equals(moduleName) || "internal/main/worker_thread.js".equals(moduleName)) {
+        } else if ("node:internal/worker/io".equals(moduleName) || "node:internal/main/worker_thread".equals(moduleName)) {
             // The Shared-mem channel initialization is similar to NIO-based buffers.
             extraArgument = SharedMemMessagingBindings.createInitFunction(realm);
-        } else if ("inspector.js".equals(moduleName)) {
+        } else if ("node:inspector".equals(moduleName)) {
             TruffleObject inspector = GraalJSAccess.get().lookupInstrument("inspect", TruffleObject.class);
             extraArgument = (inspector == null) ? Null.instance : inspector;
         }
@@ -2298,13 +2315,16 @@ public final class GraalJSAccess {
         return new UnboundScript(source, functionNode);
     }
 
-    private static ByteBuffer getCoreModuleBinarySnapshot(String modulePath) {
+    private static ByteBuffer getCoreModuleBinarySnapshot(String moduleID) {
+        assert UnboundScript.isCoreModule(moduleID);
+        // remove 'node:' prefix and append '.js' suffix
+        String modulePath = moduleID.substring(5) + ".js";
         ByteBuffer snapshotBinary = NativeAccess.getCoreModuleBinarySnapshot(modulePath);
         if (VERBOSE) {
             if (snapshotBinary == null) {
-                System.err.printf("no snapshot for %s\n", modulePath);
+                System.err.printf("no snapshot for %s\n", moduleID);
             } else {
-                System.err.printf("successfully read snapshot for %s\n", modulePath);
+                System.err.printf("successfully read snapshot for %s\n", moduleID);
             }
         }
         return snapshotBinary;
@@ -3254,8 +3274,9 @@ public final class GraalJSAccess {
 
     private static class NativeImportModuleDynamicallyCallback implements ImportModuleDynamicallyCallback {
         @Override
-        public DynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, Module.ModuleRequest moduleRequest) {
-            return (DynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, referrer, moduleRequest.getSpecifier());
+        public DynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest) {
+            Object importAssertions = moduleRequestGetImportAssertionsImpl(moduleRequest, false);
+            return (DynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, referrer, moduleRequest.getSpecifier(), importAssertions);
         }
     }
 
@@ -3679,6 +3700,11 @@ public final class GraalJSAccess {
         return record.getModule().getRequestedModules().get(index).getSpecifier();
     }
 
+    public Object moduleGetModuleRequests(Object module) {
+        JSModuleRecord record = (JSModuleRecord) module;
+        return record.getModule().getRequestedModules();
+    }
+
     public Object moduleGetNamespace(Object module) {
         JSModuleRecord record = (JSModuleRecord) module;
         GraalJSEvaluator graalEvaluator = (GraalJSEvaluator) record.getContext().getEvaluator();
@@ -3709,6 +3735,27 @@ public final class GraalJSAccess {
 
         final JSModuleData parsedModule = new JSModuleData(moduleNode, source, functionData, frameDescriptor);
         return new NativeBackedModuleRecord(parsedModule, getModuleLoader(), evaluationStepsCallback);
+    }
+
+    public String moduleRequestGetSpecifier(Object moduleRequest) {
+        return ((ModuleRequest) moduleRequest).getSpecifier();
+    }
+
+    private static List<Object> moduleRequestGetImportAssertionsImpl(ModuleRequest request, boolean withSourceOffset) {
+        List<Object> assertions = new ArrayList<>();
+        for (Map.Entry<String, String> entry : request.getAssertions().entrySet()) {
+            assertions.add(entry.getKey());
+            assertions.add(entry.getValue());
+            if (withSourceOffset) {
+                assertions.add(0);
+            }
+        }
+        return assertions;
+    }
+
+    public Object moduleRequestGetImportAssertions(Object moduleRequest) {
+        ModuleRequest request = (ModuleRequest) moduleRequest;
+        return moduleRequestGetImportAssertionsImpl(request, true);
     }
 
     public static final class NativeBackedModuleRecord extends JSModuleRecord {
@@ -3928,6 +3975,17 @@ public final class GraalJSAccess {
         }
     }
 
+    public int fixedArrayLength(Object fixedArray) {
+        List<?> list = (List<?>) fixedArray;
+        return list.size();
+    }
+
+    public Object fixedArrayGet(Object fixedArray, int index) {
+        List<?> list = (List<?>) fixedArray;
+        Object element = list.get(index);
+        return processReturnValue(element);
+    }
+
     public void backingStoreRegisterCallback(Object backingStore, long data, int byteLength, long deleterData, long callback) {
         weakCallbacks.add(new DeleterCallback(backingStore, data, byteLength, deleterData, callback, weakCallbackQueue));
     }
@@ -4007,8 +4065,9 @@ public final class GraalJSAccess {
                 System.err.println("Cannot resolve module outside module instantiation!");
                 System.exit(1);
             }
+            Object importAssertions = moduleRequestGetImportAssertionsImpl(moduleRequest, true);
             JSRealm realm = JSRealm.get(null);
-            JSModuleRecord result = (JSModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, referrer);
+            JSModuleRecord result = (JSModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, importAssertions, referrer);
             referrerCache.put(specifier, result);
             return result;
         }

@@ -8,7 +8,7 @@ const assert = require('assert');
 const crypto = require('crypto');
 
 const { internalBinding } = require('internal/test/binding');
-if (typeof internalBinding('crypto').scrypt !== 'function')
+if (typeof internalBinding('crypto').ScryptJob !== 'function')
   common.skip('no scrypt support');
 
 const good = [
@@ -143,6 +143,10 @@ const badargs = [
     args: ['', '', -42],
     expected: { code: 'ERR_OUT_OF_RANGE', message: /"keylen"/ },
   },
+  {
+    args: ['', '', 2147485780],
+    expected: { code: 'ERR_OUT_OF_RANGE', message: /"keylen"/ },
+  },
 ];
 
 for (const options of good) {
@@ -156,9 +160,7 @@ for (const options of good) {
 
 for (const options of bad) {
   const expected = {
-    code: 'ERR_CRYPTO_SCRYPT_INVALID_PARAMETER',
-    message: 'Invalid scrypt parameter',
-    name: 'Error',
+    message: /Invalid scrypt param/,
   };
   assert.throws(() => crypto.scrypt('pass', 'salt', 1, options, () => {}),
                 expected);
@@ -168,9 +170,7 @@ for (const options of bad) {
 
 for (const options of toobig) {
   const expected = {
-    message: new RegExp('error:[^:]+:digital envelope routines:' +
-                        '(?:EVP_PBE_scrypt|scrypt_alg):memory limit exceeded'),
-    name: 'Error',
+    message: /Invalid scrypt param/
   };
   assert.throws(() => crypto.scrypt('pass', 'salt', 1, options, () => {}),
                 expected);

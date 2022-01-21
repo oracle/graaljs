@@ -213,17 +213,7 @@ TEST_F(EnvironmentTest, AtExitWithEnvironment) {
   const Argv argv;
   Env env {handle_scope, argv};
 
-  AtExit(*env, at_exit_callback1);
-  RunAtExit(*env);
-  EXPECT_TRUE(called_cb_1);
-}
-
-TEST_F(EnvironmentTest, AtExitWithoutEnvironment) {
-  const v8::HandleScope handle_scope(isolate_);
-  const Argv argv;
-  Env env {handle_scope, argv};
-
-  AtExit(at_exit_callback1);  // No Environment is passed to AtExit.
+  AtExit(*env, at_exit_callback1, nullptr);
   RunAtExit(*env);
   EXPECT_TRUE(called_cb_1);
 }
@@ -234,8 +224,8 @@ TEST_F(EnvironmentTest, AtExitOrder) {
   Env env {handle_scope, argv};
 
   // Test that callbacks are run in reverse order.
-  AtExit(*env, at_exit_callback_ordered1);
-  AtExit(*env, at_exit_callback_ordered2);
+  AtExit(*env, at_exit_callback_ordered1, nullptr);
+  AtExit(*env, at_exit_callback_ordered2, nullptr);
   RunAtExit(*env);
   EXPECT_TRUE(called_cb_ordered_1);
   EXPECT_TRUE(called_cb_ordered_2);
@@ -270,8 +260,8 @@ TEST_F(EnvironmentTest, MultipleEnvironmentsPerIsolate) {
   Env env1 {handle_scope, argv};
   Env env2 {handle_scope, argv, node::EnvironmentFlags::kNoFlags};
 
-  AtExit(*env1, at_exit_callback1);
-  AtExit(*env2, at_exit_callback2);
+  AtExit(*env1, at_exit_callback1, nullptr);
+  AtExit(*env2, at_exit_callback2, nullptr);
   RunAtExit(*env1);
   EXPECT_TRUE(called_cb_1);
   EXPECT_FALSE(called_cb_2);
@@ -652,3 +642,77 @@ TEST_F(NodeZeroIsolateTestFixture, CtrlCWithOnlySafeTerminationTest) {
   isolate->Dispose();
 }
 #endif  // _WIN32
+
+TEST_F(EnvironmentTest, NestedMicrotaskQueue) {
+  const v8::HandleScope handle_scope(isolate_);
+  const Argv argv;
+
+  std::unique_ptr<v8::MicrotaskQueue> queue = v8::MicrotaskQueue::New(
+      isolate_, v8::MicrotasksPolicy::kExplicit);
+  v8::Local<v8::Context> context = v8::Context::New(
+      isolate_, nullptr, {}, {}, {}, queue.get());
+  node::InitializeContext(context);
+  v8::Context::Scope context_scope(context);
+
+  using IntVec = std::vector<int>;
+  IntVec callback_calls;
+  v8::Local<v8::Function> must_call = v8::Function::New(
+      context,
+      [](const v8::FunctionCallbackInfo<v8::Value>& info) {
+        IntVec* callback_calls = static_cast<IntVec*>(
+            info.Data().As<v8::External>()->Value());
+        callback_calls->push_back(info[0].As<v8::Int32>()->Value());
+      },
+      v8::External::New(isolate_, static_cast<void*>(&callback_calls)))
+          .ToLocalChecked();
+  context->Global()->Set(
+      context,
+      v8::String::NewFromUtf8Literal(isolate_, "mustCall"),
+      must_call).Check();
+
+  node::IsolateData* isolate_data = node::CreateIsolateData(
+      isolate_, &NodeTestFixture::current_loop, platform.get());
+  CHECK_NE(nullptr, isolate_data);
+
+  node::Environment* env = node::CreateEnvironment(
+      isolate_data, context, {}, {});
+  CHECK_NE(nullptr, env);
+
+  v8::Local<v8::Function> eval_in_env = node::LoadEnvironment(
+      env,
+      "mustCall(1);\n"
+      "Promise.resolve().then(() => mustCall(2));\n"
+      "require('vm').runInNewContext("
+      "    'Promise.resolve().then(() => mustCall(3))',"
+      "    { mustCall },"
+      "    { microtaskMode: 'afterEvaluate' }"
+      ");\n"
+      "require('vm').runInNewContext("
+      "    'Promise.resolve().then(() => mustCall(4))',"
+      "    { mustCall }"
+      ");\n"
+      "setTimeout(() => {"
+      "  Promise.resolve().then(() => mustCall(5));"
+      "}, 10);\n"
+      "mustCall(6);\n"
+      "return eval;\n").ToLocalChecked().As<v8::Function>();
+  EXPECT_EQ(callback_calls, (IntVec { 1, 3, 6, 2, 4 }));
+  v8::Local<v8::Value> queue_microtask_code = v8::String::NewFromUtf8Literal(
+      isolate_, "queueMicrotask(() => mustCall(7));");
+  eval_in_env->Call(context,
+                    v8::Null(isolate_),
+                    1,
+                    &queue_microtask_code).ToLocalChecked();
+  EXPECT_EQ(callback_calls, (IntVec { 1, 3, 6, 2, 4 }));
+  isolate_->PerformMicrotaskCheckpoint();
+  EXPECT_EQ(callback_calls, (IntVec { 1, 3, 6, 2, 4 }));
+  queue->PerformCheckpoint(isolate_);
+  EXPECT_EQ(callback_calls, (IntVec { 1, 3, 6, 2, 4, 7 }));
+
+  int exit_code = SpinEventLoop(env).FromJust();
+  EXPECT_EQ(exit_code, 0);
+  EXPECT_EQ(callback_calls, (IntVec { 1, 3, 6, 2, 4, 7, 5 }));
+
+  node::FreeEnvironment(env);
+  node::FreeIsolateData(isolate_data);
+}

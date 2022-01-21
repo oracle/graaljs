@@ -8,8 +8,10 @@
 # for py2/py3 compatibility
 from __future__ import print_function
 
-import lldb
+import os
 import re
+
+import lldb
 
 #####################
 # Helper functions. #
@@ -21,8 +23,18 @@ def current_frame(debugger):
   return current_thread(debugger).GetSelectedFrame()
 
 def no_arg_cmd(debugger, cmd):
-  current_frame(debugger).EvaluateExpression(cmd)
-  print("")
+  cast_to_void_expr = '(void) {}'.format(cmd)
+  evaluate_result = current_frame(debugger).EvaluateExpression(cast_to_void_expr)
+  # When a void function is called the return value type is 0x1001 which
+  # is specified in http://tiny.cc/bigskz. This does not indicate
+  # an error so we check for that value below.
+  kNoResult = 0x1001
+  error = evaluate_result.GetError()
+  if error.fail and error.value != kNoResult:
+      print("Failed to evaluate command {} :".format(cmd))
+      print(error.description)
+  else:
+    print("")
 
 def ptr_arg_cmd(debugger, name, param, cmd):
   if not param:
@@ -41,18 +53,13 @@ def job(debugger, param, *args):
 def jlh(debugger, param, *args):
   """Print v8::Local handle value"""
   ptr_arg_cmd(debugger, 'jlh', param,
-              "_v8_internal_Print_Object(*(v8::internal::Object**)(*{}))")
+              "_v8_internal_Print_Object(*(v8::internal::Object**)({}.val_))")
 
 def jco(debugger, param, *args):
   """Print the code object at the given pc (default: current pc)"""
   if not param:
     param = str(current_frame(debugger).FindRegister("pc").value)
   ptr_arg_cmd(debugger, 'jco', param, "_v8_internal_Print_Code({})")
-
-def jld(debugger, param, *args):
-  """Print a v8 LayoutDescriptor object"""
-  ptr_arg_cmd(debugger, 'jld', param,
-              "_v8_internal_Print_LayoutDescriptor({})")
 
 def jtt(debugger, param, *args):
   """Print the transition tree of a v8 Map"""
@@ -108,7 +115,19 @@ def bta(debugger, *args):
       print("%s -> %s %s (%s)\033[0m" % (
           color, prefix, match.group(2), match.group(1)))
 
+def setup_source_map_for_relative_paths(debugger):
+  # Copied from Chromium's tools/lldb/lldbinit.py.
+  # When relative paths are used for debug symbols, lldb cannot find source
+  # files. Set up a source map to point to V8's root.
+  this_dir = os.path.dirname(os.path.abspath(__file__))
+  source_dir = os.path.join(this_dir, os.pardir)
+
+  debugger.HandleCommand(
+    'settings set target.source-map ../.. ' + source_dir)
+
+
 def __lldb_init_module(debugger, dict):
+  setup_source_map_for_relative_paths(debugger)
   debugger.HandleCommand('settings set target.x86-disassembly-flavor intel')
   for cmd in ('job', 'jlh', 'jco', 'jld', 'jtt', 'jst', 'jss', 'bta'):
     debugger.HandleCommand(

@@ -42,15 +42,9 @@ function evalModule(source, print) {
   if (print) {
     throw new ERR_EVAL_ESM_CANNOT_PRINT();
   }
-  const { log } = require('internal/console/global');
   const { loadESM } = require('internal/process/esm_loader');
   const { handleMainPromise } = require('internal/modules/run_main');
-  return handleMainPromise(loadESM(async (loader) => {
-    const { result } = await loader.eval(source);
-    if (print) {
-      log(result);
-    }
-  }));
+  return handleMainPromise(loadESM((loader) => loader.eval(source)));
 }
 
 function evalScript(name, body, breakFirstLine, print) {
@@ -83,7 +77,7 @@ function evalScript(name, body, breakFirstLine, print) {
       displayErrors: true,
       [kVmBreakFirstLineSymbol]: !!breakFirstLine,
       async importModuleDynamically(specifier) {
-        const loader = await asyncESM.ESMLoader;
+        const loader = await asyncESM.esmLoader;
         return loader.import(specifier, baseUrl);
       }
     }));
@@ -152,10 +146,13 @@ function createOnGlobalUncaughtException() {
       try {
         const report = internalBinding('report');
         if (report != null && report.shouldReportOnUncaughtException()) {
-          report.writeReport(er ? er.message : 'Exception',
-                             'Exception',
-                             null,
-                             er ? er : {});
+          report.writeReport(
+            typeof er?.message === 'string' ?
+              er.message :
+              'Exception',
+            'Exception',
+            null,
+            er ?? {});
         }
       } catch {}  // Ignore the exception. Diagnostic reporting is unavailable.
     }

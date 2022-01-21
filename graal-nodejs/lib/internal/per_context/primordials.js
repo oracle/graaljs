@@ -167,6 +167,7 @@ function copyPrototype(src, dest, prefix) {
 
 // Create copies of intrinsic objects
 [
+  'AggregateError',
   'Array',
   'ArrayBuffer',
   'BigInt',
@@ -177,6 +178,7 @@ function copyPrototype(src, dest, prefix) {
   'Date',
   'Error',
   'EvalError',
+  'FinalizationRegistry',
   'Float32Array',
   'Float64Array',
   'Function',
@@ -200,6 +202,7 @@ function copyPrototype(src, dest, prefix) {
   'Uint8Array',
   'Uint8ClampedArray',
   'WeakMap',
+  'WeakRef',
   'WeakSet',
 ].forEach((name) => {
   // eslint-disable-next-line no-restricted-globals
@@ -245,13 +248,17 @@ function copyPrototype(src, dest, prefix) {
 
 const {
   ArrayPrototypeForEach,
+  FinalizationRegistry,
   FunctionPrototypeCall,
   Map,
   ObjectFreeze,
   ObjectSetPrototypeOf,
+  Promise,
+  PromisePrototypeThen,
   Set,
   SymbolIterator,
   WeakMap,
+  WeakRef,
   WeakSet,
 } = primordials;
 
@@ -296,6 +303,9 @@ const copyProps = (src, dest) => {
   });
 };
 
+/**
+ * @type {typeof primordials.makeSafe}
+ */
 const makeSafe = (unsafe, safe) => {
   if (SymbolIterator in unsafe.prototype) {
     const dummy = new unsafe();
@@ -310,7 +320,7 @@ const makeSafe = (unsafe, safe) => {
           SymbolIterator in (FunctionPrototypeCall(desc.value, dummy) ?? {})
         ) {
           const createIterator = uncurryThis(desc.value);
-          next = next ?? uncurryThis(createIterator(dummy).next);
+          next ??= uncurryThis(createIterator(dummy).next);
           const SafeIterator = createSafeIterator(createIterator, next);
           desc.value = function() {
             return new SafeIterator(this);
@@ -347,6 +357,7 @@ primordials.SafeWeakMap = makeSafe(
     constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
   }
 );
+
 primordials.SafeSet = makeSafe(
   Set,
   class SafeSet extends Set {
@@ -359,6 +370,55 @@ primordials.SafeWeakSet = makeSafe(
     constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
   }
 );
+
+primordials.SafeFinalizationRegistry = makeSafe(
+  FinalizationRegistry,
+  class SafeFinalizationRegistry extends FinalizationRegistry {
+    // eslint-disable-next-line no-useless-constructor
+    constructor(cleanupCallback) { super(cleanupCallback); }
+  }
+);
+primordials.SafeWeakRef = makeSafe(
+  WeakRef,
+  class SafeWeakRef extends WeakRef {
+    // eslint-disable-next-line no-useless-constructor
+    constructor(target) { super(target); }
+  }
+);
+
+const SafePromise = makeSafe(
+  Promise,
+  class SafePromise extends Promise {
+    // eslint-disable-next-line no-useless-constructor
+    constructor(executor) { super(executor); }
+  }
+);
+
+primordials.PromisePrototypeCatch = (thisPromise, onRejected) =>
+  PromisePrototypeThen(thisPromise, undefined, onRejected);
+
+/**
+ * Attaches a callback that is invoked when the Promise is settled (fulfilled or
+ * rejected). The resolved value cannot be modified from the callback.
+ * Prefer using async functions when possible.
+ * @param {Promise<any>} thisPromise
+ * @param {() => void) | undefined | null} onFinally The callback to execute
+ *        when the Promise is settled (fulfilled or rejected).
+ * @returns A Promise for the completion of the callback.
+ */
+primordials.SafePromisePrototypeFinally = (thisPromise, onFinally) =>
+  // Wrapping on a new Promise is necessary to not expose the SafePromise
+  // prototype to user-land.
+  new Promise((a, b) =>
+    new SafePromise((a, b) => PromisePrototypeThen(thisPromise, a, b))
+      .finally(onFinally)
+      .then(a, b)
+  );
+
+primordials.AsyncIteratorPrototype =
+  primordials.ReflectGetPrototypeOf(
+    primordials.ReflectGetPrototypeOf(
+      async function* () {}).prototype);
 
 ObjectSetPrototypeOf(primordials, null);
 ObjectFreeze(primordials);

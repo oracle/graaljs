@@ -1,4 +1,3 @@
-// Flags: --experimental-abortcontroller
 'use strict';
 const common = require('../common');
 

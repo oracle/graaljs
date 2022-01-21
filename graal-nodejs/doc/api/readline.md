@@ -37,6 +37,7 @@ Once this code is invoked, the Node.js application will not terminate until the
 received on the `input` stream.
 
 ## Class: `Interface`
+
 <!-- YAML
 added: v0.1.104
 -->
@@ -50,6 +51,7 @@ The `output` stream is used to print prompts for user input that arrives on,
 and is read from, the `input` stream.
 
 ### Event: `'close'`
+
 <!-- YAML
 added: v0.1.98
 -->
@@ -71,6 +73,7 @@ The `readline.Interface` instance is finished once the `'close'` event is
 emitted.
 
 ### Event: `'line'`
+
 <!-- YAML
 added: v0.1.98
 -->
@@ -89,8 +92,9 @@ rl.on('line', (input) => {
 ```
 
 ### Event: `'history'`
+
 <!-- YAML
-added: v14.18.0
+added: v15.8.0
 -->
 
 The `'history'` event is emitted whenever the history array has changed.
@@ -111,6 +115,7 @@ rl.on('history', (history) => {
 ```
 
 ### Event: `'pause'`
+
 <!-- YAML
 added: v0.7.5
 -->
@@ -130,6 +135,7 @@ rl.on('pause', () => {
 ```
 
 ### Event: `'resume'`
+
 <!-- YAML
 added: v0.7.5
 -->
@@ -145,6 +151,7 @@ rl.on('resume', () => {
 ```
 
 ### Event: `'SIGCONT'`
+
 <!-- YAML
 added: v0.7.5
 -->
@@ -153,7 +160,7 @@ The `'SIGCONT'` event is emitted when a Node.js process previously moved into
 the background using <kbd>Ctrl</kbd>+<kbd>Z</kbd> (i.e. `SIGTSTP`) is then
 brought back to the foreground using fg(1p).
 
-If the `input` stream was paused *before* the `SIGTSTP` request, this event will
+If the `input` stream was paused _before_ the `SIGTSTP` request, this event will
 not be emitted.
 
 The listener function is invoked without passing any arguments.
@@ -168,14 +175,15 @@ rl.on('SIGCONT', () => {
 The `'SIGCONT'` event is _not_ supported on Windows.
 
 ### Event: `'SIGINT'`
+
 <!-- YAML
 added: v0.3.0
 -->
 
-The `'SIGINT'` event is emitted whenever the `input` stream receives a
-<kbd>Ctrl+C</kbd> input, known typically as `SIGINT`. If there are no `'SIGINT'`
-event listeners registered when the `input` stream receives a `SIGINT`, the
-`'pause'` event will be emitted.
+The `'SIGINT'` event is emitted whenever the `input` stream receives
+a <kbd>Ctrl+C</kbd> input, known typically as `SIGINT`. If there are no
+`'SIGINT'` event listeners registered when the `input` stream receives a
+`SIGINT`, the `'pause'` event will be emitted.
 
 The listener function is invoked without passing any arguments.
 
@@ -188,12 +196,13 @@ rl.on('SIGINT', () => {
 ```
 
 ### Event: `'SIGTSTP'`
+
 <!-- YAML
 added: v0.7.5
 -->
 
-The `'SIGTSTP'` event is emitted when the `input` stream receives a
-<kbd>Ctrl</kbd>+<kbd>Z</kbd> input, typically known as `SIGTSTP`. If there are
+The `'SIGTSTP'` event is emitted when the `input` stream receives
+a <kbd>Ctrl</kbd>+<kbd>Z</kbd> input, typically known as `SIGTSTP`. If there are
 no `'SIGTSTP'` event listeners registered when the `input` stream receives a
 `SIGTSTP`, the Node.js process will be sent to the background.
 
@@ -216,6 +225,7 @@ rl.on('SIGTSTP', () => {
 The `'SIGTSTP'` event is _not_ supported on Windows.
 
 ### `rl.close()`
+
 <!-- YAML
 added: v0.1.98
 -->
@@ -228,6 +238,7 @@ Calling `rl.close()` does not immediately stop other events (including `'line'`)
 from being emitted by the `readline.Interface` instance.
 
 ### `rl.pause()`
+
 <!-- YAML
 added: v0.3.4
 -->
@@ -239,6 +250,7 @@ Calling `rl.pause()` does not immediately pause other events (including
 `'line'`) from being emitted by the `readline.Interface` instance.
 
 ### `rl.prompt([preserveCursor])`
+
 <!-- YAML
 added: v0.1.98
 -->
@@ -257,6 +269,7 @@ If the `readline.Interface` was created with `output` set to `null` or
 `undefined` the prompt is not written.
 
 ### `rl.question(query[, options], callback)`
+
 <!-- YAML
 added: v0.3.3
 -->
@@ -328,6 +341,7 @@ questionExample();
 ```
 
 ### `rl.resume()`
+
 <!-- YAML
 added: v0.3.4
 -->
@@ -335,6 +349,7 @@ added: v0.3.4
 The `rl.resume()` method resumes the `input` stream if it has been paused.
 
 ### `rl.setPrompt(prompt)`
+
 <!-- YAML
 added: v0.1.98
 -->
@@ -345,8 +360,9 @@ The `rl.setPrompt()` method sets the prompt that will be written to `output`
 whenever `rl.prompt()` is called.
 
 ### `rl.getPrompt()`
+
 <!-- YAML
-added: v14.17.0
+added: v15.3.0
 -->
 
 * Returns: {string} the current prompt string
@@ -354,6 +370,7 @@ added: v14.17.0
 The `rl.getPrompt()` method returns the current prompt used by `rl.prompt()`.
 
 ### `rl.write(data[, key])`
+
 <!-- YAML
 added: v0.1.98
 -->
@@ -385,9 +402,10 @@ rl.write(null, { ctrl: true, name: 'u' });
 ```
 
 The `rl.write()` method will write the data to the `readline` `Interface`'s
-`input` *as if it were provided by the user*.
+`input` _as if it were provided by the user_.
 
 ### `rl[Symbol.asyncIterator]()`
+
 <!-- YAML
 added:
  - v11.4.0
@@ -433,10 +451,11 @@ invoked. Having asynchronous operations between interface creation and
 asynchronous iteration may result in missed lines.
 
 ### `rl.line`
+
 <!-- YAML
 added: v0.1.98
 changes:
-  - version: v14.18.0
+  - version: v15.8.0
     pr-url: https://github.com/nodejs/node/pull/33676
     description: Value will always be a string, never undefined.
 -->
@@ -472,6 +491,7 @@ process.stdin.on('keypress', (c, k) => {
 ```
 
 ### `rl.cursor`
+
 <!-- YAML
 added: v0.1.98
 -->
@@ -486,6 +506,7 @@ portion of the input string that will be modified as input is processed,
 as well as the column where the terminal caret will be rendered.
 
 ### `rl.getCursorPos()`
+
 <!-- YAML
 added:
  - v13.5.0
@@ -501,6 +522,7 @@ prompt + string. Long input (wrapping) strings, as well as multiple
 line prompts are included in the calculations.
 
 ## `readline.clearLine(stream, dir[, callback])`
+
 <!-- YAML
 added: v0.7.7
 changes:
@@ -523,6 +545,7 @@ The `readline.clearLine()` method clears current line of given [TTY][] stream
 in a specified direction identified by `dir`.
 
 ## `readline.clearScreenDown(stream[, callback])`
+
 <!-- YAML
 added: v0.7.7
 changes:
@@ -541,13 +564,14 @@ The `readline.clearScreenDown()` method clears the given [TTY][] stream from
 the current position of the cursor down.
 
 ## `readline.createInterface(options)`
+
 <!-- YAML
 added: v0.1.98
 changes:
-  - version: v14.18.0
+  - version: v15.14.0
     pr-url: https://github.com/nodejs/node/pull/37932
     description: The `signal` option is supported now.
-  - version: v14.18.0
+  - version: v15.8.0
     pr-url: https://github.com/nodejs/node/pull/33662
     description: The `history` option is supported now.
   - version: v13.9.0
@@ -571,14 +595,14 @@ changes:
 
 * `options` {Object}
   * `input` {stream.Readable} The [Readable][] stream to listen to. This option
-    is *required*.
+    is _required_.
   * `output` {stream.Writable} The [Writable][] stream to write readline data
     to.
   * `completer` {Function} An optional function used for Tab autocompletion.
   * `terminal` {boolean} `true` if the `input` and `output` streams should be
     treated like a TTY, and have ANSI/VT100 escape codes written to it.
     **Default:** checking `isTTY` on the `output` stream upon instantiation.
-  * `history` {string[]} Initial list of history lines. This option makes sense
+  * `history` {string\[]} Initial list of history lines. This option makes sense
     only if `terminal` is set to `true` by the user or by an internal `output`
     check, otherwise the history caching mechanism is not initialized at all.
     **Default:** `[]`.
@@ -673,6 +697,7 @@ function completer(linePartial, callback) {
 ```
 
 ## `readline.cursorTo(stream, x[, y][, callback])`
+
 <!-- YAML
 added: v0.7.7
 changes:
@@ -693,6 +718,7 @@ The `readline.cursorTo()` method moves cursor to the specified position in a
 given [TTY][] `stream`.
 
 ## `readline.emitKeypressEvents(stream[, interface])`
+
 <!-- YAML
 added: v0.7.7
 -->
@@ -719,6 +745,7 @@ if (process.stdin.isTTY)
 ```
 
 ## `readline.moveCursor(stream, dx, dy[, callback])`
+
 <!-- YAML
 added: v0.7.7
 changes:
@@ -735,7 +762,7 @@ changes:
   the `'drain'` event to be emitted before continuing to write additional data;
   otherwise `true`.
 
-The `readline.moveCursor()` method moves the cursor *relative* to its current
+The `readline.moveCursor()` method moves the cursor _relative_ to its current
 position in a given [TTY][] `stream`.
 
 ## Example: Tiny CLI
@@ -967,16 +994,16 @@ const { createInterface } = require('readline');
   </tr>
 </table>
 
-[Readable]: stream.md#stream_readable_streams
+[Readable]: stream.md#readable-streams
 [TTY]: tty.md
-[TTY keybindings]: #readline_tty_keybindings
-[Writable]: stream.md#stream_writable_streams
-[`'SIGCONT'`]: #readline_event_sigcont
-[`'SIGTSTP'`]: #readline_event_sigtstp
-[`'line'`]: #readline_event_line
-[`fs.ReadStream`]: fs.md#fs_class_fs_readstream
-[`process.stdin`]: process.md#process_process_stdin
-[`process.stdout`]: process.md#process_process_stdout
-[`rl.close()`]: #readline_rl_close
-[`unref()`]: net.md#net_socket_unref
-[reading files]: #readline_example_read_file_stream_line_by_line
+[TTY keybindings]: #tty-keybindings
+[Writable]: stream.md#writable-streams
+[`'SIGCONT'`]: #event-sigcont
+[`'SIGTSTP'`]: #event-sigtstp
+[`'line'`]: #event-line
+[`fs.ReadStream`]: fs.md#class-fsreadstream
+[`process.stdin`]: process.md#processstdin
+[`process.stdout`]: process.md#processstdout
+[`rl.close()`]: #rlclose
+[`unref()`]: net.md#socketunref
+[reading files]: #example-read-file-stream-line-by-line

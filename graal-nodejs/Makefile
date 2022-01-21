@@ -1,7 +1,7 @@
 -include config.mk
 
 BUILDTYPE ?= Release
-PYTHON ?= python
+PYTHON ?= python3
 DESTDIR ?=
 SIGN ?=
 PREFIX ?= /usr/local
@@ -10,6 +10,7 @@ TEST_CI_ARGS ?=
 STAGINGSERVER ?= node-www
 LOGLEVEL ?= silent
 OSTYPE := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+ARCHTYPE := $(shell uname -m | tr '[:upper:]' '[:lower:]')
 COVTESTS ?= test-cov
 COV_SKIP_TESTS ?= core_line_numbers.js,testFinalizer.js,test_function/test.js
 GTEST_FILTER ?= "*"
@@ -280,6 +281,7 @@ v8:
 .PHONY: jstest
 jstest: build-addons build-js-native-api-tests build-node-api-tests ## Runs addon tests and JS tests
 	$(PYTHON) tools/test.py $(PARALLEL_ARGS) --mode=$(BUILDTYPE_LOWER) \
+		$(TEST_CI_ARGS) \
 		--skip-tests=$(CI_SKIP_TESTS) \
 		$(JS_SUITES) \
 		$(NATIVE_SUITES)
@@ -478,7 +480,7 @@ JS_SUITES ?= default
 NATIVE_SUITES ?= addons js-native-api node-api
 # CI_* variables should be kept synchronized with the ones in vcbuild.bat
 CI_NATIVE_SUITES ?= $(NATIVE_SUITES) benchmark
-CI_JS_SUITES ?= $(JS_SUITES)
+CI_JS_SUITES ?= $(JS_SUITES) pummel
 ifeq ($(node_use_openssl), false)
 	CI_DOC := doctool
 else
@@ -830,6 +832,9 @@ else
 ifeq ($(findstring s390,$(UNAME_M)),s390)
 DESTCPU ?= s390
 else
+ifeq ($(findstring arm64,$(UNAME_M)),arm64)
+DESTCPU ?= arm64
+else
 ifeq ($(findstring arm,$(UNAME_M)),arm)
 DESTCPU ?= arm
 else
@@ -839,7 +844,12 @@ else
 ifeq ($(findstring powerpc,$(shell uname -p)),powerpc)
 DESTCPU ?= ppc64
 else
+ifeq ($(findstring riscv64,$(UNAME_M)),riscv64)
+DESTCPU ?= riscv64
+else
 DESTCPU ?= x86
+endif
+endif
 endif
 endif
 endif
@@ -870,7 +880,11 @@ else
 ifeq ($(DESTCPU),s390x)
 ARCH=s390x
 else
+ifeq ($(DESTCPU),riscv64)
+ARCH=riscv64
+else
 ARCH=x86
+endif
 endif
 endif
 endif
@@ -970,6 +984,16 @@ release-only: check-xz
 	fi
 
 $(PKG): release-only
+# pkg building is currently only supported on an ARM64 macOS host for
+# ease of compiling fat-binaries for both macOS architectures.
+ifneq ($(OSTYPE),darwin)
+	$(warning Invalid OSTYPE)
+	$(error OSTYPE should be `darwin` currently is $(OSTYPE))
+endif
+ifneq ($(ARCHTYPE),arm64)
+	$(warning Invalid ARCHTYPE)
+	$(error ARCHTYPE should be `arm64` currently is $(ARCHTYPE))
+endif
 	$(RM) -r $(MACOSOUTDIR)
 	mkdir -p $(MACOSOUTDIR)/installer/productbuild
 	cat tools/macos-installer/productbuild/distribution.xml.tmpl  \
@@ -990,14 +1014,28 @@ $(PKG): release-only
 			| sed -E "s/\\{npmversion\\}/$(NPMVERSION)/g"  \
 		>$(MACOSOUTDIR)/installer/productbuild/Resources/$$lang/conclusion.html ; \
 	done
+	CC_host="cc -arch x86_64" CXX_host="c++ -arch x86_64"  \
+	CC_target="cc -arch x86_64" CXX_target="c++ -arch x86_64" \
+	CC="cc -arch x86_64" CXX="c++ -arch x86_64" $(PYTHON) ./configure \
+		--dest-cpu=x86_64 \
+		--tag=$(TAG) \
+		--release-urlbase=$(RELEASE_URLBASE) \
+		$(CONFIG_FLAGS) $(BUILD_RELEASE_FLAGS)
+	arch -x86_64 $(MAKE) install V=$(V) DESTDIR=$(MACOSOUTDIR)/dist/x64/node
+	SIGN="$(CODESIGN_CERT)" PKGDIR="$(MACOSOUTDIR)/dist/x64/node/usr/local" sh \
+		tools/osx-codesign.sh
 	$(PYTHON) ./configure \
-		--dest-cpu=x64 \
+		--dest-cpu=arm64 \
 		--tag=$(TAG) \
 		--release-urlbase=$(RELEASE_URLBASE) \
 		$(CONFIG_FLAGS) $(BUILD_RELEASE_FLAGS)
 	$(MAKE) install V=$(V) DESTDIR=$(MACOSOUTDIR)/dist/node
 	SIGN="$(CODESIGN_CERT)" PKGDIR="$(MACOSOUTDIR)/dist/node/usr/local" sh \
 		tools/osx-codesign.sh
+	lipo $(MACOSOUTDIR)/dist/x64/node/usr/local/bin/node \
+		$(MACOSOUTDIR)/dist/node/usr/local/bin/node \
+		-output $(MACOSOUTDIR)/dist/node/usr/local/bin/node \
+		-create
 	mkdir -p $(MACOSOUTDIR)/dist/npm/usr/local/lib/node_modules
 	mkdir -p $(MACOSOUTDIR)/pkgs
 	mv $(MACOSOUTDIR)/dist/node/usr/local/lib/node_modules/npm \
@@ -1024,6 +1062,14 @@ $(PKG): release-only
 .PHONY: pkg
 # Builds the macOS installer for releases.
 pkg: $(PKG)
+
+corepack-update:
+	rm -rf /tmp/node-corepack-clone
+	git clone 'https://github.com/nodejs/corepack.git' /tmp/node-corepack-clone
+	cd /tmp/node-corepack-clone && yarn pack
+	rm -rf deps/corepack && mkdir -p deps/corepack
+	cd deps/corepack && tar xf /tmp/node-corepack-clone/package.tgz --strip-components=1
+	chmod +x deps/corepack/shims/*
 
 # Note: this is strictly for release builds on release machines only.
 pkg-upload: pkg
@@ -1184,12 +1230,11 @@ bench-addons-clean:
 .PHONY: lint-md-rollup
 lint-md-rollup:
 	$(RM) tools/.*mdlintstamp
-	cd tools/node-lint-md-cli-rollup && npm install
-	cd tools/node-lint-md-cli-rollup && npm run build-node
+	cd tools/lint-md && npm ci && npm run build
 
 .PHONY: lint-md-clean
 lint-md-clean:
-	$(RM) -r tools/node-lint-md-cli-rollup/node_modules
+	$(RM) -r tools/lint-md/node_modules
 	$(RM) tools/.*mdlintstamp
 
 .PHONY: lint-md-build
@@ -1206,7 +1251,7 @@ LINT_MD_TARGETS = doc src lib benchmark test tools/doc tools/icu $(wildcard *.md
 LINT_MD_FILES = $(shell $(FIND) $(LINT_MD_TARGETS) -type f \
 	! -path '*node_modules*' ! -path 'test/fixtures/*' -name '*.md' \
 	$(LINT_MD_NEWER))
-run-lint-md = tools/lint-md.mjs -q -f --no-stdout $(LINT_MD_FILES)
+run-lint-md = tools/lint-md/lint-md.mjs $(LINT_MD_FILES)
 # Lint all changed markdown files maintained by us
 tools/.mdlintstamp: $(LINT_MD_FILES)
 	$(info Running Markdown linter...)
@@ -1216,6 +1261,13 @@ tools/.mdlintstamp: $(LINT_MD_FILES)
 .PHONY: lint-md
 # Lints the markdown documents maintained by us in the codebase.
 lint-md: lint-js-doc | tools/.mdlintstamp
+
+run-format-md = tools/lint-md/lint-md.mjs --format $(LINT_MD_FILES)
+.PHONY: format-md
+# Formats the markdown documents maintained by us in the codebase.
+format-md:
+	@$(call available-node,$(run-format-md))
+
 
 
 LINT_JS_TARGETS = .eslintrc.js benchmark doc lib test tools
@@ -1280,6 +1332,7 @@ LINT_CPP_FILES = $(filter-out $(LINT_CPP_EXCLUDE), $(wildcard \
 	test/cctest/*.h \
 	test/embedding/*.cc \
 	test/embedding/*.h \
+	test/fixtures/*.c \
 	test/js-native-api/*/*.cc \
 	test/js-native-api/*/*.h \
 	test/node-api/*/*.cc \
@@ -1352,13 +1405,13 @@ cpplint: lint-cpp
 
 .PHONY: lint-py-build
 # python -m pip install flake8
-# Try with '--system' is to overcome systems that blindly set '--user'
+# Try with '--system' if it fails without; the system may have set '--user'
 lint-py-build:
 	$(info Pip installing flake8 linter on $(shell $(PYTHON) --version)...)
-	$(PYTHON) -m pip install --upgrade -t tools/pip/site-packages flake8 || \
-		$(PYTHON) -m pip install --upgrade --system -t tools/pip/site-packages flake8
+	$(PYTHON) -m pip install --no-user --upgrade -t tools/pip/site-packages flake8 || \
+		$(PYTHON) -m pip install --no-user --upgrade --system -t tools/pip/site-packages flake8
 
-ifneq ("","$(wildcard tools/pip/site-packages)")
+ifneq ("","$(wildcard tools/pip/site-packages/flake8)")
 .PHONY: lint-py
 # Lints the Python code with flake8.
 # Flag the build if there are Python syntax errors or undefined names
@@ -1370,6 +1423,24 @@ lint-py:
 	$(warning Run 'make lint-py-build')
 endif
 
+.PHONY: lint-yaml-build
+# python -m pip install yamllint
+# Try with '--system' if it fails without; the system may have set '--user'
+lint-yaml-build:
+	$(info Pip installing yamllint on $(shell $(PYTHON) --version)...)
+	$(PYTHON) -m pip install --no-user --upgrade -t tools/pip/site-packages yamllint || \
+		$(PYTHON) -m pip install --no-user --upgrade --system -t tools/pip/site-packages yamllint
+
+.PHONY: lint-yaml
+# Lints the YAML files with yamllint.
+lint-yaml:
+	@if [ -d "tools/pip/site-packages/yamllint" ]; then \
+			PYTHONPATH=tools/pip $(PYTHON) -m yamllint .; \
+	else \
+		echo 'YAML linting with yamllint is not available'; \
+		echo "Run 'make lint-yaml-build'"; \
+	fi
+
 .PHONY: lint
 .PHONY: lint-ci
 ifneq ("","$(wildcard tools/node_modules/eslint/)")
@@ -1379,12 +1450,13 @@ lint: ## Run JS, C++, MD and doc linters.
 	$(MAKE) lint-cpp || EXIT_STATUS=$$? ; \
 	$(MAKE) lint-addon-docs || EXIT_STATUS=$$? ; \
 	$(MAKE) lint-md || EXIT_STATUS=$$? ; \
+	$(MAKE) lint-yaml || EXIT_STATUS=$$? ; \
 	exit $$EXIT_STATUS
 CONFLICT_RE=^>>>>>>> [[:xdigit:]]+|^<<<<<<< [[:alpha:]]+
 
 # Related CI job: node-test-linter
-lint-ci: lint-js-ci lint-cpp lint-py lint-md lint-addon-docs
-	@if ! ( grep -IEqrs "$(CONFLICT_RE)" benchmark deps doc lib src test tools ) \
+lint-ci: lint-js-ci lint-cpp lint-py lint-md lint-addon-docs lint-yaml-build lint-yaml
+	@if ! ( grep -IEqrs "$(CONFLICT_RE)" --exclude="error-message.js" benchmark deps doc lib src test tools ) \
 		&& ! ( $(FIND) . -maxdepth 1 -type f | xargs grep -IEqs "$(CONFLICT_RE)" ); then \
 		exit 0 ; \
 	else \

@@ -6,7 +6,7 @@
 #define V8_OBJECTS_JS_PROXY_H_
 
 #include "src/objects/js-objects.h"
-#include "torque-generated/builtin-definitions-tq.h"
+#include "torque-generated/builtin-definitions.h"
 
 // Has to be the last include (doesn't have include guards):
 #include "src/objects/object-macros.h"
@@ -14,14 +14,14 @@
 namespace v8 {
 namespace internal {
 
+#include "torque-generated/src/objects/js-proxy-tq.inc"
+
 // The JSProxy describes EcmaScript Harmony proxies
 class JSProxy : public TorqueGeneratedJSProxy<JSProxy, JSReceiver> {
  public:
   V8_WARN_UNUSED_RESULT static MaybeHandle<JSProxy> New(Isolate* isolate,
                                                         Handle<Object>,
                                                         Handle<Object>);
-
-  static MaybeHandle<NativeContext> GetFunctionRealm(Handle<JSProxy> proxy);
 
   V8_INLINE bool IsRevoked() const;
   static void Revoke(Handle<JSProxy> proxy);

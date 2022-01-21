@@ -8,16 +8,22 @@ const {
   FunctionPrototypeCall,
   NumberIsInteger,
   ObjectAssign,
+  ObjectCreate,
   ObjectDefineProperties,
   ObjectDefineProperty,
   ObjectGetOwnPropertyDescriptor,
+  ObjectGetOwnPropertyDescriptors,
   ReflectApply,
+  SafeArrayIterator,
+  SafeFinalizationRegistry,
   SafeMap,
+  SafeWeakMap,
+  SafeWeakRef,
+  SafeWeakSet,
   String,
   Symbol,
   SymbolFor,
   SymbolToStringTag,
-  SafeWeakSet,
 } = primordials;
 
 const {
@@ -34,6 +40,7 @@ const { customInspectSymbol } = require('internal/util');
 const { inspect } = require('util');
 
 const kIsEventTarget = SymbolFor('nodejs.event_target');
+const kIsNodeEventTarget = Symbol('kIsNodeEventTarget');
 
 const EventEmitter = require('events');
 const {
@@ -42,9 +49,11 @@ const {
 } = EventEmitter;
 
 const kEvents = Symbol('kEvents');
+const kIsBeingDispatched = Symbol('kIsBeingDispatched');
 const kStop = Symbol('kStop');
 const kTarget = Symbol('kTarget');
 const kHandlers = Symbol('khandlers');
+const kWeakHandler = Symbol('kWeak');
 
 const kHybridDispatch = SymbolFor('nodejs.internal.kHybridDispatch');
 const kCreateEvent = Symbol('kCreateEvent');
@@ -53,13 +62,7 @@ const kRemoveListener = Symbol('kRemoveListener');
 const kIsNodeStyleListener = Symbol('kIsNodeStyleListener');
 const kTrustEvent = Symbol('kTrustEvent');
 
-// Lazy load perf_hooks to avoid the additional overhead on startup
-let perf_hooks;
-function lazyNow() {
-  if (perf_hooks === undefined)
-    perf_hooks = require('perf_hooks');
-  return perf_hooks.performance.now();
-}
+const { now } = require('internal/perf/utils');
 
 // TODO(joyeecheung): V8 snapshot does not support instance member
 // initializers for now:
@@ -79,6 +82,10 @@ const isTrusted = ObjectGetOwnPropertyDescriptor({
   }
 }, 'isTrusted').get;
 
+function isEvent(value) {
+  return typeof value?.[kType] === 'string';
+}
+
 class Event {
   constructor(type, options = null) {
     if (arguments.length === 0)
@@ -92,7 +99,7 @@ class Event {
     this[kComposed] = !!composed;
     this[kType] = `${type}`;
     this[kDefaultPrevented] = false;
-    this[kTimestamp] = lazyNow();
+    this[kTimestamp] = now();
     this[kPropagationStopped] = false;
     if (options?.[kTrustEvent]) {
       isTrustedSet.add(this);
@@ -105,9 +112,12 @@ class Event {
       configurable: false
     });
     this[kTarget] = null;
+    this[kIsBeingDispatched] = false;
   }
 
   [customInspectSymbol](depth, options) {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
     const name = this.constructor.name;
     if (depth < 0)
       return name;
@@ -125,46 +135,111 @@ class Event {
   }
 
   stopImmediatePropagation() {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
     this[kStop] = true;
   }
 
   preventDefault() {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
     this[kDefaultPrevented] = true;
   }
 
-  get target() { return this[kTarget]; }
-  get currentTarget() { return this[kTarget]; }
-  get srcElement() { return this[kTarget]; }
+  get target() {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
+    return this[kTarget];
+  }
 
-  get type() { return this[kType]; }
+  get currentTarget() {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
+    return this[kTarget];
+  }
 
-  get cancelable() { return this[kCancelable]; }
+  get srcElement() {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
+    return this[kTarget];
+  }
+
+  get type() {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
+    return this[kType];
+  }
+
+  get cancelable() {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
+    return this[kCancelable];
+  }
 
   get defaultPrevented() {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
     return this[kCancelable] && this[kDefaultPrevented];
   }
 
-  get timeStamp() { return this[kTimestamp]; }
+  get timeStamp() {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
+    return this[kTimestamp];
+  }
 
 
   // The following are non-op and unused properties/methods from Web API Event.
   // These are not supported in Node.js and are provided purely for
   // API completeness.
 
-  composedPath() { return this[kTarget] ? [this[kTarget]] : []; }
-  get returnValue() { return !this.defaultPrevented; }
-  get bubbles() { return this[kBubbles]; }
-  get composed() { return this[kComposed]; }
-  get eventPhase() {
-    return this[kTarget] ? Event.AT_TARGET : Event.NONE;
+  composedPath() {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
+    return this[kIsBeingDispatched] ? [this[kTarget]] : [];
   }
-  get cancelBubble() { return this[kPropagationStopped]; }
+
+  get returnValue() {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
+    return !this.defaultPrevented;
+  }
+
+  get bubbles() {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
+    return this[kBubbles];
+  }
+
+  get composed() {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
+    return this[kComposed];
+  }
+
+  get eventPhase() {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
+    return this[kIsBeingDispatched] ? Event.AT_TARGET : Event.NONE;
+  }
+
+  get cancelBubble() {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
+    return this[kPropagationStopped];
+  }
+
   set cancelBubble(value) {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
     if (value) {
       this.stopPropagation();
     }
   }
+
   stopPropagation() {
+    if (!isEvent(this))
+      throw new ERR_INVALID_THIS('Event');
     this[kPropagationStopped] = true;
   }
 
@@ -174,12 +249,34 @@ class Event {
   static BUBBLING_PHASE = 3;
 }
 
-ObjectDefineProperty(Event.prototype, SymbolToStringTag, {
-  writable: false,
-  enumerable: false,
-  configurable: true,
-  value: 'Event',
-});
+const kEnumerableProperty = ObjectCreate(null);
+kEnumerableProperty.enumerable = true;
+
+ObjectDefineProperties(
+  Event.prototype, {
+    [SymbolToStringTag]: {
+      writable: false,
+      enumerable: false,
+      configurable: true,
+      value: 'Event',
+    },
+    stopImmediatePropagation: kEnumerableProperty,
+    preventDefault: kEnumerableProperty,
+    target: kEnumerableProperty,
+    currentTarget: kEnumerableProperty,
+    srcElement: kEnumerableProperty,
+    type: kEnumerableProperty,
+    cancelable: kEnumerableProperty,
+    defaultPrevented: kEnumerableProperty,
+    timeStamp: kEnumerableProperty,
+    composedPath: kEnumerableProperty,
+    returnValue: kEnumerableProperty,
+    bubbles: kEnumerableProperty,
+    composed: kEnumerableProperty,
+    eventPhase: kEnumerableProperty,
+    cancelBubble: kEnumerableProperty,
+    stopPropagation: kEnumerableProperty,
+  });
 
 class NodeCustomEvent extends Event {
   constructor(type, options) {
@@ -189,6 +286,21 @@ class NodeCustomEvent extends Event {
     }
   }
 }
+
+// Weak listener cleanup
+// This has to be lazy for snapshots to work
+let weakListenersState = null;
+// The resource needs to retain the callback so that it doesn't
+// get garbage collected now that it's weak.
+let objectToWeakListenerMap = null;
+function weakListeners() {
+  weakListenersState ??= new SafeFinalizationRegistry(
+    (listener) => listener.remove()
+  );
+  objectToWeakListenerMap ??= new SafeWeakMap();
+  return { registry: weakListenersState, map: objectToWeakListenerMap };
+}
+
 // The listeners for an EventTarget are maintained as a linked list.
 // Unfortunately, the way EventTarget is defined, listeners are accounted
 // using the tuple [handler,capture], and even if we don't actually make
@@ -197,25 +309,39 @@ class NodeCustomEvent extends Event {
 // the linked list makes dispatching faster, even if adding/removing is
 // slower.
 class Listener {
-  constructor(previous, listener, once, capture, passive, isNodeStyleListener) {
+  constructor(previous, listener, once, capture, passive,
+              isNodeStyleListener, weak) {
     this.next = undefined;
     if (previous !== undefined)
       previous.next = this;
     this.previous = previous;
     this.listener = listener;
+    // TODO(benjamingr) these 4 can be 'flags' to save 3 slots
     this.once = once;
     this.capture = capture;
     this.passive = passive;
     this.isNodeStyleListener = isNodeStyleListener;
+    this.removed = false;
+    this.weak = Boolean(weak); // Don't retain the object
 
-    this.callback =
-      typeof listener === 'function' ?
-        listener :
-        FunctionPrototypeBind(listener.handleEvent, listener);
+    if (this.weak) {
+      this.callback = new SafeWeakRef(listener);
+      weakListeners().registry.register(listener, this, this);
+      // Make the retainer retain the listener in a WeakMap
+      weakListeners().map.set(weak, listener);
+      this.listener = this.callback;
+    } else if (typeof listener === 'function') {
+      this.callback = listener;
+      this.listener = listener;
+    } else {
+      this.callback = FunctionPrototypeBind(listener.handleEvent, listener);
+      this.listener = listener;
+    }
   }
 
   same(listener, capture) {
-    return this.listener === listener && this.capture === capture;
+    const myListener = this.weak ? this.listener.deref() : this.listener;
+    return myListener === listener && this.capture === capture;
   }
 
   remove() {
@@ -223,6 +349,9 @@ class Listener {
       this.previous.next = this.next;
     if (this.next !== undefined)
       this.next.previous = this.previous;
+    this.removed = true;
+    if (this.weak)
+      weakListeners().registry.unregister(this);
   }
 }
 
@@ -263,6 +392,8 @@ class EventTarget {
   [kRemoveListener](size, type, listener, capture) {}
 
   addEventListener(type, listener, options = {}) {
+    if (!isEventTarget(this))
+      throw new ERR_INVALID_THIS('EventTarget');
     if (arguments.length < 2)
       throw new ERR_MISSING_ARGS('type', 'listener');
 
@@ -272,7 +403,9 @@ class EventTarget {
       once,
       capture,
       passive,
-      isNodeStyleListener
+      signal,
+      isNodeStyleListener,
+      weak,
     } = validateEventListenerOptions(options);
 
     if (!shouldAddListener(listener)) {
@@ -289,12 +422,24 @@ class EventTarget {
     }
     type = String(type);
 
+    if (signal) {
+      if (signal.aborted) {
+        return;
+      }
+      // TODO(benjamingr) make this weak somehow? ideally the signal would
+      // not prevent the event target from GC.
+      signal.addEventListener('abort', () => {
+        this.removeEventListener(type, listener, options);
+      }, { once: true, [kWeakHandler]: this });
+    }
+
     let root = this[kEvents].get(type);
 
     if (root === undefined) {
       root = { size: 1, next: undefined };
       // This is the first handler in our linked list.
-      new Listener(root, listener, once, capture, passive, isNodeStyleListener);
+      new Listener(root, listener, once, capture, passive,
+                   isNodeStyleListener, weak);
       this[kNewListener](root.size, type, listener, once, capture, passive);
       this[kEvents].set(type, root);
       return;
@@ -314,12 +459,14 @@ class EventTarget {
     }
 
     new Listener(previous, listener, once, capture, passive,
-                 isNodeStyleListener);
+                 isNodeStyleListener, weak);
     root.size++;
     this[kNewListener](root.size, type, listener, once, capture, passive);
   }
 
   removeEventListener(type, listener, options = {}) {
+    if (!isEventTarget(this))
+      throw new ERR_INVALID_THIS('EventTarget');
     if (!shouldAddListener(listener))
       return;
 
@@ -345,13 +492,13 @@ class EventTarget {
   }
 
   dispatchEvent(event) {
-    if (!(event instanceof Event))
-      throw new ERR_INVALID_ARG_TYPE('event', 'Event', event);
-
     if (!isEventTarget(this))
       throw new ERR_INVALID_THIS('EventTarget');
 
-    if (event[kTarget] !== null)
+    if (!(event instanceof Event))
+      throw new ERR_INVALID_ARG_TYPE('event', 'Event', event);
+
+    if (event[kIsBeingDispatched])
       throw new ERR_EVENT_RECURSION(event.type);
 
     this[kHybridDispatch](event, event.type, event);
@@ -364,15 +511,21 @@ class EventTarget {
       if (event === undefined) {
         event = this[kCreateEvent](nodeValue, type);
         event[kTarget] = this;
+        event[kIsBeingDispatched] = true;
       }
       return event;
     };
-    if (event !== undefined)
+    if (event !== undefined) {
       event[kTarget] = this;
+      event[kIsBeingDispatched] = true;
+    }
 
     const root = this[kEvents].get(type);
-    if (root === undefined || root.next === undefined)
+    if (root === undefined || root.next === undefined) {
+      if (event !== undefined)
+        event[kIsBeingDispatched] = false;
       return true;
+    }
 
     let handler = root.next;
     let next;
@@ -382,6 +535,12 @@ class EventTarget {
       // Cache the next item in case this iteration removes the current one
       next = handler.next;
 
+      if (handler.removed) {
+        // Deal with the case an event is removed while event handlers are
+        // Being processed (removeEventListener called from a listener)
+        handler = next;
+        continue;
+      }
       if (handler.once) {
         handler.remove();
         root.size--;
@@ -396,24 +555,34 @@ class EventTarget {
         } else {
           arg = createEvent();
         }
-        const result = FunctionPrototypeCall(handler.callback, this, arg);
+        const callback = handler.weak ?
+          handler.callback.deref() : handler.callback;
+        let result;
+        if (callback) {
+          result = FunctionPrototypeCall(callback, this, arg);
+          if (!handler.isNodeStyleListener) {
+            arg[kIsBeingDispatched] = false;
+          }
+        }
         if (result !== undefined && result !== null)
-          addCatch(this, result, createEvent());
+          addCatch(result);
       } catch (err) {
-        emitUnhandledRejectionOrErr(this, err, createEvent());
+        emitUncaughtException(err);
       }
 
       handler = next;
     }
 
     if (event !== undefined)
-      event[kTarget] = undefined;
+      event[kIsBeingDispatched] = false;
   }
 
   [kCreateEvent](nodeValue, type) {
     return new NodeCustomEvent(type, { detail: nodeValue });
   }
   [customInspectSymbol](depth, options) {
+    if (!isEventTarget(this))
+      throw new ERR_INVALID_THIS('EventTarget');
     const name = this.constructor.name;
     if (depth < 0)
       return name;
@@ -427,15 +596,15 @@ class EventTarget {
 }
 
 ObjectDefineProperties(EventTarget.prototype, {
-  addEventListener: { enumerable: true },
-  removeEventListener: { enumerable: true },
-  dispatchEvent: { enumerable: true }
-});
-ObjectDefineProperty(EventTarget.prototype, SymbolToStringTag, {
-  writable: false,
-  enumerable: false,
-  configurable: true,
-  value: 'EventTarget',
+  addEventListener: kEnumerableProperty,
+  removeEventListener: kEnumerableProperty,
+  dispatchEvent: kEnumerableProperty,
+  [SymbolToStringTag]: {
+    writable: false,
+    enumerable: false,
+    configurable: true,
+    value: 'EventTarget',
+  }
 });
 
 function initNodeEventTarget(self) {
@@ -443,6 +612,7 @@ function initNodeEventTarget(self) {
 }
 
 class NodeEventTarget extends EventTarget {
+  static [kIsNodeEventTarget] = true;
   static defaultMaxListeners = 10;
 
   constructor() {
@@ -451,42 +621,60 @@ class NodeEventTarget extends EventTarget {
   }
 
   setMaxListeners(n) {
+    if (!isNodeEventTarget(this))
+      throw new ERR_INVALID_THIS('NodeEventTarget');
     EventEmitter.setMaxListeners(n, this);
   }
 
   getMaxListeners() {
+    if (!isNodeEventTarget(this))
+      throw new ERR_INVALID_THIS('NodeEventTarget');
     return this[kMaxEventTargetListeners];
   }
 
   eventNames() {
+    if (!isNodeEventTarget(this))
+      throw new ERR_INVALID_THIS('NodeEventTarget');
     return ArrayFrom(this[kEvents].keys());
   }
 
   listenerCount(type) {
+    if (!isNodeEventTarget(this))
+      throw new ERR_INVALID_THIS('NodeEventTarget');
     const root = this[kEvents].get(String(type));
     return root !== undefined ? root.size : 0;
   }
 
   off(type, listener, options) {
+    if (!isNodeEventTarget(this))
+      throw new ERR_INVALID_THIS('NodeEventTarget');
     this.removeEventListener(type, listener, options);
     return this;
   }
 
   removeListener(type, listener, options) {
+    if (!isNodeEventTarget(this))
+      throw new ERR_INVALID_THIS('NodeEventTarget');
     this.removeEventListener(type, listener, options);
     return this;
   }
 
   on(type, listener) {
+    if (!isNodeEventTarget(this))
+      throw new ERR_INVALID_THIS('NodeEventTarget');
     this.addEventListener(type, listener, { [kIsNodeStyleListener]: true });
     return this;
   }
 
   addListener(type, listener) {
+    if (!isNodeEventTarget(this))
+      throw new ERR_INVALID_THIS('NodeEventTarget');
     this.addEventListener(type, listener, { [kIsNodeStyleListener]: true });
     return this;
   }
   emit(type, arg) {
+    if (!isNodeEventTarget(this))
+      throw new ERR_INVALID_THIS('NodeEventTarget');
     validateString(type, 'type');
     const hadListeners = this.listenerCount(type) > 0;
     this[kHybridDispatch](arg, type);
@@ -494,12 +682,16 @@ class NodeEventTarget extends EventTarget {
   }
 
   once(type, listener) {
+    if (!isNodeEventTarget(this))
+      throw new ERR_INVALID_THIS('NodeEventTarget');
     this.addEventListener(type, listener,
                           { once: true, [kIsNodeStyleListener]: true });
     return this;
   }
 
   removeAllListeners(type) {
+    if (!isNodeEventTarget(this))
+      throw new ERR_INVALID_THIS('NodeEventTarget');
     if (type !== undefined) {
       this[kEvents].delete(String(type));
     } else {
@@ -511,17 +703,17 @@ class NodeEventTarget extends EventTarget {
 }
 
 ObjectDefineProperties(NodeEventTarget.prototype, {
-  setMaxListeners: { enumerable: true },
-  getMaxListeners: { enumerable: true },
-  eventNames: { enumerable: true },
-  listenerCount: { enumerable: true },
-  off: { enumerable: true },
-  removeListener: { enumerable: true },
-  on: { enumerable: true },
-  addListener: { enumerable: true },
-  once: { enumerable: true },
-  emit: { enumerable: true },
-  removeAllListeners: { enumerable: true },
+  setMaxListeners: kEnumerableProperty,
+  getMaxListeners: kEnumerableProperty,
+  eventNames: kEnumerableProperty,
+  listenerCount: kEnumerableProperty,
+  off: kEnumerableProperty,
+  removeListener: kEnumerableProperty,
+  on: kEnumerableProperty,
+  addListener: kEnumerableProperty,
+  once: kEnumerableProperty,
+  emit: kEnumerableProperty,
+  removeAllListeners: kEnumerableProperty,
 });
 
 // EventTarget API
@@ -551,6 +743,8 @@ function validateEventListenerOptions(options) {
     once: Boolean(options.once),
     capture: Boolean(options.capture),
     passive: Boolean(options.passive),
+    signal: options.signal,
+    weak: options[kWeakHandler],
     isNodeStyleListener: Boolean(options[kIsNodeStyleListener])
   };
 }
@@ -564,19 +758,23 @@ function isEventTarget(obj) {
   return obj?.constructor?.[kIsEventTarget];
 }
 
-function addCatch(that, promise, event) {
+function isNodeEventTarget(obj) {
+  return obj?.constructor?.[kIsNodeEventTarget];
+}
+
+function addCatch(promise) {
   const then = promise.then;
   if (typeof then === 'function') {
     FunctionPrototypeCall(then, promise, undefined, function(err) {
       // The callback is called with nextTick to avoid a follow-up
       // rejection from this promise.
-      process.nextTick(emitUnhandledRejectionOrErr, that, err, event);
+      emitUncaughtException(err);
     });
   }
 }
 
-function emitUnhandledRejectionOrErr(that, err, event) {
-  process.emit('error', err, event);
+function emitUncaughtException(err) {
+  process.nextTick(() => { throw err; });
 }
 
 function makeEventHandler(handler) {
@@ -625,8 +823,24 @@ function defineEventHandler(emitter, name) {
     enumerable: true
   });
 }
+
+const EventEmitterMixin = (Superclass) => {
+  class MixedEventEmitter extends Superclass {
+    constructor(...args) {
+      args = new SafeArrayIterator(args);
+      super(...args);
+      FunctionPrototypeCall(EventEmitter, this);
+    }
+  }
+  const protoProps = ObjectGetOwnPropertyDescriptors(EventEmitter.prototype);
+  delete protoProps.constructor;
+  ObjectDefineProperties(MixedEventEmitter.prototype, protoProps);
+  return MixedEventEmitter;
+};
+
 module.exports = {
   Event,
+  EventEmitterMixin,
   EventTarget,
   NodeEventTarget,
   defineEventHandler,
@@ -637,5 +851,6 @@ module.exports = {
   kTrustEvent,
   kRemoveListener,
   kEvents,
+  kWeakHandler,
   isEventTarget,
 };

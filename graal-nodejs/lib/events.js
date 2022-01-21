@@ -22,10 +22,16 @@
 'use strict';
 
 const {
+  ArrayPrototypeIndexOf,
+  ArrayPrototypeJoin,
+  ArrayPrototypeShift,
   ArrayPrototypeSlice,
+  ArrayPrototypeSplice,
   Boolean,
   Error,
   ErrorCaptureStackTrace,
+  FunctionPrototypeBind,
+  FunctionPrototypeCall,
   MathMin,
   NumberIsNaN,
   ObjectCreate,
@@ -38,31 +44,30 @@ const {
   PromiseResolve,
   ReflectOwnKeys,
   String,
+  StringPrototypeSplit,
   Symbol,
   SymbolFor,
-  SymbolAsyncIterator
+  SymbolAsyncIterator,
 } = primordials;
 const kRejection = SymbolFor('nodejs.rejection');
+const { inspect } = require('internal/util/inspect');
 
 let spliceOne;
 
 const {
-  hideStackFrames,
+  AbortError,
   kEnhanceStackBeforeInspector,
-  codes
+  codes: {
+    ERR_INVALID_ARG_TYPE,
+    ERR_OUT_OF_RANGE,
+    ERR_UNHANDLED_ERROR
+  },
 } = require('internal/errors');
-const {
-  ERR_INVALID_ARG_TYPE,
-  ERR_OUT_OF_RANGE,
-  ERR_UNHANDLED_ERROR
-} = codes;
 
 const {
-  inspect
-} = require('internal/util/inspect');
-
-const {
-  validateAbortSignal
+  validateAbortSignal,
+  validateBoolean,
+  validateFunction,
 } = require('internal/validators');
 
 const kCapture = Symbol('kCapture');
@@ -70,14 +75,6 @@ const kErrorMonitor = Symbol('events.errorMonitor');
 const kMaxEventTargetListeners = Symbol('events.maxEventTargetListeners');
 const kMaxEventTargetListenersWarned =
   Symbol('events.maxEventTargetListenersWarned');
-
-let DOMException;
-const lazyDOMException = hideStackFrames((message, name) => {
-  if (DOMException === undefined)
-    DOMException = internalBinding('messaging').DOMException;
-  return new DOMException(message, name);
-});
-
 
 /**
  * Creates a new `EventEmitter` instance.
@@ -102,10 +99,7 @@ ObjectDefineProperty(EventEmitter, 'captureRejections', {
     return EventEmitter.prototype[kCapture];
   },
   set(value) {
-    if (typeof value !== 'boolean') {
-      throw new ERR_INVALID_ARG_TYPE('EventEmitter.captureRejections',
-                                     'boolean', value);
-    }
+    validateBoolean(value, 'EventEmitter.captureRejections');
 
     EventEmitter.prototype[kCapture] = value;
   },
@@ -131,9 +125,7 @@ let defaultMaxListeners = 10;
 let isEventTarget;
 
 function checkListener(listener) {
-  if (typeof listener !== 'function') {
-    throw new ERR_INVALID_ARG_TYPE('listener', 'Function', listener);
-  }
+  validateFunction(listener, 'listener');
 }
 
 ObjectDefineProperty(EventEmitter, 'defaultMaxListeners', {
@@ -211,10 +203,7 @@ EventEmitter.init = function(opts) {
 
 
   if (opts?.captureRejections) {
-    if (typeof opts.captureRejections !== 'boolean') {
-      throw new ERR_INVALID_ARG_TYPE('options.captureRejections',
-                                     'boolean', opts.captureRejections);
-    }
+    validateBoolean(opts.captureRejections, 'options.captureRejections');
     this[kCapture] = Boolean(opts.captureRejections);
   } else {
     // Assigning the kCapture property directly saves an expensive
@@ -298,7 +287,7 @@ EventEmitter.prototype.getMaxListeners = function getMaxListeners() {
 function identicalSequenceRange(a, b) {
   for (let i = 0; i < a.length - 3; i++) {
     // Find the first entry of b that matches the current entry of a.
-    const pos = b.indexOf(a[i]);
+    const pos = ArrayPrototypeIndexOf(b, a[i]);
     if (pos !== -1) {
       const rest = b.length - pos;
       if (rest > 3) {
@@ -327,16 +316,18 @@ function enhanceStackTrace(err, own) {
   } catch {}
   const sep = `\nEmitted 'error' event${ctorInfo} at:\n`;
 
-  const errStack = err.stack.split('\n').slice(1);
-  const ownStack = own.stack.split('\n').slice(1);
+  const errStack = ArrayPrototypeSlice(
+    StringPrototypeSplit(err.stack, '\n'), 1);
+  const ownStack = ArrayPrototypeSlice(
+    StringPrototypeSplit(own.stack, '\n'), 1);
 
   const { 0: len, 1: off } = identicalSequenceRange(ownStack, errStack);
   if (len > 0) {
-    ownStack.splice(off + 1, len - 2,
-                    '    [... lines matching original stack trace ...]');
+    ArrayPrototypeSplice(ownStack, off + 1, len - 2,
+                         '    [... lines matching original stack trace ...]');
   }
 
-  return err.stack + sep + ownStack.join('\n');
+  return err.stack + sep + ArrayPrototypeJoin(ownStack, '\n');
 }
 
 /**
@@ -367,7 +358,7 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
         const capture = {};
         ErrorCaptureStackTrace(capture, EventEmitter.prototype.emit);
         ObjectDefineProperty(er, kEnhanceStackBeforeInspector, {
-          value: enhanceStackTrace.bind(this, er, capture),
+          value: FunctionPrototypeBind(enhanceStackTrace, this, er, capture),
           configurable: true
         });
       } catch {}
@@ -378,7 +369,6 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
     }
 
     let stringifiedEr;
-    const { inspect } = require('internal/util/inspect');
     try {
       stringifiedEr = inspect(er);
     } catch {
@@ -441,7 +431,7 @@ function _addListener(target, type, listener, prepend) {
     // adding it to the listeners, first emit "newListener".
     if (events.newListener !== undefined) {
       target.emit('newListener', type,
-                  listener.listener ? listener.listener : listener);
+                  listener.listener ?? listener);
 
       // Re-assign `events` because a newListener handler could have caused the
       // this._events to be assigned to a new object
@@ -718,7 +708,7 @@ EventEmitter.listenerCount = function(emitter, type) {
   if (typeof emitter.listenerCount === 'function') {
     return emitter.listenerCount(type);
   }
-  return listenerCount.call(emitter, type);
+  return FunctionPrototypeCall(listenerCount, emitter, type);
 };
 
 EventEmitter.prototype.listenerCount = listenerCount;
@@ -796,7 +786,9 @@ function getEventListeners(emitterOrTarget, type) {
     const listeners = [];
     let handler = root?.next;
     while (handler?.listener !== undefined) {
-      listeners.push(handler.listener);
+      const listener = handler.listener?.deref ?
+        handler.listener.deref() : handler.listener;
+      listeners.push(listener);
       handler = handler.next;
     }
     return listeners;
@@ -818,16 +810,12 @@ async function once(emitter, name, options = {}) {
   const signal = options?.signal;
   validateAbortSignal(signal, 'options.signal');
   if (signal?.aborted)
-    throw lazyDOMException('The operation was aborted', 'AbortError');
+    throw new AbortError();
   return new Promise((resolve, reject) => {
     const errorListener = (err) => {
       emitter.removeListener(name, resolver);
       if (signal != null) {
-        eventTargetAgnosticRemoveListener(
-          signal,
-          'abort',
-          abortListener,
-          { once: true });
+        eventTargetAgnosticRemoveListener(signal, 'abort', abortListener);
       }
       reject(err);
     };
@@ -836,38 +824,22 @@ async function once(emitter, name, options = {}) {
         emitter.removeListener('error', errorListener);
       }
       if (signal != null) {
-        eventTargetAgnosticRemoveListener(
-          signal,
-          'abort',
-          abortListener,
-          { once: true });
+        eventTargetAgnosticRemoveListener(signal, 'abort', abortListener);
       }
       resolve(args);
     };
     eventTargetAgnosticAddListener(emitter, name, resolver, { once: true });
-    if (name !== 'error') {
-      addErrorHandlerIfEventEmitter(emitter, errorListener, { once: true });
+    if (name !== 'error' && typeof emitter.once === 'function') {
+      emitter.once('error', errorListener);
     }
     function abortListener() {
-      if (typeof emitter.removeListener === 'function') {
-        emitter.removeListener(name, resolver);
-        emitter.removeListener('error', errorListener);
-      } else {
-        eventTargetAgnosticRemoveListener(
-          emitter,
-          name,
-          resolver,
-          { once: true });
-        eventTargetAgnosticRemoveListener(
-          emitter,
-          'error',
-          errorListener,
-          { once: true });
-      }
-      reject(lazyDOMException('The operation was aborted', 'AbortError'));
+      eventTargetAgnosticRemoveListener(emitter, name, resolver);
+      eventTargetAgnosticRemoveListener(emitter, 'error', errorListener);
+      reject(new AbortError());
     }
     if (signal != null) {
-      signal.addEventListener('abort', abortListener, { once: true });
+      eventTargetAgnosticAddListener(
+        signal, 'abort', abortListener, { once: true });
     }
   });
 }
@@ -877,12 +849,6 @@ const AsyncIteratorPrototype = ObjectGetPrototypeOf(
 
 function createIterResult(value, done) {
   return { value, done };
-}
-
-function addErrorHandlerIfEventEmitter(emitter, handler, flags) {
-  if (typeof emitter.on === 'function') {
-    eventTargetAgnosticAddListener(emitter, 'error', handler, flags);
-  }
 }
 
 function eventTargetAgnosticRemoveListener(emitter, name, listener, flags) {
@@ -921,9 +887,8 @@ function eventTargetAgnosticAddListener(emitter, name, listener, flags) {
 function on(emitter, event, options) {
   const signal = options?.signal;
   validateAbortSignal(signal, 'options.signal');
-  if (signal?.aborted) {
-    throw lazyDOMException('The operation was aborted', 'AbortError');
-  }
+  if (signal?.aborted)
+    throw new AbortError();
 
   const unconsumedEvents = [];
   const unconsumedPromises = [];
@@ -996,8 +961,8 @@ function on(emitter, event, options) {
   }, AsyncIteratorPrototype);
 
   eventTargetAgnosticAddListener(emitter, event, eventHandler);
-  if (event !== 'error') {
-    addErrorHandlerIfEventEmitter(emitter, errorHandler);
+  if (event !== 'error' && typeof emitter.on === 'function') {
+    emitter.on('error', errorHandler);
   }
 
   if (signal) {
@@ -1011,11 +976,11 @@ function on(emitter, event, options) {
   return iterator;
 
   function abortListener() {
-    errorHandler(lazyDOMException('The operation was aborted', 'AbortError'));
+    errorHandler(new AbortError());
   }
 
   function eventHandler(...args) {
-    const promise = unconsumedPromises.shift();
+    const promise = ArrayPrototypeShift(unconsumedPromises);
     if (promise) {
       promise.resolve(createIterResult(args, false));
     } else {
@@ -1026,7 +991,7 @@ function on(emitter, event, options) {
   function errorHandler(err) {
     finished = true;
 
-    const toError = unconsumedPromises.shift();
+    const toError = ArrayPrototypeShift(unconsumedPromises);
 
     if (toError) {
       toError.reject(err);

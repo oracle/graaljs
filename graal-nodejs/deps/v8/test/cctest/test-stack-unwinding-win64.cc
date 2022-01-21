@@ -12,6 +12,11 @@
 #define CONTEXT_PC(context) (context.Pc)
 #endif
 
+#include <windows.h>
+
+// This has to come after windows.h.
+#include <versionhelpers.h>  // For IsWindows8OrGreater().
+
 class UnwindingWin64Callbacks {
  public:
   UnwindingWin64Callbacks() = default;
@@ -101,7 +106,7 @@ UNINITIALIZED_TEST(StackUnwindingWin64) {
     v8::Local<v8::Function> function = v8::Local<v8::Function>::Cast(
         env->Global()->Get(env.local(), v8_str("start")).ToLocalChecked());
 
-    CompileRun("%OptimizeFunctionOnNextCall(start);");
+    CompileRun("start(1); %OptimizeFunctionOnNextCall(start);");
 
     int32_t repeat_count = 100;
     v8::Local<v8::Value> args[] = {v8::Integer::New(isolate, repeat_count)};

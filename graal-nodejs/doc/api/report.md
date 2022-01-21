@@ -1,6 +1,7 @@
 # Diagnostic report
 
 <!--introduced_in=v11.8.0-->
+
 <!-- type=misc -->
 
 > Stability: 2 - Stable
@@ -579,6 +580,7 @@ Specific API documentation can be found under
 [`process API documentation`][] section.
 
 ## Interaction with workers
+
 <!-- YAML
 changes:
   - version:

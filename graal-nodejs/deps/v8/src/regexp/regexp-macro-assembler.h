@@ -5,6 +5,7 @@
 #ifndef V8_REGEXP_REGEXP_MACRO_ASSEMBLER_H_
 #define V8_REGEXP_REGEXP_MACRO_ASSEMBLER_H_
 
+#include "src/base/strings.h"
 #include "src/codegen/label.h"
 #include "src/regexp/regexp-ast.h"
 #include "src/regexp/regexp.h"
@@ -12,12 +13,12 @@
 namespace v8 {
 namespace internal {
 
-static const uc32 kLeadSurrogateStart = 0xd800;
-static const uc32 kLeadSurrogateEnd = 0xdbff;
-static const uc32 kTrailSurrogateStart = 0xdc00;
-static const uc32 kTrailSurrogateEnd = 0xdfff;
-static const uc32 kNonBmpStart = 0x10000;
-static const uc32 kNonBmpEnd = 0x10ffff;
+static const base::uc32 kLeadSurrogateStart = 0xd800;
+static const base::uc32 kLeadSurrogateEnd = 0xdbff;
+static const base::uc32 kTrailSurrogateStart = 0xdc00;
+static const base::uc32 kTrailSurrogateEnd = 0xdfff;
+static const base::uc32 kNonBmpStart = 0x10000;
+static const base::uc32 kNonBmpEnd = 0x10ffff;
 
 struct DisjunctDecisionRow {
   RegExpCharacterClass cc;
@@ -39,17 +40,32 @@ class RegExpMacroAssembler {
 
   static constexpr int kUseCharactersValue = -1;
 
+#define IMPLEMENTATIONS_LIST(V) \
+  V(IA32)                       \
+  V(ARM)                        \
+  V(ARM64)                      \
+  V(MIPS)                       \
+  V(RISCV)                      \
+  V(S390)                       \
+  V(PPC)                        \
+  V(X64)                        \
+  V(Bytecode)
+
   enum IrregexpImplementation {
-    kIA32Implementation,
-    kARMImplementation,
-    kARM64Implementation,
-    kMIPSImplementation,
-    kS390Implementation,
-    kPPCImplementation,
-    kX64Implementation,
-    kX87Implementation,
-    kBytecodeImplementation
+#define V(Name) k##Name##Implementation,
+    IMPLEMENTATIONS_LIST(V)
+#undef V
   };
+
+  inline const char* ImplementationToString(IrregexpImplementation impl) {
+    static const char* const kNames[] = {
+#define V(Name) #Name,
+        IMPLEMENTATIONS_LIST(V)
+#undef V
+    };
+    return kNames[impl];
+  }
+#undef IMPLEMENTATIONS_LIST
 
   enum StackCheckFlag {
     kNoStackLimitCheck = false,
@@ -80,15 +96,15 @@ class RegExpMacroAssembler {
   virtual void CheckCharacterAfterAnd(unsigned c,
                                       unsigned and_with,
                                       Label* on_equal) = 0;
-  virtual void CheckCharacterGT(uc16 limit, Label* on_greater) = 0;
-  virtual void CheckCharacterLT(uc16 limit, Label* on_less) = 0;
+  virtual void CheckCharacterGT(base::uc16 limit, Label* on_greater) = 0;
+  virtual void CheckCharacterLT(base::uc16 limit, Label* on_less) = 0;
   virtual void CheckGreedyLoop(Label* on_tos_equals_current_position) = 0;
   virtual void CheckAtStart(int cp_offset, Label* on_at_start) = 0;
   virtual void CheckNotAtStart(int cp_offset, Label* on_not_at_start) = 0;
   virtual void CheckNotBackReference(int start_reg, bool read_backward,
                                      Label* on_no_match) = 0;
   virtual void CheckNotBackReferenceIgnoreCase(int start_reg,
-                                               bool read_backward,
+                                               bool read_backward, bool unicode,
                                                Label* on_no_match) = 0;
   // Check the current character for a match with a literal character.  If we
   // fail to match then goto the on_failure label.  End of input always
@@ -100,15 +116,14 @@ class RegExpMacroAssembler {
                                          Label* on_not_equal) = 0;
   // Subtract a constant from the current character, then and with the given
   // constant and then check for a match with c.
-  virtual void CheckNotCharacterAfterMinusAnd(uc16 c,
-                                              uc16 minus,
-                                              uc16 and_with,
+  virtual void CheckNotCharacterAfterMinusAnd(base::uc16 c, base::uc16 minus,
+                                              base::uc16 and_with,
                                               Label* on_not_equal) = 0;
-  virtual void CheckCharacterInRange(uc16 from,
-                                     uc16 to,  // Both inclusive.
+  virtual void CheckCharacterInRange(base::uc16 from,
+                                     base::uc16 to,  // Both inclusive.
                                      Label* on_in_range) = 0;
-  virtual void CheckCharacterNotInRange(uc16 from,
-                                        uc16 to,  // Both inclusive.
+  virtual void CheckCharacterNotInRange(base::uc16 from,
+                                        base::uc16 to,  // Both inclusive.
                                         Label* on_not_in_range) = 0;
 
   // The current character (modulus the kTableSize) is looked up in the byte
@@ -122,7 +137,7 @@ class RegExpMacroAssembler {
   // character. Returns false if the type of special character class does
   // not have custom support.
   // May clobber the current loaded character.
-  virtual bool CheckSpecialCharacterClass(uc16 type, Label* on_no_match);
+  virtual bool CheckSpecialCharacterClass(base::uc16 type, Label* on_no_match);
 
   // Control-flow integrity:
   // Define a jump target and bind a label.
@@ -165,11 +180,16 @@ class RegExpMacroAssembler {
   virtual void ClearRegisters(int reg_from, int reg_to) = 0;
   virtual void WriteStackPointerToRegister(int reg) = 0;
 
-  // Compares two-byte strings case insensitively.
+  // Compare two-byte strings case insensitively.
   // Called from generated RegExp code.
-  static int CaseInsensitiveCompareUC16(Address byte_offset1,
-                                        Address byte_offset2,
-                                        size_t byte_length, Isolate* isolate);
+  static int CaseInsensitiveCompareNonUnicode(Address byte_offset1,
+                                              Address byte_offset2,
+                                              size_t byte_length,
+                                              Isolate* isolate);
+  static int CaseInsensitiveCompareUnicode(Address byte_offset1,
+                                           Address byte_offset2,
+                                           size_t byte_length,
+                                           Isolate* isolate);
 
   // Check that we are not in the middle of a surrogate pair.
   void CheckNotInSurrogatePair(int cp_offset, Label* on_failure);
@@ -178,9 +198,18 @@ class RegExpMacroAssembler {
   void set_slow_safe(bool ssc) { slow_safe_compiler_ = ssc; }
   bool slow_safe() { return slow_safe_compiler_; }
 
+  // Controls after how many backtracks irregexp should abort execution.  If it
+  // can fall back to the experimental engine (see `set_can_fallback`), it will
+  // return the appropriate error code, otherwise it will return the number of
+  // matches found so far (perhaps none).
   void set_backtrack_limit(uint32_t backtrack_limit) {
     backtrack_limit_ = backtrack_limit;
   }
+
+  // Set whether or not irregexp can fall back to the experimental engine on
+  // excessive backtracking.  The number of backtracks considered excessive can
+  // be controlled with set_backtrack_limit.
+  void set_can_fallback(bool val) { can_fallback_ = val; }
 
   enum GlobalMode {
     NOT_GLOBAL,
@@ -206,9 +235,12 @@ class RegExpMacroAssembler {
   }
   uint32_t backtrack_limit() const { return backtrack_limit_; }
 
+  bool can_fallback() const { return can_fallback_; }
+
  private:
   bool slow_safe_compiler_;
   uint32_t backtrack_limit_ = JSRegExp::kNoBacktrackLimit;
+  bool can_fallback_ = false;
   GlobalMode global_mode_;
   Isolate* isolate_;
   Zone* zone_;
@@ -223,16 +255,20 @@ class NativeRegExpMacroAssembler: public RegExpMacroAssembler {
   // RETRY: Something significant changed during execution, and the matching
   //        should be retried from scratch.
   // EXCEPTION: Something failed during execution. If no exception has been
-  //        thrown, it's an internal out-of-memory, and the caller should
-  //        throw the exception.
+  //            thrown, it's an internal out-of-memory, and the caller should
+  //            throw the exception.
   // FAILURE: Matching failed.
   // SUCCESS: Matching succeeded, and the output array has been filled with
-  //        capture positions.
+  //          capture positions.
+  // FALLBACK_TO_EXPERIMENTAL: Execute the regexp on this subject using the
+  //                           experimental engine instead.
   enum Result {
     FAILURE = RegExp::kInternalRegExpFailure,
     SUCCESS = RegExp::kInternalRegExpSuccess,
     EXCEPTION = RegExp::kInternalRegExpException,
     RETRY = RegExp::kInternalRegExpRetry,
+    FALLBACK_TO_EXPERIMENTAL = RegExp::kInternalRegExpFallbackToExperimental,
+    SMALLEST_REGEXP_RESULT = RegExp::kInternalRegExpSmallestResult,
   };
 
   NativeRegExpMacroAssembler(Isolate* isolate, Zone* zone);

@@ -4,8 +4,8 @@
 // message port.
 
 const {
-  ArrayPrototypeConcat,
   ArrayPrototypeForEach,
+  ArrayPrototypePushApply,
   ArrayPrototypeSplice,
   ObjectDefineProperty,
   PromisePrototypeCatch,
@@ -18,7 +18,7 @@ const {
   setupInspectorHooks,
   setupWarningHandler,
   setupDebugEnv,
-  initializeAbortController,
+  setupPerfHooks,
   initializeDeprecations,
   initializeWASI,
   initializeCJSLoader,
@@ -126,18 +126,18 @@ port.on('message', (message) => {
     } = message;
 
     setupTraceCategoryState();
+    setupPerfHooks();
     initializeReport();
     if (manifestSrc) {
       require('internal/process/policy').setup(manifestSrc, manifestURL);
     }
-    initializeAbortController();
     initializeDeprecations();
     initializeWASI();
     initializeCJSLoader();
     initializeESMLoader();
 
     if (argv !== undefined) {
-      process.argv = ArrayPrototypeConcat(process.argv, argv);
+      ArrayPrototypePushApply(process.argv, argv);
     }
     publicWorker.parentPort = publicPort;
     publicWorker.workerData = workerData;

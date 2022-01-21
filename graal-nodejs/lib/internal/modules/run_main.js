@@ -1,7 +1,6 @@
 'use strict';
 
 const {
-  PromisePrototypeFinally,
   StringPrototypeEndsWith,
 } = primordials;
 const CJSLoader = require('internal/modules/cjs/loader');
@@ -42,16 +41,18 @@ function shouldUseESMLoader(mainPath) {
 }
 
 function runMainESM(mainPath) {
-  const esmLoader = require('internal/process/esm_loader');
+  const { loadESM } = require('internal/process/esm_loader');
   const { pathToFileURL } = require('internal/url');
-  handleMainPromise(esmLoader.loadESM((ESMLoader) => {
+
+  handleMainPromise(loadESM((esmLoader) => {
     const main = path.isAbsolute(mainPath) ?
-      pathToFileURL(mainPath).href : mainPath;
-    return ESMLoader.import(main);
+      pathToFileURL(mainPath).href :
+      mainPath;
+    return esmLoader.import(main);
   }));
 }
 
-function handleMainPromise(promise) {
+async function handleMainPromise(promise) {
   // Handle a Promise from running code that potentially does Top-Level Await.
   // In that case, it makes sense to set the exit code to a specific non-zero
   // value if the main code never finishes running.
@@ -60,7 +61,11 @@ function handleMainPromise(promise) {
       process.exitCode = 13;
   }
   process.on('exit', handler);
-  return PromisePrototypeFinally(promise, () => process.off('exit', handler));
+  try {
+    return await promise;
+  } finally {
+    process.off('exit', handler);
+  }
 }
 
 // For backwards compatibility, we have to run a bunch of

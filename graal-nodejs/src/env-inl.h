@@ -25,6 +25,7 @@
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
 #include "aliased_buffer.h"
+#include "allocated_buffer-inl.h"
 #include "callback_queue-inl.h"
 #include "env.h"
 #include "node.h"
@@ -70,29 +71,6 @@ inline v8::Local<v8::String> IsolateData::async_wrap_provider(int index) const {
   return async_wrap_providers_[index].Get(isolate_);
 }
 
-inline AsyncHooks::AsyncHooks()
-    : async_ids_stack_(env()->isolate(), 16 * 2),
-      fields_(env()->isolate(), kFieldsCount),
-      async_id_fields_(env()->isolate(), kUidFieldsCount) {
-  clear_async_id_stack();
-
-  // Always perform async_hooks checks, not just when async_hooks is enabled.
-  // TODO(AndreasMadsen): Consider removing this for LTS releases.
-  // See discussion in https://github.com/nodejs/node/pull/15454
-  // When removing this, do it by reverting the commit. Otherwise the test
-  // and flag changes won't be included.
-  fields_[kCheck] = 1;
-
-  // kDefaultTriggerAsyncId should be -1, this indicates that there is no
-  // specified default value and it should fallback to the executionAsyncId.
-  // 0 is not used as the magic value, because that indicates a missing context
-  // which is different from a default context.
-  async_id_fields_[AsyncHooks::kDefaultTriggerAsyncId] = -1;
-
-  // kAsyncIdCounter should start at 1 because that'll be the id the execution
-  // context during bootstrap (code that runs before entering uv_run()).
-  async_id_fields_[AsyncHooks::kAsyncIdCounter] = 1;
-}
 inline AliasedUint32Array& AsyncHooks::fields() {
   return fields_;
 }
@@ -336,9 +314,6 @@ inline void Environment::PopAsyncCallbackScope() {
   async_callback_scope_depth_--;
 }
 
-inline ImmediateInfo::ImmediateInfo(v8::Isolate* isolate)
-    : fields_(isolate, kFieldsCount) {}
-
 inline AliasedUint32Array& ImmediateInfo::fields() {
   return fields_;
 }
@@ -362,9 +337,6 @@ inline void ImmediateInfo::ref_count_inc(uint32_t increment) {
 inline void ImmediateInfo::ref_count_dec(uint32_t decrement) {
   fields_[kRefCount] -= decrement;
 }
-
-inline TickInfo::TickInfo(v8::Isolate* isolate)
-    : fields_(isolate, kFieldsCount) {}
 
 inline AliasedUint8Array& TickInfo::fields() {
   return fields_;
@@ -471,10 +443,6 @@ inline T* Environment::AddBindingData(
   CHECK(result.second);
   DCHECK_EQ(GetBindingData<T>(context), item.get());
   return item.get();
-}
-
-inline Environment* Environment::GetThreadLocalEnv() {
-  return static_cast<Environment*>(uv_key_get(&thread_local_env));
 }
 
 inline v8::Isolate* Environment::isolate() const {
@@ -874,8 +842,12 @@ inline bool Environment::has_run_bootstrapping_code() const {
   return has_run_bootstrapping_code_;
 }
 
-inline void Environment::set_has_run_bootstrapping_code(bool value) {
-  has_run_bootstrapping_code_ = value;
+inline void Environment::DoneBootstrapping() {
+  has_run_bootstrapping_code_ = true;
+  // This adjusts the return value of base_object_created_after_bootstrap() so
+  // that tests that check the count do not have to account for internally
+  // created BaseObjects.
+  base_object_created_by_bootstrap_ = base_object_count_;
 }
 
 inline bool Environment::has_serialized_options() const {
@@ -888,6 +860,11 @@ inline void Environment::set_has_serialized_options(bool value) {
 
 inline bool Environment::is_main_thread() const {
   return worker_context() == nullptr;
+}
+
+inline bool Environment::no_native_addons() const {
+  return (flags_ & EnvironmentFlags::kNoNativeAddons) ||
+          !options_->allow_native_addons;
 }
 
 inline bool Environment::should_not_register_esm_loader() const {
@@ -908,6 +885,11 @@ inline bool Environment::tracks_unmanaged_fds() const {
 
 inline bool Environment::hide_console_windows() const {
   return flags_ & EnvironmentFlags::kHideConsoleWindows;
+}
+
+inline bool Environment::no_global_search_paths() const {
+  return (flags_ & EnvironmentFlags::kNoGlobalSearchPaths) ||
+         !options_->global_search_paths;
 }
 
 bool Environment::filehandle_close_warning() const {
@@ -986,13 +968,31 @@ inline performance::PerformanceState* Environment::performance_state() {
   return performance_state_.get();
 }
 
-inline std::unordered_map<std::string, uint64_t>*
-    Environment::performance_marks() {
-  return &performance_marks_;
-}
-
 inline IsolateData* Environment::isolate_data() const {
   return isolate_data_;
+}
+
+inline uv_buf_t Environment::allocate_managed_buffer(
+    const size_t suggested_size) {
+  NoArrayBufferZeroFillScope no_zero_fill_scope(isolate_data());
+  std::unique_ptr<v8::BackingStore> bs =
+      v8::ArrayBuffer::NewBackingStore(isolate(), suggested_size);
+  uv_buf_t buf = uv_buf_init(static_cast<char*>(bs->Data()), bs->ByteLength());
+  released_allocated_buffers()->emplace(buf.base, std::move(bs));
+  return buf;
+}
+
+inline std::unique_ptr<v8::BackingStore> Environment::release_managed_buffer(
+    const uv_buf_t& buf) {
+  std::unique_ptr<v8::BackingStore> bs;
+  if (buf.base != nullptr) {
+    auto map = released_allocated_buffers();
+    auto it = map->find(buf.base);
+    CHECK_NE(it, map->end());
+    bs = std::move(it->second);
+    map->erase(it);
+  }
+  return bs;
 }
 
 std::unordered_map<char*, std::unique_ptr<v8::BackingStore>>*
@@ -1187,12 +1187,27 @@ void Environment::ForEachBaseObject(T&& iterator) {
   }
 }
 
+template <typename T>
+void Environment::ForEachBindingData(T&& iterator) {
+  BindingDataStore* map = static_cast<BindingDataStore*>(
+      context()->GetAlignedPointerFromEmbedderData(
+          ContextEmbedderIndex::kBindingListIndex));
+  DCHECK_NOT_NULL(map);
+  for (auto& it : *map) {
+    iterator(it.first, it.second);
+  }
+}
+
 void Environment::modify_base_object_count(int64_t delta) {
   base_object_count_ += delta;
 }
 
+int64_t Environment::base_object_created_after_bootstrap() const {
+  return base_object_count_ - base_object_created_by_bootstrap_;
+}
+
 int64_t Environment::base_object_count() const {
-  return base_object_count_ - initial_base_object_count_;
+  return base_object_count_;
 }
 
 void Environment::set_main_utf16(std::unique_ptr<v8::String::Value> str) {

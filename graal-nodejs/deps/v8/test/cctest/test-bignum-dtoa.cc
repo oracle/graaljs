@@ -27,19 +27,17 @@
 
 #include <stdlib.h>
 
-#include "src/init/v8.h"
-
-#include "src/numbers/bignum-dtoa.h"
-
+#include "src/base/numbers/bignum-dtoa.h"
+#include "src/base/numbers/double.h"
 #include "src/base/platform/platform.h"
-#include "src/numbers/double.h"
+#include "src/init/v8.h"
 #include "test/cctest/cctest.h"
 #include "test/cctest/gay-fixed.h"
 #include "test/cctest/gay-precision.h"
 #include "test/cctest/gay-shortest.h"
 
 namespace v8 {
-namespace internal {
+namespace base {
 namespace test_bignum_dtoa {
 
 // Removes trailing '0' digits (modifies {representation}). Can create an empty
@@ -189,7 +187,7 @@ TEST(BignumDtoaVariousDoubles) {
   CHECK_EQ(0, strcmp("35844466", buffer.begin()));
   CHECK_EQ(299, point);
 
-  uint64_t smallest_normal64 = V8_2PART_UINT64_C(0x00100000, 00000000);
+  uint64_t smallest_normal64 = 0x0010'0000'0000'0000;
   double v = Double(smallest_normal64).value();
   BignumDtoa(v, BIGNUM_DTOA_SHORTEST, 0, buffer, &length, &point);
   CHECK_EQ(0, strcmp("22250738585072014", buffer.begin()));
@@ -201,7 +199,7 @@ TEST(BignumDtoaVariousDoubles) {
   CHECK_EQ(0, strcmp("22250738585072013831", buffer.begin()));
   CHECK_EQ(-307, point);
 
-  uint64_t largest_denormal64 = V8_2PART_UINT64_C(0x000FFFFF, FFFFFFFF);
+  uint64_t largest_denormal64 = 0x000F'FFFF'FFFF'FFFF;
   v = Double(largest_denormal64).value();
   BignumDtoa(v, BIGNUM_DTOA_SHORTEST, 0, buffer, &length, &point);
   CHECK_EQ(0, strcmp("2225073858507201", buffer.begin()));
@@ -312,5 +310,5 @@ TEST(BignumDtoaGayPrecision) {
 }
 
 }  // namespace test_bignum_dtoa
-}  // namespace internal
+}  // namespace base
 }  // namespace v8

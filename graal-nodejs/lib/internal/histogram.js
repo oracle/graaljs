@@ -7,7 +7,6 @@ const {
   ObjectSetPrototypeOf,
   SafeMap,
   Symbol,
-  TypeError,
 } = primordials;
 
 const {
@@ -22,11 +21,16 @@ const { inspect } = require('util');
 
 const {
   codes: {
+    ERR_ILLEGAL_CONSTRUCTOR,
     ERR_INVALID_ARG_VALUE,
     ERR_INVALID_ARG_TYPE,
     ERR_OUT_OF_RANGE,
   },
 } = require('internal/errors');
+
+const {
+  validateNumber,
+} = require('internal/validators');
 
 const kDestroy = Symbol('kDestroy');
 const kHandle = Symbol('kHandle');
@@ -37,6 +41,10 @@ const {
   kDeserialize,
   JSTransferable,
 } = require('internal/worker/js_transferable');
+
+function isHistogram(object) {
+  return object?.[kHandle] !== undefined;
+}
 
 class Histogram extends JSTransferable {
   constructor(internal) {
@@ -85,8 +93,7 @@ class Histogram extends JSTransferable {
   }
 
   percentile(percentile) {
-    if (typeof percentile !== 'number')
-      throw new ERR_INVALID_ARG_TYPE('percentile', 'number', percentile);
+    validateNumber(percentile, 'percentile');
 
     if (NumberIsNaN(percentile) || percentile <= 0 || percentile > 100)
       throw new ERR_INVALID_ARG_VALUE.RangeError('percentile', percentile);
@@ -123,8 +130,7 @@ class Histogram extends JSTransferable {
 
 class RecordableHistogram extends Histogram {
   constructor() {
-    // eslint-disable-next-line no-restricted-syntax
-    throw new TypeError('illegal constructor');
+    throw new ERR_ILLEGAL_CONSTRUCTOR();
   }
 
   record(val) {
@@ -190,6 +196,7 @@ module.exports = {
   RecordableHistogram,
   InternalHistogram,
   InternalRecordableHistogram,
+  isHistogram,
   kDestroy,
   kHandle,
   createHistogram,

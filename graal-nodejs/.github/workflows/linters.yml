@@ -11,11 +11,12 @@ on:
       - v[0-9]+.x
 
 env:
-  PYTHON_VERSION: 3.9
+  PYTHON_VERSION: '3.10'
   NODE_VERSION: lts/*
 
 jobs:
   lint-addon-docs:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -28,6 +29,7 @@ jobs:
       - name: Lint addon docs
         run: NODE=$(command -v node) make lint-addon-docs
   lint-cpp:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -40,6 +42,7 @@ jobs:
       - name: Lint C/C++ files
         run: make lint-cpp
   lint-md:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -49,11 +52,19 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - name: Environment Information
         run: npx envinfo
+      - name: Get release version numbers
+        if: ${{ github.event.pull_request && github.event.pull_request.base.ref == github.event.pull_request.base.repo.default_branch }}
+        id: get-released-versions
+        run: ./tools/lint-md/list-released-versions-from-changelogs.mjs
       - name: Lint docs
         run: |
           echo "::add-matcher::.github/workflows/remark-lint-problem-matcher.json"
           NODE=$(command -v node) make lint-md
+        env:
+          NODE_RELEASED_VERSIONS: ${{ steps.get-released-versions.outputs.NODE_RELEASED_VERSIONS }}
+
   lint-js:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -66,6 +77,7 @@ jobs:
       - name: Lint JavaScript files
         run: NODE=$(command -v node) make lint-js
   lint-py:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -78,20 +90,37 @@ jobs:
       - name: Lint Python
         run: |
           make lint-py-build || true
-          NODE=$(command -v node) make lint-py
+          make lint-py
+  lint-yaml:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Environment Information
+        run: npx envinfo
+      - name: Lint YAML
+        run: |
+          make lint-yaml-build || true
+          make lint-yaml
+
   lint-sh:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - run: shellcheck -V
       - name: Lint Shell scripts
         run: tools/lint-sh.js .
-
   lint-codeowners:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: mszostok/codeowners-validator@v0.4.0
+      - uses: mszostok/codeowners-validator@v0.6.0
         with:
           checks: "files,duppatterns"
   lint-pr-url:

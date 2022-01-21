@@ -2,7 +2,7 @@
 
 > Stability: 1 - Experimental
 
-*tl;dr: You can land pull requests by adding the `commit-queue` label to it.*
+_tl;dr: You can land pull requests by adding the `commit-queue` label to it._
 
 Commit Queue is an experimental feature for the project which simplifies the
 landing process by automating it via GitHub Actions. With it, collaborators can
@@ -25,7 +25,7 @@ From a high-level, the Commit Queue works as follow:
    2. Check if the last Jenkins CI is finished running (if it is not, skip this
       PR)
    3. Remove the `commit-queue` label
-   4. Run `git node land <pr>`
+   4. Run `git node land <pr> --oneCommitMax`
    5. If it fails:
       1. Abort `git node land` session
       2. Add `commit-queue-failed` label to the PR
@@ -36,6 +36,12 @@ From a high-level, the Commit Queue works as follow:
       2. Leave a comment on the PR with `Landed in ...`
       3. Close the PR
       4. Go to next PR in the queue
+
+To make the Commit Queue squash all the commits of a pull request into the
+first one, add the `commit-queue-squash` label.
+To make the Commit Queue land a pull request containing several commits, add the
+`commit-queue-rebase` label. When using this option, make sure
+that all commits are self-contained, meaning every commit should pass all tests.
 
 ## Current limitations
 
@@ -58,7 +64,7 @@ events every five minutes. Five minutes is the smallest number accepted by
 the scheduler. The scheduler is not guaranteed to run every five minutes, it
 might take longer between runs.
 
-Using the scheduler is preferable over using pull_request_target for two
+Using the scheduler is preferable over using pull\_request\_target for two
 reasons:
 
 1. if two Commit Queue Actions execution overlap, there's a high-risk that
@@ -66,9 +72,9 @@ reasons:
    sync with the remote after the first Action pushes. `issue_comment` event
    has the same limitation.
 2. `pull_request_target` will only run if the Action exists on the base commit
-    of a pull request, and it will run the Action version present on that
-    commit, meaning we wouldn't be able to use it for already opened PRs
-    without rebasing them first.
+   of a pull request, and it will run the Action version present on that
+   commit, meaning we wouldn't be able to use it for already opened PRs
+   without rebasing them first.
 
 `node-core-utils` is configured with a personal token and
 a Jenkins token from
@@ -79,16 +85,16 @@ that into a list of PR ids we can pass as arguments to
 [`commit-queue.sh`](../../tools/actions/commit-queue.sh).
 
 > The personal token only needs permission for public repositories and to read
-> profiles, we can use the GITHUB_TOKEN for write operations. Jenkins token is
+> profiles, we can use the GITHUB\_TOKEN for write operations. Jenkins token is
 > required to check CI status.
 
 `commit-queue.sh` receives the following positional arguments:
 
 1. The repository owner
 2. The repository name
-3. The Action GITHUB_TOKEN
+3. The Action GITHUB\_TOKEN
 4. Every positional argument starting at this one will be a pull request ID of
-    a pull request with commit-queue set.
+   a pull request with commit-queue set.
 
 The script will iterate over the pull requests. `ncu-ci` is used to check if
 the last CI is still pending, and calls to the GitHub API are used to check if

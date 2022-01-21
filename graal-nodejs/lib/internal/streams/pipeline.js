@@ -5,29 +5,37 @@
 
 const {
   ArrayIsArray,
-  ReflectApply,
+  Promise,
   SymbolAsyncIterator,
 } = primordials;
 
-let eos;
-
+const eos = require('internal/streams/end-of-stream');
 const { once } = require('internal/util');
 const destroyImpl = require('internal/streams/destroy');
+const Duplex = require('internal/streams/duplex');
 const {
-  ERR_INVALID_ARG_TYPE,
-  ERR_INVALID_RETURN_VALUE,
-  ERR_INVALID_CALLBACK,
-  ERR_MISSING_ARGS,
-  ERR_STREAM_DESTROYED
-} = require('internal/errors').codes;
+  aggregateTwoErrors,
+  codes: {
+    ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_RETURN_VALUE,
+    ERR_MISSING_ARGS,
+    ERR_STREAM_DESTROYED,
+  },
+  AbortError,
+} = require('internal/errors');
+
+const {
+  validateCallback,
+  validateAbortSignal
+} = require('internal/validators');
 
 const {
   isIterable,
-  isReadable,
-  isStream,
+  isReadableNodeStream,
+  isNodeStream,
 } = require('internal/streams/utils');
+const { AbortController } = require('internal/abort_controller');
 
-let EE;
 let PassThrough;
 let Readable;
 
@@ -39,7 +47,6 @@ function destroyer(stream, reading, writing, callback) {
     finished = true;
   });
 
-  if (eos === undefined) eos = require('internal/streams/end-of-stream');
   eos(stream, { readable: reading, writable: writing }, (err) => {
     finished = !err;
 
@@ -78,15 +85,14 @@ function popCallback(streams) {
   // Streams should never be an empty array. It should always contain at least
   // a single stream. Therefore optimize for the average case instead of
   // checking for length === 0 as well.
-  if (typeof streams[streams.length - 1] !== 'function')
-    throw new ERR_INVALID_CALLBACK(streams[streams.length - 1]);
+  validateCallback(streams[streams.length - 1]);
   return streams.pop();
 }
 
 function makeAsyncIterable(val) {
   if (isIterable(val)) {
     return val;
-  } else if (isReadable(val)) {
+  } else if (isReadableNodeStream(val)) {
     // Legacy streams are not Iterable.
     return fromReadable(val);
   }
@@ -96,46 +102,93 @@ function makeAsyncIterable(val) {
 
 async function* fromReadable(val) {
   if (!Readable) {
-    Readable = require('_stream_readable');
+    Readable = require('internal/streams/readable');
   }
+
   yield* Readable.prototype[SymbolAsyncIterator].call(val);
 }
 
 async function pump(iterable, writable, finish) {
-  if (!EE) {
-    EE = require('events');
-  }
   let error;
+  let onresolve = null;
+
+  const resume = (err) => {
+    if (err) {
+      error = err;
+    }
+
+    if (onresolve) {
+      const callback = onresolve;
+      onresolve = null;
+      callback();
+    }
+  };
+
+  const wait = () => new Promise((resolve, reject) => {
+    if (error) {
+      reject(error);
+    } else {
+      onresolve = () => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      };
+    }
+  });
+
+  writable.on('drain', resume);
+  const cleanup = eos(writable, { readable: false }, resume);
+
   try {
-    if (writable.writableNeedDrain === true) {
-      await EE.once(writable, 'drain');
+    if (writable.writableNeedDrain) {
+      await wait();
     }
 
     for await (const chunk of iterable) {
       if (!writable.write(chunk)) {
-        if (writable.destroyed) return;
-        await EE.once(writable, 'drain');
+        await wait();
       }
     }
+
     writable.end();
+
+    await wait();
+
+    finish();
   } catch (err) {
-    error = err;
+    finish(error !== err ? aggregateTwoErrors(error, err) : err);
   } finally {
-    finish(error);
+    cleanup();
+    writable.off('drain', resume);
   }
 }
 
 function pipeline(...streams) {
-  const callback = once(popCallback(streams));
+  return pipelineImpl(streams, once(popCallback(streams)));
+}
 
-  // stream.pipeline(streams, callback)
-  if (ArrayIsArray(streams[0]) && streams.length === 1) {
+function pipelineImpl(streams, callback, opts) {
+  if (streams.length === 1 && ArrayIsArray(streams[0])) {
     streams = streams[0];
   }
 
   if (streams.length < 2) {
     throw new ERR_MISSING_ARGS('streams');
   }
+
+  const ac = new AbortController();
+  const signal = ac.signal;
+  const outerSignal = opts?.signal;
+
+  validateAbortSignal(outerSignal, 'options.signal');
+
+  function abort() {
+    finishImpl(new AbortError());
+  }
+
+  outerSignal?.addEventListener('abort', abort);
 
   let error;
   let value;
@@ -144,8 +197,10 @@ function pipeline(...streams) {
   let finishCount = 0;
 
   function finish(err) {
-    const final = --finishCount === 0;
+    finishImpl(err, --finishCount === 0);
+  }
 
+  function finishImpl(err, final) {
     if (err && (!error || error.code === 'ERR_STREAM_PREMATURE_CLOSE')) {
       error = err;
     }
@@ -158,6 +213,9 @@ function pipeline(...streams) {
       destroys.shift()(error);
     }
 
+    outerSignal?.removeEventListener('abort', abort);
+    ac.abort();
+
     if (final) {
       callback(error, value);
     }
@@ -169,28 +227,26 @@ function pipeline(...streams) {
     const reading = i < streams.length - 1;
     const writing = i > 0;
 
-    if (isStream(stream)) {
+    if (isNodeStream(stream)) {
       finishCount++;
       destroys.push(destroyer(stream, reading, writing, finish));
     }
 
     if (i === 0) {
       if (typeof stream === 'function') {
-        ret = stream();
+        ret = stream({ signal });
         if (!isIterable(ret)) {
           throw new ERR_INVALID_RETURN_VALUE(
             'Iterable, AsyncIterable or Stream', 'source', ret);
         }
-      } else if (isIterable(stream) || isReadable(stream)) {
+      } else if (isIterable(stream) || isReadableNodeStream(stream)) {
         ret = stream;
       } else {
-        throw new ERR_INVALID_ARG_TYPE(
-          'source', ['Stream', 'Iterable', 'AsyncIterable', 'Function'],
-          stream);
+        ret = Duplex.from(stream);
       }
     } else if (typeof stream === 'function') {
       ret = makeAsyncIterable(ret);
-      ret = stream(ret);
+      ret = stream(ret, { signal });
 
       if (reading) {
         if (!isIterable(ret, true)) {
@@ -215,14 +271,14 @@ function pipeline(...streams) {
         // second use.
         const then = ret?.then;
         if (typeof then === 'function') {
-          ReflectApply(then, ret, [
-            (val) => {
-              value = val;
-              pt.end(val);
-            }, (err) => {
-              pt.destroy(err);
-            },
-          ]);
+          then.call(ret,
+                    (val) => {
+                      value = val;
+                      pt.end(val);
+                    }, (err) => {
+                      pt.destroy(err);
+                    },
+          );
         } else if (isIterable(ret, true)) {
           finishCount++;
           pump(ret, pt, finish);
@@ -236,8 +292,8 @@ function pipeline(...streams) {
         finishCount++;
         destroys.push(destroyer(ret, false, true, finish));
       }
-    } else if (isStream(stream)) {
-      if (isReadable(ret)) {
+    } else if (isNodeStream(stream)) {
+      if (isReadableNodeStream(ret)) {
         ret.pipe(stream);
 
         // Compat. Before node v10.12.0 stdio used to throw an error so
@@ -254,16 +310,15 @@ function pipeline(...streams) {
       }
       ret = stream;
     } else {
-      const name = reading ? `transform[${i - 1}]` : 'destination';
-      throw new ERR_INVALID_ARG_TYPE(
-        name, ['Stream', 'Function'], stream);
+      ret = Duplex.from(stream);
     }
   }
 
-  // TODO(ronag): Consider returning a Duplex proxy if the first argument
-  // is a writable. Would improve composability.
-  // See, https://github.com/nodejs/node/issues/32020
+  if (signal?.aborted || outerSignal?.aborted) {
+    process.nextTick(abort);
+  }
+
   return ret;
 }
 
-module.exports = pipeline;
+module.exports = { pipelineImpl, pipeline };

@@ -156,12 +156,14 @@ assert.match(util.inspect((new JSStream())._externalStream),
   assert.strictEqual(util.inspect({ a: regexp }, false, 0), '{ a: /regexp/ }');
 }
 
-assert(/Object/.test(
-  util.inspect({ a: { a: { a: { a: {} } } } }, undefined, undefined, true)
-));
-assert(!/Object/.test(
-  util.inspect({ a: { a: { a: { a: {} } } } }, undefined, null, true)
-));
+assert.match(
+  util.inspect({ a: { a: { a: { a: {} } } } }, undefined, undefined, true),
+  /Object/
+);
+assert.doesNotMatch(
+  util.inspect({ a: { a: { a: { a: {} } } } }, undefined, null, true),
+  /Object/
+);
 
 {
   const showHidden = true;
@@ -1467,13 +1469,13 @@ if (typeof Symbol !== 'undefined') {
 
   // Set single option through property assignment.
   util.inspect.defaultOptions.maxArrayLength = null;
-  assert(!/1 more item/.test(util.inspect(arr)));
+  assert.doesNotMatch(util.inspect(arr), /1 more item/);
   util.inspect.defaultOptions.maxArrayLength = oldOptions.maxArrayLength;
-  assert(/1 more item/.test(util.inspect(arr)));
+  assert.match(util.inspect(arr), /1 more item/);
   util.inspect.defaultOptions.depth = null;
-  assert(!/Object/.test(util.inspect(obj)));
+  assert.doesNotMatch(util.inspect(obj), /Object/);
   util.inspect.defaultOptions.depth = oldOptions.depth;
-  assert(/Object/.test(util.inspect(obj)));
+  assert.match(util.inspect(obj), /Object/);
   assert.strictEqual(
     JSON.stringify(util.inspect.defaultOptions),
     JSON.stringify(oldOptions)
@@ -1481,11 +1483,11 @@ if (typeof Symbol !== 'undefined') {
 
   // Set multiple options through object assignment.
   util.inspect.defaultOptions = { maxArrayLength: null, depth: 2 };
-  assert(!/1 more item/.test(util.inspect(arr)));
-  assert(/Object/.test(util.inspect(obj)));
+  assert.doesNotMatch(util.inspect(arr), /1 more item/);
+  assert.match(util.inspect(obj), /Object/);
   util.inspect.defaultOptions = oldOptions;
-  assert(/1 more item/.test(util.inspect(arr)));
-  assert(/Object/.test(util.inspect(obj)));
+  assert.match(util.inspect(arr), /1 more item/);
+  assert.match(util.inspect(obj), /Object/);
   assert.strictEqual(
     JSON.stringify(util.inspect.defaultOptions),
     JSON.stringify(oldOptions)
@@ -2183,12 +2185,12 @@ assert.strictEqual(util.inspect('"\'${a}'), "'\"\\'${a}'");
   value.foo = 'bar';
   let res = util.inspect(value);
   assert.notStrictEqual(res, expectedWithoutProto);
-  assert(/foo: 'bar'/.test(res), res);
+  assert.match(res, /foo: 'bar'/);
   delete value.foo;
   value[Symbol('foo')] = 'yeah';
   res = util.inspect(value);
   assert.notStrictEqual(res, expectedWithoutProto);
-  assert(/\[Symbol\(foo\)]: 'yeah'/.test(res), res);
+  assert.match(res, /\[Symbol\(foo\)]: 'yeah'/);
 });
 
 assert.strictEqual(inspect(1n), '1n');
@@ -2732,16 +2734,16 @@ assert.strictEqual(
   const stack = [
     'TypedError: Wonderful message!',
     '    at A.<anonymous> (/test/node_modules/foo/node_modules/bar/baz.js:2:7)',
-    '    at Module._compile (internal/modules/cjs/loader.js:827:30)',
-    '    at Fancy (vm.js:697:32)',
+    '    at Module._compile (node:internal/modules/cjs/loader:827:30)',
+    '    at Fancy (node:vm:697:32)',
     // This file is not an actual Node.js core file.
-    '    at tryModuleLoad (internal/modules/cjs/foo.js:629:12)',
-    '    at Function.Module._load (internal/modules/cjs/loader.js:621:3)',
+    '    at tryModuleLoad (node:internal/modules/cjs/foo:629:12)',
+    '    at Function.Module._load (node:internal/modules/cjs/loader:621:3)',
     // This file is not an actual Node.js core file.
-    '    at Module.require [as weird/name] (internal/aaaaaa/loader.js:735:19)',
-    '    at require (internal/modules/cjs/helpers.js:14:16)',
+    '    at Module.require [as weird/name] (node:internal/aaaaa/loader:735:19)',
+    '    at require (node:internal/modules/cjs/helpers:14:16)',
     '    at /test/test-util-inspect.js:2239:9',
-    '    at getActual (assert.js:592:5)',
+    '    at getActual (node:assert:592:5)',
   ];
   const isNodeCoreFile = [
     false, false, true, true, false, true, false, true, false, true,
@@ -2855,8 +2857,8 @@ assert.strictEqual(
     '<ref *1> Foo [Map] {\n' +
     '    [constructor]: [class Bar extends Foo] {\n' +
     '      [length]: 0,\n' +
-    '      [prototype]: [Circular *1],\n' +
     "      [name]: 'Bar',\n" +
+    '      [prototype]: [Circular *1],\n' +
     '      [Symbol(Symbol.species)]: [Getter: <Inspection threw ' +
       "(Symbol.prototype.toString requires that 'this' be a Symbol)>]\n" +
     '    },\n' +
@@ -2934,6 +2936,7 @@ assert.strictEqual(
 
 {
   const x = 'a'.repeat(1e6);
+  assert(util.inspect(x).endsWith('... 990000 more characters'));
   assert.strictEqual(
     util.inspect(x, { maxStringLength: 4 }),
     "'aaaa'... 999996 more characters"

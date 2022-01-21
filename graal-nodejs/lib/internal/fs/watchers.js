@@ -1,9 +1,9 @@
 'use strict';
 
 const {
+  FunctionPrototypeCall,
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
-  Promise,
   Symbol,
 } = primordials;
 
@@ -14,6 +14,7 @@ const {
     ERR_INVALID_ARG_VALUE,
   },
 } = require('internal/errors');
+const { createDeferredPromise } = require('internal/util');
 
 const {
   kFsStatsFieldsNumber,
@@ -65,7 +66,7 @@ function emitStop(self) {
 }
 
 function StatWatcher(bigint) {
-  EventEmitter.call(this);
+  FunctionPrototypeCall(EventEmitter, this);
 
   this._handle = null;
   this[kOldStatus] = -1;
@@ -161,7 +162,7 @@ StatWatcher.prototype[kFSStatWatcherAddOrCleanRef] = function(operate) {
     // Clean up all
     this[KFSStatWatcherMaxRefCount] = 0;
     this[KFSStatWatcherRefCount] = 0;
-    this._handle && this._handle.unref();
+    this._handle?.unref();
   }
 };
 
@@ -184,7 +185,7 @@ StatWatcher.prototype.unref = function() {
 
 
 function FSWatcher() {
-  EventEmitter.call(this);
+  FunctionPrototypeCall(EventEmitter, this);
 
   this._handle = new FSEvent();
   this._handle[owner_symbol] = this;
@@ -318,21 +319,14 @@ async function* watch(filename, options = {}) {
     throw new AbortError();
 
   const handle = new FSEvent();
-  let res;
-  let rej;
+  let { promise, resolve, reject } = createDeferredPromise();
   const oncancel = () => {
     handle.close();
-    rej(new AbortError());
+    reject(new AbortError());
   };
 
   try {
     signal?.addEventListener('abort', oncancel, { once: true });
-
-    let promise = new Promise((resolve, reject) => {
-      res = resolve;
-      rej = reject;
-    });
-
     handle.onchange = (status, eventType, filename) => {
       if (status < 0) {
         const error = uvException({
@@ -342,11 +336,11 @@ async function* watch(filename, options = {}) {
         });
         error.filename = filename;
         handle.close();
-        rej(error);
+        reject(error);
         return;
       }
 
-      res({ eventType, filename });
+      resolve({ eventType, filename });
     };
 
     const err = handle.start(path, persistent, recursive, encoding);
@@ -365,10 +359,7 @@ async function* watch(filename, options = {}) {
 
     while (!signal?.aborted) {
       yield await promise;
-      promise = new Promise((resolve, reject) => {
-        res = resolve;
-        rej = reject;
-      });
+      ({ promise, resolve, reject } = createDeferredPromise());
     }
     throw new AbortError();
   } finally {

@@ -10,10 +10,14 @@
 #include <limits.h>
 #include <stdarg.h>
 #include <stdlib.h>
+
 #include <cmath>
 
 #include "src/base/bits.h"
 #include "src/base/lazy-instance.h"
+#include "src/base/platform/platform.h"
+#include "src/base/platform/wrappers.h"
+#include "src/base/vector.h"
 #include "src/codegen/assembler-inl.h"
 #include "src/codegen/macro-assembler.h"
 #include "src/codegen/mips/constants-mips.h"
@@ -21,7 +25,6 @@
 #include "src/heap/combined-heap.h"
 #include "src/runtime/runtime-utils.h"
 #include "src/utils/ostreams.h"
-#include "src/utils/vector.h"
 
 namespace v8 {
 namespace internal {
@@ -44,7 +47,7 @@ uint32_t get_fcsr_condition_bit(uint32_t cc) {
 // SScanF not being implemented in a platform independent was through
 // ::v8::internal::OS in the same way as SNPrintF is that the Windows C Run-Time
 // Library does not provide vsscanf.
-#define SScanF sscanf  // NOLINT
+#define SScanF sscanf
 
 // The MipsDebugger class is used by the simulator while debugging simulated
 // code.
@@ -341,7 +344,7 @@ void MipsDebugger::Debug() {
       disasm::NameConverter converter;
       disasm::Disassembler dasm(converter);
       // Use a reasonably large buffer.
-      v8::internal::EmbeddedVector<char, 256> buffer;
+      v8::base::EmbeddedVector<char, 256> buffer;
       dasm.InstructionDecode(buffer, reinterpret_cast<byte*>(sim_->get_pc()));
       PrintF("  0x%08x  %s\n", sim_->get_pc(), buffer.begin());
       last_pc = sim_->get_pc();
@@ -533,7 +536,7 @@ void MipsDebugger::Debug() {
         disasm::NameConverter converter;
         disasm::Disassembler dasm(converter);
         // Use a reasonably large buffer.
-        v8::internal::EmbeddedVector<char, 256> buffer;
+        v8::base::EmbeddedVector<char, 256> buffer;
 
         byte* cur = nullptr;
         byte* end = nullptr;
@@ -662,7 +665,7 @@ void MipsDebugger::Debug() {
         disasm::NameConverter converter;
         disasm::Disassembler dasm(converter);
         // Use a reasonably large buffer.
-        v8::internal::EmbeddedVector<char, 256> buffer;
+        v8::base::EmbeddedVector<char, 256> buffer;
 
         byte* cur = nullptr;
         byte* end = nullptr;
@@ -855,7 +858,8 @@ void Simulator::CheckICache(base::CustomMatcherHashMap* i_cache,
 Simulator::Simulator(Isolate* isolate) : isolate_(isolate) {
   // Set up simulator support first. Some of this information is needed to
   // setup the architecture state.
-  stack_ = reinterpret_cast<char*>(malloc(stack_size_));
+  stack_size_ = FLAG_sim_stack_size * KB;
+  stack_ = reinterpret_cast<char*>(base::Malloc(stack_size_));
   pc_modified_ = false;
   icount_ = 0;
   break_count_ = 0;
@@ -892,7 +896,7 @@ Simulator::Simulator(Isolate* isolate) : isolate_(isolate) {
 
 Simulator::~Simulator() {
   GlobalMonitor::Get()->RemoveLinkedAddress(&global_monitor_thread_);
-  free(stack_);
+  base::Free(stack_);
 }
 
 // Get the active Simulator for the current thread.
@@ -1103,6 +1107,10 @@ void Simulator::set_fcsr_bit(uint32_t cc, bool value) {
 
 bool Simulator::test_fcsr_bit(uint32_t cc) { return FCSR_ & (1 << cc); }
 
+void Simulator::clear_fcsr_cause() {
+  FCSR_ &= ~kFCSRCauseMask;
+}
+
 void Simulator::set_fcsr_rounding_mode(FPURoundingMode mode) {
   FCSR_ |= mode & kFPURoundingModeMask;
 }
@@ -1161,7 +1169,7 @@ void Simulator::set_fpu_register_invalid_result64(float original,
   if (FCSR_ & kFCSRNaN2008FlagMask) {
     // The value of INT64_MAX (2^63-1) can't be represented as double exactly,
     // loading the most accurate representation into max_int64, which is 2^63.
-    double max_int64 = std::numeric_limits<int64_t>::max();
+    double max_int64 = static_cast<double>(std::numeric_limits<int64_t>::max());
     double min_int64 = std::numeric_limits<int64_t>::min();
     if (std::isnan(original)) {
       set_fpu_register(fd_reg(), 0);
@@ -1220,7 +1228,7 @@ void Simulator::set_fpu_register_invalid_result64(double original,
   if (FCSR_ & kFCSRNaN2008FlagMask) {
     // The value of INT64_MAX (2^63-1) can't be represented as double exactly,
     // loading the most accurate representation into max_int64, which is 2^63.
-    double max_int64 = std::numeric_limits<int64_t>::max();
+    double max_int64 = static_cast<double>(std::numeric_limits<int64_t>::max());
     double min_int64 = std::numeric_limits<int64_t>::min();
     if (std::isnan(original)) {
       set_fpu_register(fd_reg(), 0);
@@ -1243,24 +1251,31 @@ bool Simulator::set_fcsr_round_error(double original, double rounded) {
   double max_int32 = std::numeric_limits<int32_t>::max();
   double min_int32 = std::numeric_limits<int32_t>::min();
 
+  clear_fcsr_cause();
+
   if (!std::isfinite(original) || !std::isfinite(rounded)) {
     set_fcsr_bit(kFCSRInvalidOpFlagBit, true);
+    set_fcsr_bit(kFCSRInvalidOpCauseBit, true);
     ret = true;
   }
 
   if (original != rounded) {
     set_fcsr_bit(kFCSRInexactFlagBit, true);
+    set_fcsr_bit(kFCSRInexactCauseBit, true);
   }
 
   if (rounded < DBL_MIN && rounded > -DBL_MIN && rounded != 0) {
     set_fcsr_bit(kFCSRUnderflowFlagBit, true);
+    set_fcsr_bit(kFCSRUnderflowCauseBit, true);
     ret = true;
   }
 
   if (rounded > max_int32 || rounded < min_int32) {
     set_fcsr_bit(kFCSROverflowFlagBit, true);
+    set_fcsr_bit(kFCSROverflowCauseBit, true);
     // The reference is not really clear but it seems this is required:
     set_fcsr_bit(kFCSRInvalidOpFlagBit, true);
+    set_fcsr_bit(kFCSRInvalidOpCauseBit, true);
     ret = true;
   }
 
@@ -1273,27 +1288,34 @@ bool Simulator::set_fcsr_round64_error(double original, double rounded) {
   bool ret = false;
   // The value of INT64_MAX (2^63-1) can't be represented as double exactly,
   // loading the most accurate representation into max_int64, which is 2^63.
-  double max_int64 = std::numeric_limits<int64_t>::max();
+  double max_int64 = static_cast<double>(std::numeric_limits<int64_t>::max());
   double min_int64 = std::numeric_limits<int64_t>::min();
+
+  clear_fcsr_cause();
 
   if (!std::isfinite(original) || !std::isfinite(rounded)) {
     set_fcsr_bit(kFCSRInvalidOpFlagBit, true);
+    set_fcsr_bit(kFCSRInvalidOpCauseBit, true);
     ret = true;
   }
 
   if (original != rounded) {
     set_fcsr_bit(kFCSRInexactFlagBit, true);
+    set_fcsr_bit(kFCSRInexactCauseBit, true);
   }
 
   if (rounded < DBL_MIN && rounded > -DBL_MIN && rounded != 0) {
     set_fcsr_bit(kFCSRUnderflowFlagBit, true);
+    set_fcsr_bit(kFCSRUnderflowCauseBit, true);
     ret = true;
   }
 
   if (rounded >= max_int64 || rounded < min_int64) {
     set_fcsr_bit(kFCSROverflowFlagBit, true);
+    set_fcsr_bit(kFCSROverflowCauseBit, true);
     // The reference is not really clear but it seems this is required:
     set_fcsr_bit(kFCSRInvalidOpFlagBit, true);
+    set_fcsr_bit(kFCSRInvalidOpCauseBit, true);
     ret = true;
   }
 
@@ -1307,24 +1329,31 @@ bool Simulator::set_fcsr_round_error(float original, float rounded) {
   double max_int32 = std::numeric_limits<int32_t>::max();
   double min_int32 = std::numeric_limits<int32_t>::min();
 
+  clear_fcsr_cause();
+
   if (!std::isfinite(original) || !std::isfinite(rounded)) {
     set_fcsr_bit(kFCSRInvalidOpFlagBit, true);
+    set_fcsr_bit(kFCSRInvalidOpCauseBit, true);
     ret = true;
   }
 
   if (original != rounded) {
     set_fcsr_bit(kFCSRInexactFlagBit, true);
+    set_fcsr_bit(kFCSRInexactCauseBit, true);
   }
 
   if (rounded < FLT_MIN && rounded > -FLT_MIN && rounded != 0) {
     set_fcsr_bit(kFCSRUnderflowFlagBit, true);
+    set_fcsr_bit(kFCSRUnderflowCauseBit, true);
     ret = true;
   }
 
   if (rounded > max_int32 || rounded < min_int32) {
     set_fcsr_bit(kFCSROverflowFlagBit, true);
+    set_fcsr_bit(kFCSROverflowCauseBit, true);
     // The reference is not really clear but it seems this is required:
     set_fcsr_bit(kFCSRInvalidOpFlagBit, true);
+    set_fcsr_bit(kFCSRInvalidOpCauseBit, true);
     ret = true;
   }
 
@@ -1337,27 +1366,34 @@ bool Simulator::set_fcsr_round64_error(float original, float rounded) {
   bool ret = false;
   // The value of INT64_MAX (2^63-1) can't be represented as double exactly,
   // loading the most accurate representation into max_int64, which is 2^63.
-  double max_int64 = std::numeric_limits<int64_t>::max();
+  double max_int64 = static_cast<double>(std::numeric_limits<int64_t>::max());
   double min_int64 = std::numeric_limits<int64_t>::min();
+
+  clear_fcsr_cause();
 
   if (!std::isfinite(original) || !std::isfinite(rounded)) {
     set_fcsr_bit(kFCSRInvalidOpFlagBit, true);
+    set_fcsr_bit(kFCSRInvalidOpCauseBit, true);
     ret = true;
   }
 
   if (original != rounded) {
     set_fcsr_bit(kFCSRInexactFlagBit, true);
+    set_fcsr_bit(kFCSRInexactCauseBit, true);
   }
 
   if (rounded < FLT_MIN && rounded > -FLT_MIN && rounded != 0) {
     set_fcsr_bit(kFCSRUnderflowFlagBit, true);
+    set_fcsr_bit(kFCSRUnderflowCauseBit, true);
     ret = true;
   }
 
   if (rounded >= max_int64 || rounded < min_int64) {
     set_fcsr_bit(kFCSROverflowFlagBit, true);
+    set_fcsr_bit(kFCSROverflowCauseBit, true);
     // The reference is not really clear but it seems this is required:
     set_fcsr_bit(kFCSRInvalidOpFlagBit, true);
+    set_fcsr_bit(kFCSRInvalidOpCauseBit, true);
     ret = true;
   }
 
@@ -2134,7 +2170,7 @@ void Simulator::WriteMem(int32_t addr, T value, Instruction* instr) {
 uintptr_t Simulator::StackLimit(uintptr_t c_limit) const {
   // The simulator uses a separate JS stack. If we have exhausted the C stack,
   // we also drop down the JS limit to reflect the exhaustion on the JS stack.
-  if (GetCurrentStackPosition() < c_limit) {
+  if (base::Stack::GetCurrentStackPosition() < c_limit) {
     return reinterpret_cast<uintptr_t>(get_sp());
   }
 
@@ -4402,16 +4438,16 @@ T Simulator::MsaI5InstrHelper(uint32_t opcode, T ws, int32_t i5) {
       res = static_cast<T>(ws - ui5);
       break;
     case MAXI_S:
-      res = static_cast<T>(Max(ws, static_cast<T>(i5)));
+      res = static_cast<T>(std::max(ws, static_cast<T>(i5)));
       break;
     case MINI_S:
-      res = static_cast<T>(Min(ws, static_cast<T>(i5)));
+      res = static_cast<T>(std::min(ws, static_cast<T>(i5)));
       break;
     case MAXI_U:
-      res = static_cast<T>(Max(ws_u64, ui5_u64));
+      res = static_cast<T>(std::max(ws_u64, ui5_u64));
       break;
     case MINI_U:
-      res = static_cast<T>(Min(ws_u64, ui5_u64));
+      res = static_cast<T>(std::min(ws_u64, ui5_u64));
       break;
     case CEQI:
       res = static_cast<T>(!Compare(ws, static_cast<T>(i5)) ? -1ull : 0ull);
@@ -4900,16 +4936,16 @@ T Simulator::Msa3RInstrHelper(uint32_t opcode, T wd, T ws, T wt) {
       res = ws - wt;
       break;
     case MAX_S:
-      res = Max(ws, wt);
+      res = std::max(ws, wt);
       break;
     case MAX_U:
-      res = static_cast<T>(Max(static_cast<uT>(ws), static_cast<uT>(wt)));
+      res = static_cast<T>(std::max(static_cast<uT>(ws), static_cast<uT>(wt)));
       break;
     case MIN_S:
-      res = Min(ws, wt);
+      res = std::min(ws, wt);
       break;
     case MIN_U:
-      res = static_cast<T>(Min(static_cast<uT>(ws), static_cast<uT>(wt)));
+      res = static_cast<T>(std::min(static_cast<uT>(ws), static_cast<uT>(wt)));
       break;
     case MAX_A:
       // We use negative abs in order to avoid problems
@@ -5942,8 +5978,8 @@ T_int Msa2RFInstrHelper(uint32_t opcode, T_src src, T_dst* dst,
       const T_int min_int = std::numeric_limits<T_int>::min();
       if (std::isnan(element)) {
         *dst = 0;
-      } else if (element >= max_int || element <= min_int) {
-        *dst = element >= max_int ? max_int : min_int;
+      } else if (element >= static_cast<T_fp>(max_int) || element <= min_int) {
+        *dst = element >= static_cast<T_fp>(max_int) ? max_int : min_int;
       } else {
         *dst = static_cast<T_int>(std::trunc(element));
       }
@@ -5954,8 +5990,8 @@ T_int Msa2RFInstrHelper(uint32_t opcode, T_src src, T_dst* dst,
       const T_uint max_int = std::numeric_limits<T_uint>::max();
       if (std::isnan(element)) {
         *dst = 0;
-      } else if (element >= max_int || element <= 0) {
-        *dst = element >= max_int ? max_int : 0;
+      } else if (element >= static_cast<T_fp>(max_int) || element <= 0) {
+        *dst = element >= static_cast<T_fp>(max_int) ? max_int : 0;
       } else {
         *dst = static_cast<T_uint>(std::trunc(element));
       }
@@ -6030,8 +6066,8 @@ T_int Msa2RFInstrHelper(uint32_t opcode, T_src src, T_dst* dst,
       const T_int min_int = std::numeric_limits<T_int>::min();
       if (std::isnan(element)) {
         *dst = 0;
-      } else if (element < min_int || element > max_int) {
-        *dst = element > max_int ? max_int : min_int;
+      } else if (element < min_int || element > static_cast<T_fp>(max_int)) {
+        *dst = element > static_cast<T_fp>(max_int) ? max_int : min_int;
       } else {
         sim->round_according_to_msacsr<T_fp, T_int>(element, &element, dst);
       }
@@ -6042,8 +6078,8 @@ T_int Msa2RFInstrHelper(uint32_t opcode, T_src src, T_dst* dst,
       const T_uint max_uint = std::numeric_limits<T_uint>::max();
       if (std::isnan(element)) {
         *dst = 0;
-      } else if (element < 0 || element > max_uint) {
-        *dst = element > max_uint ? max_uint : 0;
+      } else if (element < 0 || element > static_cast<T_fp>(max_uint)) {
+        *dst = element > static_cast<T_fp>(max_uint) ? max_uint : 0;
       } else {
         T_uint res;
         sim->round_according_to_msacsr<T_fp, T_uint>(element, &element, &res);
@@ -6875,7 +6911,7 @@ void Simulator::InstructionDecode(Instruction* instr) {
     CheckICache(i_cache(), instr);
   }
   pc_modified_ = false;
-  v8::internal::EmbeddedVector<char, 256> buffer;
+  v8::base::EmbeddedVector<char, 256> buffer;
   if (::v8::internal::FLAG_trace_sim) {
     SNPrintF(trace_buf_, "%s", "");
     disasm::NameConverter converter;

@@ -1,4 +1,3 @@
-// Flags: --expose-internals
 'use strict';
 
 const { mustCall } = require('../common');
@@ -6,9 +5,6 @@ const { strictEqual, throws } = require('assert');
 const fixtures = require('../common/fixtures');
 const { fork } = require('child_process');
 const { getEventListeners } = require('events');
-const {
-  EventTarget,
-} = require('internal/event_target');
 
 {
   // Verify default signal

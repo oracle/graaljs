@@ -2,24 +2,34 @@
 
 const {
   Array,
+  FunctionPrototypeBind,
   MathMin,
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
+  PromisePrototypeThen,
+  ReflectApply,
   Symbol,
 } = primordials;
 
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_OUT_OF_RANGE,
-  ERR_STREAM_DESTROYED
+  ERR_METHOD_NOT_IMPLEMENTED,
 } = require('internal/errors').codes;
 const { deprecate } = require('internal/util');
-const { validateInteger } = require('internal/validators');
+const {
+  validateFunction,
+  validateInteger,
+} = require('internal/validators');
+const { errorOrDestroy } = require('internal/streams/destroy');
 const fs = require('fs');
+const { kRef, kUnref, FileHandle } = require('internal/fs/promises');
 const { Buffer } = require('buffer');
 const {
   copyObject,
   getOptions,
+  getValidatedFd,
+  validatePath,
 } = require('internal/fs/utils');
 const { Readable, Writable, finished } = require('stream');
 const { toPathIfFileURL } = require('internal/url');
@@ -27,6 +37,113 @@ const kIoDone = Symbol('kIoDone');
 const kIsPerformingIO = Symbol('kIsPerformingIO');
 
 const kFs = Symbol('kFs');
+const kHandle = Symbol('kHandle');
+
+function _construct(callback) {
+  const stream = this;
+  if (typeof stream.fd === 'number') {
+    callback();
+    return;
+  }
+
+  if (stream.open !== openWriteFs && stream.open !== openReadFs) {
+    // Backwards compat for monkey patching open().
+    const orgEmit = stream.emit;
+    stream.emit = function(...args) {
+      if (args[0] === 'open') {
+        this.emit = orgEmit;
+        callback();
+        ReflectApply(orgEmit, this, args);
+      } else if (args[0] === 'error') {
+        this.emit = orgEmit;
+        callback(args[1]);
+      } else {
+        ReflectApply(orgEmit, this, args);
+      }
+    };
+    stream.open();
+  } else {
+    stream[kFs].open(stream.path, stream.flags, stream.mode, (er, fd) => {
+      if (er) {
+        callback(er);
+      } else {
+        stream.fd = fd;
+        callback();
+        stream.emit('open', stream.fd);
+        stream.emit('ready');
+      }
+    });
+  }
+}
+
+// This generates an fs operations structure for a FileHandle
+const FileHandleOperations = (handle) => {
+  return {
+    open: (path, flags, mode, cb) => {
+      throw new ERR_METHOD_NOT_IMPLEMENTED('open()');
+    },
+    close: (fd, cb) => {
+      handle[kUnref]();
+      PromisePrototypeThen(handle.close(),
+                           () => cb(), cb);
+    },
+    read: (fd, buf, offset, length, pos, cb) => {
+      PromisePrototypeThen(handle.read(buf, offset, length, pos),
+                           (r) => cb(null, r.bytesRead, r.buffer),
+                           (err) => cb(err, 0, buf));
+    },
+    write: (fd, buf, offset, length, pos, cb) => {
+      PromisePrototypeThen(handle.write(buf, offset, length, pos),
+                           (r) => cb(null, r.bytesWritten, r.buffer),
+                           (err) => cb(err, 0, buf));
+    },
+    writev: (fd, buffers, pos, cb) => {
+      PromisePrototypeThen(handle.writev(buffers, pos),
+                           (r) => cb(null, r.bytesWritten, r.buffers),
+                           (err) => cb(err, 0, buffers));
+    }
+  };
+};
+
+function close(stream, err, cb) {
+  if (!stream.fd) {
+    // TODO(ronag)
+    // stream.closed = true;
+    cb(err);
+  } else {
+    stream[kFs].close(stream.fd, (er) => {
+      stream.closed = true;
+      cb(er || err);
+    });
+    stream.fd = null;
+  }
+}
+
+function importFd(stream, options) {
+  if (typeof options.fd === 'number') {
+    // When fd is a raw descriptor, we must keep our fingers crossed
+    // that the descriptor won't get closed, or worse, replaced with
+    // another one
+    // https://github.com/nodejs/node/issues/35862
+    stream[kFs] = options.fs || fs;
+    return options.fd;
+  } else if (typeof options.fd === 'object' &&
+             options.fd instanceof FileHandle) {
+    // When fd is a FileHandle we can listen for 'close' events
+    if (options.fs) {
+      // FileHandle is not supported with custom fs operations
+      throw new ERR_METHOD_NOT_IMPLEMENTED('FileHandle with fs');
+    }
+    stream[kHandle] = options.fd;
+    stream[kFs] = FileHandleOperations(stream[kHandle]);
+    stream[kHandle][kRef]();
+    options.fd.on('close', FunctionPrototypeBind(stream.close, stream));
+    return options.fd.fd;
+  }
+
+  throw ERR_INVALID_ARG_TYPE('options.fd',
+                             ['number', 'FileHandle'], options.fd);
+}
 
 function ReadStream(path, options) {
   if (!(this instanceof ReadStream))
@@ -41,34 +158,32 @@ function ReadStream(path, options) {
     options.autoDestroy = false;
   }
 
-  this[kFs] = options.fs || fs;
+  if (options.fd == null) {
+    this.fd = null;
+    this[kFs] = options.fs || fs;
+    validateFunction(this[kFs].open, 'options.fs.open');
 
-  if (typeof this[kFs].open !== 'function') {
-    throw new ERR_INVALID_ARG_TYPE('options.fs.open', 'function',
-                                   this[kFs].open);
+    // Path will be ignored when fd is specified, so it can be falsy
+    this.path = toPathIfFileURL(path);
+    this.flags = options.flags === undefined ? 'r' : options.flags;
+    this.mode = options.mode === undefined ? 0o666 : options.mode;
+
+    validatePath(this.path);
+  } else {
+    this.fd = getValidatedFd(importFd(this, options));
   }
 
-  if (typeof this[kFs].read !== 'function') {
-    throw new ERR_INVALID_ARG_TYPE('options.fs.read', 'function',
-                                   this[kFs].read);
+  options.autoDestroy = options.autoClose === undefined ?
+    true : options.autoClose;
+
+  validateFunction(this[kFs].read, 'options.fs.read');
+
+  if (options.autoDestroy) {
+    validateFunction(this[kFs].close, 'options.fs.close');
   }
-
-  if (typeof this[kFs].close !== 'function') {
-    throw new ERR_INVALID_ARG_TYPE('options.fs.close', 'function',
-                                   this[kFs].close);
-  }
-
-  Readable.call(this, options);
-
-  // Path will be ignored when fd is specified, so it can be falsy
-  this.path = toPathIfFileURL(path);
-  this.fd = options.fd === undefined ? null : options.fd;
-  this.flags = options.flags === undefined ? 'r' : options.flags;
-  this.mode = options.mode === undefined ? 0o666 : options.mode;
 
   this.start = options.start;
   this.end = options.end;
-  this.autoClose = options.autoClose === undefined ? true : options.autoClose;
   this.pos = undefined;
   this.bytesRead = 0;
   this.closed = false;
@@ -79,6 +194,7 @@ function ReadStream(path, options) {
 
     this.pos = this.start;
   }
+
 
   if (this.end === undefined) {
     this.end = Infinity;
@@ -94,56 +210,28 @@ function ReadStream(path, options) {
     }
   }
 
-  if (typeof this.fd !== 'number')
-    _openReadFs(this);
-
-  this.on('end', function() {
-    if (this.autoClose) {
-      this.destroy();
-    }
-  });
+  ReflectApply(Readable, this, [options]);
 }
 ObjectSetPrototypeOf(ReadStream.prototype, Readable.prototype);
 ObjectSetPrototypeOf(ReadStream, Readable);
 
+ObjectDefineProperty(ReadStream.prototype, 'autoClose', {
+  get() {
+    return this._readableState.autoDestroy;
+  },
+  set(val) {
+    this._readableState.autoDestroy = val;
+  }
+});
+
 const openReadFs = deprecate(function() {
-  _openReadFs(this);
+  // Noop.
 }, 'ReadStream.prototype.open() is deprecated', 'DEP0135');
 ReadStream.prototype.open = openReadFs;
 
-function _openReadFs(stream) {
-  // Backwards compat for overriden open.
-  if (stream.open !== openReadFs) {
-    stream.open();
-    return;
-  }
-
-  stream[kFs].open(stream.path, stream.flags, stream.mode, (er, fd) => {
-    if (er) {
-      if (stream.autoClose) {
-        stream.destroy();
-      }
-      stream.emit('error', er);
-      return;
-    }
-
-    stream.fd = fd;
-    stream.emit('open', fd);
-    stream.emit('ready');
-    // Start the flow of data.
-    stream.read();
-  });
-}
+ReadStream.prototype._construct = _construct;
 
 ReadStream.prototype._read = function(n) {
-  if (typeof this.fd !== 'number') {
-    return this.once('open', function() {
-      this._read(n);
-    });
-  }
-
-  if (this.destroyed) return;
-
   n = this.pos !== undefined ?
     MathMin(this.end - this.pos + 1, n) :
     MathMin(this.end - this.bytesRead + 1, n);
@@ -167,10 +255,7 @@ ReadStream.prototype._read = function(n) {
       }
 
       if (er) {
-        if (this.autoClose) {
-          this.destroy();
-        }
-        this.emit('error', er);
+        errorOrDestroy(this, er);
       } else if (bytesRead > 0) {
         if (this.pos !== undefined) {
           this.pos += bytesRead;
@@ -195,27 +280,18 @@ ReadStream.prototype._read = function(n) {
 };
 
 ReadStream.prototype._destroy = function(err, cb) {
-  if (typeof this.fd !== 'number') {
-    this.once('open', closeFsStream.bind(null, this, cb, err));
-    return;
-  }
-
+  // Usually for async IO it is safe to close a file descriptor
+  // even when there are pending operations. However, due to platform
+  // differences file IO is implemented using synchronous operations
+  // running in a thread pool. Therefore, file descriptors are not safe
+  // to close while used in a pending read or write operation. Wait for
+  // any pending IO (kIsPerformingIO) to complete (kIoDone).
   if (this[kIsPerformingIO]) {
-    this.once(kIoDone, (er) => closeFsStream(this, cb, err || er));
-    return;
+    this.once(kIoDone, (er) => close(this, err || er, cb));
+  } else {
+    close(this, err, cb);
   }
-
-  closeFsStream(this, cb, err);
 };
-
-function closeFsStream(stream, cb, err) {
-  stream[kFs].close(stream.fd, (er) => {
-    stream.closed = true;
-    cb(er || err);
-  });
-
-  stream.fd = null;
-}
 
 ReadStream.prototype.close = function(cb) {
   if (typeof cb === 'function') finished(this, cb);
@@ -236,35 +312,39 @@ function WriteStream(path, options) {
   // Only buffers are supported.
   options.decodeStrings = true;
 
-  if (options.autoDestroy === undefined) {
-    options.autoDestroy = options.autoClose === undefined ?
-      true : (options.autoClose || false);
+  if (options.fd == null) {
+    this.fd = null;
+    this[kFs] = options.fs || fs;
+    validateFunction(this[kFs].open, 'options.fs.open');
+
+    // Path will be ignored when fd is specified, so it can be falsy
+    this.path = toPathIfFileURL(path);
+    this.flags = options.flags === undefined ? 'w' : options.flags;
+    this.mode = options.mode === undefined ? 0o666 : options.mode;
+
+    validatePath(this.path);
+  } else {
+    this.fd = getValidatedFd(importFd(this, options));
   }
 
-  this[kFs] = options.fs || fs;
-  if (typeof this[kFs].open !== 'function') {
-    throw new ERR_INVALID_ARG_TYPE('options.fs.open', 'function',
-                                   this[kFs].open);
-  }
+  options.autoDestroy = options.autoClose === undefined ?
+    true : options.autoClose;
 
   if (!this[kFs].write && !this[kFs].writev) {
     throw new ERR_INVALID_ARG_TYPE('options.fs.write', 'function',
                                    this[kFs].write);
   }
 
-  if (this[kFs].write && typeof this[kFs].write !== 'function') {
-    throw new ERR_INVALID_ARG_TYPE('options.fs.write', 'function',
-                                   this[kFs].write);
+  if (this[kFs].write) {
+    validateFunction(this[kFs].write, 'options.fs.write');
   }
 
-  if (this[kFs].writev && typeof this[kFs].writev !== 'function') {
-    throw new ERR_INVALID_ARG_TYPE('options.fs.writev', 'function',
-                                   this[kFs].writev);
+  if (this[kFs].writev) {
+    validateFunction(this[kFs].writev, 'options.fs.writev');
   }
 
-  if (typeof this[kFs].close !== 'function') {
-    throw new ERR_INVALID_ARG_TYPE('options.fs.close', 'function',
-                                   this[kFs].close);
+  if (options.autoDestroy) {
+    validateFunction(this[kFs].close, 'options.fs.close');
   }
 
   // It's enough to override either, in which case only one will be used.
@@ -275,20 +355,12 @@ function WriteStream(path, options) {
     this._writev = null;
   }
 
-  Writable.call(this, options);
-
-  // Path will be ignored when fd is specified, so it can be falsy
-  this.path = toPathIfFileURL(path);
-  this.fd = options.fd === undefined ? null : options.fd;
-  this.flags = options.flags === undefined ? 'w' : options.flags;
-  this.mode = options.mode === undefined ? 0o666 : options.mode;
-
   this.start = options.start;
-  this.autoClose = options.autoDestroy;
   this.pos = undefined;
   this.bytesWritten = 0;
   this.closed = false;
   this[kIsPerformingIO] = false;
+
 
   if (this.start !== undefined) {
     validateInteger(this.start, 'start', 0);
@@ -296,67 +368,36 @@ function WriteStream(path, options) {
     this.pos = this.start;
   }
 
+  ReflectApply(Writable, this, [options]);
+
   if (options.encoding)
     this.setDefaultEncoding(options.encoding);
-
-  if (typeof this.fd !== 'number')
-    _openWriteFs(this);
 }
 ObjectSetPrototypeOf(WriteStream.prototype, Writable.prototype);
 ObjectSetPrototypeOf(WriteStream, Writable);
 
-WriteStream.prototype._final = function(callback) {
-  if (typeof this.fd !== 'number') {
-    return this.once('open', function() {
-      this._final(callback);
-    });
+ObjectDefineProperty(WriteStream.prototype, 'autoClose', {
+  get() {
+    return this._writableState.autoDestroy;
+  },
+  set(val) {
+    this._writableState.autoDestroy = val;
   }
-
-  callback();
-};
+});
 
 const openWriteFs = deprecate(function() {
-  _openWriteFs(this);
+  // Noop.
 }, 'WriteStream.prototype.open() is deprecated', 'DEP0135');
 WriteStream.prototype.open = openWriteFs;
 
-function _openWriteFs(stream) {
-  // Backwards compat for overriden open.
-  if (stream.open !== openWriteFs) {
-    stream.open();
-    return;
-  }
-
-  stream[kFs].open(stream.path, stream.flags, stream.mode, (er, fd) => {
-    if (er) {
-      if (stream.autoClose) {
-        stream.destroy();
-      }
-      stream.emit('error', er);
-      return;
-    }
-
-    stream.fd = fd;
-    stream.emit('open', fd);
-    stream.emit('ready');
-  });
-}
-
+WriteStream.prototype._construct = _construct;
 
 WriteStream.prototype._write = function(data, encoding, cb) {
-  if (typeof this.fd !== 'number') {
-    return this.once('open', function() {
-      this._write(data, encoding, cb);
-    });
-  }
-
-  if (this.destroyed) return cb(new ERR_STREAM_DESTROYED('write'));
-
   this[kIsPerformingIO] = true;
   this[kFs].write(this.fd, data, 0, data.length, this.pos, (er, bytes) => {
     this[kIsPerformingIO] = false;
-    // Tell ._destroy() that it's safe to close the fd now.
     if (this.destroyed) {
+      // Tell ._destroy() that it's safe to close the fd now.
       cb(er);
       return this.emit(kIoDone, er);
     }
@@ -364,6 +405,7 @@ WriteStream.prototype._write = function(data, encoding, cb) {
     if (er) {
       return cb(er);
     }
+
     this.bytesWritten += bytes;
     cb();
   });
@@ -372,16 +414,7 @@ WriteStream.prototype._write = function(data, encoding, cb) {
     this.pos += data.length;
 };
 
-
 WriteStream.prototype._writev = function(data, cb) {
-  if (typeof this.fd !== 'number') {
-    return this.once('open', function() {
-      this._writev(data, cb);
-    });
-  }
-
-  if (this.destroyed) return cb(new ERR_STREAM_DESTROYED('write'));
-
   const len = data.length;
   const chunks = new Array(len);
   let size = 0;
@@ -396,18 +429,16 @@ WriteStream.prototype._writev = function(data, cb) {
   this[kIsPerformingIO] = true;
   this[kFs].writev(this.fd, chunks, this.pos, (er, bytes) => {
     this[kIsPerformingIO] = false;
-    // Tell ._destroy() that it's safe to close the fd now.
     if (this.destroyed) {
+      // Tell ._destroy() that it's safe to close the fd now.
       cb(er);
       return this.emit(kIoDone, er);
     }
 
     if (er) {
-      if (this.autoClose) {
-        this.destroy(er);
-      }
       return cb(er);
     }
+
     this.bytesWritten += bytes;
     cb();
   });
@@ -416,8 +447,20 @@ WriteStream.prototype._writev = function(data, cb) {
     this.pos += size;
 };
 
+WriteStream.prototype._destroy = function(err, cb) {
+  // Usually for async IO it is safe to close a file descriptor
+  // even when there are pending operations. However, due to platform
+  // differences file IO is implemented using synchronous operations
+  // running in a thread pool. Therefore, file descriptors are not safe
+  // to close while used in a pending read or write operation. Wait for
+  // any pending IO (kIsPerformingIO) to complete (kIoDone).
+  if (this[kIsPerformingIO]) {
+    this.once(kIoDone, (er) => close(this, err || er, cb));
+  } else {
+    close(this, err, cb);
+  }
+};
 
-WriteStream.prototype._destroy = ReadStream.prototype._destroy;
 WriteStream.prototype.close = function(cb) {
   if (cb) {
     if (this.closed) {

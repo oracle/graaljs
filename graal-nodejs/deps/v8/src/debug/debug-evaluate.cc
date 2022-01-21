@@ -7,6 +7,7 @@
 #include "src/builtins/accessors.h"
 #include "src/codegen/assembler-inl.h"
 #include "src/codegen/compiler.h"
+#include "src/codegen/script-details.h"
 #include "src/common/globals.h"
 #include "src/debug/debug-frames.h"
 #include "src/debug/debug-scopes.h"
@@ -18,11 +19,45 @@
 #include "src/objects/contexts.h"
 #include "src/snapshot/snapshot.h"
 
+#if V8_ENABLE_WEBASSEMBLY
+#include "src/debug/debug-wasm-objects.h"
+#endif  // V8_ENABLE_WEBASSEMBLY
+
 namespace v8 {
 namespace internal {
 
+namespace {
+static MaybeHandle<SharedFunctionInfo> GetFunctionInfo(Isolate* isolate,
+                                                       Handle<String> source,
+                                                       REPLMode repl_mode) {
+  ScriptDetails script_details(isolate->factory()->empty_string(),
+                               ScriptOriginOptions(false, true));
+  script_details.repl_mode = repl_mode;
+  return Compiler::GetSharedFunctionInfoForScript(
+      isolate, source, script_details, nullptr, nullptr,
+      ScriptCompiler::kNoCompileOptions, ScriptCompiler::kNoCacheNoReason,
+      NOT_NATIVES_CODE);
+}
+}  // namespace
+
 MaybeHandle<Object> DebugEvaluate::Global(Isolate* isolate,
                                           Handle<String> source,
+                                          debug::EvaluateGlobalMode mode,
+                                          REPLMode repl_mode) {
+  Handle<SharedFunctionInfo> shared_info;
+  if (!GetFunctionInfo(isolate, source, repl_mode).ToHandle(&shared_info)) {
+    return MaybeHandle<Object>();
+  }
+
+  Handle<NativeContext> context = isolate->native_context();
+  Handle<JSFunction> fun =
+      Factory::JSFunctionBuilder{isolate, shared_info, context}.Build();
+
+  return Global(isolate, fun, mode, repl_mode);
+}
+
+MaybeHandle<Object> DebugEvaluate::Global(Isolate* isolate,
+                                          Handle<JSFunction> function,
                                           debug::EvaluateGlobalMode mode,
                                           REPLMode repl_mode) {
   // Disable breaks in side-effect free mode.
@@ -32,27 +67,14 @@ MaybeHandle<Object> DebugEvaluate::Global(Isolate* isolate,
           mode ==
               debug::EvaluateGlobalMode::kDisableBreaksAndThrowOnSideEffect);
 
-  Handle<Context> context = isolate->native_context();
-  Compiler::ScriptDetails script_details(isolate->factory()->empty_string());
-  script_details.repl_mode = repl_mode;
-  ScriptOriginOptions origin_options(false, true);
-  MaybeHandle<SharedFunctionInfo> maybe_function_info =
-      Compiler::GetSharedFunctionInfoForScript(
-          isolate, source, script_details, origin_options, nullptr, nullptr,
-          ScriptCompiler::kNoCompileOptions, ScriptCompiler::kNoCacheNoReason,
-          NOT_NATIVES_CODE);
+  Handle<NativeContext> context = isolate->native_context();
+  CHECK_EQ(function->native_context(), *context);
 
-  Handle<SharedFunctionInfo> shared_info;
-  if (!maybe_function_info.ToHandle(&shared_info)) return MaybeHandle<Object>();
-
-  Handle<JSFunction> fun =
-      isolate->factory()->NewFunctionFromSharedFunctionInfo(shared_info,
-                                                            context);
   if (mode == debug::EvaluateGlobalMode::kDisableBreaksAndThrowOnSideEffect) {
     isolate->debug()->StartSideEffectCheckMode();
   }
   MaybeHandle<Object> result = Execution::Call(
-      isolate, fun, Handle<JSObject>(context->global_proxy(), isolate), 0,
+      isolate, function, Handle<JSObject>(context->global_proxy(), isolate), 0,
       nullptr);
   if (mode == debug::EvaluateGlobalMode::kDisableBreaksAndThrowOnSideEffect) {
     isolate->debug()->StopSideEffectCheckMode();
@@ -70,9 +92,23 @@ MaybeHandle<Object> DebugEvaluate::Local(Isolate* isolate,
 
   // Get the frame where the debugging is performed.
   StackTraceFrameIterator it(isolate, frame_id);
-  if (!it.is_javascript()) return isolate->factory()->undefined_value();
-  JavaScriptFrame* frame = it.javascript_frame();
+#if V8_ENABLE_WEBASSEMBLY
+  if (it.is_wasm()) {
+    WasmFrame* frame = WasmFrame::cast(it.frame());
+    Handle<SharedFunctionInfo> outer_info(
+        isolate->native_context()->empty_function().shared(), isolate);
+    Handle<JSObject> context_extension = GetWasmDebugProxy(frame);
+    Handle<ScopeInfo> scope_info =
+        ScopeInfo::CreateForWithScope(isolate, Handle<ScopeInfo>::null());
+    Handle<Context> context = isolate->factory()->NewWithContext(
+        isolate->native_context(), scope_info, context_extension);
+    return Evaluate(isolate, outer_info, context, context_extension, source,
+                    throw_on_side_effect);
+  }
+#endif  // V8_ENABLE_WEBASSEMBLY
 
+  CHECK(it.is_javascript());
+  JavaScriptFrame* frame = it.javascript_frame();
   // This is not a lot different than DebugEvaluate::Global, except that
   // variables accessible by the function we are evaluating from are
   // materialized and included on top of the native context. Changes to
@@ -80,7 +116,7 @@ MaybeHandle<Object> DebugEvaluate::Local(Isolate* isolate,
   // Note that the native context is taken from the original context chain,
   // which may not be the current native context of the isolate.
   ContextBuilder context_builder(isolate, frame, inlined_jsframe_index);
-  if (isolate->has_pending_exception()) return MaybeHandle<Object>();
+  if (isolate->has_pending_exception()) return {};
 
   Handle<Context> context = context_builder.evaluation_context();
   Handle<JSObject> receiver(context->global_proxy(), isolate);
@@ -124,9 +160,8 @@ MaybeHandle<Object> DebugEvaluate::WithTopmostArguments(Isolate* isolate,
   Handle<ScopeInfo> scope_info =
       ScopeInfo::CreateForWithScope(isolate, Handle<ScopeInfo>::null());
   scope_info->SetIsDebugEvaluateScope();
-  Handle<Context> evaluation_context =
-      factory->NewDebugEvaluateContext(native_context, scope_info, materialized,
-                                       Handle<Context>(), Handle<StringSet>());
+  Handle<Context> evaluation_context = factory->NewDebugEvaluateContext(
+      native_context, scope_info, materialized, Handle<Context>());
   Handle<SharedFunctionInfo> outer_info(
       native_context->empty_function().shared(), isolate);
   Handle<JSObject> receiver(native_context->global_proxy(), isolate);
@@ -189,10 +224,10 @@ DebugEvaluate::ContextBuilder::ContextBuilder(Isolate* isolate,
   //  - Between the function scope and the native context, we only resolve
   //    variable names that are guaranteed to not be shadowed by stack-allocated
   //    variables. Contexts between the function context and the original
-  //    context have a blacklist attached to implement that.
+  //    context have a blocklist attached to implement that.
   // Context::Lookup has special handling for debug-evaluate contexts:
   //  - Look up in the materialized stack variables.
-  //  - Check the blacklist to find out whether to abort further lookup.
+  //  - Check the blocklist to find out whether to abort further lookup.
   //  - Look up in the original context.
   for (; !scope_iterator_.Done(); scope_iterator_.Next()) {
     ScopeIterator::ScopeType scope_type = scope_iterator_.Type();
@@ -208,7 +243,7 @@ DebugEvaluate::ContextBuilder::ContextBuilder(Isolate* isolate,
       context_chain_element.wrapped_context = scope_iterator_.CurrentContext();
     }
     if (!scope_iterator_.InInnerScope()) {
-      context_chain_element.blacklist = scope_iterator_.GetLocals();
+      context_chain_element.blocklist = scope_iterator_.GetLocals();
     }
     context_chain_.push_back(context_chain_element);
   }
@@ -222,9 +257,13 @@ DebugEvaluate::ContextBuilder::ContextBuilder(Isolate* isolate,
     ContextChainElement element = *rit;
     scope_info = ScopeInfo::CreateForWithScope(isolate, scope_info);
     scope_info->SetIsDebugEvaluateScope();
+    if (!element.blocklist.is_null()) {
+      scope_info = ScopeInfo::RecreateWithBlockList(isolate, scope_info,
+                                                    element.blocklist);
+    }
     evaluation_context_ = factory->NewDebugEvaluateContext(
         evaluation_context_, scope_info, element.materialized_object,
-        element.wrapped_context, element.blacklist);
+        element.wrapped_context);
   }
 }
 
@@ -254,14 +293,14 @@ namespace {
 
 bool IntrinsicHasNoSideEffect(Runtime::FunctionId id) {
 // Use macro to include only the non-inlined version of an intrinsic.
-#define INTRINSIC_WHITELIST(V)                \
+#define INTRINSIC_ALLOWLIST(V)                \
   /* Conversions */                           \
   V(NumberToStringSlow)                       \
   V(ToBigInt)                                 \
   V(ToLength)                                 \
   V(ToNumber)                                 \
   V(ToObject)                                 \
-  V(ToStringRT)                               \
+  V(ToString)                                 \
   /* Type checks */                           \
   V(IsArray)                                  \
   V(IsFunction)                               \
@@ -289,12 +328,9 @@ bool IntrinsicHasNoSideEffect(Runtime::FunctionId id) {
   V(ThrowReferenceError)                      \
   V(ThrowSymbolIteratorInvalid)               \
   /* Strings */                               \
-  V(StringIncludes)                           \
-  V(StringIndexOf)                            \
   V(StringReplaceOneCharWithString)           \
   V(StringSubstring)                          \
   V(StringToNumber)                           \
-  V(StringTrim)                               \
   /* BigInts */                               \
   V(BigIntEqualToBigInt)                      \
   V(BigIntToBoolean)                          \
@@ -305,6 +341,7 @@ bool IntrinsicHasNoSideEffect(Runtime::FunctionId id) {
   V(CreateObjectLiteral)                      \
   V(CreateObjectLiteralWithoutAllocationSite) \
   V(CreateRegExpLiteral)                      \
+  V(DefineClass)                              \
   /* Called from builtins */                  \
   V(AllocateInYoungGeneration)                \
   V(AllocateInOldGeneration)                  \
@@ -321,6 +358,7 @@ bool IntrinsicHasNoSideEffect(Runtime::FunctionId id) {
   V(ObjectEntries)                            \
   V(ObjectEntriesSkipFastPath)                \
   V(ObjectHasOwnProperty)                     \
+  V(ObjectKeys)                               \
   V(ObjectValues)                             \
   V(ObjectValuesSkipFastPath)                 \
   V(ObjectGetOwnPropertyNames)                \
@@ -331,7 +369,6 @@ bool IntrinsicHasNoSideEffect(Runtime::FunctionId id) {
   V(StringAdd)                                \
   V(StringCharCodeAt)                         \
   V(StringEqual)                              \
-  V(StringIndexOfUnchecked)                   \
   V(StringParseFloat)                         \
   V(StringParseInt)                           \
   V(SymbolDescriptiveString)                  \
@@ -357,10 +394,8 @@ bool IntrinsicHasNoSideEffect(Runtime::FunctionId id) {
   V(OptimizeOsr)                              \
   V(UnblockConcurrentRecompilation)
 
-// Intrinsics with inline versions have to be whitelisted here a second time.
-#define INLINE_INTRINSIC_WHITELIST(V) \
-  V(Call)                             \
-  V(IsJSReceiver)                     \
+// Intrinsics with inline versions have to be allowlisted here a second time.
+#define INLINE_INTRINSIC_ALLOWLIST(V) \
   V(AsyncFunctionEnter)               \
   V(AsyncFunctionReject)              \
   V(AsyncFunctionResolve)
@@ -368,8 +403,8 @@ bool IntrinsicHasNoSideEffect(Runtime::FunctionId id) {
 #define CASE(Name) case Runtime::k##Name:
 #define INLINE_CASE(Name) case Runtime::kInline##Name:
   switch (id) {
-    INTRINSIC_WHITELIST(CASE)
-    INLINE_INTRINSIC_WHITELIST(INLINE_CASE)
+    INTRINSIC_ALLOWLIST(CASE)
+    INLINE_INTRINSIC_ALLOWLIST(INLINE_CASE)
     return true;
     default:
       if (FLAG_trace_side_effect_free_debug_evaluate) {
@@ -381,8 +416,8 @@ bool IntrinsicHasNoSideEffect(Runtime::FunctionId id) {
 
 #undef CASE
 #undef INLINE_CASE
-#undef INTRINSIC_WHITELIST
-#undef INLINE_INTRINSIC_WHITELIST
+#undef INTRINSIC_ALLOWLIST
+#undef INLINE_INTRINSIC_ALLOWLIST
 }
 
 bool BytecodeHasNoSideEffect(interpreter::Bytecode bytecode) {
@@ -393,12 +428,11 @@ bool BytecodeHasNoSideEffect(interpreter::Bytecode bytecode) {
   if (Bytecodes::IsJumpIfToBoolean(bytecode)) return true;
   if (Bytecodes::IsPrefixScalingBytecode(bytecode)) return true;
   switch (bytecode) {
-    // Whitelist for bytecodes.
+    // Allowlist for bytecodes.
     // Loads.
     case Bytecode::kLdaLookupSlot:
     case Bytecode::kLdaGlobal:
     case Bytecode::kLdaNamedProperty:
-    case Bytecode::kLdaNamedPropertyNoFeedback:
     case Bytecode::kLdaKeyedProperty:
     case Bytecode::kLdaGlobalInsideTypeof:
     case Bytecode::kLdaLookupSlotInsideTypeof:
@@ -495,335 +529,360 @@ bool BytecodeHasNoSideEffect(interpreter::Bytecode bytecode) {
   }
 }
 
-DebugInfo::SideEffectState BuiltinGetSideEffectState(Builtins::Name id) {
+DebugInfo::SideEffectState BuiltinGetSideEffectState(Builtin id) {
   switch (id) {
-    // Whitelist for builtins.
+    // Allowlist for builtins.
     // Object builtins.
-    case Builtins::kObjectConstructor:
-    case Builtins::kObjectCreate:
-    case Builtins::kObjectEntries:
-    case Builtins::kObjectGetOwnPropertyDescriptor:
-    case Builtins::kObjectGetOwnPropertyDescriptors:
-    case Builtins::kObjectGetOwnPropertyNames:
-    case Builtins::kObjectGetOwnPropertySymbols:
-    case Builtins::kObjectGetPrototypeOf:
-    case Builtins::kObjectIs:
-    case Builtins::kObjectIsExtensible:
-    case Builtins::kObjectIsFrozen:
-    case Builtins::kObjectIsSealed:
-    case Builtins::kObjectPrototypeValueOf:
-    case Builtins::kObjectValues:
-    case Builtins::kObjectPrototypeHasOwnProperty:
-    case Builtins::kObjectPrototypeIsPrototypeOf:
-    case Builtins::kObjectPrototypePropertyIsEnumerable:
-    case Builtins::kObjectPrototypeToString:
-    case Builtins::kObjectPrototypeToLocaleString:
+    case Builtin::kObjectConstructor:
+    case Builtin::kObjectCreate:
+    case Builtin::kObjectEntries:
+    case Builtin::kObjectGetOwnPropertyDescriptor:
+    case Builtin::kObjectGetOwnPropertyDescriptors:
+    case Builtin::kObjectGetOwnPropertyNames:
+    case Builtin::kObjectGetOwnPropertySymbols:
+    case Builtin::kObjectGetPrototypeOf:
+    case Builtin::kObjectHasOwn:
+    case Builtin::kObjectIs:
+    case Builtin::kObjectIsExtensible:
+    case Builtin::kObjectIsFrozen:
+    case Builtin::kObjectIsSealed:
+    case Builtin::kObjectKeys:
+    case Builtin::kObjectPrototypeValueOf:
+    case Builtin::kObjectValues:
+    case Builtin::kObjectPrototypeHasOwnProperty:
+    case Builtin::kObjectPrototypeIsPrototypeOf:
+    case Builtin::kObjectPrototypePropertyIsEnumerable:
+    case Builtin::kObjectPrototypeToString:
+    case Builtin::kObjectPrototypeToLocaleString:
     // Array builtins.
-    case Builtins::kArrayIsArray:
-    case Builtins::kArrayConstructor:
-    case Builtins::kArrayIndexOf:
-    case Builtins::kArrayPrototypeValues:
-    case Builtins::kArrayIncludes:
-    case Builtins::kArrayPrototypeEntries:
-    case Builtins::kArrayPrototypeFill:
-    case Builtins::kArrayPrototypeFind:
-    case Builtins::kArrayPrototypeFindIndex:
-    case Builtins::kArrayPrototypeFlat:
-    case Builtins::kArrayPrototypeFlatMap:
-    case Builtins::kArrayPrototypeJoin:
-    case Builtins::kArrayPrototypeKeys:
-    case Builtins::kArrayPrototypeLastIndexOf:
-    case Builtins::kArrayPrototypeSlice:
-    case Builtins::kArrayPrototypeToLocaleString:
-    case Builtins::kArrayPrototypeToString:
-    case Builtins::kArrayForEach:
-    case Builtins::kArrayEvery:
-    case Builtins::kArraySome:
-    case Builtins::kArrayConcat:
-    case Builtins::kArrayFilter:
-    case Builtins::kArrayMap:
-    case Builtins::kArrayReduce:
-    case Builtins::kArrayReduceRight:
+    case Builtin::kArrayIsArray:
+    case Builtin::kArrayConstructor:
+    case Builtin::kArrayIndexOf:
+    case Builtin::kArrayPrototypeValues:
+    case Builtin::kArrayIncludes:
+    case Builtin::kArrayPrototypeAt:
+    case Builtin::kArrayPrototypeConcat:
+    case Builtin::kArrayPrototypeEntries:
+    case Builtin::kArrayPrototypeFill:
+    case Builtin::kArrayPrototypeFind:
+    case Builtin::kArrayPrototypeFindIndex:
+    case Builtin::kArrayPrototypeFlat:
+    case Builtin::kArrayPrototypeFlatMap:
+    case Builtin::kArrayPrototypeJoin:
+    case Builtin::kArrayPrototypeKeys:
+    case Builtin::kArrayPrototypeLastIndexOf:
+    case Builtin::kArrayPrototypeSlice:
+    case Builtin::kArrayPrototypeToLocaleString:
+    case Builtin::kArrayPrototypeToString:
+    case Builtin::kArrayForEach:
+    case Builtin::kArrayEvery:
+    case Builtin::kArraySome:
+    case Builtin::kArrayConcat:
+    case Builtin::kArrayFilter:
+    case Builtin::kArrayMap:
+    case Builtin::kArrayReduce:
+    case Builtin::kArrayReduceRight:
     // Trace builtins.
-    case Builtins::kIsTraceCategoryEnabled:
-    case Builtins::kTrace:
+    case Builtin::kIsTraceCategoryEnabled:
+    case Builtin::kTrace:
     // TypedArray builtins.
-    case Builtins::kTypedArrayConstructor:
-    case Builtins::kTypedArrayPrototypeBuffer:
-    case Builtins::kTypedArrayPrototypeByteLength:
-    case Builtins::kTypedArrayPrototypeByteOffset:
-    case Builtins::kTypedArrayPrototypeLength:
-    case Builtins::kTypedArrayPrototypeEntries:
-    case Builtins::kTypedArrayPrototypeKeys:
-    case Builtins::kTypedArrayPrototypeValues:
-    case Builtins::kTypedArrayPrototypeFind:
-    case Builtins::kTypedArrayPrototypeFindIndex:
-    case Builtins::kTypedArrayPrototypeIncludes:
-    case Builtins::kTypedArrayPrototypeJoin:
-    case Builtins::kTypedArrayPrototypeIndexOf:
-    case Builtins::kTypedArrayPrototypeLastIndexOf:
-    case Builtins::kTypedArrayPrototypeSlice:
-    case Builtins::kTypedArrayPrototypeSubArray:
-    case Builtins::kTypedArrayPrototypeEvery:
-    case Builtins::kTypedArrayPrototypeSome:
-    case Builtins::kTypedArrayPrototypeToLocaleString:
-    case Builtins::kTypedArrayPrototypeFilter:
-    case Builtins::kTypedArrayPrototypeMap:
-    case Builtins::kTypedArrayPrototypeReduce:
-    case Builtins::kTypedArrayPrototypeReduceRight:
-    case Builtins::kTypedArrayPrototypeForEach:
+    case Builtin::kTypedArrayConstructor:
+    case Builtin::kTypedArrayOf:
+    case Builtin::kTypedArrayPrototypeAt:
+    case Builtin::kTypedArrayPrototypeBuffer:
+    case Builtin::kTypedArrayPrototypeByteLength:
+    case Builtin::kTypedArrayPrototypeByteOffset:
+    case Builtin::kTypedArrayPrototypeLength:
+    case Builtin::kTypedArrayPrototypeEntries:
+    case Builtin::kTypedArrayPrototypeKeys:
+    case Builtin::kTypedArrayPrototypeValues:
+    case Builtin::kTypedArrayPrototypeFind:
+    case Builtin::kTypedArrayPrototypeFindIndex:
+    case Builtin::kTypedArrayPrototypeIncludes:
+    case Builtin::kTypedArrayPrototypeJoin:
+    case Builtin::kTypedArrayPrototypeIndexOf:
+    case Builtin::kTypedArrayPrototypeLastIndexOf:
+    case Builtin::kTypedArrayPrototypeSlice:
+    case Builtin::kTypedArrayPrototypeSubArray:
+    case Builtin::kTypedArrayPrototypeEvery:
+    case Builtin::kTypedArrayPrototypeSome:
+    case Builtin::kTypedArrayPrototypeToLocaleString:
+    case Builtin::kTypedArrayPrototypeFilter:
+    case Builtin::kTypedArrayPrototypeMap:
+    case Builtin::kTypedArrayPrototypeReduce:
+    case Builtin::kTypedArrayPrototypeReduceRight:
+    case Builtin::kTypedArrayPrototypeForEach:
     // ArrayBuffer builtins.
-    case Builtins::kArrayBufferConstructor:
-    case Builtins::kArrayBufferPrototypeGetByteLength:
-    case Builtins::kArrayBufferIsView:
-    case Builtins::kArrayBufferPrototypeSlice:
-    case Builtins::kReturnReceiver:
+    case Builtin::kArrayBufferConstructor:
+    case Builtin::kArrayBufferPrototypeGetByteLength:
+    case Builtin::kArrayBufferIsView:
+    case Builtin::kArrayBufferPrototypeSlice:
+    case Builtin::kReturnReceiver:
     // DataView builtins.
-    case Builtins::kDataViewConstructor:
-    case Builtins::kDataViewPrototypeGetBuffer:
-    case Builtins::kDataViewPrototypeGetByteLength:
-    case Builtins::kDataViewPrototypeGetByteOffset:
-    case Builtins::kDataViewPrototypeGetInt8:
-    case Builtins::kDataViewPrototypeGetUint8:
-    case Builtins::kDataViewPrototypeGetInt16:
-    case Builtins::kDataViewPrototypeGetUint16:
-    case Builtins::kDataViewPrototypeGetInt32:
-    case Builtins::kDataViewPrototypeGetUint32:
-    case Builtins::kDataViewPrototypeGetFloat32:
-    case Builtins::kDataViewPrototypeGetFloat64:
-    case Builtins::kDataViewPrototypeGetBigInt64:
-    case Builtins::kDataViewPrototypeGetBigUint64:
+    case Builtin::kDataViewConstructor:
+    case Builtin::kDataViewPrototypeGetBuffer:
+    case Builtin::kDataViewPrototypeGetByteLength:
+    case Builtin::kDataViewPrototypeGetByteOffset:
+    case Builtin::kDataViewPrototypeGetInt8:
+    case Builtin::kDataViewPrototypeGetUint8:
+    case Builtin::kDataViewPrototypeGetInt16:
+    case Builtin::kDataViewPrototypeGetUint16:
+    case Builtin::kDataViewPrototypeGetInt32:
+    case Builtin::kDataViewPrototypeGetUint32:
+    case Builtin::kDataViewPrototypeGetFloat32:
+    case Builtin::kDataViewPrototypeGetFloat64:
+    case Builtin::kDataViewPrototypeGetBigInt64:
+    case Builtin::kDataViewPrototypeGetBigUint64:
     // Boolean bulitins.
-    case Builtins::kBooleanConstructor:
-    case Builtins::kBooleanPrototypeToString:
-    case Builtins::kBooleanPrototypeValueOf:
+    case Builtin::kBooleanConstructor:
+    case Builtin::kBooleanPrototypeToString:
+    case Builtin::kBooleanPrototypeValueOf:
     // Date builtins.
-    case Builtins::kDateConstructor:
-    case Builtins::kDateNow:
-    case Builtins::kDateParse:
-    case Builtins::kDatePrototypeGetDate:
-    case Builtins::kDatePrototypeGetDay:
-    case Builtins::kDatePrototypeGetFullYear:
-    case Builtins::kDatePrototypeGetHours:
-    case Builtins::kDatePrototypeGetMilliseconds:
-    case Builtins::kDatePrototypeGetMinutes:
-    case Builtins::kDatePrototypeGetMonth:
-    case Builtins::kDatePrototypeGetSeconds:
-    case Builtins::kDatePrototypeGetTime:
-    case Builtins::kDatePrototypeGetTimezoneOffset:
-    case Builtins::kDatePrototypeGetUTCDate:
-    case Builtins::kDatePrototypeGetUTCDay:
-    case Builtins::kDatePrototypeGetUTCFullYear:
-    case Builtins::kDatePrototypeGetUTCHours:
-    case Builtins::kDatePrototypeGetUTCMilliseconds:
-    case Builtins::kDatePrototypeGetUTCMinutes:
-    case Builtins::kDatePrototypeGetUTCMonth:
-    case Builtins::kDatePrototypeGetUTCSeconds:
-    case Builtins::kDatePrototypeGetYear:
-    case Builtins::kDatePrototypeToDateString:
-    case Builtins::kDatePrototypeToISOString:
-    case Builtins::kDatePrototypeToUTCString:
-    case Builtins::kDatePrototypeToString:
+    case Builtin::kDateConstructor:
+    case Builtin::kDateNow:
+    case Builtin::kDateParse:
+    case Builtin::kDatePrototypeGetDate:
+    case Builtin::kDatePrototypeGetDay:
+    case Builtin::kDatePrototypeGetFullYear:
+    case Builtin::kDatePrototypeGetHours:
+    case Builtin::kDatePrototypeGetMilliseconds:
+    case Builtin::kDatePrototypeGetMinutes:
+    case Builtin::kDatePrototypeGetMonth:
+    case Builtin::kDatePrototypeGetSeconds:
+    case Builtin::kDatePrototypeGetTime:
+    case Builtin::kDatePrototypeGetTimezoneOffset:
+    case Builtin::kDatePrototypeGetUTCDate:
+    case Builtin::kDatePrototypeGetUTCDay:
+    case Builtin::kDatePrototypeGetUTCFullYear:
+    case Builtin::kDatePrototypeGetUTCHours:
+    case Builtin::kDatePrototypeGetUTCMilliseconds:
+    case Builtin::kDatePrototypeGetUTCMinutes:
+    case Builtin::kDatePrototypeGetUTCMonth:
+    case Builtin::kDatePrototypeGetUTCSeconds:
+    case Builtin::kDatePrototypeGetYear:
+    case Builtin::kDatePrototypeToDateString:
+    case Builtin::kDatePrototypeToISOString:
+    case Builtin::kDatePrototypeToUTCString:
+    case Builtin::kDatePrototypeToString:
 #ifdef V8_INTL_SUPPORT
-    case Builtins::kDatePrototypeToLocaleString:
-    case Builtins::kDatePrototypeToLocaleDateString:
-    case Builtins::kDatePrototypeToLocaleTimeString:
+    case Builtin::kDatePrototypeToLocaleString:
+    case Builtin::kDatePrototypeToLocaleDateString:
+    case Builtin::kDatePrototypeToLocaleTimeString:
 #endif
-    case Builtins::kDatePrototypeToTimeString:
-    case Builtins::kDatePrototypeToJson:
-    case Builtins::kDatePrototypeToPrimitive:
-    case Builtins::kDatePrototypeValueOf:
+    case Builtin::kDatePrototypeToTimeString:
+    case Builtin::kDatePrototypeToJson:
+    case Builtin::kDatePrototypeToPrimitive:
+    case Builtin::kDatePrototypeValueOf:
     // Map builtins.
-    case Builtins::kMapConstructor:
-    case Builtins::kMapPrototypeForEach:
-    case Builtins::kMapPrototypeGet:
-    case Builtins::kMapPrototypeHas:
-    case Builtins::kMapPrototypeEntries:
-    case Builtins::kMapPrototypeGetSize:
-    case Builtins::kMapPrototypeKeys:
-    case Builtins::kMapPrototypeValues:
+    case Builtin::kMapConstructor:
+    case Builtin::kMapPrototypeForEach:
+    case Builtin::kMapPrototypeGet:
+    case Builtin::kMapPrototypeHas:
+    case Builtin::kMapPrototypeEntries:
+    case Builtin::kMapPrototypeGetSize:
+    case Builtin::kMapPrototypeKeys:
+    case Builtin::kMapPrototypeValues:
     // WeakMap builtins.
-    case Builtins::kWeakMapConstructor:
-    case Builtins::kWeakMapGet:
-    case Builtins::kWeakMapPrototypeHas:
+    case Builtin::kWeakMapConstructor:
+    case Builtin::kWeakMapGet:
+    case Builtin::kWeakMapPrototypeHas:
     // Math builtins.
-    case Builtins::kMathAbs:
-    case Builtins::kMathAcos:
-    case Builtins::kMathAcosh:
-    case Builtins::kMathAsin:
-    case Builtins::kMathAsinh:
-    case Builtins::kMathAtan:
-    case Builtins::kMathAtanh:
-    case Builtins::kMathAtan2:
-    case Builtins::kMathCeil:
-    case Builtins::kMathCbrt:
-    case Builtins::kMathExpm1:
-    case Builtins::kMathClz32:
-    case Builtins::kMathCos:
-    case Builtins::kMathCosh:
-    case Builtins::kMathExp:
-    case Builtins::kMathFloor:
-    case Builtins::kMathFround:
-    case Builtins::kMathHypot:
-    case Builtins::kMathImul:
-    case Builtins::kMathLog:
-    case Builtins::kMathLog1p:
-    case Builtins::kMathLog2:
-    case Builtins::kMathLog10:
-    case Builtins::kMathMax:
-    case Builtins::kMathMin:
-    case Builtins::kMathPow:
-    case Builtins::kMathRandom:
-    case Builtins::kMathRound:
-    case Builtins::kMathSign:
-    case Builtins::kMathSin:
-    case Builtins::kMathSinh:
-    case Builtins::kMathSqrt:
-    case Builtins::kMathTan:
-    case Builtins::kMathTanh:
-    case Builtins::kMathTrunc:
+    case Builtin::kMathAbs:
+    case Builtin::kMathAcos:
+    case Builtin::kMathAcosh:
+    case Builtin::kMathAsin:
+    case Builtin::kMathAsinh:
+    case Builtin::kMathAtan:
+    case Builtin::kMathAtanh:
+    case Builtin::kMathAtan2:
+    case Builtin::kMathCeil:
+    case Builtin::kMathCbrt:
+    case Builtin::kMathExpm1:
+    case Builtin::kMathClz32:
+    case Builtin::kMathCos:
+    case Builtin::kMathCosh:
+    case Builtin::kMathExp:
+    case Builtin::kMathFloor:
+    case Builtin::kMathFround:
+    case Builtin::kMathHypot:
+    case Builtin::kMathImul:
+    case Builtin::kMathLog:
+    case Builtin::kMathLog1p:
+    case Builtin::kMathLog2:
+    case Builtin::kMathLog10:
+    case Builtin::kMathMax:
+    case Builtin::kMathMin:
+    case Builtin::kMathPow:
+    case Builtin::kMathRound:
+    case Builtin::kMathSign:
+    case Builtin::kMathSin:
+    case Builtin::kMathSinh:
+    case Builtin::kMathSqrt:
+    case Builtin::kMathTan:
+    case Builtin::kMathTanh:
+    case Builtin::kMathTrunc:
     // Number builtins.
-    case Builtins::kNumberConstructor:
-    case Builtins::kNumberIsFinite:
-    case Builtins::kNumberIsInteger:
-    case Builtins::kNumberIsNaN:
-    case Builtins::kNumberIsSafeInteger:
-    case Builtins::kNumberParseFloat:
-    case Builtins::kNumberParseInt:
-    case Builtins::kNumberPrototypeToExponential:
-    case Builtins::kNumberPrototypeToFixed:
-    case Builtins::kNumberPrototypeToPrecision:
-    case Builtins::kNumberPrototypeToString:
-    case Builtins::kNumberPrototypeToLocaleString:
-    case Builtins::kNumberPrototypeValueOf:
+    case Builtin::kNumberConstructor:
+    case Builtin::kNumberIsFinite:
+    case Builtin::kNumberIsInteger:
+    case Builtin::kNumberIsNaN:
+    case Builtin::kNumberIsSafeInteger:
+    case Builtin::kNumberParseFloat:
+    case Builtin::kNumberParseInt:
+    case Builtin::kNumberPrototypeToExponential:
+    case Builtin::kNumberPrototypeToFixed:
+    case Builtin::kNumberPrototypeToPrecision:
+    case Builtin::kNumberPrototypeToString:
+    case Builtin::kNumberPrototypeToLocaleString:
+    case Builtin::kNumberPrototypeValueOf:
     // BigInt builtins.
-    case Builtins::kBigIntConstructor:
-    case Builtins::kBigIntAsIntN:
-    case Builtins::kBigIntAsUintN:
-    case Builtins::kBigIntPrototypeToString:
-    case Builtins::kBigIntPrototypeValueOf:
+    case Builtin::kBigIntConstructor:
+    case Builtin::kBigIntAsIntN:
+    case Builtin::kBigIntAsUintN:
+    case Builtin::kBigIntPrototypeToString:
+    case Builtin::kBigIntPrototypeValueOf:
     // Set builtins.
-    case Builtins::kSetConstructor:
-    case Builtins::kSetPrototypeEntries:
-    case Builtins::kSetPrototypeForEach:
-    case Builtins::kSetPrototypeGetSize:
-    case Builtins::kSetPrototypeHas:
-    case Builtins::kSetPrototypeValues:
+    case Builtin::kSetConstructor:
+    case Builtin::kSetPrototypeEntries:
+    case Builtin::kSetPrototypeForEach:
+    case Builtin::kSetPrototypeGetSize:
+    case Builtin::kSetPrototypeHas:
+    case Builtin::kSetPrototypeValues:
     // WeakSet builtins.
-    case Builtins::kWeakSetConstructor:
-    case Builtins::kWeakSetPrototypeHas:
+    case Builtin::kWeakSetConstructor:
+    case Builtin::kWeakSetPrototypeHas:
     // String builtins. Strings are immutable.
-    case Builtins::kStringFromCharCode:
-    case Builtins::kStringFromCodePoint:
-    case Builtins::kStringConstructor:
-    case Builtins::kStringPrototypeAnchor:
-    case Builtins::kStringPrototypeBig:
-    case Builtins::kStringPrototypeBlink:
-    case Builtins::kStringPrototypeBold:
-    case Builtins::kStringPrototypeCharAt:
-    case Builtins::kStringPrototypeCharCodeAt:
-    case Builtins::kStringPrototypeCodePointAt:
-    case Builtins::kStringPrototypeConcat:
-    case Builtins::kStringPrototypeEndsWith:
-    case Builtins::kStringPrototypeFixed:
-    case Builtins::kStringPrototypeFontcolor:
-    case Builtins::kStringPrototypeFontsize:
-    case Builtins::kStringPrototypeIncludes:
-    case Builtins::kStringPrototypeIndexOf:
-    case Builtins::kStringPrototypeItalics:
-    case Builtins::kStringPrototypeLastIndexOf:
-    case Builtins::kStringPrototypeLink:
-    case Builtins::kStringPrototypeMatchAll:
-    case Builtins::kStringPrototypePadEnd:
-    case Builtins::kStringPrototypePadStart:
-    case Builtins::kStringPrototypeRepeat:
-    case Builtins::kStringPrototypeSlice:
-    case Builtins::kStringPrototypeSmall:
-    case Builtins::kStringPrototypeStartsWith:
-    case Builtins::kStringPrototypeStrike:
-    case Builtins::kStringPrototypeSub:
-    case Builtins::kStringPrototypeSubstr:
-    case Builtins::kStringPrototypeSubstring:
-    case Builtins::kStringPrototypeSup:
-    case Builtins::kStringPrototypeToString:
+    case Builtin::kStringFromCharCode:
+    case Builtin::kStringFromCodePoint:
+    case Builtin::kStringConstructor:
+    case Builtin::kStringPrototypeAnchor:
+    case Builtin::kStringPrototypeAt:
+    case Builtin::kStringPrototypeBig:
+    case Builtin::kStringPrototypeBlink:
+    case Builtin::kStringPrototypeBold:
+    case Builtin::kStringPrototypeCharAt:
+    case Builtin::kStringPrototypeCharCodeAt:
+    case Builtin::kStringPrototypeCodePointAt:
+    case Builtin::kStringPrototypeConcat:
+    case Builtin::kStringPrototypeEndsWith:
+    case Builtin::kStringPrototypeFixed:
+    case Builtin::kStringPrototypeFontcolor:
+    case Builtin::kStringPrototypeFontsize:
+    case Builtin::kStringPrototypeIncludes:
+    case Builtin::kStringPrototypeIndexOf:
+    case Builtin::kStringPrototypeItalics:
+    case Builtin::kStringPrototypeLastIndexOf:
+    case Builtin::kStringPrototypeLink:
+    case Builtin::kStringPrototypeMatchAll:
+    case Builtin::kStringPrototypePadEnd:
+    case Builtin::kStringPrototypePadStart:
+    case Builtin::kStringPrototypeRepeat:
+    case Builtin::kStringPrototypeSlice:
+    case Builtin::kStringPrototypeSmall:
+    case Builtin::kStringPrototypeStartsWith:
+    case Builtin::kStringSlowFlatten:
+    case Builtin::kStringPrototypeStrike:
+    case Builtin::kStringPrototypeSub:
+    case Builtin::kStringPrototypeSubstr:
+    case Builtin::kStringPrototypeSubstring:
+    case Builtin::kStringPrototypeSup:
+    case Builtin::kStringPrototypeToString:
 #ifndef V8_INTL_SUPPORT
-    case Builtins::kStringPrototypeToLowerCase:
-    case Builtins::kStringPrototypeToUpperCase:
+    case Builtin::kStringPrototypeToLowerCase:
+    case Builtin::kStringPrototypeToUpperCase:
 #endif
-    case Builtins::kStringPrototypeTrim:
-    case Builtins::kStringPrototypeTrimEnd:
-    case Builtins::kStringPrototypeTrimStart:
-    case Builtins::kStringPrototypeValueOf:
-    case Builtins::kStringToNumber:
-    case Builtins::kStringSubstring:
+    case Builtin::kStringPrototypeTrim:
+    case Builtin::kStringPrototypeTrimEnd:
+    case Builtin::kStringPrototypeTrimStart:
+    case Builtin::kStringPrototypeValueOf:
+    case Builtin::kStringToNumber:
+    case Builtin::kStringSubstring:
     // Symbol builtins.
-    case Builtins::kSymbolConstructor:
-    case Builtins::kSymbolKeyFor:
-    case Builtins::kSymbolPrototypeToString:
-    case Builtins::kSymbolPrototypeValueOf:
-    case Builtins::kSymbolPrototypeToPrimitive:
+    case Builtin::kSymbolConstructor:
+    case Builtin::kSymbolKeyFor:
+    case Builtin::kSymbolPrototypeToString:
+    case Builtin::kSymbolPrototypeValueOf:
+    case Builtin::kSymbolPrototypeToPrimitive:
     // JSON builtins.
-    case Builtins::kJsonParse:
-    case Builtins::kJsonStringify:
+    case Builtin::kJsonParse:
+    case Builtin::kJsonStringify:
     // Global function builtins.
-    case Builtins::kGlobalDecodeURI:
-    case Builtins::kGlobalDecodeURIComponent:
-    case Builtins::kGlobalEncodeURI:
-    case Builtins::kGlobalEncodeURIComponent:
-    case Builtins::kGlobalEscape:
-    case Builtins::kGlobalUnescape:
-    case Builtins::kGlobalIsFinite:
-    case Builtins::kGlobalIsNaN:
+    case Builtin::kGlobalDecodeURI:
+    case Builtin::kGlobalDecodeURIComponent:
+    case Builtin::kGlobalEncodeURI:
+    case Builtin::kGlobalEncodeURIComponent:
+    case Builtin::kGlobalEscape:
+    case Builtin::kGlobalUnescape:
+    case Builtin::kGlobalIsFinite:
+    case Builtin::kGlobalIsNaN:
     // Function builtins.
-    case Builtins::kFunctionPrototypeToString:
-    case Builtins::kFunctionPrototypeBind:
-    case Builtins::kFastFunctionPrototypeBind:
-    case Builtins::kFunctionPrototypeCall:
-    case Builtins::kFunctionPrototypeApply:
+    case Builtin::kFunctionPrototypeToString:
+    case Builtin::kFunctionPrototypeBind:
+    case Builtin::kFastFunctionPrototypeBind:
+    case Builtin::kFunctionPrototypeCall:
+    case Builtin::kFunctionPrototypeApply:
     // Error builtins.
-    case Builtins::kErrorConstructor:
+    case Builtin::kErrorConstructor:
     // RegExp builtins.
-    case Builtins::kRegExpConstructor:
+    case Builtin::kRegExpConstructor:
     // Internal.
-    case Builtins::kStrictPoisonPillThrower:
-    case Builtins::kAllocateInYoungGeneration:
-    case Builtins::kAllocateInOldGeneration:
-    case Builtins::kAllocateRegularInYoungGeneration:
-    case Builtins::kAllocateRegularInOldGeneration:
+    case Builtin::kStrictPoisonPillThrower:
+    case Builtin::kAllocateInYoungGeneration:
+    case Builtin::kAllocateInOldGeneration:
+    case Builtin::kAllocateRegularInYoungGeneration:
+    case Builtin::kAllocateRegularInOldGeneration:
       return DebugInfo::kHasNoSideEffect;
 
     // Set builtins.
-    case Builtins::kSetIteratorPrototypeNext:
-    case Builtins::kSetPrototypeAdd:
-    case Builtins::kSetPrototypeClear:
-    case Builtins::kSetPrototypeDelete:
+    case Builtin::kSetIteratorPrototypeNext:
+    case Builtin::kSetPrototypeAdd:
+    case Builtin::kSetPrototypeClear:
+    case Builtin::kSetPrototypeDelete:
     // Array builtins.
-    case Builtins::kArrayIteratorPrototypeNext:
-    case Builtins::kArrayPrototypePop:
-    case Builtins::kArrayPrototypePush:
-    case Builtins::kArrayPrototypeReverse:
-    case Builtins::kArrayPrototypeShift:
-    case Builtins::kArrayPrototypeUnshift:
-    case Builtins::kArrayPrototypeSort:
-    case Builtins::kArrayPrototypeSplice:
-    case Builtins::kArrayUnshift:
+    case Builtin::kArrayIteratorPrototypeNext:
+    case Builtin::kArrayPrototypePop:
+    case Builtin::kArrayPrototypePush:
+    case Builtin::kArrayPrototypeReverse:
+    case Builtin::kArrayPrototypeShift:
+    case Builtin::kArrayPrototypeUnshift:
+    case Builtin::kArrayPrototypeSort:
+    case Builtin::kArrayPrototypeSplice:
+    case Builtin::kArrayUnshift:
     // Map builtins.
-    case Builtins::kMapIteratorPrototypeNext:
-    case Builtins::kMapPrototypeClear:
-    case Builtins::kMapPrototypeDelete:
-    case Builtins::kMapPrototypeSet:
+    case Builtin::kMapIteratorPrototypeNext:
+    case Builtin::kMapPrototypeClear:
+    case Builtin::kMapPrototypeDelete:
+    case Builtin::kMapPrototypeSet:
+    // Date builtins.
+    case Builtin::kDatePrototypeSetDate:
+    case Builtin::kDatePrototypeSetFullYear:
+    case Builtin::kDatePrototypeSetHours:
+    case Builtin::kDatePrototypeSetMilliseconds:
+    case Builtin::kDatePrototypeSetMinutes:
+    case Builtin::kDatePrototypeSetMonth:
+    case Builtin::kDatePrototypeSetSeconds:
+    case Builtin::kDatePrototypeSetTime:
+    case Builtin::kDatePrototypeSetUTCDate:
+    case Builtin::kDatePrototypeSetUTCFullYear:
+    case Builtin::kDatePrototypeSetUTCHours:
+    case Builtin::kDatePrototypeSetUTCMilliseconds:
+    case Builtin::kDatePrototypeSetUTCMinutes:
+    case Builtin::kDatePrototypeSetUTCMonth:
+    case Builtin::kDatePrototypeSetUTCSeconds:
+    case Builtin::kDatePrototypeSetYear:
     // RegExp builtins.
-    case Builtins::kRegExpPrototypeTest:
-    case Builtins::kRegExpPrototypeExec:
-    case Builtins::kRegExpPrototypeSplit:
-    case Builtins::kRegExpPrototypeFlagsGetter:
-    case Builtins::kRegExpPrototypeGlobalGetter:
-    case Builtins::kRegExpPrototypeIgnoreCaseGetter:
-    case Builtins::kRegExpPrototypeMatchAll:
-    case Builtins::kRegExpPrototypeMultilineGetter:
-    case Builtins::kRegExpPrototypeDotAllGetter:
-    case Builtins::kRegExpPrototypeUnicodeGetter:
-    case Builtins::kRegExpPrototypeStickyGetter:
+    case Builtin::kRegExpPrototypeTest:
+    case Builtin::kRegExpPrototypeExec:
+    case Builtin::kRegExpPrototypeSplit:
+    case Builtin::kRegExpPrototypeFlagsGetter:
+    case Builtin::kRegExpPrototypeGlobalGetter:
+    case Builtin::kRegExpPrototypeHasIndicesGetter:
+    case Builtin::kRegExpPrototypeIgnoreCaseGetter:
+    case Builtin::kRegExpPrototypeMatchAll:
+    case Builtin::kRegExpPrototypeMultilineGetter:
+    case Builtin::kRegExpPrototypeDotAllGetter:
+    case Builtin::kRegExpPrototypeUnicodeGetter:
+    case Builtin::kRegExpPrototypeStickyGetter:
       return DebugInfo::kRequiresRuntimeChecks;
     default:
       if (FLAG_trace_side_effect_free_debug_evaluate) {
@@ -838,7 +897,6 @@ bool BytecodeRequiresRuntimeCheck(interpreter::Bytecode bytecode) {
   using interpreter::Bytecode;
   switch (bytecode) {
     case Bytecode::kStaNamedProperty:
-    case Bytecode::kStaNamedPropertyNoFeedback:
     case Bytecode::kStaNamedOwnProperty:
     case Bytecode::kStaKeyedProperty:
     case Bytecode::kStaInArrayLiteral:
@@ -857,14 +915,15 @@ DebugInfo::SideEffectState DebugEvaluate::FunctionGetSideEffectState(
     Isolate* isolate, Handle<SharedFunctionInfo> info) {
   if (FLAG_trace_side_effect_free_debug_evaluate) {
     PrintF("[debug-evaluate] Checking function %s for side effect.\n",
-           info->DebugName().ToCString().get());
+           info->DebugNameCStr().get());
   }
 
   DCHECK(info->is_compiled());
   DCHECK(!info->needs_script_context());
   if (info->HasBytecodeArray()) {
-    // Check bytecodes against whitelist.
-    Handle<BytecodeArray> bytecode_array(info->GetBytecodeArray(), isolate);
+    // Check bytecodes against allowlist.
+    Handle<BytecodeArray> bytecode_array(info->GetBytecodeArray(isolate),
+                                         isolate);
     if (FLAG_trace_side_effect_free_debug_evaluate) {
       bytecode_array->Print();
     }
@@ -893,25 +952,23 @@ DebugInfo::SideEffectState DebugEvaluate::FunctionGetSideEffectState(
                interpreter::Bytecodes::ToString(bytecode));
       }
 
-      // Did not match whitelist.
+      // Did not match allowlist.
       return DebugInfo::kHasSideEffects;
     }
     return requires_runtime_checks ? DebugInfo::kRequiresRuntimeChecks
                                    : DebugInfo::kHasNoSideEffect;
   } else if (info->IsApiFunction()) {
     if (info->GetCode().is_builtin()) {
-      return info->GetCode().builtin_index() == Builtins::kHandleApiCall
+      return info->GetCode().builtin_id() == Builtin::kHandleApiCall
                  ? DebugInfo::kHasNoSideEffect
                  : DebugInfo::kHasSideEffects;
     }
   } else {
-    // Check built-ins against whitelist.
-    int builtin_index =
-        info->HasBuiltinId() ? info->builtin_id() : Builtins::kNoBuiltinId;
-    if (!Builtins::IsBuiltinId(builtin_index))
-      return DebugInfo::kHasSideEffects;
-    DebugInfo::SideEffectState state =
-        BuiltinGetSideEffectState(static_cast<Builtins::Name>(builtin_index));
+    // Check built-ins against allowlist.
+    Builtin builtin =
+        info->HasBuiltinId() ? info->builtin_id() : Builtin::kNoBuiltinId;
+    if (!Builtins::IsBuiltinId(builtin)) return DebugInfo::kHasSideEffects;
+    DebugInfo::SideEffectState state = BuiltinGetSideEffectState(builtin);
     return state;
   }
 
@@ -919,105 +976,122 @@ DebugInfo::SideEffectState DebugEvaluate::FunctionGetSideEffectState(
 }
 
 #ifdef DEBUG
-static bool TransitivelyCalledBuiltinHasNoSideEffect(Builtins::Name caller,
-                                                     Builtins::Name callee) {
+static bool TransitivelyCalledBuiltinHasNoSideEffect(Builtin caller,
+                                                     Builtin callee) {
   switch (callee) {
       // Transitively called Builtins:
-    case Builtins::kAbort:
-    case Builtins::kAbortCSAAssert:
-    case Builtins::kAdaptorWithBuiltinExitFrame:
-    case Builtins::kArrayConstructorImpl:
-    case Builtins::kArrayEveryLoopContinuation:
-    case Builtins::kArrayFilterLoopContinuation:
-    case Builtins::kArrayFindIndexLoopContinuation:
-    case Builtins::kArrayFindLoopContinuation:
-    case Builtins::kArrayForEachLoopContinuation:
-    case Builtins::kArrayIncludesHoleyDoubles:
-    case Builtins::kArrayIncludesPackedDoubles:
-    case Builtins::kArrayIncludesSmiOrObject:
-    case Builtins::kArrayIndexOfHoleyDoubles:
-    case Builtins::kArrayIndexOfPackedDoubles:
-    case Builtins::kArrayIndexOfSmiOrObject:
-    case Builtins::kArrayMapLoopContinuation:
-    case Builtins::kArrayReduceLoopContinuation:
-    case Builtins::kArrayReduceRightLoopContinuation:
-    case Builtins::kArraySomeLoopContinuation:
-    case Builtins::kArrayTimSort:
-    case Builtins::kCall_ReceiverIsAny:
-    case Builtins::kCall_ReceiverIsNotNullOrUndefined:
-    case Builtins::kCall_ReceiverIsNullOrUndefined:
-    case Builtins::kCallWithArrayLike:
-    case Builtins::kCEntry_Return1_DontSaveFPRegs_ArgvOnStack_NoBuiltinExit:
-    case Builtins::kCEntry_Return1_DontSaveFPRegs_ArgvOnStack_BuiltinExit:
-    case Builtins::kCEntry_Return1_DontSaveFPRegs_ArgvInRegister_NoBuiltinExit:
-    case Builtins::kCEntry_Return1_SaveFPRegs_ArgvOnStack_NoBuiltinExit:
-    case Builtins::kCEntry_Return1_SaveFPRegs_ArgvOnStack_BuiltinExit:
-    case Builtins::kCEntry_Return2_DontSaveFPRegs_ArgvOnStack_NoBuiltinExit:
-    case Builtins::kCEntry_Return2_DontSaveFPRegs_ArgvOnStack_BuiltinExit:
-    case Builtins::kCEntry_Return2_DontSaveFPRegs_ArgvInRegister_NoBuiltinExit:
-    case Builtins::kCEntry_Return2_SaveFPRegs_ArgvOnStack_NoBuiltinExit:
-    case Builtins::kCEntry_Return2_SaveFPRegs_ArgvOnStack_BuiltinExit:
-    case Builtins::kCloneFastJSArray:
-    case Builtins::kConstruct:
-    case Builtins::kConvertToLocaleString:
-    case Builtins::kCreateTypedArray:
-    case Builtins::kDirectCEntry:
-    case Builtins::kDoubleToI:
-    case Builtins::kExtractFastJSArray:
-    case Builtins::kFastNewObject:
-    case Builtins::kFindOrderedHashMapEntry:
-    case Builtins::kFlatMapIntoArray:
-    case Builtins::kFlattenIntoArray:
-    case Builtins::kGetProperty:
-    case Builtins::kHasProperty:
-    case Builtins::kCreateHTML:
-    case Builtins::kNonNumberToNumber:
-    case Builtins::kNonPrimitiveToPrimitive_Number:
-    case Builtins::kNumberToString:
-    case Builtins::kObjectToString:
-    case Builtins::kOrderedHashTableHealIndex:
-    case Builtins::kOrdinaryToPrimitive_Number:
-    case Builtins::kOrdinaryToPrimitive_String:
-    case Builtins::kParseInt:
-    case Builtins::kProxyHasProperty:
-    case Builtins::kProxyIsExtensible:
-    case Builtins::kProxyGetPrototypeOf:
-    case Builtins::kRecordWrite:
-    case Builtins::kStringAdd_CheckNone:
-    case Builtins::kStringEqual:
-    case Builtins::kStringIndexOf:
-    case Builtins::kStringRepeat:
-    case Builtins::kToInteger:
-    case Builtins::kToLength:
-    case Builtins::kToName:
-    case Builtins::kToObject:
-    case Builtins::kToString:
-    case Builtins::kWeakMapLookupHashIndex:
+    case Builtin::kAbort:
+    case Builtin::kAbortCSAAssert:
+    case Builtin::kAdaptorWithBuiltinExitFrame:
+    case Builtin::kArrayConstructorImpl:
+    case Builtin::kArrayEveryLoopContinuation:
+    case Builtin::kArrayFilterLoopContinuation:
+    case Builtin::kArrayFindIndexLoopContinuation:
+    case Builtin::kArrayFindLoopContinuation:
+    case Builtin::kArrayForEachLoopContinuation:
+    case Builtin::kArrayIncludesHoleyDoubles:
+    case Builtin::kArrayIncludesPackedDoubles:
+    case Builtin::kArrayIncludesSmiOrObject:
+    case Builtin::kArrayIndexOfHoleyDoubles:
+    case Builtin::kArrayIndexOfPackedDoubles:
+    case Builtin::kArrayIndexOfSmiOrObject:
+    case Builtin::kArrayMapLoopContinuation:
+    case Builtin::kArrayReduceLoopContinuation:
+    case Builtin::kArrayReduceRightLoopContinuation:
+    case Builtin::kArraySomeLoopContinuation:
+    case Builtin::kArrayTimSort:
+    case Builtin::kCall_ReceiverIsAny:
+    case Builtin::kCall_ReceiverIsNotNullOrUndefined:
+    case Builtin::kCall_ReceiverIsNullOrUndefined:
+    case Builtin::kCallWithArrayLike:
+    case Builtin::kCEntry_Return1_DontSaveFPRegs_ArgvOnStack_NoBuiltinExit:
+    case Builtin::kCEntry_Return1_DontSaveFPRegs_ArgvOnStack_BuiltinExit:
+    case Builtin::kCEntry_Return1_DontSaveFPRegs_ArgvInRegister_NoBuiltinExit:
+    case Builtin::kCEntry_Return1_SaveFPRegs_ArgvOnStack_NoBuiltinExit:
+    case Builtin::kCEntry_Return1_SaveFPRegs_ArgvOnStack_BuiltinExit:
+    case Builtin::kCEntry_Return2_DontSaveFPRegs_ArgvOnStack_NoBuiltinExit:
+    case Builtin::kCEntry_Return2_DontSaveFPRegs_ArgvOnStack_BuiltinExit:
+    case Builtin::kCEntry_Return2_DontSaveFPRegs_ArgvInRegister_NoBuiltinExit:
+    case Builtin::kCEntry_Return2_SaveFPRegs_ArgvOnStack_NoBuiltinExit:
+    case Builtin::kCEntry_Return2_SaveFPRegs_ArgvOnStack_BuiltinExit:
+    case Builtin::kCloneFastJSArray:
+    case Builtin::kConstruct:
+    case Builtin::kConvertToLocaleString:
+    case Builtin::kCreateTypedArray:
+    case Builtin::kDirectCEntry:
+    case Builtin::kDoubleToI:
+    case Builtin::kExtractFastJSArray:
+    case Builtin::kFastNewObject:
+    case Builtin::kFindOrderedHashMapEntry:
+    case Builtin::kFlatMapIntoArray:
+    case Builtin::kFlattenIntoArray:
+    case Builtin::kGetProperty:
+    case Builtin::kHasProperty:
+    case Builtin::kCreateHTML:
+    case Builtin::kNonNumberToNumber:
+    case Builtin::kNonPrimitiveToPrimitive_Number:
+    case Builtin::kNumberToString:
+    case Builtin::kObjectToString:
+    case Builtin::kOrderedHashTableHealIndex:
+    case Builtin::kOrdinaryToPrimitive_Number:
+    case Builtin::kOrdinaryToPrimitive_String:
+    case Builtin::kParseInt:
+    case Builtin::kProxyHasProperty:
+    case Builtin::kProxyIsExtensible:
+    case Builtin::kProxyGetPrototypeOf:
+    case Builtin::kRecordWriteEmitRememberedSetSaveFP:
+    case Builtin::kRecordWriteOmitRememberedSetSaveFP:
+    case Builtin::kRecordWriteEmitRememberedSetIgnoreFP:
+    case Builtin::kRecordWriteOmitRememberedSetIgnoreFP:
+    case Builtin::kStringAdd_CheckNone:
+    case Builtin::kStringEqual:
+    case Builtin::kStringIndexOf:
+    case Builtin::kStringRepeat:
+    case Builtin::kToInteger:
+    case Builtin::kToLength:
+    case Builtin::kToName:
+    case Builtin::kToObject:
+    case Builtin::kToString:
+#ifdef V8_IS_TSAN
+    case Builtin::kTSANRelaxedStore8IgnoreFP:
+    case Builtin::kTSANRelaxedStore8SaveFP:
+    case Builtin::kTSANRelaxedStore16IgnoreFP:
+    case Builtin::kTSANRelaxedStore16SaveFP:
+    case Builtin::kTSANRelaxedStore32IgnoreFP:
+    case Builtin::kTSANRelaxedStore32SaveFP:
+    case Builtin::kTSANRelaxedStore64IgnoreFP:
+    case Builtin::kTSANRelaxedStore64SaveFP:
+    case Builtin::kTSANRelaxedLoad32IgnoreFP:
+    case Builtin::kTSANRelaxedLoad32SaveFP:
+    case Builtin::kTSANRelaxedLoad64IgnoreFP:
+    case Builtin::kTSANRelaxedLoad64SaveFP:
+#endif  // V8_IS_TSAN
+    case Builtin::kWeakMapLookupHashIndex:
       return true;
-    case Builtins::kJoinStackPop:
-    case Builtins::kJoinStackPush:
+    case Builtin::kJoinStackPop:
+    case Builtin::kJoinStackPush:
       switch (caller) {
-        case Builtins::kArrayPrototypeJoin:
-        case Builtins::kArrayPrototypeToLocaleString:
-        case Builtins::kTypedArrayPrototypeJoin:
-        case Builtins::kTypedArrayPrototypeToLocaleString:
+        case Builtin::kArrayPrototypeJoin:
+        case Builtin::kArrayPrototypeToLocaleString:
+        case Builtin::kTypedArrayPrototypeJoin:
+        case Builtin::kTypedArrayPrototypeToLocaleString:
           return true;
         default:
           return false;
       }
-    case Builtins::kFastCreateDataProperty:
+    case Builtin::kFastCreateDataProperty:
       switch (caller) {
-        case Builtins::kArrayPrototypeSlice:
-        case Builtins::kArrayFilter:
+        case Builtin::kArrayPrototypeSlice:
+        case Builtin::kArrayFilter:
           return true;
         default:
           return false;
       }
-    case Builtins::kSetProperty:
+    case Builtin::kSetProperty:
       switch (caller) {
-        case Builtins::kArrayPrototypeSlice:
-        case Builtins::kTypedArrayPrototypeMap:
-        case Builtins::kStringPrototypeMatchAll:
+        case Builtin::kArrayPrototypeSlice:
+        case Builtin::kTypedArrayPrototypeMap:
+        case Builtin::kStringPrototypeMatchAll:
           return true;
         default:
           return false;
@@ -1032,11 +1106,10 @@ void DebugEvaluate::VerifyTransitiveBuiltins(Isolate* isolate) {
   // TODO(yangguo): also check runtime calls.
   bool failed = false;
   bool sanity_check = false;
-  for (int i = 0; i < Builtins::builtin_count; i++) {
-    Builtins::Name caller = static_cast<Builtins::Name>(i);
+  for (Builtin caller = Builtins::kFirst; caller <= Builtins::kLast; ++caller) {
     DebugInfo::SideEffectState state = BuiltinGetSideEffectState(caller);
     if (state != DebugInfo::kHasNoSideEffect) continue;
-    Code code = isolate->builtins()->builtin(caller);
+    Code code = isolate->builtins()->code(caller);
     int mode = RelocInfo::ModeMask(RelocInfo::CODE_TARGET) |
                RelocInfo::ModeMask(RelocInfo::RELATIVE_CODE_TARGET);
 
@@ -1046,8 +1119,7 @@ void DebugEvaluate::VerifyTransitiveBuiltins(Isolate* isolate) {
       Code callee_code = isolate->heap()->GcSafeFindCodeForInnerPointer(
           rinfo->target_address());
       if (!callee_code.is_builtin()) continue;
-      Builtins::Name callee =
-          static_cast<Builtins::Name>(callee_code.builtin_index());
+      Builtin callee = static_cast<Builtin>(callee_code.builtin_id());
       if (BuiltinGetSideEffectState(callee) == DebugInfo::kHasNoSideEffect) {
         continue;
       }
@@ -1055,7 +1127,7 @@ void DebugEvaluate::VerifyTransitiveBuiltins(Isolate* isolate) {
         sanity_check = true;
         continue;
       }
-      PrintF("Whitelisted builtin %s calls non-whitelisted builtin %s\n",
+      PrintF("Allowlisted builtin %s calls non-allowlisted builtin %s\n",
              Builtins::name(caller), Builtins::name(callee));
       failed = true;
     }

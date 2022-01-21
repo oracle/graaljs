@@ -16,10 +16,12 @@ const {
 const {
   ERR_ASYNC_CALLBACK,
   ERR_ASYNC_TYPE,
-  ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ASYNC_ID
 } = require('internal/errors').codes;
-const { validateString } = require('internal/validators');
+const {
+  validateFunction,
+  validateString,
+} = require('internal/validators');
 const internal_async_hooks = require('internal/async_hooks');
 
 // Get functions
@@ -219,10 +221,14 @@ class AsyncResource {
     return this[trigger_async_id_symbol];
   }
 
-  bind(fn) {
-    if (typeof fn !== 'function')
-      throw new ERR_INVALID_ARG_TYPE('fn', 'Function', fn);
-    const ret = FunctionPrototypeBind(this.runInAsyncScope, this, fn);
+  bind(fn, thisArg = this) {
+    validateFunction(fn, 'fn');
+    const ret =
+      FunctionPrototypeBind(
+        this.runInAsyncScope,
+        this,
+        fn,
+        thisArg);
     ObjectDefineProperties(ret, {
       'length': {
         configurable: true,
@@ -240,9 +246,9 @@ class AsyncResource {
     return ret;
   }
 
-  static bind(fn, type) {
+  static bind(fn, type, thisArg) {
     type = type || fn.name;
-    return (new AsyncResource(type || 'bound-anonymous-fn')).bind(fn);
+    return (new AsyncResource(type || 'bound-anonymous-fn')).bind(fn, thisArg);
   }
 }
 

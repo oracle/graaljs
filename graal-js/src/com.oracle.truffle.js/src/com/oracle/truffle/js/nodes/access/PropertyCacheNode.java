@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -400,8 +400,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         static AbstractShapeCheckNode create(Shape shape, DynamicObject thisObj, Object key, int depth, JSContext context) {
             assert thisObj != null;
             assert depth == 0;
-            Assumption[] ass = new Assumption[2];
+            Assumption[] ass = new Assumption[3];
             int pos = 0;
+            ass[pos++] = context.getSingleRealmAssumption();
             ass[pos++] = shape.getValidAssumption();
             ass[pos++] = JSShape.getPropertyAssumption(shape, key);
             assert pos == ass.length;

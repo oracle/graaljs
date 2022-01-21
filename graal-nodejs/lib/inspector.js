@@ -16,17 +16,15 @@ const {
   ERR_INSPECTOR_NOT_CONNECTED,
   ERR_INSPECTOR_NOT_ACTIVE,
   ERR_INSPECTOR_NOT_WORKER,
-  ERR_INVALID_ARG_TYPE,
-  ERR_INVALID_CALLBACK
 } = require('internal/errors').codes;
-
-//const { hasInspector } = internalBinding('config');
-//if (!hasInspector)
-//  throw new ERR_INSPECTOR_NOT_AVAILABLE();
 
 const EventEmitter = require('events');
 const { queueMicrotask } = require('internal/process/task_queues');
-const { validateString } = require('internal/validators');
+const {
+  validateCallback,
+  validateObject,
+  validateString,
+} = require('internal/validators');
 const { isMainThread } = require('worker_threads');
 
 const {
@@ -51,6 +49,10 @@ class Session extends EventEmitter {
     this[messageCallbacksSymbol] = new SafeMap();
   }
 
+  /**
+   * Connects the session to the inspector back-end.
+   * @returns {void}
+   */
   connect() {
     if (this[connectionSymbol])
       throw new ERR_INSPECTOR_ALREADY_CONNECTED('The inspector session');
@@ -58,6 +60,11 @@ class Session extends EventEmitter {
       new Connection((message) => this[onMessageSymbol](message));
   }
 
+  /**
+   * Connects the session to the main thread
+   * inspector back-end.
+   * @returns {void}
+   */
   connectToMainThread() {
     if (isMainThread)
       throw new ERR_INSPECTOR_NOT_WORKER();
@@ -91,17 +98,24 @@ class Session extends EventEmitter {
     }
   }
 
+  /**
+   * Posts a message to the inspector back-end.
+   * @param {string} method
+   * @param {Record<unknown, unknown>} [params]
+   * @param {Function} [callback]
+   * @returns {void}
+   */
   post(method, params, callback) {
     validateString(method, 'method');
     if (!callback && typeof params === 'function') {
       callback = params;
       params = null;
     }
-    if (params && typeof params !== 'object') {
-      throw new ERR_INVALID_ARG_TYPE('params', 'Object', params);
+    if (params) {
+      validateObject(params, 'params');
     }
-    if (callback && typeof callback !== 'function') {
-      throw new ERR_INVALID_CALLBACK(callback);
+    if (callback) {
+      validateCallback(callback);
     }
 
     if (!this[connectionSymbol]) {
@@ -118,6 +132,12 @@ class Session extends EventEmitter {
     this[connectionSymbol].dispatch(JSONStringify(message));
   }
 
+  /**
+   * Immediately closes the session, all pending
+   * message callbacks will be called with an
+   * error.
+   * @returns {void}
+   */
   disconnect() {
     if (!this[connectionSymbol])
       return;
@@ -132,6 +152,13 @@ class Session extends EventEmitter {
   }
 }
 
+/**
+ * Activates inspector on host and port.
+ * @param {number} [port]
+ * @param {string} [host]
+ * @param {boolean} [wait]
+ * @returns {void}
+ */
 function inspectorOpen(port, host, wait) {
   if (isEnabled()) {
     throw new ERR_INSPECTOR_ALREADY_ACTIVATED();
@@ -141,6 +168,12 @@ function inspectorOpen(port, host, wait) {
     waitForDebugger();
 }
 
+/**
+ * Blocks until a client (existing or connected later)
+ * has sent the `Runtime.runIfWaitingForDebugger`
+ * command.
+ * @returns {void}
+ */
 function inspectorWaitForDebugger() {
   if (!waitForDebugger())
     throw new ERR_INSPECTOR_NOT_ACTIVE();
@@ -149,7 +182,7 @@ function inspectorWaitForDebugger() {
 module.exports = {
   open: inspectorOpen,
   close: process._debugEnd,
-  url: url,
+  url,
   waitForDebugger: inspectorWaitForDebugger,
   // This is dynamically added during bootstrap,
   // where the console from the VM is still available

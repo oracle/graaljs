@@ -46,11 +46,11 @@ const {
 } = require('internal/dns/utils');
 const {
   ERR_INVALID_ARG_TYPE,
-  ERR_INVALID_CALLBACK,
-  ERR_INVALID_OPT_VALUE,
+  ERR_INVALID_ARG_VALUE,
   ERR_MISSING_ARGS,
 } = errors.codes;
 const {
+  validateCallback,
   validatePort,
   validateString,
   validateOneOf,
@@ -101,27 +101,31 @@ function lookup(hostname, options, callback) {
   let verbatim = getDefaultVerbatim();
 
   // Parse arguments
-  if (hostname && typeof hostname !== 'string') {
-    throw new ERR_INVALID_ARG_TYPE('hostname', 'string', hostname);
-  } else if (typeof options === 'function') {
-    callback = options;
-    family = 0;
-  } else if (typeof callback !== 'function') {
-    throw new ERR_INVALID_CALLBACK(callback);
-  } else if (options !== null && typeof options === 'object') {
-    hints = options.hints >>> 0;
-    family = options.family >>> 0;
-    all = options.all === true;
-    if (typeof options.verbatim === 'boolean') {
-      verbatim = options.verbatim === true;
-    }
-
-    validateHints(hints);
-  } else {
-    family = options >>> 0;
+  if (hostname) {
+    validateString(hostname, 'hostname');
   }
 
-  validateOneOf(family, 'family', [0, 4, 6], true);
+  if (typeof options === 'function') {
+    callback = options;
+    family = 0;
+  } else {
+    validateCallback(callback);
+
+    if (options !== null && typeof options === 'object') {
+      hints = options.hints >>> 0;
+      family = options.family >>> 0;
+      all = options.all === true;
+      if (typeof options.verbatim === 'boolean') {
+        verbatim = options.verbatim === true;
+      }
+
+      validateHints(hints);
+    } else {
+      family = options >>> 0;
+    }
+  }
+
+  validateOneOf(family, 'family', [0, 4, 6]);
 
   if (!hostname) {
     emitInvalidHostnameWarning(hostname);
@@ -177,12 +181,11 @@ function lookupService(address, port, callback) {
     throw new ERR_MISSING_ARGS('address', 'port', 'callback');
 
   if (isIP(address) === 0)
-    throw new ERR_INVALID_OPT_VALUE('address', address);
+    throw new ERR_INVALID_ARG_VALUE('address', address);
 
   validatePort(port);
 
-  if (typeof callback !== 'function')
-    throw new ERR_INVALID_CALLBACK(callback);
+  validateCallback(callback);
 
   port = +port;
 
@@ -221,9 +224,7 @@ function resolver(bindingName) {
     }
 
     validateString(name, 'name');
-    if (typeof callback !== 'function') {
-      throw new ERR_INVALID_CALLBACK(callback);
-    }
+    validateCallback(callback);
 
     const req = new QueryReqWrap();
     req.bindingName = bindingName;
@@ -270,7 +271,7 @@ function resolve(hostname, rrtype, callback) {
   if (typeof resolver === 'function') {
     return ReflectApply(resolver, this, [hostname, callback]);
   }
-  throw new ERR_INVALID_OPT_VALUE('rrtype', rrtype);
+  throw new ERR_INVALID_ARG_VALUE('rrtype', rrtype);
 }
 
 function defaultResolverSetServers(servers) {

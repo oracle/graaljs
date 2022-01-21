@@ -17,9 +17,7 @@ const hacks = [
   'eslint-plugin-node-core',
   'eslint-plugin-markdown',
   '@babel/eslint-parser',
-  '@babel/plugin-syntax-class-properties',
   '@babel/plugin-syntax-import-assertions',
-  '@babel/plugin-syntax-top-level-await',
 ];
 Module._findPath = (request, paths, isMain) => {
   const r = ModuleFindPath(request, paths, isMain);
@@ -41,9 +39,7 @@ module.exports = {
   parserOptions: {
     babelOptions: {
       plugins: [
-        Module._findPath('@babel/plugin-syntax-class-properties'),
         Module._findPath('@babel/plugin-syntax-import-assertions'),
-        Module._findPath('@babel/plugin-syntax-top-level-await'),
       ],
     },
     requireConfigFile: false,
@@ -99,6 +95,14 @@ module.exports = {
         {
           name: 'require',
           message: 'Use import instead',
+        },
+        {
+          name: 'Buffer',
+          message: 'Import Buffer instead of using the global'
+        },
+        {
+          name: 'process',
+          message: 'Import process instead of using the global'
         },
       ] },
     },
@@ -343,9 +347,17 @@ module.exports = {
     BigInt: 'readable',
     BigInt64Array: 'readable',
     BigUint64Array: 'readable',
+    Event: 'readable',
+    EventTarget: 'readable',
+    MessageChannel: 'readable',
+    MessageEvent: 'readable',
+    MessagePort: 'readable',
     TextEncoder: 'readable',
     TextDecoder: 'readable',
     queueMicrotask: 'readable',
     globalThis: 'readable',
+    btoa: 'readable',
+    atob: 'readable',
+    performance: 'readable',
   },
 };

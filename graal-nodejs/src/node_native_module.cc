@@ -8,7 +8,6 @@ namespace native_module {
 using v8::Context;
 using v8::EscapableHandleScope;
 using v8::Function;
-using v8::Integer;
 using v8::Isolate;
 using v8::Local;
 using v8::MaybeLocal;
@@ -95,18 +94,21 @@ void NativeModuleLoader::InitializeModuleCategories() {
 
 #if !HAVE_OPENSSL
       "crypto",
+      "crypto/promises",
       "https",
       "http2",
       "tls",
       "_tls_common",
       "_tls_wrap",
+      "internal/tls/secure-pair",
+      "internal/tls/parse-cert-string",
+      "internal/tls/secure-context",
       "internal/http2/core",
       "internal/http2/compat",
       "internal/policy/manifest",
       "internal/process/policy",
       "internal/streams/lazy_transform",
 #endif  // !HAVE_OPENSSL
-
       "sys",  // Deprecated.
       "wasi",  // Experimental.
       "internal/test/binding",
@@ -205,6 +207,16 @@ static std::string OnDiskFileName(const char* id) {
 MaybeLocal<String> NativeModuleLoader::LoadBuiltinModuleSource(Isolate* isolate,
                                                                const char* id) {
 #ifdef NODE_BUILTIN_MODULES_PATH
+  if (strncmp(id, "embedder_main_", strlen("embedder_main_")) == 0) {
+#endif  // NODE_BUILTIN_MODULES_PATH
+    const auto source_it = source_.find(id);
+    if (UNLIKELY(source_it == source_.end())) {
+      fprintf(stderr, "Cannot find native builtin: \"%s\".\n", id);
+      ABORT();
+    }
+    return source_it->second.ToStringChecked(isolate);
+#ifdef NODE_BUILTIN_MODULES_PATH
+  }
   std::string filename = OnDiskFileName(id);
 
   std::string contents;
@@ -220,13 +232,6 @@ MaybeLocal<String> NativeModuleLoader::LoadBuiltinModuleSource(Isolate* isolate,
   }
   return String::NewFromUtf8(
       isolate, contents.c_str(), v8::NewStringType::kNormal, contents.length());
-#else
-  const auto source_it = source_.find(id);
-  if (UNLIKELY(source_it == source_.end())) {
-    fprintf(stderr, "Cannot find native builtin: \"%s\".\n", id);
-    ABORT();
-  }
-  return source_it->second.ToStringChecked(isolate);
 #endif  // NODE_BUILTIN_MODULES_PATH
 }
 
@@ -246,12 +251,10 @@ MaybeLocal<Function> NativeModuleLoader::LookupAndCompile(
     return {};
   }
 
-  std::string filename_s = id + std::string(".js");
+  std::string filename_s = std::string("node:") + id;
   Local<String> filename =
       OneByteString(isolate, filename_s.c_str(), filename_s.size());
-  Local<Integer> line_offset = Integer::New(isolate, 0);
-  Local<Integer> column_offset = Integer::New(isolate, 0);
-  ScriptOrigin origin(filename, line_offset, column_offset, True(isolate));
+  ScriptOrigin origin(isolate, filename, 0, 0, true);
 
   ScriptCompiler::CachedData* cached_data = nullptr;
   {

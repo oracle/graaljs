@@ -47,8 +47,6 @@
   'language/statements/with/unscopables-inc-dec': [FAIL],
 
   # https://code.google.com/p/v8/issues/detail?id=4249
-  'language/expressions/assignment/S11.13.1_A7_T1': [FAIL],
-  'language/expressions/assignment/S11.13.1_A7_T2': [FAIL],
   'language/expressions/assignment/S11.13.1_A7_T3': [FAIL],
   'language/expressions/postfix-increment/S11.3.1_A6_T3': [FAIL],
   'language/expressions/postfix-decrement/S11.3.2_A6_T3': [FAIL],
@@ -59,67 +57,24 @@
   'language/expressions/assignment/S11.13.1_A5*': [FAIL],
   'language/expressions/assignment/S11.13.1_A6*': [FAIL],
 
-  # https://bugs.chromium.org/p/v8/issues/detail?id=4709
-  'language/expressions/assignment/fn-name-lhs-cover': [FAIL],
-
-  # https://github.com/tc39/test262/issues/2591
-  'intl402/DateTimeFormat/prototype/resolvedOptions/order': ['--no-harmony-intl_dateformat_fractional_second_digits'],
-  'intl402/DateTimeFormat/prototype/resolvedOptions/order-dayPeriod': ['--no-harmony-intl_dateformat_fractional_second_digits'],
-
-  # https://bugs.chromium.org/p/v8/issues/detail?id=9084
-  'intl402/supportedLocalesOf-consistent-with-resolvedOptions': [FAIL],
-  'intl402/fallback-locales-are-supported': [FAIL],
-
   # https://code.google.com/p/v8/issues/detail?id=4251
   'language/expressions/postfix-increment/S11.3.1_A5_T1': [FAIL],
   'language/expressions/postfix-increment/S11.3.1_A5_T2': [FAIL],
   'language/expressions/postfix-increment/S11.3.1_A5_T3': [FAIL],
-  'language/expressions/postfix-increment/S11.3.1_A5_T4': [FAIL],
-  'language/expressions/postfix-increment/S11.3.1_A5_T5': [FAIL],
   'language/expressions/postfix-decrement/S11.3.2_A5_*': [FAIL],
   'language/expressions/prefix-decrement/S11.4.5_A5_*': [FAIL],
   'language/expressions/prefix-increment/S11.4.4_A5_*': [FAIL],
   'language/statements/variable/binding-resolution': [FAIL],
 
-  # https://code.google.com/p/v8/issues/detail?id=8771
-  'language/computed-property-names/class/static/method-number': [FAIL],
-  'language/computed-property-names/class/static/method-string': [FAIL],
-  'language/computed-property-names/class/static/method-symbol': [FAIL],
+  # https://code.google.com/p/v8/issues/detail?id=10958
+  'language/module-code/eval-gtbndng-indirect-faux-assertion': [FAIL],
 
   # https://bugs.chromium.org/p/v8/issues/detail?id=4895
-  'built-ins/TypedArrayConstructors/internals/DefineOwnProperty/detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/DefineOwnProperty/BigInt/detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/DefineOwnProperty/detached-buffer-realm': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/DefineOwnProperty/BigInt/detached-buffer-realm': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/DefineOwnProperty/tonumber-value-detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/DefineOwnProperty/BigInt/tonumber-value-detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/Get/detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/Get/BigInt/detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/Get/detached-buffer-realm': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/Get/BigInt/detached-buffer-realm': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/Get/infinity-detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/Get/BigInt/infinity-detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/GetOwnProperty/detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/GetOwnProperty/BigInt/detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/GetOwnProperty/detached-buffer-realm': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/GetOwnProperty/BigInt/detached-buffer-realm': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/GetOwnProperty/enumerate-detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/GetOwnProperty/BigInt/enumerate-detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/HasProperty/detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/HasProperty/BigInt/detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/HasProperty/detached-buffer-realm': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/HasProperty/BigInt/detached-buffer-realm': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/HasProperty/infinity-with-detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/HasProperty/BigInt/infinity-with-detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/Set/detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/Set/BigInt/detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/Set/detached-buffer-realm': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/Set/BigInt/detached-buffer-realm': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/Set/tonumber-value-detached-buffer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/Set/BigInt/tonumber-value-detached-buffer': [FAIL],
   # Some TypedArray methods throw due to the same bug, from Get
   'built-ins/TypedArray/prototype/every/callbackfn-detachbuffer': [FAIL],
   'built-ins/TypedArray/prototype/every/BigInt/callbackfn-detachbuffer': [FAIL],
+  'built-ins/TypedArray/prototype/filter/callbackfn-detachbuffer': [FAIL],
+  'built-ins/TypedArray/prototype/filter/BigInt/callbackfn-detachbuffer': [FAIL],
   'built-ins/TypedArray/prototype/find/predicate-may-detach-buffer': [FAIL],
   'built-ins/TypedArray/prototype/find/BigInt/predicate-may-detach-buffer': [FAIL],
   'built-ins/TypedArray/prototype/findIndex/predicate-may-detach-buffer': [FAIL],
@@ -132,13 +87,16 @@
   'built-ins/TypedArray/prototype/reduce/BigInt/callbackfn-detachbuffer': [FAIL],
   'built-ins/TypedArray/prototype/reduceRight/callbackfn-detachbuffer': [FAIL],
   'built-ins/TypedArray/prototype/reduceRight/BigInt/callbackfn-detachbuffer': [FAIL],
+  'built-ins/TypedArray/prototype/set/array-arg-primitive-toobject': [FAIL],
+  'built-ins/TypedArray/prototype/set/BigInt/array-arg-primitive-toobject': [FAIL],
   'built-ins/TypedArray/prototype/some/callbackfn-detachbuffer': [FAIL],
   'built-ins/TypedArray/prototype/some/BigInt/callbackfn-detachbuffer': [FAIL],
   # DataView functions should also throw on detached buffers
-  'built-ins/ArrayBuffer/prototype/byteLength/detached-buffer': [FAIL],
   'built-ins/DataView/detached-buffer': [FAIL],
   'built-ins/DataView/prototype/byteLength/detached-buffer': [FAIL],
   'built-ins/DataView/prototype/byteOffset/detached-buffer': [FAIL],
+  'built-ins/DataView/prototype/byteLength/instance-has-detached-buffer': [FAIL],
+  'built-ins/DataView/custom-proto-access-detaches-buffer': [FAIL],
   # copyWithin should also throw on detached buffers
   'built-ins/TypedArray/prototype/copyWithin/coerced-values-end-detached-prototype': [FAIL],
   'built-ins/TypedArray/prototype/copyWithin/coerced-values-start-detached': [FAIL],
@@ -147,8 +105,8 @@
   'built-ins/TypedArray/prototype/fill/coerced-value-detach': [FAIL],
   'built-ins/TypedArray/prototype/fill/coerced-end-detach': [FAIL],
   'built-ins/TypedArray/prototype/fill/coerced-start-detach': [FAIL],
-  # includes should also throw on detached buffers
-  'built-ins/TypedArray/prototype/includes/detached-buffer-tointeger': [FAIL],
+  'built-ins/TypedArray/prototype/includes/detached-buffer-during-fromIndex-returns-true-for-undefined': [FAIL],
+  'built-ins/TypedArray/prototype/includes/BigInt/detached-buffer-during-fromIndex-returns-true-for-undefined': [FAIL],
 
   # https://bugs.chromium.org/p/v8/issues/detail?id=4951
   'language/expressions/assignment/destructuring/iterator-destructuring-property-reference-target-evaluation-order': [FAIL],
@@ -384,6 +342,94 @@
   'built-ins/RegExp/named-groups/non-unicode-property-names-valid': [FAIL],
 
   # https://bugs.chromium.org/p/v8/issues/detail?id=4628
+  'language/eval-code/direct/async-gen-func-decl-fn-body-cntns-arguments-func-decl-declare-arguments': [FAIL],
+  'language/eval-code/direct/async-gen-func-decl-fn-body-cntns-arguments-func-decl-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/async-gen-func-decl-fn-body-cntns-arguments-lex-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/async-gen-func-decl-fn-body-cntns-arguments-lex-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/async-gen-func-decl-fn-body-cntns-arguments-var-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/async-gen-func-decl-fn-body-cntns-arguments-var-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/async-gen-func-decl-no-pre-existing-arguments-bindings-are-present-declare-arguments': [FAIL],
+  'language/eval-code/direct/async-gen-func-decl-no-pre-existing-arguments-bindings-are-present-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/async-gen-func-expr-fn-body-cntns-arguments-func-decl-declare-arguments': [FAIL],
+  'language/eval-code/direct/async-gen-func-expr-fn-body-cntns-arguments-func-decl-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/async-gen-func-expr-fn-body-cntns-arguments-lex-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/async-gen-func-expr-fn-body-cntns-arguments-lex-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/async-gen-func-expr-fn-body-cntns-arguments-var-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/async-gen-func-expr-fn-body-cntns-arguments-var-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/async-gen-func-expr-no-pre-existing-arguments-bindings-are-present-declare-arguments': [FAIL],
+  'language/eval-code/direct/async-gen-func-expr-no-pre-existing-arguments-bindings-are-present-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/async-gen-meth-fn-body-cntns-arguments-func-decl-declare-arguments': [FAIL],
+  'language/eval-code/direct/async-gen-meth-fn-body-cntns-arguments-func-decl-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/async-gen-meth-fn-body-cntns-arguments-lex-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/async-gen-meth-fn-body-cntns-arguments-lex-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/async-gen-meth-fn-body-cntns-arguments-var-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/async-gen-meth-fn-body-cntns-arguments-var-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/async-gen-meth-no-pre-existing-arguments-bindings-are-present-declare-arguments': [FAIL],
+  'language/eval-code/direct/async-gen-meth-no-pre-existing-arguments-bindings-are-present-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/async-gen-named-func-expr-fn-body-cntns-arguments-func-decl-declare-arguments': [FAIL],
+  'language/eval-code/direct/async-gen-named-func-expr-fn-body-cntns-arguments-func-decl-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/async-gen-named-func-expr-fn-body-cntns-arguments-lex-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/async-gen-named-func-expr-fn-body-cntns-arguments-lex-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/async-gen-named-func-expr-fn-body-cntns-arguments-var-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/async-gen-named-func-expr-fn-body-cntns-arguments-var-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/async-gen-named-func-expr-no-pre-existing-arguments-bindings-are-present-declare-arguments': [FAIL],
+  'language/eval-code/direct/async-gen-named-func-expr-no-pre-existing-arguments-bindings-are-present-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/func-decl-fn-body-cntns-arguments-func-decl-declare-arguments': [FAIL],
+  'language/eval-code/direct/func-decl-fn-body-cntns-arguments-func-decl-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/func-decl-fn-body-cntns-arguments-lex-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/func-decl-fn-body-cntns-arguments-lex-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/func-decl-fn-body-cntns-arguments-var-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/func-decl-fn-body-cntns-arguments-var-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/func-decl-no-pre-existing-arguments-bindings-are-present-declare-arguments': [FAIL],
+  'language/eval-code/direct/func-decl-no-pre-existing-arguments-bindings-are-present-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/func-expr-fn-body-cntns-arguments-func-decl-declare-arguments': [FAIL],
+  'language/eval-code/direct/func-expr-fn-body-cntns-arguments-func-decl-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/func-expr-fn-body-cntns-arguments-lex-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/func-expr-fn-body-cntns-arguments-lex-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/func-expr-fn-body-cntns-arguments-var-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/func-expr-fn-body-cntns-arguments-var-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/func-expr-no-pre-existing-arguments-bindings-are-present-declare-arguments': [FAIL],
+  'language/eval-code/direct/func-expr-no-pre-existing-arguments-bindings-are-present-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/gen-func-decl-fn-body-cntns-arguments-func-decl-declare-arguments': [FAIL],
+  'language/eval-code/direct/gen-func-decl-fn-body-cntns-arguments-func-decl-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/gen-func-decl-fn-body-cntns-arguments-lex-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/gen-func-decl-fn-body-cntns-arguments-lex-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/gen-func-decl-fn-body-cntns-arguments-var-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/gen-func-decl-fn-body-cntns-arguments-var-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/gen-func-decl-no-pre-existing-arguments-bindings-are-present-declare-arguments': [FAIL],
+  'language/eval-code/direct/gen-func-decl-no-pre-existing-arguments-bindings-are-present-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/gen-func-expr-named-fn-body-cntns-arguments-func-decl-declare-arguments': [FAIL],
+  'language/eval-code/direct/gen-func-expr-named-fn-body-cntns-arguments-func-decl-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/gen-func-expr-named-fn-body-cntns-arguments-lex-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/gen-func-expr-named-fn-body-cntns-arguments-lex-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/gen-func-expr-named-fn-body-cntns-arguments-var-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/gen-func-expr-named-fn-body-cntns-arguments-var-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/gen-func-expr-named-no-pre-existing-arguments-bindings-are-present-declare-arguments': [FAIL],
+  'language/eval-code/direct/gen-func-expr-named-no-pre-existing-arguments-bindings-are-present-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/gen-func-expr-nameless-fn-body-cntns-arguments-func-decl-declare-arguments': [FAIL],
+  'language/eval-code/direct/gen-func-expr-nameless-fn-body-cntns-arguments-func-decl-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/gen-func-expr-nameless-fn-body-cntns-arguments-lex-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/gen-func-expr-nameless-fn-body-cntns-arguments-lex-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/gen-func-expr-nameless-fn-body-cntns-arguments-var-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/gen-func-expr-nameless-fn-body-cntns-arguments-var-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/gen-func-expr-nameless-no-pre-existing-arguments-bindings-are-present-declare-arguments': [FAIL],
+  'language/eval-code/direct/gen-func-expr-nameless-no-pre-existing-arguments-bindings-are-present-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/gen-meth-fn-body-cntns-arguments-func-decl-declare-arguments': [FAIL],
+  'language/eval-code/direct/gen-meth-fn-body-cntns-arguments-func-decl-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/gen-meth-fn-body-cntns-arguments-lex-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/gen-meth-fn-body-cntns-arguments-lex-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/gen-meth-fn-body-cntns-arguments-var-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/gen-meth-fn-body-cntns-arguments-var-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/gen-meth-no-pre-existing-arguments-bindings-are-present-declare-arguments': [FAIL],
+  'language/eval-code/direct/gen-meth-no-pre-existing-arguments-bindings-are-present-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/meth-fn-body-cntns-arguments-func-decl-declare-arguments': [FAIL],
+  'language/eval-code/direct/meth-fn-body-cntns-arguments-func-decl-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/meth-fn-body-cntns-arguments-lex-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/meth-fn-body-cntns-arguments-lex-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/meth-fn-body-cntns-arguments-var-bind-declare-arguments': [FAIL],
+  'language/eval-code/direct/meth-fn-body-cntns-arguments-var-bind-declare-arguments-and-assign': [FAIL],
+  'language/eval-code/direct/meth-no-pre-existing-arguments-bindings-are-present-declare-arguments': [FAIL],
+  'language/eval-code/direct/meth-no-pre-existing-arguments-bindings-are-present-declare-arguments-and-assign': [FAIL],
   'language/eval-code/direct/non-definable-function-with-function': [FAIL],
   'language/eval-code/direct/non-definable-function-with-variable': [FAIL],
   'language/eval-code/indirect/non-definable-function-with-function': [FAIL],
@@ -432,25 +478,12 @@
   'language/statements/try/tco-finally': [SKIP],
   'language/statements/while/tco-body': [SKIP],
 
-  # https://bugs.chromium.org/p/v8/issues/detail?id=5327
-  'built-ins/TypedArrayConstructors/internals/Set/key-is-minus-zero': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/Set/BigInt/key-is-minus-zero': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/Set/key-is-not-integer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/Set/BigInt/key-is-not-integer': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/Set/key-is-out-of-bounds': [FAIL],
-  'built-ins/TypedArrayConstructors/internals/Set/BigInt/key-is-out-of-bounds': [FAIL],
-
   # https://bugs.chromium.org/p/v8/issues/detail?id=6049
   'built-ins/Object/internals/DefineOwnProperty/consistent-value-function-caller': [FAIL_SLOPPY],
   'built-ins/Object/internals/DefineOwnProperty/consistent-value-function-arguments': [FAIL_SLOPPY],
 
   # https://bugs.chromium.org/p/v8/issues/detail?id=5690
   'language/expressions/call/eval-spread': [FAIL],
-  'language/expressions/call/eval-spread-empty-leading': [FAIL],
-  'language/expressions/call/eval-spread-empty-trailing': [FAIL],
-
-  # https://bugs.chromium.org/p/v8/issues/detail?id=8664
-  'intl402/Collator/missing-unicode-ext-value-defaults-to-true': [FAIL],
 
   # https://bugs.chromium.org/p/v8/issues/detail?id=7472
   'intl402/NumberFormat/currency-digits': [FAIL],
@@ -465,72 +498,11 @@
   'language/expressions/coalesce/tco-pos-undefined': [FAIL],
   'language/expressions/coalesce/tco-pos-null': [FAIL],
 
-  # https://github.com/tc39/test262/issues/2034
-  'language/expressions/postfix-decrement/arguments': [SKIP],
-  'language/expressions/postfix-decrement/arguments-nostrict': [SKIP],
-  'language/expressions/postfix-decrement/eval': [SKIP],
-  'language/expressions/postfix-decrement/eval-nostrict': [SKIP],
-  'language/expressions/postfix-increment/arguments': [SKIP],
-  'language/expressions/postfix-increment/arguments-nostrict': [SKIP],
-  'language/expressions/postfix-increment/eval': [SKIP],
-  'language/expressions/postfix-increment/eval-nostrict': [SKIP],
-  'language/expressions/prefix-decrement/arguments': [SKIP],
-  'language/expressions/prefix-decrement/arguments-nostrict': [SKIP],
-  'language/expressions/prefix-decrement/eval': [SKIP],
-  'language/expressions/prefix-decrement/eval-nostrict': [SKIP],
-  'language/expressions/prefix-increment/arguments': [SKIP],
-  'language/expressions/prefix-increment/arguments-nostrict': [SKIP],
-  'language/expressions/prefix-increment/eval': [SKIP],
-  'language/expressions/prefix-increment/eval-nostrict': [SKIP],
-
-  # https://bugs.chromium.org/p/v8/issues/detail?id=9047
-  'annexB/built-ins/Function/createdynfn-no-line-terminator-html-close-comment-body': [FAIL],
-
   # https://bugs.chromium.org/p/v8/issues/detail?id=9049
   'language/comments/hashbang/use-strict': [SKIP],
 
-  # https://bugs.chromium.org/p/v8/issues/detail?id=9613
-  'intl402/Intl/getCanonicalLocales/canonicalized-tags': [FAIL],
-  'intl402/Intl/getCanonicalLocales/grandfathered': [FAIL],
-  'intl402/Intl/getCanonicalLocales/preferred-grandfathered': [FAIL],
-  'intl402/Intl/getCanonicalLocales/preferred-variant': [FAIL],
-  'intl402/Locale/constructor-apply-options-canonicalizes-twice': [FAIL],
-  'intl402/Locale/likely-subtags-grandfathered': [FAIL],
-
   # http://crbug/v8/10447
-  'intl402/Intl/getCanonicalLocales/complex-language-subtag-replacement': [FAIL],
-  'intl402/Intl/getCanonicalLocales/complex-region-subtag-replacement': [FAIL],
-  'intl402/Intl/getCanonicalLocales/transformed-ext-canonical': [FAIL],
-  'intl402/Intl/getCanonicalLocales/transformed-ext-invalid': [FAIL],
-  'intl402/Intl/getCanonicalLocales/unicode-ext-canonicalize-region': [FAIL],
-  'intl402/Intl/getCanonicalLocales/unicode-ext-canonicalize-subdivision': [FAIL],
   'intl402/Intl/getCanonicalLocales/unicode-ext-canonicalize-yes-to-true': [FAIL],
-  'intl402/Intl/getCanonicalLocales/unicode-ext-key-with-digit': [FAIL],
-
-  # https://bugs.chromium.org/p/v8/issues/detail?id=9646
-  'built-ins/ThrowTypeError/name': [FAIL],
-  'language/expressions/class/name': [FAIL],
-
-  # https://bugs.chromium.org/p/v8/issues/detail?id=9742
-  'intl402/Locale/getters': [FAIL],
-
-  # https://github.com/tc39/test262/pull/2349
-  'intl402/Locale/constructor-options-region-valid': [FAIL],
-
-  # http://crbug/v8/10443
-  'intl402/RelativeTimeFormat/prototype/format/pl-pl-style-long': [FAIL],
-  'intl402/RelativeTimeFormat/prototype/format/pl-pl-style-narrow': [FAIL],
-  'intl402/RelativeTimeFormat/prototype/format/pl-pl-style-short': [FAIL],
-  'intl402/RelativeTimeFormat/prototype/formatToParts/pl-pl-style-long': [FAIL],
-  'intl402/RelativeTimeFormat/prototype/formatToParts/pl-pl-style-narrow': [FAIL],
-  'intl402/RelativeTimeFormat/prototype/formatToParts/pl-pl-style-short': [FAIL],
-
-  # https://bugs.chromium.org/p/v8/issues/detail?id=9818
-  'built-ins/AsyncFunction/proto-from-ctor-realm': [FAIL],
-
-  # https://bugs.chromium.org/p/v8/issues/detail?id=10111
-  # super() should evaluate arguments before checking IsConstructable
-  'language/expressions/super/call-proto-not-ctor': [FAIL],
 
   # https://bugs.chromium.org/p/v8/issues/detail?id=10381
   'built-ins/Array/prototype/concat/arg-length-near-integer-limit': [FAIL],
@@ -538,58 +510,134 @@
   # https://bugs.chromium.org/p/v8/issues/detail?id=10383
   'built-ins/RegExp/prototype/Symbol.replace/fn-invoke-args-empty-result': [FAIL],
 
-  # https://bugs.chromium.org/p/v8/issues/detail?id=10395
-  'built-ins/AsyncFromSyncIteratorPrototype/next/absent-value-not-passed': [FAIL],
-  'built-ins/AsyncFromSyncIteratorPrototype/return/absent-value-not-passed': [FAIL],
+  # https://crbug.com/v8/10789
+  'built-ins/Function/prototype/toString/built-in-function-object': [FAIL],
 
-  # http://crbug/v8/10449
-  'built-ins/Atomics/waitAsync/bad-range': [FAIL],
-  'built-ins/Atomics/waitAsync/descriptor': [FAIL],
-  'built-ins/Atomics/waitAsync/false-for-timeout': [FAIL],
-  'built-ins/Atomics/waitAsync/is-function': [FAIL],
-  'built-ins/Atomics/waitAsync/length': [FAIL],
-  'built-ins/Atomics/waitAsync/name': [FAIL],
-  'built-ins/Atomics/waitAsync/nan-for-timeout-agent': [FAIL],
-  'built-ins/Atomics/waitAsync/negative-index-throws': [FAIL],
-  'built-ins/Atomics/waitAsync/negative-timeout': [FAIL],
-  'built-ins/Atomics/waitAsync/null-for-timeout': [FAIL],
-  'built-ins/Atomics/waitAsync/object-for-timeout': [FAIL],
-  'built-ins/Atomics/waitAsync/poisoned-object-for-timeout-throws-agent': [FAIL],
-  'built-ins/Atomics/waitAsync/returns-result-object-value-is-promise-resolves-to-ok': [FAIL],
-  'built-ins/Atomics/waitAsync/returns-result-object-value-is-promise-resolves-to-timed-out': [FAIL],
-  'built-ins/Atomics/waitAsync/returns-result-object-value-is-string-not-equal': [FAIL],
-  'built-ins/Atomics/waitAsync/returns-result-object-value-is-string-timed-out': [FAIL],
-  'built-ins/Atomics/waitAsync/symbol-for-index-throws': [FAIL],
-  'built-ins/Atomics/waitAsync/symbol-for-index-throws-agent': [FAIL],
-  'built-ins/Atomics/waitAsync/symbol-for-timeout-throws': [FAIL],
-  'built-ins/Atomics/waitAsync/symbol-for-timeout-throws-agent': [FAIL],
-  'built-ins/Atomics/waitAsync/symbol-for-value-throws': [FAIL],
-  'built-ins/Atomics/waitAsync/symbol-for-value-throws-agent': [FAIL],
-  'built-ins/Atomics/waitAsync/true-for-timeout': [FAIL],
-  'built-ins/Atomics/waitAsync/undefined-for-timeout-agent': [FAIL],
-  'built-ins/Atomics/waitAsync/undefined-for-timeout': [FAIL],
-  'built-ins/Atomics/waitAsync/undefined-index-defaults-to-zero-agent': [FAIL],
-  'built-ins/Atomics/waitAsync/value-not-equal': [FAIL],
-  'built-ins/Atomics/waitAsync/waiterlist-block-indexedposition-wake': [FAIL],
-  'built-ins/Atomics/waitAsync/was-woken-before-timeout': [FAIL],
+  # http://crbug/v8/10903
+  'annexB/built-ins/RegExp/legacy-accessors/index/prop-desc': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/index/this-cross-realm-constructor': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/index/this-not-regexp-constructor': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/index/this-subclass-constructor': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/input/this-cross-realm-constructor': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/input/this-not-regexp-constructor': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/input/this-subclass-constructor': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/lastMatch/prop-desc': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/lastMatch/this-cross-realm-constructor': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/lastMatch/this-not-regexp-constructor': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/lastMatch/this-subclass-constructor': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/lastParen/prop-desc': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/lastParen/this-cross-realm-constructor': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/lastParen/this-not-regexp-constructor': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/lastParen/this-subclass-constructor': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/leftContext/prop-desc': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/leftContext/this-cross-realm-constructor': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/leftContext/this-not-regexp-constructor': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/leftContext/this-subclass-constructor': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/rightContext/prop-desc': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/rightContext/this-cross-realm-constructor': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/rightContext/this-not-regexp-constructor': [FAIL],
+  'annexB/built-ins/RegExp/legacy-accessors/rightContext/this-subclass-constructor': [FAIL],
+  'annexB/built-ins/RegExp/prototype/compile/this-cross-realm-instance': [FAIL],
+  'annexB/built-ins/RegExp/prototype/compile/this-subclass-instance': [FAIL],
 
-  # SKIP the following TIMEOUT tests instead of FAIL
-  'built-ins/Atomics/waitAsync/false-for-timeout-agent': [SKIP],
-  'built-ins/Atomics/waitAsync/good-views': [SKIP],
-  'built-ins/Atomics/waitAsync/negative-timeout-agent': [SKIP],
-  'built-ins/Atomics/waitAsync/no-spurious-wakeup-no-operation': [SKIP],
-  'built-ins/Atomics/waitAsync/no-spurious-wakeup-on-add': [SKIP],
-  'built-ins/Atomics/waitAsync/no-spurious-wakeup-on-and': [SKIP],
-  'built-ins/Atomics/waitAsync/no-spurious-wakeup-on-compareExchange': [SKIP],
-  'built-ins/Atomics/waitAsync/no-spurious-wakeup-on-exchange': [SKIP],
-  'built-ins/Atomics/waitAsync/no-spurious-wakeup-on-or': [SKIP],
-  'built-ins/Atomics/waitAsync/no-spurious-wakeup-on-store': [SKIP],
-  'built-ins/Atomics/waitAsync/no-spurious-wakeup-on-sub': [SKIP],
-  'built-ins/Atomics/waitAsync/no-spurious-wakeup-on-xor': [SKIP],
-  'built-ins/Atomics/waitAsync/null-for-timeout-agent': [SKIP],
-  'built-ins/Atomics/waitAsync/object-for-timeout-agent': [SKIP],
-  'built-ins/Atomics/waitAsync/true-for-timeout-agent': [SKIP],
-  'built-ins/Atomics/waitAsync/value-not-equal-agent': [SKIP],
+  # http://crbug/v8/10905
+  'language/identifier-resolution/assign-to-global-undefined': [FAIL],
+
+  # http://crbug/v8/11531
+  'built-ins/RegExp/prototype/flags/get-order': [FAIL],
+
+  # http://crbug/v8/11533
+  'language/statements/class/subclass/default-constructor-spread-override': [FAIL],
+
+  # https://bugs.chromium.org/p/v8/issues/detail?id=11689
+  'built-ins/BigInt/wrapper-object-ordinary-toprimitive': [FAIL],
+
+  # https://bugs.chromium.org/p/v8/issues/detail?id=11690
+  'language/module-code/export-expname-binding-index': [FAIL],
+
+  # https://bugs.chromium.org/p/v8/issues/detail?id=11111
+  'built-ins/ArrayBuffer/prototype/resize/resize-grow': [FAIL],
+  'built-ins/ArrayBuffer/prototype/resize/resize-same-size': [FAIL],
+  'built-ins/ArrayBuffer/prototype/resize/resize-same-size-zero-explicit': [FAIL],
+  'built-ins/ArrayBuffer/prototype/resize/resize-same-size-zero-implicit': [FAIL],
+  'built-ins/ArrayBuffer/prototype/resize/resize-shrink': [FAIL],
+  'built-ins/ArrayBuffer/prototype/resize/resize-shrink-zero-explicit': [FAIL],
+  'built-ins/ArrayBuffer/prototype/resize/resize-shrink-zero-implicit': [FAIL],
+  'built-ins/ArrayBuffer/prototype/transfer/*': [FAIL],
+  'built-ins/ArrayBuffer/prototype/transfer/this-is-sharedarraybuffer': [PASS],
+  'built-ins/DataView/prototype/byteLength/resizable-array-buffer-auto': [FAIL],
+  'built-ins/DataView/prototype/byteLength/resizable-array-buffer-fixed': [FAIL],
+  'built-ins/DataView/prototype/byteOffset/resizable-array-buffer-auto': [FAIL],
+  'built-ins/DataView/prototype/byteOffset/resizable-array-buffer-fixed': [FAIL],
+  'built-ins/DataView/prototype/getBigInt64/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/getBigUint64/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/getFloat32/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/getFloat64/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/getInt16/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/getInt32/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/getInt8/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/getUint16/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/getUint32/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/getUint8/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/setBigInt64/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/setBigUint64/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/setFloat32/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/setFloat64/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/setInt16/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/setInt32/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/setInt8/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/setUint16/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/setUint32/resizable-buffer': [FAIL],
+  'built-ins/DataView/prototype/setUint8/resizable-buffer': [FAIL],
+  'built-ins/TypedArrayConstructors/ctors/typedarray-arg/out-of-bounds-when-species-retrieved-different-type': [FAIL],
+  'built-ins/TypedArrayConstructors/ctors/typedarray-arg/out-of-bounds-when-species-retrieved-same-type': [FAIL],
+
+  # https://bugs.chromium.org/p/v8/issues/detail?id=11544
+  'built-ins/Temporal/*': [FAIL],
+
+  # https://bugs.chromium.org/p/v8/issues/detail?id=12044
+  'built-ins/Array/prototype/Symbol.unscopables/value': [FAIL],
+
+  # https://bugs.chromium.org/p/v8/issues/detail?id=11989
+  'built-ins/Realm/constructor': [FAIL],
+  'built-ins/Realm/descriptor': [FAIL],
+  'built-ins/Realm/instance': [FAIL],
+  'built-ins/Realm/instance-extensibility': [FAIL],
+  'built-ins/Realm/length': [FAIL],
+  'built-ins/Realm/name': [FAIL],
+  'built-ins/Realm/proto': [FAIL],
+  'built-ins/Realm/prototype/evaluate/descriptor': [FAIL],
+  'built-ins/Realm/prototype/evaluate/errors-from-the-other-realm-is-wrapped-into-a-typeerror': [FAIL],
+  'built-ins/Realm/prototype/evaluate/length': [FAIL],
+  'built-ins/Realm/prototype/evaluate/name': [FAIL],
+  'built-ins/Realm/prototype/evaluate/not-constructor': [FAIL],
+  'built-ins/Realm/prototype/evaluate/proto': [FAIL],
+  'built-ins/Realm/prototype/evaluate/returns-primitive-values': [FAIL],
+  'built-ins/Realm/prototype/evaluate/returns-symbol-values': [FAIL],
+  'built-ins/Realm/prototype/evaluate/throws-typeerror-if-evaluation-resolves-to-non-primitive': [FAIL],
+  'built-ins/Realm/prototype/evaluate/throws-when-argument-is-not-a-string': [FAIL],
+  'built-ins/Realm/prototype/evaluate/validates-realm-object': [FAIL],
+  'built-ins/Realm/prototype/evaluate/wrapped-function-arguments-are-wrapped-into-the-inner-realm': [FAIL],
+  'built-ins/Realm/prototype/evaluate/wrapped-function-arguments-are-wrapped-into-the-inner-realm-extended': [FAIL],
+  'built-ins/Realm/prototype/evaluate/wrapped-function-from-return-values-share-no-identity': [FAIL],
+  'built-ins/Realm/prototype/evaluate/wrapped-function-observing-their-scopes': [FAIL],
+  'built-ins/Realm/prototype/evaluate/wrapped-functions-accepts-callable-objects': [FAIL],
+  'built-ins/Realm/prototype/evaluate/wrapped-functions-can-resolve-callable-returns': [FAIL],
+  'built-ins/Realm/prototype/evaluate/wrapped-functions-new-wrapping-on-each-evaluation': [FAIL],
+  'built-ins/Realm/prototype/evaluate/wrapped-functions-share-no-properties': [FAIL],
+  'built-ins/Realm/prototype/evaluate/wrapped-functions-share-no-properties-extended': [FAIL],
+  'built-ins/Realm/prototype/importValue/descriptor': [FAIL],
+  'built-ins/Realm/prototype/importValue/exportName-tostring': [FAIL],
+  'built-ins/Realm/prototype/importValue/import-value': [FAIL],
+  'built-ins/Realm/prototype/importValue/length': [FAIL],
+  'built-ins/Realm/prototype/importValue/name': [FAIL],
+  'built-ins/Realm/prototype/importValue/not-constructor': [FAIL],
+  'built-ins/Realm/prototype/importValue/proto': [FAIL],
+  'built-ins/Realm/prototype/importValue/specifier-tostring': [FAIL],
+  'built-ins/Realm/prototype/importValue/throws-if-import-value-does-not-exist': [FAIL],
+  'built-ins/Realm/prototype/importValue/validates-realm-object': [FAIL],
+  'built-ins/Realm/prototype/proto': [FAIL],
+  'built-ins/Realm/prototype/Symbol.toStringTag': [FAIL],
 
   ######################## NEEDS INVESTIGATION ###########################
 
@@ -606,10 +654,10 @@
   # https://github.com/tc39/ecma262/pull/889
   'annexB/language/function-code/block-decl-func-skip-arguments': [FAIL],
 
-  # Non-simple assignment targets are runtime errors instead of syntax errors for web compat.
-  'language/expressions/logical-assignment/lgcl-or-assignment-operator-non-simple-lhs': [FAIL],
-  'language/expressions/logical-assignment/lgcl-and-assignment-operator-non-simple-lhs': [FAIL],
-  'language/expressions/logical-assignment/lgcl-nullish-assignment-operator-non-simple-lhs': [FAIL],
+  # Non-simple assignment targets are runtime errors instead of syntax errors
+  # for web compat. https://crbug.com/358346
+  'language/expressions/assignmenttargettype/direct-callexpression-arguments': [FAIL],
+  'language/expressions/assignmenttargettype/parenthesized-callexpression-arguments': [FAIL],
 
   ############################ INVALID TESTS #############################
 
@@ -628,6 +676,38 @@
   # Test against internals of harness; we plug in differently
   'harness/detachArrayBuffer': [SKIP],
   'harness/detachArrayBuffer-host-detachArrayBuffer': [SKIP],
+
+
+  # https://github.com/tc39/test262/issues/3111
+  'built-ins/TypedArray/prototype/at/return-abrupt-from-this-out-of-bounds': [FAIL],
+  'built-ins/TypedArray/prototype/copyWithin/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/entries/return-abrupt-from-this-out-of-bounds': [FAIL],
+  'built-ins/TypedArray/prototype/every/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/fill/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/filter/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/findIndex/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/findLast/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/findLastIndex/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/find/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/forEach/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/includes/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/indexOf/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/join/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/keys/return-abrupt-from-this-out-of-bounds': [FAIL],
+  'built-ins/TypedArray/prototype/lastIndexOf/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/map/return-abrupt-from-this-out-of-bounds': [FAIL],
+  'built-ins/TypedArray/prototype/reduce/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/reduceRight/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/reverse/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/set/typedarray-arg-target-out-of-bounds': [FAIL],
+  'built-ins/TypedArray/prototype/slice/return-abrupt-from-this-out-of-bounds': [FAIL],
+  'built-ins/TypedArray/prototype/some/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/sort/return-abrupt-from-this-out-of-bounds': [FAIL],
+  'built-ins/TypedArray/prototype/toLocaleString/return-abrupt-from-this-out-of-bounds': [SKIP],
+  'built-ins/TypedArray/prototype/values/return-abrupt-from-this-out-of-bounds': [FAIL],
+
+  # Pending update after https://github.com/tc39/proposal-resizablearraybuffer/issues/68
+  'built-ins/TypedArray/prototype/byteOffset/resizable-array-buffer-auto': [FAIL],
 
   ############################ SKIPPED TESTS #############################
 
@@ -740,6 +820,18 @@
   'built-ins/ArrayBuffer/length-is-too-large-throws': [SKIP],
   'built-ins/SharedArrayBuffer/allocation-limit': [SKIP],
   'built-ins/SharedArrayBuffer/length-is-too-large-throws': [SKIP],
+
+  # Tests that need to run sequentially (e.g. due to memory consumption).
+  'annexB/built-ins/RegExp/RegExp-leading-escape-BMP': [PASS, HEAVY],
+  'annexB/built-ins/RegExp/RegExp-trailing-escape-BMP': [PASS, HEAVY],
+  'built-ins/decodeURI/*': [PASS, HEAVY],
+  'built-ins/decodeURIComponent/*': [PASS, HEAVY],
+  'built-ins/RegExp/property-escapes/generated/*': [PASS, HEAVY],
+  'language/comments/S7.4_A5': [PASS, HEAVY],
+  'language/comments/S7.4_A6': [PASS, HEAVY],
+
+  # Times out on TSAN - https://bugs.chromium.org/p/v8/issues/detail?id=11898
+  'intl402/supportedLocalesOf-unicode-extensions-ignored': [SKIP],
 }],  # asan == True or msan == True or tsan == True
 
 ['system == android', {

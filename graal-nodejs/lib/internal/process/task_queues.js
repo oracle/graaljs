@@ -33,11 +33,12 @@ const {
   emitDestroy,
   symbols: { async_id_symbol, trigger_async_id_symbol }
 } = require('internal/async_hooks');
-const {
-  ERR_INVALID_CALLBACK,
-  ERR_INVALID_ARG_TYPE
-} = require('internal/errors').codes;
 const FixedQueue = require('internal/fixed_queue');
+
+const {
+  validateCallback,
+  validateFunction,
+} = require('internal/validators');
 
 const { AsyncResource } = require('async_hooks');
 
@@ -101,8 +102,7 @@ function processTicksAndRejections() {
 // `nextTick()` will not enqueue any callback when the process is about to
 // exit since the callback would not have a chance to be executed.
 function nextTick(callback) {
-  if (typeof callback !== 'function')
-    throw new ERR_INVALID_CALLBACK(callback);
+  validateCallback(callback);
 
   if (process._exiting)
     return;
@@ -148,9 +148,7 @@ function runMicrotask() {
 const defaultMicrotaskResourceOpts = { requireManualDestroy: true };
 
 function queueMicrotask(callback) {
-  if (typeof callback !== 'function') {
-    throw new ERR_INVALID_ARG_TYPE('callback', 'function', callback);
-  }
+  validateFunction(callback, 'callback');
 
   const asyncResource = new AsyncResource(
     'Microtask',

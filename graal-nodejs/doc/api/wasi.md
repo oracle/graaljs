@@ -11,19 +11,25 @@ specification. WASI gives sandboxed WebAssembly applications access to the
 underlying operating system via a collection of POSIX-like functions.
 
 ```mjs
-import fs from 'fs';
+import { readFile } from 'fs/promises';
 import { WASI } from 'wasi';
+import { argv, env } from 'process';
 
 const wasi = new WASI({
-  args: process.argv,
-  env: process.env,
+  args: argv,
+  env,
   preopens: {
     '/sandbox': '/some/real/path/that/wasm/can/access'
   }
 });
+
+// Some WASI binaries require:
+//   const importObject = { wasi_unstable: wasi.wasiImport };
 const importObject = { wasi_snapshot_preview1: wasi.wasiImport };
 
-const wasm = await WebAssembly.compile(fs.readFileSync('./demo.wasm'));
+const wasm = await WebAssembly.compile(
+  await readFile(new URL('./demo.wasm', import.meta.url))
+);
 const instance = await WebAssembly.instantiate(wasm, importObject);
 
 wasi.start(instance);
@@ -31,19 +37,27 @@ wasi.start(instance);
 
 ```cjs
 'use strict';
-const fs = require('fs');
+const { readFile } = require('fs/promises');
 const { WASI } = require('wasi');
+const { argv, env } = require('process');
+const { join } = require('path');
+
 const wasi = new WASI({
-  args: process.argv,
-  env: process.env,
+  args: argv,
+  env,
   preopens: {
     '/sandbox': '/some/real/path/that/wasm/can/access'
   }
 });
+
+// Some WASI binaries require:
+//   const importObject = { wasi_unstable: wasi.wasiImport };
 const importObject = { wasi_snapshot_preview1: wasi.wasiImport };
 
 (async () => {
-  const wasm = await WebAssembly.compile(fs.readFileSync('./demo.wasm'));
+  const wasm = await WebAssembly.compile(
+    await readFile(join(__dirname, 'demo.wasm'))
+  );
   const instance = await WebAssembly.instantiate(wasm, importObject);
 
   wasi.start(instance);
@@ -89,10 +103,11 @@ Use [wabt](https://github.com/WebAssembly/wabt) to compile `.wat` to `.wasm`
 $ wat2wasm demo.wat
 ```
 
-The `--experimental-wasi-unstable-preview1` and `--experimental-wasm-bigint`
-CLI arguments are needed for this example to run.
+The `--experimental-wasi-unstable-preview1` CLI argument is needed for this
+example to run.
 
 ## Class: `WASI`
+
 <!-- YAML
 added:
  - v13.3.0
@@ -106,6 +121,7 @@ instance must have its command-line arguments, environment variables, and
 sandbox directory structure configured explicitly.
 
 ### `new WASI([options])`
+
 <!-- YAML
 added:
  - v13.3.0
@@ -134,6 +150,7 @@ added:
     WebAssembly application. **Default:** `2`.
 
 ### `wasi.start(instance)`
+
 <!-- YAML
 added:
  - v13.3.0
@@ -152,9 +169,11 @@ Attempt to begin execution of `instance` as a WASI command by invoking its
 If `start()` is called more than once, an exception is thrown.
 
 ### `wasi.initialize(instance)`
+
 <!-- YAML
 added:
  - v14.6.0
+ - v12.19.0
 -->
 
 * `instance` {WebAssembly.Instance}
@@ -169,6 +188,7 @@ export, then an exception is thrown.
 If `initialize()` is called more than once, an exception is thrown.
 
 ### `wasi.wasiImport`
+
 <!-- YAML
 added:
  - v13.3.0

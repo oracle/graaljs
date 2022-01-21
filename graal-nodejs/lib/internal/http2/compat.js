@@ -2,13 +2,20 @@
 
 const {
   ArrayIsArray,
+  ArrayPrototypePush,
   Boolean,
+  FunctionPrototypeBind,
   ObjectAssign,
   ObjectCreate,
   ObjectKeys,
   ObjectPrototypeHasOwnProperty,
   Proxy,
+  ReflectApply,
   ReflectGetPrototypeOf,
+  StringPrototypeIncludes,
+  SafeArrayIterator,
+  StringPrototypeToLowerCase,
+  StringPrototypeTrim,
   Symbol,
 } = primordials;
 
@@ -40,14 +47,23 @@ const {
     ERR_HTTP2_PSEUDOHEADER_NOT_ALLOWED,
     ERR_HTTP2_STATUS_INVALID,
     ERR_INVALID_ARG_VALUE,
-    ERR_INVALID_CALLBACK,
     ERR_INVALID_HTTP_TOKEN,
     ERR_STREAM_WRITE_AFTER_END
   },
   hideStackFrames
 } = require('internal/errors');
-const { validateString } = require('internal/validators');
-const { kSocket, kRequest, kProxySocket } = require('internal/http2/util');
+const {
+  validateCallback,
+  validateString,
+} = require('internal/validators');
+const {
+  kSocket,
+  kRequest,
+  kProxySocket,
+  assertValidPseudoHeader,
+  getAuthority
+} = require('internal/http2/util');
+const { _checkIsHttpToken: checkIsHttpToken } = require('_http_common');
 
 const kBeginSend = Symbol('begin-send');
 const kState = Symbol('state');
@@ -68,7 +84,9 @@ let statusConnectionHeaderWarned = false;
 // close as possible to the current require('http') API
 
 const assertValidHeader = hideStackFrames((name, value) => {
-  if (name === '' || typeof name !== 'string') {
+  if (name === '' ||
+      typeof name !== 'string' ||
+      StringPrototypeIncludes(name, ' ')) {
     throw new ERR_INVALID_HTTP_TOKEN('Header name', name);
   }
   if (isPseudoHeader(name)) {
@@ -132,7 +150,8 @@ function onStreamTrailers(trailers, flags, rawTrailers) {
   const request = this[kRequest];
   if (request !== undefined) {
     ObjectAssign(request[kTrailers], trailers);
-    request[kRawTrailers].push(...rawTrailers);
+    ArrayPrototypePush(request[kRawTrailers],
+                       ...new SafeArrayIterator(rawTrailers));
   }
 }
 
@@ -194,7 +213,7 @@ const proxySocketHandler = {
       case 'end':
       case 'emit':
       case 'destroy':
-        return stream[prop].bind(stream);
+        return FunctionPrototypeBind(stream[prop], stream);
       case 'writable':
       case 'destroyed':
         return stream[prop];
@@ -206,8 +225,8 @@ const proxySocketHandler = {
       case 'setTimeout':
         const session = stream.session;
         if (session !== undefined)
-          return session.setTimeout.bind(session);
-        return stream.setTimeout.bind(stream);
+          return FunctionPrototypeBind(session.setTimeout, session);
+        return FunctionPrototypeBind(stream.setTimeout, stream);
       case 'write':
       case 'read':
       case 'pause':
@@ -217,7 +236,9 @@ const proxySocketHandler = {
         const ref = stream.session !== undefined ?
           stream.session[kSocket] : stream;
         const value = ref[prop];
-        return typeof value === 'function' ? value.bind(ref) : value;
+        return typeof value === 'function' ?
+          FunctionPrototypeBind(value, ref) :
+          value;
     }
   },
   getPrototypeOf(stream) {
@@ -388,14 +409,14 @@ class Http2ServerRequest extends Readable {
 
   set method(method) {
     validateString(method, 'method');
-    if (method.trim() === '')
+    if (StringPrototypeTrim(method) === '')
       throw new ERR_INVALID_ARG_VALUE('method', method);
 
     this[kHeaders][HTTP2_HEADER_METHOD] = method;
   }
 
   get authority() {
-    return this[kHeaders][HTTP2_HEADER_AUTHORITY];
+    return getAuthority(this[kHeaders]);
   }
 
   get scheme() {
@@ -460,6 +481,7 @@ class Http2ServerResponse extends Stream {
     stream[kProxySocket] = null;
     stream[kResponse] = this;
     this.writable = true;
+    this.req = stream[kRequest];
     stream.on('drain', onStreamDrain);
     stream.on('aborted', onStreamAbortedResponse);
     stream.on('close', onStreamCloseResponse);
@@ -548,7 +570,7 @@ class Http2ServerResponse extends Stream {
 
   setTrailer(name, value) {
     validateString(name, 'name');
-    name = name.trim().toLowerCase();
+    name = StringPrototypeToLowerCase(StringPrototypeTrim(name));
     assertValidHeader(name, value);
     this[kTrailers][name] = value;
   }
@@ -564,7 +586,7 @@ class Http2ServerResponse extends Stream {
 
   getHeader(name) {
     validateString(name, 'name');
-    name = name.trim().toLowerCase();
+    name = StringPrototypeToLowerCase(StringPrototypeTrim(name));
     return this[kHeaders][name];
   }
 
@@ -579,7 +601,7 @@ class Http2ServerResponse extends Stream {
 
   hasHeader(name) {
     validateString(name, 'name');
-    name = name.trim().toLowerCase();
+    name = StringPrototypeToLowerCase(StringPrototypeTrim(name));
     return ObjectPrototypeHasOwnProperty(this[kHeaders], name);
   }
 
@@ -588,7 +610,7 @@ class Http2ServerResponse extends Stream {
     if (this[kStream].headersSent)
       throw new ERR_HTTP2_HEADERS_SENT();
 
-    name = name.trim().toLowerCase();
+    name = StringPrototypeToLowerCase(StringPrototypeTrim(name));
 
     if (name === 'date') {
       this[kState].sendDate = false;
@@ -608,12 +630,17 @@ class Http2ServerResponse extends Stream {
   }
 
   [kSetHeader](name, value) {
-    name = name.trim().toLowerCase();
+    name = StringPrototypeToLowerCase(StringPrototypeTrim(name));
     assertValidHeader(name, value);
 
     if (!isConnectionHeaderAllowed(name, value)) {
       return;
     }
+
+    if (name[0] === ':')
+      assertValidPseudoHeader(name);
+    else if (!checkIsHttpToken(name))
+      this.destroy(new ERR_INVALID_HTTP_TOKEN('Header name', name));
 
     this[kHeaders][name] = value;
   }
@@ -744,7 +771,7 @@ class Http2ServerResponse extends Stream {
       this.writeHead(this[kState].statusCode);
 
     if (this[kState].closed || stream.destroyed)
-      onStreamCloseResponse.call(stream);
+      ReflectApply(onStreamCloseResponse, stream, []);
     else
       stream.end();
 
@@ -766,8 +793,7 @@ class Http2ServerResponse extends Stream {
   }
 
   createPushResponse(headers, callback) {
-    if (typeof callback !== 'function')
-      throw new ERR_INVALID_CALLBACK(callback);
+    validateCallback(callback);
     if (this[kState].closed) {
       process.nextTick(callback, new ERR_HTTP2_INVALID_STREAM());
       return;

@@ -61,8 +61,6 @@ function validateHandshake(requestKey, responseKey) {
 }
 
 function encodeFrameHybi17(payload) {
-  var i;
-
   const dataLength = payload.length;
 
   let singleByteLength;
@@ -71,7 +69,7 @@ function encodeFrameHybi17(payload) {
     singleByteLength = kEightBytePayloadLengthField;
     additionalLength = Buffer.alloc(8);
     let remaining = dataLength;
-    for (i = 0; i < 8; ++i) {
+    for (let i = 0; i < 8; ++i) {
       additionalLength[7 - i] = remaining & 0xFF;
       remaining >>= 8;
     }
@@ -92,7 +90,7 @@ function encodeFrameHybi17(payload) {
 
   const mask = Buffer.alloc(4);
   const masked = Buffer.alloc(dataLength);
-  for (i = 0; i < dataLength; ++i) {
+  for (let i = 0; i < dataLength; ++i) {
     masked[i] = payload[i] ^ mask[i % kMaskingKeyWidthInBytes];
   }
 
@@ -147,7 +145,7 @@ function decodeFrameHybi17(data) {
     case kEightBytePayloadLengthField:
       payloadOffset += 8;
       payloadLength = 0;
-      for (var i = 0; i < 8; ++i) {
+      for (let i = 0; i < 8; ++i) {
         payloadLength <<= 8;
         payloadLength |= data[2 + i];
       }
@@ -198,9 +196,7 @@ class Client extends EventEmitter {
       debuglog('< %s', payloadStr);
       const lastChar = payloadStr[payloadStr.length - 1];
       if (payloadStr[0] !== '{' || lastChar !== '}') {
-        throw new ERR_DEBUGGER_ERROR(
-          `Payload does not look like JSON: ${payloadStr}`
-        );
+        throw new ERR_DEBUGGER_ERROR(`Payload does not look like JSON: ${payloadStr}`);
       }
       let payload;
       try {
@@ -271,17 +267,14 @@ class Client extends EventEmitter {
         function parseChunks() {
           const resBody = Buffer.concat(chunks).toString();
           if (httpRes.statusCode !== 200) {
-            reject(new ERR_DEBUGGER_ERROR(
-              `Unexpected ${httpRes.statusCode}: ${resBody}`
-            ));
+            reject(new ERR_DEBUGGER_ERROR(`Unexpected ${httpRes.statusCode}: ${resBody}`));
             return;
           }
           try {
             resolve(JSONParse(resBody));
           } catch {
-            reject(new ERR_DEBUGGER_ERROR(
-              `Response didn't contain JSON: ${resBody}`
-            ));
+            reject(new ERR_DEBUGGER_ERROR(`Response didn't contain JSON: ${resBody}`));
+
           }
         }
 

@@ -2,8 +2,15 @@
 
 const {
   ArrayIsArray,
+  ArrayPrototypePush,
+  ArrayPrototypeReduce,
+  ArrayPrototypeSlice,
+  FunctionPrototype,
+  FunctionPrototypeCall,
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
+  ReflectApply,
+  StringPrototypeSlice,
   Symbol,
   Uint8Array,
 } = primordials;
@@ -12,8 +19,8 @@ const {
   errnoException,
   codes: {
     ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_ARG_VALUE,
     ERR_INVALID_HANDLE_TYPE,
-    ERR_INVALID_OPT_VALUE,
     ERR_INVALID_SYNC_FORK_INPUT,
     ERR_IPC_CHANNEL_CLOSED,
     ERR_IPC_DISCONNECTED,
@@ -24,6 +31,7 @@ const {
 } = require('internal/errors');
 const {
   validateArray,
+  validateObject,
   validateOneOf,
   validateString,
 } = require('internal/validators');
@@ -229,19 +237,19 @@ function stdioStringToArray(stdio, channel) {
   switch (stdio) {
     case 'ignore':
     case 'overlapped':
-    case 'pipe': options.push(stdio, stdio, stdio); break;
-    case 'inherit': options.push(0, 1, 2); break;
+    case 'pipe': ArrayPrototypePush(options, stdio, stdio, stdio); break;
+    case 'inherit': ArrayPrototypePush(options, 0, 1, 2); break;
     default:
-      throw new ERR_INVALID_OPT_VALUE('stdio', stdio);
+      throw new ERR_INVALID_ARG_VALUE('stdio', stdio);
   }
 
-  if (channel) options.push(channel);
+  if (channel) ArrayPrototypePush(options, channel);
 
   return options;
 }
 
 function ChildProcess() {
-  EventEmitter.call(this);
+  FunctionPrototypeCall(EventEmitter, this);
 
   this._closesNeeded = 1;
   this._closesGot = 0;
@@ -276,7 +284,7 @@ function ChildProcess() {
       if (this.spawnfile)
         err.path = this.spawnfile;
 
-      err.spawnargs = this.spawnargs.slice(1);
+      err.spawnargs = ArrayPrototypeSlice(this.spawnargs, 1);
       this.emit('error', err);
     } else {
       this.emit('exit', this.exitCode, this.signalCode);
@@ -338,9 +346,7 @@ function closePendingHandle(target) {
 ChildProcess.prototype.spawn = function(options) {
   let i = 0;
 
-  if (options === null || typeof options !== 'object') {
-    throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
-  }
+  validateObject(options, 'options');
 
   // If no `stdio` option was given - use default
   let stdio = options.stdio || 'pipe';
@@ -353,7 +359,7 @@ ChildProcess.prototype.spawn = function(options) {
 
 
   validateOneOf(options.serialization, 'options.serialization',
-                [undefined, 'json', 'advanced'], true);
+                [undefined, 'json', 'advanced']);
   const serialization = options.serialization || 'json';
 
   if (ipc !== undefined) {
@@ -363,19 +369,20 @@ ChildProcess.prototype.spawn = function(options) {
     else
       validateArray(options.envPairs, 'options.envPairs');
 
-    options.envPairs.push(`NODE_CHANNEL_FD=${ipcFd}`);
-    options.envPairs.push(`NODE_CHANNEL_SERIALIZATION_MODE=${serialization}`);
+    ArrayPrototypePush(options.envPairs, `NODE_CHANNEL_FD=${ipcFd}`);
+    ArrayPrototypePush(options.envPairs,
+                       `NODE_CHANNEL_SERIALIZATION_MODE=${serialization}`);
   }
 
   validateString(options.file, 'options.file');
   this.spawnfile = options.file;
 
-  if (ArrayIsArray(options.args))
-    this.spawnargs = options.args;
-  else if (options.args === undefined)
+  if (options.args === undefined) {
     this.spawnargs = [];
-  else
-    throw new ERR_INVALID_ARG_TYPE('options.args', 'Array', options.args);
+  } else {
+    validateArray(options.args, 'options.args');
+    this.spawnargs = options.args;
+  }
 
   // (db) we extend 'options' with info for thread-based spawn
   options.ipc = ipc;
@@ -460,7 +467,8 @@ ChildProcess.prototype.spawn = function(options) {
   this.stdio = [];
 
   for (i = 0; i < stdio.length; i++)
-    this.stdio.push(stdio[i].socket === undefined ? null : stdio[i].socket);
+    ArrayPrototypePush(this.stdio,
+                       stdio[i].socket === undefined ? null : stdio[i].socket);
 
   // Add .send() method and start listening for IPC data
   if (ipc !== undefined) setupChannel(this, ipc, serialization);
@@ -705,9 +713,8 @@ function setupChannel(target, channel, serializationMode) {
     } else if (typeof options === 'function') {
       callback = options;
       options = undefined;
-    } else if (options !== undefined &&
-               (options === null || typeof options !== 'object')) {
-      throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
+    } else if (options !== undefined) {
+      validateObject(options, 'options');
     }
 
     options = { swallowErrors: false, ...options };
@@ -774,7 +781,7 @@ function setupChannel(target, channel, serializationMode) {
 
       // Queue-up message and handle if we haven't received ACK yet.
       if (this._handleQueue) {
-        this._handleQueue.push({
+        ArrayPrototypePush(this._handleQueue, {
           callback: callback,
           handle: handle,
           options: options,
@@ -786,10 +793,8 @@ function setupChannel(target, channel, serializationMode) {
       obj = handleConversion[message.type];
 
       // convert TCP object to native handle object
-      handle = handleConversion[message.type].send.call(target,
-                                                        message,
-                                                        handle,
-                                                        options);
+      handle = ReflectApply(handleConversion[message.type].send,
+                            target, [message, handle, options]);
 
       // If handle was sent twice, or it is impossible to get native handle
       // out of it - just send a text without the handle.
@@ -804,7 +809,7 @@ function setupChannel(target, channel, serializationMode) {
                !(message && (message.cmd === 'NODE_HANDLE_ACK' ||
                              message.cmd === 'NODE_HANDLE_NACK'))) {
       // Queue request anyway to avoid out-of-order messages.
-      this._handleQueue.push({
+      ArrayPrototypePush(this._handleQueue, {
         callback: callback,
         handle: null,
         options: options,
@@ -851,7 +856,7 @@ function setupChannel(target, channel, serializationMode) {
       }
     }
 
-    /* If the master is > 2 read() calls behind, please stop sending. */
+    /* If the primary is > 2 read() calls behind, please stop sending. */
     return channel.writeQueueSize < (65536 * 2);
   };
 
@@ -935,10 +940,11 @@ function isInternal(message) {
           typeof message === 'object' &&
           typeof message.cmd === 'string' &&
           message.cmd.length > INTERNAL_PREFIX.length &&
-          message.cmd.slice(0, INTERNAL_PREFIX.length) === INTERNAL_PREFIX);
+          StringPrototypeSlice(message.cmd, 0, INTERNAL_PREFIX.length) ===
+            INTERNAL_PREFIX);
 }
 
-function nop() { }
+const nop = FunctionPrototype;
 
 function getValidStdio(stdio, sync) {
   let ipc;
@@ -948,18 +954,18 @@ function getValidStdio(stdio, sync) {
   if (typeof stdio === 'string') {
     stdio = stdioStringToArray(stdio);
   } else if (!ArrayIsArray(stdio)) {
-    throw new ERR_INVALID_OPT_VALUE('stdio', stdio);
+    throw new ERR_INVALID_ARG_VALUE('stdio', stdio);
   }
 
   // At least 3 stdio will be created
   // Don't concat() a new Array() because it would be sparse, and
   // stdio.reduce() would skip the sparse elements of stdio.
   // See https://stackoverflow.com/a/5501711/3561
-  while (stdio.length < 3) stdio.push(undefined);
+  while (stdio.length < 3) ArrayPrototypePush(stdio, undefined);
 
   // Translate stdio into C++-readable form
   // (i.e. PipeWraps or fds)
-  stdio = stdio.reduce((acc, stdio, i) => {
+  stdio = ArrayPrototypeReduce(stdio, (acc, stdio, i) => {
     function cleanup() {
       for (let i = 0; i < acc.length; i++) {
         if ((acc[i].type === 'pipe' || acc[i].type === 'ipc') && acc[i].handle)
@@ -973,7 +979,7 @@ function getValidStdio(stdio, sync) {
     }
 
     if (stdio === 'ignore') {
-      acc.push({ type: 'ignore' });
+      ArrayPrototypePush(acc, { type: 'ignore' });
     } else if (stdio === 'pipe' || stdio === 'overlapped' ||
                (typeof stdio === 'number' && stdio < 0)) {
       const a = {
@@ -985,7 +991,7 @@ function getValidStdio(stdio, sync) {
       if (!sync)
         a.handle = new Pipe(PipeConstants.SOCKET);
 
-      acc.push(a);
+      ArrayPrototypePush(acc, a);
     } else if (stdio === 'ipc') {
       if (sync || ipc !== undefined) {
         // Cleanup previously created pipes
@@ -999,18 +1005,18 @@ function getValidStdio(stdio, sync) {
       ipc = new Pipe(PipeConstants.IPC);
       ipcFd = i;
 
-      acc.push({
+      ArrayPrototypePush(acc, {
         type: 'pipe',
         handle: ipc,
         ipc: true
       });
     } else if (stdio === 'inherit') {
-      acc.push({
+      ArrayPrototypePush(acc, {
         type: 'inherit',
         fd: i
       });
     } else if (typeof stdio === 'number' || typeof stdio.fd === 'number') {
-      acc.push({
+      ArrayPrototypePush(acc, {
         type: 'fd',
         fd: typeof stdio === 'number' ? stdio : stdio.fd
       });
@@ -1020,7 +1026,7 @@ function getValidStdio(stdio, sync) {
         stdio :
         getHandleWrapType(stdio.handle) ? stdio.handle : stdio._handle;
 
-      acc.push({
+      ArrayPrototypePush(acc, {
         type: 'wrap',
         wrapType: getHandleWrapType(handle),
         handle: handle,
@@ -1034,7 +1040,7 @@ function getValidStdio(stdio, sync) {
     } else {
       // Cleanup
       cleanup();
-      throw new ERR_INVALID_OPT_VALUE('stdio', stdio);
+      throw new ERR_INVALID_ARG_VALUE('stdio', stdio);
     }
 
     return acc;
@@ -1080,7 +1086,7 @@ function spawnSync(options) {
   if (result.error) {
     result.error = errnoException(result.error, 'spawnSync ' + options.file);
     result.error.path = options.file;
-    result.error.spawnargs = options.args.slice(1);
+    result.error.spawnargs = ArrayPrototypeSlice(options.args, 1);
   }
 
   return result;

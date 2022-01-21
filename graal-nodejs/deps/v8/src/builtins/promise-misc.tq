@@ -41,19 +41,18 @@ macro PromiseInit(promise: JSPromise): void {
     status: PromiseState::kPending,
     has_handler: false,
     handled_hint: false,
+    is_silent: false,
     async_task_id: 0
   });
   promise_internal::ZeroOutEmbedderOffsets(promise);
 }
 
 macro InnerNewJSPromise(implicit context: Context)(): JSPromise {
-  const nativeContext = LoadNativeContext(context);
-  const promiseFun = UnsafeCast<JSFunction>(
-      nativeContext[NativeContextSlot::PROMISE_FUNCTION_INDEX]);
+  const promiseFun = *NativeContextSlot(ContextSlot::PROMISE_FUNCTION_INDEX);
   assert(IsFunctionWithPrototypeSlotMap(promiseFun.map));
   const promiseMap = UnsafeCast<Map>(promiseFun.prototype_or_initial_map);
   const promiseHeapObject = promise_internal::AllocateJSPromise(context);
-  * UnsafeConstCast(& promiseHeapObject.map) = promiseMap;
+  *UnsafeConstCast(&promiseHeapObject.map) = promiseMap;
   const promise = UnsafeCast<JSPromise>(promiseHeapObject);
   promise.properties_or_hash = kEmptyFixedArray;
   promise.elements = kEmptyFixedArray;
@@ -62,6 +61,7 @@ macro InnerNewJSPromise(implicit context: Context)(): JSPromise {
     status: PromiseState::kPending,
     has_handler: false,
     handled_hint: false,
+    is_silent: false,
     async_task_id: 0
   });
   return promise;
@@ -78,8 +78,9 @@ macro NewPromiseFulfillReactionJobTask(implicit context: Context)(
     context: handlerContext,
     handler,
     promise_or_capability: promiseOrCapability,
-    continuation_preserved_embedder_data: nativeContext
-        [NativeContextSlot::CONTINUATION_PRESERVED_EMBEDDER_DATA_INDEX]
+    continuation_preserved_embedder_data:
+        *ContextSlot(
+        nativeContext, ContextSlot::CONTINUATION_PRESERVED_EMBEDDER_DATA_INDEX)
   };
 }
 
@@ -94,18 +95,18 @@ macro NewPromiseRejectReactionJobTask(implicit context: Context)(
     context: handlerContext,
     handler,
     promise_or_capability: promiseOrCapability,
-    continuation_preserved_embedder_data: nativeContext
-        [NativeContextSlot::CONTINUATION_PRESERVED_EMBEDDER_DATA_INDEX]
+    continuation_preserved_embedder_data:
+        *ContextSlot(
+        nativeContext, ContextSlot::CONTINUATION_PRESERVED_EMBEDDER_DATA_INDEX)
   };
 }
 
 @export
 transitioning macro RunContextPromiseHookInit(implicit context: Context)(
     promise: JSPromise, parent: Object) {
-  const nativeContext: NativeContext = LoadNativeContext(context);
-  const hook = Cast<Callable>(
-      nativeContext[NativeContextSlot::PROMISE_HOOK_INIT_FUNCTION_INDEX])
-      otherwise return;
+  const maybeHook = *NativeContextSlot(
+      ContextSlot::PROMISE_HOOK_INIT_FUNCTION_INDEX);
+  const hook = Cast<Callable>(maybeHook) otherwise return;
   const parentObject = Is<JSPromise>(parent) ? Cast<JSPromise>(parent)
       otherwise unreachable: Undefined;
 
@@ -120,7 +121,7 @@ transitioning macro RunContextPromiseHookInit(implicit context: Context)(
 transitioning macro RunContextPromiseHookResolve(implicit context: Context)(
     promise: JSPromise) {
   RunContextPromiseHook(
-      NativeContextSlot::PROMISE_HOOK_RESOLVE_FUNCTION_INDEX, promise,
+      ContextSlot::PROMISE_HOOK_RESOLVE_FUNCTION_INDEX, promise,
       PromiseHookFlags());
 }
 
@@ -128,14 +129,14 @@ transitioning macro RunContextPromiseHookResolve(implicit context: Context)(
 transitioning macro RunContextPromiseHookResolve(implicit context: Context)(
     promise: JSPromise, flags: uint32) {
   RunContextPromiseHook(
-      NativeContextSlot::PROMISE_HOOK_RESOLVE_FUNCTION_INDEX, promise, flags);
+      ContextSlot::PROMISE_HOOK_RESOLVE_FUNCTION_INDEX, promise, flags);
 }
 
 @export
 transitioning macro RunContextPromiseHookBefore(implicit context: Context)(
     promiseOrCapability: JSPromise|PromiseCapability|Undefined) {
   RunContextPromiseHook(
-      NativeContextSlot::PROMISE_HOOK_BEFORE_FUNCTION_INDEX, promiseOrCapability,
+      ContextSlot::PROMISE_HOOK_BEFORE_FUNCTION_INDEX, promiseOrCapability,
       PromiseHookFlags());
 }
 
@@ -143,7 +144,7 @@ transitioning macro RunContextPromiseHookBefore(implicit context: Context)(
 transitioning macro RunContextPromiseHookBefore(implicit context: Context)(
     promiseOrCapability: JSPromise|PromiseCapability|Undefined, flags: uint32) {
   RunContextPromiseHook(
-      NativeContextSlot::PROMISE_HOOK_BEFORE_FUNCTION_INDEX, promiseOrCapability,
+      ContextSlot::PROMISE_HOOK_BEFORE_FUNCTION_INDEX, promiseOrCapability,
       flags);
 }
 
@@ -151,7 +152,7 @@ transitioning macro RunContextPromiseHookBefore(implicit context: Context)(
 transitioning macro RunContextPromiseHookAfter(implicit context: Context)(
     promiseOrCapability: JSPromise|PromiseCapability|Undefined) {
   RunContextPromiseHook(
-      NativeContextSlot::PROMISE_HOOK_AFTER_FUNCTION_INDEX, promiseOrCapability,
+      ContextSlot::PROMISE_HOOK_AFTER_FUNCTION_INDEX, promiseOrCapability,
       PromiseHookFlags());
 }
 
@@ -159,16 +160,16 @@ transitioning macro RunContextPromiseHookAfter(implicit context: Context)(
 transitioning macro RunContextPromiseHookAfter(implicit context: Context)(
     promiseOrCapability: JSPromise|PromiseCapability|Undefined, flags: uint32) {
   RunContextPromiseHook(
-      NativeContextSlot::PROMISE_HOOK_AFTER_FUNCTION_INDEX, promiseOrCapability,
+      ContextSlot::PROMISE_HOOK_AFTER_FUNCTION_INDEX, promiseOrCapability,
       flags);
 }
 
 transitioning macro RunContextPromiseHook(implicit context: Context)(
-    slot: NativeContextSlot,
+    slot: Slot<NativeContext, Undefined|Callable>,
     promiseOrCapability: JSPromise|PromiseCapability|Undefined, flags: uint32) {
   if (!IsContextPromiseHookEnabled(flags)) return;
-  const nativeContext: NativeContext = LoadNativeContext(context);
-  const hook = Cast<Callable>(nativeContext[slot]) otherwise return;
+  const maybeHook = *NativeContextSlot(slot);
+  const hook = Cast<Callable>(maybeHook) otherwise return;
 
   let promise: JSPromise;
   typeswitch (promiseOrCapability) {
@@ -251,8 +252,9 @@ macro NewPromiseReaction(implicit context: Context)(
     reject_handler: rejectHandler,
     fulfill_handler: fulfillHandler,
     promise_or_capability: promiseOrCapability,
-    continuation_preserved_embedder_data: nativeContext
-        [NativeContextSlot::CONTINUATION_PRESERVED_EMBEDDER_DATA_INDEX]
+    continuation_preserved_embedder_data:
+        *ContextSlot(
+        nativeContext, ContextSlot::CONTINUATION_PRESERVED_EMBEDDER_DATA_INDEX)
   };
 }
 
@@ -316,7 +318,7 @@ macro InvokeThen<F: type>(implicit context: Context)(
       IsPromiseThenLookupChainIntact(
           nativeContext, UnsafeCast<HeapObject>(receiver).map)) {
     const then =
-        UnsafeCast<JSAny>(nativeContext[NativeContextSlot::PROMISE_THEN_INDEX]);
+        *NativeContextSlot(nativeContext, ContextSlot::PROMISE_THEN_INDEX);
     return callFunctor.Call(nativeContext, then, receiver, arg1, arg2);
   } else
     deferred {

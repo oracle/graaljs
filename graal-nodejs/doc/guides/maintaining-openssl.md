@@ -6,18 +6,29 @@ If you need to provide updates across all active release lines you will
 currently need to generate three PRs as follows:
 
 * a PR for master which is generated following the instructions
-  below which include the QUIC patch.
-* a PR for 14.x following the instruction below based on the
-  14,x branch but skipping the step to apply the QUICK patch.
-  This PR should cherry pick back to the active release lines
-  except for the 10.x line.
+  below.
+* a PR for 14.x following the instructions in the v14.x-staging version
+  of this guide.
 * a PR which uses the same commit from the second PR to apply the
   updates to the openssl source code, with a new commit generated
-  by following steps 2 onwards on the 10.x line. This is
-  necessary because differences in 10.x requires that the
-  configuration files be regenerated specifically for 10.x.
+  by following steps 2 onwards on the 12.x line. This is
+  necessary because the configuration files have embedded timestamps
+  which lead to merge conflicts if cherry-picked from the second PR.
+
+## Use of the quictls/openssl fork
+
+Node.js currently uses the quictls/openssl fork, which closely tracks
+the main openssl/openssl releases with the addition of APIs to support
+the QUIC protocol.
+
+Details on the fork, as well as the latest sources, can be found at
+<https://github.com/quictls/openssl>.
+
+Branches are used per OpenSSL version (for instance,
+<https://github.com/quictls/openssl/tree/OpenSSL_1_1_1j+quic)>.
 
 ## Requirements
+
 * Linux environment.
 * `perl` Only Perl version 5 is tested.
 * `nasm` (<https://www.nasm.us/>) Version 2.11 or higher is needed.
@@ -42,28 +53,37 @@ NASM version 2.11.08
 
 ## 1. Obtain and extract new OpenSSL sources
 
-Get a new source from  <https://www.openssl.org/source/> and extract
-all files into `deps/openssl/openssl`. Then add all files and commit
-them.
+Get a new source from <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1j+quic>
+and copy all files into `deps/openssl/openssl`. Then add all files and commit
+them. (The link above, and the branch, will change with each new OpenSSL
+release).
+
 ```console
-% cd deps/openssl/
+% git clone https://github.com/quictls/openssl
+% cd openssl
+% git checkout OpenSSL_1_1_1j+quic
+% cd ../node/deps/openssl
 % rm -rf openssl
-% tar zxf ~/tmp/openssl-1.1.0h.tar.gz
-% mv openssl-1.1.0h openssl
+% cp -R ../../../openssl openssl
+% rm -rf openssl/.git* openssl/.travis*
 % git add --all openssl
 % git commit openssl
 ```
 
 The commit message can be written as (with the openssl version set
 to the relevant value):
+
 ```text
-deps: upgrade openssl sources to 1.1.0h
+deps: upgrade openssl sources to OpenSSL_1_1_1j
 
 This updates all sources in deps/openssl/openssl by:
-    $ cd deps/openssl/
+    $ git clone https://github.com/quictls/openssl
+    $ cd openssl
+    $ git checkout OpenSSL_1_1_1j+quic
+    $ cd ../node/deps/openssl
     $ rm -rf openssl
-    $ tar zxf ~/tmp/openssl-1.1.0h.tar.gz
-    $ mv openssl-1.1.0h openssl
+    $ cp -R ../openssl openssl
+    $ rm -rf openssl/.git* openssl/.travis*
     $ git add --all openssl
     $ git commit openssl
 ```
@@ -72,6 +92,7 @@ This updates all sources in deps/openssl/openssl by:
 
 Use `make` to regenerate all platform dependent files in
 `deps/openssl/config/archs/`:
+
 ```console
 # On non-Linux machines
 % make gen-openssl
@@ -85,13 +106,14 @@ Use `make` to regenerate all platform dependent files in
 Check diffs to ensure updates are right. Even if there are no updates in openssl
 sources, `buildinf.h` files will be updated because they have timestamp
 data in them.
+
 ```console
 % git diff -- deps/openssl
 ```
 
-*Note*: On Windows, OpenSSL Configure generates a `makefile` that can be
+_Note_: On Windows, OpenSSL Configure generates a `makefile` that can be
 used for the `nmake` command. The `make` command in step 2 (above) uses
- `Makefile_VC-WIN64A` and `Makefile_VC-WIN32` that are manually
+`Makefile_VC-WIN64A` and `Makefile_VC-WIN32` that are manually
 created. When source files or build options are updated in Windows,
 it needs to change these two Makefiles by hand. If you are not sure,
 please ask @shigeki for details.
@@ -100,6 +122,7 @@ please ask @shigeki for details.
 
 Update all architecture dependent files. Do not forget to git add or remove
 files if they are changed before committing:
+
 ```console
 % git add deps/openssl/config/archs
 % git add deps/openssl/openssl/include/crypto/bn_conf.h
@@ -110,8 +133,9 @@ files if they are changed before committing:
 
 The commit message can be written as (with the openssl version set
 to the relevant value):
+
 ```text
- deps: update archs files for OpenSSL-1.1.0
+ deps: update archs files for OpenSSL-1.1.1
 
  After an OpenSSL source update, all the config files need to be
  regenerated and committed by:

@@ -18,12 +18,13 @@ const {
 } = primordials;
 
 const { inspect } = require('internal/util/inspect');
-const { codes: {
-  ERR_INVALID_ARG_TYPE
-} } = require('internal/errors');
 const {
   removeColors,
 } = require('internal/util');
+const {
+  validateObject,
+} = require('internal/validators');
+const { isErrorStackTraceLimitWritable } = require('internal/errors');
 
 let blue = '';
 let green = '';
@@ -326,9 +327,7 @@ function addEllipsis(string) {
 
 class AssertionError extends Error {
   constructor(options) {
-    if (typeof options !== 'object' || options === null) {
-      throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
-    }
+    validateObject(options, 'options');
     const {
       message,
       operator,
@@ -343,7 +342,7 @@ class AssertionError extends Error {
     } = options;
 
     const limit = Error.stackTraceLimit;
-    Error.stackTraceLimit = 0;
+    if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = 0;
 
     if (message != null) {
       super(String(message));
@@ -438,7 +437,7 @@ class AssertionError extends Error {
       }
     }
 
-    Error.stackTraceLimit = limit;
+    if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = limit;
 
     this.generatedMessage = !message;
     ObjectDefineProperty(this, 'name', {

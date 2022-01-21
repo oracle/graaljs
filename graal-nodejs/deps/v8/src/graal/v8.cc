@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,12 +48,14 @@
 #include "graal_context.h"
 #include "graal_date.h"
 #include "graal_external.h"
+#include "graal_fixed_array.h"
 #include "graal_function.h"
 #include "graal_function_template.h"
 #include "graal_isolate.h"
 #include "graal_map.h"
 #include "graal_message.h"
 #include "graal_module.h"
+#include "graal_module_request.h"
 #include "graal_number.h"
 #include "graal_object_template.h"
 #include "graal_primitive_array.h"
@@ -71,11 +73,13 @@
 #include "graal_value.h"
 #include "uv.h"
 #include "v8.h"
+#include "v8-fast-api-calls.h"
 #include "v8-profiler.h"
 #include "v8-version-string.h"
 #ifdef __POSIX__
 #include "v8-wasm-trap-handler-posix.h"
 #endif
+#include "libplatform/libplatform.h"
 #include "libplatform/v8-tracing.h"
 #include "src/base/once.h"
 #include "src/base/platform/mutex.h"
@@ -445,6 +449,10 @@ namespace v8 {
         return GraalIsolate::GetCurrent();
     }
 
+    Isolate* Isolate::TryGetCurrent() {
+        return GraalIsolate::GetCurrent();
+    }
+
     Local<Context> Isolate::GetCurrentContext() {
         return reinterpret_cast<GraalIsolate*> (this)->GetCurrentContext();
     }
@@ -543,6 +551,12 @@ namespace v8 {
         heap_statistics->external_memory_ = 4096; // dummy value
     }
 
+    Isolate::CreateParams::CreateParams() {
+    }
+
+    Isolate::CreateParams::~CreateParams() {
+    }
+
     Isolate* Isolate::New(Isolate::CreateParams const& params) {
         return GraalIsolate::New(params);
     }
@@ -623,6 +637,10 @@ namespace v8 {
 
     Local<Context> Object::CreationContext() {
         return reinterpret_cast<GraalObject*> (this)->CreationContext();
+    }
+
+    MaybeLocal<Context> Object::GetCreationContext() {
+        return CreationContext();
     }
 
     Maybe<bool> Object::Delete(Local<Context> context, Local<Value> key) {
@@ -1527,6 +1545,11 @@ namespace v8 {
         return false;
     }
 
+    bool String::IsExternalTwoByte() const {
+        TRACE
+        return false;
+    }
+
     bool String::IsOneByte() const {
         return reinterpret_cast<const GraalString*> (this)->ContainsOnlyOneByte();
     }
@@ -2165,6 +2188,10 @@ namespace v8 {
         return reinterpret_cast<const GraalSymbol*> (this)->Name();
     }
 
+    Local<Value> Symbol::Description(Isolate* isolate) const {
+        return reinterpret_cast<const GraalSymbol*> (this)->Name();
+    }
+
     Local<Symbol> Symbol::GetIterator(Isolate* isolate) {
         return GraalSymbol::GetIterator(isolate);
     }
@@ -2213,7 +2240,7 @@ namespace v8 {
         return reinterpret_cast<GraalModule*> (this)->Evaluate(context);
     }
 
-    Maybe<bool> Module::InstantiateModule(Local<Context> context, ResolveCallback callback) {
+    Maybe<bool> Module::InstantiateModule(Local<Context> context, ResolveModuleCallback callback) {
         return reinterpret_cast<GraalModule*> (this)->InstantiateModule(context, callback);
     }
 
@@ -2800,15 +2827,21 @@ namespace v8 {
     }
 
     Isolate::DisallowJavascriptExecutionScope::DisallowJavascriptExecutionScope(Isolate* isolate, OnFailure on_failure) {
-        TRACE
+        isolate_ = isolate;
+        was_execution_allowed_throws_ = reinterpret_cast<GraalIsolate*> (isolate)->SetJSExecutionAllowed(false);
     }
 
     Isolate::DisallowJavascriptExecutionScope::~DisallowJavascriptExecutionScope() {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (isolate_)->SetJSExecutionAllowed(was_execution_allowed_throws_);
     }
 
-    void Isolate::CheckMemoryPressure() {
-        TRACE
+    Isolate::AllowJavascriptExecutionScope::AllowJavascriptExecutionScope(Isolate* isolate) {
+        isolate_ = isolate;
+        was_execution_allowed_throws_ = reinterpret_cast<GraalIsolate*> (isolate)->SetJSExecutionAllowed(true);
+    }
+
+    Isolate::AllowJavascriptExecutionScope::~AllowJavascriptExecutionScope() {
+        reinterpret_cast<GraalIsolate*> (isolate_)->SetJSExecutionAllowed(was_execution_allowed_throws_);
     }
 
     void HeapProfiler::RemoveBuildEmbedderGraphCallback(BuildEmbedderGraphCallback callback, void* data) {
@@ -2840,10 +2873,6 @@ namespace v8 {
 
     Local<Value> Module::GetException() const {
         return reinterpret_cast<const GraalModule*> (this)->GetException();
-    }
-
-    void Isolate::SetHostImportModuleDynamicallyCallback(HostImportModuleDynamicallyCallback callback) {
-        reinterpret_cast<GraalIsolate*> (this)->SetImportModuleDynamicallyCallback(callback);
     }
 
     void Isolate::SetHostInitializeImportMetaObjectCallback(HostInitializeImportMetaObjectCallback callback) {
@@ -3221,14 +3250,6 @@ namespace v8 {
         TRACE
     }
 
-    Isolate::AllowJavascriptExecutionScope::AllowJavascriptExecutionScope(Isolate* isolate) {
-        TRACE
-    }
-
-    Isolate::AllowJavascriptExecutionScope::~AllowJavascriptExecutionScope() {
-        TRACE
-    }
-
     MaybeLocal<Context> Context::FromSnapshot(
             Isolate* isolate, size_t context_snapshot_index,
             DeserializeInternalFieldsCallback embedder_fields_deserializer,
@@ -3291,10 +3312,6 @@ namespace v8 {
     }
 
     void CpuProfiler::SetSamplingInterval(int us) {
-        TRACE
-    }
-
-    void CpuProfiler::StartProfiling(Local<String> title, bool record_samples) {
         TRACE
     }
 
@@ -3419,7 +3436,7 @@ namespace v8 {
     }
 
     void MicrotasksScope::PerformCheckpoint(Isolate* isolate) {
-        isolate->RunMicrotasks();
+        reinterpret_cast<GraalIsolate*> (isolate)->RunMicrotasks();
     }
 
     String::ExternalStringResourceBase* String::GetExternalStringResourceBaseSlow(String::Encoding* encoding_out) const {
@@ -3445,15 +3462,6 @@ namespace v8 {
 
     void Isolate::ClearKeptObjects() {
         TRACE
-    }
-
-    void Isolate::SetHostCleanupFinalizationGroupCallback(HostCleanupFinalizationGroupCallback callback) {
-        TRACE
-    }
-
-    Maybe<bool> FinalizationGroup::Cleanup(Local<FinalizationGroup> finalization_group) {
-        TRACE
-        return Just(true);
     }
 
     Local<ArrayBuffer> ArrayBuffer::New(Isolate* isolate, std::shared_ptr<BackingStore> backing_store) {
@@ -3680,36 +3688,151 @@ namespace v8 {
         reinterpret_cast<GraalContext*> (this)->SetPromiseHooks(init_hook, before_hook, after_hook, resolve_hook);
     }
 
-    void Object::CheckCast(v8::Value* obj) {}
-    void Promise::CheckCast(v8::Value* obj) {}
-    void Function::CheckCast(v8::Value* obj) {}
+    MicrotaskQueue* Context::GetMicrotaskQueue() {
+        return reinterpret_cast<GraalIsolate*> (GetIsolate())->GetMicrotaskQueue();
+    }
+
+    internal::Address* Context::GetDataFromSnapshotOnce(size_t index) {
+        TRACE
+        return nullptr;
+    }
+
+    size_t SnapshotCreator::AddData(Local<Context> context, internal::Address object) {
+        TRACE
+        return 0;
+    }
+
+    int64_t Isolate::AdjustAmountOfExternalAllocatedMemory(int64_t change_in_bytes) {
+        TRACE
+        return 1;
+    }
+
+    size_t SharedArrayBuffer::ByteLength() const {
+        const GraalObject* graal_object = reinterpret_cast<const GraalObject*> (this);
+        GraalIsolate* graal_isolate = graal_object->Isolate();
+        jobject java_buffer = graal_object->GetJavaObject();
+        JNI_CALL(jlong, byte_length, graal_isolate, GraalAccessMethod::shared_array_buffer_byte_length, Long, java_buffer);
+        return byte_length;
+    }
+
+    int FixedArray::Length() const {
+        return reinterpret_cast<const GraalFixedArray*> (this)->Length();
+    }
+
+    Local<Data> FixedArray::Get(Local<Context> context, int i) const {
+        return reinterpret_cast<const GraalFixedArray*> (this)->Get(context, i);
+    }
+
+    Local<FixedArray> Module::GetModuleRequests() const {
+        return reinterpret_cast<const GraalModule*> (this)->GetModuleRequests();
+    }
+
+    Local<String> ModuleRequest::GetSpecifier() const {
+        return reinterpret_cast<const GraalModuleRequest*> (this)->GetSpecifier();
+    }
+
+    Local<FixedArray> ModuleRequest::GetImportAssertions() const {
+        return reinterpret_cast<const GraalModuleRequest*> (this)->GetImportAssertions();
+    }
+
+    bool Object::IsConstructor() {
+        return reinterpret_cast<GraalObject*> (this)->IsConstructor();
+    }
+
+    CFunctionInfo::CFunctionInfo(const CTypeInfo& return_info, unsigned int arg_count, const CTypeInfo* arg_info) : return_info_(return_info), arg_count_(arg_count), arg_info_(arg_info) {
+    }
+
+    const CTypeInfo& CFunctionInfo::ArgumentInfo(unsigned int index) const {
+        TRACE
+        return *((CTypeInfo*) nullptr);
+    }
+
+    CFunction::CFunction(const void* address, const CFunctionInfo* type_info) : address_(address), type_info_(type_info) {
+    }
+
+    void Isolate::SetHostImportModuleDynamicallyCallback(HostImportModuleDynamicallyWithImportAssertionsCallback callback) {
+        reinterpret_cast<GraalIsolate*> (this)->SetImportModuleDynamicallyCallback(callback);
+    }
+
+    Local<Object> Object::New(Isolate* isolate, Local<Value> prototype_or_null, Local<Name>* names, Local<Value>* values, size_t length) {
+        Local<Object> v8_object = Object::New(isolate);
+        GraalObject* graal_object = reinterpret_cast<GraalObject*> (*v8_object);
+        graal_object->SetPrototype(prototype_or_null);
+        for (int i = 0; i < length; i++) {
+            graal_object->Set(names[i], values[i]);
+        }
+        return v8_object;
+    }
+
+    std::unique_ptr<v8::JobHandle> v8::platform::NewDefaultJobHandle(v8::Platform* platform, v8::TaskPriority priority, std::unique_ptr<v8::JobTask> job_task, size_t num_worker_threads) {
+        TRACE
+        return nullptr;
+    }
+
+    void String::ExternalStringResource::CheckCachedDataInvariants() const {
+    }
+
+    void String::ExternalOneByteStringResource::CheckCachedDataInvariants() const {
+    }
+
+    void String::VerifyExternalStringResourceBase(ExternalStringResourceBase* v, Encoding encoding) const {
+    }
+
+    void TracedReferenceBase::CheckValue() const {
+    }
+
+    void AccessorSignature::CheckCast(class v8::Data* that) {}
     void Array::CheckCast(v8::Value* obj) {}
-    void Uint32Array::CheckCast(v8::Value* obj) {}
-    void Float64Array::CheckCast(v8::Value* obj) {}
-    void Boolean::CheckCast(v8::Value* obj) {}
-    void Name::CheckCast(v8::Value* obj) {}
-    void Number::CheckCast(v8::Value* obj) {}
-    void Int32::CheckCast(v8::Value* obj) {}
-    void Uint32::CheckCast(v8::Value* obj) {}
-    void Promise::Resolver::CheckCast(v8::Value* obj) {}
     void ArrayBuffer::CheckCast(v8::Value* obj) {}
-    void TypedArray::CheckCast(v8::Value* obj) {}
-    void DataView::CheckCast(v8::Value* obj) {}
     void ArrayBufferView::CheckCast(v8::Value* obj) {}
-    void Uint8Array::CheckCast(v8::Value* obj) {}
-    void SharedArrayBuffer::CheckCast(v8::Value* obj) {}
-    void Proxy::CheckCast(v8::Value* obj) {}
-    void Date::CheckCast(v8::Value* obj) {}
-    void Integer::CheckCast(v8::Value* that) {}
-    void RegExp::CheckCast(v8::Value* that) {}
-    void External::CheckCast(v8::Value* that) {}
-    void BigInt::CheckCast(v8::Value* that) {}
     void BigInt64Array::CheckCast(v8::Value* that) {}
+    void BigInt::CheckCast(v8::Data* that) {}
+    void BigIntObject::CheckCast(class v8::Value* that) {}
     void BigUint64Array::CheckCast(v8::Value* that) {}
-    void Symbol::CheckCast(v8::Value* that) {}
-    void Private::CheckCast(v8::Data* that) {}
+    void Boolean::CheckCast(v8::Data* that) {}
+    void BooleanObject::CheckCast(class v8::Value* that) {}
+    void Context::CheckCast(v8::Data* that) {}
+    void DataView::CheckCast(v8::Value* obj) {}
+    void Date::CheckCast(v8::Value* obj) {}
+    void External::CheckCast(v8::Value* that) {}
+    void Float32Array::CheckCast(class v8::Value* that) {}
+    void Float64Array::CheckCast(v8::Value* obj) {}
+    void Function::CheckCast(v8::Value* obj) {}
+    void FunctionTemplate::CheckCast(v8::Data* that) {}
+    void Int16Array::CheckCast(class v8::Value* that) {}
+    void Int32::CheckCast(v8::Data* that) {}
+    void Int32Array::CheckCast(v8::Value* that) {}
+    void Int8Array::CheckCast(class v8::Value* that) {}
+    void Integer::CheckCast(v8::Data* that) {}
     void Map::CheckCast(v8::Value* that) {}
+    void Module::CheckCast(class v8::Data* that) {}
+    void ModuleRequest::CheckCast(v8::Data* that) {}
+    void Name::CheckCast(v8::Data* that) {}
+    void Number::CheckCast(v8::Data* that) {}
+    void NumberObject::CheckCast(class v8::Value* that) {}
+    void Object::CheckCast(v8::Value* obj) {}
+    void ObjectTemplate::CheckCast(v8::Data* that) {}
+    void Private::CheckCast(v8::Data* that) {}
+    void Promise::CheckCast(v8::Value* obj) {}
+    void Promise::Resolver::CheckCast(v8::Value* obj) {}
+    void Proxy::CheckCast(v8::Value* obj) {}
+    void RegExp::CheckCast(v8::Value* that) {}
     void Set::CheckCast(v8::Value* that) {}
+    void SharedArrayBuffer::CheckCast(v8::Value* obj) {}
+    void Signature::CheckCast(class v8::Data* that) {}
+    void String::CheckCast(v8::Data* that) {}
+    void StringObject::CheckCast(class v8::Value* that) {}
+    void Symbol::CheckCast(v8::Data* that) {}
+    void SymbolObject::CheckCast(class v8::Value* that) {}
+    void TypedArray::CheckCast(v8::Value* obj) {}
+    void Uint16Array::CheckCast(class v8::Value* that) {}
+    void Uint32::CheckCast(v8::Data* that) {}
+    void Uint32Array::CheckCast(v8::Value* obj) {}
+    void Uint8Array::CheckCast(v8::Value* obj) {}
+    void Uint8ClampedArray::CheckCast(class v8::Value* that) {}
+    void Value::CheckCast(v8::Data* that) {}
+    void WasmMemoryObject::CheckCast(class v8::Value* that) {}
+    void WasmModuleObject::CheckCast(class v8::Value* that) {}
 
 }
 

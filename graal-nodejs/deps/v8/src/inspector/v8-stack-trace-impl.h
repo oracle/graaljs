@@ -26,7 +26,7 @@ class StackFrame {
   ~StackFrame() = default;
 
   const String16& functionName() const;
-  const String16& scriptId() const;
+  int scriptId() const;
   const String16& sourceURL() const;
   int lineNumber() const;    // 0-based.
   int columnNumber() const;  // 0-based.
@@ -36,7 +36,7 @@ class StackFrame {
 
  private:
   String16 m_functionName;
-  String16 m_scriptId;
+  int m_scriptId;
   String16 m_sourceURL;
   int m_lineNumber;    // 0-based.
   int m_columnNumber;  // 0-based.
@@ -49,14 +49,14 @@ class V8StackTraceImpl : public V8StackTrace {
                                                         bool capture);
   static int maxCallStackSizeToCapture;
   static std::unique_ptr<V8StackTraceImpl> create(V8Debugger*,
-                                                  int contextGroupId,
                                                   v8::Local<v8::StackTrace>,
                                                   int maxStackSize);
   static std::unique_ptr<V8StackTraceImpl> capture(V8Debugger*,
-                                                   int contextGroupId,
                                                    int maxStackSize);
 
   ~V8StackTraceImpl() override;
+  V8StackTraceImpl(const V8StackTraceImpl&) = delete;
+  V8StackTraceImpl& operator=(const V8StackTraceImpl&) = delete;
   std::unique_ptr<protocol::Runtime::StackTrace> buildInspectorObjectImpl(
       V8Debugger* debugger) const;
 
@@ -71,7 +71,7 @@ class V8StackTraceImpl : public V8StackTrace {
   StringView topSourceURL() const override;
   int topLineNumber() const override;    // 1-based.
   int topColumnNumber() const override;  // 1-based.
-  StringView topScriptId() const override;
+  int topScriptId() const override;
   StringView topFunctionName() const override;
   std::unique_ptr<protocol::Runtime::API::StackTrace> buildInspectorObject()
       const override;
@@ -105,14 +105,13 @@ class V8StackTraceImpl : public V8StackTrace {
   int m_maxAsyncDepth;
   std::weak_ptr<AsyncStackTrace> m_asyncParent;
   V8StackTraceId m_externalParent;
-
-  DISALLOW_COPY_AND_ASSIGN(V8StackTraceImpl);
 };
 
 class AsyncStackTrace {
  public:
+  AsyncStackTrace(const AsyncStackTrace&) = delete;
+  AsyncStackTrace& operator=(const AsyncStackTrace&) = delete;
   static std::shared_ptr<AsyncStackTrace> capture(V8Debugger*,
-                                                  int contextGroupId,
                                                   const String16& description,
                                                   int maxStackSize);
   static uintptr_t store(V8Debugger* debugger,
@@ -131,7 +130,6 @@ class AsyncStackTrace {
   void setSuspendedTaskId(void* task);
   void* suspendedTaskId() const;
 
-  int contextGroupId() const;
   const String16& description() const;
   std::weak_ptr<AsyncStackTrace> parent() const;
   bool isEmpty() const;
@@ -142,12 +140,11 @@ class AsyncStackTrace {
   }
 
  private:
-  AsyncStackTrace(int contextGroupId, const String16& description,
+  AsyncStackTrace(const String16& description,
                   std::vector<std::shared_ptr<StackFrame>> frames,
                   std::shared_ptr<AsyncStackTrace> asyncParent,
                   const V8StackTraceId& externalParent);
 
-  int m_contextGroupId;
   uintptr_t m_id;
   void* m_suspendedTaskId;
   String16 m_description;
@@ -155,8 +152,6 @@ class AsyncStackTrace {
   std::vector<std::shared_ptr<StackFrame>> m_frames;
   std::weak_ptr<AsyncStackTrace> m_asyncParent;
   V8StackTraceId m_externalParent;
-
-  DISALLOW_COPY_AND_ASSIGN(AsyncStackTrace);
 };
 
 }  // namespace v8_inspector

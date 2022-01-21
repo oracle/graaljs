@@ -22,6 +22,8 @@
 'use strict';
 
 const {
+  ArrayPrototypeSlice,
+  ArrayPrototypeSort,
   ObjectDefineProperty,
 } = primordials;
 
@@ -109,7 +111,7 @@ function get(url, options, cb) {
 
 module.exports = {
   _connectionListener,
-  METHODS: methods.slice().sort(),
+  METHODS: ArrayPrototypeSort(ArrayPrototypeSlice(methods)),
   STATUS_CODES,
   Agent: httpAgent.Agent,
   ClientRequest,

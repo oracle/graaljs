@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-load("test/mjsunit/wasm/wasm-module-builder.js");
+d8.file.execute("test/mjsunit/wasm/wasm-module-builder.js");
 
 function checkImport(
     imported_module_name, imported_function_name) {
@@ -19,7 +19,7 @@ function checkImport(
   assertEquals(imp(4), instance.exports.call_imp(4));
 }
 
-checkImport('mod', 'foo');  // sanity check
+checkImport('mod', 'foo');  // Base check.
 checkImport('mod', '☺☺happy☺☺');
 checkImport('☺☺happy☺☺', 'foo');
 checkImport('☺☺happy☺☺', '☼+☃=☹');
@@ -42,7 +42,7 @@ function checkExports(
   assertEquals(-6, instance.exports[exported_name_mul](-3, 2));
 }
 
-checkExports('mul', 'mul', 'add', 'add');  // sanity check
+checkExports('mul', 'mul', 'add', 'add');  // Base check.
 checkExports('☺☺mul☺☺', 'mul', '☺☺add☺☺', 'add');
 checkExports('☺☺mul☺☺', '☺☺mul☺☺', '☺☺add☺☺', '☺☺add☺☺');
 

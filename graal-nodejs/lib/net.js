@@ -39,7 +39,6 @@ const stream = require('stream');
 let debug = require('internal/util/debuglog').debuglog('net', (fn) => {
   debug = fn;
 });
-const { deprecate } = require('internal/util');
 const {
   isIP,
   isIPv4,
@@ -91,10 +90,10 @@ const {
     ERR_INVALID_ARG_VALUE,
     ERR_INVALID_FD_TYPE,
     ERR_INVALID_IP_ADDRESS,
-    ERR_INVALID_OPT_VALUE,
     ERR_SERVER_ALREADY_LISTEN,
     ERR_SERVER_NOT_RUNNING,
-    ERR_SOCKET_CLOSED
+    ERR_SOCKET_CLOSED,
+    ERR_MISSING_ARGS,
   },
   errnoException,
   exceptionWithHostPort,
@@ -102,7 +101,10 @@ const {
 } = require('internal/errors');
 const { isUint8Array } = require('internal/util/types');
 const {
+  validateAbortSignal,
+  validateFunction,
   validateInt32,
+  validateNumber,
   validatePort,
   validateString
 } = require('internal/validators');
@@ -280,6 +282,21 @@ const kSetNoDelay = Symbol('kSetNoDelay');
 
 function Socket(options) {
   if (!(this instanceof Socket)) return new Socket(options);
+  if (options?.objectMode) {
+    throw new ERR_INVALID_ARG_VALUE(
+      'options.objectMode',
+      options.objectMode,
+      'is not supported'
+    );
+  } else if (options?.readableObjectMode || options?.writableObjectMode) {
+    throw new ERR_INVALID_ARG_VALUE(
+      `options.${
+        options.readableObjectMode ? 'readableObjectMode' : 'writableObjectMode'
+      }`,
+      options.readableObjectMode || options.writableObjectMode,
+      'is not supported'
+    );
+  }
 
   this.connecting = false;
   // Problem with this is that users can supply their own handle, that may not
@@ -302,19 +319,14 @@ function Socket(options) {
   else
     options = { ...options };
 
-  const { allowHalfOpen } = options;
-
-  // Prevent the "no-half-open enforcer" from being inherited from `Duplex`.
-  options.allowHalfOpen = true;
+  // Default to *not* allowing half open sockets.
+  options.allowHalfOpen = Boolean(options.allowHalfOpen);
   // For backwards compat do not emit close on destroy.
   options.emitClose = false;
-  options.autoDestroy = false;
+  options.autoDestroy = true;
   // Handle strings directly.
   options.decodeStrings = false;
   stream.Duplex.call(this, options);
-
-  // Default to *not* allowing half open sockets.
-  this.allowHalfOpen = Boolean(allowHalfOpen);
 
   if (options.handle) {
     this._handle = options.handle; // private
@@ -431,34 +443,28 @@ Socket.prototype._final = function(cb) {
   const err = this._handle.shutdown(req);
 
   if (err === 1 || err === UV_ENOTCONN)  // synchronous finish
-    return afterShutdown.call(req, 0);
+    return cb();
   else if (err !== 0)
-    return this.destroy(errnoException(err, 'shutdown'));
+    return cb(errnoException(err, 'shutdown'));
 };
 
-
-function afterShutdown(status) {
+function afterShutdown() {
   const self = this.handle[owner_symbol];
 
   debug('afterShutdown destroyed=%j', self.destroyed,
         self._readableState);
 
   this.callback();
-
-  // Callback may come after call to destroy.
-  if (self.destroyed)
-    return;
-
-  if (!self.readable || self.readableEnded) {
-    debug('readableState ended, destroying');
-    self.destroy();
-  }
 }
 
 // Provide a better error message when we call end() as a result
 // of the other side sending a FIN.  The standard 'write after end'
 // is overly vague, and makes it seem like the user's code is to blame.
 function writeAfterFIN(chunk, encoding, cb) {
+  if (!this.writableEnded) {
+    return stream.Duplex.prototype.write.call(this, chunk, encoding, cb);
+  }
+
   if (typeof encoding === 'function') {
     cb = encoding;
     encoding = null;
@@ -467,10 +473,10 @@ function writeAfterFIN(chunk, encoding, cb) {
   // eslint-disable-next-line no-restricted-syntax
   const er = new Error('This socket has been ended by the other party');
   er.code = 'EPIPE';
-  process.nextTick(emitErrorNT, this, er);
   if (typeof cb === 'function') {
     defaultTriggerAsyncIdScope(this[async_id_symbol], process.nextTick, cb, er);
   }
+  this.destroy(er);
 
   return false;
 }
@@ -643,12 +649,7 @@ Socket.prototype.read = function(n) {
 function onReadableStreamEnd() {
   if (!this.allowHalfOpen) {
     this.write = writeAfterFIN;
-    if (this.writable)
-      this.end();
-    else if (!this.writableLength)
-      this.destroy();
-  } else if (!this.destroyed && !this.writable && !this.writableLength)
-    this.destroy();
+  }
 }
 
 
@@ -704,14 +705,12 @@ Socket.prototype._destroy = function(exception, cb) {
 };
 
 Socket.prototype._getpeername = function() {
-  if (!this._peername) {
-    if (!this._handle || !this._handle.getpeername) {
-      return {};
-    }
-    const out = {};
-    const err = this._handle.getpeername(out);
-    if (err) return {};  // FIXME(bnoordhuis) Throw?
-    this._peername = out;
+  if (!this._handle || !this._handle.getpeername) {
+    return this._peername || {};
+  } else if (!this._peername) {
+    this._peername = {};
+    // FIXME(bnoordhuis) Throw when the return value is not 0?
+    this._handle.getpeername(this._peername);
   }
   return this._peername;
 };
@@ -744,12 +743,10 @@ protoGetter('remotePort', function remotePort() {
 Socket.prototype._getsockname = function() {
   if (!this._handle || !this._handle.getsockname) {
     return {};
-  }
-  if (!this._sockname) {
-    const out = {};
-    const err = this._handle.getsockname(out);
-    if (err) return {};  // FIXME(bnoordhuis) Throw?
-    this._sockname = out;
+  } else if (!this._sockname) {
+    this._sockname = {};
+    // FIXME(bnoordhuis) Throw when the return value is not 0?
+    this._handle.getsockname(this._sockname);
   }
   return this._sockname;
 };
@@ -951,6 +948,10 @@ Socket.prototype.connect = function(...args) {
   const options = normalized[0];
   const cb = normalized[1];
 
+  // options.port === null will be checked later.
+  if (options.port === undefined && options.path == null)
+    throw new ERR_MISSING_ARGS(['options', 'port', 'path']);
+
   if (this.write !== Socket.prototype.write)
     this.write = Socket.prototype.write;
 
@@ -978,7 +979,6 @@ Socket.prototype.connect = function(...args) {
   this._unrefTimer();
 
   this.connecting = true;
-  this.writable = true;
 
   if (pipe) {
     validateString(path, 'options.path');
@@ -1001,8 +1001,8 @@ function lookupAndConnect(self, options) {
     throw new ERR_INVALID_IP_ADDRESS(localAddress);
   }
 
-  if (localPort && typeof localPort !== 'number') {
-    throw new ERR_INVALID_ARG_TYPE('options.localPort', 'number', localPort);
+  if (localPort) {
+    validateNumber(localPort, 'options.localPort');
   }
 
   if (typeof port !== 'undefined') {
@@ -1028,10 +1028,8 @@ function lookupAndConnect(self, options) {
     return;
   }
 
-  if (options.lookup && typeof options.lookup !== 'function')
-    throw new ERR_INVALID_ARG_TYPE('options.lookup',
-                                   'Function', options.lookup);
-
+  if (options.lookup !== undefined)
+    validateFunction(options.lookup, 'options.lookup');
 
   if (dns === undefined) dns = require('dns');
   const dnsopts = {
@@ -1119,7 +1117,11 @@ Socket.prototype.unref = function() {
 
 
 function afterConnect(status, handle, req, readable, writable) {
-  const self = handle[owner_symbol];
+  let self = handle[owner_symbol];
+
+  if (self.constructor.name === 'ReusedHandle') {
+    self = self.handle;
+  }
 
   // Callback may come after call to destroy
   if (self.destroyed) {
@@ -1169,6 +1171,22 @@ function afterConnect(status, handle, req, readable, writable) {
   }
 }
 
+function addAbortSignalOption(self, options) {
+  if (options?.signal === undefined) {
+    return;
+  }
+  validateAbortSignal(options.signal, 'options.signal');
+  const { signal } = options;
+  const onAborted = () => {
+    self.close();
+  };
+  if (signal.aborted) {
+    process.nextTick(onAborted);
+  } else {
+    signal.addEventListener('abort', onAborted);
+    self.once('close', () => signal.removeEventListener('abort', onAborted));
+  }
+}
 
 function Server(options, connectionListener) {
   if (!(this instanceof Server))
@@ -1191,21 +1209,6 @@ function Server(options, connectionListener) {
   }
 
   this._connections = 0;
-
-  ObjectDefineProperty(this, 'connections', {
-    get: deprecate(() => {
-
-      if (this._usingWorkers) {
-        return null;
-      }
-      return this._connections;
-    }, 'Server.connections property is deprecated. ' +
-       'Use Server.getConnections method instead.', 'DEP0020'),
-    set: deprecate((val) => (this._connections = val),
-                   'Server.connections property is deprecated.',
-                   'DEP0020'),
-    configurable: true, enumerable: false
-  });
 
   this[async_id_symbol] = -1;
   this._handle = null;
@@ -1372,7 +1375,7 @@ function listenInCluster(server, address, port, addressType,
 
   if (cluster === undefined) cluster = require('cluster');
 
-  if (cluster.isMaster || exclusive) {
+  if (cluster.isPrimary || exclusive) {
     // Will create a new handle
     // _listen2 sets up the listened handle, it is still named like this
     // to avoid breaking code that wraps this method
@@ -1388,10 +1391,10 @@ function listenInCluster(server, address, port, addressType,
     flags,
   };
 
-  // Get the master's server handle, and listen on it
-  cluster._getServer(server, serverQuery, listenOnMasterHandle);
+  // Get the primary's server handle, and listen on it
+  cluster._getServer(server, serverQuery, listenOnPrimaryHandle);
 
-  function listenOnMasterHandle(err, handle) {
+  function listenOnPrimaryHandle(err, handle) {
     err = checkBindError(err, port, handle);
 
     if (err) {
@@ -1399,7 +1402,7 @@ function listenInCluster(server, address, port, addressType,
       return server.emit('error', ex);
     }
 
-    // Reuse master's server handle
+    // Reuse primary's server handle
     server._handle = handle;
     // _listen2 sets up the listened handle, it is still named like this
     // to avoid breaking code that wraps this method
@@ -1434,6 +1437,7 @@ Server.prototype.listen = function(...args) {
     listenInCluster(this, null, -1, -1, backlogFromArgs);
     return this;
   }
+  addAbortSignalOption(this, options);
   // (handle[, backlog][, cb]) where handle is an object with a fd
   if (typeof options.fd === 'number' && options.fd >= 0) {
     listenInCluster(this, null, null, null, backlogFromArgs, options.fd);
@@ -1461,7 +1465,7 @@ Server.prototype.listen = function(...args) {
       lookupAndListen(this, options.port | 0, options.host, backlog,
                       options.exclusive, flags);
     } else { // Undefined host, listens on unspecified address
-      // Default addressType 4 will be used to search for master server
+      // Default addressType 4 will be used to search for primary server
       listenInCluster(this, null, options.port | 0, 4,
                       backlog, undefined, options.exclusive);
     }
@@ -1503,7 +1507,7 @@ Server.prototype.listen = function(...args) {
                                     'must have the property "port" or "path"');
   }
 
-  throw new ERR_INVALID_OPT_VALUE('options', options);
+  throw new ERR_INVALID_ARG_VALUE('options', options);
 };
 
 function lookupAndListen(self, port, address, backlog, exclusive, flags) {
@@ -1773,12 +1777,11 @@ module.exports = {
   _normalizeArgs: normalizeArgs,
   _setSimultaneousAccepts,
   get BlockList() {
-    BlockList = BlockList ?? require('internal/blocklist').BlockList;
+    BlockList ??= require('internal/blocklist').BlockList;
     return BlockList;
   },
   get SocketAddress() {
-    SocketAddress =
-      SocketAddress ?? require('internal/socketaddress').SocketAddress;
+    SocketAddress ??= require('internal/socketaddress').SocketAddress;
     return SocketAddress;
   },
   connect,

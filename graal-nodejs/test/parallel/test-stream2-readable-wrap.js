@@ -22,8 +22,7 @@
 'use strict';
 const common = require('../common');
 const assert = require('assert');
-const Readable = require('_stream_readable');
-const Writable = require('_stream_writable');
+const { Readable, Writable } = require('stream');
 const EE = require('events').EventEmitter;
 
 function runTest(highWaterMark, objectMode, produce) {
@@ -43,6 +42,16 @@ function runTest(highWaterMark, objectMode, produce) {
     old.emit('resume');
     flow();
   };
+
+  // Make sure pause is only emitted once.
+  let pausing = false;
+  r.on('pause', () => {
+    assert.strictEqual(pausing, false);
+    pausing = true;
+    process.nextTick(() => {
+      pausing = false;
+    });
+  });
 
   let flowing;
   let chunks = 10;

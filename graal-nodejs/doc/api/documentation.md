@@ -1,6 +1,7 @@
 # About this documentation
 
 <!--introduced_in=v0.10.0-->
+
 <!-- type=misc -->
 
 Welcome to the official API reference documentation for Node.js!
@@ -50,10 +51,13 @@ modifications occur. To avoid surprises, use of an Experimental feature may need
 a command-line flag. Experimental features may also emit a [warning][].
 
 ## Stability overview
+
 <!-- STABILITY_OVERVIEW_SLOT_BEGIN -->
+
 <!-- STABILITY_OVERVIEW_SLOT_END -->
 
 ## JSON output
+
 <!-- YAML
 added: v0.6.12
 -->
@@ -73,4 +77,4 @@ be unavoidable.
 [V8 JavaScript engine]: https://v8.dev/
 [the contributing guide]: https://github.com/nodejs/node/blob/HEAD/CONTRIBUTING.md
 [the issue tracker]: https://github.com/nodejs/node/issues/new
-[warning]: process.md#process_event_warning
+[warning]: process.md#event-warning

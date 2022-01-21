@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,18 +41,14 @@
 package com.oracle.truffle.trufflenode.info;
 
 import java.nio.ByteBuffer;
+import java.nio.file.InvalidPathException;
 
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 
-/**
- *
- * @author Jan Stola
- */
 public final class UnboundScript {
-    private static final boolean IS_WINDOWS = System.getProperty("os.name").contains("Windows");
     private static int lastId;
     private final int id;
     private final Source source;
@@ -83,21 +79,18 @@ public final class UnboundScript {
             // We have the content already, but we need to associate the Source
             // with the corresponding file so that debugger knows where to add
             // the breakpoints.
-            TruffleFile truffleFile = JavaScriptLanguage.getCurrentEnv().getPublicTruffleFile(name);
-            source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(code).name(name).build();
+            try {
+                TruffleFile truffleFile = JavaScriptLanguage.getCurrentEnv().getPublicTruffleFile(name);
+                source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(code).name(name).build();
+            } catch (InvalidPathException ex) {
+                source = Source.newBuilder(JavaScriptLanguage.ID, code, name).build();
+            }
         }
         return source;
     }
 
     public static boolean isCoreModule(String name) {
-        // All but core modules are represented by an absolute path
-        // NB: Returns true for repl, [eval], [eval]-wrapper and other
-        // names of scripts which are not in files.
-        if (IS_WINDOWS) {
-            return !name.contains(":");
-        } else {
-            return !name.startsWith("/");
-        }
+        return name.startsWith("node:");
     }
 
     private static String sourcefileName(String fileName) {

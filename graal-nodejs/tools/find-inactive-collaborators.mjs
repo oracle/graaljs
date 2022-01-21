@@ -77,8 +77,8 @@ async function getCollaboratorsFromReadme() {
     if (line === '### Collaborators') {
       foundCollaboratorHeading = true;
     }
-    if (line.startsWith('**') && isCollaborator) {
-      const [, name, email] = /^\*\*([^*]+)\*\* &lt;(.+)&gt;/.exec(line);
+    if (line.startsWith('  **') && isCollaborator) {
+      const [, name, email] = /^  \*\*([^*]+)\*\* \\<(.+)>/.exec(line);
       const mailmap = await runGitCommand(
         `git check-mailmap '${name} <${email}>'`
       );
@@ -115,7 +115,7 @@ async function moveCollaboratorToEmeritus(peopleToMove) {
     // the list, print out the remaining entries to be moved because they come
     // alphabetically after the last item.
     if (inCollaboratorEmeritusSection && line === '' &&
-        fileContents.endsWith('&gt;\n')) {
+        fileContents.endsWith('>\n')) {
       while (textToMove.length) {
         fileContents += textToMove.pop();
       }
@@ -141,8 +141,8 @@ async function moveCollaboratorToEmeritus(peopleToMove) {
     if (isCollaborator) {
       if (line.startsWith('* ')) {
         collaboratorFirstLine = line;
-      } else if (line.startsWith('**')) {
-        const [, name, email] = /^\*\*([^*]+)\*\* &lt;(.+)&gt;/.exec(line);
+      } else if (line.startsWith('  **')) {
+        const [, name, email] = /^  \*\*([^*]+)\*\* \\<(.+)>/.exec(line);
         if (peopleToMove.some((entry) => {
           return entry.name === name && entry.email === email;
         })) {
@@ -158,7 +158,7 @@ async function moveCollaboratorToEmeritus(peopleToMove) {
     if (isCollaboratorEmeritus) {
       if (line.startsWith('* ')) {
         collaboratorFirstLine = line;
-      } else if (line.startsWith('**')) {
+      } else if (line.startsWith('  **')) {
         const currentLine = `${collaboratorFirstLine}\n${line}\n`;
         // If textToMove is empty, this still works because when undefined is
         // used in a comparison with <, the result is always false.

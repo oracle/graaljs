@@ -11,7 +11,6 @@ prefix es-module
 # Different error message expected:
 # 'Unexpected token export' versus 'Expected an operand but found export'
 test-esm-cjs-exports                 : FAIL
-test-esm-cjs-load-error-note         : FAIL
 # 'Unexpected token }' verus ': expected'
 test-esm-invalid-pjson               : FAIL
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,14 @@
  */
 
 #include "graal_context.h"
+#include "graal_fixed_array.h"
 #include "graal_isolate.h"
 #include "graal_module.h"
 #include "graal_primitive_array.h"
 #include "graal_string.h"
 #include "graal_unbound_script.h"
 
+#include "graal_fixed_array-inl.h"
 #include "graal_module-inl.h"
 #include "graal_string-inl.h"
 #include "graal_unbound_script-inl.h"
@@ -71,7 +73,7 @@ v8::MaybeLocal<v8::Module> GraalModule::Compile(v8::Local<v8::String> source, v8
     }
 }
 
-v8::Maybe<bool> GraalModule::InstantiateModule(v8::Local<v8::Context> context, v8::Module::ResolveCallback callback) {
+v8::Maybe<bool> GraalModule::InstantiateModule(v8::Local<v8::Context> context, v8::Module::ResolveModuleCallback callback) {
     GraalIsolate* graal_isolate = Isolate();
     GraalContext* graal_context = reinterpret_cast<GraalContext*> (*context);
     jobject java_context = graal_context->GetJavaObject();
@@ -164,4 +166,11 @@ v8::Local<v8::UnboundModuleScript> GraalModule::GetUnboundModuleScript() {
     JNI_CALL(jobject, java_script, graal_isolate, GraalAccessMethod::module_get_unbound_module_script, Object, GetJavaObject());
     GraalUnboundScript* graal_script = GraalUnboundScript::Allocate(graal_isolate, java_script);
     return reinterpret_cast<v8::UnboundModuleScript*> (graal_script);
+}
+
+v8::Local<v8::FixedArray> GraalModule::GetModuleRequests() const {
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_requests, graal_isolate, GraalAccessMethod::module_get_module_requests, Object, GetJavaObject());
+    GraalFixedArray* graal_requests = GraalFixedArray::Allocate(graal_isolate, java_requests);
+    return reinterpret_cast<v8::FixedArray*> (graal_requests);
 }

@@ -4,7 +4,12 @@ const {
   Array,
   ArrayIsArray,
   ArrayPrototypeFilter,
+  ArrayPrototypeForEach,
+  ArrayPrototypePop,
+  ArrayPrototypePush,
   ArrayPrototypePushApply,
+  ArrayPrototypeSort,
+  ArrayPrototypeUnshift,
   BigIntPrototypeValueOf,
   BooleanPrototypeValueOf,
   DatePrototypeGetTime,
@@ -14,7 +19,6 @@ const {
   FunctionPrototypeCall,
   FunctionPrototypeToString,
   JSONStringify,
-  Map,
   MapPrototypeGetSize,
   MapPrototypeEntries,
   MathFloor,
@@ -41,16 +45,28 @@ const {
   ObjectPrototypePropertyIsEnumerable,
   ObjectSeal,
   ObjectSetPrototypeOf,
-  ReflectApply,
+  ReflectOwnKeys,
   RegExp,
-  RegExpPrototypeExec,
+  RegExpPrototypeTest,
   RegExpPrototypeToString,
-  SafeSet,
   SafeStringIterator,
-  Set,
+  SafeMap,
+  SafeSet,
   SetPrototypeGetSize,
   SetPrototypeValues,
   String,
+  StringPrototypeCharCodeAt,
+  StringPrototypeCodePointAt,
+  StringPrototypeIncludes,
+  StringPrototypeNormalize,
+  StringPrototypePadEnd,
+  StringPrototypePadStart,
+  StringPrototypeRepeat,
+  StringPrototypeReplace,
+  StringPrototypeSlice,
+  StringPrototypeSplit,
+  StringPrototypeToLowerCase,
+  StringPrototypeTrim,
   StringPrototypeValueOf,
   SymbolPrototypeToString,
   SymbolPrototypeValueOf,
@@ -122,13 +138,17 @@ const {
 const assert = require('internal/assert');
 
 const { NativeModule } = require('internal/bootstrap/loaders');
+const {
+  validateObject,
+  validateString,
+} = require('internal/validators');
 
 let hexSlice;
 
 const builtInObjects = new SafeSet(
   ArrayPrototypeFilter(
     ObjectGetOwnPropertyNames(globalThis),
-    (e) => RegExpPrototypeExec(/^[A-Z][a-zA-Z0-9]+$/, e) !== null
+    (e) => RegExpPrototypeTest(/^[A-Z][a-zA-Z0-9]+$/, e)
   )
 );
 
@@ -144,7 +164,7 @@ const inspectDefaultOptions = ObjectSeal({
   customInspect: true,
   showProxy: false,
   maxArrayLength: 100,
-  maxStringLength: Infinity,
+  maxStringLength: 10000,
   breakLength: 80,
   compact: 3,
   sorted: false,
@@ -165,7 +185,7 @@ const strEscapeSequencesReplacerSingle = /[\x00-\x1f\x5c\x7f-\x9f]/g;
 const keyStrRegExp = /^[a-zA-Z_][a-zA-Z_0-9]*$/;
 const numberRegExp = /^(0|[1-9][0-9]*)$/;
 
-const coreModuleRegExp = /^    at (?:[^/\\(]+ \(|)((?<![/\\]).+)\.js:\d+:\d+\)?$/;
+const coreModuleRegExp = /^    at (?:[^/\\(]+ \(|)node:(.+):\d+:\d+\)?$/;
 const nodeModulesRegExp = /[/\\]node_modules[/\\](.+?)(?=[/\\])/g;
 
 const classRegExp = /^(\s+[^(]*?)\s*{/;
@@ -203,7 +223,8 @@ const meta = [
 // License: MIT, authors: @sindresorhus, Qix-, arjunmehta and LitoMore
 // Matches all ansi escape code sequences in a string
 const ansiPattern = '[\\u001B\\u009B][[\\]()#;?]*' +
-  '(?:(?:(?:[a-zA-Z\\d]*(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)' +
+  '(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*' +
+  '|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)' +
   '|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-ntqry=><~]))';
 const ansi = new RegExp(ansiPattern, 'g');
 
@@ -325,9 +346,7 @@ ObjectDefineProperty(inspect, 'defaultOptions', {
     return inspectDefaultOptions;
   },
   set(options) {
-    if (options === null || typeof options !== 'object') {
-      throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
-    }
+    validateObject(options, 'options');
     return ObjectAssign(inspectDefaultOptions, options);
   }
 });
@@ -439,7 +458,7 @@ function addQuotes(str, quotes) {
   return `'${str}'`;
 }
 
-const escapeFn = (str) => meta[str.charCodeAt(0)];
+const escapeFn = (str) => meta[StringPrototypeCharCodeAt(str)];
 
 // Escape control characters, single quotes and the backslash.
 // This is similar to JSON stringify escaping.
@@ -452,12 +471,13 @@ function strEscape(str) {
   // instead wrap the text in double quotes. If double quotes exist, check for
   // backticks. If they do not exist, use those as fallback instead of the
   // double quotes.
-  if (str.includes("'")) {
+  if (StringPrototypeIncludes(str, "'")) {
     // This invalidates the charCode and therefore can not be matched for
     // anymore.
-    if (!str.includes('"')) {
+    if (!StringPrototypeIncludes(str, '"')) {
       singleQuote = -1;
-    } else if (!str.includes('`') && !str.includes('${')) {
+    } else if (!StringPrototypeIncludes(str, '`') &&
+               !StringPrototypeIncludes(str, '${')) {
       singleQuote = -2;
     }
     if (singleQuote !== 39) {
@@ -467,10 +487,10 @@ function strEscape(str) {
   }
 
   // Some magic numbers that worked out fine while benchmarking with v8 6.0
-  if (str.length < 5000 && !escapeTest.test(str))
+  if (str.length < 5000 && !RegExpPrototypeTest(escapeTest, str))
     return addQuotes(str, singleQuote);
   if (str.length > 100) {
-    str = str.replace(escapeReplace, escapeFn);
+    str = StringPrototypeReplace(str, escapeReplace, escapeFn);
     return addQuotes(str, singleQuote);
   }
 
@@ -478,7 +498,7 @@ function strEscape(str) {
   let last = 0;
   const lastIndex = str.length;
   for (let i = 0; i < lastIndex; i++) {
-    const point = str.charCodeAt(i);
+    const point = StringPrototypeCharCodeAt(str, i);
     if (point === singleQuote ||
         point === 92 ||
         point < 32 ||
@@ -486,14 +506,14 @@ function strEscape(str) {
       if (last === i) {
         result += meta[point];
       } else {
-        result += `${str.slice(last, i)}${meta[point]}`;
+        result += `${StringPrototypeSlice(str, last, i)}${meta[point]}`;
       }
       last = i + 1;
     }
   }
 
   if (last !== lastIndex) {
-    result += str.slice(last);
+    result += StringPrototypeSlice(str, last);
   }
   return addQuotes(result, singleQuote);
 }
@@ -597,16 +617,13 @@ function addPrototypeProperties(ctx, main, obj, recurseTimes, output) {
     }
 
     if (depth === 0) {
-      keySet = new Set();
+      keySet = new SafeSet();
     } else {
-      keys.forEach((key) => keySet.add(key));
+      ArrayPrototypeForEach(keys, (key) => keySet.add(key));
     }
     // Get all own property names and symbols.
-    keys = ObjectGetOwnPropertyNames(obj);
-    const symbols = ObjectGetOwnPropertySymbols(obj);
-    if (symbols.length !== 0) {
-      keys.push(...symbols);
-    }
+    keys = ReflectOwnKeys(obj);
+    ArrayPrototypePush(ctx.seen, main);
     for (const key of keys) {
       // Ignore the `constructor` property and keys that exist on layers above.
       if (key === 'constructor' ||
@@ -622,11 +639,12 @@ function addPrototypeProperties(ctx, main, obj, recurseTimes, output) {
         ctx, obj, recurseTimes, key, kObjectType, desc, main);
       if (ctx.colors) {
         // Faint!
-        output.push(`\u001b[2m${value}\u001b[22m`);
+        ArrayPrototypePush(output, `\u001b[2m${value}\u001b[22m`);
       } else {
-        output.push(value);
+        ArrayPrototypePush(output, value);
       }
     }
+    ArrayPrototypePop(ctx.seen);
   // Limit the inspection to up to three prototype layers. Using `recurseTimes`
   // is not a good choice here, because it's as if the properties are declared
   // on the current object from the users perspective.
@@ -760,7 +778,8 @@ function formatValue(ctx, value, recurseTimes, typedArray) {
   if (ctx.seen.includes(value)) {
     let index = 1;
     if (ctx.circular === undefined) {
-      ctx.circular = new Map([[value, index]]);
+      ctx.circular = new SafeMap();
+      ctx.circular.set(value, index);
     } else {
       index = ctx.circular.get(value);
       if (index === undefined) {
@@ -933,11 +952,11 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
               `{ byteLength: ${formatNumber(ctx.stylize, value.byteLength)} }`;
       }
       braces[0] = `${prefix}{`;
-      keys.unshift('byteLength');
+      ArrayPrototypeUnshift(keys, 'byteLength');
     } else if (isDataView(value)) {
       braces[0] = `${getPrefix(constructor, tag, 'DataView')}{`;
       // .buffer goes last, it's not a primitive like the others.
-      keys.unshift('byteLength', 'byteOffset', 'buffer');
+      ArrayPrototypeUnshift(keys, 'byteLength', 'byteOffset', 'buffer');
     } else if (isPromise(value)) {
       braces[0] = `${getPrefix(constructor, tag, 'Promise')}{`;
       formatter = formatPromise;
@@ -1081,7 +1100,7 @@ function getBoxedBase(value, ctx, keys, constructor, tag) {
   }
   if (keys.length !== 0 || ctx.stylize === stylizeNoColor)
     return base;
-  return ctx.stylize(base, type.toLowerCase());
+  return ctx.stylize(base, StringPrototypeToLowerCase(type));
 }
 
 function getClassBase(value, constructor, tag) {
@@ -1296,11 +1315,11 @@ function groupArrayElements(ctx, output, value) {
       lineMaxLength += separatorSpace;
       maxLineLength[i] = lineMaxLength;
     }
-    let order = 'padStart';
+    let order = StringPrototypePadStart;
     if (value !== undefined) {
       for (let i = 0; i < output.length; i++) {
         if (typeof value[i] !== 'number' && typeof value[i] !== 'bigint') {
-          order = 'padEnd';
+          order = StringPrototypePadEnd;
           break;
         }
       }
@@ -1316,21 +1335,21 @@ function groupArrayElements(ctx, output, value) {
         // done line by line as some lines might contain more colors than
         // others.
         const padding = maxLineLength[j - i] + output[j].length - dataLen[j];
-        str += `${output[j]}, `[order](padding, ' ');
+        str += order(`${output[j]}, `, padding, ' ');
       }
-      if (order === 'padStart') {
+      if (order === StringPrototypePadStart) {
         const padding = maxLineLength[j - i] +
                         output[j].length -
                         dataLen[j] -
                         separatorSpace;
-        str += output[j].padStart(padding, ' ');
+        str += StringPrototypePadStart(output[j], padding, ' ');
       } else {
         str += output[j];
       }
-      tmp.push(str);
+      ArrayPrototypePush(tmp, str);
     }
     if (ctx.maxArrayLength < output.length) {
-      tmp.push(output[outputLength]);
+      ArrayPrototypePush(tmp, output[outputLength]);
     }
     output = tmp;
   }
@@ -1466,8 +1485,9 @@ function formatArrayBuffer(ctx, value) {
   }
   if (hexSlice === undefined)
     hexSlice = uncurryThis(require('buffer').Buffer.prototype.hexSlice);
-  let str = hexSlice(buffer, 0, MathMin(ctx.maxArrayLength, buffer.length))
-    .replace(/(.{2})/g, '$1 ').trim();
+  let str = StringPrototypeTrim(StringPrototypeReplace(
+    hexSlice(buffer, 0, MathMin(ctx.maxArrayLength, buffer.length)),
+    /(.{2})/g, '$1 '));
   const remaining = buffer.length - ctx.maxArrayLength;
   if (remaining > 0)
     str += ` ... ${remaining} more byte${remaining > 1 ? 's' : ''}`;
@@ -1516,7 +1536,7 @@ function formatTypedArray(value, length, ctx, ignored, recurseTimes) {
       'buffer',
     ]) {
       const str = formatValue(ctx, value[key], recurseTimes, true);
-      output.push(`[${key}]: ${str}`);
+      ArrayPrototypePush(output, `[${key}]: ${str}`);
     }
     ctx.indentationLvl -= 2;
   }
@@ -1527,7 +1547,7 @@ function formatSet(value, ctx, ignored, recurseTimes) {
   const output = [];
   ctx.indentationLvl += 2;
   for (const v of value) {
-    output.push(formatValue(ctx, v, recurseTimes));
+    ArrayPrototypePush(output, formatValue(ctx, v, recurseTimes));
   }
   ctx.indentationLvl -= 2;
   return output;
@@ -1548,7 +1568,7 @@ function formatMap(value, ctx, ignored, recurseTimes) {
 function formatSetIterInner(ctx, recurseTimes, entries, state) {
   const maxArrayLength = MathMax(ctx.maxArrayLength, 0);
   const maxLength = MathMin(maxArrayLength, entries.length);
-  let output = new Array(maxLength);
+  const output = new Array(maxLength);
   ctx.indentationLvl += 2;
   for (let i = 0; i < maxLength; i++) {
     output[i] = formatValue(ctx, entries[i], recurseTimes);
@@ -1558,11 +1578,12 @@ function formatSetIterInner(ctx, recurseTimes, entries, state) {
     // Sort all entries to have a halfway reliable output (if more entries than
     // retrieved ones exist, we can not reliably return the same output) if the
     // output is not sorted anyway.
-    output = output.sort();
+    ArrayPrototypeSort(output);
   }
   const remaining = entries.length - maxLength;
   if (remaining > 0) {
-    output.push(`... ${remaining} more item${remaining > 1 ? 's' : ''}`);
+    ArrayPrototypePush(output,
+                       `... ${remaining} more item${remaining > 1 ? 's' : ''}`);
   }
   return output;
 }
@@ -1670,7 +1691,7 @@ function formatProperty(ctx, value, recurseTimes, key, type, desc,
           (ctx.getters === 'get' && desc.set === undefined) ||
           (ctx.getters === 'set' && desc.set !== undefined))) {
       try {
-        const tmp = ReflectApply(desc.get, original, []);
+        const tmp = FunctionPrototypeCall(desc.get, original);
         ctx.indentationLvl += 2;
         if (tmp === null) {
           str = `${s(`[${label}:`, sp)} ${s('null', 'null')}${s(']', sp)}`;
@@ -1697,13 +1718,18 @@ function formatProperty(ctx, value, recurseTimes, key, type, desc,
     return str;
   }
   if (typeof key === 'symbol') {
-    const tmp = key.toString().replace(strEscapeSequencesReplacer, escapeFn);
+    const tmp = StringPrototypeReplace(
+      SymbolPrototypeToString(key),
+      strEscapeSequencesReplacer, escapeFn
+    );
     name = `[${ctx.stylize(tmp, 'symbol')}]`;
   } else if (key === '__proto__') {
     name = "['__proto__']";
   } else if (desc.enumerable === false) {
-    name = `[${key.replace(strEscapeSequencesReplacer, escapeFn)}]`;
-  } else if (keyStrRegExp.test(key)) {
+    const tmp = StringPrototypeReplace(key,
+                                       strEscapeSequencesReplacer, escapeFn);
+    name = `[${tmp}]`;
+  } else if (RegExpPrototypeTest(keyStrRegExp, key)) {
     name = ctx.stylize(key, 'name');
   } else {
     name = ctx.stylize(strEscape(key), 'string');
@@ -1732,7 +1758,7 @@ function isBelowBreakLength(ctx, output, start, base) {
     }
   }
   // Do not line up properties on the same line if `base` contains line breaks.
-  return base === '' || !base.includes('\n');
+  return base === '' || !StringPrototypeIncludes(base, '\n');
 }
 
 function reduceToSingleString(
@@ -1775,7 +1801,7 @@ function reduceToSingleString(
       }
     }
     // Line up each entry on an individual line.
-    const indentation = `\n${' '.repeat(ctx.indentationLvl)}`;
+    const indentation = `\n${StringPrototypeRepeat(' ', ctx.indentationLvl)}`;
     return `${base ? `${base} ` : ''}${braces[0]}${indentation}  ` +
       `${join(output, `,${indentation}  `)}${indentation}${braces[1]}`;
   }
@@ -1785,7 +1811,7 @@ function reduceToSingleString(
     return `${braces[0]}${base ? ` ${base}` : ''} ${join(output, ', ')} ` +
       braces[1];
   }
-  const indentation = ' '.repeat(ctx.indentationLvl);
+  const indentation = StringPrototypeRepeat(' ', ctx.indentationLvl);
   // If the opening "brace" is too large, like in the case of "Set {",
   // we need to force the first item to be on the next line or the
   // items will not line up correctly.
@@ -1827,7 +1853,8 @@ function hasBuiltInToString(value) {
     builtInObjects.has(descriptor.value.name);
 }
 
-const firstErrorLine = (error) => error.message.split('\n')[0];
+const firstErrorLine = (error) =>
+  StringPrototypeSplit(error.message, '\n', 1)[0];
 let CIRCULAR_ERROR_MESSAGE;
 function tryStringify(arg) {
   try {
@@ -1875,8 +1902,8 @@ function formatWithOptionsInternal(inspectOptions, args) {
     let lastPos = 0;
 
     for (let i = 0; i < first.length - 1; i++) {
-      if (first.charCodeAt(i) === 37) { // '%'
-        const nextChar = first.charCodeAt(++i);
+      if (StringPrototypeCharCodeAt(first, i) === 37) { // '%'
+        const nextChar = StringPrototypeCharCodeAt(first, ++i);
         if (a + 1 !== args.length) {
           switch (nextChar) {
             case 115: // 's'
@@ -1947,19 +1974,19 @@ function formatWithOptionsInternal(inspectOptions, args) {
               tempStr = '';
               break;
             case 37: // '%'
-              str += first.slice(lastPos, i);
+              str += StringPrototypeSlice(first, lastPos, i);
               lastPos = i + 1;
               continue;
             default: // Any other character is not a correct placeholder
               continue;
           }
           if (lastPos !== i - 1) {
-            str += first.slice(lastPos, i - 1);
+            str += StringPrototypeSlice(first, lastPos, i - 1);
           }
           str += tempStr;
           lastPos = i + 1;
         } else if (nextChar === 37) {
-          str += first.slice(lastPos, i);
+          str += StringPrototypeSlice(first, lastPos, i);
           lastPos = i + 1;
         }
       }
@@ -1968,7 +1995,7 @@ function formatWithOptionsInternal(inspectOptions, args) {
       a++;
       join = ' ';
       if (lastPos < first.length) {
-        str += first.slice(lastPos);
+        str += StringPrototypeSlice(first, lastPos);
       }
     }
   }
@@ -2016,9 +2043,9 @@ if (internalBinding('config').hasIntl) {
 
     if (removeControlChars)
       str = stripVTControlCharacters(str);
-    str = str.normalize('NFC');
+    str = StringPrototypeNormalize(str, 'NFC');
     for (const char of new SafeStringIterator(str)) {
-      const code = char.codePointAt(0);
+      const code = StringPrototypeCodePointAt(char, 0);
       if (isFullWidthCodePoint(code)) {
         width += 2;
       } else if (!isZeroWidthCodePoint(code)) {
@@ -2088,6 +2115,8 @@ if (internalBinding('config').hasIntl) {
  * Remove all VT control characters. Use to estimate displayed string width.
  */
 function stripVTControlCharacters(str) {
+  validateString(str, 'str');
+
   return str.replace(ansi, '');
 }
 

@@ -451,7 +451,7 @@ describe('Value - Is*()', function () {
                     it('should return ' + expectedResult + ' for interop ' + valueType, function () {
                         var interopTypedArray = new (global[valueType])(java.nio.ByteBuffer.allocate(8));
                         assert.strictEqual(testedFunction(interopTypedArray), expectedResult);
-                    });                    
+                    });
                 }
             });
         });
