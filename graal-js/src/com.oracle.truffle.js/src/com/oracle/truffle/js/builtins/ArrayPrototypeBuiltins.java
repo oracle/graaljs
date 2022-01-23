@@ -178,6 +178,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
@@ -3322,21 +3323,19 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     public abstract static class JSArrayGroupByNode extends JSArrayGroupByBaseNode {
 
-        @Child private CreateObjectNode createObjectNode;
         @Child private JSToPropertyKeyNode toPropertyKeyNode;
         @Child private WriteElementNode writeElementNode;
 
         public JSArrayGroupByNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.createObjectNode = CreateObjectNode.create(context);
             this.toPropertyKeyNode = JSToPropertyKeyNodeGen.create();
             this.writeElementNode = WriteElementNode.create(context, false);
         }
 
         @Specialization
-        protected Object groupBy(VirtualFrame frame, Object thisObj, Object callback, Object thisArg) {
+        protected Object groupBy(Object thisObj, Object callback, Object thisArg) {
             List<GroupingRecord> resultArray = collectGroupByResults(thisObj, callback, thisArg);
-            DynamicObject obj = createObjectNode.execute(frame);
+            DynamicObject obj = JSOrdinary.createWithNullPrototype(getContext());
             return createGroupByResult(obj, resultArray);
         }
 
