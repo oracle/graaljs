@@ -108,6 +108,7 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySplic
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToStringNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayUnshiftNodeGen;
+import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -3355,6 +3356,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class JSArrayGroupByToMapNode extends JSArrayGroupByBaseNode {
+        @Child private JSCollectionsNormalizeNode normalizeKeyNode = JSCollectionsNormalizeNode.create();
 
         public JSArrayGroupByToMapNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -3367,13 +3369,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return createGroupByResult(map, resultArray);
         }
 
-        @TruffleBoundary
         @Override
         protected final Object toKey(Object callbackResult) {
-            if (callbackResult instanceof Double && JSRuntime.isNegativeZero((double) callbackResult)) {
-                return 0;
-            }
-            return callbackResult;
+            return normalizeKeyNode.execute(callbackResult);
         }
 
         @TruffleBoundary
