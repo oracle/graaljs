@@ -3294,7 +3294,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         groups.add(new GroupingRecord(key, value));
     }
 
-    public abstract static class JSArrayGroupByBaseNode extends ArrayForEachIndexCallOperation {
+    public abstract static class JSArrayGroupByBaseNode extends JSArrayOperation {
+        @Child private JSFunctionCallNode callNode = JSFunctionCallNode.createCall();
 
         protected JSArrayGroupByBaseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, false);
@@ -3305,26 +3306,18 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
 
-            List<GroupingRecord> resultArray = new ArrayList<>();
-            forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, resultArray);
-            return resultArray;
+            List<GroupingRecord> groups = new ArrayList<>();
+            for (long k = 0; k < length; k++) {
+                Object kValue = read(thisObj, k);
+                Object key = toKey(callNode.executeCall(JSArguments.create(thisArg, callbackFn, kValue, k, thisJSObj)));
+                addValueToKeyedGroup(groups, key, kValue);
+            }
+
+            return groups;
         }
 
-        protected abstract Object toPropertyKey(Object callbackResult);
+        protected abstract Object toKey(Object callbackResult);
 
-        @Override
-        protected MaybeResultNode makeMaybeResultNode() {
-            return new ForEachIndexCallNode.MaybeResultNode() {
-                @Override
-                @SuppressWarnings("unchecked")
-                public MaybeResult<Object> apply(long index, Object value, Object callbackResult, Object currentResult) {
-                    Object propertyKey = toPropertyKey(callbackResult);
-                    List<GroupingRecord> groups = (List<GroupingRecord>) currentResult;
-                    addValueToKeyedGroup(groups, propertyKey, value);
-                    return MaybeResult.continueResult(currentResult);
-                }
-            };
-        }
     }
 
     public abstract static class JSArrayGroupByNode extends JSArrayGroupByBaseNode {
@@ -3348,7 +3341,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Override
-        protected final Object toPropertyKey(Object callbackResult) {
+        protected final Object toKey(Object callbackResult) {
             return toPropertyKeyNode.execute(callbackResult);
         }
 
@@ -3377,7 +3370,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @TruffleBoundary
         @Override
-        protected final Object toPropertyKey(Object callbackResult) {
+        protected final Object toKey(Object callbackResult) {
             if (callbackResult instanceof Double && JSRuntime.isNegativeZero((double) callbackResult)) {
                 return 0;
             }
