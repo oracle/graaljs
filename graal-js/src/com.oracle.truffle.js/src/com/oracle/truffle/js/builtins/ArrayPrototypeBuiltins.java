@@ -242,8 +242,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         // ES2022
         at(1),
-        groupBy(2),
-        groupByToMap(2);
+        groupBy(1),
+        groupByToMap(1);
 
         private final int length;
 
