@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,8 +44,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -78,6 +80,57 @@ public class ArrayPrototypeBuiltins {
             value = context.eval(JavaScriptLanguage.ID, "o[11]");
             assertTrue(value.isString());
             assertEquals("foo", value.asString());
+        }
+    }
+
+    @Test
+    public void testBasicGroupBy() {
+        String src = "[41, 42, 43, 44, 45].groupBy(n => n % 2 === 0 ? 'even' : 'odd');";
+        Context.Builder builder = JSTest.newContextBuilder();
+        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        try (Context context = builder.build()) {
+            var value = context.eval(JavaScriptLanguage.ID, src);
+            Assert.assertTrue(value.hasMembers());
+            Assert.assertTrue(value.hasMember("even"));
+            Assert.assertTrue(value.hasMember("odd"));
+            var even = value.getMember("even");
+            Assert.assertTrue(even.hasMembers());
+            Assert.assertEquals(2, even.getArraySize());
+            Assert.assertEquals(42, even.getArrayElement(0).asInt());
+            Assert.assertEquals(44, even.getArrayElement(1).asInt());
+            var odd = value.getMember("odd");
+            Assert.assertTrue(odd.hasMembers());
+            Assert.assertEquals(3, odd.getArraySize());
+            Assert.assertEquals(41, odd.getArrayElement(0).asInt());
+            Assert.assertEquals(43, odd.getArrayElement(1).asInt());
+            Assert.assertEquals(45, odd.getArrayElement(2).asInt());
+        }
+    }
+
+    @Test
+    public void testBasicGroupByToMap() {
+        String src = "var odd = { odd: true };" +
+                        "var even = { even: true };" +
+                        "[41, 42, 43, 44, 45].groupByToMap(n => {" +
+                        "  return n % 2 === 0 ? even : odd;" +
+                        "});";
+        Context.Builder builder = JSTest.newContextBuilder();
+        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        try (Context context = builder.build()) {
+            var result = context.eval(JavaScriptLanguage.ID, src);
+            var odd = context.getBindings(JavaScriptLanguage.ID).getMember("odd");
+            var even = context.getBindings(JavaScriptLanguage.ID).getMember("even");
+
+            var oddResult = result.invokeMember("get", odd);
+            Assert.assertEquals(3, oddResult.getArraySize());
+            Assert.assertEquals(41, oddResult.getArrayElement(0).asInt());
+            Assert.assertEquals(43, oddResult.getArrayElement(1).asInt());
+            Assert.assertEquals(45, oddResult.getArrayElement(2).asInt());
+
+            var evenResult = result.invokeMember("get", even);
+            Assert.assertEquals(2, evenResult.getArraySize());
+            Assert.assertEquals(42, evenResult.getArrayElement(0).asInt());
+            Assert.assertEquals(44, evenResult.getArrayElement(1).asInt());
         }
     }
 
