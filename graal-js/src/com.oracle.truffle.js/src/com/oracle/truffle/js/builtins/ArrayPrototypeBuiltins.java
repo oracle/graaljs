@@ -49,7 +49,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -143,7 +145,6 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
-import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -184,10 +185,13 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
@@ -3260,42 +3264,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    private static class GroupingRecord {
-
-        private final Object key;
-        private final List<Object> elements;
-
-        GroupingRecord(Object key, Object value) {
-            this.key = key;
-            this.elements = new ArrayList<>();
-            this.elements.add(value);
-        }
-
-        public Object getKey() {
-            return key;
-        }
-
-        public void appendElement(Object value) {
-            elements.add(value);
-        }
-
-        @TruffleBoundary
-        public Object[] getElements() {
-            return elements.toArray(new Object[0]);
-        }
-    }
-
-    @TruffleBoundary
-    private static void addValueToKeyedGroup(List<GroupingRecord> groups, Object key, Object value) {
-        for (GroupingRecord record : groups) {
-            if (JSRuntime.isSameValue(record.getKey(), key)) {
-                record.appendElement(value);
-                return;
-            }
-        }
-        groups.add(new GroupingRecord(key, value));
-    }
-
     public abstract static class JSArrayGroupByBaseNode extends JSArrayOperation {
         @Child private JSFunctionCallNode callNode = JSFunctionCallNode.createCall();
 
@@ -3303,12 +3271,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin, false);
         }
 
-        protected List<GroupingRecord> collectGroupByResults(Object thisObj, Object callback, Object thisArg) {
+        protected Map<Object, List<Object>> collectGroupByResults(Object thisObj, Object callback, Object thisArg) {
             Object thisJSObj = toObject(thisObj);
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
 
-            List<GroupingRecord> groups = new ArrayList<>();
+            Map<Object, List<Object>> groups = initGroups();
             for (long k = 0; k < length; k++) {
                 Object kValue = read(thisObj, k);
                 Object key = toKey(callNode.executeCall(JSArguments.create(thisArg, callbackFn, kValue, k, thisJSObj)));
@@ -3318,26 +3286,38 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return groups;
         }
 
+        @TruffleBoundary
+        private static Map<Object, List<Object>> initGroups() {
+            return new LinkedHashMap<>();
+        }
+
+        @TruffleBoundary
+        private static void addValueToKeyedGroup(Map<Object, List<Object>> groups, Object key, Object value) {
+            List<Object> group = groups.get(key);
+            if (group == null) {
+                group = new ArrayList<>();
+                groups.put(key, group);
+            }
+            group.add(value);
+        }
+
         protected abstract Object toKey(Object callbackResult);
 
     }
 
     public abstract static class JSArrayGroupByNode extends JSArrayGroupByBaseNode {
-
         @Child private JSToPropertyKeyNode toPropertyKeyNode;
-        @Child private WriteElementNode writeElementNode;
 
         public JSArrayGroupByNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.toPropertyKeyNode = JSToPropertyKeyNodeGen.create();
-            this.writeElementNode = WriteElementNode.create(context, false);
+            this.toPropertyKeyNode = JSToPropertyKeyNode.create();
         }
 
         @Specialization
         protected Object groupBy(Object thisObj, Object callback, Object thisArg) {
-            List<GroupingRecord> resultArray = collectGroupByResults(thisObj, callback, thisArg);
+            Map<Object, List<Object>> groups = collectGroupByResults(thisObj, callback, thisArg);
             DynamicObject obj = JSOrdinary.createWithNullPrototype(getContext());
-            return createGroupByResult(obj, resultArray);
+            return createGroupByResult(obj, groups);
         }
 
         @Override
@@ -3345,11 +3325,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return toPropertyKeyNode.execute(callbackResult);
         }
 
-        protected Object createGroupByResult(DynamicObject obj, List<GroupingRecord> resultArray) {
-            for (int i = 0; i < resultArray.size(); i++) {
-                GroupingRecord r = resultArray.get(i);
-                var elements = JSArray.createConstant(getContext(), getRealm(), r.getElements());
-                writeElementNode.executeWithTargetAndIndexAndValue(obj, r.getKey(), elements);
+        @TruffleBoundary
+        protected Object createGroupByResult(DynamicObject obj, Map<Object, List<Object>> groups) {
+            for (Map.Entry<Object, List<Object>> entry : groups.entrySet()) {
+                DynamicObject elements = JSArray.createConstant(getContext(), getRealm(), entry.getValue().toArray());
+                JSObjectUtil.defineDataProperty(getContext(), obj, entry.getKey(), elements, JSAttributes.getDefault());
             }
             return obj;
         }
@@ -3364,9 +3344,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object groupByToMap(Object thisObj, Object callback, Object thisArg) {
-            List<GroupingRecord> resultArray = collectGroupByResults(thisObj, callback, thisArg);
+            Map<Object, List<Object>> groups = collectGroupByResults(thisObj, callback, thisArg);
             var map = JSMap.create(getContext(), getRealm());
-            return createGroupByResult(map, resultArray);
+            return createGroupByResult(map, groups);
         }
 
         @Override
@@ -3375,11 +3355,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @TruffleBoundary
-        protected Object createGroupByResult(DynamicObject map, List<GroupingRecord> resultArray) {
-            for (int i = 0; i < resultArray.size(); i++) {
-                GroupingRecord r = resultArray.get(i);
-                var elements = JSArray.createConstant(getContext(), getRealm(), r.getElements());
-                JSMap.getInternalMap(map).put(r.getKey(), elements);
+        protected Object createGroupByResult(DynamicObject map, Map<Object, List<Object>> groups) {
+            JSHashMap internalMap = JSMap.getInternalMap(map);
+            JSRealm realm = getRealm();
+            for (Map.Entry<Object, List<Object>> entry : groups.entrySet()) {
+                DynamicObject elements = JSArray.createConstant(getContext(), realm, entry.getValue().toArray());
+                internalMap.put(entry.getKey(), elements);
             }
             return map;
         }
