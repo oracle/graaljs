@@ -351,8 +351,8 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public Integer[] parseDate(JSRealm realm, String date) {
-        DateParser dateParser = new DateParser(realm, date);
+    public Integer[] parseDate(JSRealm realm, String date, boolean extraLenient) {
+        DateParser dateParser = new DateParser(realm, date, extraLenient);
         return dateParser.parse() ? dateParser.getDateFields() : null;
     }
 

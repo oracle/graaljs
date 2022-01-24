@@ -83,6 +83,16 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -317,6 +327,46 @@ public final class JSGuards {
 
     public static boolean isJSSymbol(Object value) {
         return JSSymbol.isJSSymbol(value);
+    }
+
+    public static boolean isJSTemporalTime(Object value) {
+        return JSTemporalPlainTime.isJSTemporalPlainTime(value);
+    }
+
+    public static boolean isJSTemporalDate(Object value) {
+        return JSTemporalPlainDate.isJSTemporalPlainDate(value);
+    }
+
+    public static boolean isJSTemporalDateTime(Object value) {
+        return JSTemporalPlainDateTime.isJSTemporalPlainDateTime(value);
+    }
+
+    public static boolean isJSTemporalYearMonth(Object value) {
+        return JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(value);
+    }
+
+    public static boolean isJSTemporalMonthDay(Object value) {
+        return JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(value);
+    }
+
+    public static boolean isJSTemporalDuration(Object value) {
+        return JSTemporalDuration.isJSTemporalDuration(value);
+    }
+
+    public static boolean isJSTemporalCalendar(Object value) {
+        return JSTemporalCalendar.isJSTemporalCalendar(value);
+    }
+
+    public static boolean isJSTemporalInstant(Object value) {
+        return JSTemporalInstant.isJSTemporalInstant(value);
+    }
+
+    public static boolean isJSTemporalTimeZone(Object value) {
+        return JSTemporalTimeZone.isJSTemporalTimeZone(value);
+    }
+
+    public static boolean isJSTemporalZonedDateTime(Object value) {
+        return JSTemporalZonedDateTime.isJSTemporalZonedDateTime(value);
     }
 
     public static boolean isJSMap(Object value) {

@@ -516,6 +516,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> NEW_SET_METHODS = new OptionKey<>(false);
     @CompilationFinal private boolean newSetMethods;
 
+    public static final String TEMPORAL_NAME = JS_OPTION_PREFIX + "temporal";
+    @Option(name = TEMPORAL_NAME, category = OptionCategory.EXPERT, help = "Enable JavaScript Temporal API.") //
+    public static final OptionKey<Boolean> TEMPORAL = new OptionKey<>(false);
+    @CompilationFinal private boolean temporal;
+
     public enum UnhandledRejectionsTrackingMode {
         NONE,
         WARN,
@@ -699,7 +704,7 @@ public final class JSContextOptions {
         this.mleMode = readBooleanOption(MLE_MODE) || readBooleanOption(INTEROP_COMPLETE_PROMISES);
         this.privateFieldsIn = PRIVATE_FIELDS_IN.hasBeenSet(optionValues) ? readBooleanOption(PRIVATE_FIELDS_IN) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
         this.esmBareSpecifierRelativeLookup = readBooleanOption(ESM_BARE_SPECIFIER_RELATIVE_LOOKUP);
-
+        this.temporal = readBooleanOption(TEMPORAL);
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
     }
@@ -1073,6 +1078,10 @@ public final class JSContextOptions {
         return webAssembly;
     }
 
+    public boolean isTemporal() {
+        return temporal;
+    }
+
     public UnhandledRejectionsTrackingMode getUnhandledRejectionsMode() {
         return unhandledRejectionsMode;
     }
@@ -1175,6 +1184,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.mleMode ? 1 : 0);
         hash = 53 * hash + (this.privateFieldsIn ? 1 : 0);
         hash = 53 * hash + (this.esmBareSpecifierRelativeLookup ? 1 : 0);
+        hash = 53 * hash + (this.temporal ? 1 : 0);
         return hash;
     }
 
@@ -1362,6 +1372,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.esmBareSpecifierRelativeLookup != other.esmBareSpecifierRelativeLookup) {
+            return false;
+        }
+        if (this.temporal != other.temporal) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

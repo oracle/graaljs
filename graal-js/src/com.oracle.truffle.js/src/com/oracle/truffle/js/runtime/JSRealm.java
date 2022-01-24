@@ -114,6 +114,7 @@ import com.oracle.truffle.js.builtins.commonjs.CommonJSRequireBuiltin;
 import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
 import com.oracle.truffle.js.builtins.commonjs.NpmCompatibleESModuleLoader;
 import com.oracle.truffle.js.builtins.foreign.ForeignIterablePrototypeBuiltins;
+import com.oracle.truffle.js.builtins.temporal.TemporalNowBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -164,6 +165,16 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobal;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
@@ -191,6 +202,7 @@ import com.oracle.truffle.js.runtime.util.LRUCache;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 
 /**
  * Container for JavaScript globals (i.e. an ECMAScript 6 Realm object).
@@ -264,6 +276,26 @@ public class JSRealm {
     private final Shape initialRegExpPrototypeShape;
     private final JSObjectFactory.RealmData objectFactories;
 
+    private final DynamicObject temporalPlainTimeConstructor;
+    private final DynamicObject temporalPlainTimePrototype;
+    private final DynamicObject temporalPlainDateConstructor;
+    private final DynamicObject temporalPlainDatePrototype;
+    private final DynamicObject temporalPlainDateTimeConstructor;
+    private final DynamicObject temporalPlainDateTimePrototype;
+    private final DynamicObject temporalDurationConstructor;
+    private final DynamicObject temporalDurationPrototype;
+    private final DynamicObject temporalCalendarConstructor;
+    private final DynamicObject temporalCalendarPrototype;
+    private final DynamicObject temporalPlainYearMonthConstructor;
+    private final DynamicObject temporalPlainYearMonthPrototype;
+    private final DynamicObject temporalPlainMonthDayConstructor;
+    private final DynamicObject temporalPlainMonthDayPrototype;
+    private final DynamicObject temporalInstantConstructor;
+    private final DynamicObject temporalInstantPrototype;
+    private final DynamicObject temporalTimeZoneConstructor;
+    private final DynamicObject temporalTimeZonePrototype;
+    private final DynamicObject temporalZonedDateTimeConstructor;
+    private final DynamicObject temporalZonedDateTimePrototype;
     // ES6:
     private final DynamicObject symbolConstructor;
     private final DynamicObject symbolPrototype;
@@ -873,6 +905,68 @@ public class JSRealm {
         }
 
         this.foreignIterablePrototype = createForeignIterablePrototype();
+
+        if (context.isOptionTemporal()) {
+            ctor = JSTemporalPlainTime.createConstructor(this);
+            this.temporalPlainTimeConstructor = ctor.getFunctionObject();
+            this.temporalPlainTimePrototype = ctor.getPrototype();
+            ctor = JSTemporalPlainDate.createConstructor(this);
+            this.temporalPlainDateConstructor = ctor.getFunctionObject();
+            this.temporalPlainDatePrototype = ctor.getPrototype();
+
+            ctor = JSTemporalPlainDateTime.createConstructor(this);
+            this.temporalPlainDateTimeConstructor = ctor.getFunctionObject();
+            this.temporalPlainDateTimePrototype = ctor.getPrototype();
+
+            ctor = JSTemporalDuration.createConstructor(this);
+            this.temporalDurationConstructor = ctor.getFunctionObject();
+            this.temporalDurationPrototype = ctor.getPrototype();
+
+            ctor = JSTemporalCalendar.createConstructor(this);
+            this.temporalCalendarConstructor = ctor.getFunctionObject();
+            this.temporalCalendarPrototype = ctor.getPrototype();
+
+            ctor = JSTemporalPlainYearMonth.createConstructor(this);
+            this.temporalPlainYearMonthConstructor = ctor.getFunctionObject();
+            this.temporalPlainYearMonthPrototype = ctor.getPrototype();
+
+            ctor = JSTemporalPlainMonthDay.createConstructor(this);
+            this.temporalPlainMonthDayConstructor = ctor.getFunctionObject();
+            this.temporalPlainMonthDayPrototype = ctor.getPrototype();
+
+            ctor = JSTemporalInstant.createConstructor(this);
+            this.temporalInstantConstructor = ctor.getFunctionObject();
+            this.temporalInstantPrototype = ctor.getPrototype();
+
+            ctor = JSTemporalTimeZone.createConstructor(this);
+            this.temporalTimeZoneConstructor = ctor.getFunctionObject();
+            this.temporalTimeZonePrototype = ctor.getPrototype();
+
+            ctor = JSTemporalZonedDateTime.createConstructor(this);
+            this.temporalZonedDateTimeConstructor = ctor.getFunctionObject();
+            this.temporalZonedDateTimePrototype = ctor.getPrototype();
+        } else {
+            this.temporalPlainTimeConstructor = null;
+            this.temporalPlainTimePrototype = null;
+            this.temporalPlainDateConstructor = null;
+            this.temporalPlainDatePrototype = null;
+            this.temporalPlainDateTimeConstructor = null;
+            this.temporalPlainDateTimePrototype = null;
+            this.temporalDurationConstructor = null;
+            this.temporalDurationPrototype = null;
+            this.temporalCalendarConstructor = null;
+            this.temporalCalendarPrototype = null;
+            this.temporalPlainYearMonthConstructor = null;
+            this.temporalPlainYearMonthPrototype = null;
+            this.temporalPlainMonthDayConstructor = null;
+            this.temporalPlainMonthDayPrototype = null;
+            this.temporalInstantConstructor = null;
+            this.temporalInstantPrototype = null;
+            this.temporalTimeZoneConstructor = null;
+            this.temporalTimeZonePrototype = null;
+            this.temporalZonedDateTimeConstructor = null;
+            this.temporalZonedDateTimePrototype = null;
+        }
     }
 
     private void initializeTypedArrayConstructors() {
@@ -1310,6 +1404,86 @@ public class JSRealm {
         return javaPackageToPrimitiveFunction;
     }
 
+    public final DynamicObject getTemporalPlainTimeConstructor() {
+        return temporalPlainTimeConstructor;
+    }
+
+    public final DynamicObject getTemporalPlainTimePrototype() {
+        return temporalPlainTimePrototype;
+    }
+
+    public final DynamicObject getTemporalPlainDateConstructor() {
+        return temporalPlainDateConstructor;
+    }
+
+    public final DynamicObject getTemporalPlainDatePrototype() {
+        return temporalPlainDatePrototype;
+    }
+
+    public final DynamicObject getTemporalPlainDateTimeConstructor() {
+        return temporalPlainDateTimeConstructor;
+    }
+
+    public final DynamicObject getTemporalPlainDateTimePrototype() {
+        return temporalPlainDateTimePrototype;
+    }
+
+    public final DynamicObject getTemporalDurationConstructor() {
+        return temporalDurationConstructor;
+    }
+
+    public final DynamicObject getTemporalDurationPrototype() {
+        return temporalDurationPrototype;
+    }
+
+    public final DynamicObject getTemporalCalendarConstructor() {
+        return temporalCalendarConstructor;
+    }
+
+    public final DynamicObject getTemporalCalendarPrototype() {
+        return temporalCalendarPrototype;
+    }
+
+    public final DynamicObject getTemporalPlainYearMonthConstructor() {
+        return temporalPlainYearMonthConstructor;
+    }
+
+    public DynamicObject getTemporalPlainYearMonthPrototype() {
+        return temporalPlainYearMonthPrototype;
+    }
+
+    public DynamicObject getTemporalPlainMonthDayConstructor() {
+        return temporalPlainMonthDayConstructor;
+    }
+
+    public DynamicObject getTemporalPlainMonthDayPrototype() {
+        return temporalPlainMonthDayPrototype;
+    }
+
+    public DynamicObject getTemporalInstantConstructor() {
+        return temporalInstantConstructor;
+    }
+
+    public DynamicObject getTemporalInstantPrototype() {
+        return temporalInstantPrototype;
+    }
+
+    public DynamicObject getTemporalTimeZoneConstructor() {
+        return temporalTimeZoneConstructor;
+    }
+
+    public DynamicObject getTemporalTimeZonePrototype() {
+        return temporalTimeZonePrototype;
+    }
+
+    public DynamicObject getTemporalZonedDateTimeConstructor() {
+        return temporalZonedDateTimeConstructor;
+    }
+
+    public DynamicObject getTemporalZonedDateTimePrototype() {
+        return temporalZonedDateTimePrototype;
+    }
+
     public final Map<Object, DynamicObject> getTemplateRegistry() {
         if (templateRegistry == null) {
             createTemplateRegistry();
@@ -1576,7 +1750,9 @@ public class JSRealm {
         if (context.getContextOptions().isOperatorOverloading()) {
             JSObjectUtil.putFunctionsFromContainer(this, global, OperatorsBuiltins.BUILTINS);
         }
-
+        if (context.isOptionTemporal()) {
+            addTemporalGlobals();
+        }
         if (context.getContextOptions().isProfileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
         }
@@ -1708,6 +1884,32 @@ public class JSRealm {
         if (context.isOptionIntl402()) {
             putGlobalProperty(JSIntl.CLASS_NAME, preinitIntlObject != null ? preinitIntlObject : createIntlObject());
         }
+    }
+
+    private void addTemporalGlobals() {
+        assert context.isOptionTemporal();
+        DynamicObject temporalObject = JSOrdinary.createInit(this);
+        JSObjectUtil.putToStringTag(temporalObject, TemporalConstants.TEMPORAL);
+
+        int flags = JSAttributes.configurableNotEnumerableWritable();
+        JSObjectUtil.putDataProperty(context, temporalObject, "PlainTime", getTemporalPlainTimeConstructor(), flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "PlainDate", getTemporalPlainDateConstructor(), flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "PlainDateTime", getTemporalPlainDateTimeConstructor(), flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "Duration", getTemporalDurationConstructor(), flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "Calendar", getTemporalCalendarConstructor(), flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "PlainYearMonth", getTemporalPlainYearMonthConstructor(), flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "PlainMonthDay", getTemporalPlainMonthDayConstructor(), flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "Instant", getTemporalInstantConstructor(), flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "TimeZone", getTemporalTimeZoneConstructor(), flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "ZonedDateTime", getTemporalZonedDateTimeConstructor(), flags);
+
+        DynamicObject nowObject = JSOrdinary.createInit(this);
+
+        JSObjectUtil.putDataProperty(context, temporalObject, "Now", nowObject, flags);
+        JSObjectUtil.putFunctionsFromContainer(this, nowObject, TemporalNowBuiltins.BUILTINS);
+        JSObjectUtil.putToStringTag(nowObject, "Temporal.Now");
+
+        putGlobalProperty(TemporalConstants.TEMPORAL, temporalObject);
     }
 
     private DynamicObject createIntlObject() {
@@ -2319,8 +2521,20 @@ public class JSRealm {
         this.errorWriter.setDelegate(stream);
     }
 
+    /**
+     * The current time in nanoseconds precision (with fuzzed resolution for security reasons).
+     * Counted from the start of the application, as required by Node.js' `performance.now()`.
+     */
     public long nanoTime() {
         return nanoTime(nanoToZeroTimeOffset);
+    }
+
+    /**
+     * The current time in nanoseconds precision (with fuzzed resolution for security reasons). Wall
+     * clock time, to be in the same range as ECMAScript's `Date.now()`.
+     */
+    public long nanoTimeWallClock() {
+        return nanoTime(nanoToCurrentTimeOffset);
     }
 
     public long nanoTime(long offset) {

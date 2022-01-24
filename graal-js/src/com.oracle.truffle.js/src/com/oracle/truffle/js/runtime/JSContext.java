@@ -119,6 +119,16 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobal;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
@@ -305,6 +315,50 @@ public class JSContext {
         WebAssemblySourceInstantiation,
         FinishImportModuleDynamicallyReject,
         FinishImportModuleDynamicallyResolve,
+        TemporalTimeCalendar,
+        TemporalTimeHour,
+        TemporalTimeMinute,
+        TemporalTimeSecond,
+        TemporalTimeMillisecond,
+        TemporalTimeMicrosecond,
+        TemporalTimeNanosecond,
+        TemporalDurationYears,
+        TemporalDurationMonths,
+        TemporalDurationWeeks,
+        TemporalDurationDays,
+        TemporalDurationHours,
+        TemporalDurationMinutes,
+        TemporalDurationSeconds,
+        TemporalDurationMilliseconds,
+        TemporalDurationMicroseconds,
+        TemporalDurationNanoseconds,
+        TemporalDurationSign,
+        TemporalDurationBlank,
+        TemporalCalendarId,
+        TemporalPlainYearMonthCalendar,
+        TemporalPlainYearMonthYear,
+        TemporalPlainYearMonthMonth,
+        TemporalPlainYearMonthMonthCode,
+        TemporalPlainYearMonthDaysInYear,
+        TemporalPlainYearMonthDaysInMonth,
+        TemporalPlainYearMonthMonthsInYear,
+        TemporalPlainYearMonthInLeapYear,
+        TemporalPlainMonthDayCalendar,
+        TemporalPlainMonthDayMonthCode,
+        TemporalPlainMonthDayDay,
+        TemporalDateCalendar,
+        TemporalDateYear,
+        TemporalDateMonth,
+        TemporalDateMonthCode,
+        TemporalDateDay,
+        TemporalDateDayOfWeek,
+        TemporalDateDayOfYear,
+        TemporalDateWeekOfYear,
+        TemporalDateDaysInWeek,
+        TemporalDateDaysInMonth,
+        TemporalDateDaysInYear,
+        TemporalDateMonthsInYear,
+        TemporalDateInLeapYear
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
@@ -405,6 +459,17 @@ public class JSContext {
     private final JSObjectFactory javaPackageFactory;
     private final JSObjectFactory jsAdapterFactory;
     private final JSObjectFactory dictionaryObjectFactory;
+
+    private final JSObjectFactory temporalPlainTimeFactory;
+    private final JSObjectFactory temporalPlainDateFactory;
+    private final JSObjectFactory temporalPlainDateTimeFactory;
+    private final JSObjectFactory temporalDurationFactory;
+    private final JSObjectFactory temporalCalendarFactory;
+    private final JSObjectFactory temporalPlainYearMonthFactory;
+    private final JSObjectFactory temporalPlainMonthDayFactory;
+    private final JSObjectFactory temporalInstantFactory;
+    private final JSObjectFactory temporalTimeZoneFactory;
+    private final JSObjectFactory temporalZonedDateTimeFactory;
 
     private final JSObjectFactory globalObjectFactory;
 
@@ -565,6 +630,17 @@ public class JSContext {
         boolean nashornCompat = isOptionNashornCompatibilityMode();
         this.jsAdapterFactory = nashornCompat ? builder.create(JSAdapter.INSTANCE) : null;
         this.javaImporterFactory = nashornCompat ? builder.create(JavaImporter.instance()) : null;
+
+        this.temporalPlainTimeFactory = builder.create(JSTemporalPlainTime.INSTANCE);
+        this.temporalPlainDateFactory = builder.create(JSTemporalPlainDate.INSTANCE);
+        this.temporalPlainDateTimeFactory = builder.create(JSTemporalPlainDateTime.INSTANCE);
+        this.temporalDurationFactory = builder.create(JSTemporalDuration.INSTANCE);
+        this.temporalCalendarFactory = builder.create(JSTemporalCalendar.INSTANCE);
+        this.temporalPlainYearMonthFactory = builder.create(JSTemporalPlainYearMonth.INSTANCE);
+        this.temporalPlainMonthDayFactory = builder.create(JSTemporalPlainMonthDay.INSTANCE);
+        this.temporalInstantFactory = builder.create(JSTemporalInstant.INSTANCE);
+        this.temporalTimeZoneFactory = builder.create(JSTemporalTimeZone.INSTANCE);
+        this.temporalZonedDateTimeFactory = builder.create(JSTemporalZonedDateTime.INSTANCE);
 
         this.dictionaryObjectFactory = JSConfig.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionary::makeDictionaryShape) : null;
 
@@ -1003,6 +1079,46 @@ public class JSContext {
         return javaPackageFactory;
     }
 
+    public final JSObjectFactory getTemporalPlainTimeFactory() {
+        return temporalPlainTimeFactory;
+    }
+
+    public final JSObjectFactory getTemporalPlainDateFactory() {
+        return temporalPlainDateFactory;
+    }
+
+    public final JSObjectFactory getTemporalPlainDateTimeFactory() {
+        return temporalPlainDateTimeFactory;
+    }
+
+    public final JSObjectFactory getTemporalDurationFactory() {
+        return temporalDurationFactory;
+    }
+
+    public final JSObjectFactory getTemporalCalendarFactory() {
+        return temporalCalendarFactory;
+    }
+
+    public JSObjectFactory getTemporalPlainYearMonthFactory() {
+        return temporalPlainYearMonthFactory;
+    }
+
+    public JSObjectFactory getTemporalPlainMonthDayFactory() {
+        return temporalPlainMonthDayFactory;
+    }
+
+    public JSObjectFactory getTemporalInstantFactory() {
+        return temporalInstantFactory;
+    }
+
+    public JSObjectFactory getTemporalZonedDateTimeFactory() {
+        return temporalZonedDateTimeFactory;
+    }
+
+    public JSObjectFactory getTemporalTimeZoneFactory() {
+        return temporalTimeZoneFactory;
+    }
+
     public JSObjectFactory getDictionaryObjectFactory() {
         return dictionaryObjectFactory;
     }
@@ -1305,6 +1421,10 @@ public class JSContext {
 
     public boolean isOptionAtomics() {
         return contextOptions.isAtomics();
+    }
+
+    public boolean isOptionTemporal() {
+        return contextOptions.isTemporal();
     }
 
     public boolean isOptionV8CompatibilityMode() {

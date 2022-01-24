@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -355,6 +357,11 @@ public final class Boundaries {
     }
 
     @TruffleBoundary
+    public static boolean listContainsUnchecked(List<?> list, Object element) {
+        return list.contains(element);
+    }
+
+    @TruffleBoundary
     public static <T> Object[] listToArray(List<T> list) {
         return list.toArray();
     }
@@ -427,5 +434,30 @@ public final class Boundaries {
         ByteBuffer dup = buf.duplicate();
         dup.position(pos).limit(limit);
         return dup.slice();
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    public static ByteBuffer byteBufferDuplicate(ByteBuffer buffer) {
+        return buffer.duplicate();
+    }
+
+    @TruffleBoundary
+    public static boolean setContains(Set<?> set, Object element) {
+        return set.contains(element);
+    }
+
+    @TruffleBoundary
+    public static BigInteger bigIntegerValueOf(long l) {
+        return BigInteger.valueOf(l);
+    }
+
+    @TruffleBoundary
+    public static BigDecimal bigDecimalValueOf(long l) {
+        return BigDecimal.valueOf(l);
+    }
+
+    @TruffleBoundary
+    public static BigInteger bigIntegerMultiply(BigInteger a, BigInteger b) {
+        return a.multiply(b);
     }
 }

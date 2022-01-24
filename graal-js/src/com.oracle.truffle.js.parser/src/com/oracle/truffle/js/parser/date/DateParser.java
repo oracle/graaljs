@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -98,6 +98,7 @@ public class DateParser {
     private int yearSign = 0;
     private boolean namedMonth = false;
     private final JSRealm realm;
+    private final boolean extraLenient; //necessary for Temporal
 
     private static final HashMap<String, Name> names = new HashMap<>();
 
@@ -142,11 +143,12 @@ public class DateParser {
      * Construct a new <tt>DateParser</tt> instance for parsing the given string.
      * @param string the string to be parsed
      */
-    public DateParser(final JSRealm realm, final String string) {
+    public DateParser(final JSRealm realm, final String string, boolean extraLenient) {
         this.string = string;
         this.length = string.length();
         this.fields = new Integer[TIMEZONE + 1];
         this.realm = realm;
+        this.extraLenient = extraLenient;
     }
 
     /**
@@ -681,7 +683,7 @@ public class DateParser {
             return false;
         }
         JSContext context = realm.getContext();
-        if (context.isOptionV8CompatibilityMode()) {
+        if (context.isOptionV8CompatibilityMode() && !extraLenient) {
             if (!isSet(YEAR) && !isSet(DAY) && !isSet(MONTH)) {
                 return false;
             }

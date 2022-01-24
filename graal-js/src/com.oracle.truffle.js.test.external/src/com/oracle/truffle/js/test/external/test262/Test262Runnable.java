@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -166,6 +166,7 @@ public class Test262Runnable extends TestRunnable {
                     "Symbol.toPrimitive",
                     "Symbol.toStringTag",
                     "Symbol.unscopables",
+                    "Temporal",
                     "TypedArray",
                     "TypedArray.prototype.at",
                     "Uint16Array",
@@ -242,7 +243,6 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.DurationFormat",
                     "IsHTMLDDA",
                     "ShadowRealm",
-                    "Temporal",
                     "arbitrary-module-namespace-names",
                     "array-find-from-last",
                     "resizable-arraybuffer",
@@ -285,6 +285,9 @@ public class Test262Runnable extends TestRunnable {
         }
         if (features.contains("json-modules")) {
             extraOptions.put(JSContextOptions.JSON_MODULES_NAME, "true");
+        }
+        if (features.contains("Temporal")) {
+            extraOptions.put(JSContextOptions.TEMPORAL_NAME, "true");
         }
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();

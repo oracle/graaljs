@@ -1745,6 +1745,226 @@
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "built-ins/Temporal/Duration/compare/relativeto-string-plaindatetime.js",
+    "status" : "FAIL",
+    "comment" : "new failures after fix #1897 from 2022-01-12"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/compare/relativeto-string-zoneddatetime-wrong-offset.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/compare/relativeto-sub-minute-offset.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-string-datetime.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-string-plaindatetime.js",
+    "status" : "FAIL",
+    "comment" : "new failures after fix #1897 from 2022-01-12"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-string-zoneddatetime-wrong-offset.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-sub-minute-offset.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/calendar-dateuntil-called-with-singular-largestunit.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-string-datetime.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-string-plaindatetime.js",
+    "status" : "FAIL",
+    "comment" : "new failures after fix #1897 from 2022-01-12"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-string-zoneddatetime-wrong-offset.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-sub-minute-offset.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/round-negative-result.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-string-datetime.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-string-plaindatetime.js",
+    "status" : "FAIL",
+    "comment" : "new failures after fix #1897 from 2022-01-12"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-string-zoneddatetime-wrong-offset.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-sub-minute-offset.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/balance-negative-result.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-string-datetime.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-string-plaindatetime.js",
+    "status" : "FAIL",
+    "comment" : "new failures after fix #1897 from 2022-01-12"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-string-zoneddatetime-wrong-offset.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-sub-minute-offset.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/add/balance-smaller-units.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/subtract/balance-smaller-units.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toZonedDateTime/plain-custom-timezone.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainMonthDay/from/fields-string.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/from/argument-string-with-calendar.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/getISOFields/field-traversal-order.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/calendar-arguments-extra-options.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/calendar-arguments.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/argument-string-negative-fractional-units.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/calendar-arguments-extra-options.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/calendar-arguments.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/calendar-daysinmonth-wrong-value.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/TimeZone/basic.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/TimeZone/from/argument-primitive.js",
+    "status" : "FAIL",
+    "comment" : "new failures after fix #1897 from 2022-01-12"
+  }, {
+    "filePath" : "built-ins/Temporal/TimeZone/from/argument-valid.js",
+    "status" : "FAIL",
+    "comment" : "temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/TimeZone/prototype/getPlainDateTimeFor/custom-timezone.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures after normative changes not yet reflected in test262"
+  }, {
+    "filePath" : "built-ins/Temporal/TimeZone/prototype/id/plain-custom-timezone.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/TimeZone/prototype/toJSON/tostring-call.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures after normative changes not yet reflected in test262"
+  }, {
+    "filePath" : "built-ins/Temporal/TimeZone/prototype/toJSON/tostring-undefined-custom.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures after normative changes not yet reflected in test262"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/compare/zoneddatetime-string.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/from/zoneddatetime-string.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/from/zoneddatetime-sub-minute-offset.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/sub-minute-offset.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/zoneddatetime-string.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/calendar-dateuntil-called-with-singular-largestunit.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/sub-minute-offset.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/zoneddatetime-string.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/sub-minute-offset.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/zoneddatetime-string.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/balance-negative-time-units.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/offset-property-sub-minute.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/offset-undefined.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1752,9 +1972,517 @@
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
   }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-resolved-time-zone.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-objects-resolved-time-zone.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-objects-resolved-time-zone.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-objects-resolved-time-zone.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
     "filePath" : "intl402/NumberFormat/prototype/format/value-decimal-string.js",
     "status" : "FAIL",
     "comment" : "Incorrect test (expects '1.0000000000000001' to be formatted as 1.0000000000000001 but the correct result is 1)."
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/from/basic.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/dateAdd/date-infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/dateFromFields/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/dateUntil/argument-infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/day/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/dayOfWeek/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/dayOfYear/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/daysInMonth/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/daysInWeek/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/daysInYear/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/era/branding.js",
+    "status" : "FAIL",
+    "comment" : "Temporal tests still failing"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/era/builtin.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/era/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/era/length.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/era/name.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/era/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/branding.js",
+    "status" : "FAIL",
+    "comment" : "Temporal tests still failing"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/builtin.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/length.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/name.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/inLeapYear/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/month/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/monthCode/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/monthDayFromFields/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/monthsInYear/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/weekOfYear/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/year/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/yearMonthFromFields/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Duration/prototype/add/relativeto-infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Duration/prototype/round/relativeto-infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Duration/prototype/subtract/relativeto-infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Duration/prototype/total/relativeto-infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/locales-undefined.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/options-conflict.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/options-undefined.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Now/zonedDateTime/timezone-string-datetime.js",
+    "status" : "FAIL",
+    "comment" : "temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Now/zonedDateTimeISO/timezone-string-datetime.js",
+    "status" : "FAIL",
+    "comment" : "temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/compare/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/from/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/equals/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/era/branding.js",
+    "status" : "FAIL",
+    "comment" : "Temporal tests still failing"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/era/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/eraYear/branding.js",
+    "status" : "FAIL",
+    "comment" : "Temporal tests still failing"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/eraYear/calendar-returns-infinity.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/eraYear/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/since/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/locales-undefined.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/options-conflict.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/options-undefined.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/resolved-time-zone.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/timezone-getoffsetnanosecondsfor-not-callable.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/until/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/compare/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/from/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/equals/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/era/branding.js",
+    "status" : "FAIL",
+    "comment" : "Temporal tests still failing"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/era/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/eraYear/branding.js",
+    "status" : "FAIL",
+    "comment" : "Temporal tests still failing"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/eraYear/calendar-returns-infinity.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/eraYear/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/since/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/locales-undefined.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/options-conflict.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/options-undefined.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/resolved-time-zone.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/timezone-getoffsetnanosecondsfor-not-callable.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/until/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/withPlainDate/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/equals/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/locales-undefined.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/options-undefined.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/resolved-time-zone.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/timezone-getoffsetnanosecondsfor-not-callable.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toPlainDate/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/locales-undefined.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/options-conflict.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/options-undefined.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/resolved-time-zone.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/timezone-getoffsetnanosecondsfor-not-callable.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainTime/prototype/toPlainDateTime/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainTime/prototype/toZonedDateTime/plaindate-infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/compare/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/from/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/equals/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/era/branding.js",
+    "status" : "FAIL",
+    "comment" : "Temporal tests still failing"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/era/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/eraYear/branding.js",
+    "status" : "FAIL",
+    "comment" : "Temporal tests still failing"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/eraYear/calendar-returns-infinity.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/eraYear/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/since/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/locales-undefined.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/options-undefined.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/resolved-time-zone.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/timezone-getoffsetnanosecondsfor-not-callable.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/until/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/TimeZone/basic.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/TimeZone/from/argument-valid.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/TimeZone/prototype/getInstantFor/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/TimeZone/prototype/getPossibleInstantsFor/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/compare/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/from/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/era/branding.js",
+    "status" : "FAIL",
+    "comment" : "Temporal tests still failing"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/era/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/era/timezone-getoffsetnanosecondsfor-non-integer.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/era/timezone-getoffsetnanosecondsfor-not-callable.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/era/timezone-getoffsetnanosecondsfor-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/era/timezone-getoffsetnanosecondsfor-wrong-type.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/eraYear/branding.js",
+    "status" : "FAIL",
+    "comment" : "Temporal tests still failing"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/eraYear/calendar-returns-infinity.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/eraYear/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/eraYear/timezone-getoffsetnanosecondsfor-non-integer.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/eraYear/timezone-getoffsetnanosecondsfor-not-callable.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/eraYear/timezone-getoffsetnanosecondsfor-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/eraYear/timezone-getoffsetnanosecondsfor-wrong-type.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/since/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/locales-undefined.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/options-conflict.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/options-undefined.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/until/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/withPlainDate/infinity-throws-rangeerror.js",
+    "status" : "FAIL",
+    "comment" : "Temporal failures"
   }, {
     "filePath" : "language/expressions/assignment/destructuring/obj-prop-__proto__dup.js",
     "status" : "FAIL"
