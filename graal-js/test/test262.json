@@ -2094,71 +2094,71 @@
   }, {
     "filePath" : "intl402/DurationFormat/prototype/format/length.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "Missing 'features: [Intl.DurationFormat]'"
   }, {
     "filePath" : "intl402/DurationFormat/prototype/formatToParts/length.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "Missing 'features: [Intl.DurationFormat]'"
   }, {
     "filePath" : "intl402/DurationFormat/prototype/resolvedOptions/length.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "Missing 'features: [Intl.DurationFormat]'"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-increment-10.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "Bug in ICU4J: https://unicode-org.atlassian.net/browse/ICU-21887"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-increment-100.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "Bug in ICU4J: https://unicode-org.atlassian.net/browse/ICU-21887"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-increment-1000.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "Bug in ICU4J: https://unicode-org.atlassian.net/browse/ICU-21887"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-increment-20.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "Bug in ICU4J: https://unicode-org.atlassian.net/browse/ICU-21887"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-increment-200.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "Bug in ICU4J: https://unicode-org.atlassian.net/browse/ICU-21887"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-increment-2000.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "Bug in ICU4J: https://unicode-org.atlassian.net/browse/ICU-21887"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-increment-25.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "Bug in ICU4J: https://unicode-org.atlassian.net/browse/ICU-21887"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-increment-250.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "Bug in ICU4J: https://unicode-org.atlassian.net/browse/ICU-21887"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-increment-2500.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "Bug in ICU4J: https://unicode-org.atlassian.net/browse/ICU-21887"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-increment-5.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "Bug in ICU4J: https://unicode-org.atlassian.net/browse/ICU-21887"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-increment-50.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "Bug in ICU4J: https://unicode-org.atlassian.net/browse/ICU-21887"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-increment-500.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "Bug in ICU4J: https://unicode-org.atlassian.net/browse/ICU-21887"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-increment-5000.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "Bug in ICU4J: https://unicode-org.atlassian.net/browse/ICU-21887"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-priority-less-precision.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "Bug in ICU: https://unicode-org.atlassian.net/browse/ICU-21886"
   }, {
     "filePath" : "intl402/Temporal/Calendar/from/basic.js",
     "status" : "FAIL",
