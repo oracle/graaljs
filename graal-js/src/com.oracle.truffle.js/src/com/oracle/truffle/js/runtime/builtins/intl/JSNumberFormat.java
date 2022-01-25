@@ -977,7 +977,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
             Precision precision = getPrecision();
             if (roundingIncrement != 1) {
-                // Note that minimumFractionDigits digits are ignored here.
+                // ICU-21887: Note that minimumFractionDigits digits are ignored here.
                 // ICU4J does not support the combination of increment and minimumFractionDigits
                 BigDecimal increment = BigDecimal.ONE.movePointLeft(getMaximumFractionDigits()).multiply(BigDecimal.valueOf(roundingIncrement));
                 precision = Precision.increment(increment);
