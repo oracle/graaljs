@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@ import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanUnaryNode;
-import com.oracle.truffle.js.runtime.JSCancelledExecutionException;
+import com.oracle.truffle.js.runtime.JSInterruptedExecutionException;
 
 abstract class AbstractRepeatingNode extends JavaScriptNode implements RepeatingNode, ResumableNode {
 
@@ -73,7 +73,7 @@ abstract class AbstractRepeatingNode extends JavaScriptNode implements Repeating
     private void checkThreadInterrupted() {
         CompilerAsserts.neverPartOfCompilation("do not check thread interruption from compiled code");
         if (Thread.interrupted()) {
-            throw new JSCancelledExecutionException("Thread was interrupted.", this);
+            throw new JSInterruptedExecutionException("Thread was interrupted.", this);
         }
     }
 

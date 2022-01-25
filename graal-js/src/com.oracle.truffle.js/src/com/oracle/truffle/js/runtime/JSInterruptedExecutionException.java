@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,33 +40,25 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("deprecation")
-public final class JSCancelledExecutionException extends ThreadDeath implements com.oracle.truffle.api.TruffleException {
-
-    private final String message;
-    private final Node originatingNode;
+@ExportLibrary(InteropLibrary.class)
+public final class JSInterruptedExecutionException extends AbstractTruffleException {
 
     private static final long serialVersionUID = 5656896390677153564L;
 
-    public JSCancelledExecutionException(String message, Node originatedBy) {
-        this.message = message;
-        this.originatingNode = originatedBy;
+    public JSInterruptedExecutionException(String message, Node originatedBy) {
+        super(message, originatedBy);
     }
 
-    @Override
-    public String getMessage() {
-        return message;
-    }
-
-    @Override
-    public Node getLocation() {
-        return originatingNode;
-    }
-
-    @Override
-    public boolean isCancelled() {
-        return true;
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    ExceptionType getExceptionType() {
+        return ExceptionType.INTERRUPT;
     }
 }
