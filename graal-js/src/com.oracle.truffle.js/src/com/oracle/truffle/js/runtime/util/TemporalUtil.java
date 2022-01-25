@@ -1231,13 +1231,17 @@ public final class TemporalUtil {
 
     public static DynamicObject createTemporalTimeZone(JSContext ctx, TruffleString identifier) {
         BigInt offsetNs;
-        if (canParseAsTimeZoneNumericUTCOffset(identifier)) {
-            offsetNs = new BigInt(Boundaries.bigIntegerValueOf(parseTimeZoneOffsetString(identifier)));
-        } else {
+        String newIdentifier = identifier;
+        try {
+            long result = parseTimeZoneOffsetString(identifier);
+            // no abrupt completion
+            newIdentifier = formatTimeZoneOffsetString(result);
+            offsetNs = BigInt.valueOf(result);
+        } catch (Exception ex) {
             assert canonicalizeTimeZoneName(identifier).equals(identifier);
             offsetNs = null;
         }
-        return JSTemporalTimeZone.create(ctx, offsetNs, identifier);
+        return JSTemporalTimeZone.create(ctx, offsetNs, newIdentifier);
     }
 
     public static TruffleString canonicalizeTimeZoneName(TruffleString timeZone) {
