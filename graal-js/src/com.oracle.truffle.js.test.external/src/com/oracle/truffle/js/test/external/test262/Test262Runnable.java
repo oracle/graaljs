@@ -245,6 +245,7 @@ public class Test262Runnable extends TestRunnable {
                     "ShadowRealm",
                     "arbitrary-module-namespace-names",
                     "array-find-from-last",
+                    "regexp-v-flag",
                     "resizable-arraybuffer",
                     "tail-call-optimization",
     }));
