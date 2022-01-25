@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -167,6 +167,9 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
 
     public static boolean shouldCatch(Throwable ex, InteropLibrary exceptions) {
         if (exceptions.isException(ex)) {
+            if (!(ex instanceof AbstractTruffleException)) {
+                return false;
+            }
             try {
                 ExceptionType exceptionType = exceptions.getExceptionType(ex);
                 return exceptionType != ExceptionType.EXIT && exceptionType != ExceptionType.INTERRUPT;
@@ -274,7 +277,6 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
         private final ConditionProfile isJSError = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isJSException = ConditionProfile.createBinaryProfile();
         private final BranchProfile truffleExceptionBranch = BranchProfile.create();
-        private final BranchProfile legacyTruffleExceptionBranch = BranchProfile.create();
         private final JSContext context;
 
         private GetErrorObjectNode(JSContext context) {
@@ -286,7 +288,6 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
             return new GetErrorObjectNode(context);
         }
 
-        @SuppressWarnings("deprecation")
         public Object execute(Throwable ex) {
             if (isJSError.profile(ex instanceof JSException)) {
                 // fill in any missing stack trace elements
@@ -301,19 +302,8 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
                 return doJSException(rangeException);
             } else {
                 truffleExceptionBranch.enter();
-                assert !(ex instanceof GraalJSException) && (ex instanceof AbstractTruffleException || ex instanceof com.oracle.truffle.api.TruffleException) : ex;
-                if (ex instanceof AbstractTruffleException) {
-                    return ex;
-                } else {
-                    legacyTruffleExceptionBranch.enter();
-                    Object exceptionObject = ((com.oracle.truffle.api.TruffleException) ex).getExceptionObject();
-                    if (exceptionObject != null) {
-                        return exceptionObject;
-                    }
-                    // This should not happen in practice but if it does, we do not want to expose
-                    // the exception itself, so we convert it to a best-effort JS Error.
-                    return Errors.createErrorFromException(ex);
-                }
+                assert !(ex instanceof GraalJSException) && (ex instanceof AbstractTruffleException) : ex;
+                return ex;
             }
         }
 
