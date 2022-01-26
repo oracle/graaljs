@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
 public abstract class JavaScriptRootNode extends RootNode {
     private static final FrameDescriptor SHARED_EMPTY_FRAMEDESCRIPTOR = new FrameDescriptor();
@@ -59,7 +60,7 @@ public abstract class JavaScriptRootNode extends RootNode {
 
     protected JavaScriptRootNode(JavaScriptLanguage lang, SourceSection sourceSection, FrameDescriptor frameDescriptor) {
         super(lang, substituteNullWithSharedEmptyFrameDescriptor(frameDescriptor));
-        this.sourceSection = sourceSection;
+        this.sourceSection = (sourceSection == null) ? JSFunction.BUILTIN_SOURCE_SECTION : sourceSection;
     }
 
     private static FrameDescriptor substituteNullWithSharedEmptyFrameDescriptor(FrameDescriptor frameDescriptor) {
