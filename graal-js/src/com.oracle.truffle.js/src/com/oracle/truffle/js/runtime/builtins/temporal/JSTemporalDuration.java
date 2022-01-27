@@ -95,7 +95,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     private JSTemporalDuration() {
     }
 
-    public static DynamicObject create(JSContext context, long years, long months, long weeks, long days, long hours,
+    public static JSTemporalDurationObject createTemporalDuration(JSContext context, long years, long months, long weeks, long days, long hours,
                     long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
         if (!TemporalUtil.validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
                         nanoseconds)) {
@@ -105,7 +105,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         JSObjectFactory factory = context.getTemporalDurationFactory();
         DynamicObject obj = factory.initProto(new JSTemporalDurationObject(factory.getShape(realm),
                         years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds), realm);
-        return context.trackAllocation(obj);
+        return (JSTemporalDurationObject) context.trackAllocation(obj);
     }
 
     @Override
@@ -373,15 +373,6 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             throw Errors.createTypeError("Given duration like object has no duration properties.");
         }
         return JSTemporalDurationRecord.createWeeks(year, month, week, day, hour, minute, second, millis, micros, nanos);
-    }
-
-    // 7.5.8
-    public static DynamicObject createTemporalDuration(JSContext ctx, long years, long months, long weeks, long days, long hours,
-                    long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
-        if (!TemporalUtil.validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
-            throw Errors.createRangeError("Duration not valid.");
-        }
-        return create(ctx, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
     }
 
     // 7.5.23

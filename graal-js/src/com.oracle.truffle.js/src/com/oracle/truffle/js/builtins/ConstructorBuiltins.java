@@ -1197,7 +1197,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final long milliseconds = toIntegerNode.executeLong(millisecondsObject);
             final long microseconds = toIntegerNode.executeLong(microsecondsObject);
             final long nanoseconds = toIntegerNode.executeLong(nanosecondsObject);
-            return swapPrototype(JSTemporalDuration.create(getContext(),
+            return swapPrototype(JSTemporalDuration.createTemporalDuration(getContext(),
                             years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds), newTarget);
         }
 

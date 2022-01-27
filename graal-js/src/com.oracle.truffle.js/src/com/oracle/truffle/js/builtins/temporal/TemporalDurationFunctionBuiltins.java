@@ -102,7 +102,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                         @Cached("create()") JSToStringNode toString) {
             if (isObject(item) && JSTemporalDuration.isJSTemporalDuration(item)) {
                 JSTemporalDurationObject duration = (JSTemporalDurationObject) item;
-                return JSTemporalDuration.create(getContext(), duration.getYears(),
+                return JSTemporalDuration.createTemporalDuration(getContext(), duration.getYears(),
                                 duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
                                 duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                                 duration.getMicroseconds(), duration.getNanoseconds());

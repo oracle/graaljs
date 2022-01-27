@@ -2305,10 +2305,6 @@
     "status" : "FAIL",
     "comment" : "new failures after fix #1897 from 2022-01-12"
   }, {
-    "filePath" : "built-ins/Temporal/TimeZone/from/argument-valid.js",
-    "status" : "FAIL",
-    "comment" : "temporal failures"
-  }, {
     "filePath" : "built-ins/Temporal/TimeZone/from/timezone-string-multiple-offsets.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-01-25"
