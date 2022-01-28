@@ -50,7 +50,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.js.runtime.Strings;
@@ -451,8 +450,6 @@ public class TemporalBuiltinsTest extends JSTest {
     }
 
     @Test
-    // TODO (CW) I believe the test is wrong, total does only support year/month/weeks/days
-    @Ignore
     public void testDurationTotal() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = Temporal.Duration.from({ hours: 130, minutes: 20 });");

@@ -278,7 +278,6 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             BigInt one = isUntil ? instant.getNanoseconds() : other.getNanoseconds();
             BigInt two = isUntil ? other.getNanoseconds() : instant.getNanoseconds();
 
-            // TODO lossy conversion
             BigInteger roundedNs = TemporalUtil.differenceInstant(one, two, roundingIncrement, smallestUnit, roundingMode);
             long roundedNsL = TemporalUtil.bitol(roundedNs);
             JSTemporalDurationRecord result = TemporalUtil.balanceDuration(getContext(), namesNode, 0, 0, 0, 0, 0, 0, roundedNsL, largestUnit);

@@ -124,7 +124,6 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.temporal.GetTemporalCalendarWithISODefaultNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
-import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode.OptionTypeEnum;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateTimeNode;
@@ -282,6 +281,40 @@ public final class TemporalUtil {
         MATCH_MINUTES
     }
 
+    public enum OptionTypeEnum {
+        STRING,
+        NUMBER,
+        BOOLEAN,
+        STRING_AND_NUMBER;
+
+        public boolean isNumber() {
+            return this == NUMBER || this == STRING_AND_NUMBER;
+        }
+
+        public boolean isString() {
+            return this == STRING || this == STRING_AND_NUMBER;
+        }
+
+        public boolean isBoolean() {
+            return this == BOOLEAN;
+        }
+
+        public OptionTypeEnum getLast() {
+            switch (this) {
+                case STRING:
+                    return STRING;
+                case NUMBER:
+                    return NUMBER;
+                case BOOLEAN:
+                    return BOOLEAN;
+                case STRING_AND_NUMBER:
+                    return STRING;
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw Errors.shouldNotReachHere();
+        }
+    }
+
     /**
      * Note there also is {@link TemporalGetOptionNode}.
      */
@@ -293,22 +326,25 @@ public final class TemporalUtil {
             return fallback;
         }
         OptionTypeEnum type;
-        if ((types == OptionTypeEnum.BOOLEAN && value instanceof Boolean) || (types == OptionTypeEnum.STRING && Strings.isTString(value)) ||
-                        (types == OptionTypeEnum.NUMBER && JSRuntime.isNumber(value))) {
-            type = types;
+        if (value instanceof Boolean && types.isBoolean()) {
+            type = OptionTypeEnum.BOOLEAN;
+        } else if (Strings.isTString(value) && types.isString()) {
+            type = OptionTypeEnum.STRING;
+        } else if (JSRuntime.isNumber(value) && types.isNumber()) {
+            type = OptionTypeEnum.NUMBER;
         } else {
-            type = types; // TODO "last entry of", but this is not a list yet
+            type = types.getLast();
         }
 
-        if (type == OptionTypeEnum.BOOLEAN) {
+        if (type.isBoolean()) {
             value = toBoolean.executeBoolean(value);
-        } else if (type == OptionTypeEnum.NUMBER) {
+        } else if (type.isNumber()) {
             value = toNumber.executeNumber(value);
             if (Double.isNaN(((Number) value).doubleValue())) {
                 throw TemporalErrors.createRangeErrorNumberIsNaN();
             }
         } else {
-            assert type == OptionTypeEnum.STRING;
+            assert type.isString();
             value = toStringNode.executeString(value);
         }
         if (value != Undefined.instance && !Boundaries.listContainsUnchecked(values, value)) {
@@ -322,21 +358,32 @@ public final class TemporalUtil {
      * conversion Nodes.
      */
     @TruffleBoundary
-    public static Object getOption(DynamicObject options, TruffleString property, OptionTypeEnum type, List<TruffleString> values, Object fallback) {
+    public static Object getOption(DynamicObject options, TruffleString property, OptionTypeEnum types, List<TruffleString> values, Object fallback) {
         assert JSRuntime.isObject(options);
         Object value = JSObject.get(options, property);
         if (value == Undefined.instance) {
             return fallback;
         }
-        if (type == OptionTypeEnum.BOOLEAN) {
+        OptionTypeEnum type;
+        if (value instanceof Boolean && types.isBoolean()) {
+            type = OptionTypeEnum.BOOLEAN;
+        } else if (Strings.isTString(value) && types.isString()) {
+            type = OptionTypeEnum.STRING;
+        } else if (JSRuntime.isNumber(value) && types.isNumber()) {
+            type = OptionTypeEnum.NUMBER;
+        } else {
+            type = types.getLast();
+        }
+
+        if (type.isBoolean()) {
             value = JSRuntime.toBoolean(value);
-        } else if (type == OptionTypeEnum.NUMBER) {
+        } else if (type.isNumber()) {
             value = JSRuntime.toNumber(value);
             if (Double.isNaN(((Number) value).doubleValue())) {
                 throw TemporalErrors.createRangeErrorNumberIsNaN();
             }
         } else {
-            assert type == OptionTypeEnum.STRING;
+            assert type.isString();
             value = JSRuntime.toString(value);
         }
         if (values != null && !values.contains(value)) {
@@ -372,10 +419,7 @@ public final class TemporalUtil {
     public static Object getStringOrNumberOption(DynamicObject options, TruffleString property, List<TruffleString> stringValues,
                     double minimum, double maximum, Object fallback) {
         assert JSRuntime.isObject(options);
-        Object value = JSObject.get(options, property);
-        if (value == Undefined.instance) {
-            return fallback;
-        }
+        Object value = getOption(options, property, OptionTypeEnum.STRING_AND_NUMBER, null, fallback);
         if (value instanceof Number) {
             double numberValue = ((Number) value).doubleValue();
             if (Double.isNaN(numberValue) || numberValue < minimum || numberValue > maximum) {
@@ -1781,8 +1825,9 @@ public final class TemporalUtil {
         }
     }
 
+    // used in cases where (Java) null is used even though Undefined is meant.
     public static boolean isNullish(Object obj) {
-        return obj == null || obj == Undefined.instance; // TODO this might not be exactly right
+        return obj == null || obj == Undefined.instance;
     }
 
     @TruffleBoundary
@@ -3074,13 +3119,6 @@ public final class TemporalUtil {
                         atd.getHours(), atd.getMinutes(), atd.getSeconds(), atd.getMilliseconds(), atd.getMicroseconds(), atd.getNanoseconds());
     }
 
-    // TODO this should not be necessary.
-    // working assumption is that it is ok to use it in the places where we DO use it
-    @TruffleBoundary
-    public static long bigIntToLong(BigInt val) {
-        return val.longValueExact();
-    }
-
     // 7.5.12
     public static double totalDurationNanoseconds(double days, double hours, double minutes, double seconds, double milliseconds,
                     double microseconds, double nanoseconds, double offsetShift) {
@@ -4110,20 +4148,6 @@ public final class TemporalUtil {
         }
     }
 
-    // this should not be used according to spec (but polyfill uses it)
-    // TODO https://github.com/tc39/proposal-temporal/issues/1754
-    private static long trunc(double in) {
-        if (in >= 0) {
-            return (long) Math.floor(in);
-        } else {
-            return -(long) Math.floor(-in);
-        }
-    }
-
-    public static long integralPartOf(double in) {
-        return trunc(in);
-    }
-
     @TruffleBoundary
     public static boolean canParseAsTimeZoneNumericUTCOffset(TruffleString string) {
         try {
@@ -4145,14 +4169,14 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static double bdtod(BigDecimal bd) {
         double value = bd.doubleValue();
-        assert Double.isFinite(value); // TODO more checks?
+        assert Double.isFinite(value);
         return value;
     }
 
     @TruffleBoundary
     public static double bitod(BigInteger bi) {
         double value = bi.doubleValue();
-        assert Double.isFinite(value); // TODO more checks?
+        assert Double.isFinite(value);
         return value;
     }
 
@@ -4160,5 +4184,10 @@ public final class TemporalUtil {
     public static long bitol(BigInteger bi) {
         long value = bi.longValueExact(); // throws!
         return value;
+    }
+
+    @TruffleBoundary
+    public static long bigIntToLong(BigInt val) {
+        return val.longValueExact(); // throws
     }
 }
