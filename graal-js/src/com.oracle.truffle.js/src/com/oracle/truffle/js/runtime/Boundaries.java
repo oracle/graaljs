@@ -264,6 +264,11 @@ public final class Boundaries {
     }
 
     @TruffleBoundary
+    public static BigDecimal bigDecimalValueOf(double value) {
+        return BigDecimal.valueOf(value);
+    }
+
+    @TruffleBoundary
     public static BigInteger bigIntegerMultiply(BigInteger a, BigInteger b) {
         return a.multiply(b);
     }

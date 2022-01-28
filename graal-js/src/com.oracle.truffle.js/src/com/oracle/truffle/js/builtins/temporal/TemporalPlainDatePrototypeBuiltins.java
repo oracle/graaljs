@@ -584,8 +584,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 return JSTemporalDuration.createTemporalDuration(getContext(), -result.getYears(), -result.getMonths(), -result.getWeeks(), -result.getDays(), 0, 0, 0, 0, 0, 0);
             }
             JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), getRealm(), namesNode, result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), 0, 0, 0, 0,
-                            0, 0,
-                            (long) roundingIncrement, smallestUnit, roundingMode, temporalDate);
+                            0, 0, (long) roundingIncrement, smallestUnit, roundingMode, temporalDate);
 
             return JSTemporalDuration.createTemporalDuration(getContext(), -result2.getYears(), -result2.getMonths(), -result2.getWeeks(), -result2.getDays(), 0, 0, 0, 0, 0, 0);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,22 +45,23 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public class JSTemporalDurationObject extends JSNonProxyObject {
 
-    private final long years;
-    private final long months;
-    private final long weeks;
-    private final long days;
-    private final long hours;
-    private final long minutes;
-    private final long seconds;
-    private final long milliseconds;
-    private final long microseconds;
-    private final long nanoseconds;
+    private final double years;
+    private final double months;
+    private final double weeks;
+    private final double days;
+    private final double hours;
+    private final double minutes;
+    private final double seconds;
+    private final double milliseconds;
+    private final double microseconds;
+    private final double nanoseconds;
 
     protected JSTemporalDurationObject(Shape shape) {
         this(shape, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 
-    public JSTemporalDurationObject(Shape shape, long years, long months, long weeks, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
+    public JSTemporalDurationObject(Shape shape, double years, double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds, double microseconds,
+                    double nanoseconds) {
         super(shape);
         this.years = years;
         this.months = months;
@@ -74,43 +75,43 @@ public class JSTemporalDurationObject extends JSNonProxyObject {
         this.nanoseconds = nanoseconds;
     }
 
-    public long getYears() {
+    public double getYears() {
         return years;
     }
 
-    public long getMonths() {
+    public double getMonths() {
         return months;
     }
 
-    public long getWeeks() {
+    public double getWeeks() {
         return weeks;
     }
 
-    public long getDays() {
+    public double getDays() {
         return days;
     }
 
-    public long getHours() {
+    public double getHours() {
         return hours;
     }
 
-    public long getMinutes() {
+    public double getMinutes() {
         return minutes;
     }
 
-    public long getSeconds() {
+    public double getSeconds() {
         return seconds;
     }
 
-    public long getMilliseconds() {
+    public double getMilliseconds() {
         return milliseconds;
     }
 
-    public long getMicroseconds() {
+    public double getMicroseconds() {
         return microseconds;
     }
 
-    public long getNanoseconds() {
+    public double getNanoseconds() {
         return nanoseconds;
     }
 }

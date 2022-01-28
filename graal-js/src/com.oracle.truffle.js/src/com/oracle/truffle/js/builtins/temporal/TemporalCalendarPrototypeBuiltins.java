@@ -52,6 +52,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
+import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -468,10 +469,9 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             DynamicObject options = getOptionsObject(optionsParam);
             TemporalOverflowEnum overflow = toTemporalOverflow(options);
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(),
-                            duration.getMicroseconds(), duration.getNanoseconds(), DAY);
+                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), DAY);
             JSTemporalDateTimeRecord result = TemporalUtil.addISODate(date.getYear(), date.getMonth(), date.getDay(),
-                            duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), overflow);
+                            dtol(duration.getYears()), dtol(duration.getMonths()), dtol(duration.getWeeks()), dtol(balanceResult.getDays()), overflow);
             return JSTemporalPlainDate.create(getContext(), result.getYear(), result.getMonth(), result.getDay(), calendar);
         }
     }

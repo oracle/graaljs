@@ -53,6 +53,8 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SIGN;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
+import static com.oracle.truffle.js.runtime.util.TemporalParser.group;
+import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
 
 import java.math.BigDecimal;
 import java.util.regex.Matcher;
@@ -70,6 +72,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
@@ -95,8 +98,8 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     private JSTemporalDuration() {
     }
 
-    public static JSTemporalDurationObject createTemporalDuration(JSContext context, long years, long months, long weeks, long days, long hours,
-                    long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
+    public static JSTemporalDurationObject createTemporalDuration(JSContext context, double years, double months, double weeks, double days, double hours,
+                    double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
         if (!TemporalUtil.validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
                         nanoseconds)) {
             throw Errors.createRangeError("Given duration outside range.");
@@ -104,8 +107,15 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalDurationFactory();
         DynamicObject obj = factory.initProto(new JSTemporalDurationObject(factory.getShape(realm),
-                        years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds), realm);
+                        nnz(years), nnz(months), nnz(weeks), nnz(days), nnz(hours), nnz(minutes), nnz(seconds), nnz(milliseconds), nnz(microseconds), nnz(nanoseconds)), realm);
         return (JSTemporalDurationObject) context.trackAllocation(obj);
+    }
+
+    private static double nnz(double d) {
+        if (JSRuntime.isNegativeZero(d)) {
+            return 0;
+        }
+        return d;
     }
 
     @Override
@@ -375,6 +385,13 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         return JSTemporalDurationRecord.createWeeks(year, month, week, day, hour, minute, second, millis, micros, nanos);
     }
 
+    public static TruffleString temporalDurationToString(double yearsP, double monthsP, double weeksP, double daysP, double hoursP, double minutesP, double secondsP, double millisecondsP,
+                    double microsecondsP, double nanosecondsP, Object precision) {
+        return temporalDurationToString(dtol(yearsP), dtol(monthsP), dtol(weeksP), dtol(daysP), dtol(hoursP), dtol(minutesP), dtol(secondsP), dtol(millisecondsP), dtol(microsecondsP),
+                        dtol(nanosecondsP), precision);
+
+    }
+
     // 7.5.23
     @TruffleBoundary
     public static TruffleString temporalDurationToString(long yearsP, long monthsP, long weeksP, long daysP, long hoursP, long minutesP, long secondsP, long millisecondsP, long microsecondsP,
@@ -391,11 +408,11 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         long nanoseconds = nanosecondsP;
 
         int sign = TemporalUtil.durationSign(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-        microseconds += TemporalUtil.integralPartOf(nanoseconds / 1000d);
+        microseconds += nanoseconds / 1000l;
         nanoseconds = TemporalUtil.remainder(nanoseconds, 1000);
-        milliseconds += TemporalUtil.integralPartOf(microseconds / 1000d);
+        milliseconds += microseconds / 1000l;
         microseconds = TemporalUtil.remainder(microseconds, 1000);
-        seconds += TemporalUtil.integralPartOf(milliseconds / 1000d);
+        seconds += milliseconds / 1000l;
         milliseconds = TemporalUtil.remainder(milliseconds, 1000);
         StringBuilder datePart = new StringBuilder();
         if (years != 0) {

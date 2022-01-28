@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,20 +41,20 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 public final class JSTemporalDurationRecord {
-    private final long years;
-    private final long months;
-    private final long days;
-    private final long hours;
-    private final long minutes;
-    private final long seconds;
-    private final long milliseconds;
-    private final long microseconds;
-    private final long nanoseconds;
+    private final double years;
+    private final double months;
+    private final double days;
+    private final double hours;
+    private final double minutes;
+    private final double seconds;
+    private final double milliseconds;
+    private final double microseconds;
+    private final double nanoseconds;
 
-    private final long weeks;
+    private final double weeks;
     private final double remainder;
 
-    private JSTemporalDurationRecord(long years, long months, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds, long weeks,
+    private JSTemporalDurationRecord(double years, double months, double days, double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds, double weeks,
                     double remainder) {
         this.years = years;
         this.months = months;
@@ -69,62 +69,64 @@ public final class JSTemporalDurationRecord {
         this.remainder = remainder;
     }
 
-    public static JSTemporalDurationRecord create(long years, long months, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
+    public static JSTemporalDurationRecord create(double years, double months, double days, double hours, double minutes, double seconds, double milliseconds, double microseconds,
+                    double nanoseconds) {
         return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0, 0);
     }
 
-    public static JSTemporalDurationRecord createWeeks(long years, long months, long weeks, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds,
-                    long nanoseconds) {
+    public static JSTemporalDurationRecord createWeeks(double years, double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds, double microseconds,
+                    double nanoseconds) {
         return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, weeks, 0);
     }
 
-    public static JSTemporalDurationRecord createRemainder(long years, long months, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds,
-                    long nanoseconds, double remainder) {
+    public static JSTemporalDurationRecord createRemainder(double years, double months, double days, double hours, double minutes, double seconds, double milliseconds, double microseconds,
+                    double nanoseconds, double remainder) {
         return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0, remainder);
     }
 
-    public static JSTemporalDurationRecord createWeeksRemainder(long years, long months, long weeks, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds,
-                    long nanoseconds, double remainder) {
+    public static JSTemporalDurationRecord createWeeksRemainder(double years, double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds,
+                    double microseconds,
+                    double nanoseconds, double remainder) {
         return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, weeks, remainder);
     }
 
-    public long getYears() {
+    public double getYears() {
         return years;
     }
 
-    public long getMonths() {
+    public double getMonths() {
         return months;
     }
 
-    public long getDays() {
+    public double getDays() {
         return days;
     }
 
-    public long getHours() {
+    public double getHours() {
         return hours;
     }
 
-    public long getMinutes() {
+    public double getMinutes() {
         return minutes;
     }
 
-    public long getSeconds() {
+    public double getSeconds() {
         return seconds;
     }
 
-    public long getMilliseconds() {
+    public double getMilliseconds() {
         return milliseconds;
     }
 
-    public long getMicroseconds() {
+    public double getMicroseconds() {
         return microseconds;
     }
 
-    public long getNanoseconds() {
+    public double getNanoseconds() {
         return nanoseconds;
     }
 
-    public long getWeeks() {
+    public double getWeeks() {
         return weeks;
     }
 

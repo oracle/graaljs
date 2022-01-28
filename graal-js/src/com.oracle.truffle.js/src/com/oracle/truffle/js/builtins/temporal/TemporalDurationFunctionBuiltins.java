@@ -124,16 +124,16 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalDurationObject two = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObjectNode, toString);
             DynamicObject options = getOptionsObject(optionsParam);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), getRealm(), options);
-            long shift1 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
+            double shift1 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
                             one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),
                             one.getHours(), one.getMinutes(), one.getSeconds(),
                             one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds());
-            long shift2 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
+            double shift2 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
                             two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(),
                             two.getHours(), two.getMinutes(), two.getSeconds(),
                             two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds());
-            long days1;
-            long days2;
+            double days1;
+            double days2;
             if (one.getYears() != 0 || two.getYears() != 0 ||
                             one.getMonths() != 0 || two.getMonths() != 0 ||
                             one.getWeeks() != 0 || two.getWeeks() != 0) {
@@ -149,11 +149,11 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                 days1 = one.getDays();
                 days2 = two.getDays();
             }
-            long ns1 = TemporalUtil.totalDurationNanoseconds(days1,
+            double ns1 = TemporalUtil.totalDurationNanoseconds(days1,
                             one.getHours(), one.getMinutes(), one.getSeconds(),
                             one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds(),
                             shift1);
-            long ns2 = TemporalUtil.totalDurationNanoseconds(days2,
+            double ns2 = TemporalUtil.totalDurationNanoseconds(days2,
                             two.getHours(), two.getMinutes(), two.getSeconds(),
                             two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds(),
                             shift2);

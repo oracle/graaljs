@@ -49,6 +49,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.PLAIN_DATE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
+import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
 
 import java.util.EnumSet;
 
@@ -256,13 +257,15 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             JSTemporalDurationRecord result = TemporalUtil.addTime(
                             temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(),
                             temporalTime.getMillisecond(), temporalTime.getMicrosecond(), temporalTime.getNanosecond(),
-                            duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
+                            dtol(duration.getHours()), dtol(duration.getMinutes()), dtol(duration.getSeconds()),
+                            dtol(duration.getMilliseconds()), dtol(duration.getMicroseconds()), dtol(duration.getNanoseconds()));
             JSTemporalDurationRecord result2 = TemporalUtil.regulateTime(
-                            result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(),
+                            dtol(result.getHours()), dtol(result.getMinutes()), dtol(result.getSeconds()), dtol(result.getMilliseconds()), dtol(result.getMicroseconds()),
+                            dtol(result.getNanoseconds()),
                             TemporalOverflowEnum.REJECT);
             return JSTemporalPlainTime.create(getContext(),
-                            result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(), result2.getMicroseconds(), result2.getNanoseconds());
+                            dtol(result2.getHours()), dtol(result2.getMinutes()), dtol(result2.getSeconds()), dtol(result2.getMilliseconds()), dtol(result2.getMicroseconds()),
+                            dtol(result2.getNanoseconds()));
         }
     }
 
@@ -286,13 +289,14 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             JSTemporalDurationRecord result = TemporalUtil.addTime(
                             temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(),
                             temporalTime.getMillisecond(), temporalTime.getMicrosecond(), temporalTime.getNanosecond(),
-                            -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(),
-                            -duration.getMilliseconds(), -duration.getMicroseconds(), -duration.getNanoseconds());
+                            dtol(-duration.getHours()), dtol(-duration.getMinutes()), dtol(-duration.getSeconds()),
+                            dtol(-duration.getMilliseconds()), dtol(-duration.getMicroseconds()), dtol(-duration.getNanoseconds()));
             JSTemporalDurationRecord result2 = TemporalUtil.regulateTime(
                             result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(),
                             TemporalOverflowEnum.REJECT);
             return JSTemporalPlainTime.create(getContext(),
-                            result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(), result2.getMicroseconds(), result2.getNanoseconds());
+                            dtol(result2.getHours()), dtol(result2.getMinutes()), dtol(result2.getSeconds()), dtol(result2.getMilliseconds()), dtol(result2.getMicroseconds()),
+                            dtol(result2.getNanoseconds()));
         }
     }
 
@@ -372,7 +376,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             JSTemporalDurationRecord result = TemporalUtil.regulateTime(hour, minute, second, millisecond, microsecond,
                             nanosecond, overflow);
             return JSTemporalPlainTime.create(getContext(),
-                            result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
+                            dtol(result.getHours()), dtol(result.getMinutes()), dtol(result.getSeconds()), dtol(result.getMilliseconds()), dtol(result.getMicroseconds()),
+                            dtol(result.getNanoseconds()));
         }
     }
 
@@ -406,7 +411,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             roundingIncrement, smallestUnit, roundingMode, Undefined.instance);
             JSTemporalDurationRecord result3 = TemporalUtil.balanceDuration(getContext(), namesNode,
                             0, result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(), result2.getMicroseconds(), result2.getNanoseconds(),
-                            largestUnit, Undefined.instance);
+                            largestUnit);
             return JSTemporalDuration.createTemporalDuration(getContext(),
                             0, 0, 0, 0,
                             result3.getHours(), result3.getMinutes(), result3.getSeconds(), result3.getMilliseconds(), result3.getMicroseconds(), result3.getNanoseconds());
@@ -495,7 +500,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             temporalTime.getSecond(), temporalTime.getMillisecond(), temporalTime.getMicrosecond(),
                             temporalTime.getNanosecond(), roundingIncrement, smallestUnit, roundingMode, null);
             return JSTemporalPlainTime.create(getContext(),
-                            result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
+                            dtol(result.getHours()), dtol(result.getMinutes()), dtol(result.getSeconds()), dtol(result.getMilliseconds()), dtol(result.getMicroseconds()),
+                            dtol(result.getNanoseconds()));
         }
     }
 
@@ -642,8 +648,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             precision.getIncrement(), precision.getUnit(), roundingMode,
                             null);
             return JSTemporalPlainTime.temporalTimeToString(
-                            roundResult.getHours(), roundResult.getMinutes(), roundResult.getSeconds(), roundResult.getMilliseconds(), roundResult.getMicroseconds(), roundResult.getNanoseconds(),
-                            precision.getPrecision());
+                            dtol(roundResult.getHours()), dtol(roundResult.getMinutes()), dtol(roundResult.getSeconds()), dtol(roundResult.getMilliseconds()), dtol(roundResult.getMicroseconds()),
+                            dtol(roundResult.getNanoseconds()), precision.getPrecision());
         }
     }
 

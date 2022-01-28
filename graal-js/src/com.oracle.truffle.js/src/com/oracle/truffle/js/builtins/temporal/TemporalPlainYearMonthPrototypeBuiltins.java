@@ -387,7 +387,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
 
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listEmpty, isObjectNode, toStringNode);
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), DAY, Undefined.instance);
+                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), DAY);
             DynamicObject options = getOptionsObject(optParam);
             DynamicObject calendar = ym.getCalendar();
             List<TruffleString> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.listMCY);
@@ -422,8 +422,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
 
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listEmpty, isObjectNode, toStringNode);
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(),
-                            duration.getMicroseconds(), duration.getNanoseconds(), DAY, Undefined.instance);
+                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), DAY);
             DynamicObject options = getOptionsObject(optParam);
             DynamicObject calendar = ym.getCalendar();
             List<TruffleString> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.listMCY);
