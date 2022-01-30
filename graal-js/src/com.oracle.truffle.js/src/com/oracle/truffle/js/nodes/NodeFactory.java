@@ -50,6 +50,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.annotations.GenerateDecoder;
 import com.oracle.truffle.js.annotations.GenerateProxy;
@@ -465,6 +466,16 @@ public class NodeFactory {
 
     public JavaScriptNode createWhileDo(JavaScriptNode condition, JavaScriptNode body) {
         return WhileNode.createWhileDo(condition, body);
+    }
+
+    // Let snapshotting know where WhileDoRepeatingNode/DoWhileRepeatingNode comes from
+    public RepeatingNode getRepeatingNode(WhileNode node) {
+        return node.getLoopNode().getRepeatingNode();
+    }
+
+    // Let snapshotting know where loop node comes from
+    public Node getLoopNode(WhileNode node) {
+        return node.getLoopNode();
     }
 
     public AbstractBlockNode fixBlockNodeChild(AbstractBlockNode blockNode, int index, JavaScriptNode newChild) {

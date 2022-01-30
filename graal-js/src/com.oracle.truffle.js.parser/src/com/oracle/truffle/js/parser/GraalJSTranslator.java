@@ -144,6 +144,7 @@ import com.oracle.truffle.js.nodes.control.ReturnTargetNode;
 import com.oracle.truffle.js.nodes.control.SequenceNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.nodes.control.SuspendNode;
+import com.oracle.truffle.js.nodes.control.WhileNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
@@ -565,6 +566,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private Node instrumentSuspendHelper(Node parent, Node grandparent) {
+        if (parent instanceof WhileNode) {
+            WhileNode whileNode = (WhileNode) parent;
+            factory.getLoopNode(whileNode);
+            factory.getRepeatingNode(whileNode);
+        }
         boolean hasSuspendChild = false;
         BitSet suspendableIndices = null;
         if (parent instanceof AbstractBlockNode) {
