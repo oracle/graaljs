@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -808,6 +808,51 @@ public class Recording {
         Inst getFixUpTarget();
     }
 
+    private static class FixUpCallInst extends Inst implements FixUpInst {
+        private final Inst node;
+        private final Method method;
+        private final Inst[] args;
+
+        FixUpCallInst(Inst node, Method method, Inst[] args) {
+            this.node = node;
+            this.method = method;
+            this.args = args;
+        }
+
+        @Override
+        public void accept(Visitor v) {
+            v.enterInst(this);
+            node.accept(v);
+            for (Inst arg : args) {
+                arg.accept(v);
+            }
+            v.leaveInst(this);
+        }
+
+        @Override
+        public void encodeTo(JSNodeEncoder encoder) {
+            encoder.encodeNode(method, getId(), toIdArray(args));
+        }
+
+        @Override
+        public String toString() {
+            return "nodeFactory." + method.getName() + IntStream.range(0, args.length).mapToObj(i -> {
+                return (isAssignable(method.getParameterTypes()[i], args[i].getDeclaredType()) ? "" : "(" + typeName(method.getGenericParameterTypes()[i]) + ")") + args[i].toString();
+            }).collect(Collectors.joining(", ", "(", ")"));
+        }
+
+        @Override
+        public String rhs() {
+            return "null";
+        }
+
+        @Override
+        public Inst getFixUpTarget() {
+            return node;
+        }
+
+    }
+
     private static class FixUpFunctionDataNameInst extends Inst implements FixUpInst {
         private final Inst node;
         private final String name;
@@ -1285,7 +1330,11 @@ public class Recording {
     public <T> T recordReturn(Method method, T result) {
         MethodCall methodCall = callStack.pop();
         assert methodCall.method == method;
-        if (!table.contains(result)) {
+        if (method.getName().startsWith("fix")) {
+            Inst[] encoded = encodeParameterArray(methodCall.args, method.getParameterTypes(), method.getGenericParameterTypes());
+            Inst nodeInst = getInst(result);
+            insts.add(new FixUpCallInst(nodeInst, method, encoded));
+        } else if (!table.contains(result)) {
             Inst[] encoded = encodeParameterArray(methodCall.args, method.getParameterTypes(), method.getGenericParameterTypes());
             NodeInst nodeInst = new NodeInst(table.put(result), method, encoded, result);
             append(nodeInst);
