@@ -255,40 +255,10 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         if hasattr(self.args, "jdt") and self.args.jdt and not self.args.force_javac:
             return []
 
-        brokenModules = [                                        # Uses:
-            'assert.js',                                         # await
-            join('internal', 'blob.js'),                         # await
-            join('internal', 'crypto', 'diffiehellman.js'),      # await
-            join('internal', 'crypto', 'webcrypto.js'),          # await
-            join('internal', 'child_process', 'serialization.js'), # yield
-            join('internal', 'debugger', 'inspect.js'),          # await
-            join('internal', 'debugger', 'inspect_client.js'),   # await
-            join('internal', 'debugger', 'inspect_repl.js'),     # await
-            join('internal', 'fs', 'cp', 'cp.js'),               # await
-            join('internal', 'fs', 'dir.js'),                    # await
-            join('internal', 'fs', 'promises.js'),               # await
-            join('internal', 'fs', 'watchers.js'),               # await
-            join('internal', 'modules', 'esm', 'get_source.js'), # await
-            join('internal', 'modules', 'esm', 'load.js'),       # await
-            join('internal', 'modules', 'esm', 'loader.js'),     # await
-            join('internal', 'modules', 'esm', 'module_job.js'), # await
-            join('internal', 'modules', 'esm', 'translators.js'),# await
-            join('internal', 'modules', 'run_main.js'),          # await
-            join('internal', 'process', 'esm_loader.js'),        # await
-            join('internal', 'process', 'execution.js'),         # await
-            join('internal', 'readline', 'utils.js'),            # yield
-            join('internal', 'streams', 'buffer_list.js'),       # yield
-            join('internal', 'streams', 'duplexify.js'),         # await
-            join('internal', 'streams', 'from.js'),              # await
-            join('internal', 'streams', 'pipeline.js'),          # await
-            join('internal', 'streams', 'readable.js'),          # await
-            join('internal', 'v8_prof_processor.js'),            # await
-            join('internal', 'vm', 'module.js'),                 # await
-            join('internal', 'webstreams', 'readablestream.js'), # await
-            join('internal', 'webstreams', 'transfer.js'),       # await
-            'repl.js',                                           # await
-            join('stream', 'consumers.js'),                      # await
-            join('timers', 'promises.js'),                       # await
+        brokenModules = [
+            # need extraction of GetIteratorNode from SpreadArgumentNode
+            'assert.js',
+            join('internal', 'fs', 'promises.js'),
         ]
 
         allModules = []
