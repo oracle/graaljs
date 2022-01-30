@@ -659,12 +659,23 @@ public class Recording {
         }
 
         @Override
+        public String toString() {
+            String varName = "v" + getId();
+            String builderVarName = varName + "Builder";
+            StringBuilder sb = new StringBuilder();
+            sb.append(typeName(FrameDescriptor.Builder.class)).append(" ").append(builderVarName).append(" = ");
+            sb.append(typeName(FrameDescriptor.class)).append(".newBuilder(").append(numberOfSlots).append(").defaultValue(").append(typeName(Undefined.class)).append(".instance);\n");
+            for (int i = 0; i < numberOfSlots; i++) {
+                sb.append(builderVarName).append(".addSlot(").append(typeName(FrameSlotKind.class)).append(". ").append(desc.getSlotKind(i)).append(", ").append(names.get(i)).append(", ").append(
+                                JSFrameUtil.getFlags(desc, i)).append(");\n");
+            }
+            sb.append(declaredTypeName()).append(" ").append(varName).append(" = ").append(builderVarName).append(".build()");
+            return sb.toString();
+        }
+
+        @Override
         public String rhs() {
-            return typeName(FrameDescriptor.class) + ".newBuilder(" + numberOfSlots + ").defaultValue(" + typeName(Undefined.class) + ".instance" + ")" +
-                            IntStream.range(0, numberOfSlots).mapToObj(i -> {
-                                return ".addSlot(" + typeName(FrameSlotKind.class) + "." + desc.getSlotKind(i) + ", " + names.get(i) + ", " + JSFrameUtil.getFlags(desc, i);
-                            }).collect(Collectors.joining("")) +
-                            ".build()";
+            return "null";
         }
 
         @Override
