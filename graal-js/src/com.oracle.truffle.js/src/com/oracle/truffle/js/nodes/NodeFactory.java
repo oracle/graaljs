@@ -191,6 +191,7 @@ import com.oracle.truffle.js.nodes.control.WhileNode;
 import com.oracle.truffle.js.nodes.control.WithNode;
 import com.oracle.truffle.js.nodes.control.YieldNode;
 import com.oracle.truffle.js.nodes.function.AbstractBodyNode;
+import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.CallApplyArgumentsNode;
 import com.oracle.truffle.js.nodes.function.ClassDefinitionNode;
@@ -200,6 +201,7 @@ import com.oracle.truffle.js.nodes.function.DefaultDerivedConstructorSuperCallNo
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.function.IterationScopeNode;
+import com.oracle.truffle.js.nodes.function.JSFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.nodes.function.JSNewNode;
@@ -676,7 +678,11 @@ public class NodeFactory {
         return JSFunctionCallNode.createCall(function, target, arguments, false, true);
     }
 
-    public JavaScriptNode createNew(JSContext context, JavaScriptNode function, JavaScriptNode[] arguments) {
+    public AbstractFunctionArgumentsNode createFunctionArguments(JSContext context, JavaScriptNode[] arguments) {
+        return JSFunctionArgumentsNode.create(context, arguments);
+    }
+
+    public JavaScriptNode createNew(JSContext context, JavaScriptNode function, AbstractFunctionArgumentsNode arguments) {
         assert !(function instanceof PropertyNode) || !((PropertyNode) function).isMethod();
         return JSNewNode.create(context, function, arguments);
     }

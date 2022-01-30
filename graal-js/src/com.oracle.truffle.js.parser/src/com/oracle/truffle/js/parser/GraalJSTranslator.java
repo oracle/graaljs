@@ -2337,7 +2337,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         CallNode callNode = (CallNode) unaryNode.getExpression();
         JavaScriptNode function = transform(callNode.getFunction());
         JavaScriptNode[] args = transformArgs(callNode.getArgs());
-        JavaScriptNode call = factory.createNew(context, function, args);
+        AbstractFunctionArgumentsNode arguments = factory.createFunctionArguments(context, args);
+        JavaScriptNode call = factory.createNew(context, function, arguments);
         return tagExpression(tagCall(call), unaryNode);
     }
 
