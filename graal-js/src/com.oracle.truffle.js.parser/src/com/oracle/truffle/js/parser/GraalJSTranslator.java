@@ -577,10 +577,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             AbstractBlockNode blockNode = ((AbstractBlockNode) parent);
             Node[] statements = blockNode.getStatements();
             for (int i = 0; i < statements.length; i++) {
-                Node newChild = instrumentSuspendHelper(statements[i], parent);
+                Node oldChild = statements[i];
+                Node newChild = instrumentSuspendHelper(oldChild, parent);
                 if (newChild != null) {
                     hasSuspendChild = true;
-                    factory.fixBlockNodeChild(blockNode, i, (JavaScriptNode) newChild);
+                    if (newChild != oldChild) {
+                        factory.fixBlockNodeChild(blockNode, i, (JavaScriptNode) newChild);
+                    }
                     if (suspendableIndices == null) {
                         suspendableIndices = new BitSet();
                     }
@@ -592,7 +595,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 Node newChild = instrumentSuspendHelper(child, parent);
                 if (newChild != null) {
                     hasSuspendChild = true;
-                    factory.fixNodeChild(parent, child, newChild);
+                    if (child != newChild) {
+                        factory.fixNodeChild(parent, child, newChild);
+                    }
                     assert !(child instanceof ResumableNode) || newChild instanceof GeneratorWrapperNode || newChild instanceof SuspendNode : "resumable node not wrapped: " + child;
                 }
             }

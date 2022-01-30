@@ -481,11 +481,13 @@ public class NodeFactory {
     }
 
     public AbstractBlockNode fixBlockNodeChild(AbstractBlockNode blockNode, int index, JavaScriptNode newChild) {
+        assert blockNode.getStatements()[index] != newChild;
         blockNode.getStatements()[index] = newChild;
         return blockNode;
     }
 
     public Node fixNodeChild(Node parent, Node child, Node newChild) {
+        assert child != newChild;
         boolean ok = NodeUtil.replaceChild(parent, child, newChild);
         assert ok;
         return parent;
