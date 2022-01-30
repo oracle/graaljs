@@ -48,6 +48,8 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.annotations.GenerateDecoder;
 import com.oracle.truffle.js.annotations.GenerateProxy;
@@ -148,6 +150,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode.JSToStringWrapperNode;
+import com.oracle.truffle.js.nodes.control.AbstractBlockNode;
 import com.oracle.truffle.js.nodes.control.AsyncFunctionBodyNode;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorBodyNode;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorYieldNode;
@@ -462,6 +465,17 @@ public class NodeFactory {
 
     public JavaScriptNode createWhileDo(JavaScriptNode condition, JavaScriptNode body) {
         return WhileNode.createWhileDo(condition, body);
+    }
+
+    public AbstractBlockNode fixBlockNodeChild(AbstractBlockNode blockNode, int index, JavaScriptNode newChild) {
+        blockNode.getStatements()[index] = newChild;
+        return blockNode;
+    }
+
+    public Node fixNodeChild(Node parent, Node child, Node newChild) {
+        boolean ok = NodeUtil.replaceChild(parent, child, newChild);
+        assert ok;
+        return parent;
     }
 
     public JavaScriptNode createDoWhile(JavaScriptNode condition, JavaScriptNode body) {

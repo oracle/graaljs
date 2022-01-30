@@ -568,12 +568,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         boolean hasSuspendChild = false;
         BitSet suspendableIndices = null;
         if (parent instanceof AbstractBlockNode) {
-            Node[] statements = ((AbstractBlockNode) parent).getStatements();
+            AbstractBlockNode blockNode = ((AbstractBlockNode) parent);
+            Node[] statements = blockNode.getStatements();
             for (int i = 0; i < statements.length; i++) {
                 Node newChild = instrumentSuspendHelper(statements[i], parent);
                 if (newChild != null) {
                     hasSuspendChild = true;
-                    statements[i] = newChild;
+                    factory.fixBlockNodeChild(blockNode, i, (JavaScriptNode) newChild);
                     if (suspendableIndices == null) {
                         suspendableIndices = new BitSet();
                     }
@@ -585,7 +586,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 Node newChild = instrumentSuspendHelper(child, parent);
                 if (newChild != null) {
                     hasSuspendChild = true;
-                    NodeUtil.replaceChild(parent, child, newChild);
+                    factory.fixNodeChild(parent, child, newChild);
                     assert !(child instanceof ResumableNode) || newChild instanceof GeneratorWrapperNode || newChild instanceof SuspendNode : "resumable node not wrapped: " + child;
                 }
             }
@@ -734,8 +735,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 JavaScriptNode writeState = factory.createWriteCurrentFrameSlot(frameSlot, jschild);
                 extracted.add(writeState);
                 // replace child with saved expression result
-                boolean ok = NodeUtil.replaceChild(parent, child, readState);
-                assert ok;
+                factory.fixNodeChild(parent, child, readState);
             } else {
                 // not assignable to field type (e.g. JSTargetableNode), cannot extract
                 // but try to extract grandchildren instead, e.g.:
