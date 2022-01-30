@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
-import java.util.function.ToIntFunction;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -55,12 +53,10 @@ public interface ResumableNode {
         throw CompilerDirectives.shouldNotReachHere();
     }
 
-    static JavaScriptNode createResumableNode(ResumableNode node, ToIntFunction<FrameSlotKind> newSlot) {
+    static JavaScriptNode createResumableNode(ResumableNode node, int stateSlot) {
+        assert !(node instanceof SuspendNode) : node;
         JavaScriptNode original = (JavaScriptNode) node;
-        if (node instanceof SuspendNode) {
-            return original;
-        }
-        JavaScriptNode wrappedNode = GeneratorWrapperNode.createWrapper(original, newSlot.applyAsInt(node.getStateSlotKind()));
+        JavaScriptNode wrappedNode = GeneratorWrapperNode.createWrapper(original, stateSlot);
         JavaScriptNode.transferSourceSectionAndTags(original, wrappedNode);
         return wrappedNode;
     }
