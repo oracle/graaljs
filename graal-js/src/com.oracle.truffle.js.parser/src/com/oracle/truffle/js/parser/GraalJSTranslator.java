@@ -568,8 +568,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private Node instrumentSuspendHelper(Node parent, Node grandparent) {
         if (parent instanceof WhileNode) {
             WhileNode whileNode = (WhileNode) parent;
-            factory.getLoopNode(whileNode);
-            factory.getRepeatingNode(whileNode);
+            factory.fixLoopNode(whileNode, factory.getLoopNode(whileNode));
+            factory.fixRepeatingNode(whileNode, factory.getRepeatingNode(whileNode));
         }
         boolean hasSuspendChild = false;
         BitSet suspendableIndices = null;

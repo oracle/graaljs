@@ -475,9 +475,21 @@ public class NodeFactory {
         return node.getLoopNode().getRepeatingNode();
     }
 
+    // Notify snapshotting that repeating node is needed by WhileNode
+    public WhileNode fixRepeatingNode(WhileNode node, RepeatingNode repeatingNode) {
+        assert getRepeatingNode(node) == repeatingNode;
+        return node;
+    }
+
     // Let snapshotting know where loop node comes from
     public Node getLoopNode(WhileNode node) {
         return node.getLoopNode();
+    }
+
+    // Notify snapshotting that loop node is needed by WhileNode
+    public WhileNode fixLoopNode(WhileNode node, Node loopNode) {
+        assert getLoopNode(node) == loopNode;
+        return node;
     }
 
     public AbstractBlockNode fixBlockNodeChild(AbstractBlockNode blockNode, int index, JavaScriptNode newChild) {
