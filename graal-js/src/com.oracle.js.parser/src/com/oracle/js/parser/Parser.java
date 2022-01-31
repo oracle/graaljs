@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -688,7 +688,7 @@ public class Parser extends AbstractParser {
                     final int functionLine, final Block body) {
         assert body.isFunctionBody() || (body.isParameterBlock() && ((BlockStatement) body.getLastStatement()).getBlock().isFunctionBody());
 
-        VarNode varNode = function.getBodyScope().verifyHoistedVarDeclarations();
+        VarNode varNode = function.verifyHoistedVarDeclarations();
         if (varNode != null) {
             throw error(ECMAErrors.getMessage("syntax.error.redeclare.variable", varNode.getName().getName()), varNode.getToken());
         }
@@ -2444,7 +2444,7 @@ public class Parser extends AbstractParser {
              */
             if (scope != varScope) {
                 assert scope.isBlockScope();
-                varScope.recordHoistedVarDeclaration(varNode, scope);
+                function.recordHoistedVarDeclaration(varNode, scope);
             }
         }
     }

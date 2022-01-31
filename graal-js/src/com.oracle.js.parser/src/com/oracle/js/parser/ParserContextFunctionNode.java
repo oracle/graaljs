@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,11 @@
  */
 package com.oracle.js.parser;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import com.oracle.js.parser.ir.Block;
 import com.oracle.js.parser.ir.Expression;
@@ -106,6 +108,8 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     private Module module;
     private String internalName;
+
+    private List<Map.Entry<VarNode, Scope>> hoistedVarDeclarations;
 
     /**
      * @param token The token for the function
@@ -567,6 +571,42 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     public long getYieldOrAwaitInParameters() {
         return yieldOrAwaitInParameters;
+    }
+
+    public void recordHoistedVarDeclaration(final VarNode varDecl, final Scope scope) {
+        assert !varDecl.isBlockScoped();
+        assert scope.isBlockScope();
+        if (hoistedVarDeclarations == null) {
+            hoistedVarDeclarations = new ArrayList<>();
+        }
+        hoistedVarDeclarations.add(new AbstractMap.SimpleImmutableEntry<>(varDecl, scope));
+    }
+
+    public VarNode verifyHoistedVarDeclarations() {
+        if (!hasHoistedVarDeclarations()) {
+            // nothing to do
+            return null;
+        }
+        for (Map.Entry<VarNode, Scope> entry : hoistedVarDeclarations) {
+            VarNode varDecl = entry.getKey();
+            Scope declScope = entry.getValue();
+            String varName = varDecl.getName().getName();
+            for (Scope current = declScope; current != bodyScope; current = current.getParent()) {
+                Symbol existing = current.getExistingSymbol(varName);
+                if (existing != null && existing.isBlockScoped()) {
+                    if (existing.isCatchParameter()) {
+                        continue; // B.3.5 VariableStatements in Catch Blocks
+                    }
+                    // let the caller throw the error
+                    return varDecl;
+                }
+            }
+        }
+        return null;
+    }
+
+    public boolean hasHoistedVarDeclarations() {
+        return hoistedVarDeclarations != null;
     }
 
     /**

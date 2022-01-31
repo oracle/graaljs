@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,7 +79,6 @@ public final class Scope {
 
     /** Symbol table - keys must be returned in the order they were put in. */
     protected final EconomicMap<String, Symbol> symbols;
-    protected List<Map.Entry<VarNode, Scope>> hoistedVarDeclarations;
     protected List<Map.Entry<VarNode, Scope>> hoistableBlockFunctionDeclarations;
 
     private boolean closed;
@@ -269,41 +268,6 @@ public final class Scope {
             }
         }
         return null;
-    }
-
-    public void recordHoistedVarDeclaration(final VarNode varDecl, final Scope scope) {
-        assert !varDecl.isBlockScoped();
-        if (hoistedVarDeclarations == null) {
-            hoistedVarDeclarations = new ArrayList<>();
-        }
-        hoistedVarDeclarations.add(new AbstractMap.SimpleImmutableEntry<>(varDecl, scope));
-    }
-
-    public VarNode verifyHoistedVarDeclarations() {
-        if (!hasHoistedVarDeclarations()) {
-            // nothing to do
-            return null;
-        }
-        for (Map.Entry<VarNode, Scope> entry : hoistedVarDeclarations) {
-            VarNode varDecl = entry.getKey();
-            Scope declScope = entry.getValue();
-            String varName = varDecl.getName().getName();
-            for (Scope current = declScope; current != this; current = current.getParent()) {
-                Symbol existing = current.getExistingSymbol(varName);
-                if (existing != null && existing.isBlockScoped()) {
-                    if (existing.isCatchParameter()) {
-                        continue; // B.3.5 VariableStatements in Catch Blocks
-                    }
-                    // let the caller throw the error
-                    return varDecl;
-                }
-            }
-        }
-        return null;
-    }
-
-    public boolean hasHoistedVarDeclarations() {
-        return hoistedVarDeclarations != null;
     }
 
     public void recordHoistableBlockFunctionDeclaration(final VarNode functionDeclaration, final Scope scope) {
