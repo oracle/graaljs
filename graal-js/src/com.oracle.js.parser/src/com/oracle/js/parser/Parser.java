@@ -817,8 +817,13 @@ public class Parser extends AbstractParser {
     }
 
     private IdentNode markArguments(final IdentNode ident) {
-        if (lc.getCurrentScope().inClassFieldInitializer()) {
+        Scope currentScope = lc.getCurrentScope();
+        if (currentScope.inClassFieldInitializer()) {
             throw error(AbstractParser.message("arguments.in.field.initializer"), ident.getToken());
+        }
+        if (currentScope.isGlobalScope()) {
+            // arguments has no special meaning in the global scope
+            return ident;
         }
         // skip over arrow functions, e.g. function f() { return (() => arguments.length)(); }
         lc.getCurrentNonArrowFunction().setFlag(FunctionNode.USES_ARGUMENTS);
