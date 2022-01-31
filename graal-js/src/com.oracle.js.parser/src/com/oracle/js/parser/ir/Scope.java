@@ -41,10 +41,6 @@
 
 package com.oracle.js.parser.ir;
 
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.StringJoiner;
 
 import org.graalvm.collections.EconomicMap;
@@ -79,7 +75,6 @@ public final class Scope {
 
     /** Symbol table - keys must be returned in the order they were put in. */
     protected final EconomicMap<String, Symbol> symbols;
-    protected List<Map.Entry<VarNode, Scope>> hoistableBlockFunctionDeclarations;
 
     private boolean closed;
     private boolean hasBlockScopedOrRedeclaredSymbols;
@@ -270,41 +265,6 @@ public final class Scope {
         return null;
     }
 
-    public void recordHoistableBlockFunctionDeclaration(final VarNode functionDeclaration, final Scope scope) {
-        assert functionDeclaration.isFunctionDeclaration() && functionDeclaration.isBlockScoped();
-        if (hoistableBlockFunctionDeclarations == null) {
-            hoistableBlockFunctionDeclarations = new ArrayList<>();
-        }
-        hoistableBlockFunctionDeclarations.add(new AbstractMap.SimpleImmutableEntry<>(functionDeclaration, scope));
-    }
-
-    public void declareHoistedBlockFunctionDeclarations() {
-        if (hoistableBlockFunctionDeclarations == null) {
-            // nothing to do
-            return;
-        }
-        next: for (Map.Entry<VarNode, Scope> entry : hoistableBlockFunctionDeclarations) {
-            VarNode functionDecl = entry.getKey();
-            Scope functionDeclScope = entry.getValue();
-            String varName = functionDecl.getName().getName();
-            for (Scope current = functionDeclScope.getParent(); current != null; current = current.getParent()) {
-                Symbol existing = current.getExistingSymbol(varName);
-                if (existing != null && (existing.isBlockScoped() && !existing.isCatchParameter())) {
-                    // lexical declaration found, do not hoist
-                    continue next;
-                }
-                if (current.isFunctionBodyScope()) {
-                    break;
-                }
-            }
-            // declare var (if not already declared) and hoist the function declaration
-            if (getExistingSymbol(varName) == null) {
-                putSymbol(new Symbol(varName, Symbol.IS_VAR | (isGlobalScope() ? Symbol.IS_GLOBAL : 0)));
-            }
-            functionDeclScope.getExistingSymbol(varName).setHoistedBlockFunctionDeclaration();
-        }
-    }
-
     /**
      * Add a private bound identifier.
      *
@@ -393,9 +353,6 @@ public final class Scope {
     public void close() {
         if (closed) {
             return;
-        }
-        if (hoistableBlockFunctionDeclarations != null) {
-            declareHoistedBlockFunctionDeclarations();
         }
         closed = true;
     }

@@ -1079,6 +1079,7 @@ public class Parser extends AbstractParser {
             addFunctionDeclarations(script);
         } finally {
             functionDeclarations = null;
+            script.finishBodyScope();
             restoreBlock(body);
             lc.pop(script);
         }
@@ -2414,7 +2415,7 @@ public class Parser extends AbstractParser {
                     assert !scope.isFunctionBodyScope() && !scope.isFunctionParameterScope();
                     // If we already find a conflicting declaration, we can skip this step.
                     if (varScope.getExistingSymbol(name) == null && !scope.getParent().isLexicallyDeclaredName(name, true, true)) {
-                        varScope.recordHoistableBlockFunctionDeclaration(varNode, scope);
+                        function.recordHoistableBlockFunctionDeclaration(varNode, scope);
                     }
                 }
             }

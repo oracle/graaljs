@@ -110,6 +110,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     private String internalName;
 
     private List<Map.Entry<VarNode, Scope>> hoistedVarDeclarations;
+    private List<Map.Entry<VarNode, Scope>> hoistableBlockFunctionDeclarations;
 
     /**
      * @param token The token for the function
@@ -451,6 +452,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     public ParserContextBlockNode createParameterBlock() {
         assert bodyScope == null : "parameter block must be created before body block";
+        assert !isScriptOrModule();
         parameterBlock = new ParserContextBlockNode(token, Scope.createFunctionParameter(parentScope, getFlags()));
         parameterBlock.setFlag(Block.IS_PARAMETER_BLOCK | Block.IS_SYNTHETIC);
         return parameterBlock;
@@ -525,7 +527,12 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     public void finishBodyScope() {
-        assert !isScriptOrModule();
+        if (hoistableBlockFunctionDeclarations != null) {
+            declareHoistedBlockFunctionDeclarations();
+        }
+        if (isScriptOrModule()) {
+            return;
+        }
         if (needsArguments()) {
             if (hasParameterExpressions()) {
                 Scope parameterScope = getParameterScope();
@@ -607,6 +614,41 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     public boolean hasHoistedVarDeclarations() {
         return hoistedVarDeclarations != null;
+    }
+
+    public void recordHoistableBlockFunctionDeclaration(final VarNode functionDeclaration, final Scope scope) {
+        assert functionDeclaration.isFunctionDeclaration() && functionDeclaration.isBlockScoped();
+        if (hoistableBlockFunctionDeclarations == null) {
+            hoistableBlockFunctionDeclarations = new ArrayList<>();
+        }
+        hoistableBlockFunctionDeclarations.add(new AbstractMap.SimpleImmutableEntry<>(functionDeclaration, scope));
+    }
+
+    public void declareHoistedBlockFunctionDeclarations() {
+        if (hoistableBlockFunctionDeclarations == null) {
+            // nothing to do
+            return;
+        }
+        next: for (Map.Entry<VarNode, Scope> entry : hoistableBlockFunctionDeclarations) {
+            VarNode functionDecl = entry.getKey();
+            Scope functionDeclScope = entry.getValue();
+            String varName = functionDecl.getName().getName();
+            for (Scope current = functionDeclScope.getParent(); current != null; current = current.getParent()) {
+                Symbol existing = current.getExistingSymbol(varName);
+                if (existing != null && (existing.isBlockScoped() && !existing.isCatchParameter())) {
+                    // lexical declaration found, do not hoist
+                    continue next;
+                }
+                if (current.isFunctionBodyScope()) {
+                    break;
+                }
+            }
+            // declare var (if not already declared) and hoist the function declaration
+            if (bodyScope.getExistingSymbol(varName) == null) {
+                bodyScope.putSymbol(new Symbol(varName, Symbol.IS_VAR | (bodyScope.isGlobalScope() ? Symbol.IS_GLOBAL : 0)));
+            }
+            functionDeclScope.getExistingSymbol(varName).setHoistedBlockFunctionDeclaration();
+        }
     }
 
     /**
