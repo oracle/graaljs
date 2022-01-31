@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,7 +82,9 @@ import com.oracle.truffle.js.nodes.binary.JSUnsignedRightShiftConstantNode;
 import com.oracle.truffle.js.nodes.control.ForNode;
 import com.oracle.truffle.js.nodes.control.IfNode;
 import com.oracle.truffle.js.nodes.control.WhileNode;
+import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.IterationScopeNode;
+import com.oracle.truffle.js.nodes.function.JSFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode.InvokeNode;
 import com.oracle.truffle.js.nodes.function.JSNewNode;
@@ -345,7 +347,8 @@ public class MaterializedNodes {
     public void materializeNew() {
         JSTargetableNode prop = GlobalPropertyNode.createPropertyNode(getDummyCx(), "foo");
         JavaScriptNode[] args = new JavaScriptNode[]{};
-        JSNewNode newnode = JSNewNode.create(getDummyCx(), prop, args);
+        AbstractFunctionArgumentsNode arguments = JSFunctionArgumentsNode.create(getDummyCx(), args);
+        JSNewNode newnode = JSNewNode.create(getDummyCx(), prop, arguments);
         assertNotMaterializedTwice(newnode, ObjectAllocationTag.class);
     }
 

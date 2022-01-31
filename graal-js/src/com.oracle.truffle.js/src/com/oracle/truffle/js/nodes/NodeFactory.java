@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,9 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.annotations.GenerateDecoder;
 import com.oracle.truffle.js.annotations.GenerateProxy;
@@ -148,6 +151,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode.JSToStringWrapperNode;
+import com.oracle.truffle.js.nodes.control.AbstractBlockNode;
 import com.oracle.truffle.js.nodes.control.AsyncFunctionBodyNode;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorBodyNode;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorYieldNode;
@@ -187,6 +191,7 @@ import com.oracle.truffle.js.nodes.control.WhileNode;
 import com.oracle.truffle.js.nodes.control.WithNode;
 import com.oracle.truffle.js.nodes.control.YieldNode;
 import com.oracle.truffle.js.nodes.function.AbstractBodyNode;
+import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.CallApplyArgumentsNode;
 import com.oracle.truffle.js.nodes.function.ClassDefinitionNode;
@@ -196,6 +201,7 @@ import com.oracle.truffle.js.nodes.function.DefaultDerivedConstructorSuperCallNo
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.function.IterationScopeNode;
+import com.oracle.truffle.js.nodes.function.JSFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.nodes.function.JSNewNode;
@@ -464,6 +470,41 @@ public class NodeFactory {
         return WhileNode.createWhileDo(condition, body);
     }
 
+    // Let snapshotting know where WhileDoRepeatingNode/DoWhileRepeatingNode comes from
+    public RepeatingNode getRepeatingNode(WhileNode node) {
+        return node.getLoopNode().getRepeatingNode();
+    }
+
+    // Notify snapshotting that repeating node is needed by WhileNode
+    public WhileNode fixRepeatingNode(WhileNode node, RepeatingNode repeatingNode) {
+        assert getRepeatingNode(node) == repeatingNode;
+        return node;
+    }
+
+    // Let snapshotting know where loop node comes from
+    public Node getLoopNode(WhileNode node) {
+        return node.getLoopNode();
+    }
+
+    // Notify snapshotting that loop node is needed by WhileNode
+    public WhileNode fixLoopNode(WhileNode node, Node loopNode) {
+        assert getLoopNode(node) == loopNode;
+        return node;
+    }
+
+    public AbstractBlockNode fixBlockNodeChild(AbstractBlockNode blockNode, int index, JavaScriptNode newChild) {
+        assert blockNode.getStatements()[index] != newChild;
+        blockNode.getStatements()[index] = newChild;
+        return blockNode;
+    }
+
+    public Node fixNodeChild(Node parent, Node child, Node newChild) {
+        assert child != newChild;
+        boolean ok = NodeUtil.replaceChild(parent, child, newChild);
+        assert ok;
+        return parent;
+    }
+
     public JavaScriptNode createDoWhile(JavaScriptNode condition, JavaScriptNode body) {
         return WhileNode.createDoWhile(condition, body);
     }
@@ -651,7 +692,11 @@ public class NodeFactory {
         return JSFunctionCallNode.createCall(function, target, arguments, false, true);
     }
 
-    public JavaScriptNode createNew(JSContext context, JavaScriptNode function, JavaScriptNode[] arguments) {
+    public AbstractFunctionArgumentsNode createFunctionArguments(JSContext context, JavaScriptNode[] arguments) {
+        return JSFunctionArgumentsNode.create(context, arguments);
+    }
+
+    public JavaScriptNode createNew(JSContext context, JavaScriptNode function, AbstractFunctionArgumentsNode arguments) {
         assert !(function instanceof PropertyNode) || !((PropertyNode) function).isMethod();
         return JSNewNode.create(context, function, arguments);
     }
@@ -869,35 +914,29 @@ public class NodeFactory {
                         strictProperties, needsNewTarget, false);
     }
 
-    public JavaScriptNode createAwait(JSContext context, JSFrameDescriptor functionFrameDesc, JavaScriptNode expression,
+    public JavaScriptNode createAwait(JSContext context, JSFrameSlot stateSlot, JavaScriptNode expression,
                     JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
-        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
         return AwaitNode.create(context, stateSlot.getIndex(), expression, asyncContextNode, asyncResultNode);
     }
 
     // ##### Generator nodes
 
-    public JavaScriptNode createYield(JSContext context, JSFrameDescriptor functionFrameDesc, JavaScriptNode expression, JavaScriptNode yieldValue, boolean yieldStar,
+    public JavaScriptNode createYield(JSContext context, JSFrameSlot stateSlot, JavaScriptNode expression, JavaScriptNode yieldValue, boolean yieldStar,
                     ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
         if (yieldStar) {
-            JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Object);
             return YieldNode.createYieldStar(context, stateSlot.getIndex(), expression, yieldValue, returnNode, writeYieldResultNode);
         } else {
-            JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
             return YieldNode.createYield(context, stateSlot.getIndex(), expression, yieldValue, returnNode, writeYieldResultNode);
         }
     }
 
-    public JavaScriptNode createAsyncGeneratorYield(JSContext context, JSFrameDescriptor functionFrameDesc, JavaScriptNode expression,
+    public JavaScriptNode createAsyncGeneratorYield(JSContext context, JSFrameSlot stateSlot, JavaScriptNode expression,
                     JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode, ReturnNode returnNode) {
-        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
         return AsyncGeneratorYieldNode.createYield(context, stateSlot.getIndex(), expression, asyncContextNode, asyncResultNode, returnNode);
     }
 
-    public JavaScriptNode createAsyncGeneratorYieldStar(JSContext context, JSFrameDescriptor functionFrameDesc, JavaScriptNode expression,
+    public JavaScriptNode createAsyncGeneratorYieldStar(JSContext context, JSFrameSlot stateSlot, JSFrameSlot iteratorTempSlot, JavaScriptNode expression,
                     JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode, ReturnNode returnNode) {
-        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
-        JSFrameSlot iteratorTempSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Object);
         return AsyncGeneratorYieldNode.createYieldStar(context, stateSlot.getIndex(), expression, asyncContextNode, asyncResultNode, returnNode, iteratorTempSlot.getIndex());
     }
 
@@ -915,17 +954,15 @@ public class NodeFactory {
         return AsyncGeneratorBodyNode.create(context, body, writeYieldValue, readYieldResult, writeAsyncContext, readAsyncContext);
     }
 
-    public JavaScriptNode createGeneratorWrapper(JavaScriptNode child, JSFrameDescriptor frameDescriptor) {
-        return ResumableNode.createResumableNode((ResumableNode) child, kind -> addGeneratorStateSlot(frameDescriptor, kind).getIndex());
+    public JavaScriptNode createGeneratorWrapper(JavaScriptNode child, JSFrameSlot stateSlot) {
+        return ResumableNode.createResumableNode((ResumableNode) child, stateSlot.getIndex());
     }
 
-    public JavaScriptNode createGeneratorVoidBlock(JavaScriptNode[] statements, JSFrameDescriptor functionFrameDesc) {
-        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
+    public JavaScriptNode createGeneratorVoidBlock(JavaScriptNode[] statements, JSFrameSlot stateSlot) {
         return GeneratorVoidBlockNode.create(statements, stateSlot.getIndex());
     }
 
-    public JavaScriptNode createGeneratorExprBlock(JavaScriptNode[] statements, JSFrameDescriptor functionFrameDesc) {
-        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
+    public JavaScriptNode createGeneratorExprBlock(JavaScriptNode[] statements, JSFrameSlot stateSlot) {
         return GeneratorExprBlockNode.create(statements, stateSlot.getIndex());
     }
 
@@ -980,9 +1017,8 @@ public class NodeFactory {
         return IteratorIsDoneNode.create(iterator);
     }
 
-    public JavaScriptNode createAsyncIteratorNext(JSContext context, JSFrameDescriptor functionFrameDesc, JavaScriptNode createReadNode,
+    public JavaScriptNode createAsyncIteratorNext(JSContext context, JSFrameSlot stateSlot, JavaScriptNode createReadNode,
                     JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
-        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
         return AsyncIteratorNextNode.create(context, stateSlot.getIndex(), createReadNode, asyncContextNode, asyncResultNode);
     }
 
@@ -990,9 +1026,8 @@ public class NodeFactory {
         return IteratorValueNode.create(context, iterator);
     }
 
-    public JavaScriptNode createAsyncIteratorCloseWrapper(JSContext context, JSFrameDescriptor functionFrameDesc, JavaScriptNode loopNode, JavaScriptNode iterator,
+    public JavaScriptNode createAsyncIteratorCloseWrapper(JSContext context, JSFrameSlot stateSlot, JavaScriptNode loopNode, JavaScriptNode iterator,
                     JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
-        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Object);
         return AsyncIteratorCloseWrapperNode.create(context, stateSlot.getIndex(), loopNode, iterator, asyncContextNode, asyncResultNode);
     }
 
@@ -1128,8 +1163,7 @@ public class NodeFactory {
         return ModuleBodyNode.create(moduleBody);
     }
 
-    public JavaScriptNode createModuleYield(JSFrameDescriptor functionFrameDesc) {
-        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
+    public JavaScriptNode createModuleYield(JSFrameSlot stateSlot) {
         return ModuleYieldNode.create(stateSlot.getIndex());
     }
 
@@ -1232,11 +1266,6 @@ public class NodeFactory {
 
     public InternalSlotId createInternalSlotId(String description, int ordinal) {
         return new InternalSlotId(description, ordinal);
-    }
-
-    public JSFrameSlot addGeneratorStateSlot(JSFrameDescriptor functionFrameDescriptor, FrameSlotKind slotKind) {
-        InternalSlotId identifier = createInternalSlotId("generatorstate", functionFrameDescriptor.getSize());
-        return functionFrameDescriptor.addFrameSlot(identifier, slotKind);
     }
 
     public JavaScriptNode createPrivateFieldIn(JavaScriptNode left, JavaScriptNode right) {

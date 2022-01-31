@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -94,6 +94,7 @@ import com.oracle.js.parser.ir.VarNode;
 import com.oracle.js.parser.ir.WithNode;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
@@ -143,6 +144,7 @@ import com.oracle.truffle.js.nodes.control.ReturnTargetNode;
 import com.oracle.truffle.js.nodes.control.SequenceNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.nodes.control.SuspendNode;
+import com.oracle.truffle.js.nodes.control.WhileNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
@@ -564,15 +566,24 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private Node instrumentSuspendHelper(Node parent, Node grandparent) {
+        if (parent instanceof WhileNode) {
+            WhileNode whileNode = (WhileNode) parent;
+            factory.fixLoopNode(whileNode, factory.getLoopNode(whileNode));
+            factory.fixRepeatingNode(whileNode, factory.getRepeatingNode(whileNode));
+        }
         boolean hasSuspendChild = false;
         BitSet suspendableIndices = null;
         if (parent instanceof AbstractBlockNode) {
-            Node[] statements = ((AbstractBlockNode) parent).getStatements();
+            AbstractBlockNode blockNode = ((AbstractBlockNode) parent);
+            Node[] statements = blockNode.getStatements();
             for (int i = 0; i < statements.length; i++) {
-                Node newChild = instrumentSuspendHelper(statements[i], parent);
+                Node oldChild = statements[i];
+                Node newChild = instrumentSuspendHelper(oldChild, parent);
                 if (newChild != null) {
                     hasSuspendChild = true;
-                    statements[i] = newChild;
+                    if (newChild != oldChild) {
+                        factory.fixBlockNodeChild(blockNode, i, (JavaScriptNode) newChild);
+                    }
                     if (suspendableIndices == null) {
                         suspendableIndices = new BitSet();
                     }
@@ -584,7 +595,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 Node newChild = instrumentSuspendHelper(child, parent);
                 if (newChild != null) {
                     hasSuspendChild = true;
-                    NodeUtil.replaceChild(parent, child, newChild);
+                    if (child != newChild) {
+                        factory.fixNodeChild(parent, child, newChild);
+                    }
                     assert !(child instanceof ResumableNode) || newChild instanceof GeneratorWrapperNode || newChild instanceof SuspendNode : "resumable node not wrapped: " + child;
                 }
             }
@@ -640,7 +653,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return toGeneratorBlockNode((AbstractBlockNode) resumableNode, all);
         }
         assert !(resumableNode instanceof SuspendNode) : resumableNode;
-        return factory.createGeneratorWrapper((JavaScriptNode) resumableNode, environment.getFunctionFrameDescriptor());
+        JSFrameSlot stateSlot = addGeneratorStateSlot(environment.getFunctionFrameDescriptor(), ((ResumableNode) resumableNode).getStateSlotKind());
+        return factory.createGeneratorWrapper((JavaScriptNode) resumableNode, stateSlot);
     }
 
     private JavaScriptNode toGeneratorBlockNode(AbstractBlockNode blockNode, BitSet suspendableIndices) {
@@ -652,7 +666,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         int resumePoints = suspendableIndices.cardinality() + (suspendableIndices.get(0) ? 0 : 1);
         if (resumePoints == statements.length) {
             // all statements are resume points
-            genBlock = returnsResult ? factory.createGeneratorExprBlock(statements, functionFrameDesc) : factory.createGeneratorVoidBlock(statements, functionFrameDesc);
+            JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
+            if (returnsResult) {
+                genBlock = factory.createGeneratorExprBlock(statements, stateSlot);
+            } else {
+                genBlock = factory.createGeneratorVoidBlock(statements, stateSlot);
+            }
         } else {
             // split block into resumable chunks of at least 1 statement.
             JavaScriptNode[] chunks = new JavaScriptNode[resumePoints];
@@ -675,7 +694,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 chunks[chunkI] = chunk;
                 fromIndex = toIndex;
             }
-            genBlock = returnsResult ? factory.createGeneratorExprBlock(chunks, functionFrameDesc) : factory.createGeneratorVoidBlock(chunks, functionFrameDesc);
+            JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
+            if (returnsResult) {
+                genBlock = factory.createGeneratorExprBlock(chunks, stateSlot);
+            } else {
+                genBlock = factory.createGeneratorVoidBlock(chunks, stateSlot);
+            }
         }
         JavaScriptNode.transferSourceSectionAndTags(blockNode, genBlock);
         return genBlock;
@@ -722,8 +746,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 JavaScriptNode writeState = factory.createWriteCurrentFrameSlot(frameSlot, jschild);
                 extracted.add(writeState);
                 // replace child with saved expression result
-                boolean ok = NodeUtil.replaceChild(parent, child, readState);
-                assert ok;
+                factory.fixNodeChild(parent, child, readState);
             } else {
                 // not assignable to field type (e.g. JSTargetableNode), cannot extract
                 // but try to extract grandchildren instead, e.g.:
@@ -1960,7 +1983,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JSReadFrameSlotNode asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncResultSlot()).createReadNode();
         JSReadFrameSlotNode asyncContextNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncContextSlot()).createReadNode();
         JSFrameDescriptor functionFrameDesc = environment.getFunctionFrameDescriptor();
-        JavaScriptNode iteratorNext = factory.createAsyncIteratorNext(context, functionFrameDesc, iteratorVar.createReadNode(),
+        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
+        JavaScriptNode iteratorNext = factory.createAsyncIteratorNext(context, stateSlot, iteratorVar.createReadNode(),
                         asyncContextNode, asyncResultNode);
         // nextResult = Await(IteratorNext(iterator))
         // while(!(done = IteratorComplete(nextResult)))
@@ -1987,7 +2011,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
         JavaScriptNode whileNode = factory.createDesugaredForAwaitOf(condition, wrappedBody);
         currentFunction().addAwait();
-        JavaScriptNode wrappedWhile = factory.createAsyncIteratorCloseWrapper(context, functionFrameDesc, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(),
+        stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Object);
+        JavaScriptNode wrappedWhile = factory.createAsyncIteratorCloseWrapper(context, stateSlot, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(),
                         asyncContextNode, asyncResultNode);
         JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
         wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
@@ -2097,6 +2122,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
+    public JSFrameSlot addGeneratorStateSlot(JSFrameDescriptor functionFrameDescriptor, FrameSlotKind slotKind) {
+        InternalSlotId identifier = factory.createInternalSlotId("generatorstate", functionFrameDescriptor.getSize());
+        return functionFrameDescriptor.addFrameSlot(identifier, slotKind);
+    }
+
     private JavaScriptNode translateAwaitNode(UnaryNode unaryNode) {
         JavaScriptNode expression = transform(unaryNode.getExpression());
         return createAwaitNode(expression);
@@ -2107,7 +2137,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         currentFunction.addAwait();
         JSReadFrameSlotNode asyncContextNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction.getAsyncContextSlot()).createReadNode();
         JSReadFrameSlotNode asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction.getAsyncResultSlot()).createReadNode();
-        return factory.createAwait(context, currentFunction.getFunctionFrameDescriptor(), expression, asyncContextNode, asyncResultNode);
+        JSFrameSlot stateSlot = addGeneratorStateSlot(currentFunction.getFunctionFrameDescriptor(), FrameSlotKind.Int);
+        return factory.createAwait(context, stateSlot, expression, asyncContextNode, asyncResultNode);
     }
 
     private JavaScriptNode createYieldNode(UnaryNode unaryNode) {
@@ -2116,7 +2147,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JSFrameDescriptor functionFrameDesc = currentFunction.getFunctionFrameDescriptor();
         if (lc.getCurrentFunction().isModule()) {
             currentFunction.addYield();
-            return factory.createModuleYield(functionFrameDesc);
+            JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
+            return factory.createModuleYield(stateSlot);
         }
 
         boolean asyncGeneratorYield = currentFunction.isAsyncFunction();
@@ -2128,16 +2160,19 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             currentFunction.addAwait();
             JSReadFrameSlotNode asyncContextNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction.getAsyncContextSlot()).createReadNode();
             JSReadFrameSlotNode asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction.getAsyncResultSlot()).createReadNode();
+            JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
             if (yieldStar) {
-                return factory.createAsyncGeneratorYieldStar(context, functionFrameDesc, expression, asyncContextNode, asyncResultNode, returnNode);
+                JSFrameSlot iteratorTempSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Object);
+                return factory.createAsyncGeneratorYieldStar(context, stateSlot, iteratorTempSlot, expression, asyncContextNode, asyncResultNode, returnNode);
             } else {
-                return factory.createAsyncGeneratorYield(context, functionFrameDesc, expression, asyncContextNode, asyncResultNode, returnNode);
+                return factory.createAsyncGeneratorYield(context, stateSlot, expression, asyncContextNode, asyncResultNode, returnNode);
             }
         } else {
             currentFunction.addYield();
             JSWriteFrameSlotNode writeYieldResultNode = JSConfig.YieldResultInFrame ? (JSWriteFrameSlotNode) environment.findTempVar(currentFunction.getYieldResultSlot()).createWriteNode(null)
                             : null;
-            return factory.createYield(context, functionFrameDesc, expression, environment.findYieldValueVar().createReadNode(), yieldStar, returnNode, writeYieldResultNode);
+            JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, yieldStar ? FrameSlotKind.Object : FrameSlotKind.Int);
+            return factory.createYield(context, stateSlot, expression, environment.findYieldValueVar().createReadNode(), yieldStar, returnNode, writeYieldResultNode);
         }
     }
 
@@ -2307,7 +2342,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         CallNode callNode = (CallNode) unaryNode.getExpression();
         JavaScriptNode function = transform(callNode.getFunction());
         JavaScriptNode[] args = transformArgs(callNode.getArgs());
-        JavaScriptNode call = factory.createNew(context, function, args);
+        AbstractFunctionArgumentsNode arguments = factory.createFunctionArguments(context, args);
+        JavaScriptNode call = factory.createNew(context, function, arguments);
         return tagExpression(tagCall(call), unaryNode);
     }
 
