@@ -200,7 +200,7 @@ The existence of the property can be used to identify whether the GraalVM JavaSc
 if (typeof Graal != 'undefined') {
     print(Graal.versionJS);
     print(Graal.versionGraalVM);
-    print(Graal.isGraalRuntime);
+    print(Graal.isGraalRuntime());
 }
 ```
 
@@ -214,12 +214,11 @@ The Graal object is available in GraalVM JavaScript by default, unless deactivat
 
 - provides the version of GraalVM, if the current engine is executed on GraalVM
 
-#### `Graal.isGraalRuntime`
+#### `Graal.isGraalRuntime()`
 
 - provides whether GraalVM JavaScript is executed on a GraalVM-enabled runtime
-
-If `true`, hot code is compiled by the GraalVM compiler, resulting in high peak performance.
-If `false`, GraalVM JavaScript will not be optimized by the GraalVM Compiler, typically resulting in lower performance.
+- If `true`, hot code is compiled by the GraalVM compiler, resulting in high peak performance.
+- If `false`, GraalVM JavaScript will not be optimized by the GraalVM Compiler, typically resulting in lower performance.
 
 ### Java
 
