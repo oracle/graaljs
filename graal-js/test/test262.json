@@ -1813,10 +1813,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-string-plaindatetime.js",
-    "status" : "FAIL",
-    "comment" : "new failures after fix #1897 from 2022-01-12"
-  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-string-zoneddatetime-wrong-offset.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -1837,10 +1833,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-string-plaindatetime.js",
-    "status" : "FAIL",
-    "comment" : "new failures after fix #1897 from 2022-01-12"
-  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-string-zoneddatetime-wrong-offset.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -1856,10 +1848,6 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-string-datetime.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-string-plaindatetime.js",
-    "status" : "FAIL",
-    "comment" : "new failures after fix #1897 from 2022-01-12"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-string-zoneddatetime-wrong-offset.js",
     "status" : "FAIL",
@@ -1880,10 +1868,6 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-string-datetime.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-string-plaindatetime.js",
-    "status" : "FAIL",
-    "comment" : "new failures after fix #1897 from 2022-01-12"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-string-zoneddatetime-wrong-offset.js",
     "status" : "FAIL",
@@ -2516,10 +2500,6 @@
     "status" : "FAIL",
     "comment" : "Bug in ICU: https://unicode-org.atlassian.net/browse/ICU-21886"
   }, {
-    "filePath" : "intl402/Temporal/Calendar/from/basic.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "intl402/Temporal/Calendar/prototype/dateAdd/date-infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -2929,14 +2909,6 @@
     "comment" : "Temporal failures"
   }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/until/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/basic.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/from/argument-valid.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {

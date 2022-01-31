@@ -55,6 +55,9 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
  * that is mentioned by grammar in the spec, but where no explicit code is given. If there is code
  * expressed in terms of the spec, it should not be here (but in TemporalUtil, etc.).
  */
+// method starting with `parse` return a JSTemporalParserRecord, and are allowed to call reset();
+// methods starting with `try` are intermediate steps during recursive decent and return a boolean,
+// do not call reset();
 public final class TemporalParser {
 
     private static final String patternDate = "^([+\\-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)[\\-]?(\\d\\d)";
@@ -68,6 +71,11 @@ public final class TemporalParser {
     private static final String patternTimeZoneIANAName = "^([A-Za-z_]+(/[A-Za-z\\-_]+)*)";
 
     private final JSContext context;
+
+    private static final TruffleString UC_T = Strings.constant("T");
+    private static final TruffleString T = Strings.constant("t");
+    private static final TruffleString U_CA_EQUALS = Strings.constant("u-ca=");
+
     private final TruffleString input;
     private TruffleString rest;
     private int pos;
@@ -99,22 +107,111 @@ public final class TemporalParser {
         this.input = input;
     }
 
-    // TODO this needs to be improved!
-    // should accept: Time, DateTime, or CalendarDateTime
-    // timeZone might be parsed as part of that, but is ignored afterwards.
     public JSTemporalParserRecord parseISODateTime() {
+        JSTemporalParserRecord rec = null;
+
+        // TemporalDateString => CalendarDateTime
+        // TemporalDateTimeString => CalendarDateTime
+        // TemporalRelativeToString => TemporalDateTimeString => CalendarDateTime
+        rec = parseCalendarDateTime();
+        if (rec != null) {
+            return rec;
+        }
+
+        // TemporalTimeString => CalendarTime OR CalendarDateTimeTimeRequired
+        rec = parseCalendarTime();
+        if (rec != null) {
+            return rec;
+        }
+        rec = parseCalendarDateTimeTimeRequired();
+        if (rec != null) {
+            return rec;
+        }
+
+        // TemporalYearMonthString => DateSpecYearMonth OR CalendarDateTime (above already!)
+        rec = parseDateSpecYearMonth();
+        if (rec != null) {
+            return rec;
+        }
+
+        // TemporalMonthDayString => DateSpecMonthDay OR CalendarDateTime(above already!)
+        rec = parseDateSpecMonthDay();
+        if (rec != null) {
+            return rec;
+        }
+
+        // TemporalInstantString
+        rec = parseTemporalInstantString();
+        if (rec != null) {
+            return rec;
+        }
+
+        // TemporalZonedDateTimeString => Date TimeSpecSeparator(opt) TimeZoneNameRequired
+        // Calendar(opt)
+        rec = parseZonedDateTimeString();
+        if (rec != null) {
+            return rec;
+        }
+
+        return null;
+    }
+
+    // production CalendarTime
+    private JSTemporalParserRecord parseCalendarTime() {
         reset();
-        if (parseDate()) {
-            parseDateTimeSeparator();
-            parseTime();
+
+        // TimeDesignator TimeSpec TimeZone(opt) Calendar(opt)
+        // TimeSpec TimeZone(opt) Calendar
+        boolean hasTimeDesignator = Strings.startsWith(rest, UC_T) || Strings.startsWith(rest, T);
+        if (hasTimeDesignator) {
+            move(1);
+        }
+
+        if (tryParseTimeSpec()) {
             parseTimeZone();
+            boolean hasCalendar = parseCalendar();
+            if (!hasTimeDesignator && !hasCalendar) {
+                // return null;
+                // ignoring this (almost) implements
+                // TimeSpecWithOptionalTimeZoneNotAmbiguous
+            }
+            if (atEnd()) {
+                return result();
+            }
+        }
+
+        // TODO TimeSpecWithOptionalTimeZoneNotAmbiguous
+
+        return null;
+    }
+
+    private JSTemporalParserRecord parseCalendarDateTime() {
+        reset();
+        if (parseDateTime()) {
             parseCalendar();
             if (atEnd()) {
                 return result();
             }
         }
+        return null;
+    }
+
+    private boolean parseDateTime() {
+        if (!parseDate()) {
+            return false;
+        }
+        parseTimeSpecSeparator(); // optional
+        parseTimeZone();
+
+        return true;
+    }
+
+    private JSTemporalParserRecord parseCalendarDateTimeTimeRequired() {
         reset();
-        if (parseTime()) {
+        if (parseDate()) {
+            if (!parseTimeSpecSeparator()) {
+                return null;
+            }
             parseTimeZone();
             parseCalendar();
             if (atEnd()) {
@@ -124,22 +221,38 @@ public final class TemporalParser {
         return null;
     }
 
+    private boolean parseTimeSpecSeparator() {
+        if (!tryParseDateTimeSeparator()) {
+            return false;
+        }
+        if (!tryParseTimeSpec()) {
+            return false;
+        }
+        return true;
+    }
+
     // TemporalYearMonthString
     public JSTemporalParserRecord parseYearMonth() {
+        JSTemporalParserRecord rec = null;
+
         // DateSpecYearMonth
-        reset();
-        if (parseDateSpecYearMonth()) {
-            if (atEnd()) {
-                return result();
-            }
+        rec = parseDateSpecYearMonth();
+        if (rec != null) {
+            return rec;
         }
+
         // CalendarDateTime
+        rec = parseCalendarDateTime();
+        if (rec != null) {
+            return rec;
+        }
+
+        return null;
+    }
+
+    private JSTemporalParserRecord parseDateSpecYearMonth() {
         reset();
-        if (parseDate()) {
-            parseDateTimeSeparator();
-            parseTime();
-            parseTimeZone();
-            parseCalendar();
+        if (tryParseDateSpecYearMonth()) {
             if (atEnd()) {
                 return result();
             }
@@ -148,20 +261,26 @@ public final class TemporalParser {
     }
 
     public JSTemporalParserRecord parseMonthDay() {
+        JSTemporalParserRecord rec = null;
+
         // DateSpecMonthDay
-        reset();
-        if (parseDateSpecMonthDay()) {
-            if (atEnd()) {
-                return result();
-            }
+        rec = parseDateSpecMonthDay();
+        if (rec != null) {
+            return rec;
         }
+
         // CalendarDateTime
+        rec = parseCalendarDateTime();
+        if (rec != null) {
+            return rec;
+        }
+
+        return null;
+    }
+
+    private JSTemporalParserRecord parseDateSpecMonthDay() {
         reset();
-        if (parseDate()) {
-            parseDateTimeSeparator();
-            parseTime();
-            parseTimeZone();
-            parseCalendar();
+        if (tryParseDateSpecMonthDay()) {
             if (atEnd()) {
                 return result();
             }
@@ -177,9 +296,9 @@ public final class TemporalParser {
         }
 
         reset();
+        // Date TimeSpecSeparator(opt) TimeZone Calendar(opt)
         if (parseDate()) {
-            parseDateTimeSeparator();
-            parseTime();
+            tryParseTimeSpecSeparator();
             if (parseTimeZone()) {
                 parseCalendar();
                 return result();
@@ -203,66 +322,135 @@ public final class TemporalParser {
 
     public JSTemporalParserRecord parseTimeZoneNumericUTCOffset() {
         reset();
-        if (parseTimeZone()) {
-            return result();
+        if (tryParseTimeZoneNumericUTCOffset()) {
+            if (atEnd()) { // catches "+00:01.1"
+                return result();
+            }
         }
         return null;
     }
 
     // production TemporalCalendarString
     public JSTemporalParserRecord parseCalendarString() {
+        JSTemporalParserRecord rec = null;
+
         // CalendarName
-        reset();
-        if (parseCalendarName()) {
-            return result();
+        rec = parseCalendarName();
+        if (rec != null) {
+            return rec;
         }
 
         // TemporalInstantString
-        reset();
-        try {
-            JSTemporalParserRecord rec1 = parseISODateTime();
-            if (rec1 != null) {
-                JSTemporalParserRecord rec2 = parseTimeZoneString();
-                if (rec1.getCalendar() != null) {
-                    this.calendar = rec1.getCalendar();
-                }
-                if (rec2 != null && rec2.getCalendar() != null) {
-                    this.calendar = rec2.getCalendar();
-                }
-                return result();
-            }
-        } catch (Exception ex) {
-            // fallthrough ignored
+        rec = parseTemporalInstantString();
+        if (rec != null) {
+            return rec;
         }
 
-        // TODO CalendarDateTime
-        // TODO Time
-        // TODO DateSpecYearMonth
-        // TODO DateSpecMonthDay
+        // CalendarDateTime
+        rec = parseCalendarDateTime();
+        if (rec != null) {
+            return rec;
+        }
+
+        // Time
+        rec = parseCalendarTime();
+        if (rec != null) {
+            return rec;
+        }
+
+        // DAteSpecYearMonth
+        rec = parseDateSpecYearMonth();
+        if (rec != null) {
+            return rec;
+        }
+
+        // DateSpecMonthDay
+        rec = parseDateSpecMonthDay();
+        if (rec != null) {
+            return rec;
+        }
+
+        return null;
+    }
+
+    private JSTemporalParserRecord parseTemporalInstantString() {
+        reset();
+        if (parseDate()) {
+            tryParseTimeSpecSeparator(); // optional
+            if (tryParseTimeZoneOffsetRequired()) {
+                if (atEnd()) {
+                    return result();
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean tryParseTimeZoneOffsetRequired() {
+        if (!tryParseTimeZoneUTCOffset()) {
+            return false;
+        }
+        tryParseTimeZoneBracketedAnnotation(); // optional
+        return true;
+    }
+
+    private boolean tryParseTimeSpecSeparator() {
+        if (tryParseDateTimeSeparator()) {
+            if (tryParseTimeSpec()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private JSTemporalParserRecord parseCalendarName() {
+        // CalendarName
+        reset();
+        if (tryParseCalendarName()) {
+            return result();
+        }
+        return null;
+    }
+
+    private JSTemporalParserRecord parseZonedDateTimeString() {
+        reset();
+        if (parseDate()) {
+            tryParseDateTimeSeparator();
+            tryParseTimeSpec();
+            if (!tryParseTimeZoneNameRequired()) {
+                return null;
+            }
+            parseCalendar();
+            if (atEnd()) {
+                return result();
+            }
+        }
         return null;
     }
 
     public boolean isTemporalZonedDateTimeString() {
+        return parseZonedDateTimeString() != null;
+    }
+
+    public boolean isTemporalRelativeToString() {
         reset();
-        if (parseDate()) {
-            parseDateTimeSeparator();
-            parseTime();
-            if (!parseTimeZoneNameRequired()) {
-                return false;
-            }
-            parseCalendar();
+        JSTemporalParserRecord rec = parseCalendarDateTime();
+        if (rec != null) {
             return true;
         }
-
         return false;
     }
 
-    private boolean parseTimeZoneNameRequired() {
-        // this effectively is rule `TimeZoneNameRequired`
-        return Strings.indexOf(rest, '[') >= 0 && Strings.indexOf(rest, ']') >= 0 && parseTimeZone();
+    private boolean tryParseTimeZoneNameRequired() {
+        tryParseTimeZoneUTCOffset(); // optional
+
+        if (tryParseTimeZoneBracketedAnnotation()) {
+            return true;
+        }
+        return false;
     }
 
-    private boolean parseCalendarName() {
+    private boolean tryParseCalendarName() {
         Matcher matcher = createMatch(patternCalendarName, rest);
         if (matcher.matches()) {
             this.calendar = group(rest, matcher, 1);
@@ -336,7 +524,7 @@ public final class TemporalParser {
         rest = (pos >= 0 && Strings.length(input) > pos) ? Strings.lazySubstring(input, pos) : Strings.EMPTY_STRING;
     }
 
-    private boolean parseDateSpecYearMonth() {
+    private boolean tryParseDateSpecYearMonth() {
         Matcher matcher = createMatch(patternDateSpecYearMonth, rest);
         if (matcher.matches()) {
             year = group(rest, matcher, 1);
@@ -350,7 +538,7 @@ public final class TemporalParser {
         return false;
     }
 
-    private boolean parseDateSpecMonthDay() {
+    private boolean tryParseDateSpecMonthDay() {
         Matcher matcher = createMatch(patternDateSpecMonthDay, rest);
         if (matcher.matches()) {
             month = group(rest, matcher, 1);
@@ -377,7 +565,7 @@ public final class TemporalParser {
         return false;
     }
 
-    private boolean parseTime() {
+    private boolean tryParseTimeSpec() {
         Matcher matcher = createMatch(patternTime, rest);
         if (matcher.matches()) {
             hour = group(rest, matcher, 1);
@@ -391,7 +579,7 @@ public final class TemporalParser {
         return false;
     }
 
-    private boolean parseDateTimeSeparator() {
+    private boolean tryParseDateTimeSeparator() {
         if (Strings.length(rest) <= 0) {
             return false;
         }
@@ -414,33 +602,47 @@ public final class TemporalParser {
         return false;
     }
 
-    private boolean parseTimeZoneIdentifier() {
-        // TimeZOneNumericUTCOffset
-        Matcher matcher = createMatch(patternTimeZoneNumericUTCOffset, rest, false);
-        if (matcher.matches()) {
-            offsetSign = group(rest, matcher, 1);
-            offsetHour = group(rest, matcher, 2);
-            offsetMinute = group(rest, matcher, 4);
-            offsetSecond = group(rest, matcher, 6);
-            offsetFraction = group(rest, matcher, 8);
-            timeZoneNumericUTCOffset = Strings.substring(context, rest, matcher.start(1), matcher.end(3) != -1 ? matcher.end(3) : Strings.length(rest));
-
-            move(matcher.end(3));
-
-            parseTimeZoneBracket();
-            return true;
+    private boolean parseTimeZone() {
+        // TimeZoneUTCOffset TimeZoneBracketedAnnotation(opt)
+        if (tryParseTimeZoneUTCOffset()) {
+            tryParseTimeZoneBracketedAnnotation(); // optional
+            if (atEnd()) {
+                return true;
+            }
         }
 
-        // TimeZoneIANAName
-        if (parseTimeZoneIANAName()) {
+        // TimeZoneBracketedAnnotation
+        if (tryParseTimeZoneBracketedAnnotation()) {
             return true;
         }
 
         return false;
     }
 
-    private boolean parseTimeZone() {
-        // first two options are from `TimeZoneOffsetRequired` (with bracket optional)
+    private boolean tryParseTimeZoneUTCOffset() {
+        if (tryParseTimeZoneNumericUTCOffset()) {
+            return true;
+        }
+
+        if (tryParseUTCDesignator()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean tryParseUTCDesignator() {
+        if (Strings.startsWith(rest, Strings.UC_Z) || Strings.startsWith(rest, Strings.Z)) {
+            move(1);
+            this.timeZoneIANAName = TemporalConstants.UTC; // TODO is this correct?
+            this.utcDesignator = Strings.Z;
+
+            return true;
+        }
+        return false;
+    }
+
+    private boolean tryParseTimeZoneNumericUTCOffset() {
         Matcher matcher = createMatch(patternTimeZoneNumericUTCOffset, rest, true);
         if (matcher.matches()) {
             offsetSign = group(rest, matcher, 1);
@@ -454,40 +656,39 @@ public final class TemporalParser {
                 return false;
             }
 
-            move(matcher.end(3));
-
-            if (parseTimeZoneBracket()) {
-                // there might still be a calendar
-                return true;
-            }
-
-            if ((rest == null || Strings.length(rest) == 0)) {
-                return true;
-            }
-        }
-
-        if (Strings.startsWith(rest, Strings.UC_Z) || Strings.startsWith(rest, Strings.Z)) {
-            move(1);
-            this.timeZoneIANAName = TemporalConstants.UTC; // TODO is this correct?
-            this.utcDesignator = Strings.UC_Z;
-
-            parseTimeZoneBracket(); // optional
-            return true;
-        }
-
-        // last option is from `TimeZoneNameRequired`
-        // (the optional numeric offset was parsed in first option)
-        if (parseTimeZoneBracket()) {
+            // differentiate between "-08" and "-08:00" here!
+            move(offsetMinute != null ? matcher.end(3) : matcher.end(2));
             return true;
         }
 
         return false;
     }
 
-    private boolean parseTimeZoneBracket() {
+    private boolean parseTimeZoneIdentifier() {
+        // TimeZoneNumericUTCOffset
+        reset();
+        if (tryParseTimeZoneNumericUTCOffset()) {
+            // parseTimeZoneBracket(); //TODO cannot occur here, right?
+            return true;
+        }
+
+        reset();
+        // TimeZoneIANAName
+        if (parseTimeZoneIANAName()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean tryParseTimeZoneBracketedAnnotation() {
         Matcher matcher = createMatch(patternTimeZoneBracketedAnnotation, rest);
         if (matcher.matches()) {
             TruffleString content = group(rest, matcher, 2);
+            if (Strings.startsWith(content, U_CA_EQUALS)) {
+                // it's a calendar, not a timezone.
+                return false;
+            }
 
             // content could be TimeZoneIANAName, Etc/GMT, or TimeZOneUTCOffsetName
             if (content != null) {
@@ -528,4 +729,5 @@ public final class TemporalParser {
         int start = matcher.start(groupNumber);
         return start < 0 ? null : Strings.substring(context, string, start, matcher.end(groupNumber) - start);
     }
+
 }

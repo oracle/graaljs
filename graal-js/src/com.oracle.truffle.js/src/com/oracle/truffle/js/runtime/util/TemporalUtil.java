@@ -605,7 +605,11 @@ public final class TemporalUtil {
         return JSTemporalPlainDate.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
     }
 
+    @TruffleBoundary
     private static JSTemporalZonedDateTimeRecord parseTemporalRelativeToString(TruffleString isoString) {
+        if (!(new TemporalParser(isoString)).isTemporalRelativeToString()) {
+            throw TemporalErrors.createRangeErrorInvalidRelativeToString();
+        }
         JSTemporalDateTimeRecord result = parseISODateTime(isoString, true, false);
         boolean z = false;
         TruffleString offsetString = null;

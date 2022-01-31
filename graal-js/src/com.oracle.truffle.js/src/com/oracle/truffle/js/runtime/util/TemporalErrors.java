@@ -65,6 +65,11 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
+    public static JSException createRangeErrorInvalidRelativeToString() {
+        return Errors.createRangeError("invalid relativeTo string");
+    }
+
+    @TruffleBoundary
     public static JSException createRangeErrorSmallestUnitOutOfRange() {
         return Errors.createRangeError("Smallest unit is out of range.");
     }
