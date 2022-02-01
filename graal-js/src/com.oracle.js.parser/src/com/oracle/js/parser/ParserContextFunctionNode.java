@@ -546,6 +546,8 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             }
         }
         if (hasParameterExpressions()) {
+            // Lock the scopes to make sure we don't add any more symbols. Not strictly necessary.
+            bodyScope.close();
             getParameterScope().close();
         }
     }
