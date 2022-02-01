@@ -41,9 +41,14 @@
 
 package com.oracle.js.parser.ir;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 
 /**
  * Represents a binding scope (corresponds to LexicalEnvironment or VariableEnvironment).
@@ -78,16 +83,22 @@ public final class Scope {
 
     /** Symbol table - keys must be returned in the order they were put in. */
     protected final EconomicMap<String, Symbol> symbols;
+    protected final EconomicMap<String, UseInfo> uses;
 
     private boolean closed;
     private boolean hasBlockScopedOrRedeclaredSymbols;
     private boolean hasPrivateNames;
+    private boolean hasClosures;
+    private boolean hasEval;
+    private boolean hasNestedEval;
+    private boolean hasUnresolvedSymbols;
 
     private Scope(Scope parent, int type, int flags) {
         this.parent = parent;
         this.type = type;
         this.symbols = EconomicMap.create();
         this.flags = flags;
+        this.uses = EconomicMap.create();
     }
 
     private Scope(Scope parent, int type) {
@@ -365,16 +376,333 @@ public final class Scope {
         if (closed) {
             return;
         }
+        resolveUses();
         closed = true;
+    }
+
+    /**
+     * Records the use of an identifier reference in this scope to be resolved.
+     */
+    public void addIdentifierReference(String name) {
+        addLocalUse(name);
+    }
+
+    /**
+     * Records or resolves a use in this scope.
+     */
+    private void addLocalUse(String name) {
+        assert !closed : "scope is closed";
+        UseInfo foundUse = uses.get(name);
+        Symbol foundSymbol = symbols.get(name);
+        if (foundSymbol != null) {
+            // declared in this scope, can be resolved immediately.
+            if (foundUse == null) {
+                foundUse = UseInfo.resolvedLocal(name, this);
+                uses.put(name, foundUse);
+                assert foundUse.use == this;
+            } else {
+                assert foundUse.use == this || foundUse.use == null;
+                foundUse.use = this;
+            }
+            resolveUse(foundUse, this, foundSymbol);
+        } else {
+            // as of yet unresolved, could still be resolved in the current scope later
+            // or in one of the outer scopes eventually.
+            if (foundUse == null) {
+                foundUse = UseInfo.unresolved(name);
+                uses.put(name, foundUse);
+                assert foundUse.use == null;
+            } else {
+                assert foundUse.def == null;
+                assert foundUse.use == this || foundUse.use == null;
+            }
+            foundUse.use = this;
+        }
+    }
+
+    /**
+     * Used to resolve or forward unresolved uses from inner scopes.
+     */
+    private void addUsesFromInnerScope(String name, UseInfo useInfo) {
+        assert !closed : "scope is closed";
+        if (useInfo.use == null && useInfo.innerUseScopes == null) {
+            return;
+        }
+
+        Symbol foundSymbol = symbols.get(name);
+        if (foundSymbol != null) {
+            // declared here, so we can resolve it immediately.
+            resolveUse(useInfo, this, foundSymbol);
+            return;
+        }
+        // merge unresolved use into the parent scope
+        UseInfo foundUse = uses.get(name);
+        if (foundUse == null) {
+            foundUse = UseInfo.unresolved(name);
+            uses.put(name, foundUse);
+        } else {
+            assert foundUse.use == this || foundUse.use == null;
+        }
+
+        if (useInfo.innerUseScopes != null) {
+            for (Scope innerScope : useInfo.innerUseScopes) {
+                foundUse.addInnerUse(innerScope);
+            }
+        }
+        if (useInfo.use != null) {
+            foundUse.addInnerUse(useInfo.use);
+        }
+    }
+
+    /**
+     * Resolves free variables in this scope and forwards unresolved uses to the parent scope.
+     */
+    public void resolveUses() {
+        if (uses.isEmpty()) {
+            if (symbols.isEmpty()) {
+                debugLog(() -> "- skipped empty scope: " + this);
+            } else {
+                debugLog(() -> "- skipped scope without uses: " + this);
+            }
+            return;
+        }
+        debugLog(() -> "Resolving: " + this + "\n  with uses: " + uses);
+
+        hasUnresolvedSymbols = false;
+        boolean resolved = false;
+
+        boolean hasDeclarations = hasDeclarations();
+        if (!hasDeclarations() && parent != null && !parent.closed && !parent.isEvalScope()) {
+            // If the scope does not have any declarations, we cannot resolve anything.
+            // So we can just directly forward all unresolved uses to the parent scope.
+            debugLog(() -> "  No declarations. Forwarding unresolved uses to parent scope");
+        }
+
+        MapCursor<String, UseInfo> cursor = uses.getEntries();
+        while (cursor.advance()) {
+            String usedName = cursor.getKey();
+            UseInfo useInfo = cursor.getValue();
+            if (useInfo.isUnresolved()) {
+                Symbol foundSymbol;
+                if (hasDeclarations && (foundSymbol = symbols.get(usedName)) != null) {
+                    // resolved in this scope
+                    resolveUse(useInfo, this, foundSymbol);
+                } else {
+                    // unresolved, pass on to parent scope
+                    if (parent != null) {
+                        if (parent.closed) {
+                            // A closed parent scope implies a parsing boundary, e.g. eval().
+                            // We cannot make any symbols available that are not already captured.
+                            // We could resolve these symbols statically but there is currently
+                            // no advantage in doing so early.
+                            debugLog(() -> "    " + usedName + " !!! unresolvable (closed parent): " + this);
+                            markUseUnresolvable(useInfo);
+                            if (useInfo.use == null) {
+                                cursor.remove();
+                            }
+                            continue;
+                        }
+                        debugLog(() -> "    " + usedName + " --> parent: " + parent);
+                        parent.addUsesFromInnerScope(usedName, useInfo);
+                        if (useInfo.use == null) {
+                            // no use in this scope, skip this scope and remove the use here.
+                            debugLog(() -> "    " + usedName + " - - removed non-use intermediate scope: " + this);
+                            cursor.remove();
+                        }
+                    } else {
+                        debugLog(() -> "    " + usedName + " !!! unresolvable (no parent): " + this);
+                        markUseUnresolvable(useInfo);
+                        if (useInfo.use == null) {
+                            cursor.remove();
+                        }
+                        continue;
+                    }
+                }
+
+                resolved |= useInfo.isResolved();
+                hasUnresolvedSymbols |= useInfo.isUnresolved();
+            }
+        }
+        if (resolved) {
+            debugLog(() -> "  Resolved : " + this + " with uses: " + uses);
+        } else {
+            debugLog(() -> "  Unresolved : " + this + " with uses: " + uses);
+        }
+        if (uses.isEmpty()) {
+            uses.clear(); // free unused memory
+        }
+
+        // Note: In case of nested eval, we would still not have to capture variables that are
+        // shadowed in all inner scopes that contain eval.
+        // Consider e.g.: `{ let x; { let x; { eval("..."); } } }`
+        // Here the outer x would not have to be captured (only the inner x). For simplicity,
+        // we currently assume all variables in scopes that contain (nested) eval may be captured.
+    }
+
+    /**
+     * Resolve use in the local and any inner scopes to the scope defining the symbol.
+     */
+    private static void resolveUse(UseInfo useInfo, Scope defScope, Symbol foundSymbol) {
+        String name = useInfo.name;
+        // cannot change a resolved scope
+        assert useInfo.def == null || useInfo.def == defScope;
+        assert name.equals(foundSymbol.getName());
+        assert defScope.hasSymbol(foundSymbol.getName());
+        debugLog(() -> "    " + name + " resolved in " + defScope);
+        if (useInfo.use != null) {
+            markSymbolUsed(foundSymbol, defScope, useInfo.use);
+        }
+        if (useInfo.innerUseScopes != null) {
+            for (Scope inner : useInfo.innerUseScopes) {
+                UseInfo innerUse = inner.uses.get(name);
+                if (innerUse == null) {
+                    innerUse = UseInfo.unresolved(name);
+                    innerUse.use = inner;
+                    inner.uses.put(name, innerUse);
+                }
+                innerUse.def = defScope;
+                innerUse.innerUseScopes = null;
+
+                markSymbolUsed(foundSymbol, defScope, inner);
+            }
+            useInfo.innerUseScopes = null;
+        }
+        useInfo.def = defScope;
+    }
+
+    private static void markSymbolUsed(Symbol foundSymbol, Scope defScope, Scope useScope) {
+        foundSymbol.setUsed();
+        if (defScope != useScope) {
+            boolean inClosure = isInClosure(defScope, useScope);
+            if (inClosure) {
+                foundSymbol.setClosedOver();
+                defScope.hasClosures = true;
+            } else {
+                foundSymbol.setUsedInInnerScope();
+            }
+            debugLog(() -> "    " + foundSymbol.getName() + " ... used in " + useScope + " closure: " + inClosure);
+        }
+    }
+
+    private static void markUseUnresolvable(UseInfo useInfo) {
+        String name = useInfo.name;
+        assert useInfo.def == null : name; // must not be resolved
+
+        if (useInfo.innerUseScopes != null) {
+            for (Scope inner : useInfo.innerUseScopes) {
+                UseInfo innerUse = inner.uses.get(name);
+                if (innerUse != null) {
+                    debugLog(() -> "    " + name + " not statically resolvable in: " + inner);
+
+                    assert innerUse.def == null : name; // must not be resolved
+                    if (innerUse.use != null) {
+                        innerUse.use.uses.removeKey(name);
+                    }
+                }
+            }
+            useInfo.innerUseScopes = null;
+        }
+
+        if (useInfo.use != null) {
+            debugLog(() -> "    " + name + " not statically resolvable in: " + useInfo.use);
+        }
+    }
+
+    /**
+     * Checks if there is a function boundary between the inner and outer scopes.
+     */
+    private static boolean isInClosure(Scope outer, Scope inner) {
+        assert inner != null && outer != null;
+        Scope current = inner;
+        while (current != null && current != outer) {
+            if (current.isFunctionTopScope()) {
+                // scopes cross a function boundary
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
+    }
+
+    /**
+     * Returns true if the scope has closed over variables.
+     */
+    public boolean hasClosures() {
+        return hasClosures;
+    }
+
+    /**
+     * Does this scope contain a direct eval.
+     */
+    public boolean hasEval() {
+        return hasEval;
+    }
+
+    /**
+     * Marks this scope as containing a direct eval.
+     */
+    public void setHasEval() {
+        if (!hasEval) {
+            hasEval = true;
+            setHasNestedEval();
+        }
+    }
+
+    /**
+     * Does this scope or any nested scopes contain a direct eval.
+     */
+    public boolean hasNestedEval() {
+        return hasNestedEval;
+    }
+
+    public void setHasNestedEval() {
+        // taint all parent scopes
+        for (Scope current = this; current != null; current = current.parent) {
+            if (current.hasNestedEval) {
+                break;
+            }
+            current.hasNestedEval = true;
+        }
     }
 
     @Override
     public String toString() {
         StringJoiner names = new StringJoiner(",", "(", ")");
-        for (String name : symbols.getKeys()) {
-            names.add(name);
+        for (Symbol symbol : symbols.getValues()) {
+            String name = symbol.getName();
+            String mark = "";
+            if (symbol.isClosedOver()) {
+                mark += "'";
+            } else if (symbol.isUsedInInnerScope()) {
+                mark += "\"";
+            } else if (hasNestedEval) {
+                if (!symbol.isUsed()) {
+                    mark += "*";
+                }
+            } else if (!symbol.isUsed()) {
+                mark += "-";
+            }
+            names.add(name + mark);
         }
-        return "[" + getScopeKindName() + "Scope" + names + (parent == null ? "" : ", " + parent + "") + "]";
+
+        String usedNames = "";
+        if (hasUnresolvedSymbols) {
+            StringJoiner sj = new StringJoiner(",", ">(", ")").setEmptyValue("");
+            for (String use : uses.getKeys()) {
+                if (!symbols.containsKey(use)) {
+                    sj.add(use);
+                }
+            }
+            usedNames = sj.toString();
+        }
+
+        String taint = "";
+        if (hasClosures) {
+            taint += "'";
+        } else if (hasNestedEval) {
+            taint += "*";
+        }
+        return "[" + getScopeKindName() + "Scope" + taint + names + usedNames + (parent == null ? "" : ", " + parent + "") + "]";
     }
 
     private String getScopeKindName() {
@@ -399,4 +727,71 @@ public final class Scope {
         }
         return "";
     }
+
+    /**
+     * Tracks use of symbol in the current and any nested scopes.
+     */
+    static final class UseInfo {
+        /** Used name. */
+        String name;
+        /** Resolved scope in which the symbol has been defined. Must be a parent scope. */
+        Scope def;
+        /** Local scope in which the symbol is used. */
+        Scope use;
+        /** Inner scopes with unresolved uses of the symbol. */
+        List<Scope> innerUseScopes;
+
+        private UseInfo(String name, Scope use, Scope def) {
+            this.name = Objects.requireNonNull(name);
+            this.use = use;
+            this.def = def;
+        }
+
+        static UseInfo resolvedLocal(String name, Scope local) {
+            return new UseInfo(name, local, local);
+        }
+
+        static UseInfo unresolved(String name) {
+            return new UseInfo(name, null, null);
+        }
+
+        /**
+         * Add an unresolved use of the symbol in an inner scope.
+         */
+        void addInnerUse(Scope useScope) {
+            if (innerUseScopes == null) {
+                innerUseScopes = new ArrayList<>();
+            }
+            // there should not be any duplicate scopes in the list
+            assert !innerUseScopes.stream().anyMatch(s -> s == useScope) : name;
+            innerUseScopes.add(useScope);
+        }
+
+        boolean isResolved() {
+            return !isUnresolved();
+        }
+
+        boolean isUnresolved() {
+            return def == null || innerUseScopes != null;
+        }
+
+        boolean hasInnerUse() {
+            return innerUseScopes != null;
+        }
+
+        @Override
+        public String toString() {
+            return (def == null ? "?" : "") + (hasInnerUse() ? "<" : "") +
+                            ((def != null && def != use && use != null) ? ">" : "") +
+                            ((def != null && (def == use || use == null)) ? "_" : "");
+        }
+    }
+
+    static void debugLog(Supplier<String> msg) {
+        if (DEBUG_SCOPE) {
+            System.out.println(msg.get());
+        }
+    }
+
+    private static final boolean DEBUG_SCOPE = Boolean.getBoolean("truffle.js.debugscope");
 }

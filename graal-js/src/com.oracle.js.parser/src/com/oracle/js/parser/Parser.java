@@ -500,6 +500,8 @@ public class Parser extends AbstractParser {
      * parameter identifiers is expected to be parsed. Errors will be thrown and the error manager
      * will contain information if parsing should fail. This method is used to check if parameter
      * Strings passed to "Function" constructor is a valid or not.
+     *
+     * @see #parseFunctionBody
      */
     public void parseFormalParameterList() {
         try {
@@ -508,6 +510,7 @@ public class Parser extends AbstractParser {
 
             scanFirstToken();
 
+            assert lc.getCurrentScope() == null;
             formalParameterList(TokenType.EOF, false, false);
         } catch (final Exception e) {
             handleParseException(e);
@@ -520,6 +523,7 @@ public class Parser extends AbstractParser {
      * String passed to "Function" constructor is a valid function body or not.
      *
      * @return function node resulting from successful parse
+     * @see #parseFormalParameterList
      */
     public FunctionNode parseFunctionBody(boolean generator, boolean async) {
         try {
@@ -1088,6 +1092,7 @@ public class Parser extends AbstractParser {
             restoreBlock(body);
             lc.pop(script);
         }
+
         body.setFlag(Block.NEEDS_SCOPE);
         final Block programBody = new Block(functionToken, finish, body.getFlags() | Block.IS_SYNTHETIC | Block.IS_BODY, body.getScope(), body.getStatements());
         script.setLastToken(token);
@@ -1814,6 +1819,7 @@ public class Parser extends AbstractParser {
     private IdentNode privateIdentifierUse() {
         IdentNode privateIdent = parsePrivateIdentifier();
 
+        Scope currentScope = lc.getCurrentScope();
         ParserContextClassNode currentClass = lc.getCurrentClass();
         // In a class: try to eagerly resolve the private identifier; if it is not found,
         // defer resolving until the end of the class declaration.
@@ -1821,10 +1827,12 @@ public class Parser extends AbstractParser {
         if (currentClass != null) {
             currentClass.usePrivateName(privateIdent);
         } else {
-            if (!lc.getCurrentScope().findPrivateName(privateIdent.getName())) {
+            if (!currentScope.findPrivateName(privateIdent.getName())) {
                 throw error(AbstractParser.message("invalid.private.ident"), privateIdent.getToken());
             }
         }
+
+        currentScope.addIdentifierReference(privateIdent.getName());
 
         return privateIdent;
     }
@@ -2503,7 +2511,12 @@ public class Parser extends AbstractParser {
     }
 
     private IdentNode identifierReference(boolean yield, boolean await) {
-        return identifier(yield, await, "IdentifierReference", false);
+        IdentNode ident = identifier(yield, await, "IdentifierReference", false);
+        Scope currentScope = lc.getCurrentScope();
+        if (currentScope != null) { // can be null when parsing/verifying a parameter list.
+            currentScope.addIdentifierReference(ident.getName());
+        }
+        return ident;
     }
 
     private IdentNode labelIdentifier(boolean yield, boolean await) {
@@ -2515,7 +2528,12 @@ public class Parser extends AbstractParser {
     }
 
     private IdentNode bindingIdentifier(boolean yield, boolean await, String contextString) {
-        return identifier(yield, await, contextString, true);
+        IdentNode ident = identifier(yield, await, contextString, true);
+        Scope currentScope = lc.getCurrentScope();
+        if (currentScope != null) { // can be null when parsing/verifying a parameter list.
+            currentScope.addIdentifierReference(ident.getName());
+        }
+        return ident;
     }
 
     private Expression bindingPattern(boolean yield, boolean await) {
@@ -4222,17 +4240,19 @@ public class Parser extends AbstractParser {
         } else if (isIdentifier && (type == COMMARIGHT || type == RBRACE || type == ASSIGN) && isES6()) {
             IdentNode ident = (IdentNode) propertyName;
             verifyIdent(ident, yield, await);
-            IdentNode identInValue = createIdentNode(propertyToken, finish, ident.getPropertyName());
+            ident = createIdentNode(propertyToken, finish, ident.getPropertyName());
+            // IdentifierReference or CoverInitializedName
             if (type == ASSIGN && ES6_DESTRUCTURING) {
                 // If not destructuring, this is a SyntaxError
                 long assignToken = token;
                 coverInitializedName = true;
                 next();
                 Expression rhs = assignmentExpression(true, yield, await);
-                propertyValue = verifyAssignment(assignToken, identInValue, rhs, true);
+                propertyValue = verifyAssignment(assignToken, ident, rhs, true);
             } else {
-                propertyValue = detectSpecialProperty(identInValue);
+                propertyValue = detectSpecialProperty(ident);
             }
+            lc.getCurrentScope().addIdentifierReference(ident.getName());
         } else {
             expect(COLON);
 
@@ -7121,6 +7141,7 @@ public class Parser extends AbstractParser {
 
     private void markEval() {
         lc.setCurrentFunctionFlag(FunctionNode.HAS_EVAL | FunctionNode.HAS_SCOPE_BLOCK);
+        lc.getCurrentScope().setHasEval();
     }
 
     private void prependStatement(final Statement statement) {

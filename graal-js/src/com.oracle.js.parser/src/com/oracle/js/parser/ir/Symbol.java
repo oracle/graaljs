@@ -108,6 +108,13 @@ public final class Symbol implements Comparable<Symbol> {
     /** Is this symbol the function 'arguments' binding? */
     public static final int IS_ARGUMENTS = 1 << 21;
 
+    /** Is this symbol used? */
+    public static final int IS_USED = 1 << 22;
+    /** Is this symbol closed over by an inner function closure? */
+    public static final int IS_CLOSED_OVER = 1 << 23;
+    /** Is this symbol used by an inner scope within the same function? */
+    public static final int IS_USED_IN_INNER_SCOPE = 1 << 24;
+
     /** Null or name identifying symbol. */
     private final String name;
 
@@ -394,5 +401,47 @@ public final class Symbol implements Comparable<Symbol> {
      */
     public boolean isArguments() {
         return (flags & IS_ARGUMENTS) != 0;
+    }
+
+    /**
+     * Is this symbol used.
+     */
+    public boolean isUsed() {
+        return (flags & IS_USED) != 0;
+    }
+
+    /**
+     * Mark this symbol as used.
+     */
+    public void setUsed() {
+        flags |= IS_USED;
+    }
+
+    /**
+     * Is this symbol captured by a closure.
+     */
+    public boolean isClosedOver() {
+        return (flags & IS_CLOSED_OVER) != 0;
+    }
+
+    /**
+     * Mark this symbol as captured by a closure.
+     */
+    public void setClosedOver() {
+        flags |= IS_CLOSED_OVER;
+    }
+
+    /**
+     * Is this symbol captured by an inner scope.
+     */
+    public boolean isUsedInInnerScope() {
+        return (flags & IS_USED_IN_INNER_SCOPE) != 0;
+    }
+
+    /**
+     * Mark this symbol as captured by an inner scope.
+     */
+    public void setUsedInInnerScope() {
+        flags |= IS_USED_IN_INNER_SCOPE;
     }
 }
