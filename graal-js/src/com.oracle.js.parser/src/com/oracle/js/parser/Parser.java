@@ -4003,23 +4003,23 @@ public class Parser extends AbstractParser {
                     final FunctionNode prevGetter = existingProperty.getGetter();
                     final FunctionNode prevSetter = existingProperty.getSetter();
 
-                    if (!isES6()) {
-                        checkPropertyRedefinition(property, value, getter, setter, prevValue, prevGetter, prevSetter);
-                    } else {
+                    if (isES6()) {
                         if (property.isProto() && existingProperty.isProto()) {
                             throw error(AbstractParser.message("multiple.proto.key"), property.getToken());
                         }
-                    }
+                    } else {
+                        checkPropertyRedefinition(property, value, getter, setter, prevValue, prevGetter, prevSetter);
 
-                    if (!isES6() && value == null && prevValue == null) {
-                        // Update the map with existing (merged accessor) properties
-                        // for the purpose of checkPropertyRedefinition() above
-                        if (getter != null) {
-                            assert prevGetter != null || prevSetter != null;
-                            map.put(key, existingProperty.setGetter(getter));
-                        } else if (setter != null) {
-                            assert prevGetter != null || prevSetter != null;
-                            map.put(key, existingProperty.setSetter(setter));
+                        if (value == null && prevValue == null) {
+                            // Update the map with existing (merged accessor) properties
+                            // for the purpose of checkPropertyRedefinition() above
+                            if (getter != null) {
+                                assert prevGetter != null || prevSetter != null;
+                                map.put(key, existingProperty.setGetter(getter));
+                            } else if (setter != null) {
+                                assert prevGetter != null || prevSetter != null;
+                                map.put(key, existingProperty.setSetter(setter));
+                            }
                         }
                     }
                     break;
