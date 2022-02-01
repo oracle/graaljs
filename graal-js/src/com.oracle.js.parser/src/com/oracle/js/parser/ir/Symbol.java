@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -113,9 +113,6 @@ public final class Symbol implements Comparable<Symbol> {
 
     /** Symbol flags. */
     private int flags;
-
-    /** Number of times this symbol is used in code */
-    private int useCount;
 
     /**
      * Constructor
@@ -304,15 +301,6 @@ public final class Symbol implements Comparable<Symbol> {
      */
     public String getName() {
         return name;
-    }
-
-    /**
-     * Get the symbol's use count
-     *
-     * @return the number of times the symbol is used in code.
-     */
-    public int getUseCount() {
-        return useCount;
     }
 
     /**
