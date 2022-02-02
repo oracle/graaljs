@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -92,7 +92,6 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.java.JavaAccess;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -352,21 +351,20 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             }
 
             final TruffleLanguage.Env env = getRealm().getEnv();
-            final Class<?>[] types = new Class<?>[typesLength];
+            final Object[] types = new Object[typesLength];
             for (int i = 0; i < typesLength; i++) {
                 if (!isType(arguments[i], env)) {
                     errorBranch.enter();
                     throw Errors.createTypeError("Java.extend needs Java types as its arguments.");
                 }
-                types[i] = toHostClass(arguments[i], env);
+                types[i] = arguments[i];
             }
 
             try {
-                JavaAccess.checkAccess(types, env);
                 if (classOverrides != null) {
-                    return env.createHostAdapterClassWithStaticOverrides(types, classOverrides);
+                    return env.createHostAdapterWithClassOverrides(types, classOverrides);
                 } else {
-                    return env.createHostAdapterClass(types);
+                    return env.createHostAdapter(types);
                 }
             } catch (Exception ex) {
                 throw Errors.createTypeError(ex.getMessage(), ex, this);
@@ -374,12 +372,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         protected static boolean isType(Object obj, TruffleLanguage.Env env) {
-            return env.isHostObject(obj) && env.asHostObject(obj) instanceof Class<?>;
-        }
-
-        protected static Class<?> toHostClass(Object type, TruffleLanguage.Env env) {
-            assert isType(type, env);
-            return (Class<?>) env.asHostObject(type);
+            return env.isHostObject(obj) && (env.isHostSymbol(obj) || InteropLibrary.getUncached().isMetaObject(obj));
         }
     }
 

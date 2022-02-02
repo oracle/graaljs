@@ -74,7 +74,6 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.java.JavaAccess;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -216,10 +215,8 @@ public abstract class JSNewNode extends JavaScriptNode {
             throwCannotExtendError(type);
         }
         // Equivalent to Java.extend(type)
-        Class<?>[] types = new Class<?>[]{type};
         try {
-            JavaAccess.checkAccess(types, env);
-            return env.createHostAdapterClass(types);
+            return env.createHostAdapter(new Object[]{env.asHostSymbol(type)});
         } catch (Exception ex) {
             throw Errors.createTypeError(ex.getMessage(), ex, this);
         }
