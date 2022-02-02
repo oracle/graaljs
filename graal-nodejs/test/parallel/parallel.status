@@ -176,6 +176,7 @@ test-zlib-unused-weak: FAIL
 
 # Fails randomly
 test-http2-server-rst-stream: SKIP
+test-fs-utimes: SKIP
 
 [$system==solaris]
 test-http2-respond-file-fd-invalid : FAIL
