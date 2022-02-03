@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.codec;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
 
 /**
  * Utility for decoding values from a ByteBuffer.
@@ -116,8 +115,13 @@ public class BinaryDecoder {
         return getSV();
     }
 
-    public String getUTF8() {
-        return new String(getByteArray(), StandardCharsets.UTF_8);
+    public String getString() {
+        int size = getUInt();
+        char[] array = new char[size];
+        for (int i = 0; i < size; i++) {
+            array[i] = buffer.getChar();
+        }
+        return new String(array);
     }
 
     public byte[] getByteArray() {
