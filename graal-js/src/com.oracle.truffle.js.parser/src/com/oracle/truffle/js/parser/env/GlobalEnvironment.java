@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.parser.env;
 
+import java.util.Map;
+
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.js.nodes.JSFrameSlot;
@@ -47,6 +49,7 @@ import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public final class GlobalEnvironment extends DerivedEnvironment {
+    /** Entries: (name, const). */
     private final EconomicMap<String, Boolean> lexicalDeclarations;
     private final EconomicMap<String, Boolean> varDeclarations;
 
@@ -93,5 +96,10 @@ public final class GlobalEnvironment extends DerivedEnvironment {
             default:
                 return false;
         }
+    }
+
+    @Override
+    protected String toStringImpl(Map<String, Integer> state) {
+        return "Global" + lexicalDeclarations + varDeclarations;
     }
 }

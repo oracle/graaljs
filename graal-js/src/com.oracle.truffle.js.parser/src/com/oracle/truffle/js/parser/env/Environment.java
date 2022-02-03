@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,10 @@
  */
 package com.oracle.truffle.js.parser.env;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.StringJoiner;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
@@ -1103,32 +1106,19 @@ public abstract class Environment {
         }
     }
 
+    protected String toStringImpl(@SuppressWarnings("unused") Map<String, Integer> state) {
+        return this.getClass().getSimpleName();
+    }
+
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
+        StringJoiner output = new StringJoiner("\n");
+        Map<String, Integer> state = new HashMap<>();
         Environment current = this;
-        int frameLevel = 0;
-        int scopeLevel = 0;
         do {
-            if (current instanceof FunctionEnvironment) {
-                sb.append("Function").append("(").append(frameLevel).append(")");
-                sb.append(current.getFunctionFrameDescriptor().getIdentifiers().toString());
-
-                frameLevel++;
-                scopeLevel = 0;
-            } else if (current instanceof BlockEnvironment) {
-                sb.append("Block").append("(").append(frameLevel).append(", ").append(scopeLevel).append(")");
-                sb.append(current.getBlockFrameDescriptor().getIdentifiers().toString());
-
-                scopeLevel++;
-            } else {
-                sb.append(current.getClass().getSimpleName());
-            }
+            output.add(current.toStringImpl(state));
             current = current.getParent();
-            if (current != null) {
-                sb.append('\n');
-            }
         } while (current != null);
-        return sb.toString();
+        return output.toString();
     }
 }

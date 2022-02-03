@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.parser.env;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 import org.graalvm.collections.EconomicMap;
@@ -549,5 +550,13 @@ public final class FunctionEnvironment extends Environment {
 
     public boolean isAsyncGeneratorFunction() {
         return isAsyncFunction && isGeneratorFunction;
+    }
+
+    @Override
+    protected String toStringImpl(Map<String, Integer> state) {
+        int currentFrameLevel = state.getOrDefault("frameLevel", 0);
+        state.put("frameLevel", currentFrameLevel);
+        state.put("scopeLevel", 0);
+        return "Function(" + currentFrameLevel + ")" + getFunctionFrameDescriptor().getIdentifiers().toString();
     }
 }
