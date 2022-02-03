@@ -464,8 +464,8 @@ public final class TemporalParser {
     public JSTemporalParserRecord result() {
         try {
             // TODO MinuteSecond has 59 seconds, TimeSecond has 60 seconds
-            return new JSTemporalParserRecord(utcDesignator != null, prepare(year, Long.MAX_VALUE), prepare(month, 12), prepare(day, 31), prepare(hour, 23), prepare(minute, 59), prepare(second, 60),
-                            fraction, offsetSign, prepare(offsetHour, 23), prepare(offsetMinute, 59), prepare(offsetSecond, 59), offsetFraction, timeZoneIANAName, timeZoneEtcName,
+            return new JSTemporalParserRecord(utcDesignator != null, prepare(year, Long.MAX_VALUE, true), prepare(month, 12), prepare(day, 31), prepare(hour, 23), prepare(minute, 59),
+                            prepare(second, 60), fraction, offsetSign, prepare(offsetHour, 23), prepare(offsetMinute, 59), prepare(offsetSecond, 59), offsetFraction, timeZoneIANAName, timeZoneEtcName,
                             timeZoneUTCOffsetName, calendar, timeZoneNumericUTCOffset);
         } catch (Exception ex) {
             return null;
@@ -473,6 +473,10 @@ public final class TemporalParser {
     }
 
     private static long prepare(TruffleString value, long max) {
+        return prepare(value, max, false);
+    }
+
+    private static long prepare(TruffleString value, long max, boolean canBeNegative) {
         if (value == null) {
             return Long.MIN_VALUE;
         }
@@ -482,7 +486,7 @@ public final class TemporalParser {
         } catch (TruffleString.NumberFormatException e) {
             throw CompilerDirectives.shouldNotReachHere(e);
         }
-        if (l < 0 || l > max) {
+        if ((!canBeNegative && (l < 0)) || l > max) {
             throw new RuntimeException("date value out of bounds");
         }
         return l;
