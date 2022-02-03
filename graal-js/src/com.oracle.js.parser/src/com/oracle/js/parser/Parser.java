@@ -5090,6 +5090,18 @@ public class Parser extends AbstractParser {
             // name is null, generate anonymous name
             functionNode.setInternalName(getDefaultFunctionName());
         }
+
+        boolean illegalES5BlockLevelFunctionDeclaration = false;
+        if (isStatement && !isAnonymous) {
+            functionNode.setFlag(FunctionNode.IS_STATEMENT);
+            if (topLevel || useBlockScope() || (!isStrictMode && env.functionStatement == ScriptEnvironment.FunctionStatementBehavior.ACCEPT)) {
+                functionNode.setFlag(FunctionNode.IS_DECLARED);
+            } else {
+                // For compatibility with Nashorn, we report the error after parsing the body.
+                illegalES5BlockLevelFunctionDeclaration = true;
+            }
+        }
+
         lc.push(functionNode);
 
         Block functionBody;
@@ -5118,17 +5130,8 @@ public class Parser extends AbstractParser {
             lc.pop(functionNode);
         }
 
-        if (isStatement && !isAnonymous) {
-            functionNode.setFlag(FunctionNode.IS_STATEMENT);
-            if (topLevel || useBlockScope() || (!isStrictMode && env.functionStatement == ScriptEnvironment.FunctionStatementBehavior.ACCEPT)) {
-                functionNode.setFlag(FunctionNode.IS_DECLARED);
-            } else if (isStrictMode) {
-                throw error(JSErrorType.SyntaxError, AbstractParser.message("strict.no.func.decl.here"), functionToken);
-            } else if (env.functionStatement == ScriptEnvironment.FunctionStatementBehavior.ERROR) {
-                throw error(JSErrorType.SyntaxError, AbstractParser.message("no.func.decl.here"), functionToken);
-            } else if (env.functionStatement == ScriptEnvironment.FunctionStatementBehavior.WARNING) {
-                warning(JSErrorType.SyntaxError, AbstractParser.message("no.func.decl.here.warn"), functionToken);
-            }
+        if (illegalES5BlockLevelFunctionDeclaration) {
+            reportIllegalES5BlockLevelFunctionDeclaration(functionToken);
         }
 
         verifyParameterList(functionNode);
@@ -5196,6 +5199,17 @@ public class Parser extends AbstractParser {
                 }
                 parametersSet.add(parameterName);
             }
+        }
+    }
+
+    private void reportIllegalES5BlockLevelFunctionDeclaration(long functionToken) {
+        assert !isES6();
+        if (isStrictMode) {
+            throw error(JSErrorType.SyntaxError, AbstractParser.message("strict.no.func.decl.here"), functionToken);
+        } else if (env.functionStatement == ScriptEnvironment.FunctionStatementBehavior.ERROR) {
+            throw error(JSErrorType.SyntaxError, AbstractParser.message("no.func.decl.here"), functionToken);
+        } else if (env.functionStatement == ScriptEnvironment.FunctionStatementBehavior.WARNING) {
+            warning(JSErrorType.SyntaxError, AbstractParser.message("no.func.decl.here.warn"), functionToken);
         }
     }
 
