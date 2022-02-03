@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.codec;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
 
 /**
  * Utility for encoding values to a ByteBuffer.
@@ -132,8 +131,13 @@ public class BinaryEncoder {
         }
     }
 
-    public void putUTF8(String value) {
-        putByteArray(value.getBytes(StandardCharsets.UTF_8));
+    public void putString(String value) {
+        char[] array = value.toCharArray();
+        putUV(array.length);
+        ensureCapacity(2 * array.length);
+        for (char c : array) {
+            buffer.putChar(c);
+        }
     }
 
     public void putByteArray(byte[] value) {

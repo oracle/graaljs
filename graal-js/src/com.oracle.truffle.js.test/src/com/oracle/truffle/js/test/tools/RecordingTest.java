@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -162,4 +162,22 @@ public class RecordingTest extends JSTest {
         Object result = script.run(testHelper.getRealm());
         assertEquals("OK", result);
     }
+
+    @Test
+    public void testUnpairedSurrogate() throws IOException {
+        JSContext context = testHelper.getJSContext();
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, "'\\ud834'", "test.js").build();
+        Recording rec = Recording.recordSource(source, context, false, "", "");
+
+        byte[] snapshot;
+        try (ByteArrayOutputStream outs = new ByteArrayOutputStream()) {
+            rec.saveToStream(source.getName(), outs, true);
+            snapshot = outs.toByteArray();
+        }
+
+        ScriptNode script = ((JSParser) context.getEvaluator()).parseScript(context, source, ByteBuffer.wrap(snapshot));
+        Object result = script.run(testHelper.getRealm());
+        assertEquals("\ud834", result);
+    }
+
 }
