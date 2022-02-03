@@ -1895,11 +1895,11 @@
   }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/toZonedDateTime/timezone-string-multiple-offsets.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "ParseTemporalTimeZoneString reads TimeZoneIANAName but the offset in brackets lands in TimeZoneUTCOffsetName"
   }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/toZonedDateTimeISO/timezone-string-multiple-offsets.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "ParseTemporalTimeZoneString reads TimeZoneIANAName but the offset in brackets lands in TimeZoneUTCOffsetName"
   }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/until/year-zero.js",
     "status" : "FAIL",
@@ -1907,11 +1907,11 @@
   }, {
     "filePath" : "built-ins/Temporal/Now/zonedDateTime/timezone-string-multiple-offsets.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "ParseTemporalTimeZoneString reads TimeZoneIANAName but the offset in brackets lands in TimeZoneUTCOffsetName"
   }, {
     "filePath" : "built-ins/Temporal/Now/zonedDateTimeISO/timezone-string-multiple-offsets.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "ParseTemporalTimeZoneString reads TimeZoneIANAName but the offset in brackets lands in TimeZoneUTCOffsetName"
   }, {
     "filePath" : "built-ins/Temporal/PlainDate/compare/year-zero.js",
     "status" : "FAIL",
@@ -2171,7 +2171,7 @@
   }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/toZonedDateTime/timezone-string-multiple-offsets.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "ParseTemporalTimeZoneString reads TimeZoneIANAName but the offset in brackets lands in TimeZoneUTCOffsetName"
   }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/toZonedDateTime/year-zero.js",
     "status" : "FAIL",
@@ -2291,7 +2291,7 @@
   }, {
     "filePath" : "built-ins/Temporal/TimeZone/from/timezone-string-multiple-offsets.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "ParseTemporalTimeZoneString reads TimeZoneIANAName but the offset in brackets lands in TimeZoneUTCOffsetName"
   }, {
     "filePath" : "built-ins/Temporal/TimeZone/prototype/getInstantFor/year-zero.js",
     "status" : "FAIL",
@@ -2315,7 +2315,7 @@
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/timezone-string-multiple-offsets.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "ParseTemporalTimeZoneString reads TimeZoneIANAName but the offset in brackets lands in TimeZoneUTCOffsetName"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/zoneddatetime-string-multiple-offsets.js",
     "status" : "FAIL",
@@ -2339,7 +2339,7 @@
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/timezone-string-multiple-offsets.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "ParseTemporalTimeZoneString reads TimeZoneIANAName but the offset in brackets lands in TimeZoneUTCOffsetName"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/zoneddatetime-string-multiple-offsets.js",
     "status" : "FAIL",
@@ -2407,7 +2407,7 @@
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withTimeZone/timezone-string-multiple-offsets.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
+    "comment" : "ParseTemporalTimeZoneString reads TimeZoneIANAName but the offset in brackets lands in TimeZoneUTCOffsetName"
   }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
