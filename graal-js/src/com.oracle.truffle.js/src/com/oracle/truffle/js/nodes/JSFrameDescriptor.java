@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,8 @@
  */
 package com.oracle.truffle.js.nodes;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.StringJoiner;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicSet;
@@ -57,7 +55,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class JSFrameDescriptor {
 
     private final Object defaultValue;
-    private final List<JSFrameSlot> slots = new ArrayList<>();
     private final EconomicMap<Object, JSFrameSlot> identifierToSlotMap = EconomicMap.create();
     private int size;
     private FrameDescriptor frameDescriptor;
@@ -91,9 +88,8 @@ public final class JSFrameDescriptor {
         int index = size;
         JSFrameSlot slot = new JSFrameSlot(index, identifier, flags, kind);
         size++;
-        slots.add(slot);
         identifierToSlotMap.put(identifier, slot);
-        assert slots.size() == size && identifierToSlotMap.size() == size;
+        assert identifierToSlotMap.size() == size;
         return slot;
     }
 
@@ -146,7 +142,7 @@ public final class JSFrameDescriptor {
 
         FrameDescriptor.Builder b = FrameDescriptor.newBuilder(size);
         b.defaultValue(defaultValue);
-        for (JSFrameSlot slot : slots) {
+        for (JSFrameSlot slot : identifierToSlotMap.getValues()) {
             int index = b.addSlot(slot.getKind(), slot.getIdentifier(), slot.getInfo());
             assert slot.getIndex() == index;
         }
@@ -171,6 +167,10 @@ public final class JSFrameDescriptor {
 
     @Override
     public String toString() {
-        return "FrameDescriptor[size=" + size + ", slots=" + slots.stream().map(slot -> slot.getIdentifier().toString()).collect(Collectors.joining(", ", "{", "}")) + "]";
+        StringJoiner slots = new StringJoiner(", ", "{", "}");
+        for (JSFrameSlot slot : identifierToSlotMap.getValues()) {
+            slots.add(slot.getIdentifier().toString());
+        }
+        return "FrameDescriptor[size=" + size + ", slots=" + slots + "]";
     }
 }
