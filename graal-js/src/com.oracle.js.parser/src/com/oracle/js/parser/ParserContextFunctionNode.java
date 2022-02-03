@@ -545,6 +545,18 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
                 }
             }
         }
+        if (getFlag(FunctionNode.IS_ANONYMOUS) == 0 && !name.isEmpty()) {
+            if (hasParameterExpressions()) {
+                Scope parameterScope = getParameterScope();
+                if (!parameterScope.hasSymbol(name) && !bodyScope.hasSymbol(name)) {
+                    parameterScope.putSymbol(new Symbol(name, Symbol.IS_LET | Symbol.IS_FUNCTION_SELF | Symbol.HAS_BEEN_DECLARED));
+                }
+            } else {
+                if (!bodyScope.hasSymbol(name)) {
+                    bodyScope.putSymbol(new Symbol(name, Symbol.IS_VAR | Symbol.IS_FUNCTION_SELF | Symbol.HAS_BEEN_DECLARED));
+                }
+            }
+        }
         if (hasParameterExpressions()) {
             // Lock the scopes to make sure we don't add any more symbols. Not strictly necessary.
             bodyScope.close();
