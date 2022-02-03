@@ -369,13 +369,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             Environment parentEnv = environment;
             functionData.setLazyInit(fd -> {
                 GraalJSTranslator translator = newTranslator(parentEnv, savedLC);
-                translator.translateFunctionOnDemand(functionNode, fd, isStrict, isArrowFunction, isGeneratorFunction, isAsyncFunction, isDerivedConstructor, isGlobal,
-                                needsParentFrame, functionName, hasSyntheticArguments);
+                translator.translateFunctionOnDemand(functionNode, fd, isStrict, isGlobal, needsParentFrame, functionName, hasSyntheticArguments);
             });
             functionRoot = null;
         } else {
             Environment prevEnv = environment;
-            try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(isStrict, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction, isGlobal, hasSyntheticArguments)) {
+            try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(functionNode, isStrict, isGlobal, hasSyntheticArguments)) {
                 FunctionEnvironment currentFunction = currentFunction();
                 currentFunction.setFunctionName(functionName);
                 currentFunction.setInternalFunctionName(functionNode.getInternalName());
@@ -400,7 +399,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 boolean needsParentFrame = functionNode.usesAncestorScope();
                 currentFunction.setNeedsParentFrame(needsParentFrame);
 
-                JavaScriptNode body = translateFunctionBody(functionNode, isGeneratorFunction, isAsyncFunction, declarations);
+                JavaScriptNode body = translateFunctionBody(functionNode, declarations);
 
                 needsParentFrame = currentFunction.needsParentFrame();
                 blockScopeSlot = needsParentFrame && prevEnv != null ? prevEnv.getCurrentBlockScopeSlot() : null;
@@ -434,10 +433,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return functionExpression;
     }
 
-    JavaScriptNode translateFunctionBody(FunctionNode functionNode, boolean isGeneratorFunction, boolean isAsyncFunction, List<JavaScriptNode> declarations) {
+    JavaScriptNode translateFunctionBody(FunctionNode functionNode, List<JavaScriptNode> declarations) {
         JavaScriptNode body = transform(functionNode.getBody());
 
-        if (isAsyncFunction && !isGeneratorFunction) {
+        if (functionNode.isAsync() && !functionNode.isGenerator()) {
             ensureHasSourceSection(body, functionNode);
             body = handleAsyncFunctionBody(body);
         }
@@ -449,9 +448,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return body;
     }
 
-    private FunctionRootNode translateFunctionOnDemand(FunctionNode functionNode, JSFunctionData functionData, boolean isStrict, boolean isArrowFunction, boolean isGeneratorFunction,
-                    boolean isAsyncFunction, boolean isDerivedConstructor, boolean isGlobal, boolean needsParentFrame, String functionName, boolean hasSyntheticArguments) {
-        try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(isStrict, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction, isGlobal, hasSyntheticArguments)) {
+    private FunctionRootNode translateFunctionOnDemand(FunctionNode functionNode, JSFunctionData functionData, boolean isStrict,
+                    boolean isGlobal, boolean needsParentFrame, String functionName, boolean hasSyntheticArguments) {
+        try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(functionNode, isStrict, isGlobal, hasSyntheticArguments)) {
             FunctionEnvironment currentFunction = currentFunction();
             currentFunction.setFunctionName(functionName);
             currentFunction.setInternalFunctionName(functionNode.getInternalName());
@@ -462,7 +461,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             declareParameters(functionNode);
             functionEnvInit(functionNode);
 
-            JavaScriptNode body = translateFunctionBody(functionNode, isGeneratorFunction, isAsyncFunction, Collections.emptyList());
+            JavaScriptNode body = translateFunctionBody(functionNode, Collections.emptyList());
 
             currentFunction.freeze();
             assert currentFunction.isDeepFrozen();
@@ -780,19 +779,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return body;
     }
 
-    private EnvironmentCloseable enterFunctionEnvironment(boolean isStrict, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor, boolean isAsyncFunction,
-                    boolean isGlobal, boolean hasSyntheticArguments) {
+    private EnvironmentCloseable enterFunctionEnvironment(FunctionNode function, boolean isStrict, boolean isGlobal, boolean hasSyntheticArguments) {
         Environment functionEnv;
         if (environment instanceof EvalEnvironment) {
-            assert !isArrowFunction && !isGeneratorFunction && !isDerivedConstructor && !isAsyncFunction;
+            assert !function.isArrow() && !function.isGenerator() && !function.isDerivedConstructor() && !function.isAsync();
             functionEnv = new FunctionEnvironment(environment.getParent(), factory, context, isStrict, true, ((EvalEnvironment) environment).isDirectEval(), false, false, false, false, isGlobal,
                             hasSyntheticArguments);
         } else if (environment instanceof DebugEnvironment) {
-            assert !isArrowFunction && !isGeneratorFunction && !isDerivedConstructor && !isAsyncFunction;
+            assert !function.isArrow() && !function.isGenerator() && !function.isDerivedConstructor() && !function.isAsync();
             functionEnv = new FunctionEnvironment(environment, factory, context, isStrict, true, true, false, false, false, false, isGlobal, hasSyntheticArguments);
         } else {
-            functionEnv = new FunctionEnvironment(environment, factory, context, isStrict, false, false, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction, isGlobal,
-                            hasSyntheticArguments);
+            functionEnv = new FunctionEnvironment(environment, factory, context, isStrict, false, false,
+                            function.isArrow(), function.isGenerator(), function.isDerivedConstructor(), function.isAsync(), isGlobal, hasSyntheticArguments);
         }
         return new EnvironmentCloseable(functionEnv);
     }
