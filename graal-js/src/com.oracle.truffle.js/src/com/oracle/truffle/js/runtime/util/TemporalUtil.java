@@ -2541,6 +2541,7 @@ public final class TemporalUtil {
                 options = JSOrdinary.createWithNullPrototype(ctx);
                 newRelativeTo = TemporalUtil.calendarDateAdd(calendar, relativeTo, oneYear, options, dateAdd);
                 options = JSOrdinary.createWithNullPrototype(ctx);
+                JSObjectUtil.putDataProperty(ctx, options, TemporalConstants.LARGEST_UNIT, MONTH);
                 untilResult = TemporalUtil.calendarDateUntil(calendar, relativeTo, newRelativeTo, options, dateUntil);
                 oneYearMonths = dtol(untilResult.getMonths());
             }
