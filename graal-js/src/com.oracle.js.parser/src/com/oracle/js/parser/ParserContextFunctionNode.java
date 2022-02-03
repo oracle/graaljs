@@ -545,7 +545,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
                 }
             }
         }
-        if (getFlag(FunctionNode.IS_ANONYMOUS) == 0 && !name.isEmpty()) {
+        if (hasFunctionSelf()) {
             if (hasParameterExpressions()) {
                 Scope parameterScope = getParameterScope();
                 if (!parameterScope.hasSymbol(name) && !bodyScope.hasSymbol(name)) {
@@ -562,6 +562,10 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             bodyScope.close();
             getParameterScope().close();
         }
+    }
+
+    private boolean hasFunctionSelf() {
+        return getFlag(FunctionNode.NO_FUNCTION_SELF) == 0 && !name.isEmpty();
     }
 
     public String getInternalName() {
