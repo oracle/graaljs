@@ -5062,7 +5062,10 @@ public class Parser extends AbstractParser {
             next();
         }
 
+        assert !(isDeclaration && !isDefault) || isStatement; // sanity check
+
         IdentNode name = null;
+        boolean declared = isDeclaration;
 
         if (isBindingIdentifier()) {
             boolean yield = (!isDeclaration && generator) || (isDeclaration && isYield);
@@ -5074,7 +5077,10 @@ public class Parser extends AbstractParser {
             // are not allowed. But if we are reparsing then anon function
             // statement is possible - because it was used as function
             // expression in surrounding code.
-            if (!env.syntaxExtensions && reparsedFunction == null) {
+            if (env.syntaxExtensions) {
+                // statement is treated like an anonymous function expression, not a declaration.
+                declared = false;
+            } else if (reparsedFunction == null) {
                 expect(IDENT);
             }
         }
@@ -5082,24 +5088,18 @@ public class Parser extends AbstractParser {
         expect(LPAREN);
 
         boolean isAnonymous = name == null;
+        // Function declarations must be named, with the exception of default exports.
+        assert !declared || (!isAnonymous || isDefault);
+
         int functionFlags = (generator ? FunctionNode.IS_GENERATOR : 0) |
                         (async ? FunctionNode.IS_ASYNC : 0) |
-                        (isAnonymous ? FunctionNode.IS_ANONYMOUS : 0);
+                        (isAnonymous ? FunctionNode.IS_ANONYMOUS : 0) |
+                        (declared ? FunctionNode.IS_DECLARED : 0) |
+                        ((isStatement && !isAnonymous) ? FunctionNode.IS_STATEMENT : 0);
         final ParserContextFunctionNode functionNode = createParserContextFunctionNode(name, functionToken, functionFlags, functionLine);
         if (isAnonymous) {
             // name is null, generate anonymous name
             functionNode.setInternalName(getDefaultFunctionName());
-        }
-
-        boolean illegalES5BlockLevelFunctionDeclaration = false;
-        if (isStatement && !isAnonymous) {
-            functionNode.setFlag(FunctionNode.IS_STATEMENT);
-            if (topLevel || useBlockScope() || (!isStrictMode && env.functionStatement == ScriptEnvironment.FunctionStatementBehavior.ACCEPT)) {
-                functionNode.setFlag(FunctionNode.IS_DECLARED);
-            } else {
-                // For compatibility with Nashorn, we report the error after parsing the body.
-                illegalES5BlockLevelFunctionDeclaration = true;
-            }
         }
 
         lc.push(functionNode);
@@ -5130,7 +5130,9 @@ public class Parser extends AbstractParser {
             lc.pop(functionNode);
         }
 
-        if (illegalES5BlockLevelFunctionDeclaration) {
+        if ((isStatement && !isAnonymous) && !(topLevel || useBlockScope()) &&
+                        (isStrictMode || env.functionStatement != ScriptEnvironment.FunctionStatementBehavior.ACCEPT)) {
+            // For compatibility with Nashorn, we report the error after parsing the body.
             reportIllegalES5BlockLevelFunctionDeclaration(functionToken);
         }
 
@@ -6978,9 +6980,9 @@ public class Parser extends AbstractParser {
                 }
                 if (hoistableDeclaration) {
                     FunctionNode functionNode = (FunctionNode) assignmentExpression;
+                    assert functionNode.isDeclared();
                     if (!functionNode.isAnonymous()) {
                         ident = functionNode.getIdent();
-                        assignmentExpression = functionNode.setFlag(null, FunctionNode.IS_DECLARED);
                     }
                 }
                 if (ident == null) {
