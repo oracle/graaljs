@@ -587,7 +587,7 @@ public abstract class Environment {
 
     public void addFrameSlotFromSymbol(com.oracle.js.parser.ir.Symbol symbol) {
         // Frame slot may already exist for simple parameters and "arguments".
-        assert !getBlockFrameDescriptor().getIdentifiers().contains(symbol.getName()) || this instanceof FunctionEnvironment;
+        assert !getBlockFrameDescriptor().contains(symbol.getName()) || this instanceof FunctionEnvironment : symbol;
         // other bits not needed
         int flags = symbol.getFlags() & JSFrameUtil.SYMBOL_FLAG_MASK;
         getBlockFrameDescriptor().findOrAddFrameSlot(symbol.getName(), flags, FrameSlotKind.Illegal);
@@ -1108,6 +1108,14 @@ public abstract class Environment {
 
     protected String toStringImpl(@SuppressWarnings("unused") Map<String, Integer> state) {
         return this.getClass().getSimpleName();
+    }
+
+    protected static String joinElements(Iterable<? extends Object> keySet) {
+        StringJoiner sj = new StringJoiner(", ", "{", "}");
+        for (Object key : keySet) {
+            sj.add(String.valueOf(key));
+        }
+        return sj.toString();
     }
 
     @Override

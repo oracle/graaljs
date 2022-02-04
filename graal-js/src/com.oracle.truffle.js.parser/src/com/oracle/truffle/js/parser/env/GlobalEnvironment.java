@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.parser.env;
 
 import java.util.Map;
+import java.util.StringJoiner;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -100,6 +101,6 @@ public final class GlobalEnvironment extends DerivedEnvironment {
 
     @Override
     protected String toStringImpl(Map<String, Integer> state) {
-        return "Global" + lexicalDeclarations + varDeclarations;
+        return "Global" + new StringJoiner(", ", "{", "}").add(joinElements(lexicalDeclarations.getKeys())).add(joinElements(varDeclarations.getKeys())).toString();
     }
 }

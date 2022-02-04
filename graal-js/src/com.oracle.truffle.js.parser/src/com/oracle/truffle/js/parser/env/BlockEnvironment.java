@@ -108,6 +108,7 @@ public final class BlockEnvironment extends Environment {
         int currentFrameLevel = state.getOrDefault("frameLevel", 0);
         int currentScopeLevel = state.getOrDefault("scopeLevel", 0);
         state.put("scopeLevel", currentScopeLevel + 1);
-        return "Block(" + currentFrameLevel + ", " + currentScopeLevel + ")" + getBlockFrameDescriptor().getIdentifiers().toString();
+        return "Block(" + currentFrameLevel + ", " + currentScopeLevel + ")" +
+                        " size=" + getBlockFrameDescriptor().getSize() + " " + joinElements(getBlockFrameDescriptor().getIdentifiers());
     }
 }

@@ -555,8 +555,9 @@ public final class FunctionEnvironment extends Environment {
     @Override
     protected String toStringImpl(Map<String, Integer> state) {
         int currentFrameLevel = state.getOrDefault("frameLevel", 0);
-        state.put("frameLevel", currentFrameLevel);
+        state.put("frameLevel", currentFrameLevel + 1);
         state.put("scopeLevel", 0);
-        return "Function(" + currentFrameLevel + ")" + getFunctionFrameDescriptor().getIdentifiers().toString();
+        return "Function(" + currentFrameLevel + ")" +
+                        " size=" + getFunctionFrameDescriptor().getSize() + " " + joinElements(getFunctionFrameDescriptor().getIdentifiers());
     }
 }

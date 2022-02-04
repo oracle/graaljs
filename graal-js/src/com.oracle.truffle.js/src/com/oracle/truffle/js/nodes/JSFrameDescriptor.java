@@ -44,7 +44,6 @@ import java.util.Objects;
 import java.util.StringJoiner;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.UnmodifiableEconomicSet;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -129,10 +128,14 @@ public final class JSFrameDescriptor {
         return this.size;
     }
 
-    @SuppressWarnings("unchecked")
-    public UnmodifiableEconomicSet<Object> getIdentifiers() {
+    public boolean contains(Object identifier) {
         CompilerAsserts.neverPartOfCompilation();
-        return (UnmodifiableEconomicSet<Object>) identifierToSlotMap;
+        return identifierToSlotMap.containsKey(identifier);
+    }
+
+    public Iterable<Object> getIdentifiers() {
+        CompilerAsserts.neverPartOfCompilation();
+        return identifierToSlotMap.getKeys();
     }
 
     public FrameDescriptor toFrameDescriptor() {
