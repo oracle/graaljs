@@ -5912,6 +5912,8 @@ public class Parser extends AbstractParser {
 
         ParserContextFunctionNode cover = createParserContextArrowFunctionNode(primaryToken, startLine, false, true);
         lc.push(cover);
+        ParserContextBlockNode parameterBlock = cover.createParameterBlock();
+        lc.push(parameterBlock);
         try {
             while (true) {
                 if (ES6_ARROW_FUNCTION && ES6_REST_PARAMETER && isES6() && type == ELLIPSIS) {
@@ -5946,6 +5948,7 @@ public class Parser extends AbstractParser {
                 next();
             }
         } finally {
+            lc.pop(parameterBlock);
             lc.pop(cover);
         }
 

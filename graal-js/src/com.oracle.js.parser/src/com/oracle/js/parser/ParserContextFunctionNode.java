@@ -437,9 +437,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     private void initParameterBlock() {
-        if (parameterBlock == null) {
-            createParameterBlock();
-        }
+        createParameterBlock();
 
         if (parameters != null) {
             for (int i = 0; i < parameters.size(); i++) {
@@ -453,6 +451,9 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     public ParserContextBlockNode createParameterBlock() {
         assert bodyScope == null : "parameter block must be created before body block";
         assert !isScriptOrModule();
+        if (parameterBlock != null) {
+            return parameterBlock;
+        }
         parameterBlock = new ParserContextBlockNode(token, Scope.createFunctionParameter(parentScope, getFlags()));
         parameterBlock.setFlag(Block.IS_PARAMETER_BLOCK | Block.IS_SYNTHETIC);
         return parameterBlock;
