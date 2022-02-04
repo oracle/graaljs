@@ -5987,6 +5987,7 @@ public class Parser extends AbstractParser {
     }
 
     private void revertArrowHead(ParserContextFunctionNode cover) {
+        cover.getParameterScope().close();
         // merge flags gathered during expression parsing into the current function's flags.
         lc.setCurrentFunctionFlag(cover.getFlags() & FunctionNode.ARROW_HEAD_FLAGS);
     }
