@@ -408,11 +408,11 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         long nanoseconds = nanosecondsP;
 
         int sign = TemporalUtil.durationSign(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-        microseconds += nanoseconds / 1000l;
+        microseconds += nanoseconds / 1000L;
         nanoseconds = TemporalUtil.remainder(nanoseconds, 1000);
-        milliseconds += microseconds / 1000l;
+        milliseconds += microseconds / 1000L;
         microseconds = TemporalUtil.remainder(microseconds, 1000);
-        seconds += milliseconds / 1000l;
+        seconds += milliseconds / 1000L;
         milliseconds = TemporalUtil.remainder(milliseconds, 1000);
         StringBuilder datePart = new StringBuilder();
         if (years != 0) {
