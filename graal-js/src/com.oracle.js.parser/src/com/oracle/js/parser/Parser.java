@@ -3614,39 +3614,53 @@ public class Parser extends AbstractParser {
                 final long catchToken = token;
                 next();
 
-                if (type == LBRACE && ES2019_OPTIONAL_CATCH_BINDING) {
-                    catchBlocks.add(catchBlock(yield, await, catchToken, catchLine, null, null, null));
-                    break;
+                boolean optionalCatchBinding = type == LBRACE && ES2019_OPTIONAL_CATCH_BINDING;
+                if (!optionalCatchBinding) {
+                    expect(LPAREN);
                 }
 
-                expect(LPAREN);
-
-                final Expression catchParameter = bindingIdentifierOrPattern(yield, await, CATCH_PARAMETER_CONTEXT);
-                final IdentNode exception;
-                final Expression pattern;
-                if (catchParameter instanceof IdentNode) {
-                    exception = ((IdentNode) catchParameter).setIsCatchParameter();
-                    pattern = null;
-                } else {
-                    exception = new IdentNode(Token.recast(catchParameter.getToken(), IDENT), catchParameter.getFinish(), ERROR_BINDING_NAME).setIsCatchParameter();
-                    pattern = catchParameter;
-                }
-
-                // Nashorn extension: catch clause can have optional
-                // condition. So, a single try can have more than one
-                // catch clause each with it's own condition.
+                final ParserContextBlockNode catchBlock = newBlock(Scope.createCatchParameter(lc.getCurrentScope()));
                 final Expression ifExpression;
-                if (env.syntaxExtensions && type == IF) {
-                    next();
-                    // Get the exception condition.
-                    ifExpression = expression(yield, await);
-                } else {
-                    ifExpression = null;
+                try {
+                    final IdentNode exception;
+                    final Expression pattern;
+                    if (optionalCatchBinding) {
+                        exception = null;
+                        pattern = null;
+                        ifExpression = null;
+                    } else {
+                        if (isBindingIdentifier() || !(ES6_DESTRUCTURING && isES6())) {
+                            pattern = null;
+                            IdentNode catchParameter = bindingIdentifier(yield, await, CATCH_PARAMETER_CONTEXT);
+                            exception = catchParameter.setIsCatchParameter();
+                        } else {
+                            pattern = bindingPattern(yield, await);
+                            exception = new IdentNode(Token.recast(pattern.getToken(), IDENT), pattern.getFinish(), ERROR_BINDING_NAME).setIsCatchParameter();
+                        }
+
+                        // Nashorn extension: catch clause can have optional
+                        // condition. So, a single try can have more than one
+                        // catch clause each with it's own condition.
+                        if (env.syntaxExtensions && type == IF) {
+                            next();
+                            // Get the exception condition.
+                            ifExpression = expression(yield, await);
+                        } else {
+                            ifExpression = null;
+                        }
+
+                        expect(RPAREN);
+                    }
+
+                    final CatchNode catchNode = catchBody(yield, await, catchToken, catchLine, exception, pattern, ifExpression);
+                    appendStatement(catchNode);
+                } finally {
+                    restoreBlock(catchBlock);
                 }
 
-                expect(RPAREN);
-
-                catchBlocks.add(catchBlock(yield, await, catchToken, catchLine, exception, pattern, ifExpression));
+                int catchFinish = Math.max(finish, Token.descPosition(catchBlock.getToken()));
+                Block catchBlockNode = new Block(catchBlock.getToken(), catchFinish, catchBlock.getFlags() | Block.IS_SYNTHETIC, catchBlock.getScope(), catchBlock.getStatements());
+                catchBlocks.add(catchBlockNode);
 
                 // If unconditional catch then should to be the end.
                 if (ifExpression == null) {
@@ -3678,36 +3692,29 @@ public class Parser extends AbstractParser {
         appendStatement(new BlockStatement(startLine, new Block(tryToken, finish, outer.getFlags() | Block.IS_SYNTHETIC, outer.getScope(), outer.getStatements())));
     }
 
-    private Block catchBlock(boolean yield, boolean await, long catchToken, int catchLine, IdentNode exception, Expression pattern, Expression ifExpression) {
-        final ParserContextBlockNode catchBlock = newBlock(Scope.createCatchParameter(lc.getCurrentScope()));
-        try {
-            if (exception != null) {
-                VarNode exceptionVar = new VarNode(catchLine, Token.recast(exception.getToken(), LET), exception.getFinish(), exception.setIsDeclaredHere(), null, VarNode.IS_LET);
-                appendStatement(exceptionVar);
-                declareVar(catchBlock.getScope(), exceptionVar);
-                if (pattern != null) {
-                    verifyDestructuringBindingPattern(pattern, new Consumer<IdentNode>() {
-                        @Override
-                        public void accept(IdentNode identNode) {
-                            verifyStrictIdent(identNode, CATCH_PARAMETER_CONTEXT);
-                            final int varFlags = VarNode.IS_LET | VarNode.IS_DESTRUCTURING;
-                            final VarNode var = new VarNode(catchLine, Token.recast(identNode.getToken(), LET), identNode.getFinish(), identNode.setIsDeclaredHere(), null, varFlags);
-                            appendStatement(var);
-                            declareVar(catchBlock.getScope(), var);
-                        }
-                    });
-                }
+    private CatchNode catchBody(boolean yield, boolean await, long catchToken, int catchLine, IdentNode exception, Expression pattern, Expression ifExpression) {
+        if (exception != null) {
+            final Scope catchScope = lc.getCurrentScope();
+            assert catchScope.isCatchParameterScope();
+            VarNode exceptionVar = new VarNode(catchLine, Token.recast(exception.getToken(), LET), exception.getFinish(), exception.setIsDeclaredHere(), null, VarNode.IS_LET);
+            appendStatement(exceptionVar);
+            declareVar(catchScope, exceptionVar);
+            if (pattern != null) {
+                verifyDestructuringBindingPattern(pattern, new Consumer<IdentNode>() {
+                    @Override
+                    public void accept(IdentNode identNode) {
+                        verifyStrictIdent(identNode, CATCH_PARAMETER_CONTEXT);
+                        final int varFlags = VarNode.IS_LET | VarNode.IS_DESTRUCTURING;
+                        final VarNode var = new VarNode(catchLine, Token.recast(identNode.getToken(), LET), identNode.getFinish(), identNode.setIsDeclaredHere(), null, varFlags);
+                        appendStatement(var);
+                        declareVar(catchScope, var);
+                    }
+                });
             }
-
-            // Get CATCH body.
-            final Block catchBody = getBlock(yield, await, true);
-            final CatchNode catchNode = new CatchNode(catchLine, catchToken, finish, exception, pattern, ifExpression, catchBody, false);
-            appendStatement(catchNode);
-        } finally {
-            restoreBlock(catchBlock);
         }
-        int catchFinish = Math.max(finish, Token.descPosition(catchBlock.getToken()));
-        return new Block(catchBlock.getToken(), catchFinish, catchBlock.getFlags() | Block.IS_SYNTHETIC, catchBlock.getScope(), catchBlock.getStatements());
+
+        final Block catchBody = getBlock(yield, await, true);
+        return new CatchNode(catchLine, catchToken, finish, exception, pattern, ifExpression, catchBody, false);
     }
 
     /**
