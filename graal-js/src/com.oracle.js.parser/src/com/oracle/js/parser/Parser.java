@@ -4914,9 +4914,13 @@ public class Parser extends AbstractParser {
         boolean first = true;
         boolean hasCoverInitializedName = false;
 
-        ParserContextFunctionNode cover = coverAsyncArrow ? createParserContextArrowFunctionNode(startToken, startLine, true, true) : null;
+        ParserContextFunctionNode cover = null;
+        ParserContextBlockNode parameterBlock = null;
         if (coverAsyncArrow) {
+            cover = createParserContextArrowFunctionNode(startToken, startLine, true, true);
             lc.push(cover);
+            parameterBlock = cover.createParameterBlock();
+            lc.push(parameterBlock);
         }
 
         try {
@@ -4952,6 +4956,7 @@ public class Parser extends AbstractParser {
             }
         } finally {
             if (coverAsyncArrow) {
+                lc.pop(parameterBlock);
                 lc.pop(cover);
             }
         }
