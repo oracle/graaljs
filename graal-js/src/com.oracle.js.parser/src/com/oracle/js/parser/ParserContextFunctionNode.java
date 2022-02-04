@@ -526,6 +526,26 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
                         getFlag(FunctionNode.DEFINES_ARGUMENTS | FunctionNode.IS_ARROW | FunctionNode.IS_CLASS_FIELD_INITIALIZER) == 0;
     }
 
+    private boolean hasFunctionSelf() {
+        return getFlag(FunctionNode.NO_FUNCTION_SELF) == 0 && !name.isEmpty();
+    }
+
+    /**
+     * Add a function-level binding if it is not shadowed by a parameter or var declaration.
+     */
+    private void putFunctionSymbolIfAbsent(String bindingName, int symbolFlags) {
+        if (hasParameterExpressions()) {
+            Scope parameterScope = getParameterScope();
+            if (!parameterScope.hasSymbol(bindingName) && !bodyScope.hasSymbol(bindingName)) {
+                parameterScope.putSymbol(new Symbol(bindingName, Symbol.IS_LET | symbolFlags | Symbol.HAS_BEEN_DECLARED));
+            }
+        } else {
+            if (!bodyScope.hasSymbol(bindingName)) {
+                bodyScope.putSymbol(new Symbol(bindingName, Symbol.IS_VAR | symbolFlags | Symbol.HAS_BEEN_DECLARED));
+            }
+        }
+    }
+
     public void finishBodyScope() {
         if (hoistableBlockFunctionDeclarations != null) {
             declareHoistedBlockFunctionDeclarations();
@@ -534,38 +554,16 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             return;
         }
         if (needsArguments()) {
-            if (hasParameterExpressions()) {
-                Scope parameterScope = getParameterScope();
-                if (!parameterScope.hasSymbol(Parser.ARGUMENTS_NAME) && !bodyScope.hasSymbol(Parser.ARGUMENTS_NAME)) {
-                    parameterScope.putSymbol(new Symbol(Parser.ARGUMENTS_NAME, Symbol.IS_LET | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
-                }
-            } else {
-                if (!bodyScope.hasSymbol(Parser.ARGUMENTS_NAME)) {
-                    bodyScope.putSymbol(new Symbol(Parser.ARGUMENTS_NAME, Symbol.IS_VAR | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
-                }
-            }
+            putFunctionSymbolIfAbsent(Parser.ARGUMENTS_NAME, Symbol.IS_ARGUMENTS);
         }
         if (hasFunctionSelf()) {
-            if (hasParameterExpressions()) {
-                Scope parameterScope = getParameterScope();
-                if (!parameterScope.hasSymbol(name) && !bodyScope.hasSymbol(name)) {
-                    parameterScope.putSymbol(new Symbol(name, Symbol.IS_LET | Symbol.IS_FUNCTION_SELF | Symbol.HAS_BEEN_DECLARED));
-                }
-            } else {
-                if (!bodyScope.hasSymbol(name)) {
-                    bodyScope.putSymbol(new Symbol(name, Symbol.IS_VAR | Symbol.IS_FUNCTION_SELF | Symbol.HAS_BEEN_DECLARED));
-                }
-            }
+            putFunctionSymbolIfAbsent(name, Symbol.IS_FUNCTION_SELF);
         }
         if (hasParameterExpressions()) {
             // Lock the scopes to make sure we don't add any more symbols. Not strictly necessary.
             bodyScope.close();
             getParameterScope().close();
         }
-    }
-
-    private boolean hasFunctionSelf() {
-        return getFlag(FunctionNode.NO_FUNCTION_SELF) == 0 && !name.isEmpty();
     }
 
     public String getInternalName() {
