@@ -102,13 +102,13 @@ public final class WhileNode extends StatementNode {
         return createWhileDo(condition, body, ControlFlowRootTag.Type.ForAwaitOfIteration);
     }
 
-    public static JavaScriptNode createDoWhile(JavaScriptNode condition, JavaScriptNode body) {
-        if (condition instanceof JSConstantNode && !JSRuntime.toBoolean(((JSConstantNode) condition).getValue())) {
-            // do {} while (0); happens 336 times in Mandreel
-            return body;
-        }
+    public static RepeatingNode createDoWhileRepeatingNode(JavaScriptNode condition, JavaScriptNode body) {
         JavaScriptNode nonVoidBody = body instanceof DiscardResultNode ? ((DiscardResultNode) body).getOperand() : body;
-        return new WhileNode(new DoWhileRepeatingNode(condition, nonVoidBody), ControlFlowRootTag.Type.DoWhileIteration);
+        return new DoWhileRepeatingNode(condition, nonVoidBody);
+    }
+
+    public static JavaScriptNode createDoWhile(RepeatingNode repeatingNode) {
+        return new WhileNode(repeatingNode, ControlFlowRootTag.Type.DoWhileIteration);
     }
 
     @Override

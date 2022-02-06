@@ -323,7 +323,7 @@ public class MaterializedNodes {
 
     @Test
     public void materializeMultiWhile() {
-        JavaScriptNode node = WhileNode.createDoWhile(dummyJSNode, dummyJSNode);
+        JavaScriptNode node = WhileNode.createDoWhile(WhileNode.createDoWhileRepeatingNode(dummyJSNode, dummyJSNode));
         assertNotMaterializedTwice(node, ControlFlowRootTag.class);
     }
 

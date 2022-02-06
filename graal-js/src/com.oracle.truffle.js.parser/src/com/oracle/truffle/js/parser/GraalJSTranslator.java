@@ -1812,7 +1812,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode createDoWhile(JavaScriptNode condition, JavaScriptNode body) {
-        return factory.createDoWhile(condition, body);
+        if (condition instanceof JSConstantNode && !JSRuntime.toBoolean(((JSConstantNode) condition).getValue())) {
+            // do {} while (0); happens 336 times in Mandreel
+            return body;
+        }
+        RepeatingNode repeatingNode = factory.createDoWhileRepeatingNode(condition, body);
+        return factory.createDoWhile(repeatingNode);
     }
 
     private JavaScriptNode createWhileDo(JavaScriptNode condition, JavaScriptNode body) {

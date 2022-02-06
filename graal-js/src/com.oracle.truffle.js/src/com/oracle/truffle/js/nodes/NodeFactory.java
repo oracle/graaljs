@@ -505,8 +505,12 @@ public class NodeFactory {
         return parent;
     }
 
-    public JavaScriptNode createDoWhile(JavaScriptNode condition, JavaScriptNode body) {
-        return WhileNode.createDoWhile(condition, body);
+    public RepeatingNode createDoWhileRepeatingNode(JavaScriptNode condition, JavaScriptNode body) {
+        return WhileNode.createDoWhileRepeatingNode(condition, body);
+    }
+
+    public JavaScriptNode createDoWhile(RepeatingNode repeatingNode) {
+        return WhileNode.createDoWhile(repeatingNode);
     }
 
     public JavaScriptNode createDesugaredFor(JavaScriptNode condition, JavaScriptNode body) {
