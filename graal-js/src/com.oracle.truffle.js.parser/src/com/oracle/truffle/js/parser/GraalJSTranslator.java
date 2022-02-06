@@ -1811,8 +1811,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
+    private static boolean isConstantFalse(JavaScriptNode condition) {
+        return condition instanceof JSConstantNode && !JSRuntime.toBoolean(((JSConstantNode) condition).getValue());
+    }
+
     private JavaScriptNode createDoWhile(JavaScriptNode condition, JavaScriptNode body) {
-        if (condition instanceof JSConstantNode && !JSRuntime.toBoolean(((JSConstantNode) condition).getValue())) {
+        if (isConstantFalse(condition)) {
             // do {} while (0); happens 336 times in Mandreel
             return body;
         }
@@ -1821,7 +1825,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode createWhileDo(JavaScriptNode condition, JavaScriptNode body) {
-        return factory.createWhileDo(condition, body);
+        if (isConstantFalse(condition)) {
+            return factory.createEmpty();
+        }
+        RepeatingNode repeatingNode = factory.createWhileDoRepeatingNode(condition, body);
+        return factory.createWhileDo(repeatingNode);
     }
 
     private JavaScriptNode wrapGetCompletionValue(JavaScriptNode target) {
@@ -1907,7 +1915,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             ensureHasSourceSection(newFor, forNode);
             return createBlock(init, firstTempVar.createWriteNode(factory.createConstantBoolean(true)), newFor);
         }
-        JavaScriptNode whileDo = factory.createDesugaredFor(test, createBlock(wrappedBody, modify));
+        RepeatingNode repeatingNode = factory.createWhileDoRepeatingNode(test, createBlock(wrappedBody, modify));
+        JavaScriptNode whileDo = factory.createDesugaredFor(repeatingNode);
         if (forNode.getTest() == null) {
             tagStatement(test, forNode);
         } else {
@@ -1962,7 +1971,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             body));
         }
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
-        JavaScriptNode whileNode = forNode.isForOf() ? factory.createDesugaredForOf(condition, wrappedBody) : factory.createDesugaredForIn(condition, wrappedBody);
+        RepeatingNode repeatingNode = factory.createWhileDoRepeatingNode(condition, wrappedBody);
+        JavaScriptNode whileNode = forNode.isForOf() ? factory.createDesugaredForOf(repeatingNode) : factory.createDesugaredForIn(repeatingNode);
         JavaScriptNode wrappedWhile = factory.createIteratorCloseIfNotDone(context, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode());
         JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
         wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
@@ -2017,7 +2027,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             body));
         }
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
-        JavaScriptNode whileNode = factory.createDesugaredForAwaitOf(condition, wrappedBody);
+        RepeatingNode repeatingNode = factory.createWhileDoRepeatingNode(condition, wrappedBody);
+        JavaScriptNode whileNode = factory.createDesugaredForAwaitOf(repeatingNode);
         currentFunction().addAwait();
         stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Object);
         JavaScriptNode wrappedWhile = factory.createAsyncIteratorCloseWrapper(context, stateSlot, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(),

@@ -50,13 +50,11 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -74,32 +72,33 @@ public final class WhileNode extends StatementNode {
         this.loopType = type;
     }
 
-    private static JavaScriptNode createWhileDo(JavaScriptNode condition, JavaScriptNode body, ControlFlowRootTag.Type type) {
-        if (condition instanceof JSConstantNode && !JSRuntime.toBoolean(((JSConstantNode) condition).getValue())) {
-            return new EmptyNode();
-        }
+    private static JavaScriptNode createWhileDo(RepeatingNode repeatingNode, ControlFlowRootTag.Type type) {
+        return new WhileNode(repeatingNode, type);
+    }
+
+    public static RepeatingNode createWhileDoRepeatingNode(JavaScriptNode condition, JavaScriptNode body) {
         JavaScriptNode nonVoidBody = body instanceof DiscardResultNode ? ((DiscardResultNode) body).getOperand() : body;
-        return new WhileNode(new WhileDoRepeatingNode(condition, nonVoidBody), type);
+        return new WhileDoRepeatingNode(condition, nonVoidBody);
     }
 
-    public static JavaScriptNode createWhileDo(JavaScriptNode condition, JavaScriptNode body) {
-        return createWhileDo(condition, body, ControlFlowRootTag.Type.WhileIteration);
+    public static JavaScriptNode createWhileDo(RepeatingNode repeatingNode) {
+        return createWhileDo(repeatingNode, ControlFlowRootTag.Type.WhileIteration);
     }
 
-    public static JavaScriptNode createDesugaredFor(JavaScriptNode condition, JavaScriptNode body) {
-        return createWhileDo(condition, body, ControlFlowRootTag.Type.ForIteration);
+    public static JavaScriptNode createDesugaredFor(RepeatingNode repeatingNode) {
+        return createWhileDo(repeatingNode, ControlFlowRootTag.Type.ForIteration);
     }
 
-    public static JavaScriptNode createDesugaredForOf(JavaScriptNode condition, JavaScriptNode body) {
-        return createWhileDo(condition, body, ControlFlowRootTag.Type.ForOfIteration);
+    public static JavaScriptNode createDesugaredForOf(RepeatingNode repeatingNode) {
+        return createWhileDo(repeatingNode, ControlFlowRootTag.Type.ForOfIteration);
     }
 
-    public static JavaScriptNode createDesugaredForIn(JavaScriptNode condition, JavaScriptNode body) {
-        return createWhileDo(condition, body, ControlFlowRootTag.Type.ForInIteration);
+    public static JavaScriptNode createDesugaredForIn(RepeatingNode repeatingNode) {
+        return createWhileDo(repeatingNode, ControlFlowRootTag.Type.ForInIteration);
     }
 
-    public static JavaScriptNode createDesugaredForAwaitOf(JavaScriptNode condition, JavaScriptNode body) {
-        return createWhileDo(condition, body, ControlFlowRootTag.Type.ForAwaitOfIteration);
+    public static JavaScriptNode createDesugaredForAwaitOf(RepeatingNode repeatingNode) {
+        return createWhileDo(repeatingNode, ControlFlowRootTag.Type.ForAwaitOfIteration);
     }
 
     public static RepeatingNode createDoWhileRepeatingNode(JavaScriptNode condition, JavaScriptNode body) {

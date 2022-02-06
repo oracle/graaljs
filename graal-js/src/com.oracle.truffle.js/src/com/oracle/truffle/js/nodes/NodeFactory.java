@@ -466,8 +466,12 @@ public class NodeFactory {
         return SwitchNode.create(caseExpressions, jumptable, statements);
     }
 
-    public JavaScriptNode createWhileDo(JavaScriptNode condition, JavaScriptNode body) {
-        return WhileNode.createWhileDo(condition, body);
+    public RepeatingNode createWhileDoRepeatingNode(JavaScriptNode condition, JavaScriptNode body) {
+        return WhileNode.createWhileDoRepeatingNode(condition, body);
+    }
+
+    public JavaScriptNode createWhileDo(RepeatingNode repeatingNode) {
+        return WhileNode.createWhileDo(repeatingNode);
     }
 
     // Let snapshotting know where WhileDoRepeatingNode/DoWhileRepeatingNode comes from
@@ -513,20 +517,20 @@ public class NodeFactory {
         return WhileNode.createDoWhile(repeatingNode);
     }
 
-    public JavaScriptNode createDesugaredFor(JavaScriptNode condition, JavaScriptNode body) {
-        return WhileNode.createDesugaredFor(condition, body);
+    public JavaScriptNode createDesugaredFor(RepeatingNode repeatingNode) {
+        return WhileNode.createDesugaredFor(repeatingNode);
     }
 
-    public JavaScriptNode createDesugaredForOf(JavaScriptNode condition, JavaScriptNode body) {
-        return WhileNode.createDesugaredForOf(condition, body);
+    public JavaScriptNode createDesugaredForOf(RepeatingNode repeatingNode) {
+        return WhileNode.createDesugaredForOf(repeatingNode);
     }
 
-    public JavaScriptNode createDesugaredForIn(JavaScriptNode condition, JavaScriptNode body) {
-        return WhileNode.createDesugaredForIn(condition, body);
+    public JavaScriptNode createDesugaredForIn(RepeatingNode repeatingNode) {
+        return WhileNode.createDesugaredForIn(repeatingNode);
     }
 
-    public JavaScriptNode createDesugaredForAwaitOf(JavaScriptNode condition, JavaScriptNode body) {
-        return WhileNode.createDesugaredForAwaitOf(condition, body);
+    public JavaScriptNode createDesugaredForAwaitOf(RepeatingNode repeatingNode) {
+        return WhileNode.createDesugaredForAwaitOf(repeatingNode);
     }
 
     public RepeatingNode createForRepeatingNode(JavaScriptNode condition, JavaScriptNode body, JavaScriptNode modify, FrameDescriptor frameDescriptor, JavaScriptNode isFirstNode,
