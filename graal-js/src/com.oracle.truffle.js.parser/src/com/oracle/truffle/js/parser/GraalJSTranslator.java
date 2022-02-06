@@ -1715,7 +1715,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     @Override
                     public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
                         JavaScriptNode throwErrorNode = createReadNode();
-                        return isPotentiallySideEffecting(rhs) ? DualNode.create(rhs, throwErrorNode) : throwErrorNode;
+                        return isPotentiallySideEffecting(rhs) ? factory.createBinary(null, BinaryOperation.DUAL, rhs, throwErrorNode) : throwErrorNode;
                     }
 
                     @Override
