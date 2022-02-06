@@ -97,6 +97,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RepeatingNode;
@@ -1821,7 +1822,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return body;
         }
         RepeatingNode repeatingNode = factory.createDoWhileRepeatingNode(condition, body);
-        return factory.createDoWhile(repeatingNode);
+        return factory.createDoWhile(factory.createLoopNode(repeatingNode));
     }
 
     private JavaScriptNode createWhileDo(JavaScriptNode condition, JavaScriptNode body) {
@@ -1829,7 +1830,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return factory.createEmpty();
         }
         RepeatingNode repeatingNode = factory.createWhileDoRepeatingNode(condition, body);
-        return factory.createWhileDo(repeatingNode);
+        return factory.createWhileDo(factory.createLoopNode(repeatingNode));
     }
 
     private JavaScriptNode wrapGetCompletionValue(JavaScriptNode target) {
@@ -1911,12 +1912,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             JSFrameDescriptor iterationBlockFrameDescriptor = environment.getBlockFrameDescriptor();
             RepeatingNode repeatingNode = factory.createForRepeatingNode(test, wrappedBody, modify, iterationBlockFrameDescriptor.toFrameDescriptor(), firstTempVar.createReadNode(),
                             firstTempVar.createWriteNode(factory.createConstantBoolean(false)), currentFunction().getBlockScopeSlot());
-            StatementNode newFor = factory.createFor(repeatingNode);
+            StatementNode newFor = factory.createFor(factory.createLoopNode(repeatingNode));
             ensureHasSourceSection(newFor, forNode);
             return createBlock(init, firstTempVar.createWriteNode(factory.createConstantBoolean(true)), newFor);
         }
         RepeatingNode repeatingNode = factory.createWhileDoRepeatingNode(test, createBlock(wrappedBody, modify));
-        JavaScriptNode whileDo = factory.createDesugaredFor(repeatingNode);
+        JavaScriptNode whileDo = factory.createDesugaredFor(factory.createLoopNode(repeatingNode));
         if (forNode.getTest() == null) {
             tagStatement(test, forNode);
         } else {
@@ -1972,7 +1973,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
         RepeatingNode repeatingNode = factory.createWhileDoRepeatingNode(condition, wrappedBody);
-        JavaScriptNode whileNode = forNode.isForOf() ? factory.createDesugaredForOf(repeatingNode) : factory.createDesugaredForIn(repeatingNode);
+        LoopNode loopNode = factory.createLoopNode(repeatingNode);
+        JavaScriptNode whileNode = forNode.isForOf() ? factory.createDesugaredForOf(loopNode) : factory.createDesugaredForIn(loopNode);
         JavaScriptNode wrappedWhile = factory.createIteratorCloseIfNotDone(context, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode());
         JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
         wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
@@ -2028,7 +2030,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
         RepeatingNode repeatingNode = factory.createWhileDoRepeatingNode(condition, wrappedBody);
-        JavaScriptNode whileNode = factory.createDesugaredForAwaitOf(repeatingNode);
+        LoopNode loopNode = factory.createLoopNode(repeatingNode);
+        JavaScriptNode whileNode = factory.createDesugaredForAwaitOf(loopNode);
         currentFunction().addAwait();
         stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Object);
         JavaScriptNode wrappedWhile = factory.createAsyncIteratorCloseWrapper(context, stateSlot, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(),

@@ -45,9 +45,11 @@ import java.util.List;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RepeatingNode;
@@ -466,12 +468,16 @@ public class NodeFactory {
         return SwitchNode.create(caseExpressions, jumptable, statements);
     }
 
+    public LoopNode createLoopNode(RepeatingNode repeatingNode) {
+        return Truffle.getRuntime().createLoopNode(repeatingNode);
+    }
+
     public RepeatingNode createWhileDoRepeatingNode(JavaScriptNode condition, JavaScriptNode body) {
         return WhileNode.createWhileDoRepeatingNode(condition, body);
     }
 
-    public JavaScriptNode createWhileDo(RepeatingNode repeatingNode) {
-        return WhileNode.createWhileDo(repeatingNode);
+    public JavaScriptNode createWhileDo(LoopNode loopNode) {
+        return WhileNode.createWhileDo(loopNode);
     }
 
     // Let snapshotting know where WhileDoRepeatingNode/DoWhileRepeatingNode comes from
@@ -513,24 +519,24 @@ public class NodeFactory {
         return WhileNode.createDoWhileRepeatingNode(condition, body);
     }
 
-    public JavaScriptNode createDoWhile(RepeatingNode repeatingNode) {
-        return WhileNode.createDoWhile(repeatingNode);
+    public JavaScriptNode createDoWhile(LoopNode loopNode) {
+        return WhileNode.createDoWhile(loopNode);
     }
 
-    public JavaScriptNode createDesugaredFor(RepeatingNode repeatingNode) {
-        return WhileNode.createDesugaredFor(repeatingNode);
+    public JavaScriptNode createDesugaredFor(LoopNode loopNode) {
+        return WhileNode.createDesugaredFor(loopNode);
     }
 
-    public JavaScriptNode createDesugaredForOf(RepeatingNode repeatingNode) {
-        return WhileNode.createDesugaredForOf(repeatingNode);
+    public JavaScriptNode createDesugaredForOf(LoopNode loopNode) {
+        return WhileNode.createDesugaredForOf(loopNode);
     }
 
-    public JavaScriptNode createDesugaredForIn(RepeatingNode repeatingNode) {
-        return WhileNode.createDesugaredForIn(repeatingNode);
+    public JavaScriptNode createDesugaredForIn(LoopNode loopNode) {
+        return WhileNode.createDesugaredForIn(loopNode);
     }
 
-    public JavaScriptNode createDesugaredForAwaitOf(RepeatingNode repeatingNode) {
-        return WhileNode.createDesugaredForAwaitOf(repeatingNode);
+    public JavaScriptNode createDesugaredForAwaitOf(LoopNode loopNode) {
+        return WhileNode.createDesugaredForAwaitOf(loopNode);
     }
 
     public RepeatingNode createForRepeatingNode(JavaScriptNode condition, JavaScriptNode body, JavaScriptNode modify, FrameDescriptor frameDescriptor, JavaScriptNode isFirstNode,
@@ -539,8 +545,8 @@ public class NodeFactory {
         return ForNode.createForRepeatingNode(condition, body, modify, perIterationScope, isFirstNode, setNotFirstNode);
     }
 
-    public StatementNode createFor(RepeatingNode repeatingNode) {
-        return ForNode.createFor(repeatingNode);
+    public StatementNode createFor(LoopNode loopNode) {
+        return ForNode.createFor(loopNode);
     }
 
     public IterationScopeNode createIterationScope(FrameDescriptor frameDescriptor, JSFrameSlot blockScopeSlot) {

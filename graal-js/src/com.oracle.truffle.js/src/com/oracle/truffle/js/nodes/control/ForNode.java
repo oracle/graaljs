@@ -73,8 +73,12 @@ public final class ForNode extends StatementNode implements ResumableNode.WithOb
     @Child private IterationScopeNode copy;
 
     private ForNode(RepeatingNode repeatingNode, IterationScopeNode copy) {
+        this(Truffle.getRuntime().createLoopNode(repeatingNode), copy);
+    }
+
+    private ForNode(LoopNode loopNode, IterationScopeNode copy) {
         this.copy = copy;
-        this.loop = Truffle.getRuntime().createLoopNode(repeatingNode);
+        this.loop = loopNode;
     }
 
     public static RepeatingNode createForRepeatingNode(JavaScriptNode condition, JavaScriptNode body, JavaScriptNode modify, IterationScopeNode copy, JavaScriptNode isFirstNode,
@@ -83,9 +87,9 @@ public final class ForNode extends StatementNode implements ResumableNode.WithOb
         return new ForRepeatingNode(condition, nonVoidBody, modify, copy, isFirstNode, setNotFirstNode);
     }
 
-    public static ForNode createFor(RepeatingNode repeatingNode) {
-        ForRepeatingNode forRepeatingNode = (ForRepeatingNode) repeatingNode;
-        return new ForNode(forRepeatingNode, NodeUtil.cloneNode(forRepeatingNode.copy));
+    public static ForNode createFor(LoopNode loopNode) {
+        ForRepeatingNode forRepeatingNode = (ForRepeatingNode) loopNode.getRepeatingNode();
+        return new ForNode(loopNode, NodeUtil.cloneNode(forRepeatingNode.copy));
     }
 
     @Override
