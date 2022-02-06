@@ -99,6 +99,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -1895,8 +1896,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (needsPerIterationScope(forNode)) {
             VarRef firstTempVar = environment.createTempVar();
             JSFrameDescriptor iterationBlockFrameDescriptor = environment.getBlockFrameDescriptor();
-            StatementNode newFor = factory.createFor(test, wrappedBody, modify, iterationBlockFrameDescriptor.toFrameDescriptor(), firstTempVar.createReadNode(),
+            RepeatingNode repeatingNode = factory.createForRepeatingNode(test, wrappedBody, modify, iterationBlockFrameDescriptor.toFrameDescriptor(), firstTempVar.createReadNode(),
                             firstTempVar.createWriteNode(factory.createConstantBoolean(false)), currentFunction().getBlockScopeSlot());
+            StatementNode newFor = factory.createFor(repeatingNode);
             ensureHasSourceSection(newFor, forNode);
             return createBlock(init, firstTempVar.createWriteNode(factory.createConstantBoolean(true)), newFor);
         }

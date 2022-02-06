@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,9 +77,15 @@ public final class ForNode extends StatementNode implements ResumableNode.WithOb
         this.loop = Truffle.getRuntime().createLoopNode(repeatingNode);
     }
 
-    public static ForNode createFor(JavaScriptNode condition, JavaScriptNode body, JavaScriptNode modify, IterationScopeNode copy, JavaScriptNode isFirstNode, JavaScriptNode setNotFirstNode) {
+    public static RepeatingNode createForRepeatingNode(JavaScriptNode condition, JavaScriptNode body, JavaScriptNode modify, IterationScopeNode copy, JavaScriptNode isFirstNode,
+                    JavaScriptNode setNotFirstNode) {
         JavaScriptNode nonVoidBody = body instanceof DiscardResultNode ? ((DiscardResultNode) body).getOperand() : body;
-        return new ForNode(new ForRepeatingNode(condition, nonVoidBody, modify, copy, isFirstNode, setNotFirstNode), NodeUtil.cloneNode(copy));
+        return new ForRepeatingNode(condition, nonVoidBody, modify, copy, isFirstNode, setNotFirstNode);
+    }
+
+    public static ForNode createFor(RepeatingNode repeatingNode) {
+        ForRepeatingNode forRepeatingNode = (ForRepeatingNode) repeatingNode;
+        return new ForNode(forRepeatingNode, NodeUtil.cloneNode(forRepeatingNode.copy));
     }
 
     @Override

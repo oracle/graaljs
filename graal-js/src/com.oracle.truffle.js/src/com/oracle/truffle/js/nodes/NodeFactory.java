@@ -525,10 +525,14 @@ public class NodeFactory {
         return WhileNode.createDesugaredForAwaitOf(condition, body);
     }
 
-    public StatementNode createFor(JavaScriptNode condition, JavaScriptNode body, JavaScriptNode modify, FrameDescriptor frameDescriptor, JavaScriptNode isFirstNode, JavaScriptNode setNotFirstNode,
-                    JSFrameSlot blockScopeSlot) {
+    public RepeatingNode createForRepeatingNode(JavaScriptNode condition, JavaScriptNode body, JavaScriptNode modify, FrameDescriptor frameDescriptor, JavaScriptNode isFirstNode,
+                    JavaScriptNode setNotFirstNode, JSFrameSlot blockScopeSlot) {
         IterationScopeNode perIterationScope = createIterationScope(frameDescriptor, blockScopeSlot);
-        return ForNode.createFor(condition, body, modify, perIterationScope, isFirstNode, setNotFirstNode);
+        return ForNode.createForRepeatingNode(condition, body, modify, perIterationScope, isFirstNode, setNotFirstNode);
+    }
+
+    public StatementNode createFor(RepeatingNode repeatingNode) {
+        return ForNode.createFor(repeatingNode);
     }
 
     public IterationScopeNode createIterationScope(FrameDescriptor frameDescriptor, JSFrameSlot blockScopeSlot) {
