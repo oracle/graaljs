@@ -255,11 +255,7 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         if hasattr(self.args, "jdt") and self.args.jdt and not self.args.force_javac:
             return []
 
-        brokenModules = [
-            # need extraction of GetIteratorNode from SpreadArgumentNode
-            'assert.js',
-            join('internal', 'fs', 'promises.js'),
-        ]
+        brokenModules = []
 
         allModules = []
         modulePath = join(_suite.dir, 'lib')
