@@ -3035,7 +3035,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode setter = getAccessor(property.getSetter());
         boolean enumerable = !isClass;
         if (property.isComputed()) {
-            return factory.createComputedAccessorMember(transform(property.getKey()), property.isStatic(), enumerable, getter, setter);
+            JavaScriptNode key = transform(property.getKey());
+            JavaScriptNode keyWrapper = factory.createToPropertyKey(key);
+            return factory.createComputedAccessorMember(keyWrapper, property.isStatic(), enumerable, getter, setter);
         } else if (property.isPrivate()) {
             VarRef privateVar = environment.findLocalVar(property.getPrivateName());
             JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
