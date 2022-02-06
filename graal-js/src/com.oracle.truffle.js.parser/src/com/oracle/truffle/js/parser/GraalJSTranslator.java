@@ -115,6 +115,7 @@ import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.DeclareEvalVariableNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
@@ -2106,10 +2107,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 return enterNewNode(unaryNode);
             case DELETE:
                 return enterDelete(unaryNode);
-            case SPREAD_ARGUMENT:
-                return tagExpression(factory.createSpreadArgument(context, transform(unaryNode.getExpression())), unaryNode);
-            case SPREAD_ARRAY:
-                return tagExpression(factory.createSpreadArray(context, transform(unaryNode.getExpression())), unaryNode);
+            case SPREAD_ARGUMENT: {
+                JavaScriptNode argument = transform(unaryNode.getExpression());
+                GetIteratorNode getIterator = factory.createGetIterator(context, argument);
+                return tagExpression(factory.createSpreadArgument(context, getIterator), unaryNode);
+            }
+            case SPREAD_ARRAY: {
+                JavaScriptNode array = transform(unaryNode.getExpression());
+                GetIteratorNode getIterator = factory.createGetIterator(context, array);
+                return tagExpression(factory.createSpreadArray(context, getIterator), unaryNode);
+            }
             case YIELD:
             case YIELD_STAR:
                 return tagExpression(createYieldNode(unaryNode), unaryNode);

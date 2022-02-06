@@ -888,12 +888,12 @@ public class NodeFactory {
         return MakeMethodNode.create(context, function);
     }
 
-    public JavaScriptNode createSpreadArgument(JSContext context, JavaScriptNode argument) {
-        return SpreadArgumentNode.create(context, argument);
+    public JavaScriptNode createSpreadArgument(JSContext context, GetIteratorNode getIteratorNode) {
+        return SpreadArgumentNode.create(context, getIteratorNode);
     }
 
-    public JavaScriptNode createSpreadArray(JSContext context, JavaScriptNode argument) {
-        return ArrayLiteralNode.SpreadArrayNode.create(context, argument);
+    public JavaScriptNode createSpreadArray(JSContext context, GetIteratorNode getIteratorNode) {
+        return ArrayLiteralNode.SpreadArrayNode.create(context, getIteratorNode);
     }
 
     public ReturnNode createReturn(JavaScriptNode expression) {
@@ -985,7 +985,7 @@ public class NodeFactory {
 
     // ##### Iterator nodes
 
-    public JavaScriptNode createGetIterator(JSContext context, JavaScriptNode iteratedObject) {
+    public GetIteratorNode createGetIterator(JSContext context, JavaScriptNode iteratedObject) {
         return GetIteratorNode.create(context, iteratedObject);
     }
 

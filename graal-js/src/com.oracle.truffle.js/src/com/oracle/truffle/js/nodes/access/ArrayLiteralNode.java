@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -603,13 +603,13 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         @Child private GetIteratorNode getIteratorNode;
         @Child private IteratorGetNextValueNode iteratorStepNode;
 
-        private SpreadArrayNode(JSContext context, JavaScriptNode arg) {
-            this.getIteratorNode = GetIteratorNode.create(context, arg);
+        private SpreadArrayNode(JSContext context, GetIteratorNode getIteratorNode) {
+            this.getIteratorNode = getIteratorNode;
             this.iteratorStepNode = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), false);
         }
 
-        public static SpreadArrayNode create(JSContext context, JavaScriptNode arg) {
-            return new SpreadArrayNode(context, arg);
+        public static SpreadArrayNode create(JSContext context, GetIteratorNode getIteratorNode) {
+            return new SpreadArrayNode(context, getIteratorNode);
         }
 
         public int executeToList(VirtualFrame frame, SimpleArrayList<Object> toList, BranchProfile growProfile) {

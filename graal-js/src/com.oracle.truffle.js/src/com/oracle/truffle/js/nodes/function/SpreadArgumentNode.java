@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,9 +61,9 @@ public final class SpreadArgumentNode extends JavaScriptNode {
     private final BranchProfile listGrowProfile = BranchProfile.create();
     private final JSContext context;
 
-    private SpreadArgumentNode(JSContext context, JavaScriptNode arg) {
+    private SpreadArgumentNode(JSContext context, GetIteratorNode getIteratorNode) {
         this.context = context;
-        this.getIteratorNode = GetIteratorNode.create(context, arg);
+        this.getIteratorNode = getIteratorNode;
         this.iteratorStepNode = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), false);
     }
 
@@ -72,8 +72,8 @@ public final class SpreadArgumentNode extends JavaScriptNode {
         return false;
     }
 
-    public static SpreadArgumentNode create(JSContext context, JavaScriptNode arg) {
-        return new SpreadArgumentNode(context, arg);
+    public static SpreadArgumentNode create(JSContext context, GetIteratorNode getIteratorNode) {
+        return new SpreadArgumentNode(context, getIteratorNode);
     }
 
     @Override
