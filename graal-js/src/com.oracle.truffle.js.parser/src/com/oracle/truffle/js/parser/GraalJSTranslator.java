@@ -97,8 +97,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -115,6 +117,7 @@ import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.DeclareEvalVariableNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
@@ -144,7 +147,6 @@ import com.oracle.truffle.js.nodes.control.ReturnTargetNode;
 import com.oracle.truffle.js.nodes.control.SequenceNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.nodes.control.SuspendNode;
-import com.oracle.truffle.js.nodes.control.WhileNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
@@ -566,11 +568,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private Node instrumentSuspendHelper(Node parent, Node grandparent) {
-        if (parent instanceof WhileNode) {
-            WhileNode whileNode = (WhileNode) parent;
-            factory.fixLoopNode(whileNode, factory.getLoopNode(whileNode));
-            factory.fixRepeatingNode(whileNode, factory.getRepeatingNode(whileNode));
-        }
         boolean hasSuspendChild = false;
         BitSet suspendableIndices = null;
         if (parent instanceof AbstractBlockNode) {
@@ -1714,7 +1711,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     @Override
                     public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
                         JavaScriptNode throwErrorNode = createReadNode();
-                        return isPotentiallySideEffecting(rhs) ? DualNode.create(rhs, throwErrorNode) : throwErrorNode;
+                        return isPotentiallySideEffecting(rhs) ? factory.createBinary(null, BinaryOperation.DUAL, rhs, throwErrorNode) : throwErrorNode;
                     }
 
                     @Override
@@ -1809,12 +1806,25 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
+    private static boolean isConstantFalse(JavaScriptNode condition) {
+        return condition instanceof JSConstantNode && !JSRuntime.toBoolean(((JSConstantNode) condition).getValue());
+    }
+
     private JavaScriptNode createDoWhile(JavaScriptNode condition, JavaScriptNode body) {
-        return factory.createDoWhile(condition, body);
+        if (isConstantFalse(condition)) {
+            // do {} while (0); happens 336 times in Mandreel
+            return body;
+        }
+        RepeatingNode repeatingNode = factory.createDoWhileRepeatingNode(condition, body);
+        return factory.createDoWhile(factory.createLoopNode(repeatingNode));
     }
 
     private JavaScriptNode createWhileDo(JavaScriptNode condition, JavaScriptNode body) {
-        return factory.createWhileDo(condition, body);
+        if (isConstantFalse(condition)) {
+            return factory.createEmpty();
+        }
+        RepeatingNode repeatingNode = factory.createWhileDoRepeatingNode(condition, body);
+        return factory.createWhileDo(factory.createLoopNode(repeatingNode));
     }
 
     private JavaScriptNode wrapGetCompletionValue(JavaScriptNode target) {
@@ -1894,12 +1904,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (needsPerIterationScope(forNode)) {
             VarRef firstTempVar = environment.createTempVar();
             JSFrameDescriptor iterationBlockFrameDescriptor = environment.getBlockFrameDescriptor();
-            StatementNode newFor = factory.createFor(test, wrappedBody, modify, iterationBlockFrameDescriptor.toFrameDescriptor(), firstTempVar.createReadNode(),
+            RepeatingNode repeatingNode = factory.createForRepeatingNode(test, wrappedBody, modify, iterationBlockFrameDescriptor.toFrameDescriptor(), firstTempVar.createReadNode(),
                             firstTempVar.createWriteNode(factory.createConstantBoolean(false)), currentFunction().getBlockScopeSlot());
+            StatementNode newFor = factory.createFor(factory.createLoopNode(repeatingNode));
             ensureHasSourceSection(newFor, forNode);
             return createBlock(init, firstTempVar.createWriteNode(factory.createConstantBoolean(true)), newFor);
         }
-        JavaScriptNode whileDo = factory.createDesugaredFor(test, createBlock(wrappedBody, modify));
+        RepeatingNode repeatingNode = factory.createWhileDoRepeatingNode(test, createBlock(wrappedBody, modify));
+        JavaScriptNode whileDo = factory.createDesugaredFor(factory.createLoopNode(repeatingNode));
         if (forNode.getTest() == null) {
             tagStatement(test, forNode);
         } else {
@@ -1954,7 +1966,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             body));
         }
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
-        JavaScriptNode whileNode = forNode.isForOf() ? factory.createDesugaredForOf(condition, wrappedBody) : factory.createDesugaredForIn(condition, wrappedBody);
+        RepeatingNode repeatingNode = factory.createWhileDoRepeatingNode(condition, wrappedBody);
+        LoopNode loopNode = factory.createLoopNode(repeatingNode);
+        JavaScriptNode whileNode = forNode.isForOf() ? factory.createDesugaredForOf(loopNode) : factory.createDesugaredForIn(loopNode);
         JavaScriptNode wrappedWhile = factory.createIteratorCloseIfNotDone(context, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode());
         JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
         wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
@@ -2009,7 +2023,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             body));
         }
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
-        JavaScriptNode whileNode = factory.createDesugaredForAwaitOf(condition, wrappedBody);
+        RepeatingNode repeatingNode = factory.createWhileDoRepeatingNode(condition, wrappedBody);
+        LoopNode loopNode = factory.createLoopNode(repeatingNode);
+        JavaScriptNode whileNode = factory.createDesugaredForAwaitOf(loopNode);
         currentFunction().addAwait();
         stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Object);
         JavaScriptNode wrappedWhile = factory.createAsyncIteratorCloseWrapper(context, stateSlot, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(),
@@ -2106,10 +2122,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 return enterNewNode(unaryNode);
             case DELETE:
                 return enterDelete(unaryNode);
-            case SPREAD_ARGUMENT:
-                return tagExpression(factory.createSpreadArgument(context, transform(unaryNode.getExpression())), unaryNode);
-            case SPREAD_ARRAY:
-                return tagExpression(factory.createSpreadArray(context, transform(unaryNode.getExpression())), unaryNode);
+            case SPREAD_ARGUMENT: {
+                JavaScriptNode argument = transform(unaryNode.getExpression());
+                GetIteratorNode getIterator = factory.createGetIterator(context, argument);
+                return tagExpression(factory.createSpreadArgument(context, getIterator), unaryNode);
+            }
+            case SPREAD_ARRAY: {
+                JavaScriptNode array = transform(unaryNode.getExpression());
+                GetIteratorNode getIterator = factory.createGetIterator(context, array);
+                return tagExpression(factory.createSpreadArray(context, getIterator), unaryNode);
+            }
             case YIELD:
             case YIELD_STAR:
                 return tagExpression(createYieldNode(unaryNode), unaryNode);
@@ -3028,7 +3050,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode setter = getAccessor(property.getSetter());
         boolean enumerable = !isClass;
         if (property.isComputed()) {
-            return factory.createComputedAccessorMember(transform(property.getKey()), property.isStatic(), enumerable, getter, setter);
+            JavaScriptNode key = transform(property.getKey());
+            JavaScriptNode keyWrapper = factory.createToPropertyKey(key);
+            return factory.createComputedAccessorMember(keyWrapper, property.isStatic(), enumerable, getter, setter);
         } else if (property.isPrivate()) {
             VarRef privateVar = environment.findLocalVar(property.getPrivateName());
             JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);

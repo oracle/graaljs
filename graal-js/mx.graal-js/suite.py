@@ -356,6 +356,7 @@ suite = {
         "JACKSON_ANNOTATIONS",
         "JACKSON_DATABIND",
         "NASHORN_INTERNAL_TESTS",
+        "TRUFFLE_JS_SNAPSHOT_TOOL",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js",

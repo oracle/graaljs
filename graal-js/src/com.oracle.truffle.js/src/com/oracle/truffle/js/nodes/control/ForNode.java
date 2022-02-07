@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,13 +73,23 @@ public final class ForNode extends StatementNode implements ResumableNode.WithOb
     @Child private IterationScopeNode copy;
 
     private ForNode(RepeatingNode repeatingNode, IterationScopeNode copy) {
-        this.copy = copy;
-        this.loop = Truffle.getRuntime().createLoopNode(repeatingNode);
+        this(Truffle.getRuntime().createLoopNode(repeatingNode), copy);
     }
 
-    public static ForNode createFor(JavaScriptNode condition, JavaScriptNode body, JavaScriptNode modify, IterationScopeNode copy, JavaScriptNode isFirstNode, JavaScriptNode setNotFirstNode) {
+    private ForNode(LoopNode loopNode, IterationScopeNode copy) {
+        this.copy = copy;
+        this.loop = loopNode;
+    }
+
+    public static RepeatingNode createForRepeatingNode(JavaScriptNode condition, JavaScriptNode body, JavaScriptNode modify, IterationScopeNode copy, JavaScriptNode isFirstNode,
+                    JavaScriptNode setNotFirstNode) {
         JavaScriptNode nonVoidBody = body instanceof DiscardResultNode ? ((DiscardResultNode) body).getOperand() : body;
-        return new ForNode(new ForRepeatingNode(condition, nonVoidBody, modify, copy, isFirstNode, setNotFirstNode), NodeUtil.cloneNode(copy));
+        return new ForRepeatingNode(condition, nonVoidBody, modify, copy, isFirstNode, setNotFirstNode);
+    }
+
+    public static ForNode createFor(LoopNode loopNode) {
+        ForRepeatingNode forRepeatingNode = (ForRepeatingNode) loopNode.getRepeatingNode();
+        return new ForNode(loopNode, NodeUtil.cloneNode(forRepeatingNode.copy));
     }
 
     @Override

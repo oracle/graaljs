@@ -52,10 +52,13 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -311,7 +314,9 @@ public class MaterializedNodes {
         JSWriteFrameSlotNode[] writes = new JSWriteFrameSlotNode[]{};
         IterationScopeNode dummyScope = IterationScopeNode.create(null, reads, writes, 0);
 
-        ForNode node = ForNode.createFor(condition, body, modify, dummyScope, first, setNotFirst);
+        RepeatingNode repeatingNode = ForNode.createForRepeatingNode(condition, body, modify, dummyScope, first, setNotFirst);
+        LoopNode loopNode = Truffle.getRuntime().createLoopNode(repeatingNode);
+        ForNode node = ForNode.createFor(loopNode);
         assertNotMaterializedTwice((JavaScriptNode) node.getLoopNode().getRepeatingNode(), ControlFlowRootTag.class);
     }
 
@@ -323,7 +328,9 @@ public class MaterializedNodes {
 
     @Test
     public void materializeMultiWhile() {
-        JavaScriptNode node = WhileNode.createDoWhile(dummyJSNode, dummyJSNode);
+        RepeatingNode repeatingNode = WhileNode.createDoWhileRepeatingNode(dummyJSNode, dummyJSNode);
+        LoopNode loopNode = Truffle.getRuntime().createLoopNode(repeatingNode);
+        JavaScriptNode node = WhileNode.createDoWhile(loopNode);
         assertNotMaterializedTwice(node, ControlFlowRootTag.class);
     }
 

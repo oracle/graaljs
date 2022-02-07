@@ -50,13 +50,11 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -70,45 +68,50 @@ public final class WhileNode extends StatementNode {
     private final ControlFlowRootTag.Type loopType;
 
     private WhileNode(RepeatingNode repeatingNode, ControlFlowRootTag.Type type) {
-        this.loop = Truffle.getRuntime().createLoopNode(repeatingNode);
+        this(Truffle.getRuntime().createLoopNode(repeatingNode), type);
+    }
+
+    private WhileNode(LoopNode loopNode, ControlFlowRootTag.Type type) {
+        this.loop = loopNode;
         this.loopType = type;
     }
 
-    private static JavaScriptNode createWhileDo(JavaScriptNode condition, JavaScriptNode body, ControlFlowRootTag.Type type) {
-        if (condition instanceof JSConstantNode && !JSRuntime.toBoolean(((JSConstantNode) condition).getValue())) {
-            return new EmptyNode();
-        }
+    private static JavaScriptNode createWhileDo(LoopNode loopNode, ControlFlowRootTag.Type type) {
+        return new WhileNode(loopNode, type);
+    }
+
+    public static RepeatingNode createWhileDoRepeatingNode(JavaScriptNode condition, JavaScriptNode body) {
         JavaScriptNode nonVoidBody = body instanceof DiscardResultNode ? ((DiscardResultNode) body).getOperand() : body;
-        return new WhileNode(new WhileDoRepeatingNode(condition, nonVoidBody), type);
+        return new WhileDoRepeatingNode(condition, nonVoidBody);
     }
 
-    public static JavaScriptNode createWhileDo(JavaScriptNode condition, JavaScriptNode body) {
-        return createWhileDo(condition, body, ControlFlowRootTag.Type.WhileIteration);
+    public static JavaScriptNode createWhileDo(LoopNode loopNode) {
+        return createWhileDo(loopNode, ControlFlowRootTag.Type.WhileIteration);
     }
 
-    public static JavaScriptNode createDesugaredFor(JavaScriptNode condition, JavaScriptNode body) {
-        return createWhileDo(condition, body, ControlFlowRootTag.Type.ForIteration);
+    public static JavaScriptNode createDesugaredFor(LoopNode loopNode) {
+        return createWhileDo(loopNode, ControlFlowRootTag.Type.ForIteration);
     }
 
-    public static JavaScriptNode createDesugaredForOf(JavaScriptNode condition, JavaScriptNode body) {
-        return createWhileDo(condition, body, ControlFlowRootTag.Type.ForOfIteration);
+    public static JavaScriptNode createDesugaredForOf(LoopNode loopNode) {
+        return createWhileDo(loopNode, ControlFlowRootTag.Type.ForOfIteration);
     }
 
-    public static JavaScriptNode createDesugaredForIn(JavaScriptNode condition, JavaScriptNode body) {
-        return createWhileDo(condition, body, ControlFlowRootTag.Type.ForInIteration);
+    public static JavaScriptNode createDesugaredForIn(LoopNode loopNode) {
+        return createWhileDo(loopNode, ControlFlowRootTag.Type.ForInIteration);
     }
 
-    public static JavaScriptNode createDesugaredForAwaitOf(JavaScriptNode condition, JavaScriptNode body) {
-        return createWhileDo(condition, body, ControlFlowRootTag.Type.ForAwaitOfIteration);
+    public static JavaScriptNode createDesugaredForAwaitOf(LoopNode loopNode) {
+        return createWhileDo(loopNode, ControlFlowRootTag.Type.ForAwaitOfIteration);
     }
 
-    public static JavaScriptNode createDoWhile(JavaScriptNode condition, JavaScriptNode body) {
-        if (condition instanceof JSConstantNode && !JSRuntime.toBoolean(((JSConstantNode) condition).getValue())) {
-            // do {} while (0); happens 336 times in Mandreel
-            return body;
-        }
+    public static RepeatingNode createDoWhileRepeatingNode(JavaScriptNode condition, JavaScriptNode body) {
         JavaScriptNode nonVoidBody = body instanceof DiscardResultNode ? ((DiscardResultNode) body).getOperand() : body;
-        return new WhileNode(new DoWhileRepeatingNode(condition, nonVoidBody), ControlFlowRootTag.Type.DoWhileIteration);
+        return new DoWhileRepeatingNode(condition, nonVoidBody);
+    }
+
+    public static JavaScriptNode createDoWhile(LoopNode loopNode) {
+        return new WhileNode(loopNode, ControlFlowRootTag.Type.DoWhileIteration);
     }
 
     @Override

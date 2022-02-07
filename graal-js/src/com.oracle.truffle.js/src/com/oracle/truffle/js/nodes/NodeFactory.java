@@ -45,9 +45,11 @@ import java.util.List;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RepeatingNode;
@@ -466,30 +468,16 @@ public class NodeFactory {
         return SwitchNode.create(caseExpressions, jumptable, statements);
     }
 
-    public JavaScriptNode createWhileDo(JavaScriptNode condition, JavaScriptNode body) {
-        return WhileNode.createWhileDo(condition, body);
+    public LoopNode createLoopNode(RepeatingNode repeatingNode) {
+        return Truffle.getRuntime().createLoopNode(repeatingNode);
     }
 
-    // Let snapshotting know where WhileDoRepeatingNode/DoWhileRepeatingNode comes from
-    public RepeatingNode getRepeatingNode(WhileNode node) {
-        return node.getLoopNode().getRepeatingNode();
+    public RepeatingNode createWhileDoRepeatingNode(JavaScriptNode condition, JavaScriptNode body) {
+        return WhileNode.createWhileDoRepeatingNode(condition, body);
     }
 
-    // Notify snapshotting that repeating node is needed by WhileNode
-    public WhileNode fixRepeatingNode(WhileNode node, RepeatingNode repeatingNode) {
-        assert getRepeatingNode(node) == repeatingNode;
-        return node;
-    }
-
-    // Let snapshotting know where loop node comes from
-    public Node getLoopNode(WhileNode node) {
-        return node.getLoopNode();
-    }
-
-    // Notify snapshotting that loop node is needed by WhileNode
-    public WhileNode fixLoopNode(WhileNode node, Node loopNode) {
-        assert getLoopNode(node) == loopNode;
-        return node;
+    public JavaScriptNode createWhileDo(LoopNode loopNode) {
+        return WhileNode.createWhileDo(loopNode);
     }
 
     public AbstractBlockNode fixBlockNodeChild(AbstractBlockNode blockNode, int index, JavaScriptNode newChild) {
@@ -505,30 +493,38 @@ public class NodeFactory {
         return parent;
     }
 
-    public JavaScriptNode createDoWhile(JavaScriptNode condition, JavaScriptNode body) {
-        return WhileNode.createDoWhile(condition, body);
+    public RepeatingNode createDoWhileRepeatingNode(JavaScriptNode condition, JavaScriptNode body) {
+        return WhileNode.createDoWhileRepeatingNode(condition, body);
     }
 
-    public JavaScriptNode createDesugaredFor(JavaScriptNode condition, JavaScriptNode body) {
-        return WhileNode.createDesugaredFor(condition, body);
+    public JavaScriptNode createDoWhile(LoopNode loopNode) {
+        return WhileNode.createDoWhile(loopNode);
     }
 
-    public JavaScriptNode createDesugaredForOf(JavaScriptNode condition, JavaScriptNode body) {
-        return WhileNode.createDesugaredForOf(condition, body);
+    public JavaScriptNode createDesugaredFor(LoopNode loopNode) {
+        return WhileNode.createDesugaredFor(loopNode);
     }
 
-    public JavaScriptNode createDesugaredForIn(JavaScriptNode condition, JavaScriptNode body) {
-        return WhileNode.createDesugaredForIn(condition, body);
+    public JavaScriptNode createDesugaredForOf(LoopNode loopNode) {
+        return WhileNode.createDesugaredForOf(loopNode);
     }
 
-    public JavaScriptNode createDesugaredForAwaitOf(JavaScriptNode condition, JavaScriptNode body) {
-        return WhileNode.createDesugaredForAwaitOf(condition, body);
+    public JavaScriptNode createDesugaredForIn(LoopNode loopNode) {
+        return WhileNode.createDesugaredForIn(loopNode);
     }
 
-    public StatementNode createFor(JavaScriptNode condition, JavaScriptNode body, JavaScriptNode modify, FrameDescriptor frameDescriptor, JavaScriptNode isFirstNode, JavaScriptNode setNotFirstNode,
-                    JSFrameSlot blockScopeSlot) {
+    public JavaScriptNode createDesugaredForAwaitOf(LoopNode loopNode) {
+        return WhileNode.createDesugaredForAwaitOf(loopNode);
+    }
+
+    public RepeatingNode createForRepeatingNode(JavaScriptNode condition, JavaScriptNode body, JavaScriptNode modify, FrameDescriptor frameDescriptor, JavaScriptNode isFirstNode,
+                    JavaScriptNode setNotFirstNode, JSFrameSlot blockScopeSlot) {
         IterationScopeNode perIterationScope = createIterationScope(frameDescriptor, blockScopeSlot);
-        return ForNode.createFor(condition, body, modify, perIterationScope, isFirstNode, setNotFirstNode);
+        return ForNode.createForRepeatingNode(condition, body, modify, perIterationScope, isFirstNode, setNotFirstNode);
+    }
+
+    public StatementNode createFor(LoopNode loopNode) {
+        return ForNode.createFor(loopNode);
     }
 
     public IterationScopeNode createIterationScope(FrameDescriptor frameDescriptor, JSFrameSlot blockScopeSlot) {
@@ -888,12 +884,12 @@ public class NodeFactory {
         return MakeMethodNode.create(context, function);
     }
 
-    public JavaScriptNode createSpreadArgument(JSContext context, JavaScriptNode argument) {
-        return SpreadArgumentNode.create(context, argument);
+    public JavaScriptNode createSpreadArgument(JSContext context, GetIteratorNode getIteratorNode) {
+        return SpreadArgumentNode.create(context, getIteratorNode);
     }
 
-    public JavaScriptNode createSpreadArray(JSContext context, JavaScriptNode argument) {
-        return ArrayLiteralNode.SpreadArrayNode.create(context, argument);
+    public JavaScriptNode createSpreadArray(JSContext context, GetIteratorNode getIteratorNode) {
+        return ArrayLiteralNode.SpreadArrayNode.create(context, getIteratorNode);
     }
 
     public ReturnNode createReturn(JavaScriptNode expression) {
@@ -985,7 +981,7 @@ public class NodeFactory {
 
     // ##### Iterator nodes
 
-    public JavaScriptNode createGetIterator(JSContext context, JavaScriptNode iteratedObject) {
+    public GetIteratorNode createGetIterator(JSContext context, JavaScriptNode iteratedObject) {
         return GetIteratorNode.create(context, iteratedObject);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,6 +67,7 @@ public class SuiteConfig {
     private final boolean saveOutput;
     private final boolean compile;
     private final boolean instrument;
+    private final boolean snapshot;
     private final boolean polyglot;
     private final boolean htmlOutput;
     private final boolean textOutput;
@@ -86,8 +87,8 @@ public class SuiteConfig {
     SuiteConfig(String suiteName, String suiteDescription,
                     String suiteLoc, String suiteTestsLoc, String suiteHarnessLoc, String suiteConfigLoc,
                     boolean useThreads, boolean verbose, boolean verboseFail, boolean runOnGate, boolean gateResume, boolean printCommand, boolean printScript, boolean saveOutput, boolean compile,
-                    boolean instrument, boolean polyglot, boolean htmlOutput, boolean textOutput, boolean regenerateConfig, int timeoutTest, int timeoutOverall, String containsFilter,
-                    String regexFilter, String endsWithFilter, boolean printFullOutput, String outputFilter, String extLauncher, boolean shareEngine, int minESVersion) {
+                    boolean instrument, boolean snapshot, boolean polyglot, boolean htmlOutput, boolean textOutput, boolean regenerateConfig, int timeoutTest, int timeoutOverall,
+                    String containsFilter, String regexFilter, String endsWithFilter, boolean printFullOutput, String outputFilter, String extLauncher, boolean shareEngine, int minESVersion) {
         this.suiteName = suiteName;
         this.suiteDescription = suiteDescription;
         this.suiteLoc = suiteLoc;
@@ -104,6 +105,7 @@ public class SuiteConfig {
         this.saveOutput = saveOutput;
         this.compile = compile;
         this.instrument = instrument;
+        this.snapshot = snapshot;
         this.polyglot = polyglot;
         this.htmlOutput = htmlOutput;
         this.textOutput = textOutput;
@@ -182,6 +184,10 @@ public class SuiteConfig {
 
     public boolean isInstrument() {
         return instrument;
+    }
+
+    public boolean useSnapshots() {
+        return snapshot;
     }
 
     public boolean isPolyglot() {
@@ -282,6 +288,7 @@ public class SuiteConfig {
         private boolean saveOutput;
         private boolean compile;
         private boolean instrument;
+        private boolean snapshot;
         private boolean polyglot;
         private boolean htmlOutput;
         private boolean textOutput;
@@ -368,6 +375,10 @@ public class SuiteConfig {
             this.instrument = instrument;
         }
 
+        public void setSnapshot(boolean snapshot) {
+            this.snapshot = snapshot;
+        }
+
         public void setPolyglot(boolean polyglot) {
             this.polyglot = polyglot;
         }
@@ -426,8 +437,8 @@ public class SuiteConfig {
 
         public SuiteConfig build() {
             return new SuiteConfig(suiteName, suiteDescription, suiteLoc, suiteTestsLoc, suiteHarnessLoc, suiteConfigLoc, useThreads, verbose, verboseFail, runOnGate, gateResume, printCommand,
-                            printScript, saveOutput, compile, instrument, polyglot, htmlOutput, textOutput, regenerateConfig, timeoutTest, timeoutOverall, containsFilter, regexFilter, endsWithFilter,
-                            printFullOutput, outputFilter, extLauncher, shareEngine, minESVersion);
+                            printScript, saveOutput, compile, instrument, snapshot, polyglot, htmlOutput, textOutput, regenerateConfig, timeoutTest, timeoutOverall, containsFilter, regexFilter,
+                            endsWithFilter, printFullOutput, outputFilter, extLauncher, shareEngine, minESVersion);
         }
     }
 }
