@@ -3471,19 +3471,20 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterClassNode(ClassNode classNode) {
-        Scope classScope = classNode.getScope();
-        try (EnvironmentCloseable blockEnv = enterBlockEnvironment(classScope)) {
+        Scope classHeadScope = classNode.getClassHeadScope();
+        Scope classBodyScope = classNode.getScope();
+        try (EnvironmentCloseable blockEnv = enterBlockEnvironment(classHeadScope)) {
             String className = null;
             Symbol classNameSymbol = null;
             if (classNode.getIdent() != null) {
                 className = classNode.getIdent().getName();
-                classNameSymbol = classScope.getExistingSymbol(className);
+                classNameSymbol = classHeadScope.getExistingSymbol(className);
             }
 
             JavaScriptNode classHeritage = transform(classNode.getClassHeritage());
 
             JavaScriptNode classDefinition;
-            try (EnvironmentCloseable privateEnv = enterPrivateEnvironment(classNode)) {
+            try (EnvironmentCloseable privateEnv = enterPrivateEnvironment(classBodyScope)) {
                 JavaScriptNode classFunction = transform(classNode.getConstructor().getValue());
 
                 ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true, classNameSymbol);
@@ -3498,17 +3499,19 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     // internal constructor binding used for private brand checks.
                     classDefinition = environment.findLocalVar(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME).createWriteNode(classDefinition);
                 }
+                classDefinition = privateEnv.wrapBlockScope(classDefinition);
             }
-
             return tagExpression(blockEnv.wrapBlockScope(classDefinition), classNode);
         }
     }
 
-    private EnvironmentCloseable enterPrivateEnvironment(ClassNode classNode) {
-        if (classNode.getScope().hasPrivateNames()) {
+    private EnvironmentCloseable enterPrivateEnvironment(Scope scope) {
+        assert scope.isClassBodyScope();
+        if (scope.hasPrivateNames()) {
+            environment.addFrameSlotsFromSymbols(scope.getSymbols());
             return new EnvironmentCloseable(new PrivateEnvironment(environment, factory, context));
         }
-        return null;
+        return new EnvironmentCloseable(environment);
     }
 
     @Override

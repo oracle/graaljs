@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,9 @@ import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 
+/**
+ * PrivateEnvironment of a class.
+ */
 public final class PrivateEnvironment extends DerivedEnvironment {
 
     public PrivateEnvironment(Environment parent, NodeFactory factory, JSContext context) {
@@ -55,6 +58,7 @@ public final class PrivateEnvironment extends DerivedEnvironment {
     protected JSFrameSlot findBlockFrameSlot(Object name) {
         JSFrameSlot slot = getBlockFrameDescriptor().findFrameSlot(name);
         if (slot != null && JSFrameUtil.isPrivateName(slot)) {
+            // Only private names are visible in this environment.
             return slot;
         }
         return null;

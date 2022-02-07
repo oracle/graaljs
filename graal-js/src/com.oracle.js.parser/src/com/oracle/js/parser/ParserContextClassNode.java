@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,7 @@ import com.oracle.js.parser.ir.Scope;
  */
 class ParserContextClassNode extends ParserContextBaseNode implements ParserContextScopableNode {
 
-    private final Scope scope;
+    private Scope scope;
     protected EconomicMap<String, IdentNode> unresolvedPrivateIdentifiers;
 
     /**
@@ -63,12 +63,17 @@ class ParserContextClassNode extends ParserContextBaseNode implements ParserCont
      */
     ParserContextClassNode(Scope scope) {
         this.scope = scope;
-        assert scope.isClassScope();
+        assert scope.isClassHeadScope() || scope.isClassBodyScope();
     }
 
     @Override
     public Scope getScope() {
         return scope;
+    }
+
+    public void setScope(Scope scope) {
+        assert scope.isClassHeadScope() || scope.isClassBodyScope();
+        this.scope = scope;
     }
 
     /**

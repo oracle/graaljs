@@ -61,8 +61,11 @@ public final class Scope {
     private static final int MODULE_SCOPE = 1 << 5;
     private static final int FUNCTION_TOP_SCOPE = 1 << 6;
     private static final int SWITCH_BLOCK_SCOPE = 1 << 7;
-    private static final int CLASS_SCOPE = 1 << 8;
-    private static final int EVAL_SCOPE = 1 << 9;
+    /** Class head scope = LexicalEnvironment of the class (containing the class name binding). */
+    private static final int CLASS_HEAD_SCOPE = 1 << 8;
+    /** Class body scope = PrivateEnvironment of the class (containing private names and brands). */
+    private static final int CLASS_BODY_SCOPE = 1 << 9;
+    private static final int EVAL_SCOPE = 1 << 10;
 
     /** Scope is in a function context. {@code new.target} is available. */
     private static final int IN_FUNCTION = 1 << 16;
@@ -138,8 +141,12 @@ public final class Scope {
         return new Scope(parent, BLOCK_SCOPE | SWITCH_BLOCK_SCOPE);
     }
 
-    public static Scope createClass(Scope parent) {
-        return new Scope(parent, BLOCK_SCOPE | CLASS_SCOPE);
+    public static Scope createClassHead(Scope parent) {
+        return new Scope(parent, BLOCK_SCOPE | CLASS_HEAD_SCOPE);
+    }
+
+    public static Scope createClassBody(Scope parent) {
+        return new Scope(parent, CLASS_BODY_SCOPE);
     }
 
     public static Scope createEval(Scope parent, boolean strict) {
@@ -271,7 +278,7 @@ public final class Scope {
      * @return true if the private name was added, false if it was already declared (duplicate name)
      */
     public boolean addPrivateName(String name, int symbolFlags) {
-        assert isClassScope();
+        assert isClassBodyScope();
         // Register a declared private name.
         if (hasSymbol(name)) {
             assert getExistingSymbol(name).isPrivateName();
@@ -323,8 +330,12 @@ public final class Scope {
         return (type & SWITCH_BLOCK_SCOPE) != 0;
     }
 
-    public boolean isClassScope() {
-        return (type & CLASS_SCOPE) != 0;
+    public boolean isClassBodyScope() {
+        return (type & CLASS_BODY_SCOPE) != 0;
+    }
+
+    public boolean isClassHeadScope() {
+        return (type & CLASS_HEAD_SCOPE) != 0;
     }
 
     public boolean isEvalScope() {
@@ -379,8 +390,10 @@ public final class Scope {
             return "Catch";
         } else if (isSwitchBlockScope()) {
             return "Switch";
-        } else if (isClassScope()) {
+        } else if (isClassHeadScope()) {
             return "Class";
+        } else if (isClassBodyScope()) {
+            return "Private";
         } else if (isEvalScope()) {
             return "Eval";
         }

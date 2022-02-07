@@ -1589,11 +1589,11 @@ public class Parser extends AbstractParser {
      */
     private ClassNode classTail(int classLineNumber, long classToken, IdentNode className, boolean yield, boolean await) {
         assert isStrictMode;
-        Scope classScope = Scope.createClass(lc.getCurrentScope());
+        Scope classHeadScope = Scope.createClassHead(lc.getCurrentScope());
         if (className != null) {
-            classScope.putSymbol(new Symbol(className.getName(), Symbol.IS_CONST));
+            classHeadScope.putSymbol(new Symbol(className.getName(), Symbol.IS_CONST));
         }
-        ParserContextClassNode classNode = new ParserContextClassNode(classScope);
+        ParserContextClassNode classNode = new ParserContextClassNode(classHeadScope);
         lc.push(classNode);
         try {
             Expression classHeritage = null;
@@ -1612,6 +1612,9 @@ public class Parser extends AbstractParser {
             }
 
             expect(LBRACE);
+
+            Scope classScope = Scope.createClassBody(classHeadScope);
+            classNode.setScope(classScope);
 
             PropertyNode constructor = null;
             ArrayList<PropertyNode> classElements = new ArrayList<>();
@@ -1757,6 +1760,7 @@ public class Parser extends AbstractParser {
             }
 
             classScope.close();
+            classHeadScope.close();
             return new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements, classScope,
                             instanceFieldCount, staticElementCount, hasPrivateMethods, hasPrivateInstanceMethods);
         } finally {
