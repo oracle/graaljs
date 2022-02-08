@@ -402,9 +402,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             assert depth == 0;
             Assumption[] ass = new Assumption[3];
             int pos = 0;
-            ass[pos++] = context.getSingleRealmAssumption();
             ass[pos++] = shape.getValidAssumption();
             ass[pos++] = JSShape.getPropertyAssumption(shape, key);
+            ass[pos++] = context.getSingleRealmAssumption();
             assert pos == ass.length;
             return new ConstantObjectAssumptionShapeCheckNode(shape, ass, context);
         }
