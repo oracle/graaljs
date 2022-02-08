@@ -64,6 +64,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
+import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtobi;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.getDouble;
 
 import java.util.EnumSet;
@@ -453,7 +454,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             JSTemporalDurationRecord result = TemporalUtil.balanceDuration(getContext(), namesNode,
                             balanceResult.getDays(), adjustResult.getHours(), adjustResult.getMinutes(), adjustResult.getSeconds(), adjustResult.getMilliseconds(), adjustResult.getMicroseconds(),
-                            adjustResult.getNanoseconds(), largestUnit, relativeTo);
+                            dtobi(adjustResult.getNanoseconds()), largestUnit, relativeTo);
             return JSTemporalDuration.createTemporalDuration(getContext(),
                             balanceResult.getYears(), balanceResult.getMonths(), balanceResult.getWeeks(),
                             result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(),
@@ -493,7 +494,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                 0);
             }
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, unbalanceResult.getDays(), duration.getHours(), duration.getMinutes(),
-                            duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), unit, intermediate);
+                            duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(), dtobi(duration.getNanoseconds()), unit, intermediate);
             JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), getRealm(), namesNode, unbalanceResult.getYears(), unbalanceResult.getMonths(), unbalanceResult.getWeeks(),
                             balanceResult.getDays(), balanceResult.getHours(), balanceResult.getMinutes(), balanceResult.getSeconds(), balanceResult.getMilliseconds(), balanceResult.getMicroseconds(),
                             balanceResult.getNanoseconds(), 1, unit, TRUNC, relativeTo);

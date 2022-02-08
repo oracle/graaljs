@@ -1182,21 +1182,19 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructTemporalDuration(DynamicObject newTarget, Object yearsObj, Object monthsObj,
-                        Object weeksObj, Object daysObj, Object hoursObj,
-                        Object minutesObj, Object secondsObj,
-                        Object millisecondsObject, Object microsecondsObject,
-                        Object nanosecondsObject,
+                        Object weeksObj, Object daysObj, Object hoursObj, Object minutesObj, Object secondsObj,
+                        Object millisecondsObject, Object microsecondsObject, Object nanosecondsObject,
                         @Cached("create()") JSToIntegerWithoutRoundingNode toIntegerNode) {
-            final long years = toIntegerNode.executeLong(yearsObj);
-            final long months = toIntegerNode.executeLong(monthsObj);
-            final long weeks = toIntegerNode.executeLong(weeksObj);
-            final long days = toIntegerNode.executeLong(daysObj);
-            final long hours = toIntegerNode.executeLong(hoursObj);
-            final long minutes = toIntegerNode.executeLong(minutesObj);
-            final long seconds = toIntegerNode.executeLong(secondsObj);
-            final long milliseconds = toIntegerNode.executeLong(millisecondsObject);
-            final long microseconds = toIntegerNode.executeLong(microsecondsObject);
-            final long nanoseconds = toIntegerNode.executeLong(nanosecondsObject);
+            final double years = toIntegerNode.executeDouble(yearsObj);
+            final double months = toIntegerNode.executeDouble(monthsObj);
+            final double weeks = toIntegerNode.executeDouble(weeksObj);
+            final double days = toIntegerNode.executeDouble(daysObj);
+            final double hours = toIntegerNode.executeDouble(hoursObj);
+            final double minutes = toIntegerNode.executeDouble(minutesObj);
+            final double seconds = toIntegerNode.executeDouble(secondsObj);
+            final double milliseconds = toIntegerNode.executeDouble(millisecondsObject);
+            final double microseconds = toIntegerNode.executeDouble(microsecondsObject);
+            final double nanoseconds = toIntegerNode.executeDouble(nanosecondsObject);
             return swapPrototype(JSTemporalDuration.createTemporalDuration(getContext(),
                             years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds), newTarget);
         }

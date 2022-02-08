@@ -108,7 +108,7 @@ public final class TemporalParser {
     }
 
     public JSTemporalParserRecord parseISODateTime() {
-        JSTemporalParserRecord rec = null;
+        JSTemporalParserRecord rec;
 
         // TemporalDateString => CalendarDateTime
         // TemporalDateTimeString => CalendarDateTime
@@ -233,7 +233,7 @@ public final class TemporalParser {
 
     // TemporalYearMonthString
     public JSTemporalParserRecord parseYearMonth() {
-        JSTemporalParserRecord rec = null;
+        JSTemporalParserRecord rec;
 
         // DateSpecYearMonth
         rec = parseDateSpecYearMonth();
@@ -261,7 +261,7 @@ public final class TemporalParser {
     }
 
     public JSTemporalParserRecord parseMonthDay() {
-        JSTemporalParserRecord rec = null;
+        JSTemporalParserRecord rec;
 
         // DateSpecMonthDay
         rec = parseDateSpecMonthDay();
@@ -332,7 +332,7 @@ public final class TemporalParser {
 
     // production TemporalCalendarString
     public JSTemporalParserRecord parseCalendarString() {
-        JSTemporalParserRecord rec = null;
+        JSTemporalParserRecord rec;
 
         // CalendarName
         rec = parseCalendarName();

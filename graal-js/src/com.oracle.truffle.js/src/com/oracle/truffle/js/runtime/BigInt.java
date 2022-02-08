@@ -112,11 +112,6 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
     }
 
     @TruffleBoundary
-    public static BigInt valueOf(BigDecimal bd) {
-        return new BigInt(bd.toBigIntegerExact());
-    }
-
-    @TruffleBoundary
     private static BigInteger parseBigInteger(final String valueString) {
 
         String trimmedString = valueString.trim();

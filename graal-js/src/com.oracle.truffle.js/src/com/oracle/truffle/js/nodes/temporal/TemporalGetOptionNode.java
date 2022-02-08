@@ -89,23 +89,23 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
             return fallback;
         }
         OptionTypeEnum type;
-        if (value instanceof Boolean && types.isBoolean()) {
+        if (value instanceof Boolean && types.allowsBoolean()) {
             type = OptionTypeEnum.BOOLEAN;
-        } else if (Strings.isTString(value) && types.isString()) {
+        } else if (Strings.isTString(value) && types.allowsString()) {
             type = OptionTypeEnum.STRING;
-        } else if (JSRuntime.isNumber(value) && types.isNumber()) {
+        } else if (JSRuntime.isNumber(value) && types.allowsNumber()) {
             type = OptionTypeEnum.NUMBER;
         } else {
             type = types.getLast();
         }
-        if (type.isBoolean()) {
+        if (type.allowsBoolean()) {
             value = toBoolean(value);
-        } else if (type.isNumber()) {
+        } else if (type.allowsNumber()) {
             value = toNumber(value);
             if (Double.isNaN(((Number) value).doubleValue())) {
                 throw TemporalErrors.createRangeErrorNumberIsNaN();
             }
-        } else if (type.isString()) {
+        } else if (type.allowsString()) {
             value = toStringNode(value);
         }
         if (value != Undefined.instance && !Boundaries.listContainsUnchecked(values, value)) {
