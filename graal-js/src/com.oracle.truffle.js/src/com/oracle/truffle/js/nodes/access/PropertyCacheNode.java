@@ -1245,7 +1245,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     private AbstractShapeCheckNode createShapeCheckNodeDepth0(Shape shape, JSDynamicObject thisObj, boolean isConstantObjectFinal, boolean isDefine) {
         assert thisObj.getShape() == shape;
         // if isDefine is true, shape change is imminent, so don't use assumption
-        if (!isDefine && (isConstantObjectFinal || (isGlobal() && JSConfig.SkipGlobalShapeCheck)) &&
+        if (!isDefine && (isConstantObjectFinal || (isGlobal() && JSConfig.SkipGlobalShapeCheck && getContext().isSingleRealm())) &&
                         isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(shape, key).isValid()) {
             return ConstantObjectAssumptionShapeCheckNode.create(shape, thisObj, key, 0, getContext());
         } else {
