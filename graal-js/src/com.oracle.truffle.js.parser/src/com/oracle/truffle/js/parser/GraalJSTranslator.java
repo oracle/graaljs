@@ -3473,7 +3473,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     public JavaScriptNode enterClassNode(ClassNode classNode) {
         Scope classHeadScope = classNode.getClassHeadScope();
         Scope classBodyScope = classNode.getScope();
-        try (EnvironmentCloseable blockEnv = enterBlockEnvironment(classHeadScope)) {
+        boolean needsScope = classHeadScope.hasDeclarations() || classBodyScope.hasDeclarations();
+        try (EnvironmentCloseable blockEnv = new EnvironmentCloseable(needsScope ? newClassEnvironment(classHeadScope) : environment)) {
             String className = null;
             Symbol classNameSymbol = null;
             if (classNode.getIdent() != null) {
@@ -3484,7 +3485,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             JavaScriptNode classHeritage = transform(classNode.getClassHeritage());
 
             JavaScriptNode classDefinition;
-            try (EnvironmentCloseable privateEnv = enterPrivateEnvironment(classBodyScope)) {
+            try (EnvironmentCloseable privateEnv = new EnvironmentCloseable(newPrivateEnvironment(classBodyScope))) {
                 JavaScriptNode classFunction = transform(classNode.getConstructor().getValue());
 
                 ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true, classNameSymbol);
@@ -3505,13 +3506,20 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
-    private EnvironmentCloseable enterPrivateEnvironment(Scope scope) {
+    private Environment newClassEnvironment(Scope scope) {
+        assert scope.isClassHeadScope();
+        BlockEnvironment classEnv = new BlockEnvironment(environment, factory, context);
+        classEnv.addFrameSlotsFromSymbols(scope.getSymbols());
+        return classEnv;
+    }
+
+    private Environment newPrivateEnvironment(Scope scope) {
         assert scope.isClassBodyScope();
         if (scope.hasPrivateNames()) {
             environment.addFrameSlotsFromSymbols(scope.getSymbols());
-            return new EnvironmentCloseable(new PrivateEnvironment(environment, factory, context));
+            return new PrivateEnvironment(environment, factory, context);
         }
-        return new EnvironmentCloseable(environment);
+        return environment;
     }
 
     @Override

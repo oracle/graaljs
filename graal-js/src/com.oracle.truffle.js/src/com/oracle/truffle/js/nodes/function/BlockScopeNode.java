@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,7 +62,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public abstract class BlockScopeNode extends JavaScriptNode implements ResumableNode.WithObjectState, RepeatingNode {
+public abstract class BlockScopeNode extends NamedEvaluationTargetNode implements ResumableNode.WithObjectState, RepeatingNode {
     @Child protected JavaScriptNode block;
 
     protected BlockScopeNode(JavaScriptNode block) {
@@ -104,6 +104,15 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
     public boolean executeRepeating(VirtualFrame frame) {
         try {
             return ((RepeatingNode) block).executeRepeating(appendScopeFrame(frame));
+        } finally {
+            exitScope(frame);
+        }
+    }
+
+    @Override
+    public Object executeWithName(VirtualFrame frame, Object name) {
+        try {
+            return ((NamedEvaluationTargetNode) block).executeWithName(appendScopeFrame(frame), name);
         } finally {
             exitScope(frame);
         }

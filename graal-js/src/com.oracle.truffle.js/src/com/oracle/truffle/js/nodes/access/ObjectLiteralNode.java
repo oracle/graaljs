@@ -53,13 +53,12 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JSGuards;
-import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
-import com.oracle.truffle.js.nodes.function.ClassDefinitionNode;
 import com.oracle.truffle.js.nodes.function.FunctionNameHolder;
+import com.oracle.truffle.js.nodes.function.NamedEvaluationTargetNode;
 import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
@@ -351,8 +350,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
             Object key = evaluateKey(frame);
             Object value;
             JavaScriptNode unwrappedValueNode;
-            if (isAnonymousFunctionDefinition && (unwrappedValueNode = JSNodeUtil.getWrappedNode(valueNode)) instanceof ClassDefinitionNode) {
-                value = ((ClassDefinitionNode) unwrappedValueNode).executeWithClassName(frame, key);
+            if (isAnonymousFunctionDefinition && valueNode instanceof NamedEvaluationTargetNode) {
+                value = ((NamedEvaluationTargetNode) valueNode).executeWithName(frame, key);
             } else {
                 value = evaluateWithHomeObject(valueNode, frame, homeObject);
                 if (setFunctionName != null) {

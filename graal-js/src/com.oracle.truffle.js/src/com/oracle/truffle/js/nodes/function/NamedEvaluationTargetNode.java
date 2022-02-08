@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,50 +40,18 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
-import java.util.Set;
-
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 
-/**
- * Represent a NamedEvaluation with a name that is computed / not already known at parse time.
- */
-public class NamedEvaluationNode extends JavaScriptNode {
-    @Child protected JavaScriptNode nameNode;
-    @Child protected JavaScriptNode expressionNode;
-    @Child SetFunctionNameNode setFunctionNameNode;
+@GenerateWrapper
+public abstract class NamedEvaluationTargetNode extends JavaScriptNode {
 
-    protected NamedEvaluationNode(JavaScriptNode expressionNode, JavaScriptNode nameNode) {
-        this.nameNode = nameNode;
-        this.expressionNode = expressionNode;
-        this.setFunctionNameNode = expressionNode instanceof NamedEvaluationTargetNode ? null : SetFunctionNameNode.create();
-    }
-
-    public static JavaScriptNode create(JavaScriptNode expressionNode, JavaScriptNode nameNode) {
-        return new NamedEvaluationNode(expressionNode, nameNode);
-    }
+    public abstract Object executeWithName(VirtualFrame frame, Object name);
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        Object name = nameNode.execute(frame);
-        return executeWithName(frame, name);
-    }
-
-    public Object executeWithName(VirtualFrame frame, Object name) {
-        Object function;
-        if (expressionNode instanceof NamedEvaluationTargetNode) {
-            assert setFunctionNameNode == null;
-            function = ((NamedEvaluationTargetNode) expressionNode).executeWithName(frame, name);
-        } else {
-            function = expressionNode.execute(frame);
-            setFunctionNameNode.execute(function, name);
-        }
-        return function;
-    }
-
-    @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(cloneUninitialized(expressionNode, materializedTags), cloneUninitialized(nameNode, materializedTags));
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new NamedEvaluationTargetNodeWrapper(this, probe);
     }
 }
