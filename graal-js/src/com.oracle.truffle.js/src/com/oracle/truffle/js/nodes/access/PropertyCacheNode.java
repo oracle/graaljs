@@ -392,6 +392,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      * @see JSConfig#SkipGlobalShapeCheck
      */
     protected static final class ConstantObjectAssumptionShapeCheckNode extends AbstractSingleRealmShapeCheckNode {
+        private static final int STABLE_PROPERTY_ASSUMPTION_INDEX = 1;
 
         private ConstantObjectAssumptionShapeCheckNode(Shape shape, Assumption[] assumptions, JSContext context) {
             super(shape, assumptions, context);
@@ -402,9 +403,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             assert depth == 0;
             Assumption[] ass = new Assumption[3];
             int pos = 0;
-            ass[pos++] = context.getSingleRealmAssumption();
             ass[pos++] = shape.getValidAssumption();
+            assert pos == STABLE_PROPERTY_ASSUMPTION_INDEX;
             ass[pos++] = JSShape.getPropertyAssumption(shape, key);
+            ass[pos++] = context.getSingleRealmAssumption();
             assert pos == ass.length;
             return new ConstantObjectAssumptionShapeCheckNode(shape, ass, context);
         }
@@ -421,7 +423,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         protected boolean isUnstable() {
-            return shape.isValid() && !assumptions[1].isValid();
+            return shape.isValid() && !assumptions[STABLE_PROPERTY_ASSUMPTION_INDEX].isValid();
         }
     }
 
@@ -433,6 +435,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      * @see JSConfig#SkipPrototypeShapeCheck
      */
     protected static final class ConstantObjectPrototypeChainShapeCheckNode extends AbstractSingleRealmShapeCheckNode {
+        private static final int STABLE_PROPERTY_ASSUMPTION_INDEX = 1;
 
         private final WeakReference<DynamicObject> prototype;
 
@@ -445,6 +448,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             Assumption[] ass = new Assumption[2 + depth * 3];
             int pos = 0;
             ass[pos++] = shape.getValidAssumption();
+            assert pos == STABLE_PROPERTY_ASSUMPTION_INDEX;
             ass[pos++] = JSShape.getPropertyAssumption(shape, key);
             Shape depthShape = shape;
             DynamicObject depthProto = thisObj;
@@ -484,7 +488,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         protected boolean isUnstable() {
-            return shape.isValid() && !assumptions[1].isValid();
+            return shape.isValid() && !assumptions[STABLE_PROPERTY_ASSUMPTION_INDEX].isValid();
         }
     }
 
@@ -1241,7 +1245,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     private AbstractShapeCheckNode createShapeCheckNodeDepth0(Shape shape, JSDynamicObject thisObj, boolean isConstantObjectFinal, boolean isDefine) {
         assert thisObj.getShape() == shape;
         // if isDefine is true, shape change is imminent, so don't use assumption
-        if (!isDefine && (isConstantObjectFinal || (isGlobal() && JSConfig.SkipGlobalShapeCheck)) &&
+        if (!isDefine && (isConstantObjectFinal || (isGlobal() && JSConfig.SkipGlobalShapeCheck && getContext().isSingleRealm())) &&
                         isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(shape, key).isValid()) {
             return ConstantObjectAssumptionShapeCheckNode.create(shape, thisObj, key, 0, getContext());
         } else {
