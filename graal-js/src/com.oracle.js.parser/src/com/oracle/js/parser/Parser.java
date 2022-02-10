@@ -1756,7 +1756,7 @@ public class Parser extends AbstractParser {
 
             if (hasPrivateMethods) {
                 // synthetic binding providing access to the constructor for private brand checks.
-                classScope.putSymbol(new Symbol(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME, Symbol.IS_CONST | Symbol.HAS_BEEN_DECLARED));
+                classScope.putSymbol(new Symbol(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME, Symbol.IS_CONST | Symbol.IS_PRIVATE_NAME | Symbol.HAS_BEEN_DECLARED));
             }
 
             classScope.close();
