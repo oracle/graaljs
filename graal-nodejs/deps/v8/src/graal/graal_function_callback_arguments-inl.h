@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,8 +65,8 @@ GraalFunctionCallbackArguments::GraalFunctionCallbackArguments(
     implicit_args_[GraalFunctionCallbackInfo::kReturnValueIndex] = construct_call ? graal_this : nullptr;
     implicit_args_[GraalFunctionCallbackInfo::kDataIndex] = graal_data;
     implicit_args_[GraalFunctionCallbackInfo::kNewTargetIndex] = graal_new_target;
-    argv_[argc_] = graal_this;
-    for (int i = 0; i < argc_; i++) {
+    argv_[0] = graal_this;
+    for (int i = 1; i <= argc_; i++) {
         reinterpret_cast<GraalValue*>(argv_[i])->ReferenceAdded();
     }
 }
@@ -79,7 +79,7 @@ GraalFunctionCallbackArguments::~GraalFunctionCallbackArguments() {
     }
     if (args_on_heap_) {
         reinterpret_cast<GraalValue*> (implicit_args_[GraalFunctionCallbackInfo::kNewTargetIndex])->ReferenceRemoved();
-        for (int i = 0; i <= argc_; i++) { // argc_ is this
+        for (int i = 0; i <= argc_; i++) { // this and args
             reinterpret_cast<GraalValue*>(argv_[i])->ReferenceRemoved();
         }
     } // else arguments are allocated on stack - they will be freed automatically =>
