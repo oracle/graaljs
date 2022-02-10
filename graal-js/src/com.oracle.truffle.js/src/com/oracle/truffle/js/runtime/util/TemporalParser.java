@@ -292,7 +292,9 @@ public final class TemporalParser {
         reset();
         // TemporalTimeZoneIdentifier
         if (parseTimeZoneIdentifier()) {
-            return result();
+            if (atEnd()) {
+                return result();
+            }
         }
 
         reset();
@@ -301,7 +303,9 @@ public final class TemporalParser {
             tryParseTimeSpecSeparator();
             if (parseTimeZone()) {
                 parseCalendar();
-                return result();
+                if (atEnd()) {
+                    return result();
+                }
             }
         }
         return null;
