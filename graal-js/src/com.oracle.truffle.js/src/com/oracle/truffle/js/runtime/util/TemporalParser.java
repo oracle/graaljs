@@ -61,13 +61,13 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
 public final class TemporalParser {
 
     private static final String patternDate = "^([+\\-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)[\\-]?(\\d\\d)";
-    private static final String patternTime = "^(\\d\\d):?((\\d\\d):?((\\d\\d)([\\.,]([\\d]*)?)?)?)?";
+    private static final String patternTime = "^(\\d\\d)(:?(\\d\\d):?((\\d\\d)([\\.,]([\\d]*)?)?)?)?";
     private static final String patternCalendar = "^(\\[u-ca=([^\\]]*)\\])";
     private static final String patternCalendarName = "^(\\w*)$";
     private static final String patternTimeZoneBracketedAnnotation = "^(\\[([^\\]]*)\\])";
     private static final String patternTimeZoneNumericUTCOffset = "^([+\\-\\u2212])(\\d\\d):?((\\d\\d):?((\\d\\d)([\\.,]([\\d]*)?)?)?)?";
     private static final String patternDateSpecYearMonth = "^([+\\-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)";
-    private static final String patternDateSpecMonthDay = "^[\\-]?(\\d\\d)[\\-]?(\\d\\d)";
+    private static final String patternDateSpecMonthDay = "^(\\-\\-)?(\\d\\d)[\\-]?(\\d\\d)";
     private static final String patternTimeZoneIANAName = "^([A-Za-z_]+(/[A-Za-z\\-_]+)*)";
 
     private final JSContext context;
@@ -549,10 +549,10 @@ public final class TemporalParser {
     private boolean tryParseDateSpecMonthDay() {
         Matcher matcher = createMatch(patternDateSpecMonthDay, rest);
         if (matcher.matches()) {
-            month = group(rest, matcher, 1);
-            day = group(rest, matcher, 2);
+            month = group(rest, matcher, 1); // TODO fixup index?
+            day = group(rest, matcher, 2);// TODO fixup index?
 
-            move(matcher.end(2));
+            move(matcher.end(3));
             return true;
         }
         return false;
@@ -581,7 +581,7 @@ public final class TemporalParser {
             second = group(rest, matcher, 5);
             fraction = group(rest, matcher, 7);
 
-            move(matcher.end(2));
+            move(matcher.end(2) < 0 ? matcher.end(1) : matcher.end(2));
             return true;
         }
         return false;
