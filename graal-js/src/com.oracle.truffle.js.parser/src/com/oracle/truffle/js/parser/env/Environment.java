@@ -658,6 +658,11 @@ public abstract class Environment {
         public boolean hasTDZCheck() {
             return false;
         }
+
+        @Override
+        public String toString() {
+            return getClass().getSimpleName() + "(" + getName() + ")";
+        }
     }
 
     public abstract class AbstractFrameVarRef extends VarRef {
