@@ -2349,10 +2349,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/calendar-dateuntil-called-with-singular-largestunit.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/sub-minute-offset.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"

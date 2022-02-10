@@ -872,7 +872,7 @@ public final class TemporalUtil {
             }
         } else if (roundingMode.equals(FLOOR)) {
             if (sign < 0) {
-                quotient = quotient.add(BigDecimal.ONE);
+                quotient = quotient.add(BigDecimal.valueOf(-1));
             }
         } else if (roundingMode.equals(TRUNC)) {
             // divMod already is truncation
