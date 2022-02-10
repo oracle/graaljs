@@ -1746,7 +1746,7 @@ public class JSContext {
         CallTarget throwTypeErrorCallTarget = new JavaScriptRootNode(getLanguage(), null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
-                throw Errors.createTypeError("[[ThrowTypeError]] defined by ECMAScript");
+                throw Errors.createTypeError("'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them");
             }
         }.getCallTarget();
         return JSFunctionData.create(this, throwTypeErrorCallTarget, throwTypeErrorCallTarget, 0, "", false, false, false, true);
