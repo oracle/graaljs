@@ -620,11 +620,11 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             DynamicObject fields = JSOrdinary.create(getContext(), getRealm());
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.CALENDAR, time.getCalendar());
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_HOUR, time.getHour());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_MINUTE, time.getMinute());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_SECOND, time.getSecond());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_MILLISECOND, time.getMillisecond());
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_MICROSECOND, time.getMicrosecond());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_MILLISECOND, time.getMillisecond());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_MINUTE, time.getMinute());
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_NANOSECOND, time.getNanosecond());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_SECOND, time.getSecond());
             return fields;
         }
     }
