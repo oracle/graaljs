@@ -2295,6 +2295,7 @@ public final class TemporalUtil {
         }
     }
 
+    @TruffleBoundary
     public static JSTemporalDurationRecord balanceDuration(JSContext ctx, EnumerableOwnPropertyNamesNode namesNode, double days, double hours, double minutes, double seconds, double milliseconds,
 
                     double microseconds, double nanoseconds, TruffleString largestUnit) {
@@ -2302,6 +2303,7 @@ public final class TemporalUtil {
     }
 
     // nanoseconds can exceed double range, see TemporalDurationHugeTest.testInstantSince
+    @TruffleBoundary
     public static JSTemporalDurationRecord balanceDuration(JSContext ctx, EnumerableOwnPropertyNamesNode namesNode, double days, double hours, double minutes, double seconds, double milliseconds,
                     double microseconds, BigInteger nanoseconds, TruffleString largestUnit, DynamicObject relativeTo) {
 
@@ -2334,7 +2336,7 @@ public final class TemporalUtil {
         nsBi2 = nsBi2.abs();
         if (largestUnit.equals(YEAR) || largestUnit.equals(MONTH) || largestUnit.equals(WEEK) ||
                         largestUnit.equals(DAY) || largestUnit.equals(HOUR)) {
-            BigInteger res[] = nsBi2.divideAndRemainder(bi_1000);
+            BigInteger[] res = nsBi2.divideAndRemainder(bi_1000);
             mus = bitod(res[0]);
             nsBi2 = res[1];
             ms = Math.floor(mus / 1000.0);
@@ -2346,7 +2348,7 @@ public final class TemporalUtil {
             h = Math.floor(min / 60.0);
             min = min % 60;
         } else if (largestUnit.equals(MINUTE)) {
-            BigInteger res[] = nsBi2.divideAndRemainder(bi_1000);
+            BigInteger[] res = nsBi2.divideAndRemainder(bi_1000);
             mus = bitod(res[0]);
             nsBi2 = res[1];
             ms = Math.floor(mus / 1000.0);
@@ -2356,7 +2358,7 @@ public final class TemporalUtil {
             min = Math.floor(s / 60.0);
             s = s % 60;
         } else if (largestUnit.equals(SECOND)) {
-            BigInteger res[] = nsBi2.divideAndRemainder(bi_1000);
+            BigInteger[] res = nsBi2.divideAndRemainder(bi_1000);
             mus = bitod(res[0]);
             nsBi2 = res[1];
             ms = Math.floor(mus / 1000.0);
@@ -2364,13 +2366,13 @@ public final class TemporalUtil {
             s = Math.floor(ms / 1000.0);
             ms = ms % 1000;
         } else if (largestUnit.equals(MILLISECOND)) {
-            BigInteger res[] = nsBi2.divideAndRemainder(bi_1000);
+            BigInteger[] res = nsBi2.divideAndRemainder(bi_1000);
             mus = bitod(res[0]);
             nsBi2 = res[1];
             ms = Math.floor(mus / 1000.0);
             mus = mus % 1000;
         } else if (largestUnit.equals(MICROSECOND)) {
-            BigInteger res[] = nsBi2.divideAndRemainder(bi_1000);
+            BigInteger[] res = nsBi2.divideAndRemainder(bi_1000);
             mus = bitod(res[0]);
             nsBi2 = res[1];
         } else {
@@ -2842,6 +2844,7 @@ public final class TemporalUtil {
 
     // 7.5.20
     // TODO doing long arithmetics here. Might need to change to double/BigInteger
+    @TruffleBoundary
     public static JSTemporalDurationRecord roundDuration(JSContext ctx, JSRealm realm, EnumerableOwnPropertyNamesNode namesNode, double y, double m, double w, double d, double h, double min,
                     double sec, double milsec, double micsec, double nsec, double increment, TruffleString unit, TruffleString roundingMode, DynamicObject relTo) {
         double years = y;
@@ -3540,6 +3543,7 @@ public final class TemporalUtil {
         return true;
     }
 
+    @TruffleBoundary
     public static BigInt addInstant(BigInt epochNanoseconds, double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
         return addInstant(epochNanoseconds, dtol(hours), dtol(minutes), dtol(seconds), dtol(milliseconds), dtol(microseconds), BigInteger.valueOf(dtol(nanoseconds)));
     }
@@ -4005,18 +4009,21 @@ public final class TemporalUtil {
         return instant.getNanoseconds();
     }
 
+    @TruffleBoundary
     public static BigInt addZonedDateTime(JSContext ctx, BigInt epochNanoseconds, DynamicObject timeZone, DynamicObject calendar, long years, long months, long weeks, long days,
                     long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
         return addZonedDateTime(ctx, epochNanoseconds, timeZone, calendar, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, BigInteger.valueOf(nanoseconds),
                         Undefined.instance);
     }
 
+    @TruffleBoundary
     public static BigInt addZonedDateTime(JSContext ctx, long epochNanoseconds, DynamicObject timeZone, DynamicObject calendar, long years, long months, long weeks, long days,
                     long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
         return addZonedDateTime(ctx, BigInt.valueOf(epochNanoseconds), timeZone, calendar, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
                         BigInteger.valueOf(nanoseconds), Undefined.instance);
     }
 
+    @TruffleBoundary
     public static BigInt addZonedDateTime(JSContext ctx, BigInt epochNanoseconds, DynamicObject timeZone, DynamicObject calendar, long years, long months, long weeks, long days,
                     long hours, long minutes, long seconds, long milliseconds, long microseconds, BigInteger nanoseconds, DynamicObject options) {
         if (years == 0 && months == 0 && weeks == 0 && days == 0) {
