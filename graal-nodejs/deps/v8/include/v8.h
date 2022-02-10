@@ -11829,14 +11829,14 @@ template<typename T>
 Local<Value> FunctionCallbackInfo<T>::operator[](int i) const {
   // values_ points to the first argument (not the receiver).
   if (i < 0 || length_ <= i) return Local<Value>(*Undefined(GetIsolate()));
-  return Local<Value>(*reinterpret_cast<Value**>(values_ - i));
+  return Local<Value>(*reinterpret_cast<Value**>(values_ + i));
 }
 
 
 template<typename T>
 Local<Object> FunctionCallbackInfo<T>::This() const {
   // values_ points to the first argument (not the receiver).
-  return Local<Object>(*reinterpret_cast<Object**>(values_ + 1));
+  return Local<Object>(*reinterpret_cast<Object**>(values_ - 1));
 }
 
 
