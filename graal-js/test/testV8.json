@@ -171,11 +171,8 @@
     "comment" : "test for fuzzer"
   }, {
     "filePath" : "mjsunit/big-array-literal.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "COMPILE_IMMEDIATELY" : "SKIP"
-    },
-    "comment" : "Too deep inlining in CompileImmediately mode"
+    "status" : "SKIP",
+    "comment" : "Occasional stack-overflow. Too deep inlining in CompileImmediately mode"
   }, {
     "filePath" : "mjsunit/big-object-literal.js",
     "status" : "PASS",
@@ -922,6 +919,13 @@
     "status" : "SKIP",
     "comment" : "takes too long on Graal.js"
   }, {
+    "filePath" : "mjsunit/regress/regress-1110001.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "GR-34371: Occasional segfault on SVM"
+  }, {
     "filePath" : "mjsunit/regress/regress-1115354.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
@@ -965,6 +969,10 @@
     "status" : "FAIL",
     "comment" : "Worker API"
   }, {
+    "filePath" : "mjsunit/regress/regress-1215653.js",
+    "status" : "SKIP",
+    "comment" : "GR-35543: Occasional AssertionError at com.oracle.js.parser.ParserContext.pop()"
+  }, {
     "filePath" : "mjsunit/regress/regress-148378.js",
     "status" : "SKIP",
     "comment" : "NOW: Fails consistently with NoClassDefFoundError. Uses infinite recursion, expects to run out of stack and catch the exception. BEFORE: spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
@@ -1002,9 +1010,6 @@
   }, {
     "filePath" : "mjsunit/regress/regress-353551.js",
     "status" : "FAIL",
-    "statusOverrides" : {
-      "AARCH64" : "PASS"
-    },
     "comment" : "needs larger stack, at least 6m is needed"
   }, {
     "filePath" : "mjsunit/regress/regress-360733.js",
