@@ -102,7 +102,6 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
         this.blockScope = blockScope;
         this.destructuring = destructuring;
         this.conditionExpression = conditionExpression == null ? null : JSToBooleanUnaryNode.create(conditionExpression);
-        assert blockScope != null || writeErrorVar == null;
     }
 
     public static TryCatchNode create(JSContext context, JavaScriptNode tryBlock, JavaScriptNode catchBlock, JSWriteFrameSlotNode writeErrorVar, BlockScopeNode blockScope,
