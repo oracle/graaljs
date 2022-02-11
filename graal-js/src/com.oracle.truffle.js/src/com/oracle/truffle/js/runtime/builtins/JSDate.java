@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.Year;
 import java.time.ZoneOffset;
 
 import com.ibm.icu.impl.Grego;
@@ -84,6 +83,9 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     private static final int MS_PER_HOUR = 3600000;
     public static final int MS_PER_DAY = 3600000 * 24;
     public static final double MAX_DATE = 8.64E15;
+    // slightly beyond MAX_DATE (+/- 273,790 years)
+    // cf. https://tc39.es/ecma262/#sec-time-values-and-time-range
+    public static final double MAX_YEAR_VALUE = 300000;
 
     private static final int DAYS_IN_4_YEARS = 4 * 365 + 1;
     private static final int DAYS_IN_100_YEARS = 25 * DAYS_IN_4_YEARS - 1;
@@ -498,7 +500,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
             mn += 12;
         }
 
-        if (ym < Year.MIN_VALUE || ym > Year.MAX_VALUE) {
+        if (ym < -MAX_YEAR_VALUE || ym > MAX_YEAR_VALUE) {
             return Double.NaN;
         }
 

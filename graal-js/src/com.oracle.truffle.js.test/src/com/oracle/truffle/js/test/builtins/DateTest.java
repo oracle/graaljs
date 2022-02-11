@@ -41,9 +41,10 @@
 package com.oracle.truffle.js.test.builtins;
 
 import static org.junit.Assert.assertEquals;
-
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
+import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.test.JSTest;
 
 /**
@@ -61,5 +62,23 @@ public class DateTest extends JSTest {
         assertEquals(true, testHelper.run("Number.isNaN(Date.parse('292278997'))"));
         assertEquals(true, testHelper.run("Number.isNaN(Date.parse('999999999'))"));
         assertEquals(true, testHelper.run("Number.isNaN(Date.parse('9999999999'))"));
+    }
+
+    @Test
+    public void testDateConstructor() {
+        assertEquals(true, testHelper.run("Number.isNaN(new Date('292278990').valueOf())"));
+        assertEquals(true, testHelper.run("Number.isNaN(new Date('292278994').valueOf())"));
+        assertEquals(true, testHelper.run("Number.isNaN(new Date('292278995').valueOf())"));
+        assertEquals(true, testHelper.run("Number.isNaN(new Date('500000000').valueOf())"));
+        assertEquals(true, testHelper.run("Number.isNaN(new Date('9999999999').valueOf())"));
+    }
+
+    @Test
+    public void testJSDateMakeDate() {
+        assertTrue(3E15 <= JSDate.makeDate(100000, 1, 1, 1, 1, 1, 1, Integer.valueOf(0)));
+        assertTrue(6E15 <= JSDate.makeDate(200000, 1, 1, 1, 1, 1, 1, Integer.valueOf(0)));
+        assertTrue(Double.isNaN(JSDate.makeDate(JSDate.MAX_YEAR_VALUE, 1, 1, 1, 1, 1, 1, Integer.valueOf(0))));
+        assertTrue(Double.isNaN(JSDate.makeDate(JSDate.MAX_YEAR_VALUE + 1, 1, 1, 1, 1, 1, 1, Integer.valueOf(0))));
+        assertTrue(Double.isNaN(JSDate.makeDate(300000, 1, 1, 1, 1, 1, 1, Integer.valueOf(0))));
     }
 }
