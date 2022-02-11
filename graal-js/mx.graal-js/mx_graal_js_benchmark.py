@@ -26,7 +26,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import mx, mx_benchmark, mx_graal_js
+import mx, mx_benchmark, mx_graal_js, mx_sdk_vm
 from mx_benchmark import GuestVm
 from mx_benchmark import JMHDistBenchmarkSuite
 from mx_benchmark import add_bm_suite
@@ -52,18 +52,26 @@ class GraalJsVm(GuestVm):
         return self.__class__(self.config_name(), self._options, host_vm)
 
     def run(self, cwd, args):
-        args += self._options
-        if hasattr(self.host_vm(), 'run_lang'):
-            return self.host_vm().run_lang('js', args + self._options, cwd)
+        if hasattr(self.host_vm(), 'run_launcher'):
+            if self.config_name() == 'trace-cache':
+                assert not self._options
+                code, out, dims = self.host_vm().run_launcher('js', ['--experimental-options', '--engine.TraceCache', '--engine.CacheStore=trace_cache.img'] + args, cwd)
+                if code != 0:
+                    return code, out, {},
+                else:
+                    return self.host_vm().run_launcher('js', ['--experimental-options', '--engine.TraceCache', '--engine.CacheLoad=trace_cache.img'] + args, cwd)
+            else:
+                return self.host_vm().run_launcher('js', self._options + args, cwd)
         else:
-            return self.host_vm().run(cwd, mx_graal_js.graaljs_cmd_line(args))
+            return self.host_vm().run(cwd, mx_graal_js.graaljs_cmd_line(self._options + args))
 
 
 def register_js_vms():
-    if mx.suite('js-benchmarks', fatalIfMissing=False):
-        import mx_js_benchmarks
-        mx_js_benchmarks.add_vm(GraalJsVm('default', []), _suite, 10)
-    mx_benchmark.js_vm_registry.add_vm(GraalJsVm('default', []), _suite, 10)
+    for config_name, options, priority in [('default', [], 10), ('interpreter', ['--experimental-options', '--engine.Compilation=false'], 100), ('trace-cache', [], 110)]:
+        if mx.suite('js-benchmarks', fatalIfMissing=False):
+            import mx_js_benchmarks
+            mx_js_benchmarks.add_vm(GraalJsVm(config_name, options), _suite, priority)
+        mx_benchmark.js_vm_registry.add_vm(GraalJsVm(config_name, options), _suite, priority)
 
 
 class JMHDistGraalJsBenchmarkSuite(JMHDistBenchmarkSuite):
@@ -77,3 +85,6 @@ class JMHDistGraalJsBenchmarkSuite(JMHDistBenchmarkSuite):
         return "graal-js"
 
 add_bm_suite(JMHDistGraalJsBenchmarkSuite())
+
+mx_sdk_vm.register_vm_config('ce', ['cmp', 'icu4j', 'js', 'nfi', 'rgx', 'sdk', 'svm', 'svmnfi', 'tfl', 'tflm'], _suite)
+mx_sdk_vm.register_vm_config('ee', ['cmp', 'cmpee', 'icu4j', 'js', 'nfi', 'rgx', 'sdk', 'svm', 'svmee', 'svmeegc', 'svmnfi', 'tfl', 'tflm'], _suite)
