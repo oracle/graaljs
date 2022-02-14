@@ -31,6 +31,8 @@ from mx_benchmark import GuestVm
 from mx_benchmark import JMHDistBenchmarkSuite
 from mx_benchmark import add_bm_suite
 
+from os.path import join
+
 _suite = mx.suite('graal-js')
 
 class GraalJsVm(GuestVm):
@@ -55,11 +57,12 @@ class GraalJsVm(GuestVm):
         if hasattr(self.host_vm(), 'run_launcher'):
             if self.config_name() == 'trace-cache':
                 assert not self._options
-                code, out, dims = self.host_vm().run_launcher('js', ['--experimental-options', '--engine.TraceCache', '--engine.CacheStore=trace_cache.img'] + args, cwd)
+                cache_file = join(cwd, self.bmSuite.currently_running_benchmark() + '.img');
+                code, out, dims = self.host_vm().run_launcher('js', ['--experimental-options', '--engine.TraceCache', '--engine.CacheStore=' + cache_file] + args, cwd)
                 if code != 0:
                     return code, out, {},
                 else:
-                    return self.host_vm().run_launcher('js', ['--experimental-options', '--engine.CacheLoad=trace_cache.img'] + args, cwd)
+                    return self.host_vm().run_launcher('js', ['--experimental-options', '--engine.CacheLoad=' + cache_file] + args, cwd)
             else:
                 return self.host_vm().run_launcher('js', self._options + args, cwd)
         else:
