@@ -2735,7 +2735,7 @@ public class JSRealm {
                     throw Errors.shouldNotReachHere(e);
                 }
             } else {
-                throw Errors.createError("Custom ESM mapping not found for specifier: " + specifier);
+                throw Errors.createError("Cannot load ES module: " + specifier);
             }
         }
         return null;
