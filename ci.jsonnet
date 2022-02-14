@@ -28,8 +28,8 @@ local defs = import 'defs.jsonnet';
   },
 
   builds: finishBuilds(graalJs.builds + graalNodeJs.builds) + [
-    common.jdk8 + deployBinary + common.deploy + common.postMerge + common.ol65 + {name: 'js-deploybinary-ol65-amd64'},
-    common.jdk8 + deployBinary + common.deploy + common.postMerge + common.darwin + {name: 'js-deploybinary-darwin-amd64'},
+    common.jdk11 + deployBinary + common.deploy + common.postMerge + common.ol65 + {name: 'js-deploybinary-ol65-amd64'},
+    common.jdk11 + deployBinary + common.deploy + common.postMerge + common.darwin + {name: 'js-deploybinary-darwin-amd64', timelimit: '45:00'},
   ],
 
   // Set this flag to false to switch off the use of artifacts (pipelined builds).
