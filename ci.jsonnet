@@ -7,7 +7,7 @@ local defs = import 'defs.jsonnet';
   // Used to run fewer jobs
   local debug = false,
 
-  local overlay = '5904600b120854e7f9de74aa1b8821230e139c9d',
+  local overlay = '821aab84ca142b8f8bddd5b0ec612e0ec70df652',
 
   local no_overlay = 'cb733e564850cd37b685fcef6f3c16b59802b22c',
 
@@ -28,8 +28,8 @@ local defs = import 'defs.jsonnet';
   },
 
   builds: finishBuilds(graalJs.builds + graalNodeJs.builds) + [
-    common.jdk8 + deployBinary + common.deploy + common.postMerge + common.ol65 + {name: 'js-deploybinary-ol65-amd64'},
-    common.jdk8 + deployBinary + common.deploy + common.postMerge + common.darwin + {name: 'js-deploybinary-darwin-amd64'},
+    common.jdk11 + deployBinary + common.deploy + common.postMerge + common.ol65 + {name: 'js-deploybinary-ol65-amd64'},
+    common.jdk11 + deployBinary + common.deploy + common.postMerge + common.darwin + {name: 'js-deploybinary-darwin-amd64', timelimit: '45:00'},
   ],
 
   // Set this flag to false to switch off the use of artifacts (pipelined builds).
