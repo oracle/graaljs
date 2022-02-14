@@ -57,8 +57,8 @@ class GraalJsVm(GuestVm):
         if hasattr(self.host_vm(), 'run_launcher'):
             if self.config_name() == 'trace-cache':
                 assert not self._options
-                cache_file = join(cwd, self.bmSuite.currently_running_benchmark() + '.img');
-                code, out, dims = self.host_vm().run_launcher('js', ['--experimental-options', '--engine.TraceCache', '--engine.CacheStore=' + cache_file] + args, cwd)
+                cache_file = join(cwd, self.bmSuite.currently_running_benchmark() + '.img')
+                code, out, _ = self.host_vm().run_launcher('js', ['--experimental-options', '--engine.TraceCache', '--engine.CacheStore=' + cache_file] + args, cwd)
                 if code != 0:
                     return code, out, {},
                 else:
