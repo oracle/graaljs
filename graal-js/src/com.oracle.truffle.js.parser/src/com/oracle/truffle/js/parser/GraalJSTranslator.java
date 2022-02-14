@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -1291,7 +1292,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 // In other cases, we can statically determine if a local use is in the TDZ,
                 // so we can skip the initialization if there is no non-local use (or eval).
                 if (symbol.isClosedOver() || symbol.isDeclaredInSwitchBlock() || block.isModuleBody() || block.getScope().hasNestedEval() || !allowScopeOptimization()) {
-                    slotsWithTDZ.add((FrameSlotVarRef) findScopeVar(symbol.getName(), true));
+                    FrameSlotVarRef slotRef = (FrameSlotVarRef) findScopeVar(symbol.getName(), true);
+                    assert JSFrameUtil.hasTemporalDeadZone(slotRef.getFrameSlot()) : slotRef.getFrameSlot();
+                    slotsWithTDZ.add(slotRef);
                 }
             }
             if (symbol.isVarRedeclaredHere()) {
@@ -1303,15 +1306,34 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         if (!slotsWithTDZ.isEmpty()) {
-            int[] slots = new int[slotsWithTDZ.size()];
-            ScopeFrameNode scope = slotsWithTDZ.get(0).createScopeFrameNode();
-            for (int i = 0; i < slots.length; i++) {
-                FrameSlotVarRef slotRef = slotsWithTDZ.get(i);
-                assert JSFrameUtil.hasTemporalDeadZone(slotRef.getFrameSlot()) : slotRef.getFrameSlot();
-                assert slotRef.getScopeLevel() == 0;
-                slots[i] = slotRef.getFrameSlot().getIndex();
+            Collections.sort(slotsWithTDZ, Comparator.comparingInt(FrameSlotVarRef::getScopeLevel));
+            if (slotsWithTDZ.size() == 1 || slotsWithTDZ.get(0).getScopeLevel() == slotsWithTDZ.get(slotsWithTDZ.size() - 1).getScopeLevel()) {
+                // all slots are in the same frame
+                int[] slots = new int[slotsWithTDZ.size()];
+                ScopeFrameNode scope = slotsWithTDZ.get(0).createScopeFrameNode();
+                for (int i = 0; i < slots.length; i++) {
+                    slots[i] = slotsWithTDZ.get(i).getFrameSlot().getIndex();
+                }
+                blockWithInit.add(factory.createInitializeFrameSlots(scope, slots));
+            } else {
+                // we have slots in separate frames
+                int[] slots = new int[slotsWithTDZ.size()];
+                for (int from = 0; from < slots.length;) {
+                    FrameSlotVarRef first = slotsWithTDZ.get(from);
+                    ScopeFrameNode scope = first.createScopeFrameNode();
+                    slots[from] = slotsWithTDZ.get(from).getFrameSlot().getIndex();
+                    int to = from + 1;
+                    while (to < slots.length) {
+                        FrameSlotVarRef next = slotsWithTDZ.get(to);
+                        if (next.getScopeLevel() != first.getScopeLevel()) {
+                            break;
+                        }
+                        slots[to++] = next.getFrameSlot().getIndex();
+                    }
+                    blockWithInit.add(factory.createInitializeFrameSlots(scope, Arrays.copyOfRange(slots, from, to)));
+                    from = to;
+                }
             }
-            blockWithInit.add(factory.createInitializeFrameSlots(scope, slots));
         }
 
         if (block.isModuleBody()) {
