@@ -1998,7 +1998,9 @@ public class Parser extends AbstractParser {
         try {
             initializer = assignmentExpression(true, false, false);
         } finally {
+            function.finishBodyScope();
             restoreBlock(body);
+            lc.propagateFunctionFlags();
             lc.pop(function);
         }
 
