@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,7 +72,7 @@ public final class JSFrameUtil {
     private static final int IS_PARAM = Symbol.IS_PARAM;
     private static final int IS_ARGUMENTS = Symbol.IS_ARGUMENTS;
     public static final int SYMBOL_FLAG_MASK = HAS_TDZ | IS_HOISTABLE_DECLARATION | IS_IMPORT_BINDING | IS_PARAM | IS_ARGUMENTS |
-                    IS_PRIVATE_NAME | IS_PRIVATE_NAME_STATIC | IS_PRIVATE_METHOD_OR_ACCESSOR;
+                    IS_PRIVATE_NAME | IS_PRIVATE_NAME_STATIC | IS_PRIVATE_METHOD_OR_ACCESSOR | Symbol.IS_CLOSED_OVER;
 
     private JSFrameUtil() {
         // this utility class should not be instantiated
@@ -156,6 +156,10 @@ public final class JSFrameUtil {
 
     public static boolean isArguments(JSFrameSlot frameSlot) {
         return (getFlags(frameSlot) & IS_ARGUMENTS) != 0;
+    }
+
+    public static boolean isClosedOver(JSFrameSlot frameSlot) {
+        return (getFlags(frameSlot) & Symbol.IS_CLOSED_OVER) != 0;
     }
 
     public static MaterializedFrame getParentFrame(Frame frame) {

@@ -48,6 +48,7 @@ import java.util.NoSuchElementException;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.js.parser.ir.Scope;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.js.nodes.JSFrameDescriptor;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
@@ -73,8 +74,8 @@ public final class FunctionEnvironment extends Environment {
 
     private final FunctionEnvironment parentFunction;
     private final JSFrameDescriptor frameDescriptor;
-    private EconomicMap<JSFrameSlot, Integer> parameters;
     private final boolean isStrictMode;
+    private final Scope scope;
 
     private JSFrameSlot returnSlot;
     private JSFrameSlot blockScopeSlot;
@@ -91,6 +92,7 @@ public final class FunctionEnvironment extends Environment {
     private boolean hasYield;
     private boolean hasAwait;
 
+    private EconomicMap<JSFrameSlot, Integer> parameters;
     private List<BreakTarget> jumpTargetStack;
     private boolean directArgumentsAccess;
 
@@ -109,7 +111,7 @@ public final class FunctionEnvironment extends Environment {
     private boolean needsNewTarget;
     private final boolean inDirectEval;
 
-    public FunctionEnvironment(Environment parent, NodeFactory factory, JSContext context,
+    public FunctionEnvironment(Environment parent, NodeFactory factory, JSContext context, Scope scope,
                     boolean isStrictMode, boolean isEval, boolean isDirectEval, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor, boolean isAsyncFunction,
                     boolean isGlobal, boolean hasSyntheticArguments) {
         super(parent, factory, context);
@@ -125,6 +127,7 @@ public final class FunctionEnvironment extends Environment {
         this.parentFunction = parent == null ? null : parent.function();
 
         this.frameDescriptor = factory.createFunctionFrameDescriptor();
+        this.scope = scope;
         this.inDirectEval = isDirectEval || (parent != null && parent.function() != null && parent.function().inDirectEval());
     }
 
@@ -187,7 +190,12 @@ public final class FunctionEnvironment extends Environment {
     }
 
     @Override
-    protected JSFrameSlot findBlockFrameSlot(Object name) {
+    public JSFrameSlot findBlockFrameSlot(Object name) {
+        return null;
+    }
+
+    @Override
+    public JSFrameSlot findFunctionFrameSlot(Object name) {
         return getFunctionFrameDescriptor().findFrameSlot(name);
     }
 
@@ -550,6 +558,11 @@ public final class FunctionEnvironment extends Environment {
 
     public boolean isAsyncGeneratorFunction() {
         return isAsyncFunction && isGeneratorFunction;
+    }
+
+    @Override
+    public Scope getScope() {
+        return scope;
     }
 
     @Override

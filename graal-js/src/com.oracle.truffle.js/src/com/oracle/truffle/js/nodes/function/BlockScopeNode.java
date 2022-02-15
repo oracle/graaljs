@@ -50,6 +50,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.FrameDescriptorProvider;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
@@ -60,9 +61,10 @@ import com.oracle.truffle.js.nodes.control.YieldException;
 import com.oracle.truffle.js.nodes.instrumentation.DeclareTagProvider;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public abstract class BlockScopeNode extends NamedEvaluationTargetNode implements ResumableNode.WithObjectState, RepeatingNode {
+public abstract class BlockScopeNode extends NamedEvaluationTargetNode implements RepeatingNode {
     @Child protected JavaScriptNode block;
 
     protected BlockScopeNode(JavaScriptNode block) {
@@ -72,6 +74,10 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
     public static BlockScopeNode create(JavaScriptNode block, JSFrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, JSFrameSlot parentSlot, boolean functionBlock,
                     boolean captureFunctionFrame) {
         return new FrameBlockScopeNode(block, blockScopeSlot.getIndex(), frameDescriptor, parentSlot.getIndex(), functionBlock, captureFunctionFrame);
+    }
+
+    public static BlockScopeNode createVirtual(JavaScriptNode block, int start, int end) {
+        return new VirtualBlockScopeNode(block, start, end);
     }
 
     @Override
@@ -129,7 +135,7 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
         return block.isResultAlwaysOfType(clazz);
     }
 
-    public static class FrameBlockScopeNode extends BlockScopeNode implements FrameDescriptorProvider {
+    public static class FrameBlockScopeNode extends BlockScopeNode implements ResumableNode.WithObjectState, FrameDescriptorProvider {
         protected final int blockScopeSlot;
         protected final int parentSlot;
         protected final FrameDescriptor frameDescriptor;
@@ -233,6 +239,51 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new FrameBlockScopeNode(cloneUninitialized(block, materializedTags), blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame);
+        }
+    }
+
+    public static class VirtualBlockScopeNode extends BlockScopeNode {
+        protected final int start;
+        protected final int end;
+
+        protected VirtualBlockScopeNode(JavaScriptNode block, int start, int end) {
+            super(block);
+            this.start = start;
+            this.end = end;
+        }
+
+        @Override
+        public VirtualFrame appendScopeFrame(VirtualFrame frame) {
+            return frame;
+        }
+
+        @ExplodeLoop
+        @Override
+        public void exitScope(VirtualFrame frame) {
+            // Clear frame slots when exiting the scope.
+            // Note: we must not clear the slots on yield/await.
+            for (int i = start; i < end; i++) {
+                frame.clear(i);
+            }
+        }
+
+        @Override
+        public Object getBlockScope(VirtualFrame frame) {
+            return Null.instance;
+        }
+
+        @Override
+        public void setBlockScope(VirtualFrame frame, Object state) {
+        }
+
+        @Override
+        public boolean isFunctionBlock() {
+            return false;
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new VirtualBlockScopeNode(cloneUninitialized(block, materializedTags), start, end);
         }
     }
 }

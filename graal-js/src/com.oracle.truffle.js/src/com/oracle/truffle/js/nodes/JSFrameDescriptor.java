@@ -45,10 +45,12 @@ import java.util.StringJoiner;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.js.parser.ir.Scope;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSFrameDescriptor {
@@ -85,7 +87,7 @@ public final class JSFrameDescriptor {
             throw new IllegalArgumentException("duplicate frame slot: " + identifier);
         }
         int index = size;
-        JSFrameSlot slot = new JSFrameSlot(index, identifier, flags, kind);
+        JSFrameSlot slot = new JSFrameSlot(index, toSlotName(identifier), toSlotFlags(flags), kind);
         size++;
         identifierToSlotMap.put(identifier, slot);
         assert identifierToSlotMap.size() == size;
@@ -168,6 +170,26 @@ public final class JSFrameDescriptor {
         return desc;
     }
 
+    private static int toSlotFlags(int flags) {
+        // other bits not needed
+        return flags & JSFrameUtil.SYMBOL_FLAG_MASK;
+    }
+
+    private static Object toSlotName(Object identifier) {
+        if (identifier instanceof ScopedIdentifier) {
+            return ((ScopedIdentifier) identifier).identifier;
+        } else {
+            return identifier;
+        }
+    }
+
+    /**
+     * A scoped identifier is only equal to identifiers of the same scope.
+     */
+    public static Object scopedIdentifier(Object identifier, Scope scope) {
+        return new ScopedIdentifier(identifier, scope);
+    }
+
     @Override
     public String toString() {
         StringJoiner slots = new StringJoiner(", ", "{", "}");
@@ -175,5 +197,37 @@ public final class JSFrameDescriptor {
             slots.add(slot.getIdentifier().toString());
         }
         return "FrameDescriptor[size=" + size + ", slots=" + slots + "]";
+    }
+
+    private static final class ScopedIdentifier {
+        final Object identifier;
+        final Scope scope;
+
+        ScopedIdentifier(Object identifier, Scope scope) {
+            this.identifier = Objects.requireNonNull(identifier);
+            this.scope = scope;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(identifier, scope);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof ScopedIdentifier)) {
+                return false;
+            }
+            ScopedIdentifier other = (ScopedIdentifier) obj;
+            return Objects.equals(identifier, other.identifier) && Objects.equals(scope, other.scope);
+        }
+
+        @Override
+        public String toString() {
+            return identifier.toString();
+        }
     }
 }

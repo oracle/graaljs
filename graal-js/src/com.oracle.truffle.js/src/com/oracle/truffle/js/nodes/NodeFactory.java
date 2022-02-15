@@ -967,6 +967,10 @@ public class NodeFactory {
         return BlockScopeNode.create(block, blockScopeSlot, blockFrameDescriptor, parentSlot, functionBlock, captureFunctionFrame);
     }
 
+    public JavaScriptNode createVirtualBlockScope(JavaScriptNode block, int start, int end) {
+        return BlockScopeNode.createVirtual(block, start, end);
+    }
+
     public JavaScriptNode createTemplateObject(JSContext context, JavaScriptNode rawStrings, JavaScriptNode cookedStrings) {
         return GetTemplateObjectNode.create(context, (ArrayLiteralNode) rawStrings, (ArrayLiteralNode) cookedStrings);
     }
