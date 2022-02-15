@@ -203,6 +203,20 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     /**
+     * @return true if the function uses super.
+     */
+    public boolean usesSuper() {
+        return getFlag(FunctionNode.USES_SUPER) != 0;
+    }
+
+    /**
+     * @return true if the function uses new.target.
+     */
+    public boolean usesNewTarget() {
+        return getFlag(FunctionNode.USES_NEW_TARGET) != 0;
+    }
+
+    /**
      * Returns true if any of the blocks in this function create their own scope.
      *
      * @return true if any of the blocks in this function create their own scope.
@@ -559,6 +573,18 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         }
         if (hasFunctionSelf()) {
             putFunctionSymbolIfAbsent(name, Symbol.IS_FUNCTION_SELF);
+        }
+        if (!isArrow()) {
+            boolean needsThisForEval = hasEval() || hasArrowEval();
+            if (usesThis() || usesSuper() || needsThisForEval || getFlag(FunctionNode.HAS_DIRECT_SUPER) != 0) {
+                putFunctionSymbolIfAbsent(TokenType.THIS.getName(), Symbol.IS_THIS);
+            }
+            if (usesSuper() || (isMethod() && needsThisForEval)) {
+                putFunctionSymbolIfAbsent(TokenType.SUPER.getName(), Symbol.IS_SUPER);
+            }
+            if (usesNewTarget() || needsThisForEval) {
+                putFunctionSymbolIfAbsent(Parser.NEW_TARGET_NAME, Symbol.IS_NEW_TARGET);
+            }
         }
         if (hasParameterExpressions()) {
             // Lock the scopes to make sure we don't add any more symbols. Not strictly necessary.

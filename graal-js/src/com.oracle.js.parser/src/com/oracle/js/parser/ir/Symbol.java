@@ -115,6 +115,11 @@ public final class Symbol implements Comparable<Symbol> {
     /** Is this symbol used by an inner scope within the same function? */
     public static final int IS_USED_IN_INNER_SCOPE = 1 << 24;
 
+    /** Is this the home object, used by super property accesses. */
+    public static final int IS_SUPER = 1 << 25;
+    /** Is this the {@code new.target}. */
+    public static final int IS_NEW_TARGET = 1 << 26;
+
     /** Null or name identifying symbol. */
     private final String name;
 
@@ -233,6 +238,24 @@ public final class Symbol implements Comparable<Symbol> {
      */
     public boolean isThis() {
         return (flags & IS_THIS) != 0;
+    }
+
+    /**
+     * Check if this symbol represents {@code super}
+     *
+     * @return true if super
+     */
+    public boolean isSuper() {
+        return (flags & IS_SUPER) != 0;
+    }
+
+    /**
+     * Check if this symbol represents {@code new.target}
+     *
+     * @return true if {@code new.target}
+     */
+    public boolean isNewTarget() {
+        return (flags & IS_NEW_TARGET) != 0;
     }
 
     /**

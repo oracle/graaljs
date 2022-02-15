@@ -577,7 +577,7 @@ public abstract class Environment {
 
     public void addFrameSlotsFromSymbols(Iterable<com.oracle.js.parser.ir.Symbol> symbols, boolean onlyBlockScoped, Predicate<Symbol> filter) {
         for (com.oracle.js.parser.ir.Symbol symbol : symbols) {
-            if (symbol.isBlockScoped() || (!onlyBlockScoped && symbol.isVar() && !symbol.isGlobal())) {
+            if (symbol.isBlockScoped() || (!onlyBlockScoped && symbol.isVar() && !symbol.isGlobal() && !symbol.isThis() && !symbol.isSuper() && !symbol.isNewTarget())) {
                 if (symbol.isFunctionSelf()) {
                     // Function self reference is retrieved from arguments, no frame slot needed.
                     continue;

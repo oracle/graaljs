@@ -99,6 +99,7 @@ import static com.oracle.js.parser.TokenType.TEMPLATE_HEAD;
 import static com.oracle.js.parser.TokenType.TEMPLATE_MIDDLE;
 import static com.oracle.js.parser.TokenType.TEMPLATE_TAIL;
 import static com.oracle.js.parser.TokenType.TERNARY;
+import static com.oracle.js.parser.TokenType.THIS;
 import static com.oracle.js.parser.TokenType.VAR;
 import static com.oracle.js.parser.TokenType.VOID;
 import static com.oracle.js.parser.TokenType.WHILE;
@@ -187,7 +188,7 @@ public class Parser extends AbstractParser {
     private static final String CONSTRUCTOR_NAME = "constructor";
     private static final String PRIVATE_CONSTRUCTOR_NAME = "#constructor";
     private static final String PROTO_NAME = "__proto__";
-    private static final String NEW_TARGET_NAME = "new.target";
+    static final String NEW_TARGET_NAME = "new.target";
     private static final String IMPORT_META_NAME = "import.meta";
     private static final String PROTOTYPE_NAME = "prototype";
     /** Function.prototype.apply method name. */
@@ -2514,10 +2515,7 @@ public class Parser extends AbstractParser {
 
     private IdentNode identifierReference(boolean yield, boolean await) {
         IdentNode ident = identifier(yield, await, "IdentifierReference", false);
-        Scope currentScope = lc.getCurrentScope();
-        if (currentScope != null) { // can be null when parsing/verifying a parameter list.
-            currentScope.addIdentifierReference(ident.getName());
-        }
+        addIdentifierReference(ident.getName());
         return ident;
     }
 
@@ -2531,11 +2529,15 @@ public class Parser extends AbstractParser {
 
     private IdentNode bindingIdentifier(boolean yield, boolean await, String contextString) {
         IdentNode ident = identifier(yield, await, contextString, true);
+        addIdentifierReference(ident.getName());
+        return ident;
+    }
+
+    private void addIdentifierReference(String name) {
         Scope currentScope = lc.getCurrentScope();
         if (currentScope != null) { // can be null when parsing/verifying a parameter list.
-            currentScope.addIdentifierReference(ident.getName());
+            currentScope.addIdentifierReference(name);
         }
-        return ident;
     }
 
     private Expression bindingPattern(boolean yield, boolean await) {
@@ -3780,17 +3782,19 @@ public class Parser extends AbstractParser {
         final long primaryToken = token;
 
         switch (type) {
-            case THIS:
+            case THIS: {
                 final String name = type.getName();
                 next();
                 markThis();
                 return new IdentNode(primaryToken, finish, name).setIsThis();
-            case IDENT:
+            }
+            case IDENT: {
                 final IdentNode ident = identifierReference(yield, await);
                 if (ident == null) {
                     break;
                 }
                 return detectSpecialProperty(ident);
+            }
             case NON_OCTAL_DECIMAL:
                 if (isStrictMode) {
                     throw error(AbstractParser.message("strict.no.nonoctaldecimal"), token);
@@ -4752,6 +4756,8 @@ public class Parser extends AbstractParser {
                                 ParserContextFunctionNode currentFunction = lc.getCurrentNonArrowFunction();
                                 if (currentFunction.isMethod()) {
                                     currentFunction.setFlag(FunctionNode.USES_SUPER);
+                                    addIdentifierReference(SUPER.getName());
+                                    addIdentifierReference(THIS.getName());
                                 }
                                 isSuper = true;
                                 break;
@@ -7164,6 +7170,7 @@ public class Parser extends AbstractParser {
 
     private void markThis() {
         lc.setCurrentFunctionFlag(FunctionNode.USES_THIS);
+        addIdentifierReference(THIS.getName());
     }
 
     private void markNewTarget() {
@@ -7175,6 +7182,7 @@ public class Parser extends AbstractParser {
         if (!fn.isProgram()) {
             fn.setFlag(FunctionNode.USES_NEW_TARGET);
         }
+        addIdentifierReference(NEW_TARGET_NAME);
     }
 
     private static boolean markApplyArgumentsCall(final ParserContext lc, List<Expression> arguments) {
