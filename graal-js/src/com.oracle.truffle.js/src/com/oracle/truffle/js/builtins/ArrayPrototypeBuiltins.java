@@ -54,7 +54,9 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -1320,7 +1322,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private Object toStringForeign(Object arrayObj) {
             InteropLibrary interop = getInterop();
-            if (interop.isMemberInvocable(arrayObj, JOIN)) {
+            if (shouldTryOwnJoin(arrayObj) && interop.isMemberInvocable(arrayObj, JOIN)) {
                 Object result;
                 try {
                     try {
@@ -1347,6 +1349,33 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 Object toString = getToStringProperty(getRealm().getObjectPrototype());
                 return callToString(arrayObj, toString);
             }
+        }
+
+        private boolean shouldTryOwnJoin(Object arrayObj) {
+            // It is unlikely that an array-like object from a different language
+            // has join() with the right semantics (namely, join() of ruby arrays
+            // has a slightly different semantic). On the other hand, user-provided
+            // objects like ProxyArray/ProxyObjects may have one.
+            InteropLibrary interop = getInterop();
+            try {
+                return !interop.hasLanguage(arrayObj) || (interop.getLanguage(arrayObj) == getHostLanguageClass());
+            } catch (UnsupportedMessageException umex) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        @CompilationFinal private Class<? extends TruffleLanguage<?>> hostLanguageClass;
+
+        private Class<? extends TruffleLanguage<?>> getHostLanguageClass() {
+            if (hostLanguageClass == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                try {
+                    hostLanguageClass = InteropLibrary.getUncached().getLanguage(getRealm().getEnv().asGuestValue(new Object()));
+                } catch (UnsupportedMessageException umex) {
+                    throw CompilerDirectives.shouldNotReachHere();
+                }
+            }
+            return hostLanguageClass;
         }
 
         @Specialization
