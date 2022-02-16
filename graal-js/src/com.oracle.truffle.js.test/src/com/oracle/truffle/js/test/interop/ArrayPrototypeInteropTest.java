@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -254,6 +254,15 @@ public class ArrayPrototypeInteropTest {
         assertEquals("10,20,30,40,50", resultValue.asString());
     }
 
+    @Test
+    public void testToStringWithCustomJoin() {
+        List<Object> values = new ArrayList<>(Arrays.asList(10, 20, 30, 40, 50));
+        context.getBindings(ID).putMember("a", new MyProxyArrayWithCustomJoin(values));
+        Value resultValue = context.eval(ID, "Array.prototype.toString.call(a);");
+        assertTrue("toString should return a string", resultValue.isString());
+        assertEquals("1020304050", resultValue.asString());
+    }
+
     private void testWithArray(String test, List<Integer> before, List<Integer> afterExpected, List<Integer> expectedResult) {
         testWithArray(test, before, afterExpected, actualResult -> assertEquals("result", expectedResult, actualResult.as(LIST_OF_INTEGER)));
     }
@@ -275,7 +284,7 @@ public class ArrayPrototypeInteropTest {
     };
 
     private static class MyProxyArray implements ProxyArray {
-        private final List<Object> values;
+        protected final List<Object> values;
 
         protected MyProxyArray(List<Object> values) {
             this.values = values;
@@ -366,4 +375,41 @@ public class ArrayPrototypeInteropTest {
             throw new UnsupportedOperationException();
         }
     }
+
+    private static class MyProxyArrayWithCustomJoin extends MyProxyArray implements ProxyObject {
+
+        protected MyProxyArrayWithCustomJoin(List<Object> values) {
+            super(values);
+        }
+
+        @Override
+        public Object getMember(String key) {
+            if (key.equals("join")) {
+                return (ProxyExecutable) arguments -> {
+                    StringBuilder sb = new StringBuilder();
+                    for (Object arg : values) {
+                        sb.append(arg);
+                    }
+                    return sb.toString();
+                };
+            }
+            return null;
+        }
+
+        @Override
+        public Object getMemberKeys() {
+            return ProxyArray.fromArray("join");
+        }
+
+        @Override
+        public boolean hasMember(String key) {
+            return key.equals("join");
+        }
+
+        @Override
+        public void putMember(String key, Value value) {
+            throw new UnsupportedOperationException();
+        }
+    }
+
 }
