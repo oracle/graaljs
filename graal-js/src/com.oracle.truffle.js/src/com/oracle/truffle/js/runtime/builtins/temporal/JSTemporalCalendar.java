@@ -48,6 +48,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.JAPANESE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
+import static com.oracle.truffle.js.runtime.util.TemporalUtil.ltoi;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -308,7 +309,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
         if (day == Undefined.instance) {
             throw TemporalErrors.createTypeErrorTemporalDayNotPresent();
         }
-        return TemporalUtil.regulateISODate((Long) year, (Long) month, (Long) day, overflow);
+        return TemporalUtil.regulateISODate(ltoi((Long) year), ltoi((Long) month), ltoi((Long) day), overflow);
     }
 
     // 12.1.40
@@ -325,7 +326,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
         }
         Object month = resolveISOMonth(preparedFields, stringToNumber, identicalNode);
 
-        JSTemporalYearMonthDayRecord result = TemporalUtil.regulateISOYearMonth(TemporalUtil.asLong(year), TemporalUtil.asLong(month), overflow);
+        JSTemporalYearMonthDayRecord result = TemporalUtil.regulateISOYearMonth(ltoi(TemporalUtil.asLong(year)), ltoi(TemporalUtil.asLong(month)), overflow);
         return JSTemporalYearMonthDayRecord.create(result.getYear(), result.getMonth(), 1);
     }
 
@@ -346,12 +347,12 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
         if (day == Undefined.instance) {
             throw Errors.createTypeError("Day not present.");
         }
-        long referenceISOYear = 1972;
+        int referenceISOYear = 1972;
         JSTemporalDateTimeRecord result = null;
         if (monthCode == Undefined.instance) {
-            result = TemporalUtil.regulateISODate((Long) year, (Long) month, (Long) day, overflow);
+            result = TemporalUtil.regulateISODate(ltoi((Long) year), ltoi((Long) month), ltoi((Long) day), overflow);
         } else {
-            result = TemporalUtil.regulateISODate(referenceISOYear, (Long) month, (Long) day, overflow);
+            result = TemporalUtil.regulateISODate(referenceISOYear, ltoi((Long) month), ltoi((Long) day), overflow);
         }
         return JSTemporalYearMonthDayRecord.create(referenceISOYear, result.getMonth(), result.getDay());
     }

@@ -44,6 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -58,10 +59,44 @@ import com.oracle.truffle.js.runtime.Symbol;
 @ImportStatic(JSGuards.class)
 public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode {
 
+    private final BranchProfile isIntProfile = BranchProfile.create();
+    private final BranchProfile isLongProfile = BranchProfile.create();
+    private final BranchProfile isDoubleProfile = BranchProfile.create();
+
     public abstract Object execute(Object value);
 
-    public final Number executeNumber(Object value) {
-        return (Number) execute(value);
+    /**
+     * The node by definition should return a double value (that has integer properties), but in
+     * some cases we know that the result needs to fit into an integer. Methods like
+     * https://tc39.es/proposal-temporal/#sec-temporal-isodatetimewithinlimits or
+     * https://tc39.es/proposal-temporal/#sec-temporal-isoyearmonthwithinlimits ensure that days and
+     * months are in valid ranges, and years up to about 273,000 years.
+     */
+    public final int executeIntOrThrow(Object value) {
+        Number n = (Number) execute(value);
+
+        if (n instanceof Integer) {
+            isIntProfile.enter();
+            return n.intValue();
+        } else if (n instanceof Long) {
+            isLongProfile.enter();
+            long l = n.longValue();
+            if (l < Integer.MIN_VALUE || Integer.MAX_VALUE < l) {
+                throw Errors.createRangeError("value out of range");
+            }
+            return (int) l;
+        } else {
+            isDoubleProfile.enter();
+            double d = n.doubleValue();
+            if (d < Integer.MIN_VALUE || Integer.MAX_VALUE < d) {
+                throw Errors.createRangeError("value out of range");
+            }
+            return (int) d;
+        }
+    }
+
+    public final double executeDouble(Object value) {
+        return ((Number) execute(value)).doubleValue();
     }
 
     public static JSToIntegerThrowOnInfinityNode create() {
@@ -123,13 +158,13 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
     protected Number doString(TruffleString value,
                     @Cached.Shared("recToIntOrInf") @Cached("create()") JSToIntegerThrowOnInfinityNode toIntOrInf,
                     @Cached("create()") JSStringToNumberNode stringToNumberNode) {
-        return toIntOrInf.executeNumber(stringToNumberNode.executeString(value));
+        return (Number) toIntOrInf.execute(stringToNumberNode.executeString(value));
     }
 
     @Specialization(guards = "isForeignObject(value)||isJSObject(value)")
     protected Number doJSOrForeignObject(Object value,
                     @Cached.Shared("recToIntOrInf") @Cached("create()") JSToIntegerThrowOnInfinityNode toIntOrInf,
                     @Cached("create()") JSToNumberNode toNumberNode) {
-        return toIntOrInf.executeNumber(toNumberNode.executeNumber(value));
+        return (Number) toIntOrInf.execute(toNumberNode.executeNumber(value));
     }
 }

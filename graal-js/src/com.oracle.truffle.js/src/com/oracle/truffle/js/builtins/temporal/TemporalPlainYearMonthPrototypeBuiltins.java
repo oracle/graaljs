@@ -392,10 +392,10 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             DynamicObject calendar = ym.getCalendar();
             List<TruffleString> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.listMCY);
             int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
-            long day = 0;
+            int day = 0;
             if (sign < 0) {
                 Object dayFromCalendar = JSTemporalCalendar.calendarDaysInMonth(calendar, ym);
-                day = TemporalUtil.toPositiveInteger(dayFromCalendar);
+                day = TemporalUtil.toPositiveIntegerConstrainInt(dayFromCalendar);
             } else {
                 day = 1;
             }
@@ -427,9 +427,9 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             DynamicObject calendar = ym.getCalendar();
             List<TruffleString> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.listMCY);
             int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
-            long day = 0;
+            int day = 0;
             if (sign < 0) {
-                day = JSRuntime.longValue((Number) JSTemporalCalendar.calendarDaysInMonth(calendar, ym));
+                day = TemporalUtil.toPositiveIntegerConstrainInt(JSTemporalCalendar.calendarDaysInMonth(calendar, ym));
             } else {
                 day = 1;
             }

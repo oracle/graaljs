@@ -81,12 +81,12 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
     private JSTemporalPlainYearMonth() {
     }
 
-    public static DynamicObject create(JSContext context, long isoYear, long isoMonth, DynamicObject calendar,
-                    long referenceISODay) {
+    public static DynamicObject create(JSContext context, int isoYear, int isoMonth, DynamicObject calendar,
+                    int referenceISODay) {
         if (!TemporalUtil.validateISODate(isoYear, isoMonth, referenceISODay)) {
             throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
-        if (!validateISOYearMonthRange(isoYear, isoMonth)) {
+        if (!TemporalUtil.isoYearMonthWithinLimits(isoYear, isoMonth)) {
             throw TemporalErrors.createRangeErrorYearMonthOutsideRange();
         }
 
@@ -144,20 +144,6 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
 
     public static boolean isJSTemporalPlainYearMonth(Object obj) {
         return obj instanceof JSTemporalPlainYearMonthObject;
-    }
-
-    // 9.5.4
-    public static boolean validateISOYearMonthRange(long year, long month) {
-        if (year < -271821 || year > 275760) {
-            return false;
-        }
-        if (year == -271821 && month < 4) {
-            return false;
-        }
-        if (year == 275760 && month > 9) {
-            return false;
-        }
-        return true;
     }
 
     @TruffleBoundary

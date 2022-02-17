@@ -47,7 +47,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_EXPAND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
-import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
+import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtoi;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -352,15 +352,14 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
                             dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(),
                             dateTime.getCalendar(),
-                            dtol(duration.getYears()), dtol(duration.getMonths()), dtol(duration.getWeeks()), dtol(duration.getDays()),
-                            dtol(duration.getHours()), dtol(duration.getMinutes()), dtol(duration.getSeconds()),
-                            dtol(duration.getMilliseconds()), dtol(duration.getMicroseconds()), dtol(duration.getNanoseconds()),
+                            duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
+                            duration.getHours(), duration.getMinutes(), duration.getSeconds(),
+                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(),
                             options);
 
             return JSTemporalPlainDateTime.create(getContext(),
                             result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(),
-                            result.getNanosecond(),
-                            dateTime.getCalendar());
+                            result.getNanosecond(), dateTime.getCalendar());
         }
     }
 
@@ -502,9 +501,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
                             dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(),
                             dateTime.getCalendar(),
-                            dtol(-duration.getYears()), dtol(-duration.getMonths()), dtol(-duration.getWeeks()), dtol(-duration.getDays()),
-                            dtol(-duration.getHours()), dtol(-duration.getMinutes()), dtol(-duration.getSeconds()),
-                            dtol(-duration.getMilliseconds()), dtol(-duration.getMicroseconds()), dtol(-duration.getNanoseconds()),
+                            -duration.getYears(), -duration.getMonths(), -duration.getWeeks(), -duration.getDays(),
+                            -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(),
+                            -duration.getMilliseconds(), -duration.getMicroseconds(), -duration.getNanoseconds(),
                             options);
 
             return JSTemporalPlainDateTime.create(getContext(),
@@ -534,9 +533,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             precision.getIncrement(), precision.getUnit(), roundingMode,
                             null);
             return JSTemporalPlainDateTime.temporalDateTimeToString(
-                            dtol(result.getYears()), dtol(result.getMonths()), dtol(result.getDays()),
-                            dtol(result.getHours()), dtol(result.getMinutes()), dtol(result.getSeconds()),
-                            dtol(result.getMilliseconds()), dtol(result.getMicroseconds()), dtol(result.getNanoseconds()),
+                            dtoi(result.getYears()), dtoi(result.getMonths()), dtoi(result.getDays()),
+                            dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()),
+                            dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()), dtoi(result.getNanoseconds()),
                             dt.getCalendar(), precision.getPrecision(), showCalendar);
         }
     }
@@ -677,9 +676,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             double roundingIncrement = TemporalUtil.toTemporalDateTimeRoundingIncrement(roundTo, smallestUnit, isObjectNode, toNumberNode);
             JSTemporalDurationRecord result = TemporalUtil.roundISODateTime(dt.getYear(), dt.getMonth(), dt.getDay(), dt.getHour(), dt.getMinute(), dt.getSecond(),
                             dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(), roundingIncrement, smallestUnit, roundingMode, null);
-            return JSTemporalPlainDateTime.create(getContext(), dtol(result.getYears()), dtol(result.getMonths()), dtol(result.getDays()),
-                            dtol(result.getHours()), dtol(result.getMinutes()), dtol(result.getSeconds()),
-                            dtol(result.getMilliseconds()), dtol(result.getMicroseconds()), dtol(result.getNanoseconds()), dt.getCalendar());
+            return JSTemporalPlainDateTime.create(getContext(), dtoi(result.getYears()), dtoi(result.getMonths()), dtoi(result.getDays()),
+                            dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()),
+                            dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()), dtoi(result.getNanoseconds()), dt.getCalendar());
         }
     }
 

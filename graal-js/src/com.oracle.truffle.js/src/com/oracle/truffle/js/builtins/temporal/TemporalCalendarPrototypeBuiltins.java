@@ -52,7 +52,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtolConstrain;
+import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtoiConstrain;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -471,7 +471,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), DAY);
             JSTemporalDateTimeRecord result = TemporalUtil.addISODate(date.getYear(), date.getMonth(), date.getDay(),
-                            dtolConstrain(duration.getYears()), dtolConstrain(duration.getMonths()), dtolConstrain(duration.getWeeks()), dtolConstrain(balanceResult.getDays()), overflow);
+                            dtoiConstrain(duration.getYears()), dtoiConstrain(duration.getMonths()), dtoiConstrain(duration.getWeeks()), dtoiConstrain(balanceResult.getDays()), overflow);
             return JSTemporalPlainDate.create(getContext(), result.getYear(), result.getMonth(), result.getDay(), calendar);
         }
     }
@@ -685,10 +685,10 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        public long daysInYear(Object thisObj, Object temporalDateLike) {
+        public int daysInYear(Object thisObj, Object temporalDateLike) {
             JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
-            long year = 0;
+            int year = 0;
             if (JSTemporalPlainDate.isJSTemporalPlainDate(temporalDateLike)) {
                 year = ((JSTemporalPlainDateObject) temporalDateLike).getYear();
             } else if (JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(temporalDateLike)) {
@@ -730,7 +730,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         public boolean inLeapYear(Object thisObj, Object temporalDateLike) {
             JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
-            long year = 0;
+            int year = 0;
             if (JSTemporalPlainDate.isJSTemporalPlainDate(temporalDateLike)) {
                 year = ((JSTemporalPlainDateObject) temporalDateLike).getYear();
             } else if (JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(temporalDateLike)) {

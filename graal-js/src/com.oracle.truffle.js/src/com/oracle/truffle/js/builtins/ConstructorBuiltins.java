@@ -1102,9 +1102,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected DynamicObject constructTemporalPlainDate(DynamicObject newTarget, Object isoYear, Object isoMonth,
                         Object isoDay, Object calendarLike,
                         @Cached("create()") JSToIntegerThrowOnInfinityNode toIntegerNode) {
-            final long y = toIntegerNode.executeNumber(isoYear).longValue();
-            final long m = toIntegerNode.executeNumber(isoMonth).longValue();
-            final long d = toIntegerNode.executeNumber(isoDay).longValue();
+            final int y = toIntegerNode.executeIntOrThrow(isoYear);
+            final int m = toIntegerNode.executeIntOrThrow(isoMonth);
+            final int d = toIntegerNode.executeIntOrThrow(isoDay);
             DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(getContext(), getRealm(), calendarLike);
             return swapPrototype(JSTemporalPlainDate.create(getContext(), y, m, d, calendar), newTarget);
         }
@@ -1126,12 +1126,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         Object secondObj, Object millisecondObject,
                         Object microsecondObject, Object nanosecondObject,
                         @Cached("create()") JSToIntegerThrowOnInfinityNode toIntegerNode) {
-            final long hour = toIntegerNode.executeNumber(hourObj).longValue();
-            final long minute = toIntegerNode.executeNumber(minuteObj).longValue();
-            final long second = toIntegerNode.executeNumber(secondObj).longValue();
-            final long millisecond = toIntegerNode.executeNumber(millisecondObject).longValue();
-            final long microsecond = toIntegerNode.executeNumber(microsecondObject).longValue();
-            final long nanosecond = toIntegerNode.executeNumber(nanosecondObject).longValue();
+            final int hour = toIntegerNode.executeIntOrThrow(hourObj);
+            final int minute = toIntegerNode.executeIntOrThrow(minuteObj);
+            final int second = toIntegerNode.executeIntOrThrow(secondObj);
+            final int millisecond = toIntegerNode.executeIntOrThrow(millisecondObject);
+            final int microsecond = toIntegerNode.executeIntOrThrow(microsecondObject);
+            final int nanosecond = toIntegerNode.executeIntOrThrow(nanosecondObject);
             return swapPrototype(JSTemporalPlainTime.create(getContext(),
                             hour, minute, second, millisecond, microsecond, nanosecond), newTarget);
         }
@@ -1153,16 +1153,16 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         Object secondObj, Object millisecondObject,
                         Object microsecondObject, Object nanosecondObject, Object calendarLike,
                         @Cached("create()") JSToIntegerThrowOnInfinityNode toIntegerNode) {
-            final long year = toIntegerNode.executeNumber(yearObj).longValue();
-            final long month = toIntegerNode.executeNumber(monthObj).longValue();
-            final long day = toIntegerNode.executeNumber(dayObj).longValue();
+            final int year = toIntegerNode.executeIntOrThrow(yearObj);
+            final int month = toIntegerNode.executeIntOrThrow(monthObj);
+            final int day = toIntegerNode.executeIntOrThrow(dayObj);
 
-            final long hour = toIntegerNode.executeNumber(hourObj).longValue();
-            final long minute = toIntegerNode.executeNumber(minuteObj).longValue();
-            final long second = toIntegerNode.executeNumber(secondObj).longValue();
-            final long millisecond = toIntegerNode.executeNumber(millisecondObject).longValue();
-            final long microsecond = toIntegerNode.executeNumber(microsecondObject).longValue();
-            final long nanosecond = toIntegerNode.executeNumber(nanosecondObject).longValue();
+            final int hour = toIntegerNode.executeIntOrThrow(hourObj);
+            final int minute = toIntegerNode.executeIntOrThrow(minuteObj);
+            final int second = toIntegerNode.executeIntOrThrow(secondObj);
+            final int millisecond = toIntegerNode.executeIntOrThrow(millisecondObject);
+            final int microsecond = toIntegerNode.executeIntOrThrow(microsecondObject);
+            final int nanosecond = toIntegerNode.executeIntOrThrow(nanosecondObject);
             DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(getContext(), getRealm(), calendarLike);
             return swapPrototype(JSTemporalPlainDateTime.create(getContext(),
                             year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar), newTarget);
@@ -1240,10 +1240,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             if (referenceISODay == Undefined.instance || referenceISODay == null) {
                 referenceISODay = 1;
             }
-            long y = toInteger.executeNumber(isoYear).longValue();
-            long m = toInteger.executeNumber(isoMonth).longValue();
+            int y = toInteger.executeIntOrThrow(isoYear);
+            int m = toInteger.executeIntOrThrow(isoMonth);
             DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(getContext(), getRealm(), calendarLike);
-            long ref = toInteger.executeNumber(referenceISODay).longValue();
+            int ref = toInteger.executeIntOrThrow(referenceISODay);
             return swapPrototype(JSTemporalPlainYearMonth.create(getContext(), y, m, calendar, ref), newTarget);
         }
 
@@ -1267,10 +1267,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             if (referenceISOYear == Undefined.instance || referenceISOYear == null) {
                 referenceISOYear = 1972;
             }
-            long m = toInt.executeNumber(isoMonth).longValue();
-            long d = toInt.executeNumber(isoDay).longValue();
+            int m = toInt.executeIntOrThrow(isoMonth);
+            int d = toInt.executeIntOrThrow(isoDay);
             DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(getContext(), getRealm(), calendarLike);
-            long ref = toInt.executeNumber(referenceISOYear).longValue();
+            int ref = toInt.executeIntOrThrow(referenceISOYear); // non-spec
             return swapPrototype(JSTemporalPlainMonthDay.create(getContext(), m, d, calendar, ref), newTarget);
         }
 

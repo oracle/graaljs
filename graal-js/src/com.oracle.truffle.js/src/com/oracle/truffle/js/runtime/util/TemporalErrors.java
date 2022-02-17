@@ -125,6 +125,11 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
+    public static JSException createRangeErrorMonthDayOutsideRange() {
+        return Errors.createRangeError("Given MonthDAy outside the range.");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorTemporalTimeExpected() {
         return Errors.createTypeError("Temporal.PlainTime expected");
     }

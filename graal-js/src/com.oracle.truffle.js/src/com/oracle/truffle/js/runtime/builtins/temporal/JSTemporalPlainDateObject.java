@@ -46,9 +46,9 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public class JSTemporalPlainDateObject extends JSNonProxyObject implements TemporalMonth, TemporalYear, TemporalDay, TemporalCalendar {
 
-    private final long year;
-    private final long month;
-    private final long day;
+    private final int year;
+    private final int month;
+    private final int day;
     private final DynamicObject calendar;
 
     protected JSTemporalPlainDateObject(Shape shape) {
@@ -59,7 +59,7 @@ public class JSTemporalPlainDateObject extends JSNonProxyObject implements Tempo
         this.calendar = null;
     }
 
-    public JSTemporalPlainDateObject(Shape shape, long year, long month, long day, DynamicObject calendar) {
+    public JSTemporalPlainDateObject(Shape shape, int year, int month, int day, DynamicObject calendar) {
         super(shape);
         this.year = year;
         this.month = month;
@@ -68,17 +68,17 @@ public class JSTemporalPlainDateObject extends JSNonProxyObject implements Tempo
     }
 
     @Override
-    public long getYear() {
+    public int getYear() {
         return year;
     }
 
     @Override
-    public long getMonth() {
+    public int getMonth() {
         return month;
     }
 
     @Override
-    public long getDay() {
+    public int getDay() {
         return day;
     }
 

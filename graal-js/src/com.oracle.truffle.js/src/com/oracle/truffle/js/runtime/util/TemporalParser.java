@@ -676,7 +676,6 @@ public final class TemporalParser {
         // TimeZoneNumericUTCOffset
         reset();
         if (tryParseTimeZoneNumericUTCOffset()) {
-            // parseTimeZoneBracket(); //TODO cannot occur here, right?
             return true;
         }
 

@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
+import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtoi;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -126,7 +126,7 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
             }
             result2 = JSTemporalDurationRecord.create(result);
         }
-        return JSTemporalPlainTime.create(ctx, dtol(result2.getHours()), dtol(result2.getMinutes()), dtol(result2.getSeconds()), dtol(result2.getMilliseconds()), dtol(result2.getMicroseconds()),
-                        dtol(result2.getNanoseconds()));
+        return JSTemporalPlainTime.create(ctx, dtoi(result2.getHours()), dtoi(result2.getMinutes()), dtoi(result2.getSeconds()), dtoi(result2.getMilliseconds()), dtoi(result2.getMicroseconds()),
+                        dtoi(result2.getNanoseconds()));
     }
 }

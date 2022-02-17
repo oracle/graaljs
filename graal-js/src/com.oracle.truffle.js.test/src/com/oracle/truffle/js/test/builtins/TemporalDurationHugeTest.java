@@ -119,7 +119,6 @@ public class TemporalDurationHugeTest extends JSTest {
     }
 
     @Test
-    @Ignore // TODO microseconds value off-by-one currently, 776 instead of 775.
     public void testDurationHugeNanoseconds() {
         // consistent with Polyfill run on Node 14
         String code = "let d = new Temporal.Duration(0,0,0,0,0,0,0,0,0,9223372036854776000);\n" +
@@ -129,6 +128,15 @@ public class TemporalDurationHugeTest extends JSTest {
         try (Context ctx = getJSContext()) {
             Value result = ctx.eval(ID, code);
             Assert.assertTrue(result.asBoolean());
+        }
+    }
+
+    @Test
+    public void testDurationFromHuge() {
+        String code = "var duration = Temporal.Duration.from({nanoseconds: 1e100}); duration.toString();\n";
+        String expected = "PT10000000000000000159028911097599180468360808563945281389781327557747838772170381060813469985.856815104S";
+        try (Context ctx = getJSContext()) {
+            Assert.assertEquals(expected, ctx.eval(ID, code).asString());
         }
     }
 
@@ -161,7 +169,6 @@ public class TemporalDurationHugeTest extends JSTest {
         }
     }
 
-    // TODO have a test that calls plainDate.add
     @Test
     public void testPlainDateAddHuge() {
         String code = "var date = new Temporal.PlainDate(2022, 1, 1);\n" +
@@ -178,4 +185,15 @@ public class TemporalDurationHugeTest extends JSTest {
         }
     }
 
+    @Test
+    public void testPlainTimeAddHugeNanoseconds() {
+        String code = "var time = new Temporal.PlainTime(1, 2, 3);\n" +
+                        "var duration = Temporal.Duration.from({nanoseconds: 1e100});\n" +
+                        "var result = time.add(duration);\n" +
+                        "result.toString();";
+        String expected = "00:48:00.328088104";
+        try (Context ctx = getJSContext()) {
+            Assert.assertEquals(expected, ctx.eval(ID, code).asString());
+        }
+    }
 }

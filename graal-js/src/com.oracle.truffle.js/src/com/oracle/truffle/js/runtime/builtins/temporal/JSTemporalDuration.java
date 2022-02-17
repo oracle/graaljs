@@ -54,7 +54,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.SIGN;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
 import static com.oracle.truffle.js.runtime.util.TemporalParser.group;
-import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
+import static com.oracle.truffle.js.runtime.util.TemporalUtil.bdtoi;
 
 import java.math.BigDecimal;
 import java.util.regex.Matcher;
@@ -69,6 +69,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalDurationFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltins;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -335,20 +336,20 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                             d.getMicroseconds(), d.getNanoseconds());
         }
         boolean any = false;
-        long year = 0;
-        long month = 0;
-        long week = 0;
-        long day = 0;
-        long hour = 0;
-        long minute = 0;
-        long second = 0;
-        long millis = 0;
-        long micros = 0;
-        long nanos = 0;
+        double year = 0;
+        double month = 0;
+        double week = 0;
+        double day = 0;
+        double hour = 0;
+        double minute = 0;
+        double second = 0;
+        double millis = 0;
+        double micros = 0;
+        double nanos = 0;
         for (TruffleString property : TemporalUtil.DURATION_PROPERTIES) {
             Object val = JSObject.get(temporalDurationLike, property);
 
-            long lVal = 0;
+            double lVal = 0;
             if (val == Undefined.instance) {
                 lVal = 0;
             } else {
@@ -385,61 +386,67 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         return JSTemporalDurationRecord.createWeeks(year, month, week, day, hour, minute, second, millis, micros, nanos);
     }
 
-    // 7.5.23
     @TruffleBoundary
     public static TruffleString temporalDurationToString(double yearsP, double monthsP, double weeksP, double daysP, double hoursP, double minutesP, double secondsP, double millisecondsP,
                     double microsecondsP, double nanosecondsP, Object precision) {
-        double years = yearsP;
-        double months = monthsP;
-        double weeks = weeksP;
-        double days = daysP;
-        double hours = hoursP;
-        double minutes = minutesP;
-        double seconds = secondsP;
-        double milliseconds = millisecondsP;
-        double microseconds = microsecondsP;
-        double nanoseconds = nanosecondsP;
+        int sign = TemporalUtil.durationSign(yearsP, monthsP, weeksP, daysP, hoursP, minutesP, secondsP, millisecondsP, microsecondsP, nanosecondsP);
 
-        int sign = TemporalUtil.durationSign(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-        double ip = TemporalUtil.integralPartOf(nanoseconds / 1000D);
-        microseconds += ip;
-        nanoseconds = TemporalUtil.remainder(nanoseconds, 1000D);
-        ip = TemporalUtil.integralPartOf(microseconds / 1000D);
-        milliseconds += ip;
-        microseconds = TemporalUtil.remainder(microseconds, 1000D);
-        ip = TemporalUtil.integralPartOf(milliseconds / 1000D);
-        seconds += ip;
-        milliseconds = TemporalUtil.remainder(milliseconds, 1000D);
+        BigDecimal nanoseconds = new BigDecimal(nanosecondsP);
+        BigDecimal microseconds = new BigDecimal(microsecondsP);
+        BigDecimal milliseconds = new BigDecimal(millisecondsP);
+        BigDecimal seconds = new BigDecimal(secondsP);
+
+        BigDecimal[] res = nanoseconds.divideAndRemainder(TemporalUtil.bd_1000);
+        microseconds = microseconds.add(res[0]);
+        nanoseconds = res[1];
+
+        res = microseconds.divideAndRemainder(TemporalUtil.bd_1000);
+        milliseconds = milliseconds.add(res[0]);
+        microseconds = res[1];
+
+        res = milliseconds.divideAndRemainder(TemporalUtil.bd_1000);
+        seconds = seconds.add(res[0]);
+        milliseconds = res[1];
+
+        // double ip = TemporalUtil.integralPartOf(nanoseconds / 1000.0);
+        // microseconds += ip;
+        // nanoseconds = TemporalUtil.remainder(nanoseconds, 1000.0);
+        // ip = TemporalUtil.integralPartOf(microseconds / 1000.0);
+        // milliseconds += ip;
+        // microseconds = TemporalUtil.remainder(microseconds, 1000.0);
+        // ip = TemporalUtil.integralPartOf(milliseconds / 1000.0);
+        // seconds += ip;
+        // milliseconds = TemporalUtil.remainder(milliseconds, 1000.0);
         StringBuilder datePart = new StringBuilder();
-        if (years != 0) {
-            datePart.append(new BigDecimal(Math.abs(years)).toBigIntegerExact().toString());
+        if (yearsP != 0) {
+            datePart.append(new BigDecimal(Math.abs(yearsP)).toBigIntegerExact().toString());
             datePart.append("Y");
         }
-        if (months != 0) {
-            datePart.append(new BigDecimal(Math.abs(months)).toBigIntegerExact().toString());
+        if (monthsP != 0) {
+            datePart.append(new BigDecimal(Math.abs(monthsP)).toBigIntegerExact().toString());
             datePart.append("M");
         }
-        if (weeks != 0) {
-            datePart.append(new BigDecimal(Math.abs(weeks)).toBigIntegerExact().toString());
+        if (weeksP != 0) {
+            datePart.append(new BigDecimal(Math.abs(weeksP)).toBigIntegerExact().toString());
             datePart.append("W");
         }
-        if (days != 0) {
-            datePart.append(new BigDecimal(Math.abs(days)).toBigIntegerExact().toString());
+        if (daysP != 0) {
+            datePart.append(new BigDecimal(Math.abs(daysP)).toBigIntegerExact().toString());
             datePart.append("D");
         }
         StringBuilder timePart = new StringBuilder();
-        if (hours != 0) {
-            timePart.append(new BigDecimal(Math.abs(hours)).toBigIntegerExact().toString());
+        if (hoursP != 0) {
+            timePart.append(new BigDecimal(Math.abs(hoursP)).toBigIntegerExact().toString());
             timePart.append("H");
         }
-        if (minutes != 0) {
-            timePart.append(new BigDecimal(Math.abs(minutes)).toBigIntegerExact().toString());
+        if (minutesP != 0) {
+            timePart.append(new BigDecimal(Math.abs(minutesP)).toBigIntegerExact().toString());
             timePart.append("M");
         }
-        if (seconds != 0 || milliseconds != 0 || microseconds != 0 || nanoseconds != 0 || (years == 0 && months == 0 && weeks == 0 && days == 0 && hours == 0 && minutes == 0) ||
+        if (secondsP != 0 || millisecondsP != 0 || microsecondsP != 0 || nanosecondsP != 0 || (yearsP == 0 && monthsP == 0 && weeksP == 0 && daysP == 0 && hoursP == 0 && minutesP == 0) ||
                         !AUTO.equals(precision)) {
             // values clamped above
-            long fraction = Math.abs(dtol(milliseconds)) * 1_000_000L + Math.abs(dtol(microseconds)) * 1_000L + Math.abs(dtol(nanoseconds));
+            long fraction = Math.abs(bdtoi(milliseconds)) * 1_000_000L + Math.abs(bdtoi(microseconds)) * 1_000L + Math.abs(bdtoi(nanoseconds));
             TruffleString decimalPart = Strings.format("000000000%1$09d", fraction);
             decimalPart = Strings.lazySubstring(decimalPart, Strings.length(decimalPart) - 9);
 
@@ -457,8 +464,8 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 Number n = (Number) precision;
                 decimalPart = Strings.lazySubstring(decimalPart, 0, Math.min(Strings.length(decimalPart), n.intValue()));
             }
-            TruffleString secondsPart = Strings.format("%d", (long) Math.abs(seconds));
-            if (!decimalPart.equals(Strings.EMPTY_STRING)) {
+            TruffleString secondsPart = Strings.fromJavaString(seconds.abs().toBigIntegerExact().toString());
+            if (!decimalPart.equals("")) {
                 secondsPart = Strings.concatAll(secondsPart, Strings.DOT, decimalPart);
             }
             timePart.append(secondsPart);

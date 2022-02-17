@@ -80,11 +80,14 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("PlainMonthDay.prototype");
     public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.PlainYearMonth");
 
-    public static DynamicObject create(JSContext context, long isoMonth, long isoDay, DynamicObject calendar, long referenceISOYear) {
+    public static DynamicObject create(JSContext context, int isoMonth, int isoDay, DynamicObject calendar, int referenceISOYear) {
         if (!TemporalUtil.validateISODate(referenceISOYear, isoMonth, isoDay)) {
-            throw TemporalErrors.createRangeErrorDateOutsideRange();
+            throw TemporalErrors.createRangeErrorMonthDayOutsideRange();
         }
-
+        if (referenceISOYear < -271821 || 275760 < referenceISOYear) {
+            // referenceISOYear is not checked in spec (but in polyfill); open bug listed in #1502
+            throw TemporalErrors.createRangeErrorMonthDayOutsideRange();
+        }
         JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalPlainMonthDayFactory();
         DynamicObject obj = factory.initProto(new JSTemporalPlainMonthDayObject(factory.getShape(realm), isoMonth,
@@ -142,7 +145,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
         if (optParam == Undefined.instance) {
             options = JSOrdinary.createWithNullPrototype(ctx);
         }
-        long referenceISOYear = 1972;
+        int referenceISOYear = 1972;
         if (JSRuntime.isObject(item)) {
             DynamicObject itemObj = (DynamicObject) item;
             if (JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(itemObj)) {
@@ -175,7 +178,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
         TruffleString string = JSRuntime.toString(item);
         JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalMonthDayString(string);
         DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, realm, result.getCalendar());
-        if (result.getYear() == Long.MIN_VALUE) {
+        if (result.getYear() == Integer.MIN_VALUE) {
             return JSTemporalPlainMonthDay.create(ctx, result.getMonth(), result.getDay(), calendar, referenceISOYear);
         }
         DynamicObject result2 = JSTemporalPlainMonthDay.create(ctx, result.getMonth(), result.getDay(), calendar, referenceISOYear);
