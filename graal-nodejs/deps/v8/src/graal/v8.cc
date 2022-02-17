@@ -2192,8 +2192,48 @@ namespace v8 {
         return reinterpret_cast<const GraalSymbol*> (this)->Name();
     }
 
+    Local<Symbol> Symbol::GetAsyncIterator(Isolate* isolate) {
+        return GraalSymbol::GetAsyncIterator(isolate);
+    }
+
+    Local<Symbol> Symbol::GetHasInstance(Isolate* isolate) {
+        return GraalSymbol::GetHasInstance(isolate);
+    }
+
+    Local<Symbol> Symbol::GetIsConcatSpreadable(Isolate* isolate) {
+        return GraalSymbol::GetIsConcatSpreadable(isolate);
+    }
+
     Local<Symbol> Symbol::GetIterator(Isolate* isolate) {
         return GraalSymbol::GetIterator(isolate);
+    }
+
+    Local<Symbol> Symbol::GetMatch(Isolate* isolate) {
+        return GraalSymbol::GetMatch(isolate);
+    }
+
+    Local<Symbol> Symbol::GetReplace(Isolate* isolate) {
+        return GraalSymbol::GetReplace(isolate);
+    }
+
+    Local<Symbol> Symbol::GetSearch(Isolate* isolate) {
+        return GraalSymbol::GetSearch(isolate);
+    }
+
+    Local<Symbol> Symbol::GetSplit(Isolate* isolate) {
+        return GraalSymbol::GetSplit(isolate);
+    }
+
+    Local<Symbol> Symbol::GetToPrimitive(Isolate* isolate) {
+        return GraalSymbol::GetToPrimitive(isolate);
+    }
+
+    Local<Symbol> Symbol::GetToStringTag(Isolate* isolate) {
+        return GraalSymbol::GetToStringTag(isolate);
+    }
+
+    Local<Symbol> Symbol::GetUnscopables(Isolate* isolate) {
+        return GraalSymbol::GetUnscopables(isolate);
     }
 
     Local<Private> Private::New(Isolate* isolate, Local<String> name) {
