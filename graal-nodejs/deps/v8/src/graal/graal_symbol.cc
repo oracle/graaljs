@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,12 +58,25 @@ v8::Local<v8::Symbol> GraalSymbol::New(v8::Isolate* isolate, v8::Local<v8::Strin
     return reinterpret_cast<v8::Symbol*> (graal_symbol);
 }
 
-v8::Local<v8::Symbol> GraalSymbol::GetIterator(v8::Isolate* isolate) {
-    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
-    JNI_CALL(jobject, java_symbol, graal_isolate, GraalAccessMethod::symbol_get_iterator, Object);
-    GraalSymbol* graal_symbol = new GraalSymbol(graal_isolate, java_symbol);
-    return reinterpret_cast<v8::Symbol*> (graal_symbol);
+#define SYMBOL_GETTER(getter, method_id) \
+v8::Local<v8::Symbol> GraalSymbol::getter(v8::Isolate* isolate) { \
+    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate); \
+    JNI_CALL(jobject, java_symbol, graal_isolate, GraalAccessMethod::method_id, Object); \
+    GraalSymbol* graal_symbol = new GraalSymbol(graal_isolate, java_symbol); \
+    return reinterpret_cast<v8::Symbol*> (graal_symbol); \
 }
+
+SYMBOL_GETTER(GetAsyncIterator, symbol_get_async_iterator)
+SYMBOL_GETTER(GetHasInstance, symbol_get_has_instance)
+SYMBOL_GETTER(GetIsConcatSpreadable, symbol_get_is_concat_spreadable)
+SYMBOL_GETTER(GetIterator, symbol_get_iterator)
+SYMBOL_GETTER(GetMatch, symbol_get_match)
+SYMBOL_GETTER(GetReplace, symbol_get_replace)
+SYMBOL_GETTER(GetSearch, symbol_get_search)
+SYMBOL_GETTER(GetSplit, symbol_get_split)
+SYMBOL_GETTER(GetToPrimitive, symbol_get_to_primitive)
+SYMBOL_GETTER(GetToStringTag, symbol_get_to_string_tag)
+SYMBOL_GETTER(GetUnscopables, symbol_get_unscopables)
 
 v8::Local<v8::Value> GraalSymbol::Name() const {
     GraalIsolate* graal_isolate = Isolate();

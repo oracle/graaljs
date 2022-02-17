@@ -1624,8 +1624,48 @@ public final class GraalJSAccess {
         return ((Symbol) symbol).getDescription();
     }
 
+    public Object symbolGetAsyncIterator() {
+        return Symbol.SYMBOL_ASYNC_ITERATOR;
+    }
+
+    public Object symbolGetHasInstance() {
+        return Symbol.SYMBOL_HAS_INSTANCE;
+    }
+
+    public Object symbolGetIsConcatSpreadable() {
+        return Symbol.SYMBOL_IS_CONCAT_SPREADABLE;
+    }
+
     public Object symbolGetIterator() {
         return Symbol.SYMBOL_ITERATOR;
+    }
+
+    public Object symbolGetMatch() {
+        return Symbol.SYMBOL_MATCH;
+    }
+
+    public Object symbolGetReplace() {
+        return Symbol.SYMBOL_REPLACE;
+    }
+
+    public Object symbolGetSearch() {
+        return Symbol.SYMBOL_SEARCH;
+    }
+
+    public Object symbolGetSplit() {
+        return Symbol.SYMBOL_SPLIT;
+    }
+
+    public Object symbolGetToPrimitive() {
+        return Symbol.SYMBOL_TO_PRIMITIVE;
+    }
+
+    public Object symbolGetToStringTag() {
+        return Symbol.SYMBOL_TO_STRING_TAG;
+    }
+
+    public Object symbolGetUnscopables() {
+        return Symbol.SYMBOL_UNSCOPABLES;
     }
 
     public Object functionNewInstance(Object function, Object[] arguments) {

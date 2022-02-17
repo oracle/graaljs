@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,48 @@
 
 #define SUITE Symbol
 
-// Symbol::GetIterator
+EXPORT_TO_JS(GetAsyncIterator) {
+    args.GetReturnValue().Set(Symbol::GetAsyncIterator(args.GetIsolate()));
+}
+
+EXPORT_TO_JS(GetHasInstance) {
+    args.GetReturnValue().Set(Symbol::GetHasInstance(args.GetIsolate()));
+}
+
+EXPORT_TO_JS(GetIsConcatSpreadable) {
+    args.GetReturnValue().Set(Symbol::GetIsConcatSpreadable(args.GetIsolate()));
+}
 
 EXPORT_TO_JS(GetIterator) {
     args.GetReturnValue().Set(Symbol::GetIterator(args.GetIsolate()));
+}
+
+EXPORT_TO_JS(GetMatch) {
+    args.GetReturnValue().Set(Symbol::GetMatch(args.GetIsolate()));
+}
+
+EXPORT_TO_JS(GetReplace) {
+    args.GetReturnValue().Set(Symbol::GetReplace(args.GetIsolate()));
+}
+
+EXPORT_TO_JS(GetSearch) {
+    args.GetReturnValue().Set(Symbol::GetSearch(args.GetIsolate()));
+}
+
+EXPORT_TO_JS(GetSplit) {
+    args.GetReturnValue().Set(Symbol::GetSplit(args.GetIsolate()));
+}
+
+EXPORT_TO_JS(GetToPrimitive) {
+    args.GetReturnValue().Set(Symbol::GetToPrimitive(args.GetIsolate()));
+}
+
+EXPORT_TO_JS(GetToStringTag) {
+    args.GetReturnValue().Set(Symbol::GetToStringTag(args.GetIsolate()));
+}
+
+EXPORT_TO_JS(GetUnscopables) {
+    args.GetReturnValue().Set(Symbol::GetUnscopables(args.GetIsolate()));
 }
 
 #undef SUITE
