@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,9 +43,59 @@ var assert = require('assert');
 var module = require('./_unit');
 
 describe('Symbol', function () {
+    describe('GetAsyncIterator', function () {
+        it('should return Symbol.asyncIterator', function () {
+            assert.strictEqual(module.Symbol_GetAsyncIterator(), Symbol.asyncIterator);
+        });
+    });
+    describe('GetHasInstance', function () {
+        it('should return Symbol.hasInstance', function () {
+            assert.strictEqual(module.Symbol_GetHasInstance(), Symbol.hasInstance);
+        });
+    });
+    describe('GetIsConcatSpreadable', function () {
+        it('should return Symbol.isConcatSpreadable', function () {
+            assert.strictEqual(module.Symbol_GetIsConcatSpreadable(), Symbol.isConcatSpreadable);
+        });
+    });
     describe('GetIterator', function () {
         it('should return Symbol.iterator', function () {
             assert.strictEqual(module.Symbol_GetIterator(), Symbol.iterator);
+        });
+    });
+    describe('GetMatch', function () {
+        it('should return Symbol.match', function () {
+            assert.strictEqual(module.Symbol_GetMatch(), Symbol.match);
+        });
+    });
+    describe('GetReplace', function () {
+        it('should return Symbol.replace', function () {
+            assert.strictEqual(module.Symbol_GetReplace(), Symbol.replace);
+        });
+    });
+    describe('GetSearch', function () {
+        it('should return Symbol.search', function () {
+            assert.strictEqual(module.Symbol_GetSearch(), Symbol.search);
+        });
+    });
+    describe('GetSplit', function () {
+        it('should return Symbol.split', function () {
+            assert.strictEqual(module.Symbol_GetSplit(), Symbol.split);
+        });
+    });
+    describe('GetToPrimitive', function () {
+        it('should return Symbol.toPrimitive', function () {
+            assert.strictEqual(module.Symbol_GetToPrimitive(), Symbol.toPrimitive);
+        });
+    });
+    describe('GetToStringTag', function () {
+        it('should return Symbol.toStringTag', function () {
+            assert.strictEqual(module.Symbol_GetToStringTag(), Symbol.toStringTag);
+        });
+    });
+    describe('GetUnscopables', function () {
+        it('should return Symbol.unscopables', function () {
+            assert.strictEqual(module.Symbol_GetUnscopables(), Symbol.unscopables);
         });
     });
 });
