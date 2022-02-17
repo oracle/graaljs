@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -508,7 +508,7 @@ public final class ScopeVariables implements TruffleObject {
                 }
 
                 @Override
-                public Object executeWrite(VirtualFrame frame, Object value) {
+                public void executeWrite(VirtualFrame frame, Object value) {
                     DynamicObject scope = (DynamicObject) getDynamicScope.execute(frame);
                     DynamicObjectLibrary lib = objectLibrary;
                     if (lib == null) {
@@ -520,7 +520,7 @@ public final class ScopeVariables implements TruffleObject {
                         }
                         objectLibrary = lib;
                     }
-                    return lib.putIfPresent(scope, key, value);
+                    lib.putIfPresent(scope, key, value);
                 }
 
                 @Override

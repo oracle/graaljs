@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,7 +95,7 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode.WithDescriptor 
     @Override
     public abstract JavaScriptNode getRhs();
 
-    public abstract Object executeWithFrame(Frame frame, Object value);
+    public abstract void executeWithFrame(Frame frame, Object value);
 
     public static JSWriteFrameSlotNode create(JSFrameSlot frameSlot, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
         if (!hasTemporalDeadZone) {
@@ -179,15 +179,15 @@ abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
     }
 
     @Override
-    public final Object executeWithFrame(Frame frame, Object value) {
-        return executeEvaluated(null, frame, value);
+    public final void executeWithFrame(Frame frame, Object value) {
+        executeEvaluated(null, frame, value);
     }
 
-    abstract Object executeEvaluated(VirtualFrame unusedCurrentFrame, Frame levelFrame, Object value);
+    abstract void executeEvaluated(VirtualFrame unusedCurrentFrame, Frame levelFrame, Object value);
 
     @Override
-    public final Object executeWrite(VirtualFrame frame, Object value) {
-        return executeEvaluated(frame, getLevelFrameNode().executeFrame(frame), value);
+    public final void executeWrite(VirtualFrame frame, Object value) {
+        executeEvaluated(frame, getLevelFrameNode().executeFrame(frame), value);
     }
 
     @Override
@@ -260,15 +260,15 @@ abstract class JSWriteCurrentFrameSlotNode extends JSWriteFrameSlotNode {
     }
 
     @Override
-    public final Object executeWithFrame(Frame frame, Object value) {
-        return executeEvaluated((VirtualFrame) frame, value);
+    public final void executeWithFrame(Frame frame, Object value) {
+        executeEvaluated((VirtualFrame) frame, value);
     }
 
-    abstract Object executeEvaluated(VirtualFrame frame, Object value);
+    abstract void executeEvaluated(VirtualFrame frame, Object value);
 
     @Override
-    public final Object executeWrite(VirtualFrame frame, Object value) {
-        return executeEvaluated(frame, value);
+    public final void executeWrite(VirtualFrame frame, Object value) {
+        executeEvaluated(frame, value);
     }
 
     @Override

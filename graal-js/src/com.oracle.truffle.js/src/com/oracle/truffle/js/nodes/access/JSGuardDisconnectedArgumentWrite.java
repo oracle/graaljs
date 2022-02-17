@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -120,11 +120,11 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
     }
 
     @Override
-    public final Object executeWrite(VirtualFrame frame, Object value) {
-        return executeWrite(frame, argumentsArrayNode.execute(frame), value);
+    public final void executeWrite(VirtualFrame frame, Object value) {
+        executeWrite(frame, argumentsArrayNode.execute(frame), value);
     }
 
-    protected abstract Object executeWrite(VirtualFrame frame, Object argumentsArray, Object value);
+    protected abstract void executeWrite(VirtualFrame frame, Object argumentsArray, Object value);
 
     @Override
     public JavaScriptNode getRhs() {
