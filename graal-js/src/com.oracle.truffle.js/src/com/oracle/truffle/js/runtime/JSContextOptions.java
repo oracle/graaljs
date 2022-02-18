@@ -153,12 +153,12 @@ public final class JSContextOptions {
     @CompilationFinal private boolean regexpStaticResult;
 
     public static final String SHARED_ARRAY_BUFFER_NAME = JS_OPTION_PREFIX + "shared-array-buffer";
-    @Option(name = SHARED_ARRAY_BUFFER_NAME, category = OptionCategory.USER, help = "Enable ES2017 SharedArrayBuffer.") //
+    @Option(name = SHARED_ARRAY_BUFFER_NAME, category = OptionCategory.USER, help = "Enable ECMAScript SharedArrayBuffer.") //
     public static final OptionKey<Boolean> SHARED_ARRAY_BUFFER = new OptionKey<>(true);
     @CompilationFinal private boolean sharedArrayBuffer;
 
     public static final String ATOMICS_NAME = JS_OPTION_PREFIX + "atomics";
-    @Option(name = ATOMICS_NAME, category = OptionCategory.USER, help = "Enable ES2017 Atomics.") //
+    @Option(name = ATOMICS_NAME, category = OptionCategory.USER, help = "Enable ECMAScript Atomics.") //
     public static final OptionKey<Boolean> ATOMICS = new OptionKey<>(true);
 
     public static final String V8_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "v8-compat";
