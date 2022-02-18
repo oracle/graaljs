@@ -73,4 +73,30 @@ public class JSONParseTest {
         }
     }
 
+    @Test
+    public void testJSONParseErrorPosition() {
+        parseErrorPosition(1, "- 43");
+        parseErrorPosition(4, "[1,2;");
+
+    }
+
+    private static void parseErrorPosition(int expectedPosition, String failingCode) {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            context.eval(ID, "JSON.parse('" + failingCode + "')");
+            Assert.fail("failure expected");
+        } catch (PolyglotException ex) {
+            assertTrue(ex.isSyntaxError());
+            String message = ex.getMessage();
+            String posStrPattern = "position ";
+            int idx = message.indexOf(posStrPattern);
+
+            Assert.assertTrue(idx >= 0);
+
+            String posStr = message.substring(idx + posStrPattern.length());
+            int pos = Integer.parseInt(posStr);
+
+            Assert.assertEquals(expectedPosition, pos);
+        }
+    }
+
 }
