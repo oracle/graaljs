@@ -56,7 +56,6 @@ import java.util.Map;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -1364,15 +1363,18 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        @CompilationFinal private Class<? extends TruffleLanguage<?>> hostLanguageClass;
+        @CompilationFinal private Class<?> hostLanguageClass;
 
-        private Class<? extends TruffleLanguage<?>> getHostLanguageClass() {
+        private Class<?> getHostLanguageClass() {
             if (hostLanguageClass == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 try {
                     hostLanguageClass = InteropLibrary.getUncached().getLanguage(getRealm().getEnv().asGuestValue(new Object()));
                 } catch (UnsupportedMessageException umex) {
                     throw CompilerDirectives.shouldNotReachHere();
+                } catch (UnsupportedOperationException uoex) {
+                    // Fallback: asGuestValue() is not supported in a spawned isolate.
+                    hostLanguageClass = Object.class;
                 }
             }
             return hostLanguageClass;
