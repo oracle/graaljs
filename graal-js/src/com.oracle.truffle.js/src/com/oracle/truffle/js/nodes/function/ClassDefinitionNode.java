@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,6 +57,8 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.control.ResumableNode;
+import com.oracle.truffle.js.nodes.control.YieldException;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -69,7 +71,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 /**
  * ES6 14.5.14 Runtime Semantics: ClassDefinitionEvaluation.
  */
-public final class ClassDefinitionNode extends JavaScriptNode implements FunctionNameHolder {
+public final class ClassDefinitionNode extends JavaScriptNode implements FunctionNameHolder, ResumableNode.WithObjectState {
 
     private final JSContext context;
     @Child private JavaScriptNode constructorFunctionNode;
@@ -124,57 +126,91 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         return executeWithClassName(frame, null);
     }
 
+    @Override
+    public Object resume(VirtualFrame frame, int stateSlot) {
+        Object maybeState = getState(frame, stateSlot);
+        ClassDefinitionResumptionRecord resumptionRecord = null;
+        if (maybeState instanceof ClassDefinitionResumptionRecord) {
+            resumptionRecord = (ClassDefinitionResumptionRecord) maybeState;
+        }
+        return executeWithClassName(frame, null, resumptionRecord, stateSlot);
+    }
+
     public DynamicObject executeWithClassName(VirtualFrame frame, Object className) {
-        JSRealm realm = getRealm();
-        Object protoParent = realm.getObjectPrototype();
-        Object constructorParent = realm.getFunctionPrototype();
-        if (classHeritageNode != null) {
-            Object superclass = classHeritageNode.execute(frame);
-            if (superclass == Null.instance) {
-                protoParent = Null.instance;
-            } else if (!isConstructorNode.executeBoolean(superclass)) {
-                // 6.f. if IsConstructor(superclass) is false, throw a TypeError.
-                errorBranch.enter();
-                throw Errors.createTypeError("not a constructor", this);
-            } else if (JSRuntime.isGenerator(superclass)) {
-                // 6.g.i. if superclass.[[FunctionKind]] is "generator", throw a TypeError
-                errorBranch.enter();
-                throw Errors.createTypeError("class cannot extend a generator function", this);
-            } else {
-                protoParent = getPrototypeNode.getValue(superclass);
-                if (protoParent != Null.instance && !JSRuntime.isObject(protoParent)) {
+        return executeWithClassName(frame, className, null, -1);
+    }
+
+    private DynamicObject executeWithClassName(VirtualFrame frame, Object className, ClassDefinitionResumptionRecord resumptionRecord, int stateSlot) {
+        DynamicObject proto;
+        DynamicObject constructor;
+        Object[][] instanceFields;
+        Object[][] staticElements;
+        int instanceFieldIndex;
+        int staticElementIndex;
+        int startIndex;
+        if (resumptionRecord == null) {
+            JSRealm realm = getRealm();
+            Object protoParent = realm.getObjectPrototype();
+            Object constructorParent = realm.getFunctionPrototype();
+            if (classHeritageNode != null) {
+                Object superclass = classHeritageNode.execute(frame);
+                if (superclass == Null.instance) {
+                    protoParent = Null.instance;
+                } else if (!isConstructorNode.executeBoolean(superclass)) {
+                    // 6.f. if IsConstructor(superclass) is false, throw a TypeError.
                     errorBranch.enter();
-                    throw Errors.createTypeError("protoParent is neither Object nor Null", this);
+                    throw Errors.createTypeError("not a constructor", this);
+                } else if (JSRuntime.isGenerator(superclass)) {
+                    // 6.g.i. if superclass.[[FunctionKind]] is "generator", throw a TypeError
+                    errorBranch.enter();
+                    throw Errors.createTypeError("class cannot extend a generator function", this);
+                } else {
+                    protoParent = getPrototypeNode.getValue(superclass);
+                    if (protoParent != Null.instance && !JSRuntime.isObject(protoParent)) {
+                        errorBranch.enter();
+                        throw Errors.createTypeError("protoParent is neither Object nor Null", this);
+                    }
+                    constructorParent = superclass;
                 }
-                constructorParent = superclass;
             }
+
+            /* Let proto be ObjectCreate(protoParent). */
+            assert protoParent == Null.instance || JSRuntime.isObject(protoParent);
+            proto = createPrototypeNode.execute(frame, ((DynamicObject) protoParent));
+
+            /*
+             * Let constructorInfo be the result of performing DefineMethod for constructor with
+             * arguments proto and constructorParent as the optional functionPrototype argument.
+             */
+            constructor = defineConstructorMethodNode.execute(frame, proto, (DynamicObject) constructorParent);
+
+            // Perform MakeConstructor(F, writablePrototype=false, proto).
+            JSFunction.setClassPrototype(constructor, proto);
+
+            // If className is not undefined, perform SetFunctionName(F, className).
+            if (setFunctionName != null && className != null) {
+                setFunctionName.execute(constructor, className);
+            }
+
+            // Perform CreateMethodProperty(proto, "constructor", F).
+            setConstructorNode.executeVoid(proto, constructor);
+
+            instanceFields = instanceFieldCount == 0 ? null : new Object[instanceFieldCount][];
+            staticElements = staticElementCount == 0 ? null : new Object[staticElementCount][];
+            instanceFieldIndex = 0;
+            staticElementIndex = 0;
+            startIndex = 0;
+        } else {
+            proto = resumptionRecord.proto;
+            constructor = resumptionRecord.constructor;
+            instanceFields = resumptionRecord.instanceFields;
+            staticElements = resumptionRecord.staticElements;
+            instanceFieldIndex = resumptionRecord.instanceFieldIndex;
+            staticElementIndex = resumptionRecord.staticElementIndex;
+            startIndex = resumptionRecord.index;
         }
 
-        /* Let proto be ObjectCreate(protoParent). */
-        assert protoParent == Null.instance || JSRuntime.isObject(protoParent);
-        DynamicObject proto = createPrototypeNode.execute(frame, ((DynamicObject) protoParent));
-
-        /*
-         * Let constructorInfo be the result of performing DefineMethod for constructor with
-         * arguments proto and constructorParent as the optional functionPrototype argument.
-         */
-        DynamicObject constructor = defineConstructorMethodNode.execute(frame, proto, (DynamicObject) constructorParent);
-
-        // Perform MakeConstructor(F, writablePrototype=false, proto).
-        JSFunction.setClassPrototype(constructor, proto);
-
-        // If className is not undefined, perform SetFunctionName(F, className).
-        if (setFunctionName != null && className != null) {
-            setFunctionName.execute(constructor, className);
-        }
-
-        // Perform CreateMethodProperty(proto, "constructor", F).
-        setConstructorNode.executeVoid(proto, constructor);
-
-        Object[][] instanceFields = instanceFieldCount == 0 ? null : new Object[instanceFieldCount][];
-        Object[][] staticElements = staticElementCount == 0 ? null : new Object[staticElementCount][];
-
-        initializeMembers(frame, proto, constructor, instanceFields, staticElements);
+        initializeMembers(frame, proto, constructor, instanceFields, staticElements, startIndex, instanceFieldIndex, staticElementIndex, stateSlot);
 
         if (writeClassBindingNode != null) {
             writeClassBindingNode.executeWrite(frame, constructor);
@@ -203,25 +239,35 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     }
 
     @ExplodeLoop
-    private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, Object[][] instanceFields, Object[][] staticElements) {
+    private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, Object[][] instanceFields, Object[][] staticElements, int startIndex, int instanceFieldIdx,
+                    int staticElementIdx, int stateSlot) {
         /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
-        int instanceFieldIndex = 0;
-        int staticElementIndex = 0;
-        for (ObjectLiteralMemberNode memberNode : memberNodes) {
-            DynamicObject homeObject = memberNode.isStatic() ? constructor : proto;
-            memberNode.executeVoid(frame, homeObject, context);
-            if (memberNode.isFieldOrStaticBlock()) {
-                Object key = memberNode.evaluateKey(frame);
-                Object value = memberNode.evaluateValue(frame, homeObject);
-                Object[] field = new Object[]{key, value, memberNode.isAnonymousFunctionDefinition()};
-                if (memberNode.isStatic()) {
-                    staticElements[staticElementIndex++] = field;
-                } else if (instanceFields != null) {
-                    instanceFields[instanceFieldIndex++] = field;
-                } else {
-                    throw Errors.shouldNotReachHere();
+        int instanceFieldIndex = instanceFieldIdx;
+        int staticElementIndex = staticElementIdx;
+        int i = 0;
+        try {
+            for (; i < memberNodes.length; i++) {
+                if (i >= startIndex) {
+                    ObjectLiteralMemberNode memberNode = memberNodes[i];
+                    DynamicObject homeObject = memberNode.isStatic() ? constructor : proto;
+                    memberNode.executeVoid(frame, homeObject, context);
+                    if (memberNode.isFieldOrStaticBlock()) {
+                        Object key = memberNode.evaluateKey(frame);
+                        Object value = memberNode.evaluateValue(frame, homeObject);
+                        Object[] field = new Object[]{key, value, memberNode.isAnonymousFunctionDefinition()};
+                        if (memberNode.isStatic()) {
+                            staticElements[staticElementIndex++] = field;
+                        } else if (instanceFields != null) {
+                            instanceFields[instanceFieldIndex++] = field;
+                        } else {
+                            throw Errors.shouldNotReachHere();
+                        }
+                    }
                 }
             }
+        } catch (YieldException e) {
+            setState(frame, stateSlot, new ClassDefinitionResumptionRecord(proto, constructor, instanceFields, staticElements, instanceFieldIndex, staticElementIndex, i));
+            throw e;
         }
         assert instanceFieldIndex == instanceFieldCount && staticElementIndex == staticElementCount;
     }
@@ -248,4 +294,32 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
                         cloneUninitialized(writeClassBindingNode, materializedTags), hasName, instanceFieldCount, staticElementCount, setPrivateBrandNode != null,
                         defineConstructorMethodNode.getBlockScopeSlot());
     }
+
+    static class ClassDefinitionResumptionRecord {
+        final DynamicObject proto;
+        final DynamicObject constructor;
+        final Object[][] instanceFields;
+        final Object[][] staticElements;
+        final int instanceFieldIndex;
+        final int staticElementIndex;
+        final int index;
+
+        ClassDefinitionResumptionRecord(
+                        DynamicObject proto,
+                        DynamicObject constructor,
+                        Object[][] instanceFields,
+                        Object[][] staticElements,
+                        int instanceFieldIndex,
+                        int staticElementIndex,
+                        int index) {
+            this.proto = proto;
+            this.constructor = constructor;
+            this.instanceFields = instanceFields;
+            this.staticElements = staticElements;
+            this.instanceFieldIndex = instanceFieldIndex;
+            this.staticElementIndex = staticElementIndex;
+            this.index = index;
+        }
+    }
+
 }
