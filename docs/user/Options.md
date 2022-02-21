@@ -24,31 +24,20 @@ js -f myfile.js
 
 ##  GraalVM JavaScript Engine Options
 
-These options are to configure the behavior of the GraalVM JavaScript engine.
+There are several options to configure the behavior of the GraalVM JavaScript engine.
 Depending on how the engine is started, the options can be passed either to the launcher or programmatically.
 
-Note that most of these options are experimental and require an `--experimental-options` flag.
+For a full list of options of the JavaScript engine, pass the `--help:js` flag to the `js` launcher (available from GraalVM 22.1., for older releases use `--help:languages`).
+To include internal options, use `--help:js:internal`.
+Note that those lists both include stable, supported options and experimental options.
 
-### To the Launcher
+### Provide options to the Launcher
 To the launcher, the options are passed with `--js.<option-name>=<value>`:
 ```shell
 js --js.ecmascript-version=6
 ```
 
-The following options are currently available:
-   * `--js.annex-b`: enable ECMAScript Annex B web compatibility features. Boolean value, default is `true`.
-   * `--js.array-sort-inherited`: define whether `Array.protoype.sort` should sort inherited keys (implementation-defined behavior). Boolean value, default is `true`.
-   * `--js.atomics`: enable *ES2017 Atomics*. Boolean value, default is `true`.
-   * `--js.ecmascript-version`: emulate a specific ECMAScript version. Integer value (`5`, `6`, etc., `2015`-`2022`), `"latest"` (latest supported version of the spec, including finished proposals), or `"staging"` (latest version including supported unfinished proposals), default is `"latest"`.
-   * `--js.foreign-object-prototype`: provide JavaScript's default prototype to foreign objects that mimic JavaScript's own types (foreign Arrays, Objects and Functions). Boolean value, default is `false`.
-   * `--js.intl-402`: enable ECMAScript Internationalization API. Boolean value, default is `false`.
-   * `--js.regexp-static-result`: provide static `RegExp` properties containing the results of the last successful match, e.g., `RegExp.$1` (legacy). Boolean value, default is `true`.
-   * `--js.shared-array-buffer`: enable *ES2017 SharedArrayBuffer*. Boolean value, default is `false`.
-   * `--js.strict`: enable strict mode for all scripts. Boolean value, default is `false`.
-   * `--js.timezone`: set the local time zone. String value, default is the system default.
-   * `--js.v8-compat`: provide better compatibility with Google's V8 engine. Boolean value, default is `false`.
-
-### Programmatically
+### Provide options programmatically using the Context API
 When started from Java via GraalVM's Polyglot feature, the options are passed programmatically to the `Context` object:
 ```java
 Context context = Context.newBuilder("js")
@@ -59,7 +48,7 @@ context.eval("js", "42");
 
 See the [Polyglot Programming](https://github.com/oracle/graal/blob/master/docs/reference-manual/polyglot-programming.md#passing-options-programmatically) reference for information on how to set options programmatically.
 
-## Stable and Experimental Options
+### Stable and Experimental Options
 
 The available options are distinguished in stable and experimental options.
 If an experimental option is used, an extra flag has to be provided upfront.
@@ -68,7 +57,17 @@ In the native launchers (`js` and `node`), `--experimental-options` has to be pa
 When using a `Context`, the option `allowExperimentalOptions(true)` has to be called on the `Context.Builder`.
 See [ScriptEngine Implementation](ScriptEngine.md) on how to use experimental options with a `ScriptEngine`.
 
-## ECMAScript Version
+### Frequently used Stable Options
+The following stable options are frequently relevant:
+   * `--js.ecmascript-version`: emulate a specific ECMAScript version. Integer value (`5`, `6`, etc., `2015`-`2022`), `"latest"` (latest supported version of the spec, including finished proposals), or `"staging"` (latest version including supported unfinished proposals), default is `"latest"`.
+   * `--js.foreign-object-prototype`: provide JavaScript's default prototype to foreign objects that mimic JavaScript's own types (foreign Arrays, Objects and Functions). Boolean value, default is `false`.
+   * `--js.intl-402`: enable ECMAScript Internationalization API. Boolean value, default is `false`.
+   * `--js.regexp-static-result`: provide static `RegExp` properties containing the results of the last successful match, e.g., `RegExp.$1` (legacy). Boolean value, default is `true`.
+   * `--js.strict`: enable strict mode for all scripts. Boolean value, default is `false`.
+
+For a complete list, use `js --help:js:internal`
+
+#### ECMAScript Version
 
 This option provides compatibility to a specific version of the ECMAScript specification.
 It expects an integer value, where both the counting version numbers (`5`, `6`, ...) and the publication years (starting from `2015`) are supported.
@@ -90,12 +89,20 @@ Available versions are:
 * `latest` for the latest supported language version (the default version)
 * `staging` for the latest supported language features including experimental unstable, unfinished [proposals](https://github.com/tc39/proposals) (_do not use in production!_)
 
-## intl-402
+#### intl-402
 
 This option enables ECMAScript's [Internationalization API](https://tc39.github.io/ecma402/).
 It expects a Boolean value and the default is `false`.
 
-## Strict Mode
+#### Strict Mode
 
 This option enables JavaScript's strict mode for all scripts.
 It expects a Boolean value and the default is `false`.
+
+### Frequently used Experimental Options
+Note that these options are experimental and are not guaranteed to be maintained or supported in the future.
+To use them, the `--experimental-options` flag is required or the experimental options have to be enabled on the Context, see above.
+
+   * `--js.nashorn-compat`: provide compatibility mode with the Nashorn engine. Sets ECMAScript version to 5 by default. Might conflict with newer ECMAScript versions. Boolean value, default is `false`.
+   * `--js.timezone`: set the local time zone. String value, default is the system default.
+   * `--js.v8-compat`: provide better compatibility with Google's V8 engine. Boolean value, default is `false`.
