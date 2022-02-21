@@ -131,6 +131,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         Object maybeState = getState(frame, stateSlot);
         ClassDefinitionResumptionRecord resumptionRecord = null;
         if (maybeState instanceof ClassDefinitionResumptionRecord) {
+            resetState(frame, stateSlot);
             resumptionRecord = (ClassDefinitionResumptionRecord) maybeState;
         }
         return executeWithClassName(frame, null, resumptionRecord, stateSlot);
