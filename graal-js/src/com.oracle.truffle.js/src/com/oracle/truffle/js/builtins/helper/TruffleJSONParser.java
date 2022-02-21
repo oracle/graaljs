@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,7 +82,7 @@ public class TruffleJSONParser {
             Object result = parseJSONValue(realm);
             skipWhitespace();
             if (posValid()) {
-                throw Errors.createSyntaxError("JSON cannot be fully parsed");
+                error("JSON cannot be fully parsed");
             }
             return result;
         } catch (StackOverflowError ex) {
@@ -498,22 +498,23 @@ public class TruffleJSONParser {
             }
             throw Errors.shouldNotReachHere("JSON parser did not throw error as expected");
         } else {
-            throw Errors.createSyntaxError(message);
+            assert !message.contains("at position");
+            throw Errors.createSyntaxError(message + " at position " + pos);
         }
     }
 
     private Object unexpectedToken() {
-        error("Unexpected token " + get() + " in JSON at position " + pos);
+        error("Unexpected token " + get() + " in JSON");
         return null;
     }
 
     private Object unexpectedString() {
-        error("Unexpected string in JSON at position " + pos);
+        error("Unexpected string in JSON");
         return null;
     }
 
     private Object unexpectedNumber() {
-        error("Unexpected number in JSON at position " + pos);
+        error("Unexpected number in JSON");
         return null;
     }
 
