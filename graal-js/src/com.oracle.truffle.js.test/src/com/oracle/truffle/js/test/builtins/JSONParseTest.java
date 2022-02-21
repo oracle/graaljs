@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,9 +75,13 @@ public class JSONParseTest {
 
     @Test
     public void testJSONParseErrorPosition() {
+        parseErrorPosition(3, "\"\\\\_\"");
+        parseErrorPosition(15, "{\"name\": \"val\" 123}");
+        parseErrorPosition(15, "{\"name\": \"val\" \"str\"}");
+        parseErrorPosition(6, "{\"name\t\": \"val\"}");
+        parseErrorPosition(1, "-");
         parseErrorPosition(1, "- 43");
         parseErrorPosition(4, "[1,2;");
-
     }
 
     private static void parseErrorPosition(int expectedPosition, String failingCode) {
@@ -89,12 +93,9 @@ public class JSONParseTest {
             String message = ex.getMessage();
             String posStrPattern = "position ";
             int idx = message.indexOf(posStrPattern);
-
             Assert.assertTrue(idx >= 0);
-
             String posStr = message.substring(idx + posStrPattern.length());
             int pos = Integer.parseInt(posStr);
-
             Assert.assertEquals(expectedPosition, pos);
         }
     }
