@@ -108,7 +108,7 @@ public final class Scope {
     private static int computeFlags(Scope parent, int functionFlags) {
         if ((functionFlags & FunctionNode.IS_ARROW) != 0) {
             // propagate flags from enclosing function scope.
-            return parent.flags;
+            return parent == null ? 0 : parent.flags;
         } else {
             int flags = 0;
             flags |= IN_FUNCTION;
