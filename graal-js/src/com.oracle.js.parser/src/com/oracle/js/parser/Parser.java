@@ -4753,12 +4753,7 @@ public class Parser extends AbstractParser {
                         switch (type) {
                             case LBRACKET:
                             case PERIOD:
-                                ParserContextFunctionNode currentFunction = lc.getCurrentNonArrowFunction();
-                                if (currentFunction.isMethod()) {
-                                    currentFunction.setFlag(FunctionNode.USES_SUPER);
-                                    addIdentifierReference(SUPER.getName());
-                                    addIdentifierReference(THIS.getName());
-                                }
+                                markSuperProperty();
                                 isSuper = true;
                                 break;
                             case LPAREN:
@@ -7158,6 +7153,15 @@ public class Parser extends AbstractParser {
 
     private void appendStatement(final Statement statement) {
         lc.appendStatementToCurrentNode(statement);
+    }
+
+    private void markSuperProperty() {
+        ParserContextFunctionNode currentFunction = lc.getCurrentNonArrowFunction();
+        if (currentFunction.isMethod()) {
+            currentFunction.setFlag(FunctionNode.USES_SUPER);
+            addIdentifierReference(SUPER.getName());
+            addIdentifierReference(THIS.getName());
+        }
     }
 
     private void markSuperCall() {
