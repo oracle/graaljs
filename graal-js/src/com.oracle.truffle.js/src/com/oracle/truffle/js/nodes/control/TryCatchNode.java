@@ -246,18 +246,22 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
                 blockScope.setBlockScope(frame, state);
             }
         }
+        boolean yield = false;
         try {
             return catchBlock.execute(frame);
         } catch (YieldException e) {
+            yield = true;
             if (blockScope == null) {
                 setState(frame, stateSlot, 1);
             } else {
-                setState(frame, stateSlot, blockScope.getBlockScope(frame));
+                state = blockScope.getBlockScope(frame);
+                assert state != Undefined.instance;
+                setState(frame, stateSlot, state);
             }
             throw e;
         } finally {
             if (blockScope != null) {
-                blockScope.exitScope(frame);
+                blockScope.exitScope(frame, yield);
             }
         }
     }

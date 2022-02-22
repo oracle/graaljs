@@ -101,7 +101,11 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
 
     public abstract VirtualFrame appendScopeFrame(VirtualFrame frame);
 
-    public abstract void exitScope(VirtualFrame frame);
+    public final void exitScope(VirtualFrame frame) {
+        exitScope(frame, false);
+    }
+
+    public abstract void exitScope(VirtualFrame frame, boolean yield);
 
     public abstract Object getBlockScope(VirtualFrame frame);
 
@@ -188,7 +192,7 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
         }
 
         @Override
-        public void exitScope(VirtualFrame frame) {
+        public void exitScope(VirtualFrame frame, boolean yield) {
             MaterializedFrame blockScopeFrame = JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
             Object parentScopeFrame = blockScopeFrame.getObject(parentSlot);
             if (captureFunctionFrame) {
@@ -219,13 +223,15 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
             } else {
                 setBlockScope(frame, state);
             }
+            boolean yield = false;
             try {
                 return block.execute(frame);
             } catch (YieldException e) {
+                yield = true;
                 setState(frame, stateSlot, getBlockScope(frame));
                 throw e;
             } finally {
-                exitScope(frame);
+                exitScope(frame, yield);
             }
         }
 
@@ -271,18 +277,27 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
 
         @ExplodeLoop
         @Override
-        public void exitScope(VirtualFrame frame) {
+        public void exitScope(VirtualFrame frame, boolean yield) {
             // Clear frame slots when exiting the scope.
             // Note: we must not clear the slots on yield/await.
-            for (int i = start; i < end; i++) {
-                frame.clear(i);
+            if (!yield) {
+                for (int i = start; i < end; i++) {
+                    frame.clear(i);
+                }
             }
         }
 
         @Override
         public Object resume(VirtualFrame frame, int stateSlot) {
-            // Note: we must not clear the slots on yield/await.
-            return block.execute(frame);
+            boolean yield = false;
+            try {
+                return block.execute(appendScopeFrame(frame));
+            } catch (YieldException e) {
+                yield = true;
+                throw e;
+            } finally {
+                exitScope(frame, yield);
+            }
         }
 
         /**
