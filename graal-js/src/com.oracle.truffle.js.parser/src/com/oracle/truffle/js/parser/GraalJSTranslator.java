@@ -76,7 +76,6 @@ import com.oracle.js.parser.ir.IndexNode;
 import com.oracle.js.parser.ir.JoinPredecessorExpression;
 import com.oracle.js.parser.ir.LexicalContext;
 import com.oracle.js.parser.ir.LexicalContextNode;
-import com.oracle.js.parser.ir.LexicalContextScope;
 import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ImportEntry;
@@ -954,9 +953,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 FunctionNode lastFunction = null;
                 for (Iterator<LexicalContextNode> iterator = lc.getAllNodes(); iterator.hasNext();) {
                     LexicalContextNode node = iterator.next();
-                    if (node instanceof LexicalContextScope) {
-                        Symbol foundSymbol = ((LexicalContextScope) node).getScope().getExistingSymbol(varName);
+                    if (node instanceof Block) {
+                        Symbol foundSymbol = ((Block) node).getScope().getExistingSymbol(varName);
                         if (foundSymbol != null && !foundSymbol.isGlobal()) {
+                            if (!local) {
+                                markUsesAncestorScopeUntil(lastFunction, true);
+                            }
+                            break;
+                        }
+                    } else if (node instanceof ClassNode) {
+                        if (((ClassNode) node).getScope().hasSymbol(varName) || ((ClassNode) node).getClassHeadScope().hasSymbol(varName)) {
                             if (!local) {
                                 markUsesAncestorScopeUntil(lastFunction, true);
                             }
