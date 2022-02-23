@@ -246,9 +246,9 @@ public final class TemporalUtil {
     // 8.64 * 10^13
     private static final BigInteger bi_8_64_13 = new BigInteger("86400000000000");
 
-    private static final BigInteger bi_10_pow_9 = new BigInteger("1000000000"); // 10 ^ 9
-    private static final BigInteger bi_10_pow_6 = new BigInteger("1000000"); // 10 ^ 6
-    private static final BigInteger bi_1000 = new BigInteger("1000");  // 10 ^ 3
+    public static final BigInteger bi_10_pow_9 = new BigInteger("1000000000"); // 10 ^ 9
+    public static final BigInteger bi_10_pow_6 = new BigInteger("1000000"); // 10 ^ 6
+    public static final BigInteger bi_1000 = new BigInteger("1000");  // 10 ^ 3
 
     public static final BigDecimal bd_10 = new BigDecimal("10");
     public static final BigDecimal bd_1000 = new BigDecimal("1000");
@@ -311,7 +311,6 @@ public final class TemporalUtil {
                 case STRING_AND_NUMBER:
                     return STRING;
             }
-            CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
         }
     }
@@ -4354,6 +4353,14 @@ public final class TemporalUtil {
         assert Double.isFinite(value);
         assert JSRuntime.doubleIsRepresentableAsInt(value);
         return bd.intValue();
+    }
+
+    @TruffleBoundary
+    public static int bitoi(BigInteger bi) {
+        double value = bi.doubleValue();
+        assert Double.isFinite(value);
+        assert JSRuntime.doubleIsRepresentableAsInt(value);
+        return bi.intValue();
     }
 
     @TruffleBoundary

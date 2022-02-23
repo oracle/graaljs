@@ -61,13 +61,13 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
 public final class TemporalParser {
 
     private static final String patternDate = "^([+\\-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)[\\-]?(\\d\\d)";
-    private static final String patternTime = "^(\\d\\d)(:?(\\d\\d):?((\\d\\d)([\\.,]([\\d]*)?)?)?)?";
+    private static final String patternTime = "^(\\d\\d)(:?(\\d\\d):?(?:(\\d\\d)(?:[\\.,]([\\d]*)?)?)?)?";
     private static final String patternCalendar = "^(\\[u-ca=([^\\]]*)\\])";
     private static final String patternCalendarName = "^(\\w*)$";
     private static final String patternTimeZoneBracketedAnnotation = "^(\\[([^\\]]*)\\])";
-    private static final String patternTimeZoneNumericUTCOffset = "^([+\\-\\u2212])(\\d\\d):?((\\d\\d):?((\\d\\d)([\\.,]([\\d]*)?)?)?)?";
+    private static final String patternTimeZoneNumericUTCOffset = "^([+\\-\\u2212])(\\d\\d):?((\\d\\d):?(?:(\\d\\d)(?:[\\.,]([\\d]*)?)?)?)?";
     private static final String patternDateSpecYearMonth = "^([+\\-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)";
-    private static final String patternDateSpecMonthDay = "^(\\-\\-)?(\\d\\d)[\\-]?(\\d\\d)";
+    private static final String patternDateSpecMonthDay = "^(?:\\-\\-)?(\\d\\d)[\\-]?(\\d\\d)";
     private static final String patternTimeZoneIANAName = "^([A-Za-z_]+(/[A-Za-z\\-_]+)*)";
 
     private final JSContext context;
@@ -549,10 +549,10 @@ public final class TemporalParser {
     private boolean tryParseDateSpecMonthDay() {
         Matcher matcher = createMatch(patternDateSpecMonthDay, rest);
         if (matcher.matches()) {
-            month = group(rest, matcher, 1); // TODO fixup index?
-            day = group(rest, matcher, 2);// TODO fixup index?
+            month = group(rest, matcher, 1);
+            day = group(rest, matcher, 2);
 
-            move(matcher.end(3));
+            move(matcher.end(2));
             return true;
         }
         return false;
@@ -578,8 +578,8 @@ public final class TemporalParser {
         if (matcher.matches()) {
             hour = group(rest, matcher, 1);
             minute = group(rest, matcher, 3);
-            second = group(rest, matcher, 5);
-            fraction = group(rest, matcher, 7);
+            second = group(rest, matcher, 4);
+            fraction = group(rest, matcher, 5);
 
             move(matcher.end(2) < 0 ? matcher.end(1) : matcher.end(2));
             return true;
@@ -656,8 +656,8 @@ public final class TemporalParser {
             offsetSign = group(rest, matcher, 1);
             offsetHour = group(rest, matcher, 2);
             offsetMinute = group(rest, matcher, 4);
-            offsetSecond = group(rest, matcher, 6);
-            offsetFraction = group(rest, matcher, 8);
+            offsetSecond = group(rest, matcher, 5);
+            offsetFraction = group(rest, matcher, 6);
             timeZoneNumericUTCOffset = Strings.substring(context, rest, matcher.start(1), matcher.end(3) != -1 ? matcher.end(3) : Strings.length(rest));
 
             if (offsetHour == null) {

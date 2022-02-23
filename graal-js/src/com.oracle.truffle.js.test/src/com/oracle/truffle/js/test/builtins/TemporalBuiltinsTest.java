@@ -936,4 +936,14 @@ public class TemporalBuiltinsTest extends JSTest {
         }
     }
 
+    @Test
+    public void testMonthDayParser() {
+        String code = "const md = Temporal.PlainMonthDay.from('--12-25');\n" +
+                        "md.month === 12 && md.day === 25;";
+        try (Context ctx = getJSContext()) {
+            Value result = ctx.eval(ID, code);
+            Assert.assertEquals(true, result.asBoolean());
+        }
+    }
+
 }

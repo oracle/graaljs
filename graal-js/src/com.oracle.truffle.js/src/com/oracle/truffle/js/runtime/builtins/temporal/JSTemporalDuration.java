@@ -54,9 +54,10 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.SIGN;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
 import static com.oracle.truffle.js.runtime.util.TemporalParser.group;
-import static com.oracle.truffle.js.runtime.util.TemporalUtil.bdtoi;
+import static com.oracle.truffle.js.runtime.util.TemporalUtil.bitoi;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -69,7 +70,6 @@ import com.oracle.truffle.js.builtins.temporal.TemporalDurationFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltins;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -391,23 +391,26 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                     double microsecondsP, double nanosecondsP, Object precision) {
         int sign = TemporalUtil.durationSign(yearsP, monthsP, weeksP, daysP, hoursP, minutesP, secondsP, millisecondsP, microsecondsP, nanosecondsP);
 
-        BigDecimal nanoseconds = new BigDecimal(nanosecondsP);
-        BigDecimal microseconds = new BigDecimal(microsecondsP);
-        BigDecimal milliseconds = new BigDecimal(millisecondsP);
-        BigDecimal seconds = new BigDecimal(secondsP);
+        BigInteger nanoseconds = new BigDecimal(nanosecondsP).toBigInteger();
+        BigInteger microseconds = new BigDecimal(microsecondsP).toBigInteger();
+        BigInteger milliseconds = new BigDecimal(millisecondsP).toBigInteger();
+        BigInteger seconds = new BigDecimal(secondsP).toBigInteger();
 
-        BigDecimal[] res = nanoseconds.divideAndRemainder(TemporalUtil.bd_1000);
+        BigInteger[] res = nanoseconds.divideAndRemainder(TemporalUtil.bi_1000);
         microseconds = microseconds.add(res[0]);
         nanoseconds = res[1];
 
-        res = microseconds.divideAndRemainder(TemporalUtil.bd_1000);
+        res = microseconds.divideAndRemainder(TemporalUtil.bi_1000);
         milliseconds = milliseconds.add(res[0]);
         microseconds = res[1];
 
-        res = milliseconds.divideAndRemainder(TemporalUtil.bd_1000);
+        res = milliseconds.divideAndRemainder(TemporalUtil.bi_1000);
         seconds = seconds.add(res[0]);
         milliseconds = res[1];
 
+        // currently using BigInteger to be compatible with Polyfill
+        // might revert to that version once spec/test262 becomes clearer
+        //
         // double ip = TemporalUtil.integralPartOf(nanoseconds / 1000.0);
         // microseconds += ip;
         // nanoseconds = TemporalUtil.remainder(nanoseconds, 1000.0);
@@ -446,7 +449,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         if (secondsP != 0 || millisecondsP != 0 || microsecondsP != 0 || nanosecondsP != 0 || (yearsP == 0 && monthsP == 0 && weeksP == 0 && daysP == 0 && hoursP == 0 && minutesP == 0) ||
                         !AUTO.equals(precision)) {
             // values clamped above
-            long fraction = Math.abs(bdtoi(milliseconds)) * 1_000_000L + Math.abs(bdtoi(microseconds)) * 1_000L + Math.abs(bdtoi(nanoseconds));
+            long fraction = Math.abs(bitoi(milliseconds)) * 1_000_000L + Math.abs(bitoi(microseconds)) * 1_000L + Math.abs(bitoi(nanoseconds));
             TruffleString decimalPart = Strings.format("000000000%1$09d", fraction);
             decimalPart = Strings.lazySubstring(decimalPart, Strings.length(decimalPart) - 9);
 
@@ -464,7 +467,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 Number n = (Number) precision;
                 decimalPart = Strings.lazySubstring(decimalPart, 0, Math.min(Strings.length(decimalPart), n.intValue()));
             }
-            TruffleString secondsPart = Strings.fromJavaString(seconds.abs().toBigIntegerExact().toString());
+            TruffleString secondsPart = Strings.fromJavaString(seconds.abs().toString());
             if (!decimalPart.equals("")) {
                 secondsPart = Strings.concatAll(secondsPart, Strings.DOT, decimalPart);
             }
