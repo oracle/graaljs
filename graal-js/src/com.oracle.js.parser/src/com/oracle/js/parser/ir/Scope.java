@@ -45,7 +45,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
-import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
@@ -92,7 +91,6 @@ public final class Scope {
     private boolean hasClosures;
     private boolean hasEval;
     private boolean hasNestedEval;
-    private boolean hasUnresolvedSymbols;
 
     private Scope(Scope parent, int type, int flags) {
         this.parent = parent;
@@ -519,25 +517,10 @@ public final class Scope {
      */
     public void resolveUses() {
         if (uses == null || uses.isEmpty()) {
-            if (symbols.isEmpty()) {
-                debugLog(() -> "- skipped empty scope: " + this);
-            } else {
-                debugLog(() -> "- skipped scope without uses: " + this);
-            }
             return;
         }
-        debugLog(() -> "Resolving: " + this + "\n  with uses: " + uses);
-
-        hasUnresolvedSymbols = false;
-        boolean resolved = false;
 
         boolean hasDeclarations = hasDeclarations();
-        if (!hasDeclarations() && parent != null && !parent.closed && !parent.isEvalScope()) {
-            // If the scope does not have any declarations, we cannot resolve anything.
-            // So we can just directly forward all unresolved uses to the parent scope.
-            debugLog(() -> "  No declarations. Forwarding unresolved uses to parent scope");
-        }
-
         MapCursor<String, UseInfo> cursor = uses.getEntries();
         while (cursor.advance()) {
             String usedName = cursor.getKey();
@@ -548,45 +531,25 @@ public final class Scope {
                     // resolved in this scope
                     resolveUse(useInfo, this, foundSymbol);
                 } else {
-                    // unresolved, pass on to parent scope
-                    if (parent != null) {
-                        if (parent.closed) {
-                            // A closed parent scope implies a parsing boundary, e.g. eval().
-                            // We cannot make any symbols available that are not already captured.
-                            // We could resolve these symbols statically but there is currently
-                            // no advantage in doing so early.
-                            debugLog(() -> "    " + usedName + " !!! unresolvable (closed parent): " + this);
-                            markUseUnresolvable(useInfo);
-                            if (useInfo.use == null) {
-                                cursor.remove();
-                            }
-                            continue;
-                        }
-                        debugLog(() -> "    " + usedName + " --> parent: " + parent);
-                        parent.addUsesFromInnerScope(usedName, useInfo);
-                        if (useInfo.use == null) {
-                            // no use in this scope, skip this scope and remove the use here.
-                            debugLog(() -> "    " + usedName + " - - removed non-use intermediate scope: " + this);
-                            cursor.remove();
-                        }
-                    } else {
-                        debugLog(() -> "    " + usedName + " !!! unresolvable (no parent): " + this);
+                    // unresolved, pass on to parent scope, if possible
+                    if (parent == null || parent.closed) {
+                        // A closed parent scope implies a parsing boundary, e.g. eval().
+                        // We cannot make any symbols available that are not already captured.
+                        // We could resolve these symbols statically but there is currently
+                        // no advantage in doing so early.
                         markUseUnresolvable(useInfo);
                         if (useInfo.use == null) {
                             cursor.remove();
                         }
-                        continue;
+                    } else {
+                        parent.addUsesFromInnerScope(usedName, useInfo);
+                        if (useInfo.use == null) {
+                            // no use in this scope, skip this scope and remove the use here.
+                            cursor.remove();
+                        }
                     }
                 }
-
-                resolved |= useInfo.isResolved();
-                hasUnresolvedSymbols |= useInfo.isUnresolved();
             }
-        }
-        if (resolved) {
-            debugLog(() -> "  Resolved : " + this + " with uses: " + uses);
-        } else {
-            debugLog(() -> "  Unresolved : " + this + " with uses: " + uses);
         }
         if (uses.isEmpty()) {
             uses = null; // free unused memory
@@ -608,7 +571,6 @@ public final class Scope {
         assert useInfo.def == null || useInfo.def == defScope;
         assert name.equals(foundSymbol.getName());
         assert defScope.hasSymbol(foundSymbol.getName());
-        debugLog(() -> "    " + name + " resolved in " + defScope);
         if (useInfo.use != null) {
             markSymbolUsed(foundSymbol, defScope, useInfo.use);
         }
@@ -640,7 +602,6 @@ public final class Scope {
             } else {
                 foundSymbol.setUsedInInnerScope();
             }
-            debugLog(() -> "    " + foundSymbol.getName() + " ... used in " + useScope + " closure: " + inClosure);
         }
     }
 
@@ -652,8 +613,6 @@ public final class Scope {
             for (Scope inner : useInfo.innerUseScopes) {
                 UseInfo innerUse = inner.getUseInfo(name);
                 if (innerUse != null) {
-                    debugLog(() -> "    " + name + " not statically resolvable in: " + inner);
-
                     assert innerUse.def == null : name; // must not be resolved
                     if (innerUse.use != null) {
                         innerUse.use.removeUseInfo(name);
@@ -661,10 +620,6 @@ public final class Scope {
                 }
             }
             useInfo.innerUseScopes = null;
-        }
-
-        if (useInfo.use != null) {
-            debugLog(() -> "    " + name + " not statically resolvable in: " + useInfo.use);
         }
     }
 
@@ -746,7 +701,7 @@ public final class Scope {
         }
 
         String usedNames = "";
-        if (hasUnresolvedSymbols && uses != null) {
+        if (uses != null) {
             StringJoiner sj = new StringJoiner(",", ">(", ")").setEmptyValue("");
             for (String use : uses.getKeys()) {
                 if (!symbols.containsKey(use)) {
@@ -838,20 +793,5 @@ public final class Scope {
         boolean hasInnerUse() {
             return innerUseScopes != null;
         }
-
-        @Override
-        public String toString() {
-            return (def == null ? "?" : "") + (hasInnerUse() ? "<" : "") +
-                            ((def != null && def != use && use != null) ? ">" : "") +
-                            ((def != null && (def == use || use == null)) ? "_" : "");
-        }
     }
-
-    static void debugLog(Supplier<String> msg) {
-        if (DEBUG_SCOPE) {
-            System.out.println(msg.get());
-        }
-    }
-
-    private static final boolean DEBUG_SCOPE = Boolean.getBoolean("truffle.js.debugscope");
 }
