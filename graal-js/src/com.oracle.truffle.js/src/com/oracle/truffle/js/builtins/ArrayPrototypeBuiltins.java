@@ -1043,6 +1043,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long len = getLength(thisObj);
 
             if (lengthIsZero.profile(len == 0)) {
+                setLength(thisObj, 0);
                 return Undefined.instance;
             } else {
                 Object firstElement = read(thisObj, 0);
@@ -1083,6 +1084,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 reportLoopCount(len - 1);
                 return firstElement;
             } else {
+                setLength(thisObj, 0);
                 return Undefined.instance;
             }
         }
@@ -1111,6 +1113,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 reportLoopCount(count);
                 return firstElement;
             } else {
+                setLength(thisObj, 0);
                 return Undefined.instance;
             }
         }
