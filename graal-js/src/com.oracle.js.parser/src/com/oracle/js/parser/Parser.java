@@ -6704,44 +6704,38 @@ public class Parser extends AbstractParser {
             module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, specifier));
         } else {
             // import ImportClause FromClause ;
-            List<ImportEntry> importEntries;
-            ImportClauseNode importClause;
+            final List<ImportEntry> importEntries = new ArrayList<>();
+            final ImportClauseNode importClause;
             final long startToken = token;
             if (type == MUL) {
                 NameSpaceImportNode namespaceNode = nameSpaceImport();
                 importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, namespaceNode);
-                importEntries = Collections.singletonList(
-                                ImportEntry.importStarAsNameSpaceFrom(namespaceNode.getBindingIdentifier().getName()));
+                importEntries.add(ImportEntry.importStarAsNameSpaceFrom(namespaceNode.getBindingIdentifier().getName()));
             } else if (type == LBRACE) {
-                NamedImportsNode namedImportsNode = namedImports();
+                NamedImportsNode namedImportsNode = namedImports(importEntries);
                 importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, namedImportsNode);
-                importEntries = convert(namedImportsNode);
             } else if (isBindingIdentifier()) {
                 // ImportedDefaultBinding
                 IdentNode importedDefaultBinding = importedBindingIdentifier();
                 declareImportBinding(importedDefaultBinding);
                 ImportEntry defaultImport = ImportEntry.importDefault(importedDefaultBinding.getName());
+                importEntries.add(defaultImport);
 
                 if (type == COMMARIGHT) {
                     next();
                     if (type == MUL) {
                         NameSpaceImportNode namespaceNode = nameSpaceImport();
                         importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, importedDefaultBinding, namespaceNode);
-                        importEntries = new ArrayList<>(2);
-                        importEntries.add(defaultImport);
                         importEntries.add(ImportEntry.importStarAsNameSpaceFrom(namespaceNode.getBindingIdentifier().getName()));
                     } else if (type == LBRACE) {
-                        NamedImportsNode namedImportsNode = namedImports();
+                        NamedImportsNode namedImportsNode = namedImports(importEntries);
                         importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, importedDefaultBinding, namedImportsNode);
-                        importEntries = convert(namedImportsNode);
-                        importEntries.add(0, defaultImport);
                     } else {
                         // expected NameSpaceImport or NamedImports
                         throw error(AbstractParser.message("expected.named.import"));
                     }
                 } else {
                     importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, importedDefaultBinding);
-                    importEntries = Collections.singletonList(defaultImport);
                 }
             } else {
                 // expected ImportClause or ModuleSpecifier
@@ -6863,7 +6857,7 @@ public class Parser extends AbstractParser {
      *     BindingIdentifier
      * </pre>
      */
-    private NamedImportsNode namedImports() {
+    private NamedImportsNode namedImports(List<ImportEntry> importEntries) {
         final long startToken = token;
         assert type == LBRACE;
         next();
@@ -6877,11 +6871,13 @@ public class Parser extends AbstractParser {
                 IdentNode localName = importedBindingIdentifier();
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importName));
                 declareImportBinding(localName);
+                importEntries.add(ImportEntry.importSpecifier(importName.getName(), localName.getName()));
             } else if (bindingIdentifier) {
                 verifyIdent(importName, false, false);
                 verifyStrictIdent(importName, IMPORTED_BINDING_CONTEXT);
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, importName, null));
                 declareImportBinding(importName);
+                importEntries.add(ImportEntry.importSpecifier(importName.getName()));
             } else {
                 // expected BindingIdentifier
                 throw error(AbstractParser.message("expected.binding.identifier"), nameToken);
@@ -7247,17 +7243,5 @@ public class Parser extends AbstractParser {
 
             return null;
         }
-    }
-
-    private static List<ImportEntry> convert(NamedImportsNode namedImportsNode) {
-        List<ImportEntry> importEntries = new ArrayList<>(namedImportsNode.getImportSpecifiers().size());
-        for (ImportSpecifierNode s : namedImportsNode.getImportSpecifiers()) {
-            if (s.getIdentifier() != null) {
-                importEntries.add(ImportEntry.importSpecifier(s.getIdentifier().getName(), s.getBindingIdentifier().getName()));
-            } else {
-                importEntries.add(ImportEntry.importSpecifier(s.getBindingIdentifier().getName()));
-            }
-        }
-        return importEntries;
     }
 }
