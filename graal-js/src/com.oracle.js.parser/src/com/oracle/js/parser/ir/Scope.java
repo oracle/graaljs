@@ -83,7 +83,7 @@ public final class Scope {
 
     /** Symbol table - keys must be returned in the order they were put in. */
     protected final EconomicMap<String, Symbol> symbols;
-    protected final EconomicMap<String, UseInfo> uses;
+    protected EconomicMap<String, UseInfo> uses;
 
     private boolean closed;
     private boolean hasBlockScopedOrRedeclaredSymbols;
@@ -98,7 +98,6 @@ public final class Scope {
         this.type = type;
         this.symbols = EconomicMap.create();
         this.flags = flags;
-        this.uses = EconomicMap.create();
     }
 
     private Scope(Scope parent, int type) {
@@ -387,18 +386,39 @@ public final class Scope {
         addLocalUse(name);
     }
 
+    private UseInfo getUseInfo(String name) {
+        if (uses == null) {
+            return null;
+        }
+        return uses.get(name);
+    }
+
+    private void putUseInfo(String name, UseInfo useInfo) {
+        if (uses == null) {
+            uses = EconomicMap.create();
+        }
+        uses.put(name, useInfo);
+    }
+
+    private void removeUseInfo(String name) {
+        if (uses == null) {
+            return;
+        }
+        uses.removeKey(name);
+    }
+
     /**
      * Records or resolves a use in this scope.
      */
     private void addLocalUse(String name) {
         assert !closed : "scope is closed";
-        UseInfo foundUse = uses.get(name);
+        UseInfo foundUse = getUseInfo(name);
         Symbol foundSymbol = symbols.get(name);
         if (foundSymbol != null) {
             // declared in this scope, can be resolved immediately.
             if (foundUse == null) {
                 foundUse = UseInfo.resolvedLocal(name, this);
-                uses.put(name, foundUse);
+                putUseInfo(name, foundUse);
                 assert foundUse.use == this;
             } else {
                 assert foundUse.use == this || foundUse.use == null;
@@ -410,7 +430,7 @@ public final class Scope {
             // or in one of the outer scopes eventually.
             if (foundUse == null) {
                 foundUse = UseInfo.unresolved(name);
-                uses.put(name, foundUse);
+                putUseInfo(name, foundUse);
                 assert foundUse.use == null;
             } else {
                 assert foundUse.def == null;
@@ -436,10 +456,10 @@ public final class Scope {
             return;
         }
         // merge unresolved use into the parent scope
-        UseInfo foundUse = uses.get(name);
+        UseInfo foundUse = getUseInfo(name);
         if (foundUse == null) {
             foundUse = UseInfo.unresolved(name);
-            uses.put(name, foundUse);
+            putUseInfo(name, foundUse);
         } else {
             assert foundUse.use == this || foundUse.use == null;
         }
@@ -458,7 +478,7 @@ public final class Scope {
      * Resolves free variables in this scope and forwards unresolved uses to the parent scope.
      */
     public void resolveUses() {
-        if (uses.isEmpty()) {
+        if (uses == null || uses.isEmpty()) {
             if (symbols.isEmpty()) {
                 debugLog(() -> "- skipped empty scope: " + this);
             } else {
@@ -529,7 +549,7 @@ public final class Scope {
             debugLog(() -> "  Unresolved : " + this + " with uses: " + uses);
         }
         if (uses.isEmpty()) {
-            uses.clear(); // free unused memory
+            uses = null; // free unused memory
         }
 
         // Note: In case of nested eval, we would still not have to capture variables that are
@@ -554,11 +574,11 @@ public final class Scope {
         }
         if (useInfo.innerUseScopes != null) {
             for (Scope inner : useInfo.innerUseScopes) {
-                UseInfo innerUse = inner.uses.get(name);
+                UseInfo innerUse = inner.getUseInfo(name);
                 if (innerUse == null) {
                     innerUse = UseInfo.unresolved(name);
                     innerUse.use = inner;
-                    inner.uses.put(name, innerUse);
+                    inner.putUseInfo(name, innerUse);
                 }
                 innerUse.def = defScope;
                 innerUse.innerUseScopes = null;
@@ -590,13 +610,13 @@ public final class Scope {
 
         if (useInfo.innerUseScopes != null) {
             for (Scope inner : useInfo.innerUseScopes) {
-                UseInfo innerUse = inner.uses.get(name);
+                UseInfo innerUse = inner.getUseInfo(name);
                 if (innerUse != null) {
                     debugLog(() -> "    " + name + " not statically resolvable in: " + inner);
 
                     assert innerUse.def == null : name; // must not be resolved
                     if (innerUse.use != null) {
-                        innerUse.use.uses.removeKey(name);
+                        innerUse.use.removeUseInfo(name);
                     }
                 }
             }
@@ -686,7 +706,7 @@ public final class Scope {
         }
 
         String usedNames = "";
-        if (hasUnresolvedSymbols) {
+        if (hasUnresolvedSymbols && uses != null) {
             StringJoiner sj = new StringJoiner(",", ">(", ")").setEmptyValue("");
             for (String use : uses.getKeys()) {
                 if (!symbols.containsKey(use)) {
