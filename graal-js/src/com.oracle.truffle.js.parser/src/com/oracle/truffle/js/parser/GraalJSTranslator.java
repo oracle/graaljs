@@ -3674,7 +3674,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         boolean captureFunctionFrame = blockEnv.getParent() == blockEnv.function() && blockEnv.function().isGeneratorFunction();
                         return factory.createBlockScope(block, blockEnv.function().getBlockScopeSlot(), blockEnv.getBlockFrameDescriptor().toFrameDescriptor(),
                                         blockEnv.getParentSlot(), blockEnv.isFunctionBlock(), captureFunctionFrame);
-                    } else if (!blockEnv.function().isGeneratorFunction() && !blockEnv.function().isAsyncFunction() && blockEnv.getStart() < blockEnv.getEnd()) {
+                    } else if (blockEnv.getStart() < blockEnv.getEnd()) {
                         // not required, but this node clears the block's frame slots on leave
                         return factory.createVirtualBlockScope(block, blockEnv.getStart(), blockEnv.getEnd());
                     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,13 +42,14 @@ package com.oracle.truffle.js.runtime.interop;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.OptionalInt;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -58,6 +59,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.source.SourceSection;
@@ -65,21 +67,24 @@ import com.oracle.truffle.js.nodes.FrameDescriptorProvider;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
+import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Dead;
 
 @ExportLibrary(InteropLibrary.class)
 final class ScopeMembers implements TruffleObject {
 
     private final Frame frame;
-    /** FrameBlockScopeNode or RootNode. */
+    /** BlockScopeNode or RootNode. */
     private final Node blockOrRoot;
     private final Frame functionFrame;
     private Object[] members;
 
-    ScopeMembers(Frame frame, /* FrameBlockScopeNode or RootNode */ Node blockOrRoot, Frame functionFrame) {
+    ScopeMembers(Frame frame, Node blockOrRoot, Frame functionFrame) {
+        assert ScopeVariables.isBlockScopeOrRootNode(blockOrRoot);
         this.frame = frame;
         this.blockOrRoot = blockOrRoot;
         this.functionFrame = functionFrame;
@@ -122,91 +127,151 @@ final class ScopeMembers implements TruffleObject {
     private Object[] collectAllMembers() {
         List<Object> membersList = new ArrayList<>();
         if (frame == null) {
-            Node descNode = blockOrRoot;
-            while (descNode != null) {
-                if (!(descNode instanceof FrameDescriptorProvider)) {
-                    break;
-                }
-                FrameDescriptor desc = ((FrameDescriptorProvider) descNode).getFrameDescriptor();
-                for (int slot = 0; slot < desc.getNumberOfSlots(); slot++) {
-                    if (JSFrameUtil.isInternal(desc, slot)) {
-                        continue;
-                    }
-                    membersList.add(new Key(desc.getSlotName(slot).toString(), descNode, slot));
-                }
-
-                descNode = JavaScriptNode.findBlockScopeNode(descNode.getParent());
-            }
+            collectMembersWithoutFrame(membersList, blockOrRoot);
         } else {
-            Node descNode = blockOrRoot;
-            Frame outerFrame = frame;
-            Frame currentFunctionFrame = functionFrame;
-            for (;;) { // frameLevel
-                Frame outerScope = outerFrame;
-                boolean seenThis = false;
-                for (;;) { // scopeLevel
-                    FrameDescriptor frameDescriptor = outerScope.getFrameDescriptor();
-                    for (int slot = 0; slot < frameDescriptor.getNumberOfSlots(); slot++) {
-                        if (JSFrameUtil.isInternal(frameDescriptor, slot)) {
-                            if (JSFrameUtil.isThisSlot(frameDescriptor, slot)) {
-                                membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, descNode));
-                                seenThis = true;
-                            }
-                            continue;
-                        }
-                        if (isUnsetFrameSlot(outerScope, slot)) {
-                            continue;
-                        }
-                        membersList.add(new Key(frameDescriptor.getSlotName(slot).toString(), descNode, slot));
-                    }
+            // Traverse block scope nodes in order to discover scope members from inner to outer.
+            // Once we've reached the local function root node, we add any non-internal
+            // non-hoisted slots that we have not seen yet, including `this`.
+            // Then, we go through all closure scope frames. These only have root location nodes.
 
-                    // insert direct eval scope variables
-                    OptionalInt evalScopeSlot = JSFrameUtil.findOptionalFrameSlotIndex(frameDescriptor, ScopeFrameNode.EVAL_SCOPE_IDENTIFIER);
-                    if (evalScopeSlot.isPresent()) {
-                        DynamicObject evalScope = (DynamicObject) outerScope.getObject(evalScopeSlot.getAsInt());
+            class SlotVisitor {
+                Frame outerScope = frame;
+                Node descNode = blockOrRoot;
+                int parentSlot = -1;
+                boolean seenThis;
+
+                public void accept(FrameDescriptor frameDescriptor, int slot) {
+                    Frame targetFrame;
+                    if (outerScope.getFrameDescriptor() == frameDescriptor) {
+                        targetFrame = outerScope;
+                    } else {
+                        targetFrame = functionFrame;
+                    }
+                    assert targetFrame.getFrameDescriptor() == frameDescriptor;
+                    Object slotName = frameDescriptor.getSlotName(slot);
+                    if (ScopeFrameNode.PARENT_SCOPE_IDENTIFIER.equals(slotName)) {
+                        parentSlot = slot;
+                    } else if (ScopeFrameNode.EVAL_SCOPE_IDENTIFIER.equals(slotName)) {
+                        DynamicObject evalScope = (DynamicObject) targetFrame.getObject(slot);
                         DynamicObjectLibrary objLib = DynamicObjectLibrary.getUncached();
                         for (Object key : objLib.getKeyArray(evalScope)) {
                             membersList.add(new Key(key.toString(), descNode));
                         }
+                    } else if (JSFrameUtil.isThisSlot(frameDescriptor, slot)) {
+                        membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, descNode, slot));
+                        seenThis = true;
+                    } else if (!JSFrameUtil.isInternal(frameDescriptor, slot)) {
+                        if (!isUnsetFrameSlot(targetFrame, slot)) {
+                            membersList.add(new Key(slotName.toString(), descNode, slot));
+                        }
+                    }
+                }
+            }
+
+            SlotVisitor visitor = new SlotVisitor();
+            Frame outerFrame;
+            if (functionFrame == null) {
+                // starting from a non-local frame
+                outerFrame = frame;
+            } else {
+                // traverse local frames
+                FrameDescriptor rootFrameDescriptor = functionFrame.getFrameDescriptor();
+                while (visitor.descNode instanceof BlockScopeNode) {
+                    BlockScopeNode block = (BlockScopeNode) visitor.descNode;
+                    visitor.parentSlot = -1;
+
+                    if (block instanceof BlockScopeNode.FrameBlockScopeNode) {
+                        FrameDescriptor blockFrameDescriptor = ((BlockScopeNode.FrameBlockScopeNode) block).getFrameDescriptor();
+                        for (int i = 0; i < blockFrameDescriptor.getNumberOfSlots(); i++) {
+                            visitor.accept(blockFrameDescriptor, i);
+                        }
+                    }
+                    for (int i = block.getFrameStart(); i < block.getFrameEnd(); i++) {
+                        visitor.accept(rootFrameDescriptor, i);
                     }
 
-                    OptionalInt parentSlot = JSFrameUtil.findOptionalFrameSlotIndex(frameDescriptor, ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
-                    if (!parentSlot.isPresent()) {
-                        break;
-                    }
-
-                    Object parent = outerScope.getObject(parentSlot.getAsInt());
-                    if (parent instanceof Frame) {
-                        outerScope = (Frame) parent;
-                    } else if (currentFunctionFrame != null && currentFunctionFrame != outerScope) {
-                        outerScope = currentFunctionFrame;
-                    } else {
-                        break;
-                    }
-                    if (descNode != null) {
-                        descNode = JavaScriptNode.findBlockScopeNode(descNode.getParent());
+                    visitor.descNode = JavaScriptNode.findBlockScopeNode(visitor.descNode.getParent());
+                    if (visitor.parentSlot >= 0) {
+                        Object parent = visitor.outerScope.getObject(visitor.parentSlot);
+                        if (parent instanceof Frame) {
+                            visitor.outerScope = (Frame) parent;
+                        } else {
+                            break;
+                        }
                     }
                 }
 
-                if (!seenThis) {
-                    membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, descNode));
+                assert functionFrame.getFrameDescriptor() == rootFrameDescriptor && visitor.descNode instanceof RootNode;
+                for (int slot = 0; slot < rootFrameDescriptor.getNumberOfSlots(); slot++) {
+                    // skip hoisted block-scoped slots; only accessible within their block
+                    if (JSFrameUtil.isHoistedFromBlock(rootFrameDescriptor, slot)) {
+                        continue;
+                    }
+                    visitor.accept(rootFrameDescriptor, slot);
+                }
+                if (!visitor.seenThis) {
+                    membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, visitor.descNode));
+                }
+                outerFrame = JSArguments.getEnclosingFrame(frame.getArguments());
+            }
+
+            // traverse non-local frames
+            while (outerFrame != JSFrameUtil.NULL_MATERIALIZED_FRAME) {
+                visitor.outerScope = outerFrame;
+                visitor.descNode = ((RootCallTarget) JSFunction.getFunctionData(JSFrameUtil.getFunctionObject(outerFrame)).getRootTarget()).getRootNode();
+                visitor.seenThis = false;
+                for (;;) {
+                    visitor.parentSlot = -1;
+                    for (int slot = 0; slot < visitor.outerScope.getFrameDescriptor().getNumberOfSlots(); slot++) {
+                        visitor.accept(visitor.outerScope.getFrameDescriptor(), slot);
+                    }
+                    if (visitor.parentSlot >= 0) {
+                        Object parent = visitor.outerScope.getObject(visitor.parentSlot);
+                        if (parent instanceof Frame) {
+                            visitor.outerScope = (Frame) parent;
+                            continue;
+                        }
+                    }
+                    break;
+                }
+                if (!visitor.seenThis) {
+                    membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, visitor.descNode));
                 }
 
                 outerFrame = JSArguments.getEnclosingFrame(outerFrame.getArguments());
-                currentFunctionFrame = null;
-                if (outerFrame == JSFrameUtil.NULL_MATERIALIZED_FRAME) {
-                    break;
-                }
             }
         }
         return membersList.toArray();
     }
 
+    private static void collectMembersWithoutFrame(List<Object> membersList, Node blockOrRootNode) {
+        Node descNode = blockOrRootNode;
+        while (descNode != null) {
+            if (!(descNode instanceof FrameDescriptorProvider)) {
+                break;
+            }
+            FrameDescriptor desc = ((FrameDescriptorProvider) descNode).getFrameDescriptor();
+            for (int slot = 0; slot < desc.getNumberOfSlots(); slot++) {
+                if (JSFrameUtil.isInternal(desc, slot)) {
+                    continue;
+                }
+                membersList.add(new Key(desc.getSlotName(slot).toString(), descNode, slot));
+            }
+
+            descNode = JavaScriptNode.findBlockScopeNode(descNode.getParent());
+        }
+    }
+
     static boolean isUnsetFrameSlot(Frame frame, int slot) {
-        if (frame != null && frame.isObject(slot)) {
-            Object value = frame.getObject(slot);
-            if (value == null || value == Dead.instance() || value instanceof Frame) {
+        if (frame != null) {
+            byte tag = frame.getTag(slot);
+            if (tag == FrameSlotKind.Illegal.tag) {
                 return true;
+            } else if (tag == FrameSlotKind.Object.tag) {
+                Object value = frame.getObject(slot);
+                if (value == null || value == Dead.instance() || value instanceof Frame) {
+                    return true;
+                }
             }
         }
         return false;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Source;
 import org.junit.After;
@@ -61,6 +62,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugScope;
@@ -71,17 +76,30 @@ import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.tck.DebuggerTester;
 
+@RunWith(Parameterized.class)
 public class TestScope {
     private static final String IGNORE_VALUE = null;
 
     private DebuggerTester tester;
 
+    @Parameters(name = "{0}")
+    public static List<Boolean> data() {
+        return Arrays.asList(Boolean.TRUE, Boolean.FALSE);
+    }
+
+    @Parameter(value = 0) public boolean closureOpt;
+
     @Before
     public void before() {
-        tester = new DebuggerTester(JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true));
+        Context.Builder contextBuilder = JSTest.newContextBuilder();
+        contextBuilder.allowHostAccess(HostAccess.ALL);
+        contextBuilder.allowHostClassLookup(s -> true);
+        contextBuilder.option(JSContextOptions.SCOPE_OPTIMIZATION_NAME, Boolean.toString(closureOpt));
+        tester = new DebuggerTester(contextBuilder);
     }
 
     @After
@@ -719,7 +737,11 @@ public class TestScope {
                 event.prepareStepInto(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkScope(event, "f", 6, "let v3 = {}", new String[]{"ia1", "5"}, new String[]{"a1", "10", "a2", "20", "v1", "72", "v2", "1234", "f", IGNORE_VALUE});
+                if (closureOpt) {
+                    checkScope(event, "f", 6, "let v3 = {}", new String[]{"ia1", "5"}, new String[]{"v1", "72"});
+                } else {
+                    checkScope(event, "f", 6, "let v3 = {}", new String[]{"ia1", "5"}, new String[]{"a1", "10", "a2", "20", "v1", "72", "v2", "1234", "f", IGNORE_VALUE});
+                }
                 checkGlobalScope(event, new String[]{"outerMost", "42"}, new String[]{"main", IGNORE_VALUE, "f", IGNORE_VALUE});
                 event.prepareStepOut(1).prepareStepOver(1);
             });
@@ -760,16 +782,28 @@ public class TestScope {
                 event.prepareStepInto(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkScope(event, "nested", 3, "let v2 = a1 + 2", new String[]{}, new String[]{"a1", "10", "a2", "20", "v1", "30", "nested", IGNORE_VALUE});
+                if (closureOpt) {
+                    checkScope(event, "nested", 3, "let v2 = a1 + 2", new String[]{}, new String[]{"a1", "10", "v1", "30"});
+                } else {
+                    checkScope(event, "nested", 3, "let v2 = a1 + 2", new String[]{}, new String[]{"a1", "10", "a2", "20", "v1", "30", "nested", IGNORE_VALUE});
+                }
                 event.prepareStepOver(1);
                 event.prepareStepInto(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkScope(event, "nested2", 5, "let v3 = v1 + v2", new String[]{}, new String[]{"v2", "12"}, new String[]{"a1", "10", "a2", "20", "v1", "30", "nested", IGNORE_VALUE});
+                if (closureOpt) {
+                    checkScope(event, "nested2", 5, "let v3 = v1 + v2", new String[]{}, new String[]{"v2", "12"}, new String[]{"a1", "10", "v1", "30"});
+                } else {
+                    checkScope(event, "nested2", 5, "let v3 = v1 + v2", new String[]{}, new String[]{"v2", "12"}, new String[]{"a1", "10", "a2", "20", "v1", "30", "nested", IGNORE_VALUE});
+                }
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkScope(event, "nested2", 6, "return v3;", new String[]{"v3", "42"}, new String[]{"v2", "12"}, new String[]{"a1", "10", "a2", "20", "v1", "30", "nested", IGNORE_VALUE});
+                if (closureOpt) {
+                    checkScope(event, "nested2", 6, "return v3;", new String[]{"v3", "42"}, new String[]{"v2", "12"}, new String[]{"a1", "10", "v1", "30"});
+                } else {
+                    checkScope(event, "nested2", 6, "return v3;", new String[]{"v3", "42"}, new String[]{"v2", "12"}, new String[]{"a1", "10", "a2", "20", "v1", "30", "nested", IGNORE_VALUE});
+                }
                 event.prepareContinue();
             });
         }

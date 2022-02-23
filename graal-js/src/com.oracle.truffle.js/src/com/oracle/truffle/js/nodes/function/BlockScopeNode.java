@@ -57,6 +57,7 @@ import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
+import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.control.YieldException;
 import com.oracle.truffle.js.nodes.instrumentation.DeclareTagProvider;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
@@ -133,6 +134,14 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
         return block.isResultAlwaysOfType(clazz);
+    }
+
+    public int getFrameStart() {
+        return -1;
+    }
+
+    public int getFrameEnd() {
+        return -1;
     }
 
     public static class FrameBlockScopeNode extends BlockScopeNode implements ResumableNode.WithObjectState, FrameDescriptorProvider {
@@ -242,9 +251,12 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
         }
     }
 
-    public static class VirtualBlockScopeNode extends BlockScopeNode {
+    public static class VirtualBlockScopeNode extends BlockScopeNode implements ResumableNode {
         protected final int start;
         protected final int end;
+
+        /** A value other than undefined to signal that block node is entered. */
+        private static final Object SCOPE_PLACEHOLDER = Null.instance;
 
         protected VirtualBlockScopeNode(JavaScriptNode block, int start, int end) {
             super(block);
@@ -268,17 +280,37 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
         }
 
         @Override
+        public Object resume(VirtualFrame frame, int stateSlot) {
+            // Note: we must not clear the slots on yield/await.
+            return block.execute(frame);
+        }
+
+        /**
+         * @see TryCatchNode#resume
+         */
+        @Override
         public Object getBlockScope(VirtualFrame frame) {
-            return Null.instance;
+            return SCOPE_PLACEHOLDER;
         }
 
         @Override
         public void setBlockScope(VirtualFrame frame, Object state) {
+            assert state == SCOPE_PLACEHOLDER;
         }
 
         @Override
         public boolean isFunctionBlock() {
             return false;
+        }
+
+        @Override
+        public int getFrameStart() {
+            return start;
+        }
+
+        @Override
+        public int getFrameEnd() {
+            return end;
         }
 
         @Override

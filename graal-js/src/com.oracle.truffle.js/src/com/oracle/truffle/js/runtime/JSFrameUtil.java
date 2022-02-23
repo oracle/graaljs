@@ -71,8 +71,10 @@ public final class JSFrameUtil {
     private static final int IS_PRIVATE_METHOD_OR_ACCESSOR = Symbol.IS_PRIVATE_NAME_METHOD | Symbol.IS_PRIVATE_NAME_ACCESSOR;
     private static final int IS_PARAM = Symbol.IS_PARAM;
     private static final int IS_ARGUMENTS = Symbol.IS_ARGUMENTS;
+    private static final int IS_CLOSED_OVER = Symbol.IS_CLOSED_OVER;
+    public static final int IS_HOISTED_FROM_BLOCK = 1 << 31;
     public static final int SYMBOL_FLAG_MASK = HAS_TDZ | IS_HOISTABLE_DECLARATION | IS_IMPORT_BINDING | IS_PARAM | IS_ARGUMENTS |
-                    IS_PRIVATE_NAME | IS_PRIVATE_NAME_STATIC | IS_PRIVATE_METHOD_OR_ACCESSOR | Symbol.IS_CLOSED_OVER;
+                    IS_PRIVATE_NAME | IS_PRIVATE_NAME_STATIC | IS_PRIVATE_METHOD_OR_ACCESSOR | IS_CLOSED_OVER | IS_HOISTED_FROM_BLOCK;
 
     private JSFrameUtil() {
         // this utility class should not be instantiated
@@ -159,7 +161,11 @@ public final class JSFrameUtil {
     }
 
     public static boolean isClosedOver(JSFrameSlot frameSlot) {
-        return (getFlags(frameSlot) & Symbol.IS_CLOSED_OVER) != 0;
+        return (getFlags(frameSlot) & IS_CLOSED_OVER) != 0;
+    }
+
+    public static boolean isHoistedFromBlock(FrameDescriptor desc, int index) {
+        return (getFlags(desc, index) & IS_HOISTED_FROM_BLOCK) != 0;
     }
 
     public static MaterializedFrame getParentFrame(Frame frame) {

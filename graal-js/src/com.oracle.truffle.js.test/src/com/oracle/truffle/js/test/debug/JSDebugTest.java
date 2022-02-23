@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -646,11 +646,11 @@ public class JSDebugTest {
                         "  var res = 0;\n" +
                         "  for (let i = 0; i < n; i++) {\n" +
                         "    let inc = i;\n" +
-                        "    (function testFor2() {\n" +
+                        "    (function testFor2(i) {\n" +
                         "      for (let j = 0; j < n; j++) {\n" +
                         "        res = res + inc;\n" +
                         "      }\n" +
-                        "    })();\n" +
+                        "    })(i);\n" +
                         "  }\n" +
                         "  return res;\n" +
                         "}\n" +

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -406,7 +406,8 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
 
     @ExportMessage
     final Object getScope(Frame frame, boolean nodeEnter,
-                    @Cached(value = "findBlockScopeNode(this)", allowUncached = true, adopt = false) Node block) throws UnsupportedMessageException {
+                    @Cached(value = "findBlockScopeNode(this)", allowUncached = true, adopt = false) Node blockNode,
+                    @Cached(value = "findFrameScopeNode(blockNode)", allowUncached = true, adopt = false) Node frameBlockNode) throws UnsupportedMessageException {
         if (hasScope(frame)) {
             Frame functionFrame;
             Frame scopeFrame;
@@ -417,8 +418,8 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
                 } else {
                     functionFrame = frame.materialize();
                 }
-                if (block instanceof BlockScopeNode) {
-                    Object maybeScopeFrame = ((BlockScopeNode) block).getBlockScope((VirtualFrame) functionFrame);
+                if (frameBlockNode instanceof BlockScopeNode.FrameBlockScopeNode) {
+                    Object maybeScopeFrame = ((BlockScopeNode.FrameBlockScopeNode) frameBlockNode).getBlockScope((VirtualFrame) functionFrame);
                     assert maybeScopeFrame instanceof Frame;
                     scopeFrame = (Frame) maybeScopeFrame;
                 } else {
@@ -428,7 +429,7 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
                 functionFrame = null;
                 scopeFrame = null;
             }
-            return new ScopeVariables(scopeFrame, nodeEnter, block, functionFrame);
+            return ScopeVariables.create(scopeFrame, nodeEnter, blockNode, functionFrame);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -472,6 +473,21 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         Node parent = node;
         for (Node n = parent; n != null; parent = n, n = n.getParent()) {
             if (n instanceof BlockScopeNode) {
+                return n;
+            }
+        }
+        assert parent instanceof RootNode : "Node " + node + " is not adopted.";
+        return parent;
+    }
+
+    @TruffleBoundary
+    static Node findFrameScopeNode(Node node) {
+        if (node == null) {
+            return null;
+        }
+        Node parent = node;
+        for (Node n = parent; n != null; parent = n, n = n.getParent()) {
+            if (n instanceof BlockScopeNode.FrameBlockScopeNode) {
                 return n;
             }
         }
