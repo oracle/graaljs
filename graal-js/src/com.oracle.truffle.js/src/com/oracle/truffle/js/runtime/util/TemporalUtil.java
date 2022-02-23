@@ -246,10 +246,9 @@ public final class TemporalUtil {
     // 8.64 * 10^13
     private static final BigInteger bi_8_64_13 = new BigInteger("86400000000000");
 
-    // 10 ^ 9
-    private static final BigInteger bi_10_pow_9 = new BigInteger("1000000000");
-
-    private static final BigInteger bi_1000 = new BigInteger("1000");
+    private static final BigInteger bi_10_pow_9 = new BigInteger("1000000000"); // 10 ^ 9
+    private static final BigInteger bi_10_pow_6 = new BigInteger("1000000"); // 10 ^ 6
+    private static final BigInteger bi_1000 = new BigInteger("1000");  // 10 ^ 3
 
     public static final BigDecimal bd_10 = new BigDecimal("10");
     public static final BigDecimal bd_1000 = new BigDecimal("1000");
@@ -3523,8 +3522,16 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static JSTemporalDateTimeRecord getISOPartsFromEpoch(BigInt epochNanoseconds) {
-        long remainderNs = epochNanoseconds.longValue() % 1_000_000;
-        long epochMilliseconds = (epochNanoseconds.longValue() - remainderNs) / 1_000_000;
+        long remainderNs;
+        long epochMilliseconds;
+        if (epochNanoseconds.fitsInLong()) {
+            remainderNs = epochNanoseconds.longValue() % 1_000_000;
+            epochMilliseconds = (epochNanoseconds.longValue() - remainderNs) / 1_000_000;
+        } else {
+            BigInteger[] result = epochNanoseconds.bigIntegerValue().divideAndRemainder(bi_10_pow_6);
+            remainderNs = result[1].longValue();
+            epochMilliseconds = result[0].longValue();
+        }
         int year = JSDate.yearFromTime(epochMilliseconds);
         int month = JSDate.monthFromTime(epochMilliseconds) + 1;
         int day = JSDate.dateFromTime(epochMilliseconds);

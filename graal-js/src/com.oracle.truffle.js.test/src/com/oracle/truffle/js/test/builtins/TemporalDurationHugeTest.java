@@ -47,7 +47,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.js.test.JSTest;
@@ -72,6 +71,18 @@ public class TemporalDurationHugeTest extends JSTest {
                         "const result = i2.since(i1); \n" +
                         "result.nanoseconds === 101 && result.seconds === 1111111011;";
 
+        try (Context ctx = getJSContext()) {
+            Value result = ctx.eval(ID, code);
+            Assert.assertTrue(result.asBoolean());
+        }
+    }
+
+    @Test
+    public void testInstantToString() {
+        String code = "const i1 = new Temporal.Instant(1234567890123456789n);\n" +
+                        "const i2 = new Temporal.Instant(8640000000000000000000n); \n" +
+                        "console.log(i1.toString()); console.log(i2.toString()); \n" +
+                        "i1.toString() === '2009-02-13T23:31:30.123456789Z' && i2.toString() === '+275760-09-13T00:00:00Z';";
         try (Context ctx = getJSContext()) {
             Value result = ctx.eval(ID, code);
             Assert.assertTrue(result.asBoolean());
