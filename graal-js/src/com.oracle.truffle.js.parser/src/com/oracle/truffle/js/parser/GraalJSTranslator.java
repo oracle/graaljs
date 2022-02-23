@@ -1470,7 +1470,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
                 FunctionNode function = lc.getCurrentFunction();
                 assert function.hasClosures() || !hasClosures(function.getBody()) : function;
-                if (!function.isModule() && !function.isGenerator() && (function.hasClosures() || function.hasEval())) {
+                if (!function.isModule() && !function.isGenerator() && (allowScopeOptimization()
+                                ? BlockEnvironment.isScopeCaptured(scope)
+                                : (function.hasClosures() || function.hasEval()))) {
                     functionEnv = new BlockEnvironment(environment, factory, context, scope);
                 }
 

@@ -72,7 +72,7 @@ public final class BlockEnvironment extends Environment {
         super(parent, factory, context);
         this.isFunctionBlock = blockScope != null && (blockScope.isFunctionTopScope() || blockScope.isEvalScope());
         this.scope = blockScope;
-        if (blockScope == null || blockScope.hasClosures() || blockScope.hasNestedEval() || blockScope.isClassHeadScope() || !context.getContextOptions().isScopeOptimization()) {
+        if (isScopeCaptured(blockScope) || !context.getContextOptions().isScopeOptimization()) {
             this.blockFrameDescriptor = factory.createBlockFrameDescriptor();
             this.parentSlot = Objects.requireNonNull(blockFrameDescriptor.findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER));
             this.scopeLevel = parent.getScopeLevel() + 1;
@@ -85,6 +85,10 @@ public final class BlockEnvironment extends Environment {
             this.blockScopeSlot = parent.getCurrentBlockScopeSlot();
             virtualScopes.inc();
         }
+    }
+
+    public static boolean isScopeCaptured(Scope blockScope) {
+        return blockScope == null || blockScope.hasClosures() || blockScope.hasNestedEval() || blockScope.isClassHeadScope();
     }
 
     public BlockEnvironment(Environment parent, NodeFactory factory, JSContext context) {
