@@ -364,17 +364,24 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     private static String hourCycleFromPattern(String pattern) {
-        if (pattern.indexOf('K') != -1) {
-            return IntlUtil.H11;
-        } else if (pattern.indexOf('h') != -1) {
-            return IntlUtil.H12;
-        } else if (pattern.indexOf('H') != -1) {
-            return IntlUtil.H23;
-        } else if (pattern.indexOf('k') != -1) {
-            return IntlUtil.H24;
-        } else {
-            return null;
+        boolean quoted = false;
+        for (char c : pattern.toCharArray()) {
+            if (c == '\'') {
+                quoted = !quoted;
+            } else if (!quoted) {
+                switch (c) {
+                    case 'K':
+                        return IntlUtil.H11;
+                    case 'h':
+                        return IntlUtil.H12;
+                    case 'H':
+                        return IntlUtil.H23;
+                    case 'k':
+                        return IntlUtil.H24;
+                }
+            }
         }
+        return null;
     }
 
     private static String replaceHourCycle(String pattern, String hourCycle) {
@@ -390,17 +397,21 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             assert IntlUtil.H24.equals(hourCycle);
             replacement = 'k';
         }
+        boolean quoted = false;
         for (char c : pattern.toCharArray()) {
-            switch (c) {
-                case 'K':
-                case 'h':
-                case 'H':
-                case 'k':
-                    sb.append(replacement);
-                    break;
-                default:
-                    sb.append(c);
+            if (c == '\'') {
+                quoted = !quoted;
+            } else if (!quoted) {
+                switch (c) {
+                    case 'K':
+                    case 'h':
+                    case 'H':
+                    case 'k':
+                        sb.append(replacement);
+                        continue;
+                }
             }
+            sb.append(c);
         }
         return sb.toString();
     }
