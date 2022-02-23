@@ -658,7 +658,7 @@ public final class Scope {
     public void setHasNestedEval() {
         // taint all parent scopes
         for (Scope current = this; current != null; current = current.parent) {
-            if (current.hasNestedEval) {
+            if (current.hasNestedEval || current.closed) {
                 break;
             }
             current.hasNestedEval = true;
