@@ -1279,6 +1279,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return context.getContextOptions().isScopeOptimization();
     }
 
+    @SuppressWarnings("static-method")
+    private boolean allowTDZOptimization() {
+        return false;
+    }
+
     /**
      * Initialize block-scoped symbols with a <i>dead</i> marker value.
      */
@@ -1297,7 +1302,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 // generally, there is no dominance relationship between declaration and use.
                 // In other cases, we can statically determine if a local use is in the TDZ,
                 // so we can skip the initialization if there is no non-local use (or eval).
-                if (symbol.isClosedOver() || symbol.isDeclaredInSwitchBlock() || block.isModuleBody() || block.getScope().hasNestedEval() || !allowScopeOptimization()) {
+                // However, we currently need to initialize the variable for instrumentation.
+                if (symbol.isClosedOver() || symbol.isDeclaredInSwitchBlock() || block.isModuleBody() || block.getScope().hasNestedEval() || !allowScopeOptimization() || !allowTDZOptimization()) {
                     FrameSlotVarRef slotRef = (FrameSlotVarRef) findScopeVar(symbol.getName(), true);
                     assert JSFrameUtil.hasTemporalDeadZone(slotRef.getFrameSlot()) : slotRef.getFrameSlot();
                     slotsWithTDZ.add(slotRef);
