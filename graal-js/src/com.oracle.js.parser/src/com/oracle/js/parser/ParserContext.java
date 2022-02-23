@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -327,8 +327,13 @@ class ParserContext {
      * Returns the innermost scope in the context.
      */
     public Scope getCurrentScope() {
-        NodeIterator<ParserContextScopableNode> iterator = new NodeIterator<>(ParserContextScopableNode.class);
-        return iterator.hasNext() ? iterator.next().getScope() : null;
+        for (int i = sp - 1; i >= 0; i--) {
+            if (stack[i] instanceof ParserContextScopableNode) {
+                ParserContextScopableNode scopable = (ParserContextScopableNode) stack[i];
+                return scopable.getScope();
+            }
+        }
+        return null;
     }
 
     /**
