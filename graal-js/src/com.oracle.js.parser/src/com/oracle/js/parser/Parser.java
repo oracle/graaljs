@@ -5926,11 +5926,18 @@ public class Parser extends AbstractParser {
         assert type == LPAREN;
         next();
 
+        boolean canBeArrowParameterList = true;
         if (ES6_ARROW_FUNCTION && isES6() && type == RPAREN) {
             // ()
             nextOrEOL();
             expectDontAdvance(ARROW);
             return new ExpressionList(primaryToken, finish, Collections.emptyList());
+        } else if (type == FUNCTION || type == LPAREN) {
+            // Token after `(` is not valid in an arrow parameter list; therefore, it can only be a
+            // ParenthesizedExpression and we can parse it directly without the cover grammar.
+            // For simplicity, we only handle a few common cases here.
+            // e.g.: `(function(){})`, (()=>{}), ((42)), etc.
+            canBeArrowParameterList = false;
         }
 
         Expression assignmentExpression = null;
@@ -5938,19 +5945,19 @@ public class Parser extends AbstractParser {
         boolean hasRestParameter = false;
         long commaToken = 0L;
 
-        ParserContextFunctionNode cover = createParserContextArrowFunctionNode(primaryToken, startLine, false, true);
-        lc.push(cover);
-        ParserContextBlockNode parameterBlock = cover.createParameterBlock();
-        lc.push(parameterBlock);
+        ParserContextFunctionNode coverFunction = null;
+        ParserContextBlockNode parameterBlock = null;
+        if (canBeArrowParameterList) {
+            coverFunction = lc.push(createParserContextArrowFunctionNode(primaryToken, startLine, false, true));
+            parameterBlock = lc.push(coverFunction.createParameterBlock());
+        }
         try {
             while (true) {
                 if (ES6_ARROW_FUNCTION && ES6_REST_PARAMETER && isES6() && type == ELLIPSIS) {
                     // (a, b, ...rest) is not a valid expression, but a valid arrow function
-                    // parameter
-                    // list. Since the rest parameter is always last, we know that the cover
-                    // expression
-                    // has to end here with a binding identifier/pattern followed by RPAREN and
-                    // ARROW.
+                    // parameter list. Since the rest parameter is always last, we know that the
+                    // cover expression has to end here with a binding identifier or pattern
+                    // followed by `)` [NoLineTerminator] `=>`.
                     assignmentExpression = arrowFunctionRestParameter(assignmentExpression, commaToken, yield, await);
                     hasRestParameter = true;
                     break;
@@ -5959,8 +5966,9 @@ public class Parser extends AbstractParser {
                     break;
                 }
 
-                Expression rhs = assignmentExpression(true, yield, await, true);
-                hasCoverInitializedName = hasCoverInitializedName || hasCoverInitializedName(rhs);
+                Expression rhs = assignmentExpression(true, yield, await, canBeArrowParameterList);
+                hasCoverInitializedName = canBeArrowParameterList && (hasCoverInitializedName || hasCoverInitializedName(rhs));
+                assert canBeArrowParameterList || !hasCoverInitializedName(rhs);
 
                 if (assignmentExpression == null) {
                     assignmentExpression = rhs;
@@ -5976,8 +5984,10 @@ public class Parser extends AbstractParser {
                 next();
             }
         } finally {
-            lc.pop(parameterBlock);
-            lc.pop(cover);
+            if (canBeArrowParameterList) {
+                lc.pop(parameterBlock);
+                lc.pop(coverFunction);
+            }
         }
 
         boolean arrowAhead = lookaheadIsArrow();
@@ -5994,13 +6004,15 @@ public class Parser extends AbstractParser {
             expect(RPAREN);
         }
 
-        if (arrowAhead) {
-            // arrow parameter list
-            commitArrowHead(cover);
-        } else {
-            // parenthesized expression
-            assignmentExpression.makeParenthesized(Token.descPosition(primaryToken), finish);
-            revertArrowHead(cover);
+        if (canBeArrowParameterList) {
+            if (arrowAhead) {
+                // arrow parameter list
+                commitArrowHead(coverFunction);
+            } else {
+                // parenthesized expression
+                assignmentExpression.makeParenthesized(Token.descPosition(primaryToken), finish);
+                revertArrowHead(coverFunction);
+            }
         }
 
         return assignmentExpression;
