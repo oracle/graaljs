@@ -71,6 +71,7 @@ public final class Scope {
     /** Class body scope = PrivateEnvironment of the class (containing private names and brands). */
     private static final int CLASS_BODY_SCOPE = 1 << 9;
     private static final int EVAL_SCOPE = 1 << 10;
+    private static final int ARROW_FUNCTION_PARAMETER_SCOPE = 1 << 11;
 
     /** Scope is in a function context. {@code new.target} is available. */
     private static final int IN_FUNCTION = 1 << 16;
@@ -144,7 +145,9 @@ public final class Scope {
     }
 
     public static Scope createFunctionParameter(Scope parent, int functionFlags) {
-        return new Scope(parent, FUNCTION_PARAMETER_SCOPE | FUNCTION_TOP_SCOPE, computeFlags(parent, functionFlags));
+        return new Scope(parent, FUNCTION_PARAMETER_SCOPE | FUNCTION_TOP_SCOPE |
+                        ((functionFlags & FunctionNode.IS_ARROW) != 0 ? ARROW_FUNCTION_PARAMETER_SCOPE : 0),
+                        computeFlags(parent, functionFlags));
     }
 
     public static Scope createSwitchBlock(Scope parent) {
@@ -352,6 +355,10 @@ public final class Scope {
         return (type & EVAL_SCOPE) != 0;
     }
 
+    public boolean isArrowFunctionParameterScope() {
+        return (type & ARROW_FUNCTION_PARAMETER_SCOPE) != 0;
+    }
+
     public boolean inFunction() {
         return (flags & IN_FUNCTION) != 0;
     }
@@ -376,6 +383,34 @@ public final class Scope {
             return;
         }
         resolveUses();
+        closed = true;
+    }
+
+    /**
+     * Clears defined symbols and moves any local uses into the parent scope.
+     */
+    public void kill() {
+        assert !closed : "scope is closed";
+        assert isKillable() : "must not be killed";
+        symbols.clear();
+        if (uses != null) {
+            if (parent != null && !parent.closed) {
+                MapCursor<String, UseInfo> cursor = uses.getEntries();
+                while (cursor.advance()) {
+                    String usedName = cursor.getKey();
+                    UseInfo useInfo = cursor.getValue();
+                    assert useInfo.isUnresolved();
+                    if (useInfo.use == this) {
+                        parent.addLocalUse(usedName);
+                    }
+                    if (useInfo.hasInnerUse()) {
+                        useInfo.use = null;
+                        parent.addUsesFromInnerScope(usedName, useInfo);
+                    }
+                }
+            }
+            uses = null;
+        }
         closed = true;
     }
 
@@ -450,7 +485,7 @@ public final class Scope {
         }
 
         Symbol foundSymbol = symbols.get(name);
-        if (foundSymbol != null) {
+        if (foundSymbol != null && !isKillable()) {
             // declared here, so we can resolve it immediately.
             resolveUse(useInfo, this, foundSymbol);
             return;
@@ -472,6 +507,11 @@ public final class Scope {
         if (useInfo.use != null) {
             foundUse.addInnerUse(useInfo.use);
         }
+    }
+
+    private boolean isKillable() {
+        // Delay resolution while parsing cover arrow parameter list in case it will be revoked.
+        return isArrowFunctionParameterScope();
     }
 
     /**
