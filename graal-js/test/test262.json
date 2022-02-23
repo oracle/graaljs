@@ -1,13 +1,5 @@
 {
   "testFiles" : [ {
-    "filePath" : "built-ins/Array/prototype/shift/set-length-zero-array-is-frozen.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
-  }, {
-    "filePath" : "built-ins/Array/prototype/shift/set-length-zero-array-length-is-non-writable.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
-  }, {
     "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-no-operation.js",
     "status" : "PASS",
     "statusOverrides" : {
