@@ -672,6 +672,10 @@ public final class TemporalUtil {
                 fraction = Strings.concat(fraction, ZEROS);
             }
 
+            if (rec.getYear() == 0 && string.contains("-000000")) {
+                throw TemporalErrors.createRangeErrorInvalidPlainDateTime();
+            }
+
             int y = rec.getYear() == Long.MIN_VALUE ? 0 : ltoi(rec.getYear());
             int m = rec.getMonth() == Long.MIN_VALUE ? 1 : ltoi(rec.getMonth());
             int d = rec.getDay() == Long.MIN_VALUE ? 1 : ltoi(rec.getDay());
