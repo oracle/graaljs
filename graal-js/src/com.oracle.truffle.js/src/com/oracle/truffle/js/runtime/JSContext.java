@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -153,6 +156,9 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
 
 public class JSContext {
+
+    private static final VarHandle FUNCTION_DATA_ARRAY_VAR_HANDLE = MethodHandles.arrayElementVarHandle(JSFunctionData[].class);
+
     private final Evaluator evaluator;
 
     private final JavaScriptLanguage language;
@@ -238,11 +244,18 @@ public class JSContext {
 
     private final CallTarget emptyFunctionCallTarget;
     private final CallTarget speciesGetterFunctionCallTarget;
+
     private volatile CallTarget notConstructibleCallTargetCache;
     private volatile CallTarget generatorNotConstructibleCallTargetCache;
     private volatile CallTarget boundFunctionCallTargetCache;
     private volatile CallTarget boundFunctionConstructTargetCache;
     private volatile CallTarget boundFunctionConstructNewTargetCache;
+
+    private static final VarHandle notConstructibleCallTargetVarHandle;
+    private static final VarHandle generatorNotConstructibleCallTargetVarHandle;
+    private static final VarHandle boundFunctionCallTargetVarHandle;
+    private static final VarHandle boundFunctionConstructTargetVarHandle;
+    private static final VarHandle boundFunctionConstructNewTargetVarHandle;
 
     public enum BuiltinFunctionKey {
         ArrayFlattenIntoArray,
@@ -366,6 +379,9 @@ public class JSContext {
 
     private volatile JSFunctionData boundFunctionData;
     private volatile JSFunctionData boundConstructorFunctionData;
+
+    private static final VarHandle boundFunctionDataVarHandle;
+    private static final VarHandle boundConstructorFunctionDataVarHandle;
 
     final JSFunctionData throwerFunctionData;
     final JSFunctionData protoGetterFunctionData;
@@ -498,6 +514,23 @@ public class JSContext {
      * objects.
      */
     private final SharedRootNode sharedRootNode;
+
+    static {
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        try {
+            notConstructibleCallTargetVarHandle = lookup.findVarHandle(JSContext.class, "notConstructibleCallTargetCache", CallTarget.class);
+            generatorNotConstructibleCallTargetVarHandle = lookup.findVarHandle(JSContext.class, "generatorNotConstructibleCallTargetCache", CallTarget.class);
+
+            boundFunctionCallTargetVarHandle = lookup.findVarHandle(JSContext.class, "boundFunctionCallTargetCache", CallTarget.class);
+            boundFunctionConstructTargetVarHandle = lookup.findVarHandle(JSContext.class, "boundFunctionConstructTargetCache", CallTarget.class);
+            boundFunctionConstructNewTargetVarHandle = lookup.findVarHandle(JSContext.class, "boundFunctionConstructNewTargetCache", CallTarget.class);
+
+            boundFunctionDataVarHandle = lookup.findVarHandle(JSContext.class, "boundFunctionData", JSFunctionData.class);
+            boundConstructorFunctionDataVarHandle = lookup.findVarHandle(JSContext.class, "boundConstructorFunctionData", JSFunctionData.class);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw Errors.shouldNotReachHere(e);
+        }
+    }
 
     protected JSContext(Evaluator evaluator, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {
         this.contextOptions = contextOptions;
@@ -1258,29 +1291,29 @@ public class JSContext {
     @TruffleBoundary
     public CallTarget getNotConstructibleCallTarget() {
         CallTarget result = notConstructibleCallTargetCache;
-        if (result == null) {
-            synchronized (this) {
+        if (result != null) {
+            return result;
+        } else {
+            result = createNotConstructibleCallTarget(getLanguage(), false, this);
+            if (!notConstructibleCallTargetVarHandle.compareAndSet(this, (CallTarget) null, result)) {
                 result = notConstructibleCallTargetCache;
-                if (result == null) {
-                    result = notConstructibleCallTargetCache = createNotConstructibleCallTarget(getLanguage(), false, this);
-                }
             }
+            return Objects.requireNonNull(result);
         }
-        return result;
     }
 
     @TruffleBoundary
     public CallTarget getGeneratorNotConstructibleCallTarget() {
         CallTarget result = generatorNotConstructibleCallTargetCache;
-        if (result == null) {
-            synchronized (this) {
+        if (result != null) {
+            return result;
+        } else {
+            result = createNotConstructibleCallTarget(getLanguage(), true, this);
+            if (!generatorNotConstructibleCallTargetVarHandle.compareAndSet(this, (CallTarget) null, result)) {
                 result = generatorNotConstructibleCallTargetCache;
-                if (result == null) {
-                    result = generatorNotConstructibleCallTargetCache = createNotConstructibleCallTarget(getLanguage(), true, this);
-                }
             }
+            return Objects.requireNonNull(result);
         }
-        return result;
     }
 
     private static RootCallTarget createNotConstructibleCallTarget(JavaScriptLanguage lang, boolean generator, JSContext context) {
@@ -1299,64 +1332,60 @@ public class JSContext {
     @TruffleBoundary
     public CallTarget getBoundFunctionCallTarget() {
         CallTarget result = boundFunctionCallTargetCache;
-        if (result == null) {
-            synchronized (this) {
+        if (result != null) {
+            return result;
+        } else {
+            result = JSFunction.createBoundRootNode(this, false, false).getCallTarget();
+            if (!boundFunctionCallTargetVarHandle.compareAndSet(this, (CallTarget) null, result)) {
                 result = boundFunctionCallTargetCache;
-                if (result == null) {
-                    result = boundFunctionCallTargetCache = JSFunction.createBoundRootNode(this, false, false).getCallTarget();
-                }
             }
+            return Objects.requireNonNull(result);
         }
-        return result;
     }
 
     @TruffleBoundary
     public CallTarget getBoundFunctionConstructTarget() {
         CallTarget result = boundFunctionConstructTargetCache;
-        if (result == null) {
-            synchronized (this) {
+        if (result != null) {
+            return result;
+        } else {
+            result = JSFunction.createBoundRootNode(this, true, false).getCallTarget();
+            if (!boundFunctionConstructTargetVarHandle.compareAndSet(this, (CallTarget) null, result)) {
                 result = boundFunctionConstructTargetCache;
-                if (result == null) {
-                    result = boundFunctionConstructTargetCache = JSFunction.createBoundRootNode(this, true, false).getCallTarget();
-                }
             }
+            return Objects.requireNonNull(result);
         }
-        return result;
     }
 
     @TruffleBoundary
     public CallTarget getBoundFunctionConstructNewTarget() {
         CallTarget result = boundFunctionConstructNewTargetCache;
-        if (result == null) {
-            synchronized (this) {
-                result = boundFunctionConstructNewTargetCache;
-                if (result == null) {
-                    result = boundFunctionConstructNewTargetCache = JSFunction.createBoundRootNode(this, true, true).getCallTarget();
-                }
+        if (result != null) {
+            return result;
+        } else {
+            result = JSFunction.createBoundRootNode(this, true, true).getCallTarget();
+            if (!boundFunctionConstructNewTargetVarHandle.compareAndSet(this, (CallTarget) null, result)) {
+                result = Objects.requireNonNull(boundFunctionConstructNewTargetCache);
             }
+            return Objects.requireNonNull(result);
         }
-        return result;
     }
 
     public JSFunctionData getBoundFunctionData(boolean constructor) {
         JSFunctionData result = constructor ? boundConstructorFunctionData : boundFunctionData;
-        if (result == null) {
+        if (result != null) {
+            return result;
+        } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            synchronized (this) {
-                result = constructor ? boundConstructorFunctionData : boundFunctionData;
-                if (result == null) {
-                    result = JSFunctionData.create(this,
-                                    getBoundFunctionCallTarget(), getBoundFunctionConstructTarget(), getBoundFunctionConstructNewTarget(),
-                                    0, Strings.BOUND, constructor, false, true, false, false, false, false, false, true, false, true);
-                    if (constructor) {
-                        boundConstructorFunctionData = result;
-                    } else {
-                        boundFunctionData = result;
-                    }
-                }
+            VarHandle handle = constructor ? boundConstructorFunctionDataVarHandle : boundFunctionDataVarHandle;
+            result = JSFunctionData.create(this,
+                            getBoundFunctionCallTarget(), getBoundFunctionConstructTarget(), getBoundFunctionConstructNewTarget(),
+                            0, Strings.BOUND, constructor, false, true, false, false, false, false, false, true, false, true);
+            if (!handle.compareAndSet(this, (JSFunctionData) null, result)) {
+                result = (JSFunctionData) handle.getVolatile(this);
             }
+            return Objects.requireNonNull(result);
         }
-        return result;
     }
 
     private JSAgent getJSAgent() {
@@ -1659,14 +1688,11 @@ public class JSContext {
             return functionData;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        synchronized (this) {
-            functionData = builtinFunctionData[index];
-            if (functionData == null) {
-                functionData = factory.apply(this);
-                builtinFunctionData[index] = functionData;
-            }
-            return functionData;
+        functionData = factory.apply(this);
+        if (!FUNCTION_DATA_ARRAY_VAR_HANDLE.compareAndSet(builtinFunctionData, index, (JSFunctionData) null, functionData)) {
+            functionData = (JSFunctionData) FUNCTION_DATA_ARRAY_VAR_HANDLE.getVolatile(builtinFunctionData, index);
         }
+        return Objects.requireNonNull(functionData);
     }
 
     public final JSFunctionData getBuiltinFunctionData(Builtin key) {
