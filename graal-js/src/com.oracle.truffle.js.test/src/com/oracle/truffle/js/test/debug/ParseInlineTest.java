@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,14 @@
  */
 package com.oracle.truffle.js.test.debug;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Instrument;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -50,19 +55,25 @@ import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.test.JSTest;
 
 public class ParseInlineTest {
-    @Registration(name = "", version = "", id = "testParseInline", services = ParseInlineInstrument.Tester.class)
+
+    static final String PARSE_INLINE_INSTRUMENT_ID = "testParseInline";
+
+    @Registration(name = "", version = "", id = PARSE_INLINE_INSTRUMENT_ID, services = ParseInlineInstrument.Tester.class)
     public static class ParseInlineInstrument extends TruffleInstrument {
 
         @Override
@@ -77,9 +88,9 @@ public class ParseInlineTest {
                         @Override
                         protected void onEnter(VirtualFrame frame) {
                             final LanguageInfo info = eventContext.getInstrumentedNode().getRootNode().getLanguageInfo();
-                            final String code = eventContext.getInstrumentedSourceSection().getCharacters().toString();
-                            assertTrue(code, code.contains("this"));
-                            final Source source = Source.newBuilder(info.getId(), "this", "eval in context").internal(true).build();
+                            final String line = eventContext.getInstrumentedSourceSection().getCharacters().toString();
+                            assertThat(line, containsString(tester.expectedContext));
+                            final Source source = Source.newBuilder(info.getId(), tester.evalInContext, "eval in context").internal(true).build();
                             ExecutableNode fragment = env.parseInline(source, eventContext.getInstrumentedNode(), frame.materialize());
                             if (fragment != null) {
                                 insert(fragment);
@@ -94,11 +105,13 @@ public class ParseInlineTest {
                     };
                 }
             };
-            SourceSectionFilter filter = SourceSectionFilter.newBuilder().rootNameIs("Filter"::equals).lineIs(3).build();
+            SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).lineIs(3).build();
             env.getInstrumenter().attachExecutionEventFactory(filter, eenf);
         }
 
         static class Tester {
+            String expectedContext = "";
+            String evalInContext;
             Object result;
         }
     }
@@ -113,12 +126,57 @@ public class ParseInlineTest {
                         "new Filter(123);\n";
 
         try (Context context = JSTest.newContextBuilder().build()) {
-            ParseInlineInstrument.Tester tester = context.getEngine().getInstruments().get("testParseInline").lookup(ParseInlineInstrument.Tester.class);
+            Instrument instrument = context.getEngine().getInstruments().get(PARSE_INLINE_INSTRUMENT_ID);
+            ParseInlineInstrument.Tester tester = instrument.lookup(ParseInlineInstrument.Tester.class);
+            tester.expectedContext = "this";
+            tester.evalInContext = "this";
 
             context.eval(JavaScriptLanguage.ID, src);
 
             assertTrue(JSOrdinary.isJSOrdinaryObject(tester.result));
             assertTrue(JSObject.hasOwnProperty((DynamicObject) tester.result, "number"));
+        }
+    }
+
+    private static final String TEST_CLOSURE_SOURCE = "" +
+                    "function Filter(first, second) {\n" +
+                    "    this.first = (function closure() {\n" +
+                    "        return first; // <--\n" +
+                    "    })();\n" +
+                    "    this.second = second;\n" +
+                    "}\n" +
+                    "\n" +
+                    "new Filter(123, 456);\n";
+
+    @Test
+    public void testClosure() throws Exception {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.SCOPE_OPTIMIZATION_NAME, "true").build()) {
+            Instrument instrument = context.getEngine().getInstruments().get(PARSE_INLINE_INSTRUMENT_ID);
+            ParseInlineInstrument.Tester tester = instrument.lookup(ParseInlineInstrument.Tester.class);
+            tester.expectedContext = "return first";
+            tester.evalInContext = "`${typeof first} ${typeof second} ${first}`";
+
+            context.eval(JavaScriptLanguage.ID, TEST_CLOSURE_SOURCE);
+
+            assertNotNull(tester.result);
+            assertTrue(String.valueOf(tester.result), InteropLibrary.getUncached().isString(tester.result));
+            assertEquals("number undefined 123", InteropLibrary.getUncached().asString(tester.result));
+        }
+    }
+
+    @Test
+    public void testClosureWithoutOptimization() throws Exception {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.SCOPE_OPTIMIZATION_NAME, "false").build()) {
+            Instrument instrument = context.getEngine().getInstruments().get(PARSE_INLINE_INSTRUMENT_ID);
+            ParseInlineInstrument.Tester tester = instrument.lookup(ParseInlineInstrument.Tester.class);
+            tester.expectedContext = "return first";
+            tester.evalInContext = "`${typeof first} ${typeof second} ${first}`";
+
+            context.eval(JavaScriptLanguage.ID, TEST_CLOSURE_SOURCE);
+
+            assertNotNull(tester.result);
+            assertTrue(String.valueOf(tester.result), InteropLibrary.getUncached().isString(tester.result));
+            assertEquals("number number 123", InteropLibrary.getUncached().asString(tester.result));
         }
     }
 }
