@@ -1865,14 +1865,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-02-23"
   }, {
-    "filePath" : "built-ins/Temporal/PlainMonthDay/from/year-zero.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/equals/year-zero.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
-  }, {
     "filePath" : "built-ins/Temporal/PlainTime/compare/argument-string-time-designator-required-for-disambiguation.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-02-23"
@@ -1913,14 +1905,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-02-23"
   }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/compare/year-zero.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/from/year-zero.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
-  }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/calendar-arguments-extra-options.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -1928,14 +1912,6 @@
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/calendar-arguments.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/equals/year-zero.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/since/year-zero.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
   }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/argument-lower-units.js",
     "status" : "FAIL",
@@ -1964,10 +1940,6 @@
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/until/year-zero.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
   }, {
     "filePath" : "built-ins/Temporal/TimeZone/from/timezone-string-multiple-offsets.js",
     "status" : "FAIL",

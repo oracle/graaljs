@@ -637,6 +637,9 @@ public final class TemporalUtil {
             if (rec.getZ()) {
                 throw TemporalErrors.createRangeErrorUnexpectedUTCDesignator();
             }
+            if (rec.getYear() == 0 && (string.contains("-000000") || string.contains(UNICODE_MINUS_SIGN + "000000"))) {
+                throw TemporalErrors.createRangeErrorInvalidPlainDateTime();
+            }
 
             int y = rec.getYear() == Long.MIN_VALUE ? Integer.MIN_VALUE : ltoi(rec.getYear());
             int m = rec.getMonth() == Long.MIN_VALUE ? 1 : ltoi(rec.getMonth());
@@ -3891,6 +3894,9 @@ public final class TemporalUtil {
         if (rec != null) {
             if (rec.getZ()) {
                 throw TemporalErrors.createRangeErrorUnexpectedUTCDesignator();
+            }
+            if (rec.getYear() == 0 && (string.contains("-000000") || string.contains(UNICODE_MINUS_SIGN + "000000"))) {
+                throw TemporalErrors.createRangeErrorInvalidPlainDateTime();
             }
 
             int y = rec.getYear() == Long.MIN_VALUE ? 0 : ltoi(rec.getYear());
