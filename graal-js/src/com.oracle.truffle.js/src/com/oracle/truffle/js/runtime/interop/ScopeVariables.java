@@ -501,6 +501,9 @@ public final class ScopeVariables implements TruffleObject {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     DynamicObject scope = (DynamicObject) getDynamicScope.execute(frame);
+                    if (!JSRuntime.isObject(scope)) {
+                        return Undefined.instance;
+                    }
                     DynamicObjectLibrary lib = objectLibrary;
                     if (lib == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -533,6 +536,9 @@ public final class ScopeVariables implements TruffleObject {
                 @Override
                 public void executeWrite(VirtualFrame frame, Object value) {
                     DynamicObject scope = (DynamicObject) getDynamicScope.execute(frame);
+                    if (!JSRuntime.isObject(scope)) {
+                        return;
+                    }
                     DynamicObjectLibrary lib = objectLibrary;
                     if (lib == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -576,31 +582,27 @@ public final class ScopeVariables implements TruffleObject {
         }
 
         class SlotVisitor {
-            Frame outerScope = receiver.frame;
             Node descNode = receiver.blockOrRoot;
             int parentSlot = -1;
             int frameLevel = 0;
             int scopeLevel = 0;
 
-            public ResolvedSlot accept(FrameDescriptor frameDescriptor, int slot) {
-                Frame targetFrame;
-                int effectiveScopeLevel;
-                if (outerScope.getFrameDescriptor() == frameDescriptor) {
-                    targetFrame = outerScope;
-                    effectiveScopeLevel = scopeLevel;
-                } else {
-                    targetFrame = receiver.functionFrame;
+            public ResolvedSlot accept(FrameDescriptor frameDescriptor, int slot, Frame targetFrame) {
+                assert targetFrame.getFrameDescriptor() == frameDescriptor;
+                int effectiveScopeLevel = scopeLevel;
+                if (targetFrame == receiver.functionFrame) {
+                    assert receiver.functionFrame.getFrameDescriptor() == frameDescriptor;
                     effectiveScopeLevel = -1;
                 }
-                assert targetFrame.getFrameDescriptor() == frameDescriptor;
                 Object slotName = frameDescriptor.getSlotName(slot);
                 if (ScopeFrameNode.PARENT_SCOPE_IDENTIFIER.equals(slotName)) {
                     parentSlot = slot;
                 } else if (ScopeFrameNode.EVAL_SCOPE_IDENTIFIER.equals(slotName)) {
                     DynamicObject evalScope = (DynamicObject) targetFrame.getObject(slot);
-                    DynamicObjectLibrary objLib = DynamicObjectLibrary.getUncached();
-                    if (objLib.containsKey(evalScope, member)) {
-                        return new DynamicScopeResolvedSlot(member, slot, frameLevel, effectiveScopeLevel, frameDescriptor);
+                    if (JSRuntime.isObject(evalScope)) {
+                        if (DynamicObjectLibrary.getUncached().containsKey(evalScope, member)) {
+                            return new DynamicScopeResolvedSlot(member, slot, frameLevel, effectiveScopeLevel, frameDescriptor);
+                        }
                     }
                 } else if (JSFrameUtil.isThisSlot(frameDescriptor, slot) && ScopeVariables.RECEIVER_MEMBER.equals(member)) {
                     return new ResolvedThisSlot(slot, frameLevel, effectiveScopeLevel, frameDescriptor);
@@ -612,11 +614,8 @@ public final class ScopeVariables implements TruffleObject {
         }
 
         SlotVisitor visitor = new SlotVisitor();
-        Frame outerFrame;
-        if (receiver.functionFrame == null) {
-            // starting from a non-local frame
-            outerFrame = receiver.frame;
-        } else {
+        Frame outerFrame = receiver.frame;
+        if (receiver.functionFrame != null) {
             // traverse local frames
             FrameDescriptor rootFrameDescriptor = receiver.functionFrame.getFrameDescriptor();
             while (visitor.descNode instanceof BlockScopeNode) {
@@ -624,17 +623,20 @@ public final class ScopeVariables implements TruffleObject {
                 visitor.parentSlot = -1;
 
                 if (block instanceof BlockScopeNode.FrameBlockScopeNode) {
-                    assert ((BlockScopeNode.FrameBlockScopeNode) block).getFrameDescriptor() == visitor.outerScope.getFrameDescriptor();
                     FrameDescriptor blockFrameDescriptor = ((BlockScopeNode.FrameBlockScopeNode) block).getFrameDescriptor();
-                    for (int i = 0; i < blockFrameDescriptor.getNumberOfSlots(); i++) {
-                        ResolvedSlot resolvedSlot = visitor.accept(blockFrameDescriptor, i);
-                        if (resolvedSlot != null) {
-                            return resolvedSlot;
+                    // Note: If we are just entering a block scope, the frame is not available yet.
+                    assert outerFrame.getFrameDescriptor() == blockFrameDescriptor || block == receiver.blockOrRoot;
+                    if (outerFrame.getFrameDescriptor() == blockFrameDescriptor) {
+                        for (int i = 0; i < blockFrameDescriptor.getNumberOfSlots(); i++) {
+                            ResolvedSlot resolvedSlot = visitor.accept(blockFrameDescriptor, i, outerFrame);
+                            if (resolvedSlot != null) {
+                                return resolvedSlot;
+                            }
                         }
                     }
                 }
                 for (int i = block.getFrameStart(); i < block.getFrameEnd(); i++) {
-                    ResolvedSlot resolvedSlot = visitor.accept(rootFrameDescriptor, i);
+                    ResolvedSlot resolvedSlot = visitor.accept(rootFrameDescriptor, i, receiver.functionFrame);
                     if (resolvedSlot != null) {
                         return resolvedSlot;
                     }
@@ -642,9 +644,10 @@ public final class ScopeVariables implements TruffleObject {
 
                 visitor.descNode = JavaScriptNode.findBlockScopeNode(visitor.descNode.getParent());
                 if (visitor.parentSlot >= 0) {
-                    Object parent = visitor.outerScope.getObject(visitor.parentSlot);
+                    Object parent = outerFrame.getObject(visitor.parentSlot);
                     if (parent instanceof Frame) {
-                        visitor.outerScope = (Frame) parent;
+                        outerFrame = (Frame) parent;
+                        assert outerFrame != JSFrameUtil.NULL_MATERIALIZED_FRAME;
                         visitor.scopeLevel++;
                     } else {
                         break;
@@ -659,7 +662,7 @@ public final class ScopeVariables implements TruffleObject {
                 if (JSFrameUtil.isHoistedFromBlock(rootFrameDescriptor, slot)) {
                     continue;
                 }
-                ResolvedSlot resolvedSlot = visitor.accept(rootFrameDescriptor, slot);
+                ResolvedSlot resolvedSlot = visitor.accept(rootFrameDescriptor, slot, receiver.functionFrame);
                 if (resolvedSlot != null) {
                     return resolvedSlot;
                 }
@@ -670,21 +673,21 @@ public final class ScopeVariables implements TruffleObject {
 
         // traverse non-local frames
         while (outerFrame != JSFrameUtil.NULL_MATERIALIZED_FRAME) {
-            visitor.outerScope = outerFrame;
             visitor.descNode = ((RootCallTarget) JSFunction.getFunctionData(JSFrameUtil.getFunctionObject(outerFrame)).getRootTarget()).getRootNode();
             visitor.scopeLevel = 0;
             for (;;) {
                 visitor.parentSlot = -1;
-                for (int slot = 0; slot < visitor.outerScope.getFrameDescriptor().getNumberOfSlots(); slot++) {
-                    ResolvedSlot resolvedSlot = visitor.accept(visitor.outerScope.getFrameDescriptor(), slot);
+                for (int slot = 0; slot < outerFrame.getFrameDescriptor().getNumberOfSlots(); slot++) {
+                    ResolvedSlot resolvedSlot = visitor.accept(outerFrame.getFrameDescriptor(), slot, outerFrame);
                     if (resolvedSlot != null) {
                         return resolvedSlot;
                     }
                 }
                 if (visitor.parentSlot >= 0) {
-                    Object parent = visitor.outerScope.getObject(visitor.parentSlot);
+                    Object parent = outerFrame.getObject(visitor.parentSlot);
                     if (parent instanceof Frame) {
-                        visitor.outerScope = (Frame) parent;
+                        outerFrame = (Frame) parent;
+                        assert outerFrame != JSFrameUtil.NULL_MATERIALIZED_FRAME;
                         visitor.scopeLevel++;
                         continue;
                     }

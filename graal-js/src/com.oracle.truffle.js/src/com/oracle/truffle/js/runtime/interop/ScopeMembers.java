@@ -135,18 +135,11 @@ final class ScopeMembers implements TruffleObject {
             // Then, we go through all closure scope frames. These only have root location nodes.
 
             class SlotVisitor {
-                Frame outerScope = frame;
                 Node descNode = blockOrRoot;
                 int parentSlot = -1;
                 boolean seenThis;
 
-                public void accept(FrameDescriptor frameDescriptor, int slot) {
-                    Frame targetFrame;
-                    if (outerScope.getFrameDescriptor() == frameDescriptor) {
-                        targetFrame = outerScope;
-                    } else {
-                        targetFrame = functionFrame;
-                    }
+                public void accept(FrameDescriptor frameDescriptor, int slot, Frame targetFrame) {
                     assert targetFrame.getFrameDescriptor() == frameDescriptor;
                     Object slotName = frameDescriptor.getSlotName(slot);
                     if (ScopeFrameNode.PARENT_SCOPE_IDENTIFIER.equals(slotName)) {
@@ -169,11 +162,8 @@ final class ScopeMembers implements TruffleObject {
             }
 
             SlotVisitor visitor = new SlotVisitor();
-            Frame outerFrame;
-            if (functionFrame == null) {
-                // starting from a non-local frame
-                outerFrame = frame;
-            } else {
+            Frame outerFrame = frame;
+            if (functionFrame != null) {
                 // traverse local frames
                 FrameDescriptor rootFrameDescriptor = functionFrame.getFrameDescriptor();
                 while (visitor.descNode instanceof BlockScopeNode) {
@@ -182,19 +172,22 @@ final class ScopeMembers implements TruffleObject {
 
                     if (block instanceof BlockScopeNode.FrameBlockScopeNode) {
                         FrameDescriptor blockFrameDescriptor = ((BlockScopeNode.FrameBlockScopeNode) block).getFrameDescriptor();
-                        for (int i = 0; i < blockFrameDescriptor.getNumberOfSlots(); i++) {
-                            visitor.accept(blockFrameDescriptor, i);
+                        if (outerFrame.getFrameDescriptor() == blockFrameDescriptor) {
+                            for (int i = 0; i < blockFrameDescriptor.getNumberOfSlots(); i++) {
+                                visitor.accept(blockFrameDescriptor, i, outerFrame);
+                            }
                         }
                     }
                     for (int i = block.getFrameStart(); i < block.getFrameEnd(); i++) {
-                        visitor.accept(rootFrameDescriptor, i);
+                        visitor.accept(rootFrameDescriptor, i, functionFrame);
                     }
 
                     visitor.descNode = JavaScriptNode.findBlockScopeNode(visitor.descNode.getParent());
                     if (visitor.parentSlot >= 0) {
-                        Object parent = visitor.outerScope.getObject(visitor.parentSlot);
+                        Object parent = outerFrame.getObject(visitor.parentSlot);
                         if (parent instanceof Frame) {
-                            visitor.outerScope = (Frame) parent;
+                            outerFrame = (Frame) parent;
+                            assert outerFrame != JSFrameUtil.NULL_MATERIALIZED_FRAME;
                         } else {
                             break;
                         }
@@ -207,7 +200,7 @@ final class ScopeMembers implements TruffleObject {
                     if (JSFrameUtil.isHoistedFromBlock(rootFrameDescriptor, slot)) {
                         continue;
                     }
-                    visitor.accept(rootFrameDescriptor, slot);
+                    visitor.accept(rootFrameDescriptor, slot, functionFrame);
                 }
                 if (!visitor.seenThis) {
                     membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, visitor.descNode));
@@ -217,18 +210,18 @@ final class ScopeMembers implements TruffleObject {
 
             // traverse non-local frames
             while (outerFrame != JSFrameUtil.NULL_MATERIALIZED_FRAME) {
-                visitor.outerScope = outerFrame;
                 visitor.descNode = ((RootCallTarget) JSFunction.getFunctionData(JSFrameUtil.getFunctionObject(outerFrame)).getRootTarget()).getRootNode();
                 visitor.seenThis = false;
                 for (;;) {
                     visitor.parentSlot = -1;
-                    for (int slot = 0; slot < visitor.outerScope.getFrameDescriptor().getNumberOfSlots(); slot++) {
-                        visitor.accept(visitor.outerScope.getFrameDescriptor(), slot);
+                    for (int slot = 0; slot < outerFrame.getFrameDescriptor().getNumberOfSlots(); slot++) {
+                        visitor.accept(outerFrame.getFrameDescriptor(), slot, outerFrame);
                     }
                     if (visitor.parentSlot >= 0) {
-                        Object parent = visitor.outerScope.getObject(visitor.parentSlot);
+                        Object parent = outerFrame.getObject(visitor.parentSlot);
                         if (parent instanceof Frame) {
-                            visitor.outerScope = (Frame) parent;
+                            outerFrame = (Frame) parent;
+                            assert outerFrame != JSFrameUtil.NULL_MATERIALIZED_FRAME;
                             continue;
                         }
                     }

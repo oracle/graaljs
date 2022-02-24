@@ -420,8 +420,11 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
                 }
                 if (frameBlockNode instanceof BlockScopeNode.FrameBlockScopeNode) {
                     Object maybeScopeFrame = ((BlockScopeNode.FrameBlockScopeNode) frameBlockNode).getBlockScope((VirtualFrame) functionFrame);
-                    assert maybeScopeFrame instanceof Frame;
-                    scopeFrame = (Frame) maybeScopeFrame;
+                    if (maybeScopeFrame instanceof Frame) {
+                        scopeFrame = (Frame) maybeScopeFrame;
+                    } else {
+                        scopeFrame = functionFrame;
+                    }
                 } else {
                     scopeFrame = functionFrame;
                 }
