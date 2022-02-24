@@ -468,7 +468,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 decimalPart = Strings.lazySubstring(decimalPart, 0, Math.min(Strings.length(decimalPart), n.intValue()));
             }
             TruffleString secondsPart = Strings.fromJavaString(seconds.abs().toString());
-            if (!decimalPart.equals("")) {
+            if (!decimalPart.equals(Strings.EMPTY_STRING)) {
                 secondsPart = Strings.concatAll(secondsPart, Strings.DOT, decimalPart);
             }
             timePart.append(secondsPart);

@@ -610,7 +610,7 @@ public final class TemporalUtil {
         if (!(new TemporalParser(isoString)).isTemporalRelativeToString()) {
             throw TemporalErrors.createRangeErrorInvalidRelativeToString();
         }
-        JSTemporalDateTimeRecord result = parseISODateTime(isoString, true, false);
+        JSTemporalDateTimeRecord result = parseISODateTime(isoString, false, false);
         boolean z = false;
         TruffleString offsetString = null;
         TruffleString timeZone = null;
@@ -655,14 +655,14 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    private static JSTemporalDateTimeRecord parseISODateTime(TruffleString string, boolean dateExpected, boolean failWithUTCDesignator) {
+    private static JSTemporalDateTimeRecord parseISODateTime(TruffleString string, boolean failWithUTCDesignator, boolean timeExpected) {
         JSTemporalParserRecord rec = (new TemporalParser(string)).parseISODateTime();
         if (rec != null) {
-            if (dateExpected && (rec.getYear() <= 0 || rec.getMonth() < 0 || rec.getDay() < 0)) {
-                throw Errors.createRangeError("cannot parse the ISO date time string");
-            }
             if (failWithUTCDesignator && rec.getZ()) {
                 throw TemporalErrors.createRangeErrorUnexpectedUTCDesignator();
+            }
+            if (timeExpected && (rec.getHour() == Long.MIN_VALUE)) {
+                throw Errors.createRangeError("cannot parse the ISO date time string");
             }
 
             TruffleString fraction = rec.getFraction();
@@ -672,7 +672,7 @@ public final class TemporalUtil {
                 fraction = Strings.concat(fraction, ZEROS);
             }
 
-            if (rec.getYear() == 0 && string.contains("-000000")) {
+            if (rec.getYear() == 0 && (Strings.indexOf(string, Strings.fromJavaString("-000000")) >= 0)) {
                 throw TemporalErrors.createRangeErrorInvalidPlainDateTime();
             }
 
@@ -1251,19 +1251,21 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static JSTemporalDateTimeRecord parseTemporalDateTimeString(TruffleString string) {
         // TODO 2. If isoString does not satisfy the syntax of a TemporalDateTimeString (see 13.39)
-        return parseISODateTime(string, false, true);
+        JSTemporalDateTimeRecord result = parseISODateTime(string, true, false);
+        return result;
     }
 
     @TruffleBoundary
     public static JSTemporalDateTimeRecord parseTemporalDateString(TruffleString string) {
         // TODO 2. If isoString does not satisfy the syntax of a TemporalDateTimeString (see 13.39)
-        JSTemporalDateTimeRecord result = parseISODateTime(string, false, true);
+        JSTemporalDateTimeRecord result = parseISODateTime(string, true, false);
         return JSTemporalDateTimeRecord.createCalendar(result.getYear(), result.getMonth(), result.getDay(), 0, 0, 0, 0, 0, 0, result.getCalendar());
     }
 
     @TruffleBoundary
+
     public static JSTemporalDateTimeRecord parseTemporalTimeString(TruffleString string) {
-        JSTemporalDateTimeRecord result = parseISODateTime(string, false, true);
+        JSTemporalDateTimeRecord result = parseISODateTime(string, true, true);
         if (result.hasCalendar()) {
             return JSTemporalDateTimeRecord.createCalendar(0, 0, 0, result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(),
                             result.getCalendar());
