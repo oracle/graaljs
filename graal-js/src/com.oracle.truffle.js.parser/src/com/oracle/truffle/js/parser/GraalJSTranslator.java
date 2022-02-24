@@ -1477,14 +1477,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 }
 
                 boolean onlyBlockScoped = currentFunction().isCallerContextEval();
-                boolean parametersFirst = function.hasSimpleParameterList() && function.getNumOfParams() > 0;
-                if (parametersFirst) {
-                    functionEnv.addFrameSlotsFromSymbols(scope.getSymbols(), onlyBlockScoped, s -> s.isParam());
-                }
 
                 addFunctionFrameSlots(functionEnv, function);
 
-                functionEnv.addFrameSlotsFromSymbols(scope.getSymbols(), onlyBlockScoped, parametersFirst ? s -> !s.isParam() : null);
+                functionEnv.addFrameSlotsFromSymbols(scope.getSymbols(), onlyBlockScoped, null);
 
                 return new EnvironmentCloseable(functionEnv);
             } else if (scope.hasDeclarations() || JSConfig.ManyBlockScopes) {
