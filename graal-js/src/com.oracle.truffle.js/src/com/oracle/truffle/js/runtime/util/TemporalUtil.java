@@ -253,6 +253,8 @@ public final class TemporalUtil {
     public static final BigDecimal bd_10 = new BigDecimal("10");
     public static final BigDecimal bd_1000 = new BigDecimal("1000");
 
+    public static final char UNICODE_MINUS_SIGN = '\u2212';
+
     public static final MathContext mc_20_floor = new MathContext(20, RoundingMode.FLOOR);
 
     public static final TruffleString FRACTIONAL_SECOND_DIGITS = Strings.constant("fractionalSecondDigits");
@@ -672,7 +674,7 @@ public final class TemporalUtil {
                 fraction = Strings.concat(fraction, ZEROS);
             }
 
-            if (rec.getYear() == 0 && (Strings.indexOf(string, Strings.fromJavaString("-000000")) >= 0)) {
+            if (rec.getYear() == 0 && ((Strings.indexOf(string, Strings.fromJavaString("-000000")) >= 0) || (Strings.indexOf(string, Strings.fromJavaString(UNICODE_MINUS_SIGN + "000000")) >= 0))) {
                 throw TemporalErrors.createRangeErrorInvalidPlainDateTime();
             }
 

@@ -55,6 +55,7 @@ import org.junit.Test;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
 import com.oracle.truffle.js.runtime.util.TemporalParser;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.test.JSTest;
 
 public class TemporalBuiltinsTest extends JSTest {
@@ -939,10 +940,29 @@ public class TemporalBuiltinsTest extends JSTest {
     @Test
     public void testMonthDayParser() {
         String code = "const md = Temporal.PlainMonthDay.from('--12-25');\n" +
-                        "md.month === 12 && md.day === 25;";
+                        "print(md.toString()); print(md.monthCode); print(md.day);\n" +
+                        "md.monthCode === 'M12' && md.day === 25;";
         try (Context ctx = getJSContext()) {
             Value result = ctx.eval(ID, code);
             Assert.assertEquals(true, result.asBoolean());
+        }
+    }
+
+    @Test
+    public void testMinus000000Fails() {
+        minus000000Fails('-');
+        minus000000Fails(TemporalUtil.UNICODE_MINUS_SIGN); // #2069
+    }
+
+    private static void minus000000Fails(char minus) {
+        String code = "const arg = '" + minus + "000000-10-31';\n" +
+                        "const instance = new Temporal.Calendar(\"iso8601\");" +
+                        "instance.day(arg);";
+        try (Context ctx = getJSContext()) {
+            ctx.eval(ID, code);
+            Assert.fail();
+        } catch (PolyglotException ex) {
+            Assert.assertTrue(ex.getMessage().contains("invalid PlainDateTime"));
         }
     }
 

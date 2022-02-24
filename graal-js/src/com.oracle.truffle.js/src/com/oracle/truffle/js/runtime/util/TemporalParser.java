@@ -720,7 +720,7 @@ public final class TemporalParser {
     }
 
     private static boolean isSign(char c) {
-        return c == '+' || c == '-' || c == '\u2212';
+        return c == '+' || c == '-' || c == TemporalUtil.UNICODE_MINUS_SIGN;
     }
 
     private static Matcher createMatch(String pattern, TruffleString input) {
