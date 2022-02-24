@@ -1829,10 +1829,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/since/roundingmode-floor.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
-  }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/subtract/balance-smaller-units.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -1846,10 +1842,6 @@
     "comment" : "new failures 2022-02-23"
   }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/toZonedDateTime/timezone-string-multiple-offsets.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/until/roundingmode-ceil.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-01-25"
   }, {
@@ -1877,10 +1869,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-02-23"
   }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/round/roundingmode-ceil.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
-  }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/since/argument-string-time-designator-required-for-disambiguation.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-02-23"
@@ -1901,10 +1889,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-02-23"
   }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/until/roundingmode-ceil.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
-  }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/calendar-arguments-extra-options.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -1913,31 +1897,11 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/argument-lower-units.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/argument-string-negative-fractional-units.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/calendar-arguments-extra-options.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/calendar-arguments.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/calendar-daysinmonth-wrong-value.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/month-length.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {

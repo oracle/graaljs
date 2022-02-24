@@ -4448,4 +4448,8 @@ public final class TemporalUtil {
             }
         }
     }
+
+    public static JSTemporalDurationRecord createNegatedTemporalDuration(JSTemporalDurationRecord d) {
+        return d.copyNegated();
+    }
 }

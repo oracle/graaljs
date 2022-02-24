@@ -138,4 +138,8 @@ public final class JSTemporalDurationRecord {
         return create(r.getYear(), r.getMonth(), r.getDay(), r.getHour(), r.getMinute(), r.getSecond(), r.getMillisecond(), r.getMicrosecond(), r.getNanosecond());
     }
 
+    public JSTemporalDurationRecord copyNegated() {
+        return createWeeks(-getYears(), -getMonths(), -getWeeks(), -getDays(), -getHours(), -getMinutes(), -getSeconds(), -getMilliseconds(), -getMicroseconds(), -getNanoseconds());
+    }
+
 }
