@@ -96,10 +96,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
-    "filePath" : "intl/regress-9912.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
     "filePath" : "intl/relative-time-format/default-locale-fr-CA.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
