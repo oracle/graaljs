@@ -4339,7 +4339,8 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static BigInteger dtobi(double d) {
         assert doubleIsInteger(d);
-        return BigInteger.valueOf((long) d);
+        // JSNumberToBigInt is an alternative, but not giving the exact same result
+        return new BigDecimal(d).toBigInteger();
     }
 
     @TruffleBoundary

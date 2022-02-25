@@ -55,6 +55,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
 import static com.oracle.truffle.js.runtime.util.TemporalParser.group;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.bitoi;
+import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtobi;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -391,10 +392,10 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                     double microsecondsP, double nanosecondsP, Object precision) {
         int sign = TemporalUtil.durationSign(yearsP, monthsP, weeksP, daysP, hoursP, minutesP, secondsP, millisecondsP, microsecondsP, nanosecondsP);
 
-        BigInteger nanoseconds = new BigDecimal(nanosecondsP).toBigInteger();
-        BigInteger microseconds = new BigDecimal(microsecondsP).toBigInteger();
-        BigInteger milliseconds = new BigDecimal(millisecondsP).toBigInteger();
-        BigInteger seconds = new BigDecimal(secondsP).toBigInteger();
+        BigInteger nanoseconds = dtobi(nanosecondsP);
+        BigInteger microseconds = dtobi(microsecondsP);
+        BigInteger milliseconds = dtobi(millisecondsP);
+        BigInteger seconds = dtobi(secondsP);
 
         BigInteger[] res = nanoseconds.divideAndRemainder(TemporalUtil.bi_1000);
         microseconds = microseconds.add(res[0]);
@@ -408,18 +409,6 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         seconds = seconds.add(res[0]);
         milliseconds = res[1];
 
-        // currently using BigInteger to be compatible with Polyfill
-        // might revert to that version once spec/test262 becomes clearer
-        //
-        // double ip = TemporalUtil.integralPartOf(nanoseconds / 1000.0);
-        // microseconds += ip;
-        // nanoseconds = TemporalUtil.remainder(nanoseconds, 1000.0);
-        // ip = TemporalUtil.integralPartOf(microseconds / 1000.0);
-        // milliseconds += ip;
-        // microseconds = TemporalUtil.remainder(microseconds, 1000.0);
-        // ip = TemporalUtil.integralPartOf(milliseconds / 1000.0);
-        // seconds += ip;
-        // milliseconds = TemporalUtil.remainder(milliseconds, 1000.0);
         StringBuilder datePart = new StringBuilder();
         if (yearsP != 0) {
             datePart.append(new BigDecimal(Math.abs(yearsP)).toBigIntegerExact().toString());
@@ -486,5 +475,4 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         return Strings.builderToString(result);
     }
     // endregion
-
 }
