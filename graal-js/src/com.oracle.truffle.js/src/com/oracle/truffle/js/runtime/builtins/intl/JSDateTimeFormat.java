@@ -59,7 +59,6 @@ import com.ibm.icu.text.DateIntervalFormat;
 import com.ibm.icu.text.DateTimePatternGenerator;
 import com.ibm.icu.text.SimpleDateFormat;
 import com.ibm.icu.util.Calendar;
-import com.ibm.icu.util.DateInterval;
 import com.ibm.icu.util.GregorianCalendar;
 import com.ibm.icu.util.TimeZone;
 import com.ibm.icu.util.ULocale;
@@ -747,11 +746,20 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return JSArray.createConstant(context, realm, resultParts.toArray());
     }
 
+    private static DateIntervalFormat.FormattedDateInterval formatRangeImpl(DynamicObject dateTimeFormat, double startDate, double endDate) {
+        InternalState state = getInternalState(dateTimeFormat);
+        DateFormat dateFormat = state.dateFormat;
+        Calendar calendar = dateFormat.getCalendar();
+        Calendar fromCalendar = ((Calendar) calendar.clone());
+        Calendar toCalendar = ((Calendar) calendar.clone());
+        fromCalendar.setTimeInMillis((long) startDate);
+        toCalendar.setTimeInMillis((long) endDate);
+        return state.dateIntervalFormat.formatToValue(fromCalendar, toCalendar);
+    }
+
     @TruffleBoundary
     public static String formatRange(DynamicObject dateTimeFormat, double startDate, double endDate) {
-        DateInterval range = new DateInterval((long) startDate, (long) endDate);
-        DateIntervalFormat dateIntervalFormat = getInternalState(dateTimeFormat).dateIntervalFormat;
-        DateIntervalFormat.FormattedDateInterval formattedRange = dateIntervalFormat.formatToValue(range);
+        DateIntervalFormat.FormattedDateInterval formattedRange = formatRangeImpl(dateTimeFormat, startDate, endDate);
 
         if (dateFieldsPracticallyEqual(formattedRange)) {
             return JSDateTimeFormat.format(dateTimeFormat, startDate);
@@ -772,9 +780,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
     @TruffleBoundary
     public static DynamicObject formatRangeToParts(JSContext context, JSRealm realm, DynamicObject dateTimeFormat, double startDate, double endDate) {
-        DateInterval range = new DateInterval((long) startDate, (long) endDate);
-        DateIntervalFormat dateIntervalFormat = getInternalState(dateTimeFormat).dateIntervalFormat;
-        DateIntervalFormat.FormattedDateInterval formattedRange = dateIntervalFormat.formatToValue(range);
+        DateIntervalFormat.FormattedDateInterval formattedRange = formatRangeImpl(dateTimeFormat, startDate, endDate);
 
         if (dateFieldsPracticallyEqual(formattedRange)) {
             return JSDateTimeFormat.formatToParts(context, realm, dateTimeFormat, startDate, IntlUtil.SHARED);
