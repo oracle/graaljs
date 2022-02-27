@@ -14,7 +14,7 @@
 
 load('assert.js');
 
-var lazyString = Debug.createLazyString('x'.repeat(20), 'y'.repeat(20));
+var lazyString = 'x'.repeat(20) + 'y'.repeat(20);
 
 assertSame(40, lazyString.length());
 

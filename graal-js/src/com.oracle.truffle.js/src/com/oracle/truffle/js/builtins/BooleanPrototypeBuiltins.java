@@ -55,6 +55,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 
@@ -104,21 +105,21 @@ public final class BooleanPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization(guards = "isJSBoolean(thisObj)")
-        protected String toString(DynamicObject thisObj) {
-            return String.valueOf(JSBoolean.valueOf(thisObj));
+        protected Object toString(DynamicObject thisObj) {
+            return Strings.fromBoolean(JSBoolean.valueOf(thisObj));
         }
 
         @Specialization(guards = "isBoolean(thisObj)")
-        protected String toStringPrimitive(Object thisObj) {
+        protected Object toStringPrimitive(Object thisObj) {
             return JSRuntime.booleanToString((boolean) thisObj);
         }
 
         @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
-        protected String toStringForeignObject(Object thisObj,
+        protected Object toStringForeignObject(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop) {
             if (interop.isBoolean(thisObj)) {
                 try {
-                    return JSRuntime.booleanToString(interop.asBoolean(thisObj));
+                    return Strings.fromBoolean(interop.asBoolean(thisObj));
                 } catch (UnsupportedMessageException ex) {
                     throw Errors.createTypeErrorUnboxException(thisObj, ex, this);
                 }

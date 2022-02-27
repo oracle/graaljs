@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import com.oracle.truffle.api.object.*;
+import com.oracle.truffle.api.object.DynamicObject;
 
 public interface PropertyProxy {
 

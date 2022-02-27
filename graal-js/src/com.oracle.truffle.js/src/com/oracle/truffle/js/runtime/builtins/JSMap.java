@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
@@ -55,6 +56,7 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -67,13 +69,13 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
 
     public static final JSMap INSTANCE = new JSMap();
 
-    public static final String CLASS_NAME = "Map";
-    public static final String PROTOTYPE_NAME = "Map.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("Map");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Map.prototype");
 
-    public static final String ITERATOR_CLASS_NAME = "Map Iterator";
-    public static final String ITERATOR_PROTOTYPE_NAME = "Map Iterator.prototype";
+    public static final TruffleString ITERATOR_CLASS_NAME = Strings.constant("Map Iterator");
+    public static final TruffleString ITERATOR_PROTOTYPE_NAME = Strings.constant("Map Iterator.prototype");
 
-    private static final String SIZE = "size";
+    private static final TruffleString SIZE = Strings.constant("size");
 
     public static final HiddenKey MAP_ITERATION_KIND_ID = new HiddenKey("MapIterationKind");
 
@@ -113,7 +115,7 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
                     }
                 }
             }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + SIZE);
+            return JSFunctionData.createCallOnly(c, callTarget, 0, Strings.concat(Strings.GET_SPC, SIZE));
         });
         DynamicObject sizeGetter = JSFunction.create(realm, getterData);
         return sizeGetter;
@@ -146,20 +148,20 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
     @Override
     @TruffleBoundary
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return "[" + getClassName() + "]";
+            return Strings.concatAll(Strings.BRACKET_OPEN, getClassName(), Strings.BRACKET_CLOSE);
         } else {
             JSHashMap map = JSMap.getInternalMap(obj);
             return JSRuntime.collectionToConsoleString(obj, allowSideEffects, format, getClassName(obj), map, depth);

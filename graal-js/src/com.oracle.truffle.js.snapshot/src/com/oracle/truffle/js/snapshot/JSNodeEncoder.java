@@ -79,6 +79,7 @@ import java.util.HashMap;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.codec.BinaryEncoder;
 import com.oracle.truffle.js.codec.NodeDecoder;
@@ -89,6 +90,7 @@ import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.parser.BinarySnapshotProvider;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 
 public class JSNodeEncoder {
@@ -140,7 +142,7 @@ public class JSNodeEncoder {
         encoder.putDouble(value);
     }
 
-    private void putString(String value) {
+    private void putString(TruffleString value) {
         encoder.putString(value);
     }
 
@@ -195,12 +197,12 @@ public class JSNodeEncoder {
         } else if (value instanceof Double) {
             putBytecode(ID_LDC_DOUBLE);
             putDouble((double) value);
-        } else if (value instanceof String) {
+        } else if (Strings.isTString(value)) {
             putBytecode(ID_LDC_STRING);
-            putString((String) value);
+            putString((TruffleString) value);
         } else if (value instanceof BigInt) {
             putBytecode(ID_LDC_BIGINT);
-            putString(((BigInt) value).toString());
+            putString(Strings.fromBigInt((BigInt) value));
         } else if (value instanceof Enum<?>) {
             putBytecode(ID_LDC_ENUM);
             int typeId = Arrays.asList(GEN.getClasses()).indexOf(value.getClass());
@@ -311,7 +313,7 @@ public class JSNodeEncoder {
         encodeReg(dest);
     }
 
-    public void encodeFunctionDataNameFixup(int functionDataArg, String name) {
+    public void encodeFunctionDataNameFixup(int functionDataArg, TruffleString name) {
         putBytecode(ID_FUNCTION_DATA_NAME_FIXUP);
         encodeReg(functionDataArg);
         putString(name);

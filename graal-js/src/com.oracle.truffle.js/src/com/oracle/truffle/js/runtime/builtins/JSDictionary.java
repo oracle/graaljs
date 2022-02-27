@@ -57,13 +57,15 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Properties;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.Accessor;
@@ -85,8 +87,6 @@ import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
  */
 public final class JSDictionary extends JSNonProxy {
 
-    public static final String CLASS_NAME = "Object";
-
     private static final HiddenKey HASHMAP_PROPERTY_NAME = new HiddenKey("%hashMap");
 
     public static final JSDictionary INSTANCE = new JSDictionary();
@@ -103,12 +103,12 @@ public final class JSDictionary extends JSNonProxy {
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
-        return CLASS_NAME;
+    public TruffleString getClassName(DynamicObject object) {
+        return Strings.UC_OBJECT;
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return defaultToString(obj);
     }
 
@@ -118,6 +118,7 @@ public final class JSDictionary extends JSNonProxy {
     @TruffleBoundary
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+        assert JSRuntime.isPropertyKey(key);
         PropertyDescriptor desc = getHashMap(store).get(key);
         if (desc != null) {
             return getValue(desc, thisObj, encapsulatingNode);
@@ -146,7 +147,8 @@ public final class JSDictionary extends JSNonProxy {
         assert isJSDictionaryObject(thisObj);
         List<Object> keys = ordinaryOwnPropertyKeysSlow(thisObj, strings, symbols);
         for (Object key : getHashMap(thisObj).getKeys()) {
-            if ((!symbols && key instanceof Symbol) || (!strings && key instanceof String)) {
+            assert JSRuntime.isPropertyKey(key);
+            if ((!symbols && key instanceof Symbol) || (!strings && Strings.isTString(key))) {
                 continue;
             }
             keys.add(key);
@@ -158,6 +160,7 @@ public final class JSDictionary extends JSNonProxy {
     @TruffleBoundary
     @Override
     public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
+        assert JSRuntime.isPropertyKey(key);
         EconomicMap<Object, PropertyDescriptor> hashMap = getHashMap(thisObj);
         PropertyDescriptor desc = hashMap.get(key);
         if (desc != null) {
@@ -175,12 +178,13 @@ public final class JSDictionary extends JSNonProxy {
 
     @Override
     public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
-        return delete(thisObj, String.valueOf(index), isStrict);
+        return delete(thisObj, Strings.fromLong(index), isStrict);
     }
 
     @TruffleBoundary
     @Override
     public boolean hasOwnProperty(DynamicObject thisObj, Object key) {
+        assert JSRuntime.isPropertyKey(key);
         if (getHashMap(thisObj).containsKey(key)) {
             return true;
         }
@@ -190,17 +194,19 @@ public final class JSDictionary extends JSNonProxy {
     @TruffleBoundary
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
-        Object key = Boundaries.stringValueOf(index);
+        Object key = Strings.fromLong(index);
         return dictionaryObjectSet(thisObj, key, value, receiver, isStrict, encapsulatingNode);
     }
 
     @TruffleBoundary
     @Override
     public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+        assert JSRuntime.isPropertyKey(key);
         return dictionaryObjectSet(thisObj, key, value, receiver, isStrict, encapsulatingNode);
     }
 
     protected static boolean dictionaryObjectSet(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+        assert JSRuntime.isPropertyKey(key);
         if (receiver != thisObj) {
             return ordinarySetWithReceiver(thisObj, key, value, receiver, isStrict, encapsulatingNode);
         }
@@ -254,6 +260,7 @@ public final class JSDictionary extends JSNonProxy {
     @TruffleBoundary
     @Override
     public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
+        assert JSRuntime.isPropertyKey(key);
         if (!hasOwnProperty(thisObj, key) && JSObject.isExtensible(thisObj)) {
             getHashMap(thisObj).put(key, desc);
             return true;
@@ -295,7 +302,7 @@ public final class JSDictionary extends JSNonProxy {
         List<Object> archive = new ArrayList<>(allProperties.size());
         for (Property prop : allProperties) {
             Object key = prop.getKey();
-            Object value = lib.getOrDefault(obj, key, null);
+            Object value = Properties.getOrDefault(lib, obj, key, null);
             assert value != null;
             archive.add(value);
         }
@@ -310,9 +317,9 @@ public final class JSDictionary extends JSNonProxy {
                 Object value = archive.get(i);
                 if (key instanceof HiddenKey || JSProperty.isProxy(p)) {
                     if (p.getLocation().isConstant()) {
-                        lib.putConstant(obj, key, value, p.getFlags());
+                        Properties.putConstant(lib, obj, key, value, p.getFlags());
                     } else {
-                        lib.putWithFlags(obj, key, value, p.getFlags());
+                        Properties.putWithFlags(lib, obj, key, value, p.getFlags());
                     }
                 } else {
                     hashMap.put(key, toPropertyDescriptor(p, value));
@@ -369,7 +376,7 @@ public final class JSDictionary extends JSNonProxy {
         List<Map.Entry<Property, Object>> archive = new ArrayList<>(allProperties.size());
         for (Property prop : allProperties) {
             Object key = prop.getKey();
-            Object value = lib.getOrDefault(obj, key, null);
+            Object value = Properties.getOrDefault(lib, obj, key, null);
             if (HASHMAP_PROPERTY_NAME.equals(key)) {
                 continue;
             }
@@ -385,9 +392,9 @@ public final class JSDictionary extends JSNonProxy {
             if (!newRootShape.hasProperty(key)) {
                 Object value = e.getValue();
                 if (p.getLocation().isConstant()) {
-                    lib.putConstant(obj, key, value, p.getFlags());
+                    Properties.putConstant(lib, obj, key, value, p.getFlags());
                 } else {
-                    lib.putWithFlags(obj, key, value, p.getFlags());
+                    Properties.putWithFlags(lib, obj, key, value, p.getFlags());
                 }
             }
         }
@@ -395,6 +402,7 @@ public final class JSDictionary extends JSNonProxy {
         MapCursor<Object, PropertyDescriptor> cursor = hashMap.getEntries();
         while (cursor.advance()) {
             Object key = cursor.getKey();
+            assert JSRuntime.isPropertyKey(key);
             PropertyDescriptor desc = cursor.getValue();
             if (desc.isDataDescriptor()) {
                 Object value = desc.getValue();

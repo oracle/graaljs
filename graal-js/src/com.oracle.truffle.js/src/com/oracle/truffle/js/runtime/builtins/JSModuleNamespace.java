@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,12 +51,14 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.Dead;
@@ -77,7 +79,7 @@ public final class JSModuleNamespace extends JSNonProxy {
 
     public static final JSModuleNamespace INSTANCE = new JSModuleNamespace();
 
-    public static final String CLASS_NAME = "Module";
+    public static final TruffleString CLASS_NAME = Strings.constant("Module");
 
     private JSModuleNamespace() {
     }
@@ -99,12 +101,12 @@ public final class JSModuleNamespace extends JSNonProxy {
      * object. The list is ordered as if an Array of those String values had been sorted using
      * Array.prototype.sort using SortCompare as comparefn.
      */
-    public static Map<String, ExportResolution> getExports(DynamicObject obj) {
+    public static Map<TruffleString, ExportResolution> getExports(DynamicObject obj) {
         assert isJSModuleNamespace(obj);
         return ((JSModuleNamespaceObject) obj).getExports();
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm, JSModuleRecord module, Map<String, ExportResolution> exports) {
+    public static DynamicObject create(JSContext context, JSRealm realm, JSModuleRecord module, Map<TruffleString, ExportResolution> exports) {
         JSObjectFactory factory = context.getModuleNamespaceFactory();
         DynamicObject obj = JSModuleNamespaceObject.create(realm, factory, module, exports);
         assert isJSModuleNamespace(obj);
@@ -129,23 +131,23 @@ public final class JSModuleNamespace extends JSNonProxy {
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return CLASS_NAME;
     }
 
     @Override
     @TruffleBoundary
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        return "[" + CLASS_NAME + "]";
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        return Strings.addBrackets(CLASS_NAME);
     }
 
     @Override
     @TruffleBoundary
     public Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
-        if (!(key instanceof String)) {
+        if (!Strings.isTString(key)) {
             return super.getOwnHelper(store, thisObj, key, encapsulatingNode);
         }
-        Map<String, ExportResolution> exports = getExports(store);
+        Map<TruffleString, ExportResolution> exports = getExports(store);
         ExportResolution binding = exports.get(key);
         if (binding != null) {
             return getBindingValue(binding);
@@ -155,7 +157,7 @@ public final class JSModuleNamespace extends JSNonProxy {
     }
 
     static Object getBindingValue(ExportResolution binding) {
-        String bindingName = binding.getBindingName();
+        TruffleString bindingName = binding.getBindingName();
         JSModuleRecord targetModule = binding.getModule();
         MaterializedFrame targetEnv = targetModule.getEnvironment();
         if (targetEnv == null) {
@@ -176,20 +178,20 @@ public final class JSModuleNamespace extends JSNonProxy {
 
     @Override
     public boolean hasProperty(DynamicObject thisObj, Object key) {
-        if (!(key instanceof String)) {
+        if (!Strings.isTString(key)) {
             return super.hasProperty(thisObj, key);
         }
-        Map<String, ExportResolution> exports = getExports(thisObj);
+        Map<TruffleString, ExportResolution> exports = getExports(thisObj);
         return Boundaries.mapContainsKey(exports, key);
     }
 
     @Override
     @TruffleBoundary
     public boolean hasOwnProperty(DynamicObject thisObj, Object key) {
-        if (!(key instanceof String)) {
+        if (!Strings.isTString(key)) {
             return super.hasOwnProperty(thisObj, key);
         }
-        Map<String, ExportResolution> exports = getExports(thisObj);
+        Map<TruffleString, ExportResolution> exports = getExports(thisObj);
         ExportResolution binding = exports.get(key);
         if (binding != null) {
             // checks for uninitialized bindings
@@ -207,7 +209,7 @@ public final class JSModuleNamespace extends JSNonProxy {
 
     @Override
     public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
-        if (!(key instanceof String)) {
+        if (!Strings.isTString(key)) {
             return super.delete(thisObj, key, isStrict);
         }
         if (Boundaries.mapContainsKey(getExports(thisObj), key)) {
@@ -228,7 +230,7 @@ public final class JSModuleNamespace extends JSNonProxy {
 
     @Override
     public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
-        if (!(key instanceof String)) {
+        if (!Strings.isTString(key)) {
             return super.defineOwnProperty(thisObj, key, desc, doThrow);
         }
         PropertyDescriptor current = getOwnProperty(thisObj, key);
@@ -242,10 +244,10 @@ public final class JSModuleNamespace extends JSNonProxy {
     @Override
     @TruffleBoundary
     public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
-        if (!(key instanceof String)) {
+        if (!Strings.isTString(key)) {
             return super.getOwnProperty(thisObj, key);
         }
-        Map<String, ExportResolution> exports = getExports(thisObj);
+        Map<TruffleString, ExportResolution> exports = getExports(thisObj);
         ExportResolution binding = exports.get(key);
         if (binding != null) {
             Object value = getBindingValue(binding);
@@ -266,8 +268,9 @@ public final class JSModuleNamespace extends JSNonProxy {
         if (!strings) {
             return symbolKeys;
         }
-        Map<String, ExportResolution> exports = getExports(thisObj);
+        Map<TruffleString, ExportResolution> exports = getExports(thisObj);
         List<Object> keys = new ArrayList<>(exports.size() + symbolKeys.size());
+        // TODO: convert these keys earlier
         keys.addAll(exports.keySet());
         keys.addAll(symbolKeys);
         return keys;
@@ -282,7 +285,7 @@ public final class JSModuleNamespace extends JSNonProxy {
     @TruffleBoundary
     public boolean setIntegrityLevel(DynamicObject obj, boolean freeze, boolean doThrow) {
         if (freeze) {
-            Map<String, ExportResolution> exports = getExports(obj);
+            Map<TruffleString, ExportResolution> exports = getExports(obj);
             if (!exports.isEmpty()) {
                 ExportResolution firstBinding = exports.values().iterator().next();
                 // Throw ReferenceError if the first binding is uninitialized,
@@ -314,7 +317,7 @@ public final class JSModuleNamespace extends JSNonProxy {
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         if (isStrict) {
-            throw Errors.createTypeErrorNotExtensible(thisObj, Boundaries.stringValueOf(index));
+            throw Errors.createTypeErrorNotExtensible(thisObj, Strings.fromLong(index));
         }
         return false;
     }

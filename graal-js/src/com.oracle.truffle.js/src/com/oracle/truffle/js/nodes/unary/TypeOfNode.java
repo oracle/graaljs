@@ -51,6 +51,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -93,7 +94,7 @@ public abstract class TypeOfNode extends JSUnaryNode {
         return create(null);
     }
 
-    public abstract String executeString(Object operand);
+    public abstract TruffleString executeString(Object operand);
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
@@ -107,68 +108,68 @@ public abstract class TypeOfNode extends JSUnaryNode {
 
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == String.class;
+        return clazz == TruffleString.class;
     }
 
     @Specialization
-    protected String doString(CharSequence operand) {
+    protected TruffleString doString(TruffleString operand) {
         return JSString.TYPE_NAME;
     }
 
     @Specialization
-    protected String doInt(int operand) {
+    protected TruffleString doInt(int operand) {
         return JSNumber.TYPE_NAME;
     }
 
     @Specialization
-    protected String doDouble(double operand) {
+    protected TruffleString doDouble(double operand) {
         return JSNumber.TYPE_NAME;
     }
 
     @Specialization
-    protected String doBoolean(boolean operand) {
+    protected TruffleString doBoolean(boolean operand) {
         return JSBoolean.TYPE_NAME;
     }
 
     @Specialization
-    protected String doBigInt(BigInt operand) {
+    protected TruffleString doBigInt(BigInt operand) {
         return JSBigInt.TYPE_NAME;
     }
 
     @Specialization(guards = "isJSNull(operand)")
-    protected String doNull(Object operand) {
+    protected TruffleString doNull(Object operand) {
         return Null.TYPE_NAME;
     }
 
     @Specialization(guards = "isUndefined(operand)")
-    protected String doUndefined(Object operand) {
+    protected TruffleString doUndefined(Object operand) {
         return Undefined.TYPE_NAME;
     }
 
     @Specialization(guards = "isJSFunction(operand)")
-    protected String doJSFunction(Object operand) {
+    protected TruffleString doJSFunction(Object operand) {
         return JSFunction.TYPE_NAME;
     }
 
     @Specialization(guards = {"isJSDynamicObject(operand)", "!isJSFunction(operand)", "!isUndefined(operand)", "!isJSProxy(operand)"})
-    protected String doJSObjectOnly(Object operand) {
+    protected TruffleString doJSObjectOnly(Object operand) {
         return JSOrdinary.TYPE_NAME;
     }
 
     @Specialization
-    protected String doJSProxy(JSProxyObject operand,
+    protected TruffleString doJSProxy(JSProxyObject operand,
                     @Cached("create()") TypeOfNode typeofNode) {
         Object target = JSProxy.getTargetNonProxy(operand);
         return typeofNode.executeString(target);
     }
 
     @Specialization
-    protected String doSymbol(Symbol operand) {
+    protected TruffleString doSymbol(Symbol operand) {
         return JSSymbol.TYPE_NAME;
     }
 
     @Specialization(guards = "isForeignObject(operand)", limit = "InteropLibraryLimit")
-    protected String doTruffleObject(Object operand,
+    protected TruffleString doTruffleObject(Object operand,
                     @CachedLibrary("operand") InteropLibrary interop) {
         if (getLanguage().getJSContext().isOptionNashornCompatibilityMode()) {
             TruffleLanguage.Env env = getRealm().getEnv();
@@ -190,7 +191,7 @@ public abstract class TypeOfNode extends JSUnaryNode {
     }
 
     @Fallback
-    protected String doJavaObject(Object operand) {
+    protected TruffleString doJavaObject(Object operand) {
         assert operand != null;
         return operand instanceof Number ? JSNumber.TYPE_NAME : JSOrdinary.TYPE_NAME;
     }

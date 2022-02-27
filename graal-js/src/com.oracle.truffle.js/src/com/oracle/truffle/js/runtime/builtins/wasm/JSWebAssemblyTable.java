@@ -47,6 +47,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -54,6 +55,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -66,19 +68,21 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public class JSWebAssemblyTable extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
     public static final int MAX_TABLE_SIZE = 10000000;
-    public static final String CLASS_NAME = "Table";
-    public static final String PROTOTYPE_NAME = "Table.prototype";
-    public static final String LENGTH = "length";
+    public static final TruffleString CLASS_NAME = Strings.constant("Table");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Table.prototype");
+    public static final TruffleString LENGTH = Strings.constant("length");
+
+    public static final TruffleString WEB_ASSEMBLY_TABLE = Strings.constant("WebAssembly.Table");
 
     public static final JSWebAssemblyTable INSTANCE = new JSWebAssemblyTable();
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
@@ -93,7 +97,7 @@ public class JSWebAssemblyTable extends JSNonProxy implements JSConstructorFacto
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WebAssemblyTablePrototypeBuiltins.BUILTINS);
         JSObjectUtil.putAccessorProperty(ctx, prototype, LENGTH, createLengthGetterFunction(realm), null, JSAttributes.configurableEnumerableWritable());
-        JSObjectUtil.putToStringTag(prototype, "WebAssembly.Table");
+        JSObjectUtil.putToStringTag(prototype, WEB_ASSEMBLY_TABLE);
         return prototype;
     }
 
@@ -145,7 +149,7 @@ public class JSWebAssemblyTable extends JSNonProxy implements JSConstructorFacto
                     }
                 }
             }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + LENGTH);
+            return JSFunctionData.createCallOnly(c, callTarget, 0, Strings.concat(Strings.GET_SPC, LENGTH));
         });
 
         return JSFunction.create(realm, getterData);

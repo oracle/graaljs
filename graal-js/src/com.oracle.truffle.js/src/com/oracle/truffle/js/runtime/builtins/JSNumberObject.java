@@ -44,6 +44,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
@@ -62,7 +63,7 @@ public final class JSNumberObject extends JSNonProxyObject {
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return JSNumber.CLASS_NAME;
     }
 

@@ -48,10 +48,12 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -129,11 +131,15 @@ public abstract class JSClass extends ObjectType {
      * 9.1.8 [[Get]] (P, Receiver).
      */
     public final Object get(DynamicObject thisObj, Object key) {
-        return JSRuntime.nullToUndefined(getHelper(thisObj, thisObj, key, null));
+        Object value = getHelper(thisObj, thisObj, key, null);
+        assert !(value instanceof String);
+        return JSRuntime.nullToUndefined(value);
     }
 
     public Object get(DynamicObject thisObj, long index) {
-        return JSRuntime.nullToUndefined(getHelper(thisObj, thisObj, index, null));
+        Object value = getHelper(thisObj, thisObj, index, null);
+        assert !(value instanceof String);
+        return JSRuntime.nullToUndefined(value);
     }
 
     @TruffleBoundary
@@ -196,7 +202,7 @@ public abstract class JSClass extends ObjectType {
         }
         List<Object> names = new ArrayList<>();
         for (Object key : ownPropertyKeys) {
-            if ((!symbols && key instanceof Symbol) || (!strings && key instanceof String)) {
+            if ((!symbols && key instanceof Symbol) || (!strings && Strings.isTString(key))) {
                 continue;
             }
             names.add(key);
@@ -219,7 +225,7 @@ public abstract class JSClass extends ObjectType {
      * @param object object to be used
      */
     @TruffleBoundary
-    public abstract String getClassName(DynamicObject object);
+    public abstract TruffleString getClassName(DynamicObject object);
 
     @Override
     @TruffleBoundary
@@ -236,20 +242,20 @@ public abstract class JSClass extends ObjectType {
      * @see #getBuiltinToStringTag(DynamicObject)
      */
     @TruffleBoundary
-    public String defaultToString(DynamicObject object) {
+    public TruffleString defaultToString(DynamicObject object) {
         JSContext context = JSObject.getJSContext(object);
         if (context.getEcmaScriptVersion() <= 5) {
             return formatToString(getClassName(object));
         }
-        String result = getToStringTag(object);
+        TruffleString result = getToStringTag(object);
         return formatToString(result);
     }
 
-    protected String getToStringTag(DynamicObject object) {
-        String result = getBuiltinToStringTag(object);
+    protected TruffleString getToStringTag(DynamicObject object) {
+        TruffleString result = getBuiltinToStringTag(object);
         if (JSRuntime.isObject(object)) {
             Object toStringTag = JSObject.get(object, Symbol.SYMBOL_TO_STRING_TAG);
-            if (JSRuntime.isString(toStringTag)) {
+            if (Strings.isTString(toStringTag)) {
                 result = JSRuntime.toStringIsString(toStringTag);
             }
         }
@@ -264,7 +270,7 @@ public abstract class JSClass extends ObjectType {
      * @see #defaultToString(DynamicObject)
      */
     @TruffleBoundary
-    public String getBuiltinToStringTag(DynamicObject object) {
+    public TruffleString getBuiltinToStringTag(DynamicObject object) {
         return getClassName(object);
     }
 
@@ -275,8 +281,8 @@ public abstract class JSClass extends ObjectType {
      * @return "[object ...]" by default
      */
     @TruffleBoundary
-    protected String formatToString(String object) {
-        return "[object " + object + "]";
+    protected TruffleString formatToString(TruffleString object) {
+        return Strings.concatAll(Strings.BRACKET_OBJECT_SPC, object, Strings.BRACKET_CLOSE);
     }
 
     /**
@@ -286,7 +292,7 @@ public abstract class JSClass extends ObjectType {
      * @param depth current nesting depth
      */
     @TruffleBoundary
-    public abstract String toDisplayStringImpl(DynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth);
+    public abstract TruffleString toDisplayStringImpl(DynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth);
 
     public final boolean isInstance(DynamicObject object) {
         return isInstance(object, this);

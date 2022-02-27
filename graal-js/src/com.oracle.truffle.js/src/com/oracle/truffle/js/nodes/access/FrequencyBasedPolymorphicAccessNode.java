@@ -40,20 +40,21 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import static com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
 
-import static com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 
 abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?>> extends JavaScriptBaseNode {
 
@@ -206,7 +207,7 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
             highFrequencyKeys[position] = insert(PropertySetNode.createImpl(key, false, context, strict, setOwn, JSAttributes.getDefault(), false, superProperty));
         }
 
-        public boolean executeFastSet(DynamicObject target, Object key, Object value, Object receiver) {
+        public boolean executeFastSet(DynamicObject target, Object key, Object value, Object receiver, TruffleString.EqualNode equalsNode) {
             if (setOwn) {
                 return false;
             }
@@ -214,13 +215,13 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
             if (CompilerDirectives.inInterpreter()) {
                 interpreterSample(key);
             }
-            return compiledSet(target, key, value, receiver);
+            return compiledSet(target, key, value, receiver, equalsNode);
         }
 
         @ExplodeLoop(kind = FULL_UNROLL_UNTIL_RETURN)
-        private boolean compiledSet(DynamicObject target, Object key, Object value, Object receiver) {
+        private boolean compiledSet(DynamicObject target, Object key, Object value, Object receiver, TruffleString.EqualNode equalsNode) {
             for (PropertySetNode highFrequencyKey : highFrequencyKeys) {
-                if (highFrequencyKey != null && JSRuntime.propertyKeyEquals(highFrequencyKey.getKey(), key)) {
+                if (highFrequencyKey != null && JSRuntime.propertyKeyEquals(equalsNode, highFrequencyKey.getKey(), key)) {
                     highFrequencyKey.setValue(target, value, receiver);
                     return true;
                 }
@@ -254,17 +255,17 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
             highFrequencyKeys[position] = insert(PropertyGetNode.create(key, context));
         }
 
-        public Object executeFastGet(Object key, Object target) {
+        public Object executeFastGet(Object key, Object target, TruffleString.EqualNode equalsNode) {
             if (CompilerDirectives.inInterpreter()) {
                 interpreterSample(key);
             }
-            return readFromCaches(key, target);
+            return readFromCaches(key, target, equalsNode);
         }
 
         @ExplodeLoop(kind = FULL_UNROLL_UNTIL_RETURN)
-        private Object readFromCaches(Object key, Object target) {
+        private Object readFromCaches(Object key, Object target, TruffleString.EqualNode equalsNode) {
             for (PropertyGetNode highFrequencyKey : highFrequencyKeys) {
-                if (highFrequencyKey != null && JSRuntime.propertyKeyEquals(highFrequencyKey.getKey(), key)) {
+                if (highFrequencyKey != null && JSRuntime.propertyKeyEquals(equalsNode, highFrequencyKey.getKey(), key)) {
                     return highFrequencyKey.getValueOrDefault(target, null);
                 }
             }

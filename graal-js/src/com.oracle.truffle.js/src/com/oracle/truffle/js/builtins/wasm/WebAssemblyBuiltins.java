@@ -71,6 +71,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -327,12 +328,12 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
                 Object toJSInstantiatedSource(Object wasmModule, Object jsInstance) {
                     JSRealm realm = getRealm();
                     DynamicObject instantiatedSource = JSOrdinary.create(context, realm);
-                    JSObject.set(instantiatedSource, "module", JSWebAssemblyModule.create(context, realm, wasmModule));
-                    JSObject.set(instantiatedSource, "instance", jsInstance);
+                    JSObject.set(instantiatedSource, Strings.MODULE, JSWebAssemblyModule.create(context, realm, wasmModule));
+                    JSObject.set(instantiatedSource, Strings.INSTANCE, jsInstance);
                     return instantiatedSource;
                 }
             }.getCallTarget();
-            return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+            return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.EMPTY_STRING);
         }
     }
 

@@ -43,12 +43,13 @@ package com.oracle.truffle.js.runtime.objects;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.runtime.Errors;
@@ -104,17 +105,17 @@ public final class Nullish extends JSDynamicObject {
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return this == Undefined.instance ? Undefined.NAME : Null.NAME;
     }
 
     @Override
-    public String toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        return this == Undefined.instance ? "[object Undefined]" : "[object Null]";
+    public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        return this == Undefined.instance ? Null.DISPLAY_STRING_UNDEFINED : Null.DISPLAY_STRING_NULL;
     }
 
     @Override
-    public String defaultToString() {
+    public TruffleString defaultToString() {
         return this == Undefined.instance ? Undefined.NAME : Null.NAME;
     }
 

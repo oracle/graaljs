@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.cast;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -118,7 +119,7 @@ public abstract class JSToIntegerOrInfinityNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected Number doString(String value,
+    protected Number doString(TruffleString value,
                     @Cached.Shared("recToIntOrInf") @Cached("create()") JSToIntegerOrInfinityNode toIntOrInf,
                     @Cached("create()") JSStringToNumberNode stringToNumberNode) {
         return toIntOrInf.executeNumber(stringToNumberNode.executeString(value));

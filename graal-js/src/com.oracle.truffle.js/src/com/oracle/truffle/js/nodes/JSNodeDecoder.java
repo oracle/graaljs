@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.codec.BinaryDecoder;
 import com.oracle.truffle.js.codec.NodeDecoder;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
@@ -178,7 +179,7 @@ public class JSNodeDecoder {
                     storeResult(state, SINGLETONS[state.getInt()]);
                     break;
                 case ID_LDC_BIGINT:
-                    storeResult(state, BigInt.valueOf(state.getString()));
+                    storeResult(state, BigInt.valueOf(state.getString().toJavaStringUncached()));
                     break;
                 case ID_MOV:
                     state.setObjReg(state.getReg(), state.getObjReg(state.getReg()));
@@ -275,7 +276,7 @@ public class JSNodeDecoder {
                 case ID_FUNCTION_DATA: {
                     JSContext ctx = (JSContext) state.getObject();
                     int length = state.getInt();
-                    String functionName = state.getString();
+                    TruffleString functionName = state.getString();
                     int flags = state.getInt32();
                     JSFunctionData functionData = JSFunctionData.create(ctx, null, null, null, length, functionName, flags);
                     storeResult(state, functionData);
@@ -283,7 +284,7 @@ public class JSNodeDecoder {
                 }
                 case ID_FUNCTION_DATA_NAME_FIXUP: {
                     JSFunctionData functionData = (JSFunctionData) state.getObject();
-                    String name = state.getString();
+                    TruffleString name = state.getString();
                     functionData.setName(name);
                     break;
                 }

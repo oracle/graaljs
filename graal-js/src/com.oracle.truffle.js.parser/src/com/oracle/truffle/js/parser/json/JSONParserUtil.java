@@ -40,7 +40,12 @@
  */
 package com.oracle.truffle.js.parser.json;
 
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.js.runtime.Strings;
+
 public class JSONParserUtil {
+
     /**
      * Implementation of the Quote(value) operation as defined in the ECMAscript spec. It wraps a
      * String value in double quotes and escapes characters within.
@@ -49,49 +54,42 @@ public class JSONParserUtil {
      *
      * @return quoted and escaped string
      */
-    public static String quote(final String value) {
-        final StringBuilder product = new StringBuilder();
-        product.append("\"");
-        for (final char ch : value.toCharArray()) {
+    public static TruffleString quote(final TruffleString value) {
+        TruffleStringBuilder product = Strings.builderCreate();
+        Strings.builderAppend(product, Strings.DOUBLE_QUOTE);
+        int len = Strings.length(value);
+        for (int i = 0; i < len; i++) {
+            char ch = Strings.charAt(value, i);
             if (ch < ' ') {
                 if (ch == '\b') {
-                    product.append("\\b");
+                    Strings.builderAppend(product, Strings.BACKSLASH_B);
                 } else if (ch == '\f') {
-                    product.append("\\f");
+                    Strings.builderAppend(product, Strings.BACKSLASH_F);
                 } else if (ch == '\n') {
-                    product.append("\\n");
+                    Strings.builderAppend(product, Strings.BACKSLASH_N);
                 } else if (ch == '\r') {
-                    product.append("\\r");
+                    Strings.builderAppend(product, Strings.BACKSLASH_R);
                 } else if (ch == '\t') {
-                    product.append("\\t");
+                    Strings.builderAppend(product, Strings.BACKSLASH_T);
                 } else {
-                    product.append(unicodeEscape(ch));
+                    Strings.builderAppend(product, Strings.BACKSLASH_U);
+                    TruffleString hex = Strings.intToHexString(ch);
+                    for (int j = Strings.length(hex); j < 4; j++) {
+                        Strings.builderAppend(product, '0');
+                    }
+                    Strings.builderAppend(product, hex);
                 }
             } else {
                 if (ch == '\\') {
-                    product.append("\\\\");
+                    Strings.builderAppend(product, Strings.BACKSLASH_BACKSLASH);
                 } else if (ch == '"') {
-                    product.append("\\\"");
+                    Strings.builderAppend(product, Strings.BACKSLASH_DOUBLE_QUOTE);
                 } else {
-                    product.append(ch);
+                    Strings.builderAppend(product, ch);
                 }
             }
         }
-        product.append("\"");
-        return product.toString();
-    }
-
-    private static String unicodeEscape(final char ch) {
-        final StringBuilder sb = new StringBuilder();
-
-        sb.append("\\u");
-
-        final String hex = Integer.toHexString(ch);
-        for (int i = hex.length(); i < 4; i++) {
-            sb.append('0');
-        }
-        sb.append(hex);
-
-        return sb.toString();
+        Strings.builderAppend(product, Strings.DOUBLE_QUOTE);
+        return Strings.builderToString(product);
     }
 }

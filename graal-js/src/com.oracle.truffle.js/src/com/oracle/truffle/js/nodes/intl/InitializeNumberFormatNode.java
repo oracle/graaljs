@@ -88,25 +88,25 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
-                        new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
-        this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.NUMBERING_SYSTEM, null, null);
-        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.DECIMAL, IntlUtil.PERCENT, IntlUtil.CURRENCY, IntlUtil.UNIT}, IntlUtil.DECIMAL);
-        this.getCurrencyOption = GetStringOptionNode.create(context, IntlUtil.CURRENCY, null, null);
-        this.getCurrencyDisplayOption = GetStringOptionNode.create(context, IntlUtil.CURRENCY_DISPLAY, new String[]{IntlUtil.CODE, IntlUtil.SYMBOL, IntlUtil.NARROW_SYMBOL, IntlUtil.NAME},
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.KEY_NUMBERING_SYSTEM, null, null);
+        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.KEY_STYLE, new String[]{IntlUtil.DECIMAL, IntlUtil.PERCENT, IntlUtil.CURRENCY, IntlUtil.UNIT}, IntlUtil.DECIMAL);
+        this.getCurrencyOption = GetStringOptionNode.create(context, IntlUtil.KEY_CURRENCY, null, null);
+        this.getCurrencyDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_CURRENCY_DISPLAY, new String[]{IntlUtil.CODE, IntlUtil.SYMBOL, IntlUtil.NARROW_SYMBOL, IntlUtil.NAME},
                         IntlUtil.SYMBOL);
-        this.getCurrencySignOption = GetStringOptionNode.create(context, IntlUtil.CURRENCY_SIGN, new String[]{IntlUtil.STANDARD, IntlUtil.ACCOUNTING}, IntlUtil.STANDARD);
-        this.getUnitOption = GetStringOptionNode.create(context, IntlUtil.UNIT, null, null);
-        this.getUnitDisplayOption = GetStringOptionNode.create(context, IntlUtil.UNIT_DISPLAY, new String[]{IntlUtil.SHORT, IntlUtil.NARROW, IntlUtil.LONG}, IntlUtil.SHORT);
-        this.getNotationOption = GetStringOptionNode.create(context, IntlUtil.NOTATION, new String[]{IntlUtil.STANDARD, IntlUtil.SCIENTIFIC, IntlUtil.ENGINEERING, IntlUtil.COMPACT},
+        this.getCurrencySignOption = GetStringOptionNode.create(context, IntlUtil.KEY_CURRENCY_SIGN, new String[]{IntlUtil.STANDARD, IntlUtil.ACCOUNTING}, IntlUtil.STANDARD);
+        this.getUnitOption = GetStringOptionNode.create(context, IntlUtil.KEY_UNIT, null, null);
+        this.getUnitDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_UNIT_DISPLAY, new String[]{IntlUtil.SHORT, IntlUtil.NARROW, IntlUtil.LONG}, IntlUtil.SHORT);
+        this.getNotationOption = GetStringOptionNode.create(context, IntlUtil.KEY_NOTATION, new String[]{IntlUtil.STANDARD, IntlUtil.SCIENTIFIC, IntlUtil.ENGINEERING, IntlUtil.COMPACT},
                         IntlUtil.STANDARD);
-        this.getCompactDisplayOption = GetStringOptionNode.create(context, IntlUtil.COMPACT_DISPLAY, new String[]{IntlUtil.SHORT, IntlUtil.LONG}, IntlUtil.SHORT);
-        this.getUseGroupingOption = GetStringOrBooleanOptionNode.create(context, IntlUtil.USE_GROUPING, new String[]{IntlUtil.MIN2, IntlUtil.AUTO, IntlUtil.ALWAYS}, IntlUtil.ALWAYS, false, null);
-        this.getSignDisplayOption = GetStringOptionNode.create(context, IntlUtil.SIGN_DISPLAY, new String[]{IntlUtil.AUTO, IntlUtil.NEVER, IntlUtil.ALWAYS, IntlUtil.EXCEPT_ZERO, IntlUtil.NEGATIVE},
+        this.getCompactDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_COMPACT_DISPLAY, new String[]{IntlUtil.SHORT, IntlUtil.LONG}, IntlUtil.SHORT);
+        this.getUseGroupingOption = GetStringOrBooleanOptionNode.create(context, IntlUtil.KEY_USE_GROUPING, new String[]{IntlUtil.MIN2, IntlUtil.AUTO, IntlUtil.ALWAYS}, IntlUtil.ALWAYS, false, null);
+        this.getSignDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_SIGN_DISPLAY,
+                        new String[]{IntlUtil.AUTO, IntlUtil.NEVER, IntlUtil.ALWAYS, IntlUtil.EXCEPT_ZERO, IntlUtil.NEGATIVE},
                         IntlUtil.AUTO);
-        this.getRoundingIncrementOption = GetNumberOptionNode.create(context, IntlUtil.ROUNDING_INCREMENT);
-        this.getTrailingZeroDisplayOption = GetStringOptionNode.create(context, IntlUtil.TRAILING_ZERO_DISPLAY, new String[]{IntlUtil.AUTO, IntlUtil.STRIP_IF_INTEGER}, IntlUtil.AUTO);
-        this.getRoundingModeOption = GetStringOptionNode.create(context, IntlUtil.ROUNDING_MODE, new String[]{IntlUtil.CEIL, IntlUtil.FLOOR, IntlUtil.EXPAND, IntlUtil.TRUNC, IntlUtil.HALF_CEIL,
+        this.getRoundingIncrementOption = GetNumberOptionNode.create(context, IntlUtil.KEY_ROUNDING_INCREMENT);
+        this.getTrailingZeroDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_TRAILING_ZERO_DISPLAY, new String[]{IntlUtil.AUTO, IntlUtil.STRIP_IF_INTEGER}, IntlUtil.AUTO);
+        this.getRoundingModeOption = GetStringOptionNode.create(context, IntlUtil.KEY_ROUNDING_MODE, new String[]{IntlUtil.CEIL, IntlUtil.FLOOR, IntlUtil.EXPAND, IntlUtil.TRUNC, IntlUtil.HALF_CEIL,
                         IntlUtil.HALF_FLOOR, IntlUtil.HALF_EXPAND, IntlUtil.HALF_TRUNC, IntlUtil.HALF_EVEN}, IntlUtil.HALF_EXPAND);
         this.setNumberFormatDigitOptions = SetNumberFormatDigitOptionsNode.create(context);
     }

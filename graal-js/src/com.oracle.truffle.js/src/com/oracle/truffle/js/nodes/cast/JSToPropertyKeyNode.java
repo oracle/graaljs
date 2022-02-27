@@ -40,18 +40,19 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNodeGen.JSToPropertyKeyWrapperNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.Symbol;
-
-import java.util.Set;
 
 /**
  * This implements ECMAScript 6 ToPropertyKey(argument).
@@ -64,7 +65,7 @@ public abstract class JSToPropertyKeyNode extends JavaScriptBaseNode {
     public abstract Object execute(Object operand);
 
     @Specialization
-    protected String doString(String value) {
+    protected TruffleString doTString(TruffleString value) {
         return value;
     }
 
@@ -95,7 +96,7 @@ public abstract class JSToPropertyKeyNode extends JavaScriptBaseNode {
         }
 
         public static JavaScriptNode create(JavaScriptNode key) {
-            if (key.isResultAlwaysOfType(String.class) || key.isResultAlwaysOfType(Symbol.class)) {
+            if (key.isResultAlwaysOfType(TruffleString.class) || key.isResultAlwaysOfType(Symbol.class)) {
                 return key;
             }
             return JSToPropertyKeyWrapperNodeGen.create(key);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
@@ -62,6 +63,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 
 @ImportStatic(FrameSlotKind.class)
 public abstract class JSReadFrameSlotNode extends FrameSlotNode implements RepeatableNode, ReadNode {
@@ -117,7 +119,7 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
 
     @Override
     public Object getNodeObject() {
-        String name = JSFrameUtil.getPublicName(getIdentifier());
+        TruffleString name = JSFrameUtil.getPublicName(getIdentifier());
         NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor("name", name);
         descriptor.addProperty(StandardTags.ReadVariableTag.NAME, name);
         return descriptor;
@@ -126,8 +128,8 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
     @Override
     public String expressionToString() {
         Object ident = getIdentifier();
-        if (ident instanceof String) {
-            return (String) ident;
+        if (ident instanceof TruffleString) {
+            return Strings.toJavaString((TruffleString) ident);
         }
         return null;
     }

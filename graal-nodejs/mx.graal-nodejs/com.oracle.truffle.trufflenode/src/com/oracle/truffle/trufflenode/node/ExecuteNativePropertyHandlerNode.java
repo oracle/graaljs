@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -138,7 +139,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                 if (!(key instanceof Symbol)) {
                     key = JSRuntime.toString(key);
                 }
-                if (!template.getStringKeysOnly() || JSRuntime.isString(key)) {
+                if (!template.getStringKeysOnly() || key instanceof TruffleString) {
                     result = NativeAccess.executePropertyHandlerGetter(namedHandler.getGetter(), holder, arguments, namedHandler.getData(), true);
                 }
             }
@@ -163,7 +164,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
             if (indexedHandler != null && indexedHandler.getSetter() != 0) {
                 handled = NativeAccess.executePropertyHandlerSetter(indexedHandler.getSetter(), holder, arguments, indexedHandler.getData(), false);
             }
-        } else if (!(key instanceof HiddenKey) && (!template.getStringKeysOnly() || JSRuntime.isString(key))) {
+        } else if (!(key instanceof HiddenKey) && (!template.getStringKeysOnly() || key instanceof TruffleString)) {
             PropertyHandler namedHandler = template.getNamedPropertyHandler();
 
             if (namedHandler != null && namedHandler.getSetter() != 0) {
@@ -196,7 +197,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                     }
                 }
             }
-        } else if (!template.getStringKeysOnly() || JSRuntime.isString(key)) {
+        } else if (!template.getStringKeysOnly() || key instanceof TruffleString) {
             PropertyHandler namedHandler = template.getNamedPropertyHandler();
 
             if (namedHandler != null) {
@@ -228,7 +229,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                 Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2], arguments[3]);
                 success = NativeAccess.executePropertyHandlerDeleter(indexedHandler.getDeleter(), holder, nativeCallArgs, indexedHandler.getData(), false);
             }
-        } else if (!template.getStringKeysOnly() || JSRuntime.isString(key)) {
+        } else if (!template.getStringKeysOnly() || key instanceof TruffleString) {
             PropertyHandler namedHandler = template.getNamedPropertyHandler();
 
             if (namedHandler != null && namedHandler.getDeleter() != 0) {
@@ -264,7 +265,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
             if (desc == null) {
                 desc = JSObject.getOwnProperty((DynamicObject) arguments[2], arguments[3]);
             }
-        } else if (!template.getStringKeysOnly() || JSRuntime.isString(key)) {
+        } else if (!template.getStringKeysOnly() || key instanceof TruffleString) {
             PropertyHandler namedHandler = template.getNamedPropertyHandler();
 
             if (namedHandler != null) {
@@ -416,7 +417,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                                 indexedHandler.getData(),
                                 false);
             }
-        } else if (!template.getStringKeysOnly() || JSRuntime.isString(key)) {
+        } else if (!template.getStringKeysOnly() || key instanceof TruffleString) {
             if (namedHandler != null && namedHandler.getDefiner() != 0) {
                 result = NativeAccess.executePropertyHandlerDefiner(
                                 namedHandler.getDefiner(),

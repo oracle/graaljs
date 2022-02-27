@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltinsFactory.JSDateTimeFormatFormatRangeNodeGen;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltinsFactory.JSDateTimeFormatFormatRangeToPartsNodeGen;
@@ -159,7 +160,7 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
         }
 
         @Specialization(guards = "isJSDateTimeFormat(dateTimeFormat)")
-        public String doFormatRange(DynamicObject dateTimeFormat, Object startDate, Object endDate,
+        public TruffleString doFormatRange(DynamicObject dateTimeFormat, Object startDate, Object endDate,
                         @Cached JSToNumberNode startDateToNumberNode,
                         @Cached JSToNumberNode endDateToNumberNode,
                         @Cached BranchProfile errorBranch) {

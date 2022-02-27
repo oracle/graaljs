@@ -78,6 +78,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -312,7 +313,7 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
                 super(context, false);
             }
         }
-        return JSFunctionData.createCallOnly(context, new AwaitFulfilledRootNode().getCallTarget(), 1, "");
+        return JSFunctionData.createCallOnly(context, new AwaitFulfilledRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
     private DynamicObject createAwaitRejectedFunction(CallTarget resumeTarget, MaterializedFrame asyncContext, Object generator) {
@@ -330,7 +331,7 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
                 super(context, true);
             }
         }
-        return JSFunctionData.createCallOnly(context, new AwaitRejectedRootNode().getCallTarget(), 1, "");
+        return JSFunctionData.createCallOnly(context, new AwaitRejectedRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
     @SuppressWarnings("unused")

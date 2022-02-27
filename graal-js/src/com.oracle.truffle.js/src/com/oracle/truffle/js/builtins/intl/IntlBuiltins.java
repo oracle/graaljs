@@ -40,12 +40,11 @@
  */
 package com.oracle.truffle.js.builtins.intl;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.IntlBuiltinsFactory.GetCanonicalLocalesNodeGen;
 import com.oracle.truffle.js.builtins.intl.IntlBuiltinsFactory.SupportedValuesOfNodeGen;
@@ -56,7 +55,7 @@ import com.oracle.truffle.js.nodes.intl.JSToCanonicalizedLocaleListNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.intl.JSIntl;
@@ -127,7 +126,7 @@ public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuilt
                 canonicalizeLocaleListNode = insert(JSToCanonicalizedLocaleListNode.create(getContext()));
             }
             String[] languageTags = canonicalizeLocaleListNode.executeLanguageTags(locales);
-            return JSRuntime.createArrayFromList(getContext(), getRealm(), Arrays.asList((Object[]) languageTags));
+            return JSArray.createConstant(getContext(), getRealm(), Strings.convertJavaStringArray(languageTags));
         }
     }
 
@@ -141,32 +140,25 @@ public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuilt
         protected Object supportedValuesOf(Object keyArg,
                         @Cached JSToStringNode toStringNode,
                         @Cached BranchProfile errorBranch) {
-            String key = toStringNode.executeString(keyArg);
+            TruffleString key = toStringNode.executeString(keyArg);
             String[] list;
-            switch (key) {
-                case IntlUtil.CALENDAR:
-                    list = IntlUtil.availableCalendars();
-                    break;
-                case IntlUtil.COLLATION:
-                    list = IntlUtil.availableCollations();
-                    break;
-                case IntlUtil.CURRENCY:
-                    list = IntlUtil.availableCurrencies();
-                    break;
-                case IntlUtil.NUMBERING_SYSTEM:
-                    list = IntlUtil.availableNumberingSystems(getContext());
-                    break;
-                case IntlUtil.TIME_ZONE:
-                    list = IntlUtil.availableTimeZones();
-                    break;
-                case IntlUtil.UNIT:
-                    list = IntlUtil.availableUnits();
-                    break;
-                default:
-                    errorBranch.enter();
-                    throw Errors.createRangeErrorFormat("Invalid key : %s", this, key);
+            if (Strings.equals(IntlUtil.KEY_CALENDAR, key)) {
+                list = IntlUtil.availableCalendars();
+            } else if (Strings.equals(IntlUtil.KEY_COLLATION, key)) {
+                list = IntlUtil.availableCollations();
+            } else if (Strings.equals(IntlUtil.KEY_CURRENCY, key)) {
+                list = IntlUtil.availableCurrencies();
+            } else if (Strings.equals(IntlUtil.KEY_NUMBERING_SYSTEM, key)) {
+                list = IntlUtil.availableNumberingSystems(getContext());
+            } else if (Strings.equals(IntlUtil.KEY_TIME_ZONE, key)) {
+                list = IntlUtil.availableTimeZones();
+            } else if (Strings.equals(IntlUtil.KEY_UNIT, key)) {
+                list = IntlUtil.availableUnits();
+            } else {
+                errorBranch.enter();
+                throw Errors.createRangeErrorFormat("Invalid key : %s", this, key);
             }
-            return JSArray.createConstant(getContext(), getRealm(), list);
+            return JSArray.createConstant(getContext(), getRealm(), Strings.convertJavaStringArray(list));
         }
     }
 }

@@ -49,6 +49,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 
+import com.oracle.truffle.js.runtime.Strings;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
@@ -329,7 +330,7 @@ public class ExceptionInteropTest {
             assertEquals(this.getClass().getSimpleName() + ".java", hostExceptionStackTrace[0].getFileName());
             assertEquals(EXCEPTION_LINE_NUMBER, hostExceptionStackTrace[0].getLineNumber());
 
-            assertEquals("isnotdefinedcaught.js", objectFromJava.jsStackTrace[0].getFileName());
+            assertEquals(Strings.constant("isnotdefinedcaught.js"), objectFromJava.jsStackTrace[0].getFileName());
             assertEquals(3, objectFromJava.jsStackTrace[0].getLineNumber());
             assertEquals(objectFromJava.exception.getClass().getName(), objectFromJava.exceptionName);
             assertEquals(objectFromJava.exception.getMessage(), objectFromJava.exceptionMessage);

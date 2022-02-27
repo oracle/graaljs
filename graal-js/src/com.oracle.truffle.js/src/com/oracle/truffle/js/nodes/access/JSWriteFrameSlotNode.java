@@ -51,6 +51,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -76,7 +77,7 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode.WithDescriptor 
 
     @Override
     public Object getNodeObject() {
-        String name = JSFrameUtil.getPublicName(getIdentifier());
+        TruffleString name = JSFrameUtil.getPublicName(getIdentifier());
         NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor("name", name);
         descriptor.addProperty(StandardTags.WriteVariableTag.NAME, name);
         return descriptor;

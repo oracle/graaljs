@@ -49,6 +49,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
@@ -59,6 +60,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 @NodeInfo(shortName = "|")
@@ -151,8 +153,8 @@ public abstract class JSBitwiseOrConstantNode extends JSUnaryNode {
         return overloadedOperatorNode.execute(a, isInt ? rightIntValue : rightBigIntValue);
     }
 
-    protected String getOverloadedOperatorName() {
-        return "|";
+    protected TruffleString getOverloadedOperatorName() {
+        return Strings.SYMBOL_PIPE;
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "isInt"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigIntThrows"})

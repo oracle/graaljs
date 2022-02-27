@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import static com.oracle.truffle.api.dsl.Cached.Shared;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,6 +54,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
@@ -63,6 +66,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.intl.JSLocale;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
@@ -86,9 +90,9 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
 
     public abstract String[] executeLanguageTags(Object value);
 
-    @Specialization()
-    protected String[] doString(String s) {
-        return new String[]{IntlUtil.validateAndCanonicalizeLanguageTag(s)};
+    @Specialization
+    protected String[] doTString(TruffleString s) {
+        return doJavaString(Strings.toJavaString(s));
     }
 
     @Specialization(guards = {"isUndefined(object)"})
@@ -98,7 +102,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
 
     @Specialization(guards = {"isJSLocale(object)"})
     protected String[] doLocale(DynamicObject object) {
-        return doString(JSLocale.getInternalState(object).getLocale());
+        return doJavaString(JSLocale.getInternalState(object).getLocale());
     }
 
     @Specialization(guards = {"!isForeignObject(object)", "!isString(object)", "!isUndefined(object)", "!isJSLocale(object)"})
@@ -107,15 +111,17 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                     @Cached("create(context)") JSGetLengthNode getLengthNode,
                     @Cached JSHasPropertyNode hasPropertyNode,
                     @Cached TypeOfNode typeOfNode,
-                    @Cached JSToStringNode toStringNode) {
+                    @Cached JSToStringNode toStringNode,
+                    @Cached @Shared("equalsNode") TruffleString.EqualNode equalsNode,
+                    @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode) {
         List<String> result = new ArrayList<>();
         DynamicObject localeObj = (DynamicObject) toObjectNode.execute(object);
         long len = getLengthNode.executeLong(localeObj);
         for (long k = 0; k < len; k++) {
             if (hasPropertyNode.executeBoolean(localeObj, k)) {
                 Object kValue = JSObject.get(localeObj, k);
-                String typeOfKValue = typeOfNode.executeString(kValue);
-                if (JSRuntime.isNullOrUndefined(kValue) || ((!typeOfKValue.equals("string") && !typeOfKValue.equals("object")))) {
+                TruffleString typeOfKValue = typeOfNode.executeString(kValue);
+                if (JSRuntime.isNullOrUndefined(kValue) || ((!Strings.equals(equalsNode, Strings.STRING, typeOfKValue) && !Strings.equals(equalsNode, Strings.OBJECT, typeOfKValue)))) {
                     errorBranch.enter();
                     throw Errors.createTypeError(Boundaries.stringFormat("String or Object expected in locales list, got %s", typeOfKValue));
                 }
@@ -123,7 +129,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                 if (JSLocale.isJSLocale(kValue)) {
                     lt = JSLocale.getInternalState((DynamicObject) kValue).getLocale();
                 } else {
-                    lt = toStringNode.executeString(kValue);
+                    lt = Strings.toJavaString(toJavaStringNode, toStringNode.executeString(kValue));
                 }
                 String canonicalizedLt = IntlUtil.validateAndCanonicalizeLanguageTag(lt);
                 if (!Boundaries.listContains(result, canonicalizedLt)) {
@@ -138,8 +144,10 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
     protected String[] doForeignType(Object object,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                     @Cached TypeOfNode typeOfNode,
-                    @Cached JSToStringNode toStringNode) {
-        List<String> result = new ArrayList<>();
+                    @Cached JSToStringNode toStringNode,
+                    @Cached @Shared("equalsNode") TruffleString.EqualNode equalsNode,
+                    @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode) {
+        List<Object> result = new ArrayList<>();
         long len;
         try {
             len = interop.getArraySize(object);
@@ -156,18 +164,22 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                     errorBranch.enter();
                     throw Errors.createTypeErrorInteropException(object, e, "readArrayElement", k, this);
                 }
-                String typeOfKValue = typeOfNode.executeString(kValue);
-                if (!typeOfKValue.equals("string") && !typeOfKValue.equals("object")) {
+                TruffleString typeOfKValue = typeOfNode.executeString(kValue);
+                if (!Strings.equals(equalsNode, Strings.STRING, typeOfKValue) && !Strings.equals(equalsNode, Strings.OBJECT, typeOfKValue)) {
                     errorBranch.enter();
                     throw Errors.createTypeError(Boundaries.stringFormat("String or Object expected in locales list, got %s", typeOfKValue));
                 }
-                String lt = toStringNode.executeString(kValue);
-                String canonicalizedLt = IntlUtil.validateAndCanonicalizeLanguageTag(lt);
+                String lt = Strings.toJavaString(toJavaStringNode, toStringNode.executeString(kValue));
+                Object canonicalizedLt = IntlUtil.validateAndCanonicalizeLanguageTag(lt);
                 if (!Boundaries.listContains(result, canonicalizedLt)) {
                     Boundaries.listAdd(result, canonicalizedLt);
                 }
             }
         }
         return result.toArray(new String[]{});
+    }
+
+    private static String[] doJavaString(String s) {
+        return new String[]{IntlUtil.validateAndCanonicalizeLanguageTag(s)};
     }
 }

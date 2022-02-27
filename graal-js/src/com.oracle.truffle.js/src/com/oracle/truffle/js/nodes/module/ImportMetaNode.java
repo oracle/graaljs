@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.module;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
-
-import java.util.Set;
 
 /**
  * Returns the {@code import.meta} object of a module, initializing it if necessary.

@@ -49,6 +49,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -59,6 +60,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -371,7 +373,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
         private final JSContext context;
         private final boolean isNew;
         private final boolean isNewTarget;
-        private final String name;
+        private final TruffleString name;
 
         public NativeFunctionRootNode(JSContext context, FunctionTemplate template, boolean isNew, boolean isNewTarget) {
             this.context = context;
@@ -391,7 +393,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
 
         @Override
         public String getName() {
-            return name;
+            return Strings.toJavaString(name);
         }
 
         @Override

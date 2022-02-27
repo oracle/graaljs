@@ -43,6 +43,8 @@ package com.oracle.truffle.js.runtime.objects;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 
 /**
@@ -66,7 +68,7 @@ public abstract class JSOrdinaryObject extends JSNonProxyObject implements JSCop
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return JSOrdinary.CLASS_NAME;
     }
 
@@ -74,7 +76,7 @@ public abstract class JSOrdinaryObject extends JSNonProxyObject implements JSCop
     @Override
     public Object getValue(long index) {
         // convert index only once
-        return getValue(String.valueOf(index));
+        return getValue(Strings.fromLong(index));
     }
 
     @Override

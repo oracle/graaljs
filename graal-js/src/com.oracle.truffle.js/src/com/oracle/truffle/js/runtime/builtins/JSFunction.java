@@ -61,6 +61,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.AsyncFromSyncIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AsyncGeneratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
@@ -78,6 +79,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -93,30 +95,32 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSFunction extends JSNonProxy {
 
-    public static final String TYPE_NAME = "function";
-    public static final String CLASS_NAME = "Function";
-    public static final String CLASS_NAME_NASHORN_COMPAT = "FunctionNashornCompat";
-    public static final String PROTOTYPE_NAME = "Function.prototype";
-    public static final String GENERATOR_FUNCTION_NAME = "GeneratorFunction";
-    public static final String GENERATOR_NAME = "Generator";
-    public static final String GENERATOR_PROTOTYPE_NAME = "Generator.prototype";
-    public static final String ASYNC_FUNCTION_NAME = "AsyncFunction";
-    public static final String ASYNC_GENERATOR_FUNCTION_NAME = "AsyncGeneratorFunction";
-    public static final String ASYNC_GENERATOR_NAME = "AsyncGenerator";
-    public static final String ASYNC_GENERATOR_PROTOTYPE_NAME = "AsyncGenerator.prototype";
-    public static final String ENUMERATE_ITERATOR_PROTOTYPE_NAME = "[[Enumerate]].prototype";
-    public static final String FOR_IN_ITERATOR_PROTOYPE_NAME = "%ForInIteratorPrototype%";
-    public static final String CALLER = "caller";
-    public static final String ARGUMENTS = "arguments";
-    public static final String LENGTH = "length";
-    public static final String NAME = "name";
+    public static final TruffleString TYPE_NAME = Strings.constant("function");
+    public static final TruffleString CLASS_NAME = Strings.constant("Function");
+    public static final TruffleString CLASS_NAME_NASHORN_COMPAT = Strings.constant("FunctionNashornCompat");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Function.prototype");
+    public static final TruffleString GENERATOR_FUNCTION_NAME = Strings.constant("GeneratorFunction");
+    public static final TruffleString GENERATOR_NAME = Strings.constant("Generator");
+    public static final TruffleString GENERATOR_PROTOTYPE_NAME = Strings.constant("Generator.prototype");
+    public static final TruffleString ASYNC_FUNCTION_NAME = Strings.constant("AsyncFunction");
+    public static final TruffleString ASYNC_GENERATOR_FUNCTION_NAME = Strings.constant("AsyncGeneratorFunction");
+    public static final TruffleString ASYNC_GENERATOR_NAME = Strings.constant("AsyncGenerator");
+    public static final TruffleString ASYNC_GENERATOR_PROTOTYPE_NAME = Strings.constant("AsyncGenerator.prototype");
+    public static final TruffleString ENUMERATE_ITERATOR_PROTOTYPE_NAME = Strings.constant("[[Enumerate]].prototype");
+    public static final TruffleString FOR_IN_ITERATOR_PROTOYPE_NAME = Strings.constant("%ForInIteratorPrototype%");
+    public static final TruffleString CALLER = Strings.constant("caller");
+    public static final TruffleString ARGUMENTS = Strings.constant("arguments");
+    public static final TruffleString LENGTH = Strings.constant("length");
+    public static final TruffleString NAME = Strings.constant("name");
+    public static final TruffleString ORDINARY_HAS_INSTANCE = Strings.constant("OrdinaryHasInstance");
     public static final String PROGRAM_FUNCTION_NAME = ":program";
 
     public static final String BUILTIN_SOURCE_NAME = "<builtin>";
+    public static final TruffleString TS_BUILTIN_SOURCE_NAME = Strings.constant(BUILTIN_SOURCE_NAME);
     public static final SourceSection BUILTIN_SOURCE_SECTION = createBuiltinSourceSection(BUILTIN_SOURCE_NAME);
 
     public static final HiddenKey ASYNC_FROM_SYNC_ITERATOR_KEY = new HiddenKey("SyncIterator");
-    public static final String ASYNC_FROM_SYNC_ITERATOR_PROTOTYPE_NAME = "%AsyncFromSyncIteratorPrototype%";
+    public static final TruffleString ASYNC_FROM_SYNC_ITERATOR_PROTOTYPE_NAME = Strings.constant("%AsyncFromSyncIteratorPrototype%");
 
     public static final PropertyProxy PROTOTYPE_PROXY = new ClassPrototypeProxyProperty();
 
@@ -145,7 +149,7 @@ public final class JSFunction extends JSNonProxy {
 
     public static class FunctionNamePropertyProxy implements PropertyProxy {
         @Override
-        public Object get(DynamicObject store) {
+        public TruffleString get(DynamicObject store) {
             assert JSFunction.isJSFunction(store);
             if (JSFunction.isBoundFunction(store)) {
                 return ((JSFunctionObject.Bound) store).getBoundName();
@@ -161,7 +165,6 @@ public final class JSFunction extends JSNonProxy {
             }
             return JSFunction.getName(store);
         }
-
     }
 
     public static final PropertyProxy NAME_PROXY = new FunctionNamePropertyProxy();
@@ -289,7 +292,7 @@ public final class JSFunction extends JSNonProxy {
         return functionData.getContext().getFunctionFactory(functionData);
     }
 
-    public static String getName(DynamicObject obj) {
+    public static TruffleString getName(DynamicObject obj) {
         return getFunctionData(obj).getName();
     }
 
@@ -336,7 +339,7 @@ public final class JSFunction extends JSNonProxy {
             setFunctionLength(boundFunction, JSRuntime.longToIntOrDouble(length));
         }
 
-        String targetName = getFunctionName(thisFnObj);
+        TruffleString targetName = getFunctionName(thisFnObj);
         if (!targetName.equals(getName(thisFnObj))) {
             setBoundFunctionName(boundFunction, targetName);
         }
@@ -366,19 +369,19 @@ public final class JSFunction extends JSNonProxy {
     }
 
     @TruffleBoundary
-    private static JSFunctionData makeBoundFunctionData(JSContext context, int length, boolean constructor, boolean isAsync, String name) {
+    private static JSFunctionData makeBoundFunctionData(JSContext context, int length, boolean constructor, boolean isAsync, TruffleString name) {
         return JSFunctionData.create(context,
                         context.getBoundFunctionCallTarget(), context.getBoundFunctionConstructTarget(), context.getBoundFunctionConstructNewTarget(),
                         length, name, constructor, false, true, false, false, false, isAsync, false, true, false, true);
     }
 
     @TruffleBoundary
-    private static String getFunctionName(DynamicObject thisFnObj) {
+    private static TruffleString getFunctionName(DynamicObject thisFnObj) {
         Object name = JSObject.get(thisFnObj, NAME);
-        if (!JSRuntime.isString(name)) {
-            name = "";
+        if (!Strings.isTString(name)) {
+            name = Strings.EMPTY_STRING;
         }
-        return name.toString();
+        return (TruffleString) name;
     }
 
     @TruffleBoundary
@@ -387,8 +390,8 @@ public final class JSFunction extends JSNonProxy {
     }
 
     @TruffleBoundary
-    public static void setBoundFunctionName(DynamicObject boundFunction, String targetName) {
-        JSObject.defineOwnProperty(boundFunction, JSFunction.NAME, PropertyDescriptor.createData("bound " + targetName, false, false, true));
+    public static void setBoundFunctionName(DynamicObject boundFunction, TruffleString targetName) {
+        JSObject.defineOwnProperty(boundFunction, JSFunction.NAME, PropertyDescriptor.createData(Strings.concat(Strings.BOUND_SPC, targetName), false, false, true));
     }
 
     public static boolean isStrict(DynamicObject obj) {
@@ -609,7 +612,7 @@ public final class JSFunction extends JSNonProxy {
         DynamicObject proto = JSFunctionObject.create(protoShape, createEmptyFunctionData(context), JSFrameUtil.NULL_MATERIALIZED_FRAME, realm, CLASS_PROTOTYPE_PLACEHOLDER);
         JSObjectUtil.setOrVerifyPrototype(context, proto, objectPrototype);
         JSObjectUtil.putDataProperty(context, proto, LENGTH, 0, JSAttributes.configurableNotEnumerableNotWritable());
-        JSObjectUtil.putDataProperty(context, proto, NAME, "", JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putDataProperty(context, proto, NAME, Strings.EMPTY_STRING, JSAttributes.configurableNotEnumerableNotWritable());
         return proto;
     }
 
@@ -618,15 +621,15 @@ public final class JSFunction extends JSNonProxy {
         JSObjectUtil.putBuiltinAccessorProperty(obj, ARGUMENTS, realm.getThrowerFunction(), realm.getThrowerFunction());
     }
 
-    public static JSFunctionData createNamedEmptyFunctionData(JSContext context, String name) {
+    public static JSFunctionData createNamedEmptyFunctionData(JSContext context, TruffleString name) {
         return JSFunctionData.createCallOnly(context, context.getEmptyFunctionCallTarget(), 0, name);
     }
 
     public static JSFunctionData createEmptyFunctionData(JSContext context) {
-        return createNamedEmptyFunctionData(context, "");
+        return createNamedEmptyFunctionData(context, Strings.EMPTY_STRING);
     }
 
-    public static DynamicObject createNamedEmptyFunction(JSRealm realm, String name) {
+    public static DynamicObject createNamedEmptyFunction(JSRealm realm, TruffleString name) {
         return JSFunction.create(realm, createNamedEmptyFunctionData(realm.getContext(), name));
     }
 
@@ -662,30 +665,30 @@ public final class JSFunction extends JSNonProxy {
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return CLASS_NAME;
     }
 
     @Override
-    public String getBuiltinToStringTag(DynamicObject object) {
+    public TruffleString getBuiltinToStringTag(DynamicObject object) {
         return getClassName(object);
     }
 
     @Override
     @TruffleBoundary
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         RootNode rn = ((RootCallTarget) JSFunction.getCallTarget(obj)).getRootNode();
         SourceSection ssect = rn.getSourceSection();
-        String source;
+        TruffleString source;
         if (ssect == null || !ssect.isAvailable() || ssect.getSource().isInternal()) {
-            source = "function " + JSFunction.getName(obj) + "() { [native code] }";
+            source = Strings.concatAll(Strings.FUNCTION_SPC, JSFunction.getName(obj), Strings.FUNCTION_NATIVE_CODE_BODY);
         } else if (depth >= format.getMaxDepth()) {
-            source = "function " + JSFunction.getName(obj) + "() {...}";
+            source = Strings.concatAll(Strings.FUNCTION_SPC, JSFunction.getName(obj), Strings.FUNCTION_BODY_DOTS);
         } else {
             if (ssect.getCharacters().length() > 200) {
-                source = ssect.getCharacters().subSequence(0, 195) + "...<omitted>...\n}";
+                source = Strings.concat(Strings.fromCharSequence(ssect.getCharacters().subSequence(0, 195)), Strings.FUNCTION_BODY_OMITTED);
             } else {
-                source = ssect.getCharacters().toString();
+                source = Strings.fromCharSequence(ssect.getCharacters());
             }
         }
         return source;
@@ -853,7 +856,7 @@ public final class JSFunction extends JSNonProxy {
     public static DynamicObject createOrdinaryHasInstanceFunction(JSRealm realm) {
         JSContext ctx = realm.getContext();
         return JSFunction.create(realm, ctx.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.OrdinaryHasInstance, c -> {
-            return JSFunctionData.createCallOnly(c, new InstanceofNode.OrdinaryHasInstanceRootNode(c).getCallTarget(), 1, "OrdinaryHasInstance");
+            return JSFunctionData.createCallOnly(c, new InstanceofNode.OrdinaryHasInstanceRootNode(c).getCallTarget(), 1, ORDINARY_HAS_INSTANCE);
         }));
     }
 
@@ -966,7 +969,7 @@ public final class JSFunction extends JSNonProxy {
                                 if (isBuiltinThatShouldNotAppearInStackTrace(realm, function)) {
                                     return null;
                                 }
-                                if (functionData.getName().startsWith("[Symbol.")) {
+                                if (Strings.startsWith(functionData.getName(), Strings.BRACKET_SYMBOL_DOT)) {
                                     return null;
                                 }
                                 if (isStrictBuiltin(function, realm)) {

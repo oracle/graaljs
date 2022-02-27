@@ -46,10 +46,12 @@ import java.util.WeakHashMap;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.WeakSetPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
@@ -57,8 +59,8 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
 
     public static final JSWeakSet INSTANCE = new JSWeakSet();
 
-    public static final String CLASS_NAME = "WeakSet";
-    public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("WeakSet");
+    public static final TruffleString PROTOTYPE_NAME = Strings.concat(CLASS_NAME, Strings.DOT_PROTOTYPE);
 
     private JSWeakSet() {
     }
@@ -103,20 +105,20 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
     @Override
     @TruffleBoundary
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return "[" + getClassName() + "]";
+            return Strings.addBrackets(getClassName());
         } else {
             return getClassName();
         }

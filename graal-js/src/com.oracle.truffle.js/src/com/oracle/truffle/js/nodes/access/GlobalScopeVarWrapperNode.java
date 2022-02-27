@@ -45,6 +45,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
@@ -56,13 +57,13 @@ import com.oracle.truffle.js.runtime.Errors;
  */
 public final class GlobalScopeVarWrapperNode extends VarWrapperNode implements ReadNode, WriteNode {
 
-    private final String varName;
+    private final TruffleString varName;
     @Child private JavaScriptNode dynamicScopeNode;
     @Child private JavaScriptNode defaultDelegate;
     @Child private JSTargetableNode scopeAccessNode;
     @Child private GlobalScopeLookupNode scopeHasBinding;
 
-    public GlobalScopeVarWrapperNode(String varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
+    public GlobalScopeVarWrapperNode(TruffleString varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
         this.varName = varName;
         this.dynamicScopeNode = dynamicScope;
         this.defaultDelegate = Objects.requireNonNull(defaultDelegate);

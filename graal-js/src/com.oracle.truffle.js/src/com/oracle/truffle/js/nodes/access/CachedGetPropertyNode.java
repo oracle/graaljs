@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.FrequencyBasedPolymorphicAccessNode.FrequencyBasedPropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
@@ -73,10 +74,11 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"cachedKey != null", "!isArrayIndex(cachedKey)", "propertyKeyEquals(cachedKey, key)"}, limit = "MAX_DEPTH")
+    @Specialization(guards = {"cachedKey != null", "!isArrayIndex(cachedKey)", "propertyKeyEquals(equalsNode, cachedKey, key)"}, limit = "MAX_DEPTH")
     Object doCachedKey(DynamicObject target, Object key, Object receiver, Object defaultValue,
                     @Cached("cachedPropertyKey(key)") Object cachedKey,
-                    @Cached("create(cachedKey, context)") PropertyGetNode propertyNode) {
+                    @Cached("create(cachedKey, context)") PropertyGetNode propertyNode,
+                    @Cached TruffleString.EqualNode equalsNode) {
         return propertyNode.getValueOrDefault(target, receiver, defaultValue);
     }
 
@@ -111,14 +113,15 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
                     @Cached("createBinaryProfile()") ConditionProfile getType,
                     @Cached("create()") JSClassProfile jsclassProfile,
                     @Cached("createBinaryProfile()") ConditionProfile highFrequency,
-                    @Cached("createFrequencyBasedPropertyGet(context)") FrequencyBasedPropertyGetNode hotKey) {
+                    @Cached("createFrequencyBasedPropertyGet(context)") FrequencyBasedPropertyGetNode hotKey,
+                    @Cached TruffleString.EqualNode equalsNode) {
         requireObjectCoercibleNode.executeVoid(target);
         Object arrayIndex = toArrayIndexNode.execute(key);
         if (getType.profile(arrayIndex instanceof Long)) {
             return JSObject.getOrDefault(target, (long) arrayIndex, receiver, defaultValue, jsclassProfile, this);
         } else {
             assert JSRuntime.isPropertyKey(arrayIndex);
-            Object maybeRead = hotKey.executeFastGet(arrayIndex, target);
+            Object maybeRead = hotKey.executeFastGet(arrayIndex, target, equalsNode);
             if (highFrequency.profile(maybeRead != null)) {
                 return maybeRead;
             }
@@ -130,8 +133,6 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
         CompilerAsserts.neverPartOfCompilation();
         if (JSRuntime.isPropertyKey(key)) {
             return key;
-        } else if (JSRuntime.isLazyString(key)) {
-            return key.toString();
         } else {
             return null;
         }

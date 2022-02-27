@@ -63,11 +63,13 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimeFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
@@ -82,19 +84,20 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
 
     public static final JSTemporalPlainDateTime INSTANCE = new JSTemporalPlainDateTime();
 
-    public static final String CLASS_NAME = "PlainDateTime";
-    public static final String PROTOTYPE_NAME = "PlainDateTime.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("PlainDateTime");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("PlainDateTime.prototype");
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.PlainDateTime");
 
     private JSTemporalPlainDateTime() {
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
-        return "Temporal.PlainDateTime";
+    public TruffleString getClassName(DynamicObject object) {
+        return TO_STRING_TAG;
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
@@ -143,15 +146,14 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
         JSObjectUtil.putBuiltinAccessorProperty(prototype, IN_LEAP_YEAR, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, IN_LEAP_YEAR));
 
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalPlainDateTimePrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(prototype, "Temporal.PlainDateTime");
+        JSObjectUtil.putToStringTag(prototype, TO_STRING_TAG);
 
         return prototype;
     }
 
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSTemporalPlainDateTime.INSTANCE, context);
-        return initialShape;
+        return JSObjectUtil.getProtoChildShape(prototype, JSTemporalPlainDateTime.INSTANCE, context);
     }
 
     @Override
@@ -173,17 +175,17 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
     }
 
     @TruffleBoundary
-    public static String temporalDateTimeToString(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
-                    DynamicObject calendar, Object precision, String showCalendar) {
-        String yearString = TemporalUtil.padISOYear(year);
-        String monthString = String.format("%1$02d", month);
-        String dayString = String.format("%1$02d", day);
-        String hourString = String.format("%1$02d", hour);
-        String minuteString = String.format("%1$02d", minute);
-        String secondString = TemporalUtil.formatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision);
-        String calendarID = JSRuntime.toString(calendar);
-        String calendarString = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);
-        return String.format("%s-%s-%sT%s:%s%s%s", yearString, monthString, dayString, hourString, minuteString, secondString, calendarString);
+    public static TruffleString temporalDateTimeToString(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
+                    DynamicObject calendar, Object precision, TruffleString showCalendar) {
+        TruffleString yearString = TemporalUtil.padISOYear(year);
+        TruffleString monthString = Strings.format("%1$02d", month);
+        TruffleString dayString = Strings.format("%1$02d", day);
+        TruffleString hourString = Strings.format("%1$02d", hour);
+        TruffleString minuteString = Strings.format("%1$02d", minute);
+        TruffleString secondString = TemporalUtil.formatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision);
+        TruffleString calendarID = JSRuntime.toString(calendar);
+        TruffleString calendarString = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);
+        return Strings.format("%s-%s-%sT%s:%s%s%s", yearString, monthString, dayString, hourString, minuteString, secondString, calendarString);
     }
 
 }

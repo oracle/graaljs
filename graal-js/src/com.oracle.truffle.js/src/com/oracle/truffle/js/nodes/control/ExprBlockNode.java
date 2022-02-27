@@ -40,13 +40,13 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-
-import java.util.Set;
 
 public final class ExprBlockNode extends AbstractBlockNode implements SequenceNode {
     ExprBlockNode(JavaScriptNode[] statements) {

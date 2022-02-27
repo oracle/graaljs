@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.ListFormatPrototypeBuiltinsFactory.JSListFormatFormatNodeGen;
 import com.oracle.truffle.js.builtins.intl.ListFormatPrototypeBuiltinsFactory.JSListFormatFormatToPartsNodeGen;
@@ -121,7 +122,7 @@ public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = {"isJSListFormat(listFormat)"})
-        public String doFormat(DynamicObject listFormat, Object value,
+        public TruffleString doFormat(DynamicObject listFormat, Object value,
                         @Cached("create(getContext())") JSStringListFromIterableNode strListFromIterableNode) {
             List<String> list = strListFromIterableNode.executeIterable(value);
             return JSListFormat.format(listFormat, list);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,21 +40,31 @@
  */
 package com.oracle.truffle.js.builtins.helper;
 
-import com.oracle.truffle.api.CompilerDirectives.*;
-import com.oracle.truffle.api.profiles.*;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 
 public class FloatParser {
 
-    private final String input;
+    private final TruffleString input;
     private int pos;
     private boolean isNaN;
     private final double value;
 
     private final BranchProfile exponentBranch;
+    private final TruffleString.ReadCharUTF16Node charAtNode;
+    private final TruffleString.SubstringByteIndexNode substringNode;
+    private final TruffleString.ParseDoubleNode parseDoubleNode;
 
-    public FloatParser(String s, BranchProfile exponentBranch) {
+    public FloatParser(TruffleString s, BranchProfile exponentBranch,
+                    TruffleString.ReadCharUTF16Node charAtNode,
+                    TruffleString.SubstringByteIndexNode substringNode,
+                    TruffleString.ParseDoubleNode parseDoubleNode) throws TruffleString.NumberFormatException {
         input = s;
+        this.charAtNode = charAtNode;
+        this.substringNode = substringNode;
+        this.parseDoubleNode = parseDoubleNode;
         pos = 0;
         isNaN = false;
         this.exponentBranch = exponentBranch;
@@ -65,8 +75,7 @@ public class FloatParser {
         return value;
     }
 
-    @TruffleBoundary
-    private double parse() {
+    private double parse() throws TruffleString.NumberFormatException {
         strDecimalLiteral();
         if (isNaN) {
             return Double.NaN;
@@ -74,9 +83,8 @@ public class FloatParser {
         return parseValidSubstring();
     }
 
-    @TruffleBoundary
-    private double parseValidSubstring() {
-        return Double.parseDouble(input.substring(0, pos));
+    private double parseValidSubstring() throws TruffleString.NumberFormatException {
+        return Strings.parseDouble(parseDoubleNode, Strings.substring(substringNode, input, 0, pos));
     }
 
     private void strDecimalLiteral() {
@@ -115,7 +123,6 @@ public class FloatParser {
         if (isNaN) {
             pos = prevPos;
             isNaN = false;
-            return;
         }
     }
 
@@ -125,14 +132,14 @@ public class FloatParser {
 
     private char current() {
         if (hasNext()) {
-            return input.charAt(pos);
+            return Strings.charAt(charAtNode, input, pos);
         } else {
             return 0;
         }
     }
 
     private boolean hasNext() {
-        return pos < input.length();
+        return pos < Strings.length(input);
     }
 
     private void exponentPart() {

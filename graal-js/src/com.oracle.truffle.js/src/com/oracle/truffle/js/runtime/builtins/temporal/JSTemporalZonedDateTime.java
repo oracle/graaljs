@@ -42,11 +42,13 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimeFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
@@ -61,8 +63,9 @@ public final class JSTemporalZonedDateTime extends JSNonProxy implements JSConst
 
     public static final JSTemporalZonedDateTime INSTANCE = new JSTemporalZonedDateTime();
 
-    public static final String CLASS_NAME = "ZonedDateTime";
-    public static final String PROTOTYPE_NAME = "ZonedDateTime.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("ZonedDateTime");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("ZonedDateTime.prototype");
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.ZonedDateTime");
 
     private JSTemporalZonedDateTime() {
     }
@@ -76,12 +79,12 @@ public final class JSTemporalZonedDateTime extends JSNonProxy implements JSConst
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
-        return "Temporal.ZonedDateTime";
+    public TruffleString getClassName(DynamicObject object) {
+        return TO_STRING_TAG;
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
@@ -124,15 +127,14 @@ public final class JSTemporalZonedDateTime extends JSNonProxy implements JSConst
                         realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.OFFSET_NANOSECONDS));
         JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.OFFSET, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.OFFSET));
 
-        JSObjectUtil.putToStringTag(prototype, "Temporal.ZonedDateTime");
+        JSObjectUtil.putToStringTag(prototype, TO_STRING_TAG);
 
         return prototype;
     }
 
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSTemporalZonedDateTime.INSTANCE, context);
-        return initialShape;
+        return JSObjectUtil.getProtoChildShape(prototype, JSTemporalZonedDateTime.INSTANCE, context);
     }
 
     @Override

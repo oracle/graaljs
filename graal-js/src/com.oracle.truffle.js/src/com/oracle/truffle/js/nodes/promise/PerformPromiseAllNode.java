@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -184,7 +185,7 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
                 return new AsyncStackTraceInfo(resultPromise, asyncStackTraceElement);
             }
         }
-        return JSFunctionData.createCallOnly(context, new PromiseAllResolveElementRootNode().getCallTarget(), 1, "");
+        return JSFunctionData.createCallOnly(context, new PromiseAllResolveElementRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
     static TruffleStackTraceElement createPromiseAllStackTraceElement(int promiseIndex, JSRealm realm) {

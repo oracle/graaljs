@@ -53,6 +53,7 @@ import com.oracle.truffle.js.builtins.helper.ListSizeNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -110,7 +111,7 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
             SimpleArrayList<Object> properties = new SimpleArrayList<>();
             for (int i = 0; i < ownKeysSize; i++) {
                 Object key = listGet.execute(ownKeys, i);
-                if (key instanceof String) {
+                if (Strings.isTString(key)) {
                     PropertyDescriptor desc = getOwnProperty(thisObj, key);
                     if (desc != null && desc.getEnumerable()) {
                         Object element;

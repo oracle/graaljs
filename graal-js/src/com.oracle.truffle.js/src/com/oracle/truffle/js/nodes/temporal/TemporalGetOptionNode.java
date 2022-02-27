@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -82,10 +83,10 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
         return TemporalGetOptionNodeGen.create();
     }
 
-    public abstract Object execute(DynamicObject options, String property, OptionTypeEnum type, List<?> values, Object fallback);
+    public abstract Object execute(DynamicObject options, TruffleString property, OptionTypeEnum type, List<?> values, Object fallback);
 
     @Specialization
-    protected Object getOption(DynamicObject options, String property, OptionTypeEnum type, List<?> values, Object fallback) {
+    protected Object getOption(DynamicObject options, TruffleString property, OptionTypeEnum type, List<?> values, Object fallback) {
         assert JSRuntime.isObject(options);
         Object value = JSObject.get(options, property);
         if (isFallbackProfile.profile(value == Undefined.instance)) {
@@ -109,7 +110,7 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
         return value;
     }
 
-    private String toStringNode(Object value) {
+    private TruffleString toStringNode(Object value) {
         if (toStringNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toStringNode = insert(JSToStringNode.create());

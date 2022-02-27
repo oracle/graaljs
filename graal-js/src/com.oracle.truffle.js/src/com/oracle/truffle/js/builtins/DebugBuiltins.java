@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeUtil;
@@ -58,12 +59,13 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugArrayTypeNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugAssertIntNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNameNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugContinueInInterpreterNodeGen;
-import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugCreateLazyStringNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugCreateSafeIntegerNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugDumpCountersNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugDumpFunctionTreeNodeGen;
@@ -97,6 +99,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -106,7 +109,6 @@ import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
@@ -121,6 +123,12 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Contains builtins for {@code Debug} object.
  */
 public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBuiltins.Debug> {
+
+    public static final TruffleString NOT_AN_ARRAY = Strings.constant("NOT_AN_ARRAY");
+    public static final TruffleString NOT_AN_OBJECT = Strings.constant("not_an_object");
+    public static final TruffleString ASYNC_GENERATOR = Strings.constant("Async Generator");
+    public static final TruffleString GENERATOR = Strings.constant("Generator");
+    public static final TruffleString SPC_ITERATOR = Strings.constant(" Iterator");
 
     public static final JSBuiltinsContainer BUILTINS = new DebugBuiltins();
 
@@ -146,7 +154,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         jsStack(0),
         loadModule(2),
         createSafeInteger(1),
-        createLazyString(2),
         typedArrayDetachBuffer(1),
         systemGC(0),
         systemProperty(1),
@@ -215,8 +222,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
             case createSafeInteger:
                 return DebugCreateSafeIntegerNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case createLazyString:
-                return DebugCreateLazyStringNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
 
             case dumpHeap:
                 return DebugHeapDumpNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
@@ -257,7 +262,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 return Null.instance;
             }
             if (getName) {
-                return obj.getClass().getName();
+                return Strings.fromJavaString(obj.getClass().getName());
             } else {
                 return getRealm().getEnv().asGuestValue(obj.getClass());
             }
@@ -278,17 +283,17 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 DynamicObject jsObj = (DynamicObject) obj;
                 if (JSObjectUtil.hasHiddenProperty(jsObj, JSRuntime.ITERATED_OBJECT_ID)) {
                     DynamicObject iteratedObj = (DynamicObject) JSObjectUtil.getHiddenProperty(jsObj, JSRuntime.ITERATED_OBJECT_ID);
-                    return JSObject.getClassName(iteratedObj) + " Iterator";
+                    return Strings.concat(JSObject.getClassName(iteratedObj), SPC_ITERATOR);
                 } else if (JSObjectUtil.hasHiddenProperty(jsObj, JSFunction.GENERATOR_STATE_ID)) {
-                    return "Generator";
+                    return GENERATOR;
                 } else if (JSObjectUtil.hasHiddenProperty(jsObj, JSFunction.ASYNC_GENERATOR_STATE_ID)) {
-                    return "Async Generator";
+                    return ASYNC_GENERATOR;
                 } else if (JSProxy.isJSProxy(jsObj)) {
                     return clazz(JSProxy.getTarget(jsObj));
                 }
                 return JSObject.getClassName(jsObj);
             } else {
-                return "not_an_object";
+                return NOT_AN_OBJECT;
             }
         }
     }
@@ -302,7 +307,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @Specialization
         protected static Object shape(Object obj) {
             if (obj instanceof DynamicObject) {
-                return ((DynamicObject) obj).getShape().toString();
+                return Strings.fromJavaString(((DynamicObject) obj).getShape().toString());
             }
             return Undefined.instance;
         }
@@ -357,16 +362,16 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         }
 
         @TruffleBoundary
-        protected String debugPrint(DynamicObject object, int level, int levelStop) {
-            List<String> properties = JSObject.enumerableOwnNames(object);
-            StringBuilder sb = new StringBuilder(properties.size() * 10);
-            sb.append("{\n");
-            for (String key : properties) {
+        protected TruffleString debugPrint(DynamicObject object, int level, int levelStop) {
+            List<TruffleString> properties = JSObject.enumerableOwnNames(object);
+            TruffleStringBuilder sb = Strings.builderCreate(properties.size() * 10);
+            Strings.builderAppend(sb, "{\n");
+            for (TruffleString key : properties) {
                 indent(sb, level + 1);
                 PropertyDescriptor desc = JSObject.getOwnProperty(object, key);
 
                 // must not invoke accessor functions here
-                sb.append(key);
+                Strings.builderAppend(sb, key);
                 if (desc.isDataDescriptor()) {
                     Object value = JSObject.get(object, key);
                     if (JSDynamicObject.isJSDynamicObject(value)) {
@@ -374,30 +379,29 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                             if (level < levelStop && !key.equals(JSObject.CONSTRUCTOR)) {
                                 value = debugPrint((DynamicObject) value, level + 1, levelStop);
                             } else {
-                                value = "{...}";
+                                value = Strings.EMPTY_OBJECT_DOTS;
                             }
                         } else {
                             value = JSObject.getJSClass((DynamicObject) value);
                         }
                     }
-                    sb.append(": ");
-                    sb.append(value);
+                    Strings.builderAppend(sb, Strings.COLON_SPACE);
+                    Strings.builderAppend(sb, Strings.fromObject(value));
                 }
                 if (!key.equals(properties.get(properties.size() - 1))) {
-                    sb.append(',');
+                    Strings.builderAppend(sb, ',');
                 }
-                sb.append('\n');
+                Strings.builderAppend(sb, '\n');
             }
             indent(sb, level);
-            sb.append('}');
-            return sb.toString();
+            Strings.builderAppend(sb, '}');
+            return Strings.builderToString(sb);
         }
 
-        private static StringBuilder indent(StringBuilder sb, int level) {
+        private static void indent(TruffleStringBuilder sb, int level) {
             for (int i = 0; i < level; i++) {
-                sb.append(' ');
+                Strings.builderAppend(sb, ' ');
             }
-            return sb;
         }
     }
 
@@ -409,7 +413,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @TruffleBoundary
         @Specialization
         protected static Object toJavaString(Object thing) {
-            return String.valueOf(thing);
+            return Strings.fromJavaString(String.valueOf(thing));
         }
     }
 
@@ -423,7 +427,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         protected Object printSourceAttribution(DynamicObject function) {
             CallTarget callTarget = JSFunction.getCallTarget(function);
             if (callTarget instanceof RootCallTarget) {
-                return NodeUtil.printSourceAttributionTree(((RootCallTarget) callTarget).getRootNode());
+                return Strings.fromJavaString(NodeUtil.printSourceAttributionTree(((RootCallTarget) callTarget).getRootNode()));
             }
             return Undefined.instance;
         }
@@ -432,7 +436,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @Specialization
         protected Object printSourceAttribution(String code) {
             ScriptNode scriptNode = getContext().getEvaluator().evalCompile(getContext(), code, "<eval>");
-            return NodeUtil.printSourceAttributionTree(scriptNode.getRootNode());
+            return Strings.fromJavaString(NodeUtil.printSourceAttributionTree(scriptNode.getRootNode()));
         }
     }
 
@@ -443,11 +447,11 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
         @TruffleBoundary
         @Specialization
-        protected Object arraytype(Object array) {
+        protected TruffleString arraytype(Object array) {
             if (!(JSDynamicObject.isJSDynamicObject(array)) || !(JSObject.hasArray(array))) {
-                return "NOT_AN_ARRAY";
+                return NOT_AN_ARRAY;
             }
-            return JSObject.getArray((DynamicObject) array).getClass().getSimpleName();
+            return Strings.fromJavaString(JSObject.getArray((DynamicObject) array).getClass().getSimpleName());
         }
     }
 
@@ -473,9 +477,9 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
         @TruffleBoundary
         @Specialization
-        protected String heapDump(Object fileName0, Object live0) {
-            String fileName = fileName0 == Undefined.instance ? HeapDump.defaultDumpName() : JSRuntime.toString(fileName0);
-            boolean live = live0 == Undefined.instance ? true : JSRuntime.toBoolean(live0);
+        protected TruffleString heapDump(Object fileName0, Object live0) {
+            String fileName = fileName0 == Undefined.instance ? HeapDump.defaultDumpName() : Strings.toJavaString(JSRuntime.toString(fileName0));
+            boolean live = live0 == Undefined.instance || JSRuntime.toBoolean(live0);
             try {
                 HeapDump.dump(fileName, live);
             } catch (IOException e) {
@@ -484,7 +488,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 throw JSException.create(JSErrorType.Error, getBuiltin().getFullName() + " unsupported", e, this);
             }
 
-            return fileName;
+            return Strings.fromJavaString(fileName);
         }
     }
 
@@ -498,10 +502,11 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         }
 
         @Specialization
-        protected int stringCompare(Object a, Object b) {
-            String str1 = JSRuntime.toString(a);
-            String str2 = JSRuntime.toString(b);
-            int result = str1.compareTo(str2);
+        protected int stringCompare(Object a, Object b,
+                        @Cached TruffleString.CompareCharsUTF16Node compareNode) {
+            TruffleString str1 = JSRuntime.toString(a);
+            TruffleString str2 = JSRuntime.toString(b);
+            int result = Strings.compareTo(compareNode, str1, str2);
             if (result == 0) {
                 return 0;
             } else if (result < 0) {
@@ -570,20 +575,20 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
         @TruffleBoundary
         @Specialization
-        protected String loadModule(Object nameObj, Object modulesSourceMapObj) {
-            String name = JSRuntime.toString(nameObj);
+        protected TruffleString loadModule(Object nameObj, Object modulesSourceMapObj) {
+            TruffleString name = JSRuntime.toString(nameObj);
             DynamicObject modulesSourceMap = (DynamicObject) modulesSourceMapObj;
             Evaluator evaluator = getContext().getEvaluator();
             JSModuleLoader moduleLoader = new JSModuleLoader() {
-                private final Map<String, JSModuleRecord> moduleMap = new HashMap<>();
+                private final Map<TruffleString, JSModuleRecord> moduleMap = new HashMap<>();
 
-                private Source resolveModuleSource(@SuppressWarnings("unused") ScriptOrModule referencingModule, String specifier) {
+                private Source resolveModuleSource(@SuppressWarnings("unused") ScriptOrModule referencingModule, TruffleString specifier) {
                     Object moduleEntry = JSObject.get(modulesSourceMap, specifier);
                     if (moduleEntry == Undefined.instance) {
                         throw Errors.createSyntaxError(String.format("Could not find imported module %s", specifier));
                     }
-                    String code = JSRuntime.toString(moduleEntry);
-                    return Source.newBuilder(JavaScriptLanguage.ID, code, name).mimeType(JavaScriptLanguage.MODULE_MIME_TYPE).build();
+                    String code = JSRuntime.toJavaString(moduleEntry);
+                    return Source.newBuilder(JavaScriptLanguage.ID, code, Strings.toJavaString(name)).mimeType(JavaScriptLanguage.MODULE_MIME_TYPE).build();
                 }
 
                 @Override
@@ -601,7 +606,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             JSRealm realm = getRealm();
             evaluator.moduleInstantiation(realm, module);
             evaluator.moduleEvaluation(realm, module);
-            return String.valueOf(module);
+            return Strings.fromJavaString(String.valueOf(module));
         }
     }
 
@@ -619,7 +624,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 Object key = entry.getKey();
                 Object value = entry.getValue();
                 if (key instanceof String && value instanceof String) {
-                    JSObject.set(result, key, value);
+                    JSObject.set(result, Strings.fromJavaString((String) key), Strings.fromJavaString((String) value));
                 }
             }
             return result;
@@ -635,9 +640,9 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @TruffleBoundary
         @Specialization
         protected static Object systemProperty(Object name) {
-            String key = JSRuntime.toString(name);
+            String key = JSRuntime.toJavaString(name);
             String value = System.getProperty(key);
-            return (value == null) ? Undefined.instance : value;
+            return (value == null) ? Undefined.instance : Strings.fromJavaString(value);
         }
     }
 
@@ -680,33 +685,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             integer = Math.min(integer, JSRuntime.MAX_SAFE_INTEGER_LONG);
             return SafeInteger.valueOf(integer);
         }
-    }
-
-    public abstract static class DebugCreateLazyString extends JSBuiltinNode {
-
-        public DebugCreateLazyString(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected CharSequence createLazyString(String left, String right) {
-            CharSequence result = JSLazyString.create(left, right);
-            if (!(result instanceof JSLazyString)) {
-                throw Errors.createError(resultIsNotLazyStringMessage(left, right));
-            }
-            return result;
-        }
-
-        @TruffleBoundary
-        private static String resultIsNotLazyStringMessage(String left, String right) {
-            return "Concatenation of '" + left + "' and '" + right + "' does not produce JSLazyString.";
-        }
-
-        @Specialization
-        protected CharSequence createLazyString(Object left, Object right) {
-            return createLazyString(JSRuntime.toString(left), JSRuntime.toString(right));
-        }
-
     }
 
     public abstract static class DebugNeverPartOfCompilationNode extends JSBuiltinNode implements JSBuiltinNode.Inlineable, JSBuiltinNode.Inlined {

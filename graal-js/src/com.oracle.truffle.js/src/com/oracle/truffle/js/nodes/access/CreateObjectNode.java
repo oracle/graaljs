@@ -57,10 +57,11 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNodeFactory.CreateObjectWithCachedPrototypeNodeGen;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDictionary;
-import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -165,7 +166,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         final DynamicObject doOrdinaryInstancePrototype(DynamicObject prototype,
                         @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode) {
             DynamicObject object = JSOrdinary.createWithoutPrototype(context);
-            setProtoNode.put(object, JSObject.HIDDEN_PROTO, prototype);
+            Properties.put(setProtoNode, object, JSObject.HIDDEN_PROTO, prototype);
             return object;
         }
 
@@ -173,7 +174,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         final DynamicObject doPromiseInstancePrototype(DynamicObject prototype,
                         @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode) {
             DynamicObject object = JSPromise.createWithoutPrototype(context);
-            setProtoNode.put(object, JSObject.HIDDEN_PROTO, prototype);
+            Properties.put(setProtoNode, object, JSObject.HIDDEN_PROTO, prototype);
             return object;
         }
 

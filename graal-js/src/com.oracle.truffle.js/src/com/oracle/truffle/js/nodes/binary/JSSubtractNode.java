@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
@@ -47,13 +49,13 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNumericUnitNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.runtime.BigInt;
-
-import java.util.Set;
+import com.oracle.truffle.js.runtime.Strings;
 
 @NodeInfo(shortName = "-")
 public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable {
@@ -103,8 +105,8 @@ public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable
         return overloadedOperatorNode.execute(a, b);
     }
 
-    protected String getOverloadedOperatorName() {
-        return "-";
+    protected TruffleString getOverloadedOperatorName() {
+        return Strings.SYMBOL_MINUS;
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doDouble", "doBigInt"})

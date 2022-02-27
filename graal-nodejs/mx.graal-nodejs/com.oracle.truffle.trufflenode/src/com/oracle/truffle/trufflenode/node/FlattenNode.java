@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.trufflenode.node;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -47,25 +49,27 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
 @ImportStatic({JSRuntime.class})
 abstract class FlattenNode extends JavaScriptBaseNode {
     protected abstract Object execute(Object value);
 
     @Specialization
-    protected static String doLazyString(JSLazyString value) {
-        return value.toString();
+    protected static String doString(@SuppressWarnings("unused") String value) {
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Specialization
-    protected static String doString(String value) {
-        return value;
+    protected static TruffleString doTruffleString(TruffleString value,
+                    @Cached TruffleString.MaterializeNode materializeNode) {
+        return Strings.flatten(materializeNode, value);
     }
 
     @Specialization
@@ -116,7 +120,7 @@ abstract class FlattenNode extends JavaScriptBaseNode {
             // must be jstring (to allow the usage of various String-specific
             // JNI functions) => return the unboxed string
             try {
-                return interop.asString(value);
+                return interop.asTruffleString(value);
             } catch (UnsupportedMessageException e) {
                 // fall through
             }
@@ -124,7 +128,7 @@ abstract class FlattenNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization(guards = {"!isLazyString(value)", "!isTruffleObject(value)"})
+    @Specialization(guards = "!isTruffleObject(value)")
     protected static Object doOther(Object value) {
         return value;
     }

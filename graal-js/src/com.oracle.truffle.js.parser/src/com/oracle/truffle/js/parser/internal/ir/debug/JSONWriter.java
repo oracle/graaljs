@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,7 +88,9 @@ import com.oracle.js.parser.ir.VarNode;
 import com.oracle.js.parser.ir.WhileNode;
 import com.oracle.js.parser.ir.WithNode;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.parser.json.JSONParserUtil;
+import com.oracle.truffle.js.runtime.Strings;
 
 /**
  * This IR writer produces a JSON string that represents AST as a JSON string.
@@ -153,7 +155,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
         accessNode.getBase().accept(this);
         comma();
 
-        property("property", accessNode.getProperty());
+        property("property", Strings.toJavaString(accessNode.getProperty()));
         comma();
 
         property("computed", false);
@@ -189,7 +191,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
         type(name);
         comma();
 
-        property("operator", binaryNode.tokenType().getNameOrType());
+        property("operator", Strings.toJavaString(binaryNode.tokenType().getNameOrType()));
         comma();
 
         property("left");
@@ -209,7 +211,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
         type("BreakStatement");
         comma();
 
-        final String label = breakNode.getLabelName();
+        final String label = Strings.toJavaString(breakNode.getLabelName());
         if (label != null) {
             property("label", label);
         } else {
@@ -291,7 +293,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
         type("ContinueStatement");
         comma();
 
-        final String label = continueNode.getLabelName();
+        final String label = Strings.toJavaString(continueNode.getLabelName());
         if (label != null) {
             property("label", label);
         } else {
@@ -521,13 +523,13 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
     public boolean enterIdentNode(final IdentNode identNode) {
         enterDefault(identNode);
 
-        final String name = identNode.getName();
+        final String name = Strings.toJavaString(identNode.getName());
         if ("this".equals(name)) {
             type("ThisExpression");
         } else {
             type("Identifier");
             comma();
-            property("name", identNode.getName());
+            property("name", Strings.toJavaString(identNode.getName()));
         }
 
         return leave();
@@ -586,7 +588,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
         type("LabeledStatement");
         comma();
 
-        property("label", labelNode.getLabelName());
+        property("label", Strings.toJavaString(labelNode.getLabelName()));
         comma();
 
         property("body");
@@ -623,7 +625,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
             } else if (value != null && value.equals(Double.POSITIVE_INFINITY)) {
                 buf.append("\"Infinity\"");
             } else {
-                final String str = literalNode.getString();
+                final TruffleString str = literalNode.getString();
                 // encode every String literal with prefix '$' so that script
                 // can differentiate b/w RegExps as Strings and Strings.
                 buf.append(literalNode.isString() ? quote("$" + str) : str);
@@ -875,7 +877,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
                     break;
                 default:
                     prefix = true;
-                    operator = tokenType.getName();
+                    operator = Strings.toJavaString(tokenType.getName());
                     break;
             }
 
@@ -1135,6 +1137,6 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
     }
 
     private static String quote(final String str) {
-        return JSONParserUtil.quote(str);
+        return Strings.toJavaString(JSONParserUtil.quote(Strings.fromJavaString(str)));
     }
 }

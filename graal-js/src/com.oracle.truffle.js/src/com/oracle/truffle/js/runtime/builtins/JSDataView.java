@@ -45,6 +45,7 @@ import java.util.function.Function;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -52,19 +53,20 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSDataView extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
-    public static final String CLASS_NAME = "DataView";
-    public static final String PROTOTYPE_NAME = "DataView.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("DataView");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("DataView.prototype");
 
     public static final JSDataView INSTANCE = new JSDataView();
 
-    private static final String BYTE_LENGTH = "byteLength";
-    private static final String BUFFER = "buffer";
-    private static final String BYTE_OFFSET = "byteOffset";
+    private static final TruffleString BYTE_LENGTH = Strings.constant("byteLength");
+    private static final TruffleString BUFFER = Strings.constant("buffer");
+    private static final TruffleString BYTE_OFFSET = Strings.constant("byteOffset");
 
     public static int typedArrayGetLength(Object thisObj) {
         assert JSDataView.isJSDataView(thisObj);
@@ -125,7 +127,7 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
         return typedArrayGetOffset(thisObj);
     }
 
-    private static void putGetter(JSRealm realm, DynamicObject prototype, String name, BuiltinFunctionKey key, Function<DynamicObject, Object> function) {
+    private static void putGetter(JSRealm realm, DynamicObject prototype, TruffleString name, BuiltinFunctionKey key, Function<DynamicObject, Object> function) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(key, (c) -> {
             return JSFunctionData.createCallOnly(c, new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Override
@@ -136,7 +138,7 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
                     }
                     throw Errors.createTypeErrorNotADataView();
                 }
-            }.getCallTarget(), 0, "get " + name);
+            }.getCallTarget(), 0, Strings.concat(Strings.GET_SPC, name));
         });
         DynamicObject getter = JSFunction.create(realm, getterData);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, name, getter, Undefined.instance);
@@ -153,12 +155,12 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 

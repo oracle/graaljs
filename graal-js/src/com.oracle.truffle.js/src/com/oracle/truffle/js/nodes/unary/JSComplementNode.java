@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
@@ -54,6 +55,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 @NodeInfo(shortName = "~")
@@ -104,8 +106,8 @@ public abstract class JSComplementNode extends JSUnaryNode {
         return overloadedOperatorNode.execute(a);
     }
 
-    protected String getOverloadedOperatorName() {
-        return "~";
+    protected TruffleString getOverloadedOperatorName() {
+        return Strings.SYMBOL_TILDE;
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(value)"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})

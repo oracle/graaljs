@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -55,19 +58,17 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
-import java.util.Set;
-
 public abstract class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode {
     private final boolean isConst;
     @Child private JSGetOwnPropertyNode getOwnPropertyNode;
 
-    protected DeclareGlobalLexicalVariableNode(String varName, boolean isConst) {
+    protected DeclareGlobalLexicalVariableNode(TruffleString varName, boolean isConst) {
         super(varName);
         this.isConst = isConst;
         this.getOwnPropertyNode = JSGetOwnPropertyNode.create(false);
     }
 
-    public static DeclareGlobalLexicalVariableNode create(String varName, boolean isConst) {
+    public static DeclareGlobalLexicalVariableNode create(TruffleString varName, boolean isConst) {
         return DeclareGlobalLexicalVariableNodeGen.create(varName, isConst);
     }
 

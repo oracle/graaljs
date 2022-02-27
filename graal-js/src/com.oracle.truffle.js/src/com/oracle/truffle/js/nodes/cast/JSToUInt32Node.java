@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -62,10 +65,9 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
-
-import java.util.Set;
 
 public abstract class JSToUInt32Node extends JavaScriptBaseNode {
 
@@ -160,12 +162,12 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected double doString(String value,
+    protected double doString(TruffleString value,
                     @Cached("create()") JSStringToNumberNode stringToNumberNode) {
         return JSRuntime.toUInt32(stringToNumberNode.executeString(value));
     }
 
-    private static double doStringStatic(String value) {
+    private static double doStringStatic(TruffleString value) {
         return JSRuntime.toUInt32(JSRuntime.doubleValue(JSRuntime.stringToNumber(value)));
     }
 
@@ -189,8 +191,8 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         return overloadedOperatorNode.execute(value, shiftValue);
     }
 
-    protected String getOverloadedOperatorName() {
-        return ">>>";
+    protected TruffleString getOverloadedOperatorName() {
+        return Strings.ANGLE_BRACKET_CLOSE_3;
     }
 
     @Specialization(guards = {"isJSObject(value)", "!isUnsignedRightShift() || !hasOverloadedOperators(value)"})
@@ -239,8 +241,8 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
             } else if (child instanceof JSConstantUndefinedNode || child instanceof JSConstantNullNode) {
                 return JSConstantNode.createInt(0);
             } else if (child instanceof JSConstantStringNode) {
-                String value = ((JSConstantStringNode) child).executeString(null);
-                return JSConstantNode.createDouble(doStringStatic(value));
+                Object value = child.execute(null);
+                return JSConstantNode.createDouble(doStringStatic((TruffleString) value));
             } else if (child instanceof JSToInt32Node) {
                 JSToInt32Node toInt32Child = (JSToInt32Node) child;
                 if (toInt32Child.isBitwiseOr() && unsignedRightShift) {

@@ -46,6 +46,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Strings;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -299,9 +301,12 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
         boolean profileTime = context.getContextOptions().isProfileTime();
         long startTime = profileTime ? System.nanoTime() : 0L;
         try {
-            String[] arguments = null;
+            TruffleString[] arguments = null;
             if (!argumentNames.isEmpty()) {
-                arguments = argumentNames.toArray(new String[0]);
+                arguments = new TruffleString[argumentNames.size()];
+                for (int i = 0; i < arguments.length; i++) {
+                    arguments[i] = Strings.fromJavaString(argumentNames.get(i));
+                }
             }
             return context.getEvaluator().parseScript(context, code, prolog, epilog, strict, arguments);
         } finally {

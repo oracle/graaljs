@@ -49,6 +49,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.DeclareTagProvider;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -57,6 +58,7 @@ import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 
@@ -92,7 +94,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
     }
 
     public static JSFunctionExpressionNode createEmpty(JSContext context, int length, String sourceName) {
-        return new AutonomousFunctionExpressionNode(JSFunctionData.create(context, context.getEmptyFunctionCallTarget(), length, sourceName), null);
+        return new AutonomousFunctionExpressionNode(JSFunctionData.create(context, context.getEmptyFunctionCallTarget(), length, Strings.fromJavaString(sourceName)), null);
     }
 
     @Override
@@ -140,12 +142,12 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
     }
 
     @Override
-    public String getFunctionName() {
+    public TruffleString getFunctionName() {
         return functionData.getName();
     }
 
     @Override
-    public void setFunctionName(String name) {
+    public void setFunctionName(TruffleString name) {
         CompilerAsserts.neverPartOfCompilation();
         functionData.setName(name);
     }

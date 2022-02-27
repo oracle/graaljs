@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -49,7 +50,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public interface JSConstructorFactory {
 
-    String getClassName();
+    TruffleString getClassName();
 
     DynamicObject createPrototype(JSRealm realm, DynamicObject constructor);
 

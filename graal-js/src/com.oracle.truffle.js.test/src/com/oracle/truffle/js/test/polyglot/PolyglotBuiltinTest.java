@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,8 @@ package com.oracle.truffle.js.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -83,10 +85,10 @@ public class PolyglotBuiltinTest extends JSTest {
             }
             addTestPolyglotBuiltins(context);
             Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceCode, "polyglot-test").buildLiteral());
-            assertTrue(failedMessage == null);
+            assertNull(failedMessage);
             return result.asString();
         } catch (Exception ex) {
-            assertTrue(failedMessage != null);
+            assertNotNull(failedMessage);
             assertTrue(ex.getMessage().contains(failedMessage));
             return "FAILED_AS_EXPECTED";
         }

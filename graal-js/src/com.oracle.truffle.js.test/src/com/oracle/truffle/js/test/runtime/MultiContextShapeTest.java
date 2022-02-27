@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.test.runtime;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertSame;
 
+import com.oracle.truffle.js.runtime.Strings;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
@@ -111,7 +112,7 @@ public class MultiContextShapeTest {
     private static DynamicObject unwrapJSObject(Context c, Value value) {
         final String key = "_testObject";
         c.getBindings(ID).putMember(key, value);
-        return (DynamicObject) JSObject.get(JavaScriptLanguage.getJSRealm(c).getGlobalObject(), key);
+        return (DynamicObject) JSObject.get(JavaScriptLanguage.getJSRealm(c).getGlobalObject(), Strings.fromJavaString(key));
     }
 
 }

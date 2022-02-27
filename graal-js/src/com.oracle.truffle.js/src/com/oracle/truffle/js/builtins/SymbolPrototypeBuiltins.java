@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.SymbolPrototypeBuiltinsFactory.SymbolToPrimitiveNodeGen;
 import com.oracle.truffle.js.builtins.SymbolPrototypeBuiltinsFactory.SymbolToStringNodeGen;
 import com.oracle.truffle.js.builtins.SymbolPrototypeBuiltinsFactory.SymbolValueOfNodeGen;
@@ -115,11 +116,11 @@ public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final ConditionProfile isPrimitiveSymbolProfile = ConditionProfile.createBinaryProfile();
 
         @Specialization
-        protected String toString(Object thisObj) {
+        protected TruffleString toString(Object thisObj) {
             if (isSymbolObjectProfile.profile(JSSymbol.isJSSymbol(thisObj))) {
-                return JSSymbol.getSymbolData((DynamicObject) thisObj).toString();
+                return JSSymbol.getSymbolData((DynamicObject) thisObj).toTString();
             } else if (isPrimitiveSymbolProfile.profile(thisObj instanceof Symbol)) {
-                return ((Symbol) thisObj).toString();
+                return ((Symbol) thisObj).toTString();
             } else {
                 throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
             }

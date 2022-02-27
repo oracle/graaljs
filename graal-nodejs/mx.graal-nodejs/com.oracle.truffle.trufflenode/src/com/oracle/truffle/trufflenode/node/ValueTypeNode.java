@@ -73,7 +73,6 @@ import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT16ARRAY_OBJEC
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT32ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT8ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT8CLAMPEDARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.LAZY_STRING_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.MAP_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.NULL_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.NUMBER_VALUE;
@@ -89,6 +88,7 @@ import static com.oracle.truffle.trufflenode.ValueType.UNKNOWN_TYPE;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -98,6 +98,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -157,7 +158,12 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static int doString(String value) {
+    protected static int doString(@SuppressWarnings("unused") String value) {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    @Specialization
+    protected static int doTruffleString(TruffleString value) {
         return STRING_VALUE;
     }
 
@@ -347,11 +353,6 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
                     "!isJSDirectArrayBuffer(value)"}, replaces = {"doOrdinaryObject"})
     protected static int doObject(DynamicObject value) {
         return ORDINARY_OBJECT;
-    }
-
-    @Specialization(guards = "isLazyString(value)")
-    protected static int doCharSequence(CharSequence value) {
-        return LAZY_STRING_VALUE;
     }
 
     @Specialization

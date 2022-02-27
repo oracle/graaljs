@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ package com.oracle.js.parser.ir;
 import com.oracle.js.parser.TokenType;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * IR representation of an object literal property.
@@ -124,7 +125,7 @@ public final class PropertyNode extends Node {
      *
      * @return key name
      */
-    public String getKeyName() {
+    public TruffleString getKeyName() {
         return key instanceof PropertyKey ? ((PropertyKey) key).getPropertyName() : null;
     }
 
@@ -312,7 +313,7 @@ public final class PropertyNode extends Node {
         return key instanceof IdentNode && ((IdentNode) key).isPrivate();
     }
 
-    public String getPrivateName() {
+    public TruffleString getPrivateName() {
         assert isPrivate();
         return ((IdentNode) key).getName();
     }

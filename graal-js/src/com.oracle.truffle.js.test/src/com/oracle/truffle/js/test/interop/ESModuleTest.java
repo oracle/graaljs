@@ -46,15 +46,6 @@ import static com.oracle.truffle.js.runtime.JSContextOptions.ESM_EVAL_RETURNS_EX
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.FileSystem;
-import org.junit.Assert;
-import org.junit.Test;
-
-import com.oracle.truffle.js.test.JSTest;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -77,6 +68,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.FileSystem;
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.oracle.truffle.js.test.JSTest;
 
 /**
  * Various tests for EcmaScript 6 module loading via {@link Source}.
@@ -140,7 +140,8 @@ public class ESModuleTest {
      *         an empty string.
      */
     private static String[] baseAndExtension(String fileName) {
-        String fileNameBase = fileName.contains(".") ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
+        int lastDot = fileName.lastIndexOf('.');
+        String fileNameBase = lastDot < 0 ? fileName : fileName.substring(0, lastDot);
         String fileNameExtension = fileName.substring(fileNameBase.length());
         return new String[]{fileNameBase, fileNameExtension};
     }

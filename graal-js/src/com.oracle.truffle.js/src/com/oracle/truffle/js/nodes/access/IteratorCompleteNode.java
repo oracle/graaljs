@@ -43,7 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 
 /**
  * ES6 7.4.3 IteratorComplete(iterResult).
@@ -53,7 +53,7 @@ public class IteratorCompleteNode extends JavaScriptBaseNode {
     @Child private JSToBooleanNode toBooleanNode;
 
     protected IteratorCompleteNode(JSContext context) {
-        this.getDoneNode = PropertyGetNode.create(JSRuntime.DONE, false, context);
+        this.getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
         this.toBooleanNode = JSToBooleanNode.create();
     }
 

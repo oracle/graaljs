@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
@@ -70,12 +71,12 @@ import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -86,7 +87,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 /**
  * 11.4.1 The delete Operator ({@code delete object[property]}).
  */
-@ImportStatic({JSConfig.class})
+@ImportStatic(JSConfig.class)
 @NodeInfo(shortName = "delete")
 public abstract class DeletePropertyNode extends JSTargetableNode {
     protected final boolean strict;
@@ -191,11 +192,11 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     protected final boolean doJSObject(JSDynamicObject targetObject, Object key,
                     @Cached("createIsFastArray()") IsArrayNode isArrayNode,
                     @Cached("createBinaryProfile()") ConditionProfile arrayProfile,
-                    @Cached("create()") ToArrayIndexNode toArrayIndexNode,
+                    @Cached ToArrayIndexNode toArrayIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile arrayIndexProfile,
                     @Cached("create(context, strict)") JSArrayDeleteIndexNode deleteArrayIndexNode,
-                    @Cached("create()") JSClassProfile jsclassProfile,
-                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+                    @Cached JSClassProfile jsclassProfile,
+                    @Shared("toPropertyKey") @Cached JSToPropertyKeyNode toPropertyKeyNode) {
         final Object propertyKey;
         if (arrayProfile.profile(isArrayNode.execute(targetObject))) {
             Object objIndex = toArrayIndexNode.execute(key);
@@ -215,7 +216,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @SuppressWarnings("unused")
     @Specialization
     protected static boolean doSymbol(Symbol target, Object property,
-                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+                    @Shared("toPropertyKey") @Cached JSToPropertyKeyNode toPropertyKeyNode) {
         toPropertyKeyNode.execute(property);
         return true;
     }
@@ -223,7 +224,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @SuppressWarnings("unused")
     @Specialization
     protected static boolean doSafeInteger(SafeInteger target, Object property,
-                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+                    @Shared("toPropertyKey") @Cached JSToPropertyKeyNode toPropertyKeyNode) {
         toPropertyKeyNode.execute(property);
         return true;
     }
@@ -231,21 +232,22 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @SuppressWarnings("unused")
     @Specialization
     protected static boolean doBigInt(BigInt target, Object property,
-                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+                    @Shared("toPropertyKey") @Cached JSToPropertyKeyNode toPropertyKeyNode) {
         toPropertyKeyNode.execute(property);
         return true;
     }
 
     @Specialization
-    protected boolean doString(String target, Object property,
-                    @Shared("toArrayIndex") @Cached("create()") ToArrayIndexNode toArrayIndexNode) {
+    protected boolean doString(TruffleString target, Object property,
+                    @Shared("toArrayIndex") @Cached ToArrayIndexNode toArrayIndexNode,
+                    @Cached TruffleString.EqualNode equalsNode) {
         Object objIndex = toArrayIndexNode.execute(property);
         boolean result;
         if (objIndex instanceof Long) {
             long index = (Long) objIndex;
-            result = (index < 0) || (target.length() <= index);
+            result = (index < 0) || (Strings.length(target) <= index);
         } else {
-            result = !JSString.LENGTH.equals(objIndex);
+            result = !Strings.equals(equalsNode, JSString.LENGTH, (TruffleString) objIndex);
         }
         if (strict && !result) {
             throw Errors.createTypeError("cannot delete index");
@@ -254,7 +256,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     }
 
     @Specialization(guards = {"isForeignObject(target)", "!interop.hasArrayElements(target)"})
-    protected boolean member(Object target, String name,
+    protected boolean member(Object target, TruffleString name,
                     @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
         if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
             try {
@@ -269,10 +271,10 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
                 return false;
             }
         }
-
-        if (interop.isMemberExisting(target, name)) {
+        String javaName = Strings.toJavaString(name);
+        if (interop.isMemberExisting(target, javaName)) {
             try {
-                interop.removeMember(target, name);
+                interop.removeMember(target, javaName);
                 return true;
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                 if (strict) {
@@ -302,7 +304,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         // and cannot be deleted but deleting out of bounds is always successful.
         if (index >= 0 && index < length) {
             if (strict) {
-                throw Errors.createTypeErrorNotConfigurableProperty(Boundaries.stringValueOf(index));
+                throw Errors.createTypeErrorNotConfigurableProperty(Strings.fromLong(index));
             }
             return false;
         } else {
@@ -346,8 +348,8 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
             return hashEntry(target, propertyKey, interop);
         }
         if (interop.hasMembers(target)) {
-            if (propertyKey instanceof String) {
-                return member(target, (String) propertyKey, interop);
+            if (Strings.isTString(propertyKey)) {
+                return member(target, (TruffleString) propertyKey, interop);
             } else {
                 assert propertyKey instanceof Symbol;
                 return true;
@@ -360,7 +362,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isTruffleObject(target)", "!isString(target)"})
     public boolean doOther(Object target, Object property,
-                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+                    @Shared("toPropertyKey") @Cached JSToPropertyKeyNode toPropertyKeyNode) {
         toPropertyKeyNode.execute(property);
         return true;
     }

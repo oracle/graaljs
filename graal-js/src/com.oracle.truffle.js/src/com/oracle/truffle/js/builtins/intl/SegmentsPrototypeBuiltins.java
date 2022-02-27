@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.SegmentsPrototypeBuiltinsFactory.SegmentsContainingNodeGen;
 import com.oracle.truffle.js.builtins.intl.SegmentsPrototypeBuiltinsFactory.SegmentsIteratorNodeGen;
@@ -55,6 +56,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.intl.CreateSegmentDataObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
@@ -111,15 +113,16 @@ public final class SegmentsPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization
         public Object doSegments(JSSegmentsObject segments, Object index,
                         @Cached JSToIntegerAsIntNode toIntegerNode,
-                        @Cached("create(getContext())") CreateSegmentDataObjectNode createResultNode) {
+                        @Cached("create(getContext())") CreateSegmentDataObjectNode createResultNode,
+                        @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
             int n = toIntegerNode.executeInt(index);
-            String string = segments.getSegmentsString();
-            int len = string.length();
+            TruffleString string = segments.getSegmentsString();
+            int len = Strings.length(string);
             if (n < 0 || n >= len) {
                 return Undefined.instance;
             }
             JSSegmenterObject segmenter = segments.getSegmentsSegmenter();
-            BreakIterator breakIterator = getBreakIterator(segmenter, string);
+            BreakIterator breakIterator = getBreakIterator(segmenter, toJavaStringNode.execute(string));
             int startIndex = findBoundaryBefore(breakIterator, n);
             int endIndex = findBoundaryAfter(breakIterator, n);
             return createResultNode.execute(breakIterator, JSSegmenter.getGranularity(segmenter), string, startIndex, endIndex);
@@ -181,7 +184,7 @@ public final class SegmentsPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return new CreateSegmentIteratorNode(context);
         }
 
-        public DynamicObject execute(DynamicObject segmenter, String value) {
+        public DynamicObject execute(DynamicObject segmenter, TruffleString value) {
             assert JSSegmenter.isJSSegmenter(segmenter);
             return JSSegmenter.createSegmentIterator(context, getRealm(), segmenter, value);
         }

@@ -51,6 +51,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -99,7 +100,7 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static void doCharSequence(@SuppressWarnings("unused") CharSequence value) {
+    protected static void doTString(@SuppressWarnings("unused") TruffleString value) {
     }
 
     @Specialization

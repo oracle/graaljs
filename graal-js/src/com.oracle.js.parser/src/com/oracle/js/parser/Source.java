@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 
 package com.oracle.js.parser;
+
+import com.oracle.truffle.api.strings.TruffleString;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -97,18 +99,18 @@ public final class Source {
 
         long lastModified();
 
-        CharSequence data();
+        TruffleString data();
 
         boolean isEvalCode();
     }
 
     private static final class RawData implements Data {
-        private final CharSequence source;
+        private final TruffleString source;
         private final boolean evalCode;
         private int hash;
 
         private RawData(final CharSequence source, final boolean evalCode) {
-            this.source = Objects.requireNonNull(source);
+            this.source = ParserStrings.constant(Objects.requireNonNull(source).toString());
             this.evalCode = evalCode;
         }
 
@@ -149,7 +151,7 @@ public final class Source {
 
         @Override
         public int length() {
-            return source.length();
+            return ParserStrings.length(source);
         }
 
         @Override
@@ -158,7 +160,7 @@ public final class Source {
         }
 
         @Override
-        public CharSequence data() {
+        public TruffleString data() {
             return source;
         }
 
@@ -168,8 +170,12 @@ public final class Source {
         }
     }
 
-    private CharSequence data() {
+    private TruffleString data() {
         return data.data();
+    }
+
+    private int length() {
+        return data.length();
     }
 
     /**
@@ -221,8 +227,8 @@ public final class Source {
      *
      * @return Source content.
      */
-    public String getString() {
-        return data.toString();
+    public TruffleString getString() {
+        return data.data();
     }
 
     /**
@@ -259,8 +265,8 @@ public final class Source {
      * @param len length of portion
      * @return Source content portion.
      */
-    public String getString(final int start, final int len) {
-        return data().subSequence(start, start + len).toString();
+    public TruffleString getString(final int start, final int len) {
+        return data().substringByteIndexUncached(start * 2, len * 2, TruffleString.Encoding.UTF_16, true);
     }
 
     /**
@@ -269,7 +275,7 @@ public final class Source {
      * @param token Token descriptor.
      * @return Source content portion.
      */
-    public String getString(final long token) {
+    public TruffleString getString(final long token) {
         final int start = Token.descPosition(token);
         final int len = Token.descLength(token);
         return getString(start, len);
@@ -319,9 +325,9 @@ public final class Source {
      * @return Index of first character of line.
      */
     private int findBOLN(final int position) {
-        final CharSequence d = data();
+        final TruffleString d = data();
         for (int i = position - 1; i >= 0; i--) {
-            final char ch = d.charAt(i);
+            final char ch = ParserStrings.charAt(d, i);
 
             if (ch == '\n' || ch == '\r') {
                 return i + 1;
@@ -338,10 +344,10 @@ public final class Source {
      * @return Index of last character of line.
      */
     private int findEOLN(final int position) {
-        final CharSequence d = data();
-        final int length = d.length();
+        final TruffleString d = data();
+        final int length = length();
         for (int i = position; i < length; i++) {
-            final char ch = d.charAt(i);
+            final char ch = ParserStrings.charAt(d, i);
 
             if (ch == '\n' || ch == '\r') {
                 return i - 1;
@@ -363,12 +369,12 @@ public final class Source {
      * @return Line number.
      */
     public int getLine(final int position) {
-        final CharSequence d = data();
+        final TruffleString d = data();
         // Line count starts at 1.
         int line = 1;
 
         for (int i = 0; i < position; i++) {
-            final char ch = d.charAt(i);
+            final char ch = ParserStrings.charAt(d, i);
             // Works for both \n and \r\n.
             if (ch == '\n') {
                 line++;
@@ -395,19 +401,19 @@ public final class Source {
      * @param position Position of character in source content.
      * @return Line text.
      */
-    public CharSequence getSourceLine(final int position) {
+    public TruffleString getSourceLine(final int position) {
         // Find end of previous line.
         final int first = findBOLN(position);
         // Find end of this line.
         final int last = findEOLN(position);
 
-        return data().subSequence(first, last + 1);
+        return getString(first, last + 1 - first);
     }
 
     /**
      * Get the content of this source as a {@link CharSequence}.
      */
-    public CharSequence getContent() {
+    public TruffleString getContent() {
         return data();
     }
 
@@ -455,12 +461,12 @@ public final class Source {
     private byte[] getDigestBytes() {
         byte[] ldigest = digest;
         if (ldigest == null) {
-            final CharSequence content = data();
-            final byte[] bytes = new byte[content.length() * 2];
+            final TruffleString content = data();
+            final byte[] bytes = new byte[length() * 2];
 
-            for (int i = 0; i < content.length(); i++) {
-                bytes[i * 2] = (byte) (content.charAt(i) & 0x00ff);
-                bytes[i * 2 + 1] = (byte) ((content.charAt(i) & 0xff00) >> 8);
+            for (int i = 0; i < length(); i++) {
+                bytes[i * 2] = (byte) (ParserStrings.charAt(content, i) & 0x00ff);
+                bytes[i * 2 + 1] = (byte) ((ParserStrings.charAt(content, i) & 0xff00) >> 8);
             }
 
             try {

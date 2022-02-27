@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.oracle.truffle.js.runtime.Strings;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -61,7 +62,7 @@ public class GR15550 {
             Value arr = context.eval(JavaScriptLanguage.ID, "var arr = [1,2,3,6,7,8]; arr;");
             // Make it a "slow array"
             context.eval(JavaScriptLanguage.ID, "Object.defineProperty(arr, 3, { value: 55 });");
-            assertTrue("expected SlowArray", JSSlowArray.isJSSlowArray(JSObject.get(JavaScriptLanguage.getJSRealm(context).getGlobalObject(), "arr")));
+            assertTrue("expected SlowArray", JSSlowArray.isJSSlowArray(JSObject.get(JavaScriptLanguage.getJSRealm(context).getGlobalObject(), Strings.fromJavaString("arr"))));
             // defineProperty with length > 2**31
             context.eval(JavaScriptLanguage.ID, "Object.defineProperty(arr, 'length', { value: 4294967289 });");
             assertEquals(4294967289L, arr.getArraySize());

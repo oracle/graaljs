@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import com.oracle.js.parser.ir.Module;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
@@ -65,12 +66,12 @@ public class ResolveNamedImportNode extends StatementNode {
 
     private final JSContext context;
     private final Module.ModuleRequest moduleRequest;
-    private final String importName;
+    private final TruffleString importName;
     @Child private JavaScriptNode moduleNode;
     @Child private JSWriteFrameSlotNode writeLocalNode;
     private final ValueProfile resolutionProfile = ValueProfile.createClassProfile();
 
-    ResolveNamedImportNode(JSContext context, JavaScriptNode moduleNode, Module.ModuleRequest moduleRequest, String importName, JSWriteFrameSlotNode writeLocalNode) {
+    ResolveNamedImportNode(JSContext context, JavaScriptNode moduleNode, Module.ModuleRequest moduleRequest, TruffleString importName, JSWriteFrameSlotNode writeLocalNode) {
         this.context = context;
         this.moduleRequest = moduleRequest;
         this.moduleNode = moduleNode;
@@ -78,7 +79,7 @@ public class ResolveNamedImportNode extends StatementNode {
         this.writeLocalNode = writeLocalNode;
     }
 
-    public static StatementNode create(JSContext context, JavaScriptNode moduleNode, Module.ModuleRequest moduleRequest, String importName, JSWriteFrameSlotNode writeLocalNode) {
+    public static StatementNode create(JSContext context, JavaScriptNode moduleNode, Module.ModuleRequest moduleRequest, TruffleString importName, JSWriteFrameSlotNode writeLocalNode) {
         return new ResolveNamedImportNode(context, moduleNode, moduleRequest, importName, writeLocalNode);
     }
 

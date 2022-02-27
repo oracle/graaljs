@@ -52,6 +52,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.TypedArrayFunctionBuiltins;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltins;
@@ -63,6 +64,7 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.array.TypedArray;
@@ -78,16 +80,17 @@ import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
 public final class JSArrayBufferView extends JSNonProxy {
-    public static final String CLASS_NAME = "TypedArray";
-    public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("TypedArray");
+    public static final TruffleString PROTOTYPE_NAME = Strings.concat(CLASS_NAME, Strings.DOT_PROTOTYPE);
+
+    private static final TruffleString BYTES_PER_ELEMENT = Strings.constant("BYTES_PER_ELEMENT");
+    private static final TruffleString BYTE_LENGTH = Strings.constant("byteLength");
+    private static final TruffleString LENGTH = JSAbstractArray.LENGTH;
+    private static final TruffleString BUFFER = Strings.constant("buffer");
+    private static final TruffleString BYTE_OFFSET = Strings.constant("byteOffset");
+    private static final TruffleString GET_SYMBOL_TO_STRING_TAG_NAME = Strings.constant("get [Symbol.toStringTag]");
 
     public static final JSArrayBufferView INSTANCE = new JSArrayBufferView();
-
-    private static final String BYTES_PER_ELEMENT = "BYTES_PER_ELEMENT";
-    private static final String BYTE_LENGTH = "byteLength";
-    private static final String LENGTH = JSAbstractArray.LENGTH;
-    private static final String BUFFER = "buffer";
-    private static final String BYTE_OFFSET = "byteOffset";
 
     private static TypedArrayAccess typedArray() {
         return TypedArrayAccess.SINGLETON;
@@ -114,7 +117,7 @@ public final class JSArrayBufferView extends JSNonProxy {
         return DirectByteBufferHelper.cast(typedArray().getByteBuffer(thisObj));
     }
 
-    private static String typedArrayGetName(DynamicObject thisObj) {
+    private static TruffleString typedArrayGetName(DynamicObject thisObj) {
         return typedArrayGetArrayType(thisObj).getName();
     }
 
@@ -174,8 +177,8 @@ public final class JSArrayBufferView extends JSNonProxy {
     @Override
     public Object getHelper(DynamicObject store, Object receiver, Object key, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
-        if (key instanceof String) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
+        if (Strings.isTString(key)) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString((TruffleString) key);
             if (numericIndex != Undefined.instance) {
                 return integerIndexedElementGet(store, numericIndex);
             }
@@ -187,8 +190,8 @@ public final class JSArrayBufferView extends JSNonProxy {
     @Override
     public Object getOwnHelper(DynamicObject store, Object receiver, Object key, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
-        if (key instanceof String) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
+        if (Strings.isTString(key)) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString((TruffleString) key);
             if (numericIndex != Undefined.instance) {
                 return integerIndexedElementGet(store, numericIndex);
             }
@@ -236,8 +239,8 @@ public final class JSArrayBufferView extends JSNonProxy {
         if (thisObj != receiver) { // off-spec
             return ordinarySet(thisObj, key, value, receiver, isStrict, encapsulatingNode);
         }
-        if (key instanceof String) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
+        if (Strings.isTString(key)) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString((TruffleString) key);
             if (numericIndex != Undefined.instance) {
                 // IntegerIndexedElementSet
                 Object numValue = convertValue(thisObj, value);
@@ -275,8 +278,8 @@ public final class JSArrayBufferView extends JSNonProxy {
     @Override
     public boolean hasProperty(DynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
-        if (key instanceof String) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
+        if (Strings.isTString(key)) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString((TruffleString) key);
             if (numericIndex != Undefined.instance) {
                 return hasNumericIndex(thisObj, numericIndex);
             }
@@ -297,8 +300,8 @@ public final class JSArrayBufferView extends JSNonProxy {
     @Override
     public boolean hasOwnProperty(DynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
-        if (key instanceof String) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
+        if (Strings.isTString(key)) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString((TruffleString) key);
             if (numericIndex != Undefined.instance) {
                 return hasNumericIndex(thisObj, numericIndex);
             }
@@ -375,7 +378,8 @@ public final class JSArrayBufferView extends JSNonProxy {
         return prototype;
     }
 
-    protected static void putArrayBufferViewPrototypeGetter(JSRealm realm, DynamicObject prototype, String key, BuiltinFunctionKey functionKey, ArrayBufferViewGetter getter) {
+    protected static void putArrayBufferViewPrototypeGetter(JSRealm realm, DynamicObject prototype, TruffleString key, BuiltinFunctionKey functionKey, ArrayBufferViewGetter getter) {
+        assert JSRuntime.isPropertyKey(key);
         JSFunctionData lengthGetterData = realm.getContext().getOrCreateBuiltinFunctionData(functionKey, (c) -> {
             return JSFunctionData.createCallOnly(c, new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Child private ArrayBufferViewGetter getterNode = getter;
@@ -390,7 +394,7 @@ public final class JSArrayBufferView extends JSNonProxy {
                     errorBranch.enter();
                     throw Errors.createTypeError("method called on incompatible receiver");
                 }
-            }.getCallTarget(), 0, "get " + key);
+            }.getCallTarget(), 0, Strings.concat(Strings.GET_SPC, key));
         });
         DynamicObject lengthGetter = JSFunction.create(realm, lengthGetterData);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, key, lengthGetter, Undefined.instance);
@@ -460,17 +464,17 @@ public final class JSArrayBufferView extends JSNonProxy {
                     }
                     return Undefined.instance;
                 }
-            }.getCallTarget(), 0, "get [Symbol.toStringTag]");
+            }.getCallTarget(), 0, GET_SYMBOL_TO_STRING_TAG_NAME);
         });
         DynamicObject toStringTagGetter = JSFunction.create(realm, toStringData);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, Symbol.SYMBOL_TO_STRING_TAG, toStringTagGetter, Undefined.instance);
         // The initial value of the @@iterator property is the same function object as the initial
         // value of the %TypedArray%.prototype.values property.
-        Object valuesFunction = JSDynamicObject.getOrNull(prototype, "values");
+        Object valuesFunction = JSDynamicObject.getOrNull(prototype, Strings.VALUES);
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_ITERATOR, valuesFunction, JSAttributes.getDefaultNotEnumerable());
         // %TypedArray%.prototype.toString is the same function object as Array.prototype.toString
-        Object toStringFunction = JSDynamicObject.getOrNull(realm.getArrayPrototype(), "toString");
-        JSObjectUtil.putDataProperty(ctx, prototype, "toString", toStringFunction, JSAttributes.getDefaultNotEnumerable());
+        Object toStringFunction = JSDynamicObject.getOrNull(realm.getArrayPrototype(), Strings.TO_STRING);
+        JSObjectUtil.putDataProperty(ctx, prototype, Strings.TO_STRING, toStringFunction, JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }
 
@@ -485,7 +489,7 @@ public final class JSArrayBufferView extends JSNonProxy {
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return typedArrayGetName(object);
     }
 
@@ -525,8 +529,8 @@ public final class JSArrayBufferView extends JSNonProxy {
     @Override
     public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow) {
         assert JSRuntime.isPropertyKey(key);
-        if (key instanceof String) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
+        if (Strings.isTString(key)) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString((TruffleString) key);
             if (numericIndex != Undefined.instance) {
                 boolean success = defineOwnPropertyIndex(thisObj, numericIndex, descriptor);
                 if (doThrow && !success) {
@@ -604,7 +608,7 @@ public final class JSArrayBufferView extends JSNonProxy {
     @Override
     public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
-        if (key instanceof String) {
+        if (Strings.isTString(key)) {
             long numericIndex = JSRuntime.propertyKeyToIntegerIndex(key);
             if (numericIndex >= 0) {
                 Object value = getOwnHelper(thisObj, thisObj, numericIndex, null);
@@ -618,7 +622,7 @@ public final class JSArrayBufferView extends JSNonProxy {
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
@@ -629,8 +633,8 @@ public final class JSArrayBufferView extends JSNonProxy {
     @Override
     public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
         assert JSRuntime.isPropertyKey(key);
-        if (key instanceof String) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
+        if (Strings.isTString(key)) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString((TruffleString) key);
             if (numericIndex != Undefined.instance) {
                 if (hasNumericIndex(thisObj, numericIndex)) {
                     if (isStrict) {

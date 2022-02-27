@@ -40,16 +40,19 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Strings;
+
 public final class JSAttributes {
     /**
      * ES5 8.6.1 Property Attributes.
      */
-    public static final String VALUE = "value";
-    public static final String GET = "get";
-    public static final String SET = "set";
-    public static final String WRITABLE = "writable";
-    public static final String ENUMERABLE = "enumerable";
-    public static final String CONFIGURABLE = "configurable";
+    public static final TruffleString VALUE = Strings.constant("value");
+    public static final TruffleString GET = Strings.constant("get");
+    public static final TruffleString SET = Strings.constant("set");
+    public static final TruffleString WRITABLE = Strings.constant("writable");
+    public static final TruffleString ENUMERABLE = Strings.constant("enumerable");
+    public static final TruffleString CONFIGURABLE = Strings.constant("configurable");
 
     /** ES5 8.6.1 - Is this property not enumerable? */
     public static final int NOT_ENUMERABLE = 1 << 0;

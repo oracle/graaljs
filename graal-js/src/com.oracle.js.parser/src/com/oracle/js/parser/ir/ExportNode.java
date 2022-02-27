@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.js.parser.ir;
 
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
+import com.oracle.truffle.api.strings.TruffleString;
 
 import java.util.Collections;
 import java.util.Map;
@@ -61,13 +62,13 @@ public class ExportNode extends Node {
 
     private final boolean isDefault;
 
-    private final Map<String, String> assertions;
+    private final Map<TruffleString, TruffleString> assertions;
 
-    public ExportNode(final long token, final int start, final int finish, final IdentNode ident, final FromNode from, Map<String, String> assertions) {
+    public ExportNode(final long token, final int start, final int finish, final IdentNode ident, final FromNode from, Map<TruffleString, TruffleString> assertions) {
         this(token, start, finish, null, from, ident, null, null, false, assertions);
     }
 
-    public ExportNode(final long token, final int start, final int finish, final NamedExportsNode exportClause, final FromNode from, Map<String, String> assertions) {
+    public ExportNode(final long token, final int start, final int finish, final NamedExportsNode exportClause, final FromNode from, Map<TruffleString, TruffleString> assertions) {
         this(token, start, finish, exportClause, from, null, null, null, false, assertions);
     }
 
@@ -80,7 +81,7 @@ public class ExportNode extends Node {
     }
 
     private ExportNode(final long token, final int start, final int finish, final NamedExportsNode namedExports,
-                    final FromNode from, final IdentNode exportIdent, final VarNode var, final Expression expression, final boolean isDefault, Map<String, String> assertions) {
+                    final FromNode from, final IdentNode exportIdent, final VarNode var, final Expression expression, final boolean isDefault, Map<TruffleString, TruffleString> assertions) {
         super(token, start, finish);
         this.namedExports = namedExports;
         this.from = from;
@@ -95,7 +96,7 @@ public class ExportNode extends Node {
     }
 
     private ExportNode(final ExportNode node, final NamedExportsNode namedExports,
-                    final FromNode from, final IdentNode exportIdent, final VarNode var, final Expression expression, Map<String, String> assertions) {
+                    final FromNode from, final IdentNode exportIdent, final VarNode var, final Expression expression, Map<TruffleString, TruffleString> assertions) {
         super(node);
         this.isDefault = node.isDefault;
 
@@ -131,7 +132,7 @@ public class ExportNode extends Node {
         return isDefault;
     }
 
-    public Map<String, String> getAssertions() {
+    public Map<TruffleString, TruffleString> getAssertions() {
         return assertions;
     }
 

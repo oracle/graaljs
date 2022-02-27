@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,6 +86,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag.Type;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
@@ -211,7 +212,11 @@ public abstract class FineGrainedAccessTest {
                 assertTrue(event.val instanceof Number);
                 assertEquals(((Number) value).doubleValue(), ((Number) event.val).doubleValue(), 0);
             } else {
-                assertEquals(value, event.val);
+                try {
+                    assertEquals(value, value instanceof String ? InteropLibrary.getUncached().asString(event.val) : event.val);
+                } catch (UnsupportedMessageException e) {
+                    throw new RuntimeException(e);
+                }
             }
             return this;
         }
@@ -381,7 +386,11 @@ public abstract class FineGrainedAccessTest {
 
     protected static void assertAttribute(Event e, String attribute, Object expected) {
         Object val = getAttributeFrom(e.context, attribute);
-        assertEquals(expected, val);
+        try {
+            assertEquals(expected, expected instanceof String ? InteropLibrary.getUncached().asString(val) : val);
+        } catch (UnsupportedMessageException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     public static Object getAttributeFrom(EventContext cx, String name) {
@@ -470,7 +479,11 @@ public abstract class FineGrainedAccessTest {
         return e -> {
             assertTrue(e.val instanceof Object[]);
             Object[] vals = (Object[]) e.val;
-            assertEquals(vals[0], expected);
+            try {
+                assertEquals(expected, expected instanceof String ? InteropLibrary.getUncached().asString(vals[0]) : vals[0]);
+            } catch (UnsupportedMessageException ex) {
+                throw new RuntimeException(ex);
+            }
         };
     }
 
@@ -537,7 +550,7 @@ public abstract class FineGrainedAccessTest {
     protected static Consumer<Event> assertJSFunctionInputWithName(String expectedFunctionName) {
         return (e) -> {
             assertTrue(JSFunction.isJSFunction(e.val));
-            assertTrue(JSFunction.getName((DynamicObject) e.val).equals(expectedFunctionName));
+            assertTrue(JSFunction.getName((DynamicObject) e.val).equals(Strings.fromJavaString(expectedFunctionName)));
         };
     }
 

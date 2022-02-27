@@ -40,11 +40,12 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 
 public interface Builtin {
-    String getName();
+    TruffleString getName();
 
     Object getKey();
 

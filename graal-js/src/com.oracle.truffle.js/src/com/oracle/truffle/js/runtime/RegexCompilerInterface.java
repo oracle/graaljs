@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 
 public final class RegexCompilerInterface {
     private static final String REPEATED_REG_EXP_FLAG_MSG = "Repeated RegExp flag: %c";
@@ -53,6 +54,10 @@ public final class RegexCompilerInterface {
     private static final String UNSUPPORTED_REG_EXP_FLAG_MSG_NASHORN = "Unsupported RegExp flag: %c";
 
     private RegexCompilerInterface() {
+    }
+
+    public static Object compile(TruffleString pattern, TruffleString flags, JSContext context, JSRealm realm) {
+        return compile(Strings.toJavaString(pattern), Strings.toJavaString(flags), context, realm, InteropLibrary.getUncached());
     }
 
     public static Object compile(String pattern, String flags, JSContext context, JSRealm realm) {

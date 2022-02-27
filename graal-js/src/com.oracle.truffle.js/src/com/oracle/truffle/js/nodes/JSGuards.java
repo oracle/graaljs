@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,8 +45,10 @@ import java.util.List;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
@@ -129,8 +131,12 @@ public final class JSGuards {
         return value instanceof TruffleObject;
     }
 
-    public static boolean isJavaLangString(Object value) {
-        return value instanceof String;
+    public static boolean isTruffleString(Object value) {
+        return Strings.isTString(value);
+    }
+
+    public static boolean isTString(Object value) {
+        return Strings.isTString(value);
     }
 
     public static boolean isForeignObject(Object value) {
@@ -278,7 +284,19 @@ public final class JSGuards {
     }
 
     public static boolean isString(Object operand) {
-        return JSRuntime.isString(operand);
+        return operand instanceof TruffleString;
+    }
+
+    public static boolean isStringString(Object operand, Object operand2) {
+        return Strings.isTString(operand) && Strings.isTString(operand2);
+    }
+
+    public static int stringLength(TruffleString operand) {
+        return Strings.length(operand);
+    }
+
+    public static boolean stringEquals(TruffleString.EqualNode node, TruffleString a, TruffleString b) {
+        return Strings.equals(node, a, b);
     }
 
     public static boolean isBoolean(Object operand) {

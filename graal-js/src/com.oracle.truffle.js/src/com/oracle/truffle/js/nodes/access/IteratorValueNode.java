@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -50,12 +53,11 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
-
-import java.util.Set;
+import com.oracle.truffle.js.runtime.Strings;
 
 /**
  * ES6 7.4.4 IteratorValue(iterResult).
@@ -67,7 +69,7 @@ public abstract class IteratorValueNode extends JavaScriptNode {
 
     protected IteratorValueNode(JSContext context, JavaScriptNode iterResultNode) {
         this.iterResultNode = iterResultNode;
-        this.getValueNode = PropertyGetNode.create(JSRuntime.VALUE, false, context);
+        this.getValueNode = PropertyGetNode.create(Strings.VALUE, false, context);
     }
 
     public static IteratorValueNode create(JSContext context) {
@@ -84,11 +86,13 @@ public abstract class IteratorValueNode extends JavaScriptNode {
     }
 
     @Specialization(guards = "isForeignObject(obj)", limit = "InteropLibraryLimit")
-    protected Object doForeignObject(Object obj, @CachedLibrary("obj") InteropLibrary interop) {
+    protected Object doForeignObject(Object obj,
+                    @CachedLibrary("obj") InteropLibrary interop,
+                    @Cached ImportValueNode importValueNode) {
         try {
-            return interop.readMember(obj, JSRuntime.VALUE);
+            return importValueNode.executeWithTarget(interop.readMember(obj, Strings.toJavaString(Strings.VALUE)));
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, JSRuntime.VALUE, this);
+            throw Errors.createTypeErrorInteropException(obj, e, Strings.toJavaString(Strings.VALUE), this);
         }
     }
 

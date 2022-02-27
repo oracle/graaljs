@@ -53,6 +53,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -68,7 +69,7 @@ public final class ErrorFunctionBuiltins extends JSBuiltinsContainer.Lambda {
 
     protected ErrorFunctionBuiltins() {
         super(JSError.CLASS_NAME);
-        defineFunction("captureStackTrace", 2, JSAttributes.getDefault(),
+        defineFunction(Strings.CAPTURE_STACK_TRACE, 2, JSAttributes.getDefault(),
                         (context, builtin) -> ErrorCaptureStackTraceNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context)));
     }
 

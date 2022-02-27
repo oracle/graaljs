@@ -51,24 +51,26 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
+import com.oracle.truffle.js.runtime.Strings;
 
 public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
 
     @Child private GlobalObjectNode globalObjectNode;
     @Child private JSConstantNode constantNode;
-    private final String propertyName;
+    private final TruffleString propertyName;
 
-    protected GlobalConstantNode(String propertyName, JSConstantNode constantNode) {
+    protected GlobalConstantNode(TruffleString propertyName, JSConstantNode constantNode) {
         this.globalObjectNode = GlobalObjectNode.create();
         this.constantNode = constantNode;
         this.propertyName = propertyName;
     }
 
-    public static JSTargetableNode createGlobalConstant(String propertyName, Object value) {
+    public static JSTargetableNode createGlobalConstant(TruffleString propertyName, Object value) {
         return new GlobalConstantNode(propertyName, JSConstantNode.create(value));
     }
 
@@ -162,33 +164,28 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
     }
 
     static final class FileNameNode extends JSConstantNode {
-        @CompilationFinal private String filename = null;
+        @CompilationFinal private TruffleString filename = null;
 
         FileNameNode() {
         }
 
         @Override
-        public String execute(VirtualFrame frame) {
+        public TruffleString execute(VirtualFrame frame) {
             return getFileName();
         }
 
-        @Override
-        public String executeString(VirtualFrame frame) {
-            return getFileName();
-        }
-
-        private String getFileName() {
+        private TruffleString getFileName() {
             if (filename == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 Source source = getEncapsulatingSourceSection().getSource();
                 String path = source.getPath();
-                filename = (path == null) ? source.getName() : path;
+                filename = Strings.fromJavaString((path == null) ? source.getName() : path);
             }
             return filename;
         }
 
         @Override
-        public Object getValue() {
+        public TruffleString getValue() {
             return getFileName();
         }
     }
@@ -199,20 +196,15 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        public String execute(VirtualFrame frame) {
-            return getDirName();
-        }
-
-        @Override
-        public String executeString(VirtualFrame frame) {
+        public TruffleString execute(VirtualFrame frame) {
             return getDirName();
         }
 
         @TruffleBoundary
-        private String getDirName() {
+        private TruffleString getDirName() {
             Source source = getEncapsulatingSourceSection().getSource();
             if (source.isInternal() || source.isInteractive()) {
-                return "";
+                return Strings.EMPTY_STRING;
             }
             String path = source.getPath();
             path = (path == null) ? source.getName() : path;
@@ -221,7 +213,7 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
             }
             Env env = getRealm().getEnv();
             String fileSeparator = env.getFileNameSeparator();
-            if (fileSeparator.equals("\\") && path.startsWith("/")) {
+            if ("\\".equals(fileSeparator) && path.startsWith("/")) {
                 // on Windows, remove first "/" from /c:/test/dir/ style paths
                 path = path.substring(1);
             }
@@ -231,7 +223,7 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
             if (!dirPath.isEmpty() && !(dirPath.charAt(dirPath.length() - 1) == '/' || fileSeparator.equals(String.valueOf(dirPath.charAt(dirPath.length() - 1))))) {
                 dirPath += fileSeparator;
             }
-            return dirPath;
+            return Strings.fromJavaString(dirPath);
         }
 
         @Override

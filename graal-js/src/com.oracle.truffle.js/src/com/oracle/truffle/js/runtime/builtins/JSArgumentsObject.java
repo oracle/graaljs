@@ -53,6 +53,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.interop.ArrayElementInfoNode;
@@ -106,7 +107,7 @@ public class JSArgumentsObject extends JSArrayBase {
     }
 
     @Override
-    public final String getClassName() {
+    public final TruffleString getClassName() {
         return JSArgumentsArray.CLASS_NAME;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.test.debug;
 
 import static org.junit.Assert.assertTrue;
 
+import com.oracle.truffle.js.runtime.Strings;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
@@ -118,7 +119,7 @@ public class ParseInlineTest {
             context.eval(JavaScriptLanguage.ID, src);
 
             assertTrue(JSOrdinary.isJSOrdinaryObject(tester.result));
-            assertTrue(JSObject.hasOwnProperty((DynamicObject) tester.result, "number"));
+            assertTrue(JSObject.hasOwnProperty((DynamicObject) tester.result, Strings.fromJavaString("number")));
         }
     }
 }

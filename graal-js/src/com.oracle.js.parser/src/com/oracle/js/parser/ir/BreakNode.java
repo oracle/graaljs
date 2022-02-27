@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.js.parser.ir;
 
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * IR representation for {@code break} statements.
@@ -57,7 +58,7 @@ public final class BreakNode extends JumpStatement {
      * @param finish finish
      * @param labelName label name for break or null if none
      */
-    public BreakNode(final int lineNumber, final long token, final int finish, final String labelName) {
+    public BreakNode(final int lineNumber, final long token, final int finish, final TruffleString labelName) {
         super(lineNumber, token, finish, labelName);
     }
 

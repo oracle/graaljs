@@ -45,6 +45,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins.JSNumberOperation;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.JSFromCharCodeNodeGen;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.JSFromCodePointNodeGen;
@@ -58,10 +60,10 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt16Node;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 
@@ -133,22 +135,24 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "args.length == 0")
-        protected String fromCharCode(@SuppressWarnings("unused") Object[] args) {
-            return "";
+        protected Object fromCharCode(@SuppressWarnings("unused") Object[] args) {
+            return Strings.EMPTY_STRING;
         }
 
         @Specialization(guards = "args.length == 1")
-        protected String fromCharCodeOneArg(Object[] args) {
-            return String.valueOf(toChar(args[0]));
+        protected Object fromCharCodeOneArg(Object[] args,
+                        @Cached TruffleString.FromCodePointNode fromCodePointNode) {
+            return Strings.fromCodePoint(fromCodePointNode, toChar(args[0]));
         }
 
         @Specialization(guards = "args.length >= 2")
-        protected String fromCharCodeTwoOrMore(Object[] args) {
-            StringBuilder buffer = new StringBuilder(args.length + 4);
+        protected Object fromCharCodeTwoOrMore(Object[] args,
+                        @Cached TruffleString.FromCharArrayUTF16Node fromCharArrayNode) {
+            char[] chars = new char[args.length];
             for (int i = 0; i < args.length; i++) {
-                Boundaries.builderAppend(buffer, toChar(args[i]));
+                chars[i] = toChar(args[i]);
             }
-            return Boundaries.builderToString(buffer);
+            return Strings.fromCharArray(fromCharArrayNode, chars);
         }
     }
 
@@ -159,9 +163,11 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected String fromCodePoint(Object[] args,
-                        @Cached("create()") JSToNumberNode toNumberNode) {
-            StringBuilder st = new StringBuilder(args.length);
+        protected Object fromCodePoint(Object[] args,
+                        @Cached JSToNumberNode toNumberNode,
+                        @Cached TruffleString.FromCodePointNode fromCodePointNode,
+                        @Cached TruffleString.ConcatNode concatNode) {
+            TruffleString st = Strings.EMPTY_STRING;
             for (Object arg : args) {
                 Number value = toNumberNode.executeNumber(arg);
                 double valueDouble = JSRuntime.doubleValue(value);
@@ -171,15 +177,9 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 } else if (!JSRuntime.doubleIsRepresentableAsInt(valueDouble) || (valueInt < 0) || (0x10FFFF < valueInt)) {
                     throwRangeError(value);
                 }
-                if (valueInt < 0x10000) {
-                    Boundaries.builderAppend(st, (char) valueInt);
-                } else {
-                    valueInt -= 0x10000;
-                    Boundaries.builderAppend(st, (char) ((valueInt >> 10) + 0xD800));
-                    Boundaries.builderAppend(st, (char) ((valueInt % 0x400) + 0xDC00));
-                }
+                st = Strings.concat(concatNode, st, Strings.fromCodePoint(fromCodePointNode, valueInt));
             }
-            return Boundaries.builderToString(st);
+            return st;
         }
 
         @TruffleBoundary
@@ -196,44 +196,48 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private JSToStringNode segToStringNode;
         @Child private JSToStringNode subToStringNode;
         @Child private ReadElementNode readRawElementNode;
+        @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
+        @Child private TruffleStringBuilder.ToStringNode builderToStringNode;
         private final ConditionProfile emptyProf = ConditionProfile.createBinaryProfile();
 
         public StringRawNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.templateToObjectNode = JSToObjectNode.createToObject(context);
             this.rawToObjectNode = JSToObjectNode.createToObject(context);
-            this.getRawNode = PropertyGetNode.create("raw", false, context);
+            this.getRawNode = PropertyGetNode.create(Strings.RAW, false, context);
             this.getRawLengthNode = JSGetLengthNode.create(context);
             this.segToStringNode = JSToStringNode.create();
             this.subToStringNode = JSToStringNode.create();
             this.readRawElementNode = ReadElementNode.create(context);
+            this.appendStringNode = TruffleStringBuilder.AppendStringNode.create();
+            this.builderToStringNode = TruffleStringBuilder.ToStringNode.create();
         }
 
         @Specialization
-        protected String raw(Object template, Object[] substitutions) {
+        protected Object raw(Object template, Object[] substitutions) {
             int numberOfSubstitutions = substitutions.length;
             Object cooked = templateToObjectNode.execute(template);
             Object raw = rawToObjectNode.execute(getRawNode.getValue(cooked));
 
             int literalSegments = getRawLength(raw);
             if (emptyProf.profile(literalSegments <= 0)) {
-                return "";
+                return Strings.EMPTY_STRING;
             }
 
-            StringBuilder result = new StringBuilder();
+            TruffleStringBuilder result = Strings.builderCreate();
             for (int i = 0;; i++) {
                 Object rawElement = readRawElementNode.executeWithTargetAndIndex(raw, i);
-                String nextSeg = segToStringNode.executeString(rawElement);
+                TruffleString nextSeg = segToStringNode.executeString(rawElement);
                 appendChecked(result, nextSeg);
                 if (i + 1 == literalSegments) {
                     break;
                 }
                 if (i < numberOfSubstitutions) {
-                    String nextSub = subToStringNode.executeString(substitutions[i]);
+                    TruffleString nextSub = subToStringNode.executeString(substitutions[i]);
                     appendChecked(result, nextSub);
                 }
             }
-            return Boundaries.builderToString(result);
+            return Strings.builderToString(builderToStringNode, result);
         }
 
         private int getRawLength(Object raw) {
@@ -245,12 +249,12 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private void appendChecked(StringBuilder result, String str) {
-            if (result.length() + str.length() > getContext().getStringLengthLimit()) {
+        private void appendChecked(TruffleStringBuilder result, TruffleString str) {
+            if (Strings.builderLength(result) + Strings.length(str) > getContext().getStringLengthLimit()) {
                 CompilerDirectives.transferToInterpreter();
                 throw Errors.createRangeErrorInvalidStringLength();
             }
-            Boundaries.builderAppend(result, str);
+            Strings.builderAppend(appendStringNode, result, str);
         }
     }
 }

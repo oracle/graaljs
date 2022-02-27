@@ -47,6 +47,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
@@ -54,6 +55,7 @@ import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -62,22 +64,21 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @ExportLibrary(InteropLibrary.class)
 public class WebAssemblyHostFunction implements TruffleObject {
     private final Object fn;
-    private final String returnType;
+    private final TruffleString returnType;
     private final boolean returnTypeIsI64;
     private final boolean anyArgTypeIsI64;
 
-    public WebAssemblyHostFunction(Object fn, String typeInfo) {
+    public WebAssemblyHostFunction(Object fn, TruffleString typeInfo) {
         assert JSRuntime.isCallable(fn);
 
         this.fn = fn;
 
-        int idxOpen = typeInfo.indexOf('(');
-        int idxClose = typeInfo.indexOf(')');
-        String argTypes = typeInfo.substring(idxOpen + 1, idxClose);
+        int idxOpen = Strings.indexOf(typeInfo, '(');
+        int idxClose = Strings.indexOf(typeInfo, ')');
 
-        this.returnType = typeInfo.substring(idxClose + 1);
+        this.returnType = Strings.substring(typeInfo, idxClose + 1);
         this.returnTypeIsI64 = JSWebAssemblyValueTypes.isI64(returnType);
-        this.anyArgTypeIsI64 = argTypes.contains(JSWebAssemblyValueTypes.I64);
+        this.anyArgTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxOpen + 1, idxClose) >= 0;
     }
 
     @ExportMessage

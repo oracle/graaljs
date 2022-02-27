@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,9 @@
 
 package com.oracle.js.parser.ir;
 
+import com.oracle.js.parser.ParserStrings;
+import com.oracle.truffle.api.strings.TruffleString;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -52,18 +55,18 @@ public final class Module {
     /**
      * The synthetic binding name assigned to export default declarations with unnamed expressions.
      */
-    public static final String DEFAULT_EXPORT_BINDING_NAME = "*default*";
-    public static final String DEFAULT_NAME = "default";
-    public static final String STAR_NAME = "*";
-    public static final String NAMESPACE_EXPORT_BINDING_NAME = "*namespace*";
+    public static final TruffleString DEFAULT_EXPORT_BINDING_NAME = ParserStrings.constant("*default*");
+    public static final TruffleString DEFAULT_NAME = ParserStrings.constant("default");
+    public static final TruffleString STAR_NAME = ParserStrings.constant("*");
+    public static final TruffleString NAMESPACE_EXPORT_BINDING_NAME = ParserStrings.constant("*namespace*");
 
     public static final class ExportEntry {
-        private final String exportName;
+        private final TruffleString exportName;
         private final ModuleRequest moduleRequest;
-        private final String importName;
-        private final String localName;
+        private final TruffleString importName;
+        private final TruffleString localName;
 
-        private ExportEntry(String exportName, ModuleRequest moduleRequest, String importName, String localName) {
+        private ExportEntry(TruffleString exportName, ModuleRequest moduleRequest, TruffleString importName, TruffleString localName) {
             this.exportName = exportName;
             this.moduleRequest = moduleRequest;
             this.importName = importName;
@@ -74,7 +77,7 @@ public final class Module {
             return new ExportEntry(null, moduleRequest, STAR_NAME, null);
         }
 
-        public static ExportEntry exportStarAsNamespaceFrom(String exportName, ModuleRequest moduleRequest) {
+        public static ExportEntry exportStarAsNamespaceFrom(TruffleString exportName, ModuleRequest moduleRequest) {
             return new ExportEntry(exportName, moduleRequest, STAR_NAME, null);
         }
 
@@ -82,19 +85,19 @@ public final class Module {
             return exportDefault(DEFAULT_EXPORT_BINDING_NAME);
         }
 
-        public static ExportEntry exportDefault(String localName) {
+        public static ExportEntry exportDefault(TruffleString localName) {
             return new ExportEntry(DEFAULT_NAME, null, null, localName);
         }
 
-        public static ExportEntry exportSpecifier(String exportName, String localName) {
+        public static ExportEntry exportSpecifier(TruffleString exportName, TruffleString localName) {
             return new ExportEntry(exportName, null, null, localName);
         }
 
-        public static ExportEntry exportSpecifier(String exportName) {
+        public static ExportEntry exportSpecifier(TruffleString exportName) {
             return exportSpecifier(exportName, exportName);
         }
 
-        public static ExportEntry exportIndirect(String exportName, ModuleRequest moduleRequest, String importName) {
+        public static ExportEntry exportIndirect(TruffleString exportName, ModuleRequest moduleRequest, TruffleString importName) {
             return new ExportEntry(exportName, moduleRequest, importName, null);
         }
 
@@ -102,7 +105,7 @@ public final class Module {
             return new ExportEntry(exportName, moduleRequest, localName, null);
         }
 
-        public String getExportName() {
+        public TruffleString getExportName() {
             return exportName;
         }
 
@@ -110,11 +113,11 @@ public final class Module {
             return moduleRequest;
         }
 
-        public String getImportName() {
+        public TruffleString getImportName() {
             return importName;
         }
 
-        public String getLocalName() {
+        public TruffleString getLocalName() {
             return localName;
         }
 
@@ -126,28 +129,28 @@ public final class Module {
 
     public static final class ImportEntry {
         private final ModuleRequest moduleRequest;
-        private final String importName;
-        private final String localName;
+        private final TruffleString importName;
+        private final TruffleString localName;
 
-        private ImportEntry(ModuleRequest moduleRequest, String importName, String localName) {
+        private ImportEntry(ModuleRequest moduleRequest, TruffleString importName, TruffleString localName) {
             this.moduleRequest = moduleRequest;
             this.importName = importName;
             this.localName = localName;
         }
 
-        public static ImportEntry importDefault(String localName) {
+        public static ImportEntry importDefault(TruffleString localName) {
             return new ImportEntry(null, DEFAULT_NAME, localName);
         }
 
-        public static ImportEntry importStarAsNameSpaceFrom(String localNameSpace) {
+        public static ImportEntry importStarAsNameSpaceFrom(TruffleString localNameSpace) {
             return new ImportEntry(null, STAR_NAME, localNameSpace);
         }
 
-        public static ImportEntry importSpecifier(String importName, String localName) {
+        public static ImportEntry importSpecifier(TruffleString importName, TruffleString localName) {
             return new ImportEntry(null, importName, localName);
         }
 
-        public static ImportEntry importSpecifier(String importName) {
+        public static ImportEntry importSpecifier(TruffleString importName) {
             return importSpecifier(importName, importName);
         }
 
@@ -159,11 +162,11 @@ public final class Module {
             return moduleRequest;
         }
 
-        public String getImportName() {
+        public TruffleString getImportName() {
             return importName;
         }
 
-        public String getLocalName() {
+        public TruffleString getLocalName() {
             return localName;
         }
 
@@ -174,31 +177,31 @@ public final class Module {
     }
 
     public static final class ModuleRequest {
-        private final String specifier;
-        private Map<String, String> assertions;
+        private final TruffleString specifier;
+        private Map<TruffleString, TruffleString> assertions;
 
-        private ModuleRequest(String specifier, Map<String, String> assertions) {
+        private ModuleRequest(TruffleString specifier, Map<TruffleString, TruffleString> assertions) {
             this.specifier = specifier;
             this.assertions = assertions;
         }
 
-        public static ModuleRequest create(String specifier) {
+        public static ModuleRequest create(TruffleString specifier) {
             return new ModuleRequest(specifier, Collections.emptyMap());
         }
 
-        public static ModuleRequest create(String specifier, Map<String, String> assertions) {
+        public static ModuleRequest create(TruffleString specifier, Map<TruffleString, TruffleString> assertions) {
             return new ModuleRequest(specifier, assertions);
         }
 
-        public String getSpecifier() {
+        public TruffleString getSpecifier() {
             return specifier;
         }
 
-        public Map<String, String> getAssertions() {
+        public Map<TruffleString, TruffleString> getAssertions() {
             return assertions;
         }
 
-        public void setAssertions(Map<String, String> assertions) {
+        public void setAssertions(Map<TruffleString, TruffleString> assertions) {
             this.assertions = assertions;
         }
     }

@@ -49,6 +49,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -100,7 +101,7 @@ public abstract class ToTemporalTimeZoneNode extends JavaScriptBaseNode {
                 return (DynamicObject) temporalTimeZoneLike;
             }
         }
-        String identifier = toStringNode.executeString(temporalTimeZoneLike);
+        TruffleString identifier = toStringNode.executeString(temporalTimeZoneLike);
         JSTemporalTimeZoneRecord parseResult = TemporalUtil.parseTemporalTimeZoneString(identifier);
         if (!TemporalUtil.isNullish(parseResult.getName())) {
             boolean canParse = TemporalUtil.canParseAsTimeZoneNumericUTCOffset(parseResult.getName());

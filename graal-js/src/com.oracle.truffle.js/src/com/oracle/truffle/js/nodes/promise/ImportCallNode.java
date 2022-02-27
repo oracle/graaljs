@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -69,6 +70,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
@@ -88,7 +90,7 @@ import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 public class ImportCallNode extends JavaScriptNode {
 
     private static final HiddenKey CURRENT_MODULE_RECORD_KEY = new HiddenKey("%currentModuleRecord");
-    private static final String ASSERTIONS = "assert";
+    private static final TruffleString ASSERTIONS = Strings.constant("assert");
 
     @Child private JavaScriptNode argRefNode;
     @Child private JavaScriptNode activeScriptOrModuleNode;
@@ -136,7 +138,7 @@ public class ImportCallNode extends JavaScriptNode {
     }
 
     private Object executeWithoutAssertions(Object referencingScriptOrModule, Object specifier) {
-        String specifierString;
+        TruffleString specifierString;
         try {
             specifierString = toStringNode.executeString(specifier);
         } catch (Throwable ex) {
@@ -158,7 +160,7 @@ public class ImportCallNode extends JavaScriptNode {
         }
         Object options = optionsRefNode.execute(frame);
         PromiseCapabilityRecord promiseCapability = newPromiseCapability();
-        String specifierString;
+        TruffleString specifierString;
         try {
             specifierString = toStringNode.executeString(specifier);
         } catch (Throwable ex) {
@@ -168,7 +170,7 @@ public class ImportCallNode extends JavaScriptNode {
                 throw ex;
             }
         }
-        Map<String, String> assertions = Boundaries.hashMapCreate();
+        Map<TruffleString, TruffleString> assertions = Boundaries.hashMapCreate();
         if (options != Undefined.instance) {
             if (!JSRuntime.isObject(options)) {
                 return rejectPromise(promiseCapability, "The second argument to import() must be an object");
@@ -199,10 +201,9 @@ public class ImportCallNode extends JavaScriptNode {
                     }
                 }
                 for (int i = 0; i < keys.size(); i++) {
-                    String key;
+                    TruffleString key = (TruffleString) keys.get(i);
                     Object value;
                     try {
-                        key = (String) keys.get(i);
                         value = JSObject.get(obj, key);
                     } catch (Throwable ex) {
                         if (TryCatchNode.shouldCatch(ex, exceptions())) {
@@ -211,7 +212,7 @@ public class ImportCallNode extends JavaScriptNode {
                             throw ex;
                         }
                     }
-                    if (!JSRuntime.isString(value)) {
+                    if (!Strings.isTString(value)) {
                         return rejectPromise(promiseCapability, "Import assertion value must be a string");
                     }
                     Boundaries.mapPut(assertions, key, JSRuntime.toStringIsString(value));
@@ -282,7 +283,7 @@ public class ImportCallNode extends JavaScriptNode {
     }
 
     @TruffleBoundary
-    private static JSException createTypeErrorCannotImport(String specifier) {
+    private static JSException createTypeErrorCannotImport(TruffleString specifier) {
         return Errors.createError("Cannot dynamically import module: " + specifier);
     }
 
@@ -411,7 +412,7 @@ public class ImportCallNode extends JavaScriptNode {
         }
 
         JavaScriptRootNode root = context.isOptionTopLevelAwait() ? new TopLevelAwaitImportModuleDynamicallyRootNode() : new ImportModuleDynamicallyRootNode();
-        return JSFunctionData.createCallOnly(context, root.getCallTarget(), 0, "");
+        return JSFunctionData.createCallOnly(context, root.getCallTarget(), 0, Strings.EMPTY_STRING);
     }
 
     private static JSFunctionData createFinishDynamicImportNormalImpl(JSContext cx, boolean onReject) {
@@ -433,7 +434,7 @@ public class ImportCallNode extends JavaScriptNode {
                 }
             }
         }
-        return JSFunctionData.createCallOnly(cx, new FinishDynamicImportNormalRootNode().getCallTarget(), 0, "");
+        return JSFunctionData.createCallOnly(cx, new FinishDynamicImportNormalRootNode().getCallTarget(), 0, Strings.EMPTY_STRING);
     }
 
     @Override

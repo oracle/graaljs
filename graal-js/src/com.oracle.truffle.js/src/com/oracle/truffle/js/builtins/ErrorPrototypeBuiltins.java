@@ -42,8 +42,10 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ErrorPrototypeGetStackTraceNodeGen;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ErrorPrototypeToStringNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -53,7 +55,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSError;
@@ -68,14 +70,13 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
 
     protected ErrorPrototypeBuiltins() {
         super(JSError.PROTOTYPE_NAME);
-        defineFunction("toString", 0);
+        defineFunction(Strings.TO_STRING, 0);
     }
 
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget) {
-        switch (builtin.getName()) {
-            case "toString":
-                return ErrorPrototypeToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+        if (Strings.equals(Strings.TO_STRING, builtin.getName())) {
+            return ErrorPrototypeToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -123,28 +124,29 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
         }
 
         @Specialization(guards = "!isJSObject(thisObj)")
-        protected String toStringNonObject(Object thisObj) {
-            String name = toStringConv(thisObj);
-            String message = JSRuntime.stringConcat("Method Error.prototype.toString called on incompatible receiver ", name);
+        protected Object toStringNonObject(Object thisObj,
+                        @Cached TruffleString.ConcatNode concatNode) {
+            TruffleString name = toStringConv(thisObj);
+            String message = Strings.toJavaString(Strings.concat(concatNode, Strings.METHOD_ERROR_PROTOTYPE_TO_STRING_CALLED_ON_INCOMPATIBLE_RECEIVER, name));
             throw Errors.createTypeError(message, this);
         }
 
         @Specialization(guards = "isJSObject(errorObj)")
-        protected String toStringObject(DynamicObject errorObj) {
+        protected Object toStringObject(DynamicObject errorObj) {
             Object objName = getName(errorObj);
-            String strName = (objName == Undefined.instance) ? "Error" : toStringConv(objName);
+            TruffleString strName = (objName == Undefined.instance) ? Strings.UC_ERROR : toStringConv(objName);
             Object objMessage = getMessage(errorObj);
-            String strMessage = (objMessage == Undefined.instance) ? "" : toStringConv(objMessage);
-            if (strName.length() == 0) {
+            TruffleString strMessage = (objMessage == Undefined.instance) ? Strings.EMPTY_STRING : toStringConv(objMessage);
+            if (Strings.length(strName) == 0) {
                 return strMessage;
             }
-            if (strMessage.length() == 0) {
+            if (Strings.length(strMessage) == 0) {
                 return strName;
             }
             return toStringIntl(strName, strMessage);
         }
 
-        private String toStringConv(Object value) {
+        private TruffleString toStringConv(Object value) {
             if (toStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toStringNode = insert(JSToStringNode.create());
@@ -153,8 +155,8 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
         }
 
         @TruffleBoundary
-        private static String toStringIntl(String strName, String strMessage) {
-            return strName + ": " + strMessage;
+        private static Object toStringIntl(TruffleString strName, TruffleString strMessage) {
+            return Strings.concatAll(strName, Strings.COLON_SPACE, strMessage);
         }
 
         protected Object getName(DynamicObject errObj) {

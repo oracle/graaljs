@@ -51,12 +51,14 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimeFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltins;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
@@ -74,8 +76,9 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
 
     public static final JSTemporalPlainTime INSTANCE = new JSTemporalPlainTime();
 
-    public static final String CLASS_NAME = "PlainTime";
-    public static final String PROTOTYPE_NAME = "PlainTime.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("PlainTime");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("PlainTime.prototype");
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.PlainTime");
 
     private JSTemporalPlainTime() {
     }
@@ -94,12 +97,12 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
-        return "Temporal.PlainTime";
+    public TruffleString getClassName(DynamicObject object) {
+        return TO_STRING_TAG;
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
@@ -118,15 +121,14 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
         JSObjectUtil.putBuiltinAccessorProperty(prototype, MICROSECOND, realm.lookupAccessor(TemporalPlainTimePrototypeBuiltins.BUILTINS, MICROSECOND));
         JSObjectUtil.putBuiltinAccessorProperty(prototype, NANOSECOND, realm.lookupAccessor(TemporalPlainTimePrototypeBuiltins.BUILTINS, NANOSECOND));
 
-        JSObjectUtil.putToStringTag(prototype, "Temporal.PlainTime");
+        JSObjectUtil.putToStringTag(prototype, TO_STRING_TAG);
 
         return prototype;
     }
 
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSTemporalPlainTime.INSTANCE, context);
-        return initialShape;
+        return JSObjectUtil.getProtoChildShape(prototype, JSTemporalPlainTime.INSTANCE, context);
     }
 
     @Override
@@ -157,7 +159,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
         JSRealm realm = JSRealm.get(null);
         DynamicObject result = JSOrdinary.create(ctx, realm);
         boolean any = false;
-        for (String property : TemporalUtil.TIME_LIKE_PROPERTIES) {
+        for (TruffleString property : TemporalUtil.TIME_LIKE_PROPERTIES) {
             Object value = JSObject.get(temporalTimeLike, property);
             if (value != Undefined.instance) {
                 any = true;
@@ -173,12 +175,12 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
 
     // 4.5.12
     @TruffleBoundary
-    public static String temporalTimeToString(long hour, long minute, long second, long millisecond, long microsecond,
+    public static TruffleString temporalTimeToString(long hour, long minute, long second, long millisecond, long microsecond,
                     long nanosecond, Object precision) {
-        String hourString = String.format("%1$02d", hour);
-        String minuteString = String.format("%1$02d", minute);
-        String secondString = TemporalUtil.formatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision);
-        return String.format("%s:%s%s", hourString, minuteString, secondString);
+        TruffleString hourString = Strings.format("%1$02d", hour);
+        TruffleString minuteString = Strings.format("%1$02d", minute);
+        TruffleString secondString = TemporalUtil.formatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision);
+        return Strings.format("%s:%s%s", hourString, minuteString, secondString);
     }
 
     // endregion

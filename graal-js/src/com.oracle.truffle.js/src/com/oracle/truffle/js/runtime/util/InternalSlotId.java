@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,17 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 /**
  * Key for internal frame slots. Compared by identity.
  */
 public final class InternalSlotId {
 
-    private final String description;
+    private final TruffleString description;
     private final int ordinal;
 
-    public InternalSlotId(String description, int ordinal) {
+    public InternalSlotId(TruffleString description, int ordinal) {
         this.description = description;
         this.ordinal = ordinal;
     }

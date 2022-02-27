@@ -67,6 +67,7 @@ import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTest262;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -155,7 +156,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
         @Specialization
         protected Object evalScript(Object obj,
                         @Cached("create(getContext())") JSLoadNode loadNode) {
-            String sourceText = JSRuntime.toString(obj);
+            String sourceText = Strings.toJavaString(JSRuntime.toString(obj));
             getContext().checkEvalAllowed();
             Source source = createSource(sourceText);
             JSRealm realm = getRealm();
@@ -201,7 +202,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
 
         @Specialization
         protected Object start(Object obj) {
-            String sourceText = JSRuntime.toString(obj);
+            String sourceText = Strings.toJavaString(JSRuntime.toString(obj));
             return ((DebugJSAgent) getRealm().getAgent()).startNewAgent(sourceText);
         }
     }
@@ -286,7 +287,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
 
         @Specialization
         protected Object report(Object value) {
-            String message = toStringNode.executeString(value);
+            Object message = toStringNode.executeString(value);
             ((DebugJSAgent) getRealm().getAgent()).report(message);
             return Undefined.instance;
         }

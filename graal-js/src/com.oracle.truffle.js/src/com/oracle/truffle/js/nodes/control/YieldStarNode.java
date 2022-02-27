@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -80,8 +81,8 @@ public class YieldStarNode extends AbstractYieldNode implements ResumableNode.Wi
         this.iteratorNextNode = IteratorNextNode.create();
         this.iteratorCompleteNode = IteratorCompleteNode.create(context);
         this.iteratorValueNode = IteratorValueNode.create(context, null);
-        this.getThrowMethodNode = GetMethodNode.create(context, "throw");
-        this.getReturnMethodNode = GetMethodNode.create(context, "return");
+        this.getThrowMethodNode = GetMethodNode.create(context, Strings.THROW);
+        this.getReturnMethodNode = GetMethodNode.create(context, Strings.RETURN);
         this.callThrowNode = JSFunctionCallNode.createCall();
         this.callReturnNode = JSFunctionCallNode.createCall();
         this.iteratorCloseNode = IteratorCloseNode.create(context);

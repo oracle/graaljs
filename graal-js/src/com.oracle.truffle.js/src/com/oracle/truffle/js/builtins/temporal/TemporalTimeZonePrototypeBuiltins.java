@@ -51,6 +51,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.builtins.temporal.TemporalTimeZonePrototypeBuiltinsFactory.JSTemporalTimeZoneGetInstantForNodeGen;
@@ -164,7 +165,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = "isJSTemporalTimeZone(thisObj)")
-        protected String timeZoneGetter(Object thisObj,
+        protected TruffleString timeZoneGetter(Object thisObj,
                         @Cached JSToStringNode toStringNode) {
             JSTemporalTimeZoneObject timeZone = (JSTemporalTimeZoneObject) thisObj;
             switch (property) {
@@ -188,7 +189,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected String toString(Object thisObj) {
+        protected TruffleString toString(Object thisObj) {
             return requireTemporalTimeZone(thisObj).getIdentifier();
         }
     }
@@ -200,7 +201,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected String toJSON(Object thisObj,
+        protected TruffleString toJSON(Object thisObj,
                         @Cached("create()") JSToStringNode toString) {
             JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
             return toString.executeString(timeZone);
@@ -244,7 +245,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected String getOffsetStringFor(Object thisObj, Object instantParam) {
+        protected TruffleString getOffsetStringFor(Object thisObj, Object instantParam) {
             JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
             DynamicObject instant = TemporalUtil.toTemporalInstant(getContext(), instantParam);
             return TemporalUtil.builtinTimeZoneGetOffsetStringFor(timeZone, instant);
@@ -279,7 +280,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
             JSTemporalPlainDateTimeObject dateTime = (JSTemporalPlainDateTimeObject) toTemporalDateTime.executeDynamicObject(dateTimeParam, Undefined.instance);
             DynamicObject options = getOptionsObject(optionsParam);
-            String disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode());
+            TruffleString disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode());
             return TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, dateTime, disambiguation);
         }
     }

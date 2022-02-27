@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.function.InitFunctionNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -124,8 +125,8 @@ public abstract class JSFunctionFactory {
         int propertyFlags = JSAttributes.notConfigurableNotEnumerable() | JSProperty.ACCESSOR;
         Accessor throwerAccessor = realm.getThrowerAccessor();
         DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
-        lib.putWithFlags(obj, JSFunction.ARGUMENTS, throwerAccessor, propertyFlags);
-        lib.putWithFlags(obj, JSFunction.CALLER, throwerAccessor, propertyFlags);
+        Properties.putWithFlags(lib, obj, JSFunction.ARGUMENTS, throwerAccessor, propertyFlags);
+        Properties.putWithFlags(lib, obj, JSFunction.CALLER, throwerAccessor, propertyFlags);
     }
 
     protected abstract DynamicObject getPrototype(JSRealm realm);

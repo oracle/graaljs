@@ -47,7 +47,7 @@
 #include "graal_string-inl.h"
 
 GraalHandleContent* GraalString::CopyImpl(jobject java_object_copy) {
-    return GraalString::Allocate(Isolate(), (jstring) java_object_copy);
+    return GraalString::Allocate(Isolate(), java_object_copy);
 }
 
 v8::Local<v8::String> GraalString::NewFromOneByte(v8::Isolate* isolate, unsigned char const* data, v8::NewStringType type, int length) {
@@ -259,8 +259,13 @@ v8::Local<v8::String> GraalString::NewFromUtf8(v8::Isolate* isolate, char const*
 
 v8::Local<v8::String> GraalString::NewFromModifiedUtf8(v8::Isolate* isolate, const char* data) {
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+
+    // TODO: use TruffleString constructor directly here once modified UTF-8 is supported (GR-36965)
     jstring java_string = graal_isolate->GetJNIEnv()->NewStringUTF(data);
-    GraalString* graal_string = GraalString::Allocate(graal_isolate, java_string);
+    
+    JNI_CALL(jobject, java_truffle_string, graal_isolate, GraalAccessMethod::string_new, Object, java_string);
+
+    GraalString* graal_string = GraalString::Allocate(graal_isolate, java_truffle_string);
     return reinterpret_cast<v8::String*> (graal_string);
 }
 
@@ -275,8 +280,22 @@ v8::Local<v8::String> GraalString::NewFromTwoByte(v8::Isolate* isolate, const ui
         return v8::Local<v8::String>();
     }
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
-    jstring java_string = graal_isolate->GetJNIEnv()->NewString(data, length);
-    GraalString* graal_string = GraalString::Allocate(graal_isolate, java_string);
+
+    jobject java_result;
+    if (graal_isolate->ContextEntered()) {
+        // string_new_from_two_byte creates TruffleString without the detour
+        // across j.l.String but it needs an entered context
+        JNI_CALL(jobject, java_truffle_string, graal_isolate, GraalAccessMethod::string_new_from_two_byte, Object, (jlong) data, (jint) length);
+        java_result = java_truffle_string;
+    } else {
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        jstring java_string = env->NewString(data, length);
+        JNI_CALL(jobject, java_truffle_string, graal_isolate, GraalAccessMethod::string_new, Object, java_string);
+        env->DeleteLocalRef(java_string);
+        java_result = java_truffle_string;
+    }
+
+    GraalString* graal_string = GraalString::Allocate(graal_isolate, java_result);
     return reinterpret_cast<v8::String*> (graal_string);
 }
 
@@ -289,7 +308,8 @@ bool GraalString::IsName() const {
 }
 
 int GraalString::Length() const {
-    return Isolate()->GetJNIEnv()->GetStringLength((jstring) GetJavaObject());
+    JNI_CALL(jint, result, Isolate(), GraalAccessMethod::string_length, Int, GetJavaObject());
+    return result;
 }
 
 int GraalString::Utf8Length(const jchar* input, int input_length) {
@@ -323,16 +343,8 @@ int GraalString::Utf8Length(const jchar* input, int input_length) {
 }
 
 int GraalString::Utf8Length() const {
-    // we cannot use JNI function GetStringUTFLength() because it returns
-    // the length of the modified utf8 encoding of the string which may differ
-    // from the length of the utf8 encoding
-    jstring java_string = (jstring) GetJavaObject();
-    JNIEnv* env = Isolate()->GetJNIEnv();
-    int utf16length = env->GetStringLength(java_string);
-    const jchar* data = env->GetStringCritical(java_string, nullptr);
-    int utf8length = Utf8Length(data, utf16length);
-    env->ReleaseStringCritical(java_string, data);
-    return utf8length;
+    JNI_CALL(jint, result, Isolate(), GraalAccessMethod::string_utf8_length, Int, GetJavaObject());
+    return result;
 }
 
 int GraalString::Utf8Write(const jchar* input, int input_length, char* buffer, int buffer_length, int* nchars_ref, int options) {
@@ -400,53 +412,36 @@ int GraalString::Utf8Write(const jchar* input, int input_length, char* buffer, i
 }
 
 int GraalString::WriteUtf8(char* buffer, int length, int* nchars_ref, int options) const {
-    jstring java_string = (jstring) GetJavaObject();
-    JNIEnv* env = Isolate()->GetJNIEnv();
-    int str_length = env->GetStringLength(java_string);
-    const jchar* str = env->GetStringCritical(java_string, NULL);
     if (length == -1) {
         length = INT_MAX;
     }
-    int bytesWritten = Utf8Write(str, str_length, buffer, length, nchars_ref, options);
-    env->ReleaseStringCritical(java_string, str);
+    JNI_CALL(jlong, result, Isolate(), GraalAccessMethod::string_utf8_write, Long, GetJavaObject(), (jlong) buffer, (jint) length);
+    int bytesWritten = result & 0xffffffff;
+    int codePointsWritten = (result >> 32) & 0xffffffff;
+    if (nchars_ref != nullptr) {
+        *nchars_ref = codePointsWritten;
+    }
+    if ((options & v8::String::NO_NULL_TERMINATION) == 0 && bytesWritten < length) {
+        *(buffer + bytesWritten) = 0;
+        bytesWritten++;
+    }
     return bytesWritten;
 }
 
 int GraalString::WriteOneByte(uint8_t* buffer, int start, int length, int options) const {
-    JNIEnv* env = Isolate()->GetJNIEnv();
-    jstring java_string = (jstring) GetJavaObject();
-    int str_length = env->GetStringLength(java_string);
-    if ((length == -1) || (start + length > str_length)) {
-        length = str_length - start;
-    }
-    int end = start + length;
-    const jchar* data = env->GetStringCritical(java_string, NULL);
-    const jchar* current = data;
-    for (int i = start; i < end; i++) {
-        *buffer++ = *current & 0xFF;
-        current++;
-    }
-    env->ReleaseStringCritical(java_string, data);
+    JNI_CALL(jint, result_length, Isolate(), GraalAccessMethod::string_write_one_byte, Int, GetJavaObject(), (jlong) buffer, (jint) start, (jint) length);
     if ((options & v8::String::NO_NULL_TERMINATION) == 0) {
-        *buffer = 0;
+        *(buffer + result_length) = 0;
     }
-    return length;
+    return result_length;
 }
 
 int GraalString::Write(uint16_t* buffer, int start, int length, int options) const {
-    jstring java_string = (jstring) GetJavaObject();
-    JNIEnv* env = Isolate()->GetJNIEnv();
-    int str_length = env->GetStringLength(java_string);
-    if ((length == -1) || (start + length > str_length)) {
-        length = str_length - start;
-    }
-    const jchar *native_string = env->GetStringChars(java_string, NULL);
-    memcpy(buffer, native_string + start, sizeof (jchar) * length);
-    env->ReleaseStringChars(java_string, native_string);
+    JNI_CALL(jint, result_length, Isolate(), GraalAccessMethod::string_write, Int, GetJavaObject(), (jlong) buffer, (jint) start, (jint) length);
     if ((options & v8::String::NO_NULL_TERMINATION) == 0) {
-        *(buffer + length) = 0;
+        *(buffer + result_length) = 0;
     }
-    return length;
+    return result_length;
 }
 
 namespace v8 {
@@ -484,17 +479,6 @@ v8::Local<v8::String> GraalString::NewExternal(v8::Isolate* isolate, v8::String:
 }
 
 bool GraalString::ContainsOnlyOneByte() const {
-    jstring java_string = (jstring) GetJavaObject();
-    JNIEnv* env = Isolate()->GetJNIEnv();
-    int length = env->GetStringLength(java_string);
-    const jchar* data = env->GetStringCritical(java_string, nullptr);
-    bool onlyOneByte = true;
-    for (int i = 0; i < length; i++) {
-        if (data[i] >= 256) {
-            onlyOneByte = false;
-            break;
-        }
-    }
-    env->ReleaseStringCritical(java_string, data);
-    return onlyOneByte;
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::string_contains_only_one_byte, Boolean, GetJavaObject());
+    return result;
 }

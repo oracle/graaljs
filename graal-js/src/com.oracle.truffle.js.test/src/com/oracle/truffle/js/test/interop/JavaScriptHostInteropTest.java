@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -165,7 +165,8 @@ public class JavaScriptHostInteropTest {
                 expectedException = e -> {
                     assertThat(e.getMessage(), e.getMessage(), containsString(expectedClassName));
                     assertThat(e.getMessage(), e.getMessage(), containsString("bounce"));
-                    assertThat(e.getMessage(), e.getMessage(), containsString("Cannot convert 'abc'(language: Java, type: java.lang.String) to Java type 'java.util.Map[]'"));
+                    assertThat(e.getMessage(), e.getMessage(),
+                                    containsString("Cannot convert 'abc'(language: Java, type: com.oracle.truffle.api.strings.TruffleString) to Java type 'java.util.Map[]'"));
                 };
                 assertThrows(() -> context.eval(ID, "hostobj.bounce('abc')"), expectedException);
                 assertThrows(() -> context.eval(ID, "hostobj['bounce']('abc')"), expectedException);

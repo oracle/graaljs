@@ -54,9 +54,11 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.ByteArrayAccess;
 import com.oracle.truffle.js.runtime.array.ByteBufferAccess;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
@@ -64,15 +66,15 @@ import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
 public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
-    public static final String CLASS_NAME = "ArrayBuffer";
-    public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("ArrayBuffer");
+    public static final Object PROTOTYPE_NAME = Strings.concat(CLASS_NAME, Strings.DOT_PROTOTYPE);
 
     protected JSArrayBufferObject(Shape shape) {
         super(shape);
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 

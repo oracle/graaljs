@@ -126,18 +126,11 @@ bool GraalHandleContent::SameData(GraalHandleContent* this_content, GraalHandleC
         return true;
     } else if (this_content->IsString() && that_content->IsString()) {
         // Check for same strings
-        jstring this_string = (jstring) this_content->GetJavaObject();
-        jstring that_string = (jstring) that_content->GetJavaObject();
-        jsize this_length = env->GetStringLength(this_string);
-        jsize that_length = env->GetStringLength(that_string);
-        if (this_length == that_length) {
-            const jchar* this_data = env->GetStringCritical(this_string, nullptr);
-            const jchar* that_data = env->GetStringCritical(that_string, nullptr);
-            int diff = memcmp(this_data, that_data, sizeof (jchar) * this_length);
-            env->ReleaseStringCritical(this_string, this_data);
-            env->ReleaseStringCritical(that_string, that_data);
-            return (diff == 0);
-        }
+        jobject this_string = this_content->GetJavaObject();
+        jobject that_string = that_content->GetJavaObject();
+
+        JNI_CALL(jboolean, result, this_content->Isolate(), GraalAccessMethod::string_equals, Boolean, this_string, that_string);
+        return result;
     }
     return false;
 }

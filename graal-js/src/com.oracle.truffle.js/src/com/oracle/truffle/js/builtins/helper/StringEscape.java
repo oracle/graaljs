@@ -40,10 +40,13 @@
  */
 package com.oracle.truffle.js.builtins.helper;
 
-import java.util.*;
+import java.util.BitSet;
 
-import com.oracle.truffle.api.CompilerDirectives.*;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 
 /**
  * String escape/unescape utility class. Used by B.2.1 escape() and B.2.2 unescape() methods as
@@ -74,105 +77,105 @@ public final class StringEscape {
     }
 
     @TruffleBoundary
-    public static String escape(String s) {
-        int len = s.length();
-        StringBuilder out = null;
+    public static TruffleString escape(TruffleString s) {
+        int len = Strings.length(s);
+        TruffleStringBuilder out = null;
 
         for (int i = 0; i < len; i++) {
-            int c = s.charAt(i);
+            int c = Strings.charAt(s, i);
             if (dontEscapeSet.get(c)) {
                 if (out != null) {
-                    out.append((char) c);
+                    Strings.builderAppend(out, (char) c);
                 }
             } else {
                 if (out == null) {
-                    out = allocBuffer(s, i, len + 16);
+                    out = allocStringBuilder(s, i, len + 16);
                 }
-                out.append('%');
+                Strings.builderAppend(out, '%');
                 if (c < 256) {
                     char ch = hexChar((c >> 4) & 0xF);
-                    out.append(ch);
+                    Strings.builderAppend(out, ch);
                     ch = hexChar(c & 0xF);
-                    out.append(ch);
+                    Strings.builderAppend(out, ch);
                 } else {
-                    out.append('u');
+                    Strings.builderAppend(out, 'u');
                     char ch = hexChar((c >> 12) & 0xF);
-                    out.append(ch);
+                    Strings.builderAppend(out, ch);
                     ch = hexChar((c >> 8) & 0xF);
-                    out.append(ch);
+                    Strings.builderAppend(out, ch);
                     ch = hexChar((c >> 4) & 0xF);
-                    out.append(ch);
+                    Strings.builderAppend(out, ch);
                     ch = hexChar(c & 0xF);
-                    out.append(ch);
+                    Strings.builderAppend(out, ch);
                 }
             }
         }
-        return out != null ? out.toString() : s;
+        return out != null ? Strings.builderToString(out) : s;
     }
 
     @TruffleBoundary
-    public static String unescape(String string) {
-        int len = string.length();
-        StringBuilder builder = null;
+    public static TruffleString unescape(TruffleString string) {
+        int len = Strings.length(string);
+        TruffleStringBuilder sb = null;
 
         int k = 0;
         while (k < len) {
-            char c = string.charAt(k);
+            char c = Strings.charAt(string, k);
             if (c == '%') {
-                if (builder == null) {
-                    builder = allocBuffer(string, k, len);
+                if (sb == null) {
+                    sb = allocStringBuilder(string, k, len);
                 }
                 if (k <= (len - 6)) {
-                    if (unescapeU0000(string, builder, k)) {
+                    if (unescapeU0000(string, sb, k)) {
                         k += 6;
                         continue;
                     }
                 }
                 if (k <= (len - 3)) {
-                    if (unescape00(string, builder, k)) {
+                    if (unescape00(string, sb, k)) {
                         k += 3;
                         continue;
                     }
                 }
             }
-            if (builder != null) {
-                builder.append(c);
+            if (sb != null) {
+                Strings.builderAppend(sb, c);
             }
             k++;
         }
-        return builder != null ? builder.toString() : string;
+        return sb != null ? Strings.builderToString(sb) : string;
     }
 
-    private static StringBuilder allocBuffer(String s, int i, int estimatedLength) {
-        StringBuilder newBuffer = new StringBuilder(estimatedLength);
+    private static TruffleStringBuilder allocStringBuilder(TruffleString s, int i, int estimatedLength) {
+        TruffleStringBuilder sb = Strings.builderCreate(estimatedLength);
         if (i > 0) {
-            newBuffer.append(s, 0, i);
+            Strings.builderAppend(sb, s, 0, i);
         }
-        return newBuffer;
+        return sb;
     }
 
-    private static boolean unescapeU0000(String string, StringBuilder builder, int k) {
-        char c1 = string.charAt(k + 1);
+    private static boolean unescapeU0000(TruffleString string, TruffleStringBuilder builder, int k) {
+        char c1 = Strings.charAt(string, k + 1);
         if (c1 == 'u') {
-            char c2 = string.charAt(k + 2);
-            char c3 = string.charAt(k + 3);
-            char c4 = string.charAt(k + 4);
-            char c5 = string.charAt(k + 5);
+            char c2 = Strings.charAt(string, k + 2);
+            char c3 = Strings.charAt(string, k + 3);
+            char c4 = Strings.charAt(string, k + 4);
+            char c5 = Strings.charAt(string, k + 5);
             if (JSRuntime.isHex(c2) && JSRuntime.isHex(c3) && JSRuntime.isHex(c4) && JSRuntime.isHex(c5)) {
                 char newC = (char) (hexVal(c2) * 16 * 16 * 16 + hexVal(c3) * 16 * 16 + hexVal(c4) * 16 + hexVal(c5));
-                builder.append(newC);
+                Strings.builderAppend(builder, newC);
                 return true;
             }
         }
         return false;
     }
 
-    private static boolean unescape00(String string, StringBuilder builder, int k) {
-        char c1 = string.charAt(k + 1);
-        char c2 = string.charAt(k + 2);
+    private static boolean unescape00(TruffleString string, TruffleStringBuilder builder, int k) {
+        char c1 = Strings.charAt(string, k + 1);
+        char c2 = Strings.charAt(string, k + 2);
         if (JSRuntime.isHex(c1) && JSRuntime.isHex(c2)) {
             char newC = (char) (hexVal(c1) * 16 + hexVal(c2));
-            builder.append(newC);
+            Strings.builderAppend(builder, newC);
             return true;
         }
         return false;

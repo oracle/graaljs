@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBigIntNode;
@@ -55,8 +56,8 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
 /**
  * @see JSToBooleanNode
@@ -136,13 +137,8 @@ public abstract class JSToBooleanUnaryNode extends JSUnaryNode {
     }
 
     @Specialization
-    protected static boolean doLazyString(JSLazyString value) {
-        return value.length() != 0;
-    }
-
-    @Specialization
-    protected static boolean doString(String value) {
-        return value.length() != 0;
+    protected static boolean doString(TruffleString value) {
+        return Strings.length(value) != 0;
     }
 
     @Specialization(guards = "isJSObject(value)")

@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetDateNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetDayNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetFullYearNodeGen;
@@ -93,6 +94,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
@@ -393,7 +395,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         @Specialization
-        protected String doOperation(Object thisDate) {
+        protected TruffleString doOperation(Object thisDate) {
             double t = asDateMillis(thisDate);
             if (isUTC) {
                 if (isNaN.profile(Double.isNaN(t))) {
@@ -416,7 +418,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         @Specialization
-        protected String doOperation(Object thisDate, Object locales, Object options) {
+        protected TruffleString doOperation(Object thisDate, Object locales, Object options) {
             double t = asDateMillis(thisDate);
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
@@ -433,7 +435,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         @Specialization
-        protected String doOperation(Object thisDate) {
+        protected TruffleString doOperation(Object thisDate) {
             double t = asDateMillis(thisDate);
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
@@ -449,7 +451,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         @Specialization
-        protected String doOperation(Object thisDate) {
+        protected TruffleString doOperation(Object thisDate) {
             double t = asDateMillis(thisDate);
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
@@ -465,7 +467,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         @Specialization
-        protected String doOperation(Object thisDate) {
+        protected TruffleString doOperation(Object thisDate) {
             double t = asDateMillis(thisDate);
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
@@ -484,7 +486,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         @Specialization
-        protected String doOperation(Object thisDate, Object locales, Object options) {
+        protected TruffleString doOperation(Object thisDate, Object locales, Object options) {
             double t = asDateMillis(thisDate);
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
@@ -501,7 +503,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         @Specialization
-        protected String doOperation(Object thisDate) {
+        protected TruffleString doOperation(Object thisDate) {
             double t = asDateMillis(thisDate);
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
@@ -520,7 +522,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         @Specialization
-        protected String doOperation(Object thisDate, Object locales, Object options) {
+        protected TruffleString doOperation(Object thisDate, Object locales, Object options) {
             double t = asDateMillis(thisDate);
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
@@ -537,7 +539,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         @Specialization
-        protected String doOperation(Object thisDate) {
+        protected TruffleString doOperation(Object thisDate) {
             double t = asDateMillis(thisDate);
             checkTimeValid(t);
             return JSDate.toISOStringIntl(t, getRealm());
@@ -875,7 +877,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         private Object getToISOStringFn(Object obj) {
             if (getToISOStringFnNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getToISOStringFnNode = insert(PropertyGetNode.create("toISOString", false, getContext()));
+                getToISOStringFnNode = insert(PropertyGetNode.create(Strings.TO_ISO_STRING, false, getContext()));
             }
             return getToISOStringFnNode.getValue(obj);
         }
@@ -907,13 +909,13 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (!isObjectNode.executeBoolean(obj)) {
                 throw Errors.createTypeErrorNotAnObject(obj);
             }
-            if (isHintNumber.profile(JSRuntime.HINT_NUMBER.equals(hint))) {
+            if (isHintNumber.profile(Strings.HINT_NUMBER.equals(hint))) {
                 if (ordinaryToPrimitiveHintNumber == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     ordinaryToPrimitiveHintNumber = insert(OrdinaryToPrimitiveNode.createHintNumber(getContext()));
                 }
                 return ordinaryToPrimitiveHintNumber.execute(obj);
-            } else if (isHintStringOrDefault.profile(JSRuntime.HINT_STRING.equals(hint) || JSRuntime.HINT_DEFAULT.equals(hint))) {
+            } else if (isHintStringOrDefault.profile(Strings.HINT_STRING.equals(hint) || Strings.HINT_DEFAULT.equals(hint))) {
                 if (ordinaryToPrimitiveHintString == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     ordinaryToPrimitiveHintString = insert(OrdinaryToPrimitiveNode.createHintString(getContext()));

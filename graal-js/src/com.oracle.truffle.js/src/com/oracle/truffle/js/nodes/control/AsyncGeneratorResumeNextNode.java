@@ -63,6 +63,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.AsyncGeneratorState;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -255,7 +256,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
                 return asyncGeneratorResolveNode.execute(frame, generatorObject, value, true);
             }
         }
-        return JSFunctionData.createCallOnly(context, new AsyncGeneratorReturnFulfilledRootNode().getCallTarget(), 1, "");
+        return JSFunctionData.createCallOnly(context, new AsyncGeneratorReturnFulfilledRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
     private DynamicObject createAsyncGeneratorReturnProcessorRejectedFunction(DynamicObject generator) {
@@ -281,6 +282,6 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
                 return asyncGeneratorRejectNode.execute(frame, generatorObject, reason);
             }
         }
-        return JSFunctionData.createCallOnly(context, new AsyncGeneratorReturnRejectedRootNode().getCallTarget(), 1, "");
+        return JSFunctionData.createCallOnly(context, new AsyncGeneratorReturnRejectedRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 }

@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -53,9 +56,8 @@ import com.oracle.truffle.js.nodes.unary.JSOverloadedUnaryNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
-
-import java.util.Set;
 
 public abstract class JSAddSubNumericUnitNode extends JSUnaryNode implements Truncatable {
 
@@ -116,8 +118,8 @@ public abstract class JSAddSubNumericUnitNode extends JSUnaryNode implements Tru
         return overloadedOperatorNode.execute(a);
     }
 
-    protected String getOverloadedOperatorName() {
-        return isAddition ? "++" : "--";
+    protected TruffleString getOverloadedOperatorName() {
+        return isAddition ? Strings.SYMBOL_PLUS_PLUS : Strings.SYMBOL_MINUS_MINUS;
     }
 
     @Override

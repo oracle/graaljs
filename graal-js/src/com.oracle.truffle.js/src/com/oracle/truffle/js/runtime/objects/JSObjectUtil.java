@@ -55,22 +55,27 @@ import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Properties;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 
 /**
  * @see DynamicObject
  */
 public final class JSObjectUtil {
+
     private static final HiddenKey PROTOTYPE_DATA = new HiddenKey("PROTOTYPE_DATA");
 
     private JSObjectUtil() {
@@ -84,8 +89,8 @@ public final class JSObjectUtil {
      * @return "[object ...]" by default
      */
     @TruffleBoundary
-    public static String formatToString(String object) {
-        return "[object " + object + "]";
+    public static TruffleString formatToString(TruffleString object) {
+        return Strings.concatAll(Strings.BRACKET_OBJECT_SPC, object, Strings.BRACKET_CLOSE);
     }
 
     public static DynamicObject createOrdinaryPrototypeObject(JSRealm realm) {
@@ -154,7 +159,7 @@ public final class JSObjectUtil {
     @TruffleBoundary
     public static void defineDataProperty(JSContext context, DynamicObject thisObj, Object key, Object value, int flags) {
         checkForNoSuchPropertyOrMethod(context, key);
-        DynamicObjectLibrary.getUncached().putWithFlags(thisObj, key, value, flags);
+        Properties.putWithFlagsUncached(thisObj, key, value, flags);
     }
 
     @TruffleBoundary
@@ -177,7 +182,7 @@ public final class JSObjectUtil {
 
         JSContext context = JSObject.getJSContext(thisObj);
         checkForNoSuchPropertyOrMethod(context, key);
-        DynamicObjectLibrary.getUncached().putWithFlags(thisObj, key, accessor, finalFlags);
+        Properties.putWithFlagsUncached(thisObj, key, accessor, finalFlags);
     }
 
     @TruffleBoundary
@@ -186,7 +191,7 @@ public final class JSObjectUtil {
 
         JSContext context = JSObject.getJSContext(thisObj);
         checkForNoSuchPropertyOrMethod(context, key);
-        DynamicObjectLibrary.getUncached().putConstant(thisObj, key, proxy, finalFlags);
+        Properties.putConstantUncached(thisObj, key, proxy, finalFlags);
     }
 
     @TruffleBoundary
@@ -197,7 +202,7 @@ public final class JSObjectUtil {
         JSDynamicObject.updatePropertyFlags(thisObj, key, (attr) -> (attr & ~JSAttributes.ATTRIBUTES_MASK) | flags);
     }
 
-    public static void putDataProperty(JSContext context, DynamicObject thisObj, String name, Object value) {
+    public static void putDataProperty(JSContext context, DynamicObject thisObj, Object name, Object value) {
         putDataProperty(context, thisObj, name, value, JSAttributes.notConfigurableNotEnumerableNotWritable());
     }
 
@@ -207,7 +212,7 @@ public final class JSObjectUtil {
         assert checkForExistingProperty(thisObj, key);
 
         checkForNoSuchPropertyOrMethod(context, key);
-        DynamicObjectLibrary.getUncached().putConstant(thisObj, key, value, flags);
+        Properties.putConstantUncached(thisObj, key, value, flags);
     }
 
     public static void putConstructorProperty(JSContext context, DynamicObject prototype, DynamicObject constructor) {
@@ -218,9 +223,9 @@ public final class JSObjectUtil {
         putDataProperty(ctx, constructor, JSObject.PROTOTYPE, prototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
     }
 
-    public static void putToStringTag(DynamicObject prototype, String toStringTag) {
+    public static void putToStringTag(DynamicObject prototype, TruffleString toStringTag) {
         assert checkForExistingProperty(prototype, Symbol.SYMBOL_TO_STRING_TAG);
-        DynamicObjectLibrary.getUncached().putWithFlags(prototype, Symbol.SYMBOL_TO_STRING_TAG, toStringTag, JSAttributes.configurableNotEnumerableNotWritable());
+        Properties.putWithFlagsUncached(prototype, Symbol.SYMBOL_TO_STRING_TAG, toStringTag, JSAttributes.configurableNotEnumerableNotWritable());
     }
 
     @TruffleBoundary
@@ -235,7 +240,7 @@ public final class JSObjectUtil {
         assert checkForExistingProperty(thisObj, key);
 
         checkForNoSuchPropertyOrMethod(context, key);
-        DynamicObjectLibrary.getUncached().putWithFlags(thisObj, key, accessor, flags | JSProperty.ACCESSOR);
+        Properties.putWithFlagsUncached(thisObj, key, accessor, flags | JSProperty.ACCESSOR);
     }
 
     public static void putBuiltinAccessorProperty(DynamicObject thisObj, Object key, DynamicObject getter, DynamicObject setter) {
@@ -252,7 +257,7 @@ public final class JSObjectUtil {
     public static void putBuiltinAccessorProperty(DynamicObject thisObj, Object key, Accessor accessor, int flags) {
         assert JSRuntime.isPropertyKey(key) && !isNoSuchPropertyOrMethod(key);
         assert checkForExistingProperty(thisObj, key);
-        DynamicObjectLibrary.getUncached().putWithFlags(thisObj, key, accessor, flags | JSProperty.ACCESSOR);
+        Properties.putWithFlagsUncached(thisObj, key, accessor, flags | JSProperty.ACCESSOR);
     }
 
     public static void putBuiltinAccessorProperty(DynamicObject thisObj, Object key, Accessor accessor) {
@@ -374,7 +379,7 @@ public final class JSObjectUtil {
         List<Property> allProperties = oldShape.getPropertyListInternal(true);
         List<Object> archive = new ArrayList<>(allProperties.size());
         for (Property prop : allProperties) {
-            Object value = lib.getOrDefault(object, prop.getKey(), null);
+            Object value = Properties.getOrDefault(lib, object, prop.getKey(), null);
             archive.add(value);
         }
 
@@ -388,11 +393,11 @@ public final class JSObjectUtil {
                 int propertyFlags = property.getFlags();
                 if (JSObject.HIDDEN_PROTO.equals(key)) {
                     // Note possible transition from constant shape prototype to instance property
-                    lib.putWithFlags(object, key, newPrototype, propertyFlags);
+                    Properties.putWithFlags(lib, object, key, newPrototype, propertyFlags);
                 } else if (property.getLocation().isConstant()) {
-                    lib.putConstant(object, key, value, propertyFlags);
+                    Properties.putConstant(lib, object, key, value, propertyFlags);
                 } else {
-                    lib.putWithFlags(object, key, value, propertyFlags);
+                    Properties.putWithFlags(lib, object, key, value, propertyFlags);
                 }
             }
         }
@@ -425,11 +430,11 @@ public final class JSObjectUtil {
 
     public static boolean isNoSuchPropertyOrMethod(Object key) {
         CompilerAsserts.neverPartOfCompilation();
-        return (key instanceof String && (key.equals(JSObject.NO_SUCH_PROPERTY_NAME) || key.equals(JSObject.NO_SUCH_METHOD_NAME)));
+        return (Strings.isTString(key) && (Strings.equals(JSObject.NO_SUCH_PROPERTY_NAME, (TruffleString) key) || Strings.equals(JSObject.NO_SUCH_METHOD_NAME, (TruffleString) key)));
     }
 
     public static DynamicObject createSymbolSpeciesGetterFunction(JSRealm realm) {
-        return JSFunction.create(realm, JSFunctionData.createCallOnly(realm.getContext(), realm.getContext().getSpeciesGetterFunctionCallTarget(), 0, "get [Symbol.species]"));
+        return JSFunction.create(realm, JSFunctionData.createCallOnly(realm.getContext(), realm.getContext().getSpeciesGetterFunctionCallTarget(), 0, JSNonProxy.GET_SYMBOL_SPECIES_NAME));
     }
 
     public static void putFunctionsFromContainer(JSRealm realm, DynamicObject thisObj, JSBuiltinsContainer container) {
@@ -450,17 +455,17 @@ public final class JSObjectUtil {
 
     public static void putHiddenProperty(DynamicObject obj, Object key, Object value) {
         assert key instanceof HiddenKey;
-        DynamicObjectLibrary.getUncached().put(obj, key, value);
+        Properties.putUncached(obj, key, value);
     }
 
     public static Object getHiddenProperty(DynamicObject obj, Object key) {
         assert key instanceof HiddenKey;
-        return DynamicObjectLibrary.getUncached().getOrDefault(obj, key, null);
+        return Properties.getOrDefaultUncached(obj, key, null);
     }
 
     public static boolean hasHiddenProperty(DynamicObject obj, Object key) {
         assert key instanceof HiddenKey;
-        return DynamicObjectLibrary.getUncached().containsKey(obj, key);
+        return Properties.containsKeyUncached(obj, key);
     }
 
     public static DynamicObjectLibrary createCached(Object key, DynamicObject obj) {
@@ -481,14 +486,14 @@ public final class JSObjectUtil {
         DynamicObjectLibrary objectLibrary = DynamicObjectLibrary.getUncached();
         for (Property property : source.getShape().getPropertyListInternal(true)) {
             Object key = property.getKey();
-            if (objectLibrary.containsKey(target, key)) {
+            if (Properties.containsKey(objectLibrary, target, key)) {
                 continue;
             }
-            Object value = objectLibrary.getOrDefault(source, key, null);
+            Object value = Properties.getOrDefault(objectLibrary, source, key, null);
             if (property.getLocation().isConstant()) {
-                objectLibrary.putConstant(target, key, value, property.getFlags());
+                Properties.putConstant(objectLibrary, target, key, value, property.getFlags());
             } else {
-                objectLibrary.putWithFlags(target, key, value, property.getFlags());
+                Properties.putWithFlags(objectLibrary, target, key, value, property.getFlags());
             }
         }
         return target;

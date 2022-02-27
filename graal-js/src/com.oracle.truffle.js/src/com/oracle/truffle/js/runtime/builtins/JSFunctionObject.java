@@ -54,6 +54,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
@@ -64,8 +65,8 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.interop.InteropFunction;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -115,12 +116,12 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return JSFunction.INSTANCE.getClassName(this);
     }
 
     @Override
-    public String getBuiltinToStringTag() {
+    public TruffleString getBuiltinToStringTag() {
         return JSFunction.INSTANCE.getBuiltinToStringTag(this);
     }
 
@@ -208,10 +209,10 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
     @ExportMessage(name = "getMetaSimpleName")
     public final Object getMetaObjectName() {
         Object name = JSRuntime.getDataProperty(this, JSFunction.NAME);
-        if (JSRuntime.isString(name)) {
-            return JSRuntime.javaToString(name);
+        if (Strings.isTString(name)) {
+            return name;
         }
-        return "";
+        return Strings.EMPTY_STRING;
     }
 
     @SuppressWarnings("static-method")
@@ -272,7 +273,7 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
         private final Object boundThis;
         private final Object[] boundArguments;
         private final int boundLength;
-        private CharSequence boundName;
+        private TruffleString boundName;
 
         public DynamicObject getBoundTargetFunction() {
             return boundTargetFunction;
@@ -286,15 +287,15 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
             return boundArguments;
         }
 
-        public CharSequence getBoundName() {
+        public TruffleString getBoundName() {
             if (boundName == null) {
                 initializeBoundName();
             }
             return boundName;
         }
 
-        public void setTargetName(CharSequence targetName) {
-            boundName = JSLazyString.create("bound ", targetName);
+        public void setTargetName(TruffleString targetName) {
+            boundName = Strings.concat(Strings.BOUND_SPC, targetName);
         }
 
         @TruffleBoundary
@@ -302,7 +303,7 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
             setTargetName(getFunctionName(boundTargetFunction));
         }
 
-        private static CharSequence getFunctionName(DynamicObject function) {
+        private static TruffleString getFunctionName(DynamicObject function) {
             if (JSFunction.isBoundFunction(function)) {
                 return ((JSFunctionObject.Bound) function).getBoundName();
             } else {

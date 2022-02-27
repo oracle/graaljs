@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -87,22 +88,22 @@ public abstract class FromPropertyDescriptorNode extends JavaScriptBaseNode {
 
         DynamicObject obj = JSOrdinary.create(context, getRealm());
         if (desc.hasValue()) {
-            putValueNode.put(obj, JSAttributes.VALUE, desc.getValue());
+            Properties.put(putValueNode, obj, JSAttributes.VALUE, desc.getValue());
         }
         if (desc.hasWritable()) {
-            putWritableNode.put(obj, JSAttributes.WRITABLE, desc.getWritable());
+            Properties.put(putWritableNode, obj, JSAttributes.WRITABLE, desc.getWritable());
         }
         if (desc.hasGet()) {
-            putGetNode.put(obj, JSAttributes.GET, desc.getGet());
+            Properties.put(putGetNode, obj, JSAttributes.GET, desc.getGet());
         }
         if (desc.hasSet()) {
-            putSetNode.put(obj, JSAttributes.SET, desc.getSet());
+            Properties.put(putSetNode, obj, JSAttributes.SET, desc.getSet());
         }
         if (desc.hasEnumerable()) {
-            putEnumerableNode.put(obj, JSAttributes.ENUMERABLE, desc.getEnumerable());
+            Properties.put(putEnumerableNode, obj, JSAttributes.ENUMERABLE, desc.getEnumerable());
         }
         if (desc.hasConfigurable()) {
-            putConfigurableNode.put(obj, JSAttributes.CONFIGURABLE, desc.getConfigurable());
+            Properties.put(putConfigurableNode, obj, JSAttributes.CONFIGURABLE, desc.getConfigurable());
         }
         return obj;
     }

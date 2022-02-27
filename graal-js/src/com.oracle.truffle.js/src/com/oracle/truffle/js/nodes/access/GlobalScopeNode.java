@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -51,13 +53,12 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-
-import java.util.Set;
 
 @NodeInfo(cost = NodeCost.NONE)
 public class GlobalScopeNode extends JavaScriptNode {
@@ -71,7 +72,7 @@ public class GlobalScopeNode extends JavaScriptNode {
         return new GlobalScopeNode(context);
     }
 
-    public static JavaScriptNode createWithTDZCheck(JSContext context, String varName) {
+    public static JavaScriptNode createWithTDZCheck(JSContext context, TruffleString varName) {
         return GlobalScopeTDZCheckNodeGen.create(context, varName);
     }
 
@@ -87,10 +88,10 @@ public class GlobalScopeNode extends JavaScriptNode {
 }
 
 abstract class GlobalScopeTDZCheckNode extends GlobalScopeNode {
-    final String varName;
+    final TruffleString varName;
     @Executed @Child JavaScriptNode scopeNode;
 
-    GlobalScopeTDZCheckNode(JSContext context, String varName) {
+    GlobalScopeTDZCheckNode(JSContext context, TruffleString varName) {
         super(context);
         this.varName = varName;
         this.scopeNode = GlobalScopeNode.create(context);

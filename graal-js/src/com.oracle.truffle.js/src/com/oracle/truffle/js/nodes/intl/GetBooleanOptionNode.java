@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.intl;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -54,14 +55,14 @@ public abstract class GetBooleanOptionNode extends JavaScriptBaseNode {
     @Child PropertyGetNode propertyGetNode;
     @Child JSToBooleanNode toBooleanNode = JSToBooleanNode.create();
 
-    protected GetBooleanOptionNode(JSContext context, String property, Boolean fallback) {
+    protected GetBooleanOptionNode(JSContext context, TruffleString property, Boolean fallback) {
         this.fallback = fallback;
         this.propertyGetNode = PropertyGetNode.create(property, false, context);
     }
 
     public abstract Boolean executeValue(Object options);
 
-    public static GetBooleanOptionNode create(JSContext context, String property, Boolean fallback) {
+    public static GetBooleanOptionNode create(JSContext context, TruffleString property, Boolean fallback) {
         return GetBooleanOptionNodeGen.create(context, property, fallback);
     }
 

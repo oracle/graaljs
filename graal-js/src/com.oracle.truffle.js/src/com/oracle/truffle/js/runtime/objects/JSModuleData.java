@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 
 /**
@@ -63,7 +64,7 @@ public final class JSModuleData extends ScriptOrModule {
      * Cache of imported module sources to keep alive sources referenced by this module in order to
      * prevent premature code cache GC of this module's dependencies.
      */
-    private final Map<String, Source> importSourceCache = new ConcurrentHashMap<>();
+    private final Map<TruffleString, Source> importSourceCache = new ConcurrentHashMap<>();
 
     public JSModuleData(Module module, Source source, JSFunctionData functionData, FrameDescriptor frameDescriptor) {
         super(functionData.getContext(), source);
@@ -92,7 +93,7 @@ public final class JSModuleData extends ScriptOrModule {
      * Keep a link from the referencing module to the imported module's Source, so that the latter
      * is kept alive for the lifetime of the former.
      */
-    public void rememberImportedModuleSource(String moduleSpecifier, Source moduleSource) {
+    public void rememberImportedModuleSource(TruffleString moduleSpecifier, Source moduleSource) {
         // Note: the source might change, so we only remember the last source.
         importSourceCache.put(moduleSpecifier, moduleSource);
     }

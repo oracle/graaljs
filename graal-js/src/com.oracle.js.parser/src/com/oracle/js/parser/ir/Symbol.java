@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 
 package com.oracle.js.parser.ir;
+
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Symbol is a symbolic address for a value ("variable" if you wish). Identifiers in JavaScript
@@ -109,7 +111,7 @@ public final class Symbol implements Comparable<Symbol> {
     public static final int IS_ARGUMENTS = 1 << 21;
 
     /** Null or name identifying symbol. */
-    private final String name;
+    private final TruffleString name;
 
     /** Symbol flags. */
     private int flags;
@@ -123,7 +125,7 @@ public final class Symbol implements Comparable<Symbol> {
      * @param name name of symbol
      * @param flags symbol flags
      */
-    public Symbol(final String name, final int flags) {
+    public Symbol(final TruffleString name, final int flags) {
         this.name = name;
         this.flags = flags;
         assert (flags & KINDMASK) != 0;
@@ -155,7 +157,7 @@ public final class Symbol implements Comparable<Symbol> {
 
     @Override
     public int compareTo(final Symbol other) {
-        return name.compareTo(other.name);
+        return name.compareCharsUTF16Uncached(other.name);
     }
 
     /**
@@ -302,7 +304,7 @@ public final class Symbol implements Comparable<Symbol> {
      *
      * @return symbol name
      */
-    public String getName() {
+    public TruffleString getName() {
         return name;
     }
 

@@ -42,11 +42,13 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNodeGen.JSToBigIntInnerConversionNodeGen;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSErrorType;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 
 public abstract class JSToBigIntNode extends JavaScriptBaseNode {
@@ -107,9 +109,9 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
         }
 
         @Specialization
-        protected static BigInt doString(String value) {
+        protected static BigInt doString(TruffleString value) {
             try {
-                return BigInt.valueOf(value);
+                return Strings.parseBigInt(value);
             } catch (NumberFormatException e) {
                 throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.SyntaxError, value);
             }

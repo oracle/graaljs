@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -52,6 +54,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -63,6 +66,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -80,18 +84,20 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
-    public static final String CLASS_NAME = "Instance";
-    public static final String EXPORTS = "exports";
+    public static final TruffleString CLASS_NAME = Strings.constant("Instance");
+    public static final TruffleString EXPORTS = Strings.constant("exports");
+
+    public static final TruffleString WEB_ASSEMBLY_INSTANCE = Strings.constant("WebAssembly.Instance");
 
     public static final JSWebAssemblyInstance INSTANCE = new JSWebAssemblyInstance();
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
@@ -105,7 +111,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
         JSObjectUtil.putAccessorProperty(ctx, prototype, EXPORTS, createExportsGetterFunction(realm), Undefined.instance, JSAttributes.configurableEnumerableWritable());
-        JSObjectUtil.putToStringTag(prototype, "WebAssembly.Instance");
+        JSObjectUtil.putToStringTag(prototype, WEB_ASSEMBLY_INSTANCE);
         return prototype;
     }
 
@@ -147,7 +153,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     }
                 }
             }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + EXPORTS);
+            return JSFunctionData.createCallOnly(c, callTarget, 0, Strings.concat(Strings.GET_SPC, EXPORTS));
         });
 
         return JSFunction.create(realm, getterData);
@@ -165,21 +171,21 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
             for (long i = 0; i < size; i++) {
                 Object exportInfo = exportsInterop.readArrayElement(exportsInfo, i);
                 InteropLibrary exportInterop = InteropLibrary.getUncached(exportInfo);
-                String name = asString(exportInterop.readMember(exportInfo, "name"));
-                String externtype = asString(exportInterop.readMember(exportInfo, "kind"));
-                Object externval = InteropLibrary.getUncached().execute(instanceExport, wasmInstance, name);
+                TruffleString name = asTString(exportInterop.readMember(exportInfo, "name"));
+                TruffleString externtype = asTString(exportInterop.readMember(exportInfo, "kind"));
+                Object externval = InteropLibrary.getUncached().execute(instanceExport, wasmInstance, Strings.toJavaString(name));
                 Object value;
 
-                if ("function".equals(externtype)) {
-                    String typeInfo = asString(exportInterop.readMember(exportInfo, "type"));
+                if (Strings.equals(Strings.FUNCTION, externtype)) {
+                    TruffleString typeInfo = asTString(exportInterop.readMember(exportInfo, "type"));
                     value = exportFunction(context, realm, externval, typeInfo);
-                } else if ("global".equals(externtype)) {
-                    String valueType = asString(exportInterop.readMember(exportInfo, "type"));
+                } else if (Strings.equals(Strings.GLOBAL, externtype)) {
+                    TruffleString valueType = asTString(exportInterop.readMember(exportInfo, "type"));
                     value = JSWebAssemblyGlobal.create(context, realm, externval, valueType);
-                } else if ("memory".equals(externtype)) {
+                } else if (Strings.MEMORY.equals(externtype)) {
                     value = JSWebAssemblyMemory.create(context, realm, externval);
                 } else {
-                    assert "table".equals(externtype);
+                    assert Strings.TABLE.equals(externtype);
                     value = JSWebAssemblyTable.create(context, realm, externval);
                 }
 
@@ -192,29 +198,29 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         return exports;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public static Object exportFunction(JSContext context, JSRealm realm, Object export, String typeInfo) {
+    @TruffleBoundary
+    public static Object exportFunction(JSContext context, JSRealm realm, Object export, TruffleString typeInfo) {
         Object embedderData = JSWebAssembly.getEmbedderData(realm, export);
         if (embedderData instanceof JSFunctionObject) {
             return embedderData;
         }
 
-        int idxOpen = typeInfo.indexOf('(');
-        int idxClose = typeInfo.indexOf(')');
-        String name = typeInfo.substring(0, idxOpen);
-        String argTypes = typeInfo.substring(idxOpen + 1, idxClose);
-        String returnType = typeInfo.substring(idxClose + 1);
-        String[] paramTypes = argTypes.length() != 0 ? argTypes.split(" ") : new String[0];
+        int idxOpen = Strings.indexOf(typeInfo, '(');
+        int idxClose = Strings.indexOf(typeInfo, ')');
+        TruffleString name = Strings.substring(typeInfo, 0, idxOpen);
+        TruffleString argTypes = Strings.substring(typeInfo, idxOpen + 1, idxClose - (idxOpen + 1));
+        TruffleString returnType = Strings.substring(typeInfo, idxClose + 1);
+        TruffleString[] paramTypes = !Strings.isEmpty(argTypes) ? Strings.split(argTypes, Strings.SPACE) : new TruffleString[0];
         int argCount = paramTypes.length;
         boolean returnTypeIsI64 = JSWebAssemblyValueTypes.isI64(returnType);
-        boolean anyArgTypeIsI64 = argTypes.contains(JSWebAssemblyValueTypes.I64);
+        boolean anyArgTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxOpen + 1, idxClose) >= 0;
 
         CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
             @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
             @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
             private final BranchProfile errorBranch = BranchProfile.create();
             @Child InteropLibrary exportFunctionLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-            @CompilationFinal(dimensions = 1) String[] argTypesArray = paramTypes;
+            @CompilationFinal(dimensions = 1) TruffleString[] argTypesArray = paramTypes;
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -284,33 +290,33 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 Object descriptor = importsInterop.readArrayElement(imports, i);
                 InteropLibrary descriptorInterop = InteropLibrary.getUncached(descriptor);
 
-                String module = asString(descriptorInterop.readMember(descriptor, "module"));
+                TruffleString module = asTString(descriptorInterop.readMember(descriptor, "module"));
                 Object moduleImportObject = JSInteropUtil.get(importObject, module);
                 InteropLibrary moduleImportObjectInterop = InteropLibrary.getUncached(moduleImportObject);
                 if (!moduleImportObjectInterop.hasMembers(moduleImportObject)) {
                     throw Errors.createTypeErrorNotAnObject(moduleImportObject);
                 }
 
-                String name = asString(descriptorInterop.readMember(descriptor, "name"));
+                TruffleString name = asTString(descriptorInterop.readMember(descriptor, "name"));
                 Object value = JSInteropUtil.get(moduleImportObject, name);
-                String externType = asString(descriptorInterop.readMember(descriptor, "kind"));
+                TruffleString externType = asTString(descriptorInterop.readMember(descriptor, "kind"));
                 Object wasmValue;
 
-                if ("function".equals(externType)) {
+                if (Strings.equals(Strings.FUNCTION, externType)) {
                     if (!JSRuntime.isCallable(value)) {
                         throw Errors.createLinkError("Imported value is not callable");
                     }
                     if (JSWebAssembly.isExportedFunction(value)) {
                         wasmValue = JSWebAssembly.getExportedFunction((DynamicObject) value);
                     } else {
-                        String typeInfo = asString(descriptorInterop.readMember(descriptor, "type"));
+                        TruffleString typeInfo = asTString(descriptorInterop.readMember(descriptor, "type"));
                         wasmValue = createHostFunction(value, typeInfo);
                     }
-                } else if ("global".equals(externType)) {
+                } else if (Strings.equals(Strings.GLOBAL, externType)) {
                     boolean isNumber = JSRuntime.isNumber(value);
                     boolean isBigInt = JSRuntime.isBigInt(value);
                     if (isNumber || context.getContextOptions().isWasmBigInt() && isBigInt) {
-                        String valueType = asString(descriptorInterop.readMember(descriptor, "type"));
+                        TruffleString valueType = asTString(descriptorInterop.readMember(descriptor, "type"));
                         boolean isI64 = JSWebAssemblyValueTypes.isI64(valueType);
                         if (!context.getContextOptions().isWasmBigInt() && isI64) {
                             throw Errors.createLinkError("Can't import the value of i64 WebAssembly.Global");
@@ -333,14 +339,14 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     } else {
                         throw Errors.createLinkError("Imported value is not WebAssembly.Global object");
                     }
-                } else if ("memory".equals(externType)) {
+                } else if (Strings.equals(Strings.MEMORY, externType)) {
                     if (JSWebAssemblyMemory.isJSWebAssemblyMemory(value)) {
                         wasmValue = ((JSWebAssemblyMemoryObject) value).getWASMMemory();
                     } else {
                         throw Errors.createLinkError("Imported value is not WebAssembly.Memory object");
                     }
                 } else {
-                    assert "table".equals(externType) : externType;
+                    assert Strings.equals(Strings.TABLE, externType) : externType;
                     if (JSWebAssemblyTable.isJSWebAssemblyTable(value)) {
                         wasmValue = ((JSWebAssemblyTableObject) value).getWASMTable();
                     } else {
@@ -363,16 +369,16 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private static Object createHostFunction(Object fn, String typeInfo) {
+    @TruffleBoundary
+    private static Object createHostFunction(Object fn, TruffleString typeInfo) {
         return new WebAssemblyHostFunction(fn, typeInfo);
     }
 
-    private static String asString(Object string) throws UnsupportedMessageException {
+    private static TruffleString asTString(Object string) throws UnsupportedMessageException {
         if (string instanceof String) {
-            return (String) string;
+            return Strings.fromJavaString((String) string);
         }
-        return InteropLibrary.getUncached(string).asString(string);
+        return InteropLibrary.getUncached(string).asTruffleString(string);
     }
 
 }

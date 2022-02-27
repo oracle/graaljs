@@ -48,9 +48,11 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -267,8 +269,8 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             } else {
                 assert JSRuntime.isForeignObject(thisObj);
                 Object key = root.getKey();
-                if (key instanceof String) {
-                    return interop.isMemberExisting(thisObj, (String) key);
+                if (Strings.isTString(key)) {
+                    return interop.isMemberExisting(thisObj, Strings.toJavaString((TruffleString) key));
                 } else {
                     return false;
                 }
@@ -288,8 +290,8 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
             assert JSRuntime.isForeignObject(thisObj);
             Object key = root.getKey();
-            if (key instanceof String) {
-                return interop.isMemberExisting(thisObj, (String) key);
+            if (Strings.isTString(key)) {
+                return interop.isMemberExisting(thisObj, Strings.toJavaString((TruffleString) key));
             } else {
                 return false;
             }

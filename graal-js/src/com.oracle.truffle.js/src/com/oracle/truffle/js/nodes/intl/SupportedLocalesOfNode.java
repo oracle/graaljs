@@ -77,7 +77,6 @@ public abstract class SupportedLocalesOfNode extends JSBuiltinNode {
     }
 
     protected static GetStringOptionNode createMatcherGetter(JSContext context) {
-        return GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
-                        new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        return GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
     }
 }

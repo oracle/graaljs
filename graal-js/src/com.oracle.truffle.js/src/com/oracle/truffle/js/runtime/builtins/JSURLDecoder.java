@@ -72,9 +72,12 @@ import java.nio.charset.CoderResult;
 import java.nio.charset.StandardCharsets;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 
 public class JSURLDecoder {
 
@@ -85,44 +88,44 @@ public class JSURLDecoder {
     }
 
     @TruffleBoundary(transferToInterpreterOnException = false)
-    public String decode(String string) {
-        int strLen = string.length();
-        StringBuilder buffer = null;
+    public TruffleString decode(TruffleString string) {
+        int strLen = Strings.length(string);
+        TruffleStringBuilder sb = null;
         CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
         int k = 0;
 
         while (k < strLen) {
-            char c = string.charAt(k);
+            char c = Strings.charAt(string, k);
             if (c != '%') {
-                if (buffer != null) {
-                    buffer.append(c);
+                if (sb != null) {
+                    Strings.builderAppend(sb, c);
                 }
             } else {
-                if (buffer == null) {
-                    buffer = JSURLEncoder.allocBuffer(string, k, strLen);
+                if (sb == null) {
+                    sb = JSURLEncoder.allocStringBuilder(string, k, strLen);
                 }
-                k = decodeConvert(string, strLen, k, buffer, decoder);
+                k = decodeConvert(string, strLen, k, sb, decoder);
             }
             k++;
         }
-        return buffer != null ? buffer.toString() : string;
+        return sb != null ? Strings.builderToString(sb) : string;
     }
 
-    private int decodeConvert(String string, int strLen, int start, StringBuilder buffer, CharsetDecoder decoder) {
+    private int decodeConvert(TruffleString string, int strLen, int start, TruffleStringBuilder buffer, CharsetDecoder decoder) {
         int k = start;
         if (k + 2 >= strLen) {
             throw Errors.createURIError("illegal escape sequence");
         }
-        int hex1 = getHexValue(string.charAt(k + 1));
-        int hex2 = getHexValue(string.charAt(k + 2));
+        int hex1 = getHexValue(Strings.charAt(string, k + 1));
+        int hex2 = getHexValue(Strings.charAt(string, k + 2));
         byte b = (byte) ((hex1 << 4) + hex2);
         k += 2;
         if ((b & 0x80) == 0) { // vi. most significant bit is 0
             char c = (char) b;
             if (!isReserved(c)) {
-                buffer.append(c);
+                Strings.builderAppend(buffer, c);
             } else {
-                buffer.append(string, start, k + 1);
+                Strings.builderAppend(buffer, string, start, k + 1);
             }
         } else { // vii. most significant bit is 1
             k = decodeConvertIntl(string, strLen, k, b, buffer, decoder);
@@ -130,7 +133,7 @@ public class JSURLDecoder {
         return k;
     }
 
-    private int decodeConvertIntl(String string, int strLen, int kParam, byte b, StringBuilder buffer, CharsetDecoder decoder) {
+    private int decodeConvertIntl(TruffleString string, int strLen, int kParam, byte b, TruffleStringBuilder buffer, CharsetDecoder decoder) {
         int k = kParam;
         int n = findN(b);
         if (n == 1 || n > 4) {
@@ -144,11 +147,11 @@ public class JSURLDecoder {
         int j = 1;
         while (j < n) {
             k++;
-            if (string.charAt(k) != '%') {
+            if (Strings.charAt(string, k) != '%') {
                 throw invalidEncodingError();
             }
-            int hex3 = getHexValue(string.charAt(k + 1));
-            int hex4 = getHexValue(string.charAt(k + 2));
+            int hex3 = getHexValue(Strings.charAt(string, k + 1));
+            int hex4 = getHexValue(Strings.charAt(string, k + 2));
             byte b2 = (byte) ((hex3 << 4) + hex4);
             if ((b2 & 0xC0) != 0x80) {
                 throw invalidEncodingError();
@@ -167,10 +170,10 @@ public class JSURLDecoder {
         }
         if (cb.position() == 1) {
             assert !isReserved(cb.get(0));
-            buffer.append(cb.get(0));
+            Strings.builderAppend(buffer, cb.get(0));
         } else {
-            buffer.append(cb.get(0));
-            buffer.append(cb.get(1));
+            Strings.builderAppend(buffer, cb.get(0));
+            Strings.builderAppend(buffer, cb.get(1));
         }
         return k;
     }

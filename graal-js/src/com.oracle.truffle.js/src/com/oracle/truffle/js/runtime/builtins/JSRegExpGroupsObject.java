@@ -42,20 +42,21 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public final class JSRegExpGroupsObject extends JSNonProxyObject implements JSCopyableObject {
     private Object regexResult;
-    private String input;
+    private TruffleString input;
     private boolean isIndices;
 
-    protected JSRegExpGroupsObject(Shape shape, Object regexResult, String inputString, boolean isIndices) {
+    protected JSRegExpGroupsObject(Shape shape, Object regexResult, TruffleString input, boolean isIndices) {
         super(shape);
         this.regexResult = regexResult;
-        this.input = inputString;
+        this.input = input;
         this.isIndices = isIndices;
     }
 
@@ -63,7 +64,7 @@ public final class JSRegExpGroupsObject extends JSNonProxyObject implements JSCo
         return regexResult;
     }
 
-    public String getInputString() {
+    public TruffleString getInputString() {
         return input;
     }
 
@@ -72,12 +73,12 @@ public final class JSRegExpGroupsObject extends JSNonProxyObject implements JSCo
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return JSOrdinary.CLASS_NAME;
     }
 
-    public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Object regexResult, String inputString, boolean isIndices) {
-        return factory.initProto(new JSRegExpGroupsObject(factory.getShape(realm), regexResult, inputString, isIndices), realm);
+    public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Object regexResult, TruffleString input, boolean isIndices) {
+        return factory.initProto(new JSRegExpGroupsObject(factory.getShape(realm), regexResult, input, isIndices), realm);
     }
 
     @Override

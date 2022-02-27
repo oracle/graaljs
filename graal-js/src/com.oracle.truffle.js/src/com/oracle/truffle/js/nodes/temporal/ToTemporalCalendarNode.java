@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -101,7 +102,7 @@ public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
                 return (DynamicObject) item;
             }
         }
-        String identifier = toStringNode.executeString(item);
+        TruffleString identifier = toStringNode.executeString(item);
         if (!JSTemporalCalendar.isBuiltinCalendar(identifier)) {
             parseBranch.enter();
             identifier = TemporalUtil.parseTemporalCalendarString(identifier);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,8 +43,8 @@ package com.oracle.truffle.js.builtins;
 import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -52,6 +52,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectApplyNodeGen;
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectConstructNodeGen;
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectDefinePropertyNodeGen;
@@ -86,6 +87,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -302,11 +304,12 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
         protected boolean doForeignObject(Object target, Object propertyKey,
-                        @CachedLibrary("target") InteropLibrary interop) {
+                        @CachedLibrary("target") InteropLibrary interop,
+                        @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             if (interop.hasMembers(target)) {
-                if (key instanceof String) {
-                    String memberName = (String) key;
+                if (key instanceof TruffleString) {
+                    String memberName = Strings.toJavaString(toJavaStringNode, (TruffleString) key);
                     if (interop.isMemberRemovable(target, memberName)) {
                         try {
                             InteropLibrary.getUncached().removeMember(target, memberName);
@@ -414,11 +417,12 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
         protected Object doForeignObject(Object target, Object propertyKey,
-                        @CachedLibrary("target") InteropLibrary interop) {
+                        @CachedLibrary("target") InteropLibrary interop,
+                        @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             if (interop.hasMembers(target)) {
-                if (key instanceof String) {
-                    return interop.isMemberExisting(target, (String) key);
+                if (key instanceof TruffleString) {
+                    return interop.isMemberExisting(target, Strings.toJavaString(toJavaStringNode, (TruffleString) key));
                 } else {
                     return false;
                 }

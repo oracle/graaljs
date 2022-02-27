@@ -40,25 +40,28 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
-public interface FunctionNameHolder {
-    String getFunctionName();
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Strings;
 
-    void setFunctionName(String name);
+public interface FunctionNameHolder {
+    TruffleString getFunctionName();
+
+    void setFunctionName(TruffleString name);
 
     default boolean isAnonymous() {
-        return getFunctionName().isEmpty();
+        return Strings.isEmpty(getFunctionName());
     }
 
     interface Delegate extends FunctionNameHolder {
         FunctionNameHolder getFunctionNameHolder();
 
         @Override
-        default String getFunctionName() {
+        default TruffleString getFunctionName() {
             return getFunctionNameHolder().getFunctionName();
         }
 
         @Override
-        default void setFunctionName(String name) {
+        default void setFunctionName(TruffleString name) {
             getFunctionNameHolder().setFunctionName(name);
         }
 

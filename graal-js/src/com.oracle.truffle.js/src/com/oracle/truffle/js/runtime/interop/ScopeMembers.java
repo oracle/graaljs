@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,7 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.FrameDescriptorProvider;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
@@ -68,6 +69,8 @@ import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.Dead;
 
 @ExportLibrary(InteropLibrary.class)
@@ -132,7 +135,7 @@ final class ScopeMembers implements TruffleObject {
                     if (JSFrameUtil.isInternal(desc, slot)) {
                         continue;
                     }
-                    membersList.add(new Key(desc.getSlotName(slot).toString(), descNode, slot));
+                    membersList.add(new Key((TruffleString) desc.getSlotName(slot), descNode, slot));
                 }
 
                 descNode = JavaScriptNode.findBlockScopeNode(descNode.getParent());
@@ -149,7 +152,7 @@ final class ScopeMembers implements TruffleObject {
                     for (int slot = 0; slot < frameDescriptor.getNumberOfSlots(); slot++) {
                         if (JSFrameUtil.isInternal(frameDescriptor, slot)) {
                             if (JSFrameUtil.isThisSlot(frameDescriptor, slot)) {
-                                membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, descNode));
+                                membersList.add(new Key(Strings.THIS, descNode));
                                 seenThis = true;
                             }
                             continue;
@@ -157,7 +160,7 @@ final class ScopeMembers implements TruffleObject {
                         if (isUnsetFrameSlot(outerScope, slot)) {
                             continue;
                         }
-                        membersList.add(new Key(frameDescriptor.getSlotName(slot).toString(), descNode, slot));
+                        membersList.add(new Key((TruffleString) frameDescriptor.getSlotName(slot), descNode, slot));
                     }
 
                     // insert direct eval scope variables
@@ -166,7 +169,7 @@ final class ScopeMembers implements TruffleObject {
                         DynamicObject evalScope = (DynamicObject) outerScope.getObject(evalScopeSlot.getAsInt());
                         DynamicObjectLibrary objLib = DynamicObjectLibrary.getUncached();
                         for (Object key : objLib.getKeyArray(evalScope)) {
-                            membersList.add(new Key(key.toString(), descNode));
+                            membersList.add(new Key(key instanceof TruffleString ? (TruffleString) key : ((Symbol) key).toTString(), descNode));
                         }
                     }
 
@@ -189,7 +192,7 @@ final class ScopeMembers implements TruffleObject {
                 }
 
                 if (!seenThis) {
-                    membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, descNode));
+                    membersList.add(new Key(Strings.THIS, descNode));
                 }
 
                 outerFrame = JSArguments.getEnclosingFrame(outerFrame.getArguments());
@@ -218,16 +221,16 @@ final class ScopeMembers implements TruffleObject {
     @ExportLibrary(InteropLibrary.class)
     static final class Key implements TruffleObject {
 
-        private final String name;
+        private final TruffleString name;
         private final Node blockOrRoot;
         private final int slot;
         private SourceSection sourceLocation;
 
-        Key(String name, Node blockOrRoot) {
+        Key(TruffleString name, Node blockOrRoot) {
             this(name, blockOrRoot, -1);
         }
 
-        Key(String name, Node blockOrRoot, int slot) {
+        Key(TruffleString name, Node blockOrRoot, int slot) {
             this.name = name;
             this.slot = slot;
             this.blockOrRoot = blockOrRoot;
@@ -240,8 +243,13 @@ final class ScopeMembers implements TruffleObject {
         }
 
         @ExportMessage
-        String asString() {
+        TruffleString asTruffleString() {
             return name;
+        }
+
+        @ExportMessage
+        String asString() {
+            return Strings.toJavaString(name);
         }
 
         @Override

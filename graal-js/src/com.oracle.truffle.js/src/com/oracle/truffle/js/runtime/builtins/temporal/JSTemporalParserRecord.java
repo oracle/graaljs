@@ -40,11 +40,13 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 /**
  * Represents the information of a parsed TemporalTimeZoneString format.
  */
 public final class JSTemporalParserRecord {
-    private boolean z;
+    private final boolean z;
 
     private final long year;
     private final long month;
@@ -52,23 +54,24 @@ public final class JSTemporalParserRecord {
     private final long hour;
     private final long minute;
     private final long second;
-    private final String fraction;
+    private final TruffleString fraction;
 
-    private final String calendar;
-    private final String timeZoneIANAName;
-    private final String timeZoneEtcName;
-    private final String timeZoneUTCOffsetName;
-    private final String timeZoneNumericUTCOffset;
+    private final TruffleString calendar;
+    private final TruffleString timeZoneIANAName;
+    private final TruffleString timeZoneEtcName;
+    private final TruffleString timeZoneUTCOffsetName;
+    private final TruffleString timeZoneNumericUTCOffset;
 
-    private final String offsetSign;
+    private final TruffleString offsetSign;
     private final long offsetHour;
     private final long offsetMinute;
     private final long offsetSecond;
-    private final String offsetFraction;
+    private final TruffleString offsetFraction;
 
-    public JSTemporalParserRecord(boolean z, long year, long month, long day, long hour, long minute, long second, String fraction, String offsetSign, long offsetHour,
-                    long offsetMinute, long offsetSecond, String offsetFraction, String timeZoneIANAName, String timeZoneEtcName, String timeZoneUTCOffsetName, String calendar,
-                    String timeZoneNumericUTCOffset) {
+    public JSTemporalParserRecord(boolean z, long year, long month, long day, long hour, long minute, long second, TruffleString fraction, TruffleString offsetSign, long offsetHour,
+                    long offsetMinute, long offsetSecond, TruffleString offsetFraction, TruffleString timeZoneIANAName, TruffleString timeZoneEtcName, TruffleString timeZoneUTCOffsetName,
+                    TruffleString calendar,
+                    TruffleString timeZoneNumericUTCOffset) {
         this.z = z;
 
         this.year = year;
@@ -96,7 +99,7 @@ public final class JSTemporalParserRecord {
         return z;
     }
 
-    public String getOffsetSign() {
+    public TruffleString getOffsetSign() {
         return offsetSign;
     }
 
@@ -112,23 +115,23 @@ public final class JSTemporalParserRecord {
         return second;
     }
 
-    public String getFraction() {
+    public TruffleString getFraction() {
         return fraction;
     }
 
-    public String getTimeZoneIANAName() {
+    public TruffleString getTimeZoneIANAName() {
         return timeZoneIANAName;
     }
 
-    public String getTimeZoneUTCOffsetName() {
+    public TruffleString getTimeZoneUTCOffsetName() {
         return timeZoneIANAName;
     }
 
-    public String getTimeZoneEtcName() {
+    public TruffleString getTimeZoneEtcName() {
         return timeZoneIANAName;
     }
 
-    public String getTimeZoneANYName() {
+    public TruffleString getTimeZoneANYName() {
         if (timeZoneIANAName != null) {
             return timeZoneIANAName;
         }
@@ -153,7 +156,7 @@ public final class JSTemporalParserRecord {
         return day;
     }
 
-    public String getCalendar() {
+    public TruffleString getCalendar() {
         return calendar;
     }
 
@@ -169,11 +172,11 @@ public final class JSTemporalParserRecord {
         return offsetSecond;
     }
 
-    public String getOffsetFraction() {
+    public TruffleString getOffsetFraction() {
         return offsetFraction;
     }
 
-    public String getTimeZoneNumericUTCOffset() {
+    public TruffleString getTimeZoneNumericUTCOffset() {
         return timeZoneNumericUTCOffset;
     }
 

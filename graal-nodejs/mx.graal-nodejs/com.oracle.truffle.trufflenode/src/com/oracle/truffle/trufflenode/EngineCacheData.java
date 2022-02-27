@@ -45,6 +45,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.trufflenode.info.Accessor;
@@ -85,17 +86,17 @@ public final class EngineCacheData {
         return persistedNativePropertyHandlerData.computeIfAbsent(template.getEngineCacheDescriptor(mode), d -> factory.apply(context));
     }
 
-    public JSFunctionData getOrCreateSyntheticModuleData(String moduleName, Object[] exportNames, Function<JSContext, JSFunctionData> factory) {
+    public JSFunctionData getOrCreateSyntheticModuleData(TruffleString moduleName, Object[] exportNames, Function<JSContext, JSFunctionData> factory) {
         SyntheticModuleDescriptor descriptor = new SyntheticModuleDescriptor(moduleName, exportNames);
         return persistedSyntheticModulesData.computeIfAbsent(descriptor, d -> factory.apply(context));
     }
 
     private static class SyntheticModuleDescriptor {
 
-        private final String moduleName;
+        private final TruffleString moduleName;
         private final Object[] exportNames;
 
-        SyntheticModuleDescriptor(String moduleName, Object[] exportNames) {
+        SyntheticModuleDescriptor(TruffleString moduleName, Object[] exportNames) {
             this.moduleName = moduleName;
             this.exportNames = exportNames;
         }

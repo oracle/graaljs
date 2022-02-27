@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,6 +73,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -101,6 +102,7 @@ import com.oracle.truffle.js.runtime.JSNoSuchMethodAdapter;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptFunctionCallNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -419,8 +421,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             newNode = new ForeignInstantiateNode(skippedArgs, userArgumentCount - skippedArgs);
         } else if (JSGuards.isForeignObject(thisObject)) {
             Object propertyKey = getPropertyKey();
-            if (propertyKey != null && propertyKey instanceof String) {
-                newNode = new ForeignInvokeNode((String) propertyKey, userArgumentCount);
+            if (Strings.isTString(propertyKey)) {
+                newNode = new ForeignInvokeNode((TruffleString) propertyKey, userArgumentCount);
             }
         }
         if (newNode == null) {
@@ -1462,7 +1464,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     private static final class ForeignInvokeNode extends ForeignExecuteNode {
-        private final String functionName;
+        private final TruffleString functionName;
+        private final String functionNameJavaString;
         private final ValueProfile thisClassProfile = ValueProfile.createClassProfile();
         @Child protected Node invokeNode;
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
@@ -1471,9 +1474,10 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         private final BranchProfile errorBranch = BranchProfile.create();
         @CompilationFinal private boolean optimistic = true;
 
-        ForeignInvokeNode(String functionName, int expectedArgumentCount) {
+        ForeignInvokeNode(TruffleString functionName, int expectedArgumentCount) {
             super(expectedArgumentCount);
             this.functionName = functionName;
+            this.functionNameJavaString = Strings.toJavaString(functionName);
         }
 
         @Override
@@ -1493,7 +1497,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 }
                 if (optimistic) {
                     try {
-                        callReturn = interop.invokeMember(receiver, functionName, callArguments);
+                        callReturn = interop.invokeMember(receiver, functionNameJavaString, callArguments);
                     } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         optimistic = false;
@@ -1503,9 +1507,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                         throw Errors.createTypeErrorInteropException(receiver, e, "invokeMember", functionName, this);
                     }
                 } else {
-                    if (interop.isMemberInvocable(receiver, functionName)) {
+                    if (interop.isMemberInvocable(receiver, functionNameJavaString)) {
                         try {
-                            callReturn = interop.invokeMember(receiver, functionName, callArguments);
+                            callReturn = interop.invokeMember(receiver, functionNameJavaString, callArguments);
                         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
                             errorBranch.enter();
                             throw Errors.createTypeErrorInteropException(receiver, e, "invokeMember", functionName, this);
@@ -1544,7 +1548,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 }
             }
             errorBranch.enter();
-            throw Errors.createTypeErrorInteropException(receiver, ex != null ? ex : UnknownIdentifierException.create(functionName), "invokeMember", functionName, this);
+            throw Errors.createTypeErrorInteropException(receiver, ex != null ? ex : UnknownIdentifierException.create(Strings.toJavaString(functionName)), "invokeMember", functionName, this);
         }
 
         private Object maybeGetFromPrototype(Object receiver) {

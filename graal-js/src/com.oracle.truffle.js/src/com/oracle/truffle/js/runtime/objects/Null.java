@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,17 +43,22 @@ package com.oracle.truffle.js.runtime.objects;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.builtins.AbstractJSClass;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 
 public final class Null {
 
-    public static final String TYPE_NAME = "object";
-    public static final String NAME = "null";
-    public static final String CLASS_NAME = "null|undefined";
+    public static final TruffleString TYPE_NAME = Strings.OBJECT;
+    public static final TruffleString NAME = Strings.NULL;
+    public static final TruffleString CLASS_NAME = Strings.NULL_UNDEFINED;
+
+    public static final TruffleString DISPLAY_STRING_UNDEFINED = Strings.constant("[object Undefined]");
+    public static final TruffleString DISPLAY_STRING_NULL = Strings.constant("[object Null]");
+
     public static final JSClass NULL_CLASS = NullClass.INSTANCE;
     static final Shape SHAPE = JSShape.makeStaticRoot(Null.NULL_CLASS);
     public static final JSDynamicObject instance = new Nullish();
@@ -68,18 +73,18 @@ public final class Null {
         }
 
         @Override
-        public String getClassName(DynamicObject object) {
+        public TruffleString getClassName(DynamicObject object) {
             return object == Undefined.instance ? Undefined.NAME : Null.NAME;
         }
 
         @Override
         public String toString() {
-            return CLASS_NAME;
+            return Strings.toJavaString(CLASS_NAME);
         }
 
         @Override
         public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
-            return delete(thisObj, Boundaries.stringValueOf(index), isStrict);
+            return delete(thisObj, Strings.fromLong(index), isStrict);
         }
 
         @Override
@@ -88,12 +93,12 @@ public final class Null {
         }
 
         @Override
-        public String toDisplayStringImpl(DynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-            return object == Undefined.instance ? "[object Undefined]" : "[object Null]";
+        public TruffleString toDisplayStringImpl(DynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+            return object == Undefined.instance ? DISPLAY_STRING_UNDEFINED : DISPLAY_STRING_NULL;
         }
 
         @Override
-        public String defaultToString(DynamicObject thisObj) {
+        public TruffleString defaultToString(DynamicObject thisObj) {
             return thisObj == Undefined.instance ? Undefined.NAME : Null.NAME;
         }
 

@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.trufflenode.serialization;
 
-import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -48,13 +47,15 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -91,6 +92,9 @@ public class Serializer {
     static final byte VERSION = (byte) 0xFF; // SerializationTag::kVersion
     static final byte LATEST_VERSION = (byte) 13; // kLatestVersion
     static final String NATIVE_UTF16_ENCODING = (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) ? "UTF-16BE" : "UTF-16LE";
+
+    public static final TruffleString COULD_NOT_BE_CLONED = Strings.constant(" could not be cloned.");
+    public static final TruffleString HASH_BRACKETS_OBJECT = Strings.constant("#<Object>");
 
     /** Pointer to the corresponding v8::ValueSerializer. */
     private final long delegate;
@@ -172,13 +176,13 @@ public class Serializer {
         } else if (JSRuntime.isNumber(value)) {
             double doubleValue = ((Number) value).doubleValue();
             writeIntOrDouble(doubleValue);
-        } else if (JSRuntime.isString(value)) {
-            writeString(JSRuntime.toString(value));
+        } else if (value instanceof TruffleString) {
+            writeString((TruffleString) value);
         } else if (JSRuntime.isBigInt(value)) {
             writeTag(SerializationTag.BIG_INT);
             writeBigIntContents((BigInt) value);
         } else if (value instanceof Symbol) {
-            NativeAccess.throwDataCloneError(delegate, JSRuntime.safeToString(value) + " could not be cloned.");
+            NativeAccess.throwDataCloneError(delegate, Strings.concat(JSRuntime.safeToString(value), COULD_NOT_BE_CLONED));
         } else if (env.isHostObject(value) && access.getCurrentMessagePortData() != null) {
             JavaMessagePortData messagePort = access.getCurrentMessagePortData();
             writeTag(SerializationTag.SHARED_JAVA_OBJECT);
@@ -240,16 +244,16 @@ public class Serializer {
         } else if (JSProxy.isJSProxy(object)) {
             DynamicObject proxy = (DynamicObject) object;
             boolean callable = JSRuntime.isCallableProxy(proxy);
-            String objectStr;
+            TruffleString objectStr;
             if (callable) {
                 objectStr = JSRuntime.safeToString(JSProxy.getTargetNonProxy(proxy));
             } else {
-                objectStr = "#<Object>";
+                objectStr = HASH_BRACKETS_OBJECT;
             }
-            String message = objectStr + " could not be cloned.";
+            TruffleString message = Strings.concat(objectStr, COULD_NOT_BE_CLONED);
             NativeAccess.throwDataCloneError(delegate, message);
         } else if (JSFunction.isJSFunction(object)) {
-            NativeAccess.throwDataCloneError(delegate, JSRuntime.safeToString(object) + " could not be cloned.");
+            NativeAccess.throwDataCloneError(delegate, Strings.concat(JSRuntime.safeToString(object), COULD_NOT_BE_CLONED));
         } else if (JSDynamicObject.isJSDynamicObject(object)) {
             DynamicObject dynamicObject = (DynamicObject) object;
             if (GraalJSAccess.internalFieldCount(dynamicObject) == 0) {
@@ -307,34 +311,22 @@ public class Serializer {
         buffer.putDouble(value);
     }
 
-    private void writeString(String string) {
-        try {
-            byte[] bytes;
-            SerializationTag tag;
-            String encoding;
-            if (isOneByteString(string)) {
-                tag = SerializationTag.ONE_BYTE_STRING;
-                encoding = "ISO-8859-1";
-            } else {
-                tag = SerializationTag.TWO_BYTE_STRING;
-                encoding = NATIVE_UTF16_ENCODING;
-            }
-            writeTag(tag);
-            bytes = string.getBytes(encoding);
-            writeVarInt(bytes.length);
-            writeBytes(bytes, bytes.length);
-        } catch (UnsupportedEncodingException ueex) {
-            throw Errors.shouldNotReachHere();
+    private void writeString(TruffleString string) {
+        byte[] bytes;
+        SerializationTag tag;
+        int length = Strings.length(string);
+        if (string.getCodeRangeUncached(TruffleString.Encoding.UTF_16).isSubsetOf(TruffleString.CodeRange.LATIN_1)) {
+            tag = SerializationTag.ONE_BYTE_STRING;
+            bytes = new byte[length];
+            string.switchEncodingUncached(TruffleString.Encoding.ISO_8859_1).copyToByteArrayNodeUncached(0, bytes, 0, length, TruffleString.Encoding.ISO_8859_1);
+        } else {
+            tag = SerializationTag.TWO_BYTE_STRING;
+            bytes = new byte[length << 1];
+            string.copyToByteArrayNodeUncached(0, bytes, 0, length << 1, TruffleString.Encoding.UTF_16);
         }
-    }
-
-    private static boolean isOneByteString(String string) {
-        for (char c : string.toCharArray()) {
-            if (c >= 256) {
-                return false;
-            }
-        }
-        return true;
+        writeTag(tag);
+        writeVarInt(bytes.length);
+        writeBytes(bytes, bytes.length);
     }
 
     private void writeDate(DynamicObject date) {
@@ -356,14 +348,14 @@ public class Serializer {
 
     private void writeJSString(DynamicObject string) {
         assert JSString.isJSString(string);
-        String value = JSString.getString(string);
+        TruffleString value = JSString.getString(string);
         writeTag(SerializationTag.STRING_OBJECT);
         writeString(value);
     }
 
     private void writeJSRegExp(DynamicObject regExp) {
         assert JSRegExp.isJSRegExp(regExp);
-        String pattern = GraalJSAccess.regexpPattern(regExp);
+        TruffleString pattern = (TruffleString) GraalJSAccess.regexpPattern(regExp);
         int flags = GraalJSAccess.regexpV8Flags(regExp);
         writeTag(SerializationTag.REGEXP);
         writeString(pattern);
@@ -397,17 +389,21 @@ public class Serializer {
     private void writeJSObject(DynamicObject object) {
         assert JSDynamicObject.isJSDynamicObject(object);
         writeTag(SerializationTag.BEGIN_JS_OBJECT);
-        List<String> names = JSObject.enumerableOwnNames(object);
+        List<TruffleString> names = JSObject.enumerableOwnNames(object);
         writeJSObjectProperties(object, names);
         writeTag(SerializationTag.END_JS_OBJECT);
         writeVarInt(names.size());
     }
 
-    private void writeJSObjectProperties(DynamicObject object, List<String> keys) {
+    private void writeJSObjectProperties(DynamicObject object, List<TruffleString> keys) {
         assert JSDynamicObject.isJSDynamicObject(object);
-        for (String key : keys) {
+        for (TruffleString key : keys) {
             if (JSRuntime.isArrayIndex(key)) {
-                writeIntOrDouble(Double.parseDouble(key));
+                try {
+                    writeIntOrDouble(Strings.parseDouble(key));
+                } catch (TruffleString.NumberFormatException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
             } else {
                 writeString(key);
             }
@@ -448,11 +444,11 @@ public class Serializer {
     private void writeJSArray(DynamicObject object) {
         assert JSArray.isJSArray(object);
         long length = JSAbstractArray.arrayGetLength(object);
-        List<String> names = JSObject.enumerableOwnNames(object);
+        List<TruffleString> names = JSObject.enumerableOwnNames(object);
         boolean dense = names.size() >= length;
         if (dense) {
             for (int i = 0; i < length; i++) {
-                if (!Integer.toString(i).equals(names.get(i))) {
+                if (!Strings.fromInt(i).equals(names.get(i))) {
                     dense = false;
                     break;
                 }
@@ -541,12 +537,12 @@ public class Serializer {
         PropertyDescriptor desc = JSObject.getOwnProperty(error, JSError.MESSAGE);
         if (desc != null && desc.isDataDescriptor()) {
             writeTag(ErrorTag.MESSAGE);
-            String message = JSRuntime.toString(desc.getValue());
+            TruffleString message = JSRuntime.toString(desc.getValue());
             writeString(message);
         }
 
         Object stack = JSObject.get(error, JSError.STACK_NAME);
-        if (JSRuntime.isString(stack)) {
+        if (stack instanceof TruffleString) {
             writeTag(ErrorTag.STACK);
             writeString(JSRuntime.toStringIsString(stack));
         }

@@ -51,11 +51,13 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 
 /**
@@ -131,11 +133,12 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"convertStringToIndex", "arrayIndexLengthInRange(index)"})
-    protected static Object convertFromString(String index,
+    protected static Object convertFromString(TruffleString index,
                     @Cached ConditionProfile startsWithDigitBranch,
-                    @Cached BranchProfile isArrayIndexBranch) {
-        if (startsWithDigitBranch.profile(JSRuntime.isAsciiDigit(index.charAt(0)))) {
-            long longValue = JSRuntime.parseArrayIndexRaw(index);
+                    @Cached BranchProfile isArrayIndexBranch,
+                    @Cached TruffleString.ReadCharUTF16Node stringReadNode) {
+        if (startsWithDigitBranch.profile(JSRuntime.isAsciiDigit(Strings.charAt(stringReadNode, index, 0)))) {
+            long longValue = JSRuntime.parseArrayIndexRaw(index, stringReadNode);
             if (JSRuntime.isArrayIndex(longValue)) {
                 isArrayIndexBranch.enter();
                 return JSRuntime.castArrayIndex(longValue);
@@ -145,7 +148,7 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"!convertStringToIndex || !arrayIndexLengthInRange(index)"})
-    protected static Object convertFromStringNotInRange(String index) {
+    protected static TruffleString convertFromStringNotInRange(TruffleString index) {
         return index;
     }
 
@@ -154,7 +157,7 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
                         (o instanceof Double && doubleIsUintIndex((double) o)) ||
                         (o instanceof Long && JSGuards.isLongArrayIndex((long) o)) ||
                         (o instanceof BigInt && JSGuards.isBigIntArrayIndex((BigInt) o)) ||
-                        o instanceof String ||
+                        o instanceof TruffleString ||
                         o instanceof Symbol);
     }
 

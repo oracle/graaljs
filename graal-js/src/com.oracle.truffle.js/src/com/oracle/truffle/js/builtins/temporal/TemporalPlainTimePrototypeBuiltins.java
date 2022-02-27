@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeAddNodeGen;
@@ -85,6 +86,7 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
@@ -389,10 +391,10 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) toTemporalTime.executeDynamicObject(otherObj, null);
             DynamicObject options = getOptionsObject(optionsParam);
-            String smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND);
-            String largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, HOUR);
+            TruffleString smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND);
+            TruffleString largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, HOUR);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            String roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
+            TruffleString roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
             JSTemporalDurationRecord result = TemporalUtil.differenceTime(
@@ -426,10 +428,10 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) toTemporalTime.executeDynamicObject(otherObj, null);
             DynamicObject options = getOptionsObject(optionsParam);
-            String smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND);
-            String largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, HOUR);
+            TruffleString smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND);
+            TruffleString largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, HOUR);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            String roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
+            TruffleString roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
             Double max = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double maximum = max == null ? Double.POSITIVE_INFINITY : max.doubleValue();
             long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
@@ -467,18 +469,18 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw TemporalErrors.createTypeErrorOptionsUndefined();
             }
             DynamicObject roundTo;
-            if (JSRuntime.isString(roundToParam)) {
+            if (Strings.isTString(roundToParam)) {
                 roundTo = JSOrdinary.createWithNullPrototype(getContext());
                 JSRuntime.createDataPropertyOrThrow(roundTo, TemporalConstants.SMALLEST_UNIT, JSRuntime.toStringIsString(roundToParam));
             } else {
                 roundTo = getOptionsObject(roundToParam);
             }
-            String smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMWD, null);
+            TruffleString smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMWD, null);
             if (TemporalUtil.isNullish(smallestUnit)) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorSmallestUnitExpected();
             }
-            String roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
+            TruffleString roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
             int maximum;
             if (smallestUnit.equals(HOUR)) {
                 maximum = 24;
@@ -611,12 +613,12 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             TemporalTime time = requireTemporalTime(thisObj);
             DynamicObject fields = JSOrdinary.create(getContext(), getRealm());
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.CALENDAR, time.getCalendar());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoHour", time.getHour());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoMinute", time.getMinute());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoSecond", time.getSecond());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoMillisecond", time.getMillisecond());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoMicrosecond", time.getMicrosecond());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoNanosecond", time.getNanosecond());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_HOUR, time.getHour());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_MINUTE, time.getMinute());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_SECOND, time.getSecond());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_MILLISECOND, time.getMillisecond());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_MICROSECOND, time.getMicrosecond());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_NANOSECOND, time.getNanosecond());
             return fields;
         }
     }
@@ -629,11 +631,11 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected String toString(Object thisObj, Object optionsParam) {
+        protected TruffleString toString(Object thisObj, Object optionsParam) {
             TemporalTime time = requireTemporalTime(thisObj);
             DynamicObject options = getOptionsObject(optionsParam);
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, getOptionNode());
-            String roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
+            TruffleString roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
             JSTemporalDurationRecord roundResult = TemporalUtil.roundTime(
                             time.getHour(), time.getMinute(), time.getSecond(),
                             time.getMillisecond(), time.getMicrosecond(), time.getNanosecond(),
@@ -654,7 +656,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        public String toLocaleString(Object thisObj) {
+        public TruffleString toLocaleString(Object thisObj) {
             TemporalTime time = requireTemporalTime(thisObj);
             return JSTemporalPlainTime.temporalTimeToString(
                             time.getHour(), time.getMinute(), time.getSecond(),

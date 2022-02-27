@@ -50,6 +50,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.FrameDescriptorProvider;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -57,6 +58,7 @@ import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData.Target;
 
@@ -66,11 +68,11 @@ public final class FunctionRootNode extends JavaScriptRealmBoundaryRootNode impl
     @Child private JavaScriptNode body;
 
     private final JSFunctionData functionData;
-    private String internalFunctionName;
+    private TruffleString internalFunctionName;
 
     private static final ThreadLocal<JSFunctionData> OMIT_FROM_STACK_TRACE = new ThreadLocal<>();
 
-    protected FunctionRootNode(AbstractBodyNode body, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection, String internalFunctionName) {
+    protected FunctionRootNode(AbstractBodyNode body, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection, TruffleString internalFunctionName) {
         super(functionData.getContext().getLanguage(), sourceSection, frameDescriptor);
         this.body = body;
         if (!this.body.hasSourceSection()) {
@@ -80,7 +82,7 @@ public final class FunctionRootNode extends JavaScriptRealmBoundaryRootNode impl
         this.internalFunctionName = internalFunctionName;
     }
 
-    public static FunctionRootNode create(AbstractBodyNode body, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection, String internalFunctionName) {
+    public static FunctionRootNode create(AbstractBodyNode body, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection, TruffleString internalFunctionName) {
         FunctionRootNode rootNode = new FunctionRootNode(body, frameDescriptor, functionData, sourceSection, internalFunctionName);
         if (functionData.getContext().getContextOptions().isTestCloneUninitialized()) {
             assert JSNodeUtil.hasExactlyOneRootBodyTag(body) : "Function does not have exactly one RootBodyTag";
@@ -122,7 +124,11 @@ public final class FunctionRootNode extends JavaScriptRealmBoundaryRootNode impl
 
     @Override
     public String getName() {
-        if (functionData.isBuiltin() || (functionData.getName().isEmpty() && internalFunctionName != null)) {
+        return Strings.toJavaString(getNameTString());
+    }
+
+    public TruffleString getNameTString() {
+        if (functionData.isBuiltin() || (Strings.isEmpty(functionData.getName()) && internalFunctionName != null)) {
             assert internalFunctionName != null;
             return internalFunctionName;
         }

@@ -47,6 +47,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.js.runtime.Strings;
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
@@ -160,7 +161,7 @@ public class RecordingTest extends JSTest {
 
         ScriptNode script = ((JSParser) context.getEvaluator()).parseScript(context, source, ByteBuffer.wrap(snapshot));
         Object result = script.run(testHelper.getRealm());
-        assertEquals("OK", result);
+        assertEquals(Strings.fromJavaString("OK"), result);
     }
 
     @Test
@@ -177,7 +178,7 @@ public class RecordingTest extends JSTest {
 
         ScriptNode script = ((JSParser) context.getEvaluator()).parseScript(context, source, ByteBuffer.wrap(snapshot));
         Object result = script.run(testHelper.getRealm());
-        assertEquals("\ud834", result);
+        assertEquals(Strings.fromJavaString("\ud834"), result);
     }
 
 }

@@ -63,6 +63,8 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
@@ -93,7 +95,6 @@ import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -106,12 +107,7 @@ import com.oracle.truffle.js.runtime.util.JSHashMap;
 public final class JSRuntime {
     private static final long NEGATIVE_ZERO_DOUBLE_BITS = Double.doubleToRawLongBits(-0.0);
     private static final long POSITIVE_INFINITY_DOUBLE_BITS = Double.doubleToRawLongBits(Double.POSITIVE_INFINITY);
-    public static final String INFINITY_STRING = "Infinity";
-    public static final String NEGATIVE_INFINITY_STRING = "-Infinity";
-    public static final String POSITIVE_INFINITY_STRING = "+Infinity";
-    public static final String NAN_STRING = "NaN";
     public static final double TWO32 = 4294967296d;
-    public static final char LINE_SEPARATOR = '\n';
     public static final long INVALID_ARRAY_INDEX = -1;
     public static final long MAX_ARRAY_LENGTH = 4294967295L;
     public static final int MAX_UINT32_DIGITS = 10;
@@ -127,19 +123,9 @@ public final class JSRuntime {
     public static final long MAX_BIG_INT_EXPONENT = Integer.MAX_VALUE;
     public static final long INVALID_SAFE_INTEGER = Long.MIN_VALUE;
 
-    public static final String TO_STRING = "toString";
-    public static final String VALUE_OF = "valueOf";
-
-    public static final String VALUE = "value";
-    public static final String DONE = "done";
-    public static final String NEXT = "next";
-    public static final String RETURN = "return";
-
-    public static final String HINT_STRING = "string";
-    public static final String HINT_NUMBER = "number";
-    public static final String HINT_DEFAULT = "default";
-
-    public static final String PRIMITIVE_VALUE = "PrimitiveValue";
+    public static final TruffleString VALUE = Strings.constant("value");
+    public static final TruffleString DONE = Strings.constant("done");
+    public static final TruffleString NEXT = Strings.constant("next");
 
     public static final HiddenKey ITERATED_OBJECT_ID = new HiddenKey("IteratedObject");
     public static final HiddenKey ITERATOR_NEXT_INDEX = new HiddenKey("IteratorNextIndex");
@@ -221,12 +207,12 @@ public final class JSRuntime {
     }
 
     @TruffleBoundary
-    public static String typeof(Object value) {
+    public static TruffleString typeof(Object value) {
         if (value == Null.instance) {
             return Null.TYPE_NAME;
         } else if (value == Undefined.instance) {
             return Undefined.TYPE_NAME;
-        } else if (isString(value)) {
+        } else if (Strings.isTString(value)) {
             return JSString.TYPE_NAME;
         } else if (isNumber(value)) {
             return JSNumber.TYPE_NAME;
@@ -314,7 +300,7 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Object toPrimitive(Object value) {
-        return toPrimitive(value, HINT_DEFAULT);
+        return toPrimitive(value, Strings.HINT_DEFAULT);
     }
 
     /**
@@ -326,7 +312,7 @@ public final class JSRuntime {
      * @see com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode
      */
     @TruffleBoundary
-    public static Object toPrimitive(Object value, String hint) {
+    public static Object toPrimitive(Object value, TruffleString hint) {
         if (value == Null.instance || value == Undefined.instance) {
             return value;
         } else if (JSDynamicObject.isJSDynamicObject(value)) {
@@ -342,7 +328,7 @@ public final class JSRuntime {
      * Converts a foreign object to a primitive value.
      */
     @TruffleBoundary
-    public static Object toPrimitiveFromForeign(Object tObj, String hint) {
+    public static Object toPrimitiveFromForeign(Object tObj, TruffleString hint) {
         assert isForeignObject(tObj);
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(tObj);
         if (interop.isNull(tObj)) {
@@ -350,7 +336,7 @@ public final class JSRuntime {
         } else if (JSInteropUtil.isBoxedPrimitive(tObj, interop)) {
             return JSInteropUtil.toPrimitiveOrDefault(tObj, Null.instance, interop, null);
         } else if (JavaScriptLanguage.getCurrentEnv().isHostObject(tObj)) {
-            if (JSRuntime.HINT_NUMBER.equals(hint) && JavaScriptLanguage.getCurrentLanguage().getJSContext().isOptionNashornCompatibilityMode() &&
+            if (Strings.HINT_NUMBER.equals(hint) && JavaScriptLanguage.getCurrentLanguage().getJSContext().isOptionNashornCompatibilityMode() &&
                             interop.isMemberInvocable(tObj, "doubleValue")) {
                 try {
                     return interop.invokeMember(tObj, "doubleValue");
@@ -404,15 +390,15 @@ public final class JSRuntime {
     }
 
     @TruffleBoundary
-    private static Object foreignOrdinaryToPrimitive(Object obj, String hint) {
+    private static Object foreignOrdinaryToPrimitive(Object obj, TruffleString hint) {
         JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
-        String[] methodNames;
-        if (hint.equals(HINT_STRING)) {
-            methodNames = new String[]{TO_STRING, VALUE_OF};
+        TruffleString[] methodNames;
+        if (Strings.equals(Strings.HINT_STRING, hint)) {
+            methodNames = new TruffleString[]{Strings.TO_STRING, Strings.VALUE_OF};
         } else {
-            assert JSRuntime.HINT_NUMBER.equals(hint);
-            methodNames = new String[]{VALUE_OF, TO_STRING};
+            assert Strings.equals(Strings.HINT_NUMBER, hint);
+            methodNames = new TruffleString[]{Strings.VALUE_OF, Strings.TO_STRING};
         }
         DynamicObject proto;
         if (interop.hasArrayElements(obj)) {
@@ -425,11 +411,11 @@ public final class JSRuntime {
             proto = realm.getObjectPrototype();
         }
 
-        for (String name : methodNames) {
-            if (interop.hasMembers(obj) && interop.isMemberInvocable(obj, name)) {
+        for (TruffleString name : methodNames) {
+            if (interop.hasMembers(obj) && interop.isMemberInvocable(obj, Strings.toJavaString(name))) {
                 Object result;
                 try {
-                    result = importValue(interop.invokeMember(obj, name));
+                    result = importValue(interop.invokeMember(obj, Strings.toJavaString(name)));
                 } catch (InteropException e) {
                     result = null;
                 }
@@ -463,10 +449,8 @@ public final class JSRuntime {
             return false;
         } else if (isNumber(value)) {
             return toBoolean((Number) value);
-        } else if (value instanceof String) {
-            return ((String) value).length() != 0;
-        } else if (isLazyString(value)) {
-            return value.toString().length() != 0;
+        } else if (Strings.isTString(value)) {
+            return Strings.length((TruffleString) value) != 0;
         } else if (value instanceof BigInt) {
             return ((BigInt) value).compareTo(BigInt.ZERO) != 0;
         } else if (isForeignObject(value)) {
@@ -501,9 +485,9 @@ public final class JSRuntime {
     public static Number toNumber(Object value) {
         Object primitive;
         if (isObject(value)) {
-            primitive = JSObject.toPrimitive((DynamicObject) value, HINT_NUMBER);
+            primitive = JSObject.toPrimitive((DynamicObject) value, Strings.HINT_NUMBER);
         } else if (isForeignObject(value)) {
-            primitive = toPrimitiveFromForeign(value, HINT_NUMBER);
+            primitive = toPrimitiveFromForeign(value, Strings.HINT_NUMBER);
         } else {
             primitive = value;
         }
@@ -512,7 +496,7 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static Object toNumeric(Object value) {
-        Object primitive = isObject(value) ? JSObject.toPrimitive((DynamicObject) value, HINT_NUMBER) : value;
+        Object primitive = isObject(value) ? JSObject.toPrimitive((DynamicObject) value, Strings.HINT_NUMBER) : value;
         if (primitive instanceof BigInt) {
             return primitive;
         } else {
@@ -530,10 +514,8 @@ public final class JSRuntime {
             return 0;
         } else if (value instanceof Boolean) {
             return booleanToNumber((Boolean) value);
-        } else if (value instanceof String) {
-            return stringToNumber((String) value);
-        } else if (isLazyString(value)) {
-            return stringToNumber(value.toString());
+        } else if (Strings.isTString(value)) {
+            return stringToNumber((TruffleString) value);
         } else if (value instanceof Symbol) {
             throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value");
         } else if (value instanceof BigInt) {
@@ -543,7 +525,7 @@ public final class JSRuntime {
             return (Number) value;
         }
         assert false : "should never reach here, type " + value.getClass().getName() + " not handled.";
-        throw Errors.createTypeErrorCannotConvertToNumber(safeToString(value));
+        throw Errors.createTypeErrorCannotConvertToNumber(Strings.toJavaString(safeToString(value)));
     }
 
     public static int booleanToNumber(boolean value) {
@@ -556,10 +538,10 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static BigInt toBigInt(Object value) {
-        Object primitive = toPrimitive(value, HINT_NUMBER);
-        if (primitive instanceof String) {
+        Object primitive = toPrimitive(value, Strings.HINT_NUMBER);
+        if (Strings.isTString(primitive)) {
             try {
-                return BigInt.valueOf((String) primitive);
+                return Strings.parseBigInt((TruffleString) primitive);
             } catch (NumberFormatException e) {
                 throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.SyntaxError, primitive);
             }
@@ -586,48 +568,50 @@ public final class JSRuntime {
      * @return a Number
      */
     @TruffleBoundary
-    public static Number stringToNumber(String string) {
+    public static Number stringToNumber(TruffleString string) {
         // "Infinity" written exactly like this
-        String strCamel = trimJSWhiteSpace(string);
-        if (strCamel.length() == 0) {
+        TruffleString strCamel = trimJSWhiteSpace(string);
+        int camelLength = Strings.length(strCamel);
+        if (camelLength == 0) {
             return 0;
         }
-        char firstChar = strCamel.charAt(0);
-        if (strCamel.length() >= INFINITY_STRING.length() && strCamel.length() <= INFINITY_STRING.length() + 1 && strCamel.endsWith(INFINITY_STRING)) {
-            return identifyInfinity(strCamel, firstChar);
+        char firstChar = Strings.charAt(strCamel, 0);
+        if (camelLength >= Strings.length(Strings.INFINITY) && camelLength <= Strings.length(Strings.INFINITY) + 1 && Strings.endsWith(strCamel, Strings.INFINITY)) {
+            return identifyInfinity(firstChar, camelLength);
         }
         if (!(JSRuntime.isAsciiDigit(firstChar) || firstChar == '-' || firstChar == '.' || firstChar == '+')) {
             return Double.NaN;
         }
+
         return stringToNumberParse(strCamel);
     }
 
-    private static Number stringToNumberParse(String str) {
-        assert str.length() > 0;
-        boolean hex = str.startsWith("0x") || str.startsWith("0X");
+    private static Number stringToNumberParse(TruffleString str) {
+        assert Strings.length(str) > 0;
+        boolean hex = Strings.startsWith(str, Strings.LC_0X) || Strings.startsWith(str, Strings.UC_0X);
         int eIndex = firstExpIndexInString(str);
-        boolean sci = !hex && (0 <= eIndex && eIndex < str.length() - 1);
+        boolean sci = !hex && (0 <= eIndex && eIndex < Strings.length(str) - 1);
         try {
-            if (!sci && str.length() <= 18 && str.indexOf('.') == -1) {
+            if (!sci && Strings.length(str) <= 18 && Strings.indexOf(str, '.') == -1) {
                 // 18 digits always fit into long
                 if (hex) {
-                    return Long.valueOf(str.substring(2), 16);
+                    return Strings.parseLong(Strings.substring(str, 2), 16);
                 } else {
                     return stringToNumberLong(str);
                 }
             } else {
                 return parseDoubleOrNaN(str);
             }
-        } catch (NumberFormatException e) {
+        } catch (TruffleString.NumberFormatException e) {
             return Double.NaN;
         }
     }
 
-    private static Number stringToNumberLong(String strLower) throws NumberFormatException {
-        assert strLower.length() > 0;
-        long num = Long.parseLong(strLower);
+    private static Number stringToNumberLong(TruffleString strLower) throws TruffleString.NumberFormatException {
+        assert Strings.length(strLower) > 0;
+        long num = Strings.parseLong(strLower);
         if (longIsRepresentableAsInt(num)) {
-            if (num == 0 && strLower.charAt(0) == '-') {
+            if (num == 0 && Strings.charAt(strLower, 0) == '-') {
                 return -0.0;
             }
             return (int) num;
@@ -642,15 +626,15 @@ public final class JSRuntime {
      * @return double value or {@link Double#NaN} if not parsable.
      */
     @TruffleBoundary
-    public static double parseDoubleOrNaN(String input) {
+    public static double parseDoubleOrNaN(TruffleString input) {
         // A valid JS number must end with either a digit or '.'.
         // Double.parseDouble also accepts a trailing 'd', 'D', 'f', 'F'.
-        if (input.isEmpty() || input.charAt(input.length() - 1) > '9') {
+        if (Strings.isEmpty(input) || Strings.charAt(input, Strings.length(input) - 1) > '9') {
             return Double.NaN;
         }
         try {
-            return Double.parseDouble(input);
-        } catch (NumberFormatException e) {
+            return Strings.parseDouble(input);
+        } catch (TruffleString.NumberFormatException e) {
             return Double.NaN;
         }
     }
@@ -659,17 +643,16 @@ public final class JSRuntime {
      * Returns the first index of a String that contains either 'e' or 'E'.
      */
     @TruffleBoundary
-    public static int firstExpIndexInString(String str) {
-        int firstIdx = str.indexOf('e', 0);
+    public static int firstExpIndexInString(TruffleString str) {
+        int firstIdx = Strings.indexOf(str, 'e', 0);
         if (firstIdx >= 0) {
             return firstIdx;
         }
-        return str.indexOf('E', 0);
+        return Strings.indexOf(str, 'E', 0);
     }
 
-    public static double identifyInfinity(String str, char firstChar) {
-        int len = str.length();
-        int infinityLength = INFINITY_STRING.length();
+    public static double identifyInfinity(char firstChar, int len) {
+        int infinityLength = Strings.length(Strings.INFINITY);
         if (len == infinityLength) {
             return Double.POSITIVE_INFINITY;
         } else if (len == (infinityLength + 1)) {
@@ -950,15 +933,17 @@ public final class JSRuntime {
         return doubleValue(value);
     }
 
+    public static String toJavaString(Object value) {
+        return Strings.toJavaString(toString(value));
+    }
+
     /**
      * The abstract operation ToString. Converts a value to a string.
      */
     @TruffleBoundary
-    public static String toString(Object value) {
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, value instanceof String)) {
-            return (String) value;
-        } else if (isLazyString(value)) {
-            return value.toString();
+    public static TruffleString toString(Object value) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, Strings.isTString(value))) {
+            return (TruffleString) value;
         } else if (value == Undefined.instance) {
             return Undefined.NAME;
         } else if (value == Null.instance) {
@@ -970,33 +955,33 @@ public final class JSRuntime {
         } else if (value instanceof Symbol) {
             throw Errors.createTypeErrorCannotConvertToString("a Symbol value");
         } else if (value instanceof BigInt) {
-            return value.toString();
+            return Strings.fromBigInt((BigInt) value);
         } else if (JSDynamicObject.isJSDynamicObject(value)) {
-            return toString(JSObject.toPrimitive((DynamicObject) value, HINT_STRING));
+            return toString(JSObject.toPrimitive((DynamicObject) value, Strings.HINT_STRING));
         } else if (value instanceof TruffleObject) {
             assert !isJSNative(value);
-            return toString(toPrimitiveFromForeign(value, HINT_STRING));
+            return toString(toPrimitiveFromForeign(value, Strings.HINT_STRING));
         }
         throw toStringTypeError(value);
     }
 
     @TruffleBoundary
-    public static String safeToString(Object value) {
+    public static TruffleString safeToString(Object value) {
         return toDisplayString(value, false, ToDisplayStringFormat.getDefaultFormat());
     }
 
     @TruffleBoundary
-    public static String toDisplayString(Object value, boolean allowSideEffects) {
+    public static TruffleString toDisplayString(Object value, boolean allowSideEffects) {
         return toDisplayString(value, allowSideEffects, ToDisplayStringFormat.getDefaultFormat());
     }
 
     @TruffleBoundary
-    public static String toDisplayString(Object value, boolean allowSideEffects, ToDisplayStringFormat format) {
+    public static TruffleString toDisplayString(Object value, boolean allowSideEffects, ToDisplayStringFormat format) {
         return toDisplayStringImpl(value, allowSideEffects, format, 0, null);
     }
 
     @TruffleBoundary
-    public static String toDisplayStringInner(Object value, boolean allowSideEffects, ToDisplayStringFormat format, int currentDepth, Object parent) {
+    public static TruffleString toDisplayStringInner(Object value, boolean allowSideEffects, ToDisplayStringFormat format, int currentDepth, Object parent) {
         return toDisplayStringImpl(value, allowSideEffects, format.withQuoteString(true), currentDepth + 1, parent);
     }
 
@@ -1007,29 +992,30 @@ public final class JSRuntime {
      * @param depth current recursion depth (starts at 0 = top level)
      * @param parent parent object or null
      */
-    public static String toDisplayStringImpl(Object value, boolean allowSideEffects, ToDisplayStringFormat format, int depth, Object parent) {
+    public static TruffleString toDisplayStringImpl(Object value, boolean allowSideEffects, ToDisplayStringFormat format, int depth, Object parent) {
         CompilerAsserts.neverPartOfCompilation();
         if (value == parent) {
-            return "(this)";
+            return Strings.PARENS_THIS;
         } else if (value == Undefined.instance) {
             return Undefined.NAME;
         } else if (value == Null.instance) {
             return Null.NAME;
         } else if (value instanceof Boolean) {
             return booleanToString((Boolean) value);
-        } else if (isString(value)) {
-            String string = value.toString();
-            return format.quoteString() ? quote(string) : string;
+        } else if (value instanceof TruffleString) {
+            return format.quoteString() ? quote((TruffleString) value) : (TruffleString) value;
+        } else if (value instanceof String) {
+            return format.quoteString() ? quote(Strings.fromJavaString((String) value)) : Strings.fromJavaString((String) value);
         } else if (JSDynamicObject.isJSDynamicObject(value)) {
             return ((JSDynamicObject) value).toDisplayStringImpl(allowSideEffects, format, depth);
         } else if (value instanceof Symbol) {
-            return value.toString();
+            return ((Symbol) value).toTString();
         } else if (value instanceof BigInt) {
-            return value.toString() + 'n';
+            return Strings.concat(((BigInt) value).toTString(), Strings.N);
         } else if (isNumber(value)) {
             Number number = (Number) value;
             if (JSRuntime.isNegativeZero(number.doubleValue())) {
-                return "-0";
+                return Strings.NEGATIVE_ZERO;
             } else {
                 return numberToString(number);
             }
@@ -1039,23 +1025,24 @@ public final class JSRuntime {
             assert !isJSNative(value) : value;
             return foreignToString(value, allowSideEffects, format, depth);
         } else {
-            return String.valueOf(value);
+            return Strings.fromObject(value);
         }
     }
 
     @TruffleBoundary
-    public static String objectToDisplayString(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth, String name) {
+    public static TruffleString objectToDisplayString(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth, TruffleString name) {
         return objectToDisplayString(obj, allowSideEffects, format, depth, name, null, null);
     }
 
     @TruffleBoundary
-    public static String objectToDisplayString(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth, String name, String[] internalKeys, Object[] internalValues) {
+    public static TruffleString objectToDisplayString(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth, TruffleString name, TruffleString[] internalKeys,
+                    Object[] internalValues) {
         assert JSDynamicObject.isJSDynamicObject(obj) && !JSFunction.isJSFunction(obj) && !JSProxy.isJSProxy(obj);
         boolean v8CompatMode = JSObject.getJSContext(obj).isOptionV8CompatibilityMode();
-        StringBuilder sb = new StringBuilder();
+        TruffleStringBuilder sb = Strings.builderCreate();
 
         if (name != null) {
-            sb.append(name);
+            Strings.builderAppend(sb, name);
         }
         boolean isArrayLike = false; // also TypedArrays
         boolean isArray = false;
@@ -1078,20 +1065,25 @@ public final class JSRuntime {
                 boolean topLevel = depth == 0;
                 if (depth >= format.getMaxDepth() || (!topLevel && length > format.getMaxElements())) {
                     if (name == null) {
-                        sb.append("Array");
+                        Strings.builderAppend(sb, Strings.UC_ARRAY);
                     }
-                    sb.append('(').append(length).append(')');
-                    return sb.toString();
+                    Strings.builderAppend(sb, Strings.PAREN_OPEN);
+                    Strings.builderAppend(sb, length);
+                    Strings.builderAppend(sb, Strings.PAREN_CLOSE);
+                    return Strings.builderToString(sb);
                 } else if (topLevel && length >= 2 && !v8CompatMode && format.includeArrayLength()) {
-                    sb.append('(').append(length).append(')');
+                    Strings.builderAppend(sb, Strings.PAREN_OPEN);
+                    Strings.builderAppend(sb, length);
+                    Strings.builderAppend(sb, Strings.PAREN_CLOSE);
                 }
             }
         } else if (depth >= format.getMaxDepth()) {
-            sb.append("{...}");
-            return sb.toString();
+            Strings.builderAppend(sb, Strings.EMPTY_OBJECT_DOTS);
+            return Strings.builderToString(sb);
         }
 
-        sb.append(isArrayLike ? '[' : '{');
+        char chr1 = isArrayLike ? '[' : '{';
+        Strings.builderAppend(sb, chr1);
         int propertyCount = 0;
         for (Object key : JSObject.ownPropertyKeys(obj)) {
             if (!allowSideEffects && JSError.STACK_NAME.equals(key)) {
@@ -1102,37 +1094,38 @@ public final class JSRuntime {
                 }
             }
             PropertyDescriptor desc = JSObject.getOwnProperty(obj, key);
-            if ((isArrayLike || isStringObj) && key.equals("length") || (isStringObj && JSRuntime.isArrayIndex(key) && JSRuntime.parseArrayIndexRaw(key.toString()) < length)) {
+            if ((isArrayLike || isStringObj) && key.equals(Strings.LENGTH) ||
+                            (isStringObj && JSRuntime.isArrayIndex(key) && JSRuntime.parseArrayIndexIsIndexRaw(key) < length)) {
                 // length for arrays is printed as very first item
                 // don't print individual characters (and length) for Strings
                 continue;
             }
             if (propertyCount > 0) {
-                sb.append(v8CompatMode ? "," : ", ");
+                Strings.builderAppend(sb, v8CompatMode ? "," : ", ");
                 if (propertyCount >= format.getMaxElements()) {
-                    sb.append("...");
+                    Strings.builderAppend(sb, Strings.DOT_DOT_DOT);
                     break;
                 }
             }
             if (isArray) {
                 // merge holes to "empty (times) (count)" entries
                 if (JSRuntime.isArrayIndex(key)) {
-                    long index = JSRuntime.parseArrayIndexRaw(key.toString());
+                    long index = JSRuntime.parseArrayIndexIsIndexRaw(key);
                     if ((index < length) && fillEmptyArrayElements(sb, index, prevArrayIndex, false)) {
-                        sb.append(", ");
+                        Strings.builderAppend(sb, ", ");
                         propertyCount++;
                         if (propertyCount >= format.getMaxElements()) {
-                            sb.append("...");
+                            Strings.builderAppend(sb, "...");
                             break;
                         }
                     }
                     prevArrayIndex = index;
                 } else {
                     if (fillEmptyArrayElements(sb, length, prevArrayIndex, false)) {
-                        sb.append(", ");
+                        Strings.builderAppend(sb, Strings.COMMA_SPC);
                         propertyCount++;
                         if (propertyCount >= format.getMaxElements()) {
-                            sb.append("...");
+                            Strings.builderAppend(sb, "...");
                             break;
                         }
                     }
@@ -1141,19 +1134,19 @@ public final class JSRuntime {
             }
             if (!isArrayLike || !JSRuntime.isArrayIndex(key)) {
                 // print keys, but don't print array-indices
-                sb.append(key);
-                sb.append(": ");
+                Strings.builderAppend(sb, Strings.fromObject(key));
+                Strings.builderAppend(sb, ": ");
             }
-            String valueStr = null;
+            TruffleString valueStr = null;
             if (desc.isDataDescriptor()) {
                 Object value = desc.getValue();
                 valueStr = toDisplayStringInner(value, allowSideEffects, format, depth, obj);
             } else if (desc.isAccessorDescriptor()) {
-                valueStr = "accessor";
+                valueStr = Strings.ACCESSOR;
             } else {
-                valueStr = "empty";
+                valueStr = Strings.EMPTY;
             }
-            sb.append(valueStr);
+            Strings.builderAppend(sb, valueStr);
             propertyCount++;
         }
         if (isArray && propertyCount < format.getMaxElements()) {
@@ -1166,31 +1159,34 @@ public final class JSRuntime {
             assert internalValues != null && internalKeys.length == internalValues.length;
             for (int i = 0; i < internalKeys.length; i++) {
                 if (propertyCount > 0) {
-                    sb.append(", ");
+                    Strings.builderAppend(sb, Strings.COMMA_SPC);
                 }
-                sb.append("[[").append(internalKeys[i]).append("]]: ").append(toDisplayStringInner(internalValues[i], allowSideEffects, format, depth, obj));
+                Strings.builderAppend(sb, Strings.BRACKET_OPEN_2);
+                Strings.builderAppend(sb, internalKeys[i]);
+                Strings.builderAppend(sb, Strings.BRACKET_CLOSE_2_COLON);
+                Strings.builderAppend(sb, toDisplayStringInner(internalValues[i], allowSideEffects, format, depth, obj));
                 propertyCount++;
             }
         }
-        sb.append(isArrayLike ? ']' : '}');
-        return sb.toString();
+        char chr = isArrayLike ? ']' : '}';
+        Strings.builderAppend(sb, chr);
+        return Strings.builderToString(sb);
     }
 
-    private static String foreignToString(Object value, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    private static TruffleString foreignToString(Object value, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         CompilerAsserts.neverPartOfCompilation();
         try {
             InteropLibrary interop = InteropLibrary.getUncached(value);
             if (interop.isNull(value)) {
-                return "null";
+                return Strings.NULL;
             } else if (interop.hasArrayElements(value)) {
                 return foreignArrayToString(value, allowSideEffects, format, depth);
             } else if (interop.isString(value)) {
-                String string = interop.asString(value);
-                return format.quoteString() ? quote(string) : string;
+                return format.quoteString() ? Strings.fromJavaString(quote(interop.asString(value))) : interop.asTruffleString(value);
             } else if (interop.isBoolean(value)) {
                 return booleanToString(interop.asBoolean(value));
             } else if (interop.isNumber(value)) {
-                Object unboxed = "Number";
+                Object unboxed = Strings.UC_NUMBER;
                 if (interop.fitsInInt(value)) {
                     unboxed = interop.asInt(value);
                 } else if (interop.fitsInLong(value)) {
@@ -1202,120 +1198,124 @@ public final class JSRuntime {
             } else if ((JavaScriptLanguage.getCurrentEnv()).isHostObject(value)) {
                 return hostObjectToString(value, interop);
             } else if (interop.isMetaObject(value)) {
-                return InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(value));
+                return InteropLibrary.getUncached().asTruffleString(interop.getMetaQualifiedName(value));
             } else if (interop.hasMembers(value) && !(interop.isExecutable(value) || interop.isInstantiable(value))) {
                 return foreignObjectToString(value, allowSideEffects, format, depth);
             } else {
-                return InteropLibrary.getUncached().asString(interop.toDisplayString(value, allowSideEffects));
+                return InteropLibrary.getUncached().asTruffleString(interop.toDisplayString(value, allowSideEffects));
             }
         } catch (InteropException e) {
-            return "Object";
+            return Strings.UC_OBJECT;
         }
     }
 
-    private static String hostObjectToString(Object value, InteropLibrary interop) throws UnsupportedMessageException {
+    private static TruffleString hostObjectToString(Object value, InteropLibrary interop) throws UnsupportedMessageException {
         if (interop.isMetaObject(value)) {
-            return "JavaClass[" + InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(value)) + "]";
+            return Strings.concatAll(Strings.JAVA_CLASS_BRACKET, InteropLibrary.getUncached().asTruffleString(interop.getMetaQualifiedName(value)), Strings.BRACKET_CLOSE);
         } else {
             Object metaObject = interop.getMetaObject(value);
-            return "JavaObject[" + InteropLibrary.getUncached().asString(InteropLibrary.getUncached().getMetaQualifiedName(metaObject)) + "]";
+            return Strings.concatAll(Strings.JAVA_OBJECT_BRACKET, InteropLibrary.getUncached().asTruffleString(InteropLibrary.getUncached().getMetaQualifiedName(metaObject)), Strings.BRACKET_CLOSE);
         }
     }
 
-    private static String foreignArrayToString(Object truffleObject, boolean allowSideEffects, ToDisplayStringFormat format, int depth) throws InteropException {
+    private static TruffleString foreignArrayToString(Object truffleObject, boolean allowSideEffects, ToDisplayStringFormat format, int depth) throws InteropException {
         CompilerAsserts.neverPartOfCompilation();
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(truffleObject);
         assert interop.hasArrayElements(truffleObject);
         long size = interop.getArraySize(truffleObject);
         if (size == 0) {
-            return "[]";
+            return Strings.EMPTY_ARRAY;
         } else if (depth >= format.getMaxDepth()) {
-            return "Array(" + size + ")";
+            return Strings.concatAll(Strings.ARRAY_PAREN_OPEN, Strings.fromLong(size), Strings.PAREN_CLOSE);
         }
         boolean topLevel = depth == 0;
-        StringBuilder sb = new StringBuilder();
+        TruffleStringBuilder sb = Strings.builderCreate();
         if (topLevel && size >= 2 && format.includeArrayLength()) {
-            sb.append('(').append(size).append(')');
+            Strings.builderAppend(sb, Strings.PAREN_OPEN);
+            Strings.builderAppend(sb, size);
+            Strings.builderAppend(sb, Strings.PAREN_CLOSE);
         }
-        sb.append('[');
+        Strings.builderAppend(sb, '[');
         for (long i = 0; i < size; i++) {
             if (i > 0) {
-                sb.append(", ");
+                Strings.builderAppend(sb, Strings.COMMA_SPC);
                 if (i >= format.getMaxElements()) {
-                    sb.append("...");
+                    Strings.builderAppend(sb, Strings.DOT_DOT_DOT);
                     break;
                 }
             }
             Object value = interop.readArrayElement(truffleObject, i);
-            sb.append(toDisplayStringInner(value, allowSideEffects, format, depth, truffleObject));
+            Strings.builderAppend(sb, toDisplayStringInner(value, allowSideEffects, format, depth, truffleObject));
         }
-        sb.append(']');
-        return sb.toString();
+        Strings.builderAppend(sb, ']');
+        return Strings.builderToString(sb);
     }
 
-    private static String foreignObjectToString(Object truffleObject, boolean allowSideEffects, ToDisplayStringFormat format, int depth) throws InteropException {
+    private static TruffleString foreignObjectToString(Object truffleObject, boolean allowSideEffects, ToDisplayStringFormat format, int depth) throws InteropException {
         CompilerAsserts.neverPartOfCompilation();
         InteropLibrary objInterop = InteropLibrary.getFactory().getUncached(truffleObject);
         assert objInterop.hasMembers(truffleObject);
-        if (allowSideEffects && objInterop.isMemberInvocable(truffleObject, TO_STRING)) {
-            return objInterop.invokeMember(truffleObject, TO_STRING).toString();
+        if (allowSideEffects && objInterop.isMemberInvocable(truffleObject, Strings.toJavaString(Strings.TO_STRING))) {
+            return Strings.fromJavaString(objInterop.invokeMember(truffleObject, Strings.toJavaString(Strings.TO_STRING)).toString());
         }
         Object keys = objInterop.getMembers(truffleObject);
         InteropLibrary keysInterop = InteropLibrary.getFactory().getUncached(keys);
         long keyCount = keysInterop.getArraySize(keys);
         if (keyCount == 0) {
-            return "{}";
+            return Strings.EMPTY_OBJECT;
         } else if (depth >= format.getMaxDepth()) {
-            return "{...}";
+            return Strings.EMPTY_OBJECT_DOTS;
         }
-        StringBuilder sb = new StringBuilder();
-        sb.append('{');
+        TruffleStringBuilder sb = Strings.builderCreate();
+        Strings.builderAppend(sb, '{');
         for (long i = 0; i < keyCount; i++) {
             if (i > 0) {
-                sb.append(", ");
+                Strings.builderAppend(sb, Strings.COMMA_SPC);
                 if (i >= format.getMaxElements()) {
-                    sb.append("...");
+                    Strings.builderAppend(sb, Strings.DOT_DOT_DOT);
                     break;
                 }
             }
             Object key = keysInterop.readArrayElement(keys, i);
             assert InteropLibrary.getUncached().isString(key);
-            String stringKey = key instanceof String ? (String) key : InteropLibrary.getUncached().asString(key);
+            String stringKey = Strings.interopAsString(key);
             Object value = objInterop.readMember(truffleObject, stringKey);
-            sb.append(stringKey);
-            sb.append(": ");
-            sb.append(toDisplayStringInner(value, allowSideEffects, format, depth, truffleObject));
+            Strings.builderAppend(sb, stringKey);
+            Strings.builderAppend(sb, Strings.COLON_SPACE);
+            Strings.builderAppend(sb, toDisplayStringInner(value, allowSideEffects, format, depth, truffleObject));
         }
-        sb.append('}');
-        return sb.toString();
+        Strings.builderAppend(sb, '}');
+        return Strings.builderToString(sb);
     }
 
-    private static boolean fillEmptyArrayElements(StringBuilder sb, long index, long prevArrayIndex, boolean prependComma) {
+    private static boolean fillEmptyArrayElements(TruffleStringBuilder sb, long index, long prevArrayIndex, boolean prependComma) {
         if (prevArrayIndex < (index - 1)) {
             if (prependComma) {
-                sb.append(", ");
+                Strings.builderAppend(sb, Strings.COMMA_SPC);
             }
             long count = index - prevArrayIndex - 1;
             if (count == 1) {
-                sb.append("empty");
+                Strings.builderAppend(sb, Strings.EMPTY);
             } else {
-                sb.append("empty \u00d7 ");
-                sb.append(count);
+                Strings.builderAppend(sb, Strings.EMPTY_X);
+                Strings.builderAppend(sb, count);
             }
             return true;
         }
         return false;
     }
 
-    public static String collectionToConsoleString(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, String name, JSHashMap map, int depth) {
+    public static TruffleString collectionToConsoleString(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, TruffleString name, JSHashMap map, int depth) {
         assert JSMap.isJSMap(obj) || JSSet.isJSSet(obj);
         assert name != null;
         int size = map.size();
-        StringBuilder sb = new StringBuilder();
-        sb.append(name);
-        sb.append('(').append(size).append(')');
+        TruffleStringBuilder sb = Strings.builderCreate();
+        Strings.builderAppend(sb, name);
+        Strings.builderAppend(sb, Strings.PAREN_OPEN);
+        Strings.builderAppend(sb, size);
+        Strings.builderAppend(sb, Strings.PAREN_CLOSE);
         if (size > 0 && depth < format.getMaxDepth()) {
-            sb.append('{');
+            Strings.builderAppend(sb, '{');
             boolean isMap = JSMap.isJSMap(obj);
             boolean isFirst = true;
             JSHashMap.Cursor cursor = map.getEntries();
@@ -1323,71 +1323,57 @@ public final class JSRuntime {
                 Object key = cursor.getKey();
                 if (key != null) {
                     if (!isFirst) {
-                        sb.append(", ");
+                        Strings.builderAppend(sb, Strings.COMMA_SPC);
                     }
-                    sb.append(toDisplayStringInner(key, allowSideEffects, format, depth, obj));
+                    Strings.builderAppend(sb, toDisplayStringInner(key, allowSideEffects, format, depth, obj));
                     if (isMap) {
-                        sb.append(" => ");
+                        Strings.builderAppend(sb, Strings.BIG_ARROW_SPACES);
                         Object value = cursor.getValue();
-                        sb.append(toDisplayStringInner(value, allowSideEffects, format, depth, obj));
+                        Strings.builderAppend(sb, toDisplayStringInner(value, allowSideEffects, format, depth, obj));
                     }
                     isFirst = false;
                 }
             }
-            sb.append('}');
+            Strings.builderAppend(sb, '}');
         }
-        return sb.toString();
+        return Strings.builderToString(sb);
     }
 
     @TruffleBoundary
     public static JSException toStringTypeError(Object value) {
-        String what = (value == null ? Null.NAME : (JSDynamicObject.isJSDynamicObject(value) ? JSObject.defaultToString((DynamicObject) value) : value.getClass().getName()));
+        String what = (value == null ? "null" : (JSDynamicObject.isJSDynamicObject(value) ? Strings.toJavaString(JSObject.defaultToString((DynamicObject) value)) : value.getClass().getName()));
         throw Errors.createTypeErrorCannotConvertToString(what);
     }
 
-    public static String booleanToString(boolean value) {
+    public static TruffleString booleanToString(boolean value) {
         return value ? JSBoolean.TRUE_NAME : JSBoolean.FALSE_NAME;
     }
 
-    public static String toString(DynamicObject value) {
+    public static TruffleString toString(DynamicObject value) {
         if (value == Undefined.instance) {
             return Undefined.NAME;
         } else if (value == Null.instance) {
             return Null.NAME;
         }
-        return toString(JSObject.toPrimitive(value, HINT_STRING));
+        return toString(JSObject.toPrimitive(value, Strings.HINT_STRING));
     }
 
-    public static String numberToString(Number number) {
+    public static String numberToJavaString(Number number) {
+        return Strings.toJavaString(numberToString(number));
+    }
+
+    public static TruffleString numberToString(Number number) {
         if (number instanceof Integer) {
-            return Boundaries.stringValueOf(((Integer) number).intValue());
+            return Strings.fromInt(((Integer) number).intValue());
         } else if (number instanceof SafeInteger) {
             return doubleToString(((SafeInteger) number).doubleValue());
         } else if (number instanceof Double) {
             return doubleToString((Double) number);
         } else if (number instanceof Long) {
-            return Boundaries.stringValueOf(number.longValue());
+            return Strings.fromLong(number.longValue());
         }
         CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException("unknown number value: " + number.toString() + " " + number.getClass().getSimpleName());
-    }
-
-    public static int length(CharSequence cs) {
-        if (cs instanceof String) {
-            return ((String) cs).length();
-        } else if (cs instanceof JSLazyString) {
-            return ((JSLazyString) cs).length();
-        }
-        return lengthIntl(cs);
-    }
-
-    public static int length(CharSequence cs, ConditionProfile stringProfile, ConditionProfile lazyStringProfile) {
-        if (stringProfile.profile(cs instanceof String)) {
-            return ((String) cs).length();
-        } else if (lazyStringProfile.profile(cs instanceof JSLazyString)) {
-            return ((JSLazyString) cs).length();
-        }
-        return lengthIntl(cs);
     }
 
     @TruffleBoundary
@@ -1395,38 +1381,22 @@ public final class JSRuntime {
         return cs.length();
     }
 
-    public static char charAt(CharSequence cs, int index) {
-        if (cs instanceof String) {
-            return ((String) cs).charAt(index);
-        } else if (cs instanceof JSLazyString) {
-            return ((JSLazyString) cs).charAt(index);
-        }
-        return charAtIntl(cs, index);
-    }
-
-    @TruffleBoundary
-    private static char charAtIntl(CharSequence cs, int index) {
-        return cs.charAt(index);
-    }
-
     public static String javaToString(Object obj) {
         if (obj instanceof String) {
             return (String) obj;
-        } else if (obj instanceof JSLazyString) {
-            return ((JSLazyString) obj).toString();
+        } else if (Strings.isTString(obj)) {
+            return Strings.toJavaString((TruffleString) obj);
         }
         return Boundaries.javaToString(obj);
     }
 
     // avoiding a virtual call for equals(), not fail on SVM.
     // No TruffleBoundary, we want this to partially evaluate.
-    public static boolean propertyKeyEquals(Object a, Object b) {
+    public static boolean propertyKeyEquals(TruffleString.EqualNode equalsNode, Object a, Object b) {
         assert isPropertyKey(a);
-        if (a instanceof String) {
-            if (b instanceof String) {
-                return ((String) a).equals(b);
-            } else if (b instanceof JSLazyString) {
-                return ((String) a).equals(((JSLazyString) b).toString());
+        if (Strings.isTString(a)) {
+            if (Strings.isTString(b)) {
+                return Strings.equals(equalsNode, (TruffleString) a, (TruffleString) b);
             } else {
                 return false;
             }
@@ -1438,16 +1408,16 @@ public final class JSRuntime {
     }
 
     @TruffleBoundary
-    public static String doubleToString(double d, int radix) {
+    public static Object doubleToString(double d, int radix) {
         assert radix >= 2 && radix <= 36;
         if (Double.isNaN(d)) {
-            return NAN_STRING;
+            return Strings.NAN;
         } else if (d == Double.POSITIVE_INFINITY) {
-            return INFINITY_STRING;
+            return Strings.INFINITY;
         } else if (d == Double.NEGATIVE_INFINITY) {
-            return NEGATIVE_INFINITY_STRING;
+            return Strings.NEGATIVE_INFINITY;
         } else if (d == 0) {
-            return "0";
+            return Strings.ZERO;
         }
         return formatDtoA(d, radix);
     }
@@ -1457,22 +1427,22 @@ public final class JSRuntime {
      *
      * Better use JSDoubleToStringNode where appropriate.
      */
-    public static String doubleToString(double d) {
+    public static TruffleString doubleToString(double d) {
         if (Double.isNaN(d)) {
-            return NAN_STRING;
+            return Strings.NAN;
         } else if (d == Double.POSITIVE_INFINITY) {
-            return INFINITY_STRING;
+            return Strings.INFINITY;
         } else if (d == Double.NEGATIVE_INFINITY) {
-            return NEGATIVE_INFINITY_STRING;
+            return Strings.NEGATIVE_INFINITY;
         } else if (d == 0) {
-            return "0";
+            return Strings.ZERO;
         }
 
         if (doubleIsRepresentableAsInt(d)) {
-            return Boundaries.stringValueOf((int) d);
+            return Strings.fromInt((int) d);
         }
 
-        return formatDtoA(d);
+        return Strings.fromJavaString(formatDtoA(d));
     }
 
     @TruffleBoundary
@@ -1481,28 +1451,28 @@ public final class JSRuntime {
     }
 
     @TruffleBoundary
-    public static String formatDtoAPrecision(double value, int precision) {
-        return DoubleConversion.toPrecision(value, precision);
+    public static Object formatDtoAPrecision(double value, int precision) {
+        return Strings.fromJavaString(DoubleConversion.toPrecision(value, precision));
     }
 
     @TruffleBoundary
-    public static String formatDtoAExponential(double d, int digits) {
-        return DoubleConversion.toExponential(d, digits);
+    public static Object formatDtoAExponential(double d, int digits) {
+        return Strings.fromJavaString(DoubleConversion.toExponential(d, digits));
     }
 
     @TruffleBoundary
-    public static String formatDtoAExponential(double d) {
-        return DoubleConversion.toExponential(d, -1);
+    public static Object formatDtoAExponential(double d) {
+        return Strings.fromJavaString(DoubleConversion.toExponential(d, -1));
     }
 
     @TruffleBoundary
-    public static String formatDtoAFixed(double value, int digits) {
-        return DoubleConversion.toFixed(value, digits);
+    public static Object formatDtoAFixed(double value, int digits) {
+        return Strings.fromJavaString(DoubleConversion.toFixed(value, digits));
     }
 
     @TruffleBoundary
-    public static String formatDtoA(double d, int radix) {
-        return DToA.jsDtobasestr(radix, d);
+    public static Object formatDtoA(double d, int radix) {
+        return Strings.fromJavaString(DToA.jsDtobasestr(radix, d));
     }
 
     /**
@@ -1533,10 +1503,8 @@ public final class JSRuntime {
         JSRealm realm = JSRealm.get(null);
         if (value instanceof Boolean) {
             return JSBoolean.create(ctx, realm, (Boolean) value);
-        } else if (value instanceof String) {
-            return JSString.create(ctx, realm, (String) value);
-        } else if (value instanceof JSLazyString) {
-            return JSString.create(ctx, realm, (JSLazyString) value);
+        } else if (Strings.isTString(value)) {
+            return JSString.create(ctx, realm, (TruffleString) value);
         } else if (value instanceof BigInt) {
             return JSBigInt.create(ctx, realm, (BigInt) value);
         } else if (isNumber(value)) {
@@ -1568,7 +1536,7 @@ public final class JSRuntime {
             double xd = doubleValue((Number) x);
             double yd = doubleValue((Number) y);
             return Double.compare(xd, yd) == 0;
-        } else if (isString(x) && isString(y)) {
+        } else if (Strings.isTString(x) && Strings.isTString(y)) {
             return x.toString().equals(y.toString());
         } else if (x instanceof Boolean && y instanceof Boolean) {
             return (boolean) x == (boolean) y;
@@ -1588,7 +1556,7 @@ public final class JSRuntime {
             return isNullish(a);
         } else if (a instanceof Boolean && b instanceof Boolean) {
             return a.equals(b);
-        } else if (isString(a) && isString(b)) {
+        } else if (Strings.isTString(a) && Strings.isTString(b)) {
             return a.toString().equals(b.toString());
         } else if (isJavaNumber(a) && isJavaNumber(b)) {
             double da = doubleValue((Number) a);
@@ -1596,16 +1564,16 @@ public final class JSRuntime {
             return da == db;
         } else if (JSDynamicObject.isJSDynamicObject(a) && JSDynamicObject.isJSDynamicObject(b)) {
             return a == b;
-        } else if (isJavaNumber(a) && isString(b)) {
-            return equal(a, stringToNumber(b.toString()));
-        } else if (isString(a) && isJavaNumber(b)) {
-            return equal(stringToNumber(a.toString()), b);
+        } else if (isJavaNumber(a) && Strings.isTString(b)) {
+            return equal(a, stringToNumber((TruffleString) b));
+        } else if (Strings.isTString(a) && isJavaNumber(b)) {
+            return equal(stringToNumber((TruffleString) a), b);
         } else if (isBigInt(a) && isBigInt(b)) {
             return a.equals(b);
-        } else if (isBigInt(a) && isString(b)) {
-            return a.equals(stringToBigInt(b.toString()));
-        } else if (isString(a) && isBigInt(b)) {
-            return b.equals(stringToBigInt(a.toString()));
+        } else if (isBigInt(a) && Strings.isTString(b)) {
+            return a.equals(stringToBigInt((TruffleString) b));
+        } else if (Strings.isTString(a) && isBigInt(b)) {
+            return b.equals(stringToBigInt((TruffleString) a));
         } else if (isJavaNumber(a) && isBigInt(b)) {
             return equalBigIntAndNumber((BigInt) b, (Number) a);
         } else if (isBigInt(a) && isJavaNumber(b)) {
@@ -1620,7 +1588,7 @@ public final class JSRuntime {
                 if (isObject(b) && !JSOverloadedOperatorsObject.hasOverloadedOperators(b)) {
                     return equal(a, JSObject.toPrimitive((DynamicObject) b));
                 }
-                if (isObject(b) || isNumber(b) || isBigInt(b) || isString(b)) {
+                if (isObject(b) || isNumber(b) || isBigInt(b) || Strings.isTString(b)) {
                     return equalOverloaded(a, b);
                 } else {
                     return false;
@@ -1632,7 +1600,7 @@ public final class JSRuntime {
             assert a != Undefined.instance && a != Null.instance; // covered by (DynOb, DynOb)
             assert !isObject(a);
             if (JSOverloadedOperatorsObject.hasOverloadedOperators(b)) {
-                if (isNumber(a) || isBigInt(a) || isString(a)) {
+                if (isNumber(a) || isBigInt(a) || Strings.isTString(a)) {
                     return equalOverloaded(a, b);
                 } else {
                     return false;
@@ -1652,8 +1620,8 @@ public final class JSRuntime {
     }
 
     public static boolean isForeignObject(TruffleObject value) {
-        return !JSDynamicObject.isJSDynamicObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof SafeInteger) &&
-                        !(value instanceof BigInt);
+        return !JSDynamicObject.isJSDynamicObject(value) && !(value instanceof Symbol) && !(value instanceof SafeInteger) &&
+                        !(value instanceof BigInt) && !Strings.isTString(value);
     }
 
     private static boolean equalInterop(Object a, Object b) {
@@ -1698,7 +1666,7 @@ public final class JSRuntime {
     }
 
     private static boolean equalOverloaded(Object a, Object b) {
-        Object operatorImplementation = OperatorSet.getOperatorImplementation(a, b, "==");
+        Object operatorImplementation = OperatorSet.getOperatorImplementation(a, b, Strings.SYMBOL_EQUALS_EQUALS);
         if (operatorImplementation == null) {
             return false;
         } else {
@@ -1737,7 +1705,7 @@ public final class JSRuntime {
         if ((a instanceof Boolean && b instanceof Boolean)) {
             return a.equals(b);
         }
-        if (isString(a) && isString(b)) {
+        if (Strings.isTString(a) && Strings.isTString(b)) {
             return a.toString().equals(b.toString());
         }
         if (isObject(a) || isObject(b)) {
@@ -1859,6 +1827,13 @@ public final class JSRuntime {
         return isAsciiDigit(c) || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F');
     }
 
+    @TruffleBoundary
+    public static long parseArrayIndexIsIndexRaw(Object o) {
+        assert isArrayIndex(o);
+        assert Strings.isTString(o) || o instanceof Number;
+        return parseArrayIndexRaw(Strings.isTString(o) ? (TruffleString) o : Strings.fromNumber((Number) o), TruffleString.ReadCharUTF16Node.getUncached());
+    }
+
     /**
      * NB: does not check whether the result fits into the uint32 range. The caller is responsible
      * for the range check and must take care not to pass in too long strings.
@@ -1866,16 +1841,15 @@ public final class JSRuntime {
      * @return parsed unsigned integer value or INVALID_UINT32 if the string is not parsable.
      * @see #isArrayIndex(long)
      */
-    @TruffleBoundary
-    public static long parseArrayIndexRaw(String string) {
+    public static long parseArrayIndexRaw(TruffleString string, TruffleString.ReadCharUTF16Node charAtNode) {
         long value = 0;
         int pos = 0;
-        int len = string.length();
-        if (len > 1 && string.charAt(pos) == '0') {
+        int len = Strings.length(string);
+        if (len > 1 && Strings.charAt(charAtNode, string, pos) == '0') {
             return INVALID_ARRAY_INDEX;
         }
         while (pos < len) {
-            char c = string.charAt(pos);
+            char c = Strings.charAt(charAtNode, string, pos);
             if (!isAsciiDigit(c)) {
                 return INVALID_ARRAY_INDEX;
             }
@@ -1886,35 +1860,35 @@ public final class JSRuntime {
         return value;
     }
 
-    public static String trimJSWhiteSpace(String string) {
+    public static TruffleString trimJSWhiteSpace(TruffleString string) {
         return trimJSWhiteSpace(string, false);
     }
 
     @TruffleBoundary
-    public static String trimJSWhiteSpace(String string, boolean useLineTerminators) {
-        int firstIdx = firstNonWhitespaceIndex(string, useLineTerminators);
-        int lastIdx = lastNonWhitespaceIndex(string, useLineTerminators);
+    public static TruffleString trimJSWhiteSpace(TruffleString string, boolean useLineTerminators) {
+        int firstIdx = firstNonWhitespaceIndex(string, useLineTerminators, TruffleString.ReadCharUTF16Node.getUncached());
+        int lastIdx = lastNonWhitespaceIndex(string, useLineTerminators, TruffleString.ReadCharUTF16Node.getUncached());
         if (firstIdx == 0) {
-            if ((lastIdx + 1) == string.length()) {
+            if ((lastIdx + 1) == Strings.length(string)) {
                 return string;
             }
         } else if (firstIdx > lastIdx) {
-            return "";
+            return Strings.EMPTY_STRING;
         }
-        return string.substring(firstIdx, lastIdx + 1);
+        return Strings.substring(string, firstIdx, lastIdx + 1 - firstIdx);
     }
 
-    public static int firstNonWhitespaceIndex(String string, boolean useLineTerminators) {
+    public static int firstNonWhitespaceIndex(TruffleString string, boolean useLineTerminators, TruffleString.ReadCharUTF16Node charAtNode) {
         int idx = 0;
-        while ((idx < string.length()) && (isWhiteSpace(string.charAt(idx)) || (useLineTerminators && isLineTerminator(string.charAt(idx))))) {
+        while ((idx < Strings.length(string)) && (isWhiteSpace(Strings.charAt(charAtNode, string, idx)) || (useLineTerminators && isLineTerminator(Strings.charAt(charAtNode, string, idx))))) {
             idx++;
         }
         return idx;
     }
 
-    public static int lastNonWhitespaceIndex(String string, boolean useLineTerminators) {
-        int idx = string.length() - 1;
-        while ((idx >= 0) && (isWhiteSpace(string.charAt(idx)) || (useLineTerminators && isLineTerminator(string.charAt(idx))))) {
+    public static int lastNonWhitespaceIndex(TruffleString string, boolean useLineTerminators, TruffleString.ReadCharUTF16Node charAtNode) {
+        int idx = Strings.length(string) - 1;
+        while ((idx >= 0) && (isWhiteSpace(Strings.charAt(charAtNode, string, idx)) || (useLineTerminators && isLineTerminator(Strings.charAt(charAtNode, string, idx))))) {
             idx--;
         }
         return idx;
@@ -1975,8 +1949,8 @@ public final class JSRuntime {
         return longValue == doubleValue && isArrayIndex(longValue);
     }
 
-    public static boolean isArrayIndex(String property) {
-        long idx = propertyNameToArrayIndex(property);
+    public static boolean isArrayIndexString(TruffleString property) {
+        long idx = propertyNameToArrayIndex(property, TruffleString.ReadCharUTF16Node.getUncached());
         return isArrayIndex(idx);
     }
 
@@ -1987,8 +1961,8 @@ public final class JSRuntime {
             return isArrayIndex((long) property);
         } else if (property instanceof Double) {
             return isArrayIndex((double) property);
-        } else if (isString(property)) {
-            long idx = propertyNameToArrayIndex(toStringIsString(property));
+        } else if (Strings.isTString(property)) {
+            long idx = propertyNameToArrayIndex(toStringIsString(property), TruffleString.ReadCharUTF16Node.getUncached());
             return isArrayIndex(idx);
         } else {
             return false;
@@ -2010,36 +1984,36 @@ public final class JSRuntime {
     }
 
     @TruffleBoundary
-    public static long propertyNameToArrayIndex(String propertyName) {
+    public static long propertyNameToArrayIndex(TruffleString propertyName, TruffleString.ReadCharUTF16Node charAtNode) {
         if (propertyName != null && arrayIndexLengthInRange(propertyName)) {
-            if (isAsciiDigit(propertyName.charAt(0))) {
-                return parseArrayIndexRaw(propertyName);
+            if (isAsciiDigit(Strings.charAt(propertyName, 0))) {
+                return parseArrayIndexRaw(propertyName, charAtNode);
             }
         }
         return INVALID_ARRAY_INDEX;
     }
 
-    public static boolean arrayIndexLengthInRange(String index) {
-        int len = index.length();
+    public static boolean arrayIndexLengthInRange(TruffleString indexStr) {
+        int len = Strings.length(indexStr);
         return 0 < len && len <= JSRuntime.MAX_UINT32_DIGITS;
     }
 
     public static long propertyKeyToArrayIndex(Object propertyKey) {
-        return propertyKey instanceof String ? propertyNameToArrayIndex((String) propertyKey) : INVALID_ARRAY_INDEX;
+        return Strings.isTString(propertyKey) ? propertyNameToArrayIndex((TruffleString) propertyKey, TruffleString.ReadCharUTF16Node.getUncached()) : INVALID_ARRAY_INDEX;
     }
 
     @TruffleBoundary
-    public static long propertyNameToIntegerIndex(String propertyName) {
-        if (propertyName != null && propertyName.length() > 0 && propertyName.length() <= MAX_INTEGER_INDEX_DIGITS) {
-            if (isAsciiDigit(propertyName.charAt(0))) {
-                return parseArrayIndexRaw(propertyName);
+    public static long propertyNameToIntegerIndex(TruffleString propertyName) {
+        if (propertyName != null && Strings.length(propertyName) > 0 && Strings.length(propertyName) <= MAX_INTEGER_INDEX_DIGITS) {
+            if (isAsciiDigit(Strings.charAt(propertyName, 0))) {
+                return parseArrayIndexRaw(propertyName, TruffleString.ReadCharUTF16Node.getUncached());
             }
         }
         return INVALID_INTEGER_INDEX;
     }
 
     public static long propertyKeyToIntegerIndex(Object propertyKey) {
-        return propertyKey instanceof String ? propertyNameToIntegerIndex((String) propertyKey) : INVALID_INTEGER_INDEX;
+        return Strings.isTString(propertyKey) ? propertyNameToIntegerIndex((TruffleString) propertyKey) : INVALID_INTEGER_INDEX;
     }
 
     /**
@@ -2050,35 +2024,16 @@ public final class JSRuntime {
     }
 
     public static boolean isJSPrimitive(Object value) {
-        return isNumber(value) || value instanceof BigInt || value instanceof Boolean || isString(value) || value == Undefined.instance || value == Null.instance || value instanceof Symbol;
+        return isNumber(value) || value instanceof BigInt || value instanceof Boolean || Strings.isTString(value) || value == Undefined.instance || value == Null.instance || value instanceof Symbol;
     }
 
-    /**
-     * Is value a native JavaScript string.
-     */
-    public static boolean isString(Object value) {
-        return value instanceof String || isLazyString(value);
-    }
-
-    public static String toStringIsString(Object value) {
-        assert isString(value);
-        if (value instanceof String) {
-            return (String) value;
-        } else {
-            assert isLazyString(value);
-            return ((JSLazyString) value).toString();
-        }
-    }
-
-    /**
-     * Is value is a {@link CharSequence} that lazily evaluates to a {@link String}).
-     */
-    public static boolean isLazyString(Object value) {
-        return value instanceof JSLazyString;
+    public static TruffleString toStringIsString(Object value) {
+        assert Strings.isTString(value);
+        return (TruffleString) value;
     }
 
     public static boolean isStringClass(Class<?> clazz) {
-        return String.class.isAssignableFrom(clazz) || JSLazyString.class.isAssignableFrom(clazz);
+        return TruffleString.class.isAssignableFrom(clazz);
     }
 
     public static Object nullToUndefined(Object value) {
@@ -2099,15 +2054,11 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static Object jsObjectToJavaObject(Object obj) {
-        if (isLazyString(obj)) {
-            return obj.toString();
-        } else {
-            return toJavaNull(undefinedToNull(obj));
-        }
+        return toJavaNull(undefinedToNull(obj));
     }
 
     public static boolean isPropertyKey(Object key) {
-        return key instanceof String || key instanceof Symbol;
+        return Strings.isTString(key) || key instanceof Symbol;
     }
 
     public static Object boxIndex(long longIndex, ConditionProfile indexInIntRangeConditionProfile) {
@@ -2119,9 +2070,9 @@ public final class JSRuntime {
     }
 
     @TruffleBoundary
-    public static BigInt stringToBigInt(String s) {
+    public static BigInt stringToBigInt(TruffleString s) {
         try {
-            return BigInt.valueOf(s);
+            return Strings.parseBigInt(s);
         } catch (NumberFormatException e) {
             return null;
         }
@@ -2283,12 +2234,12 @@ public final class JSRuntime {
     }
 
     @TruffleBoundary
-    public static long parseSafeInteger(String s) {
-        return parseSafeInteger(s, 0, s.length(), 10);
+    public static long parseSafeInteger(TruffleString s) {
+        return parseSafeInteger(s, 0, Strings.length(s), 10);
     }
 
     @TruffleBoundary
-    public static long parseSafeInteger(String s, int beginIndex, int endIndex, int radix) {
+    public static long parseSafeInteger(TruffleString s, int beginIndex, int endIndex, int radix) {
         return parseLong(s, beginIndex, endIndex, radix, radix == 10, MAX_SAFE_INTEGER_LONG);
     }
 
@@ -2298,8 +2249,8 @@ public final class JSRuntime {
      * @return parsed integer value or {@link #INVALID_SAFE_INTEGER} if the string is not parsable
      *         or not in the safe integer range.
      */
-    private static long parseLong(String s, int beginIndex, int endIndex, int radix, boolean parseSign, long limit) {
-        assert beginIndex >= 0 && beginIndex <= endIndex && endIndex <= s.length();
+    private static long parseLong(TruffleString s, int beginIndex, int endIndex, int radix, boolean parseSign, long limit) {
+        assert beginIndex >= 0 && beginIndex <= endIndex && endIndex <= Strings.length(s);
         assert radix >= Character.MIN_RADIX && radix <= Character.MAX_RADIX;
         assert limit <= Long.MAX_VALUE / radix - radix;
 
@@ -2309,7 +2260,7 @@ public final class JSRuntime {
             return INVALID_SAFE_INTEGER;
         }
         if (parseSign) {
-            char firstChar = s.charAt(i);
+            char firstChar = Strings.charAt(s, i);
             if (firstChar < '0') {
                 if (firstChar == '-') {
                     negative = true;
@@ -2325,7 +2276,7 @@ public final class JSRuntime {
 
         long result = 0;
         while (i < endIndex) {
-            char c = s.charAt(i);
+            char c = Strings.charAt(s, i);
             int digit = JSRuntime.valueInRadix(c, radix);
             if (digit < 0) {
                 return INVALID_SAFE_INTEGER;
@@ -2345,13 +2296,13 @@ public final class JSRuntime {
     }
 
     @TruffleBoundary
-    public static Number parseRawFitsLong(String string, int radix, int startPos, int endPos, boolean negate) {
+    public static Number parseRawFitsLong(TruffleString string, int radix, int startPos, int endPos, boolean negate) {
         assert startPos < endPos;
         int pos = startPos;
 
         long value = 0;
         while (pos < endPos) {
-            char c = string.charAt(pos);
+            char c = Strings.charAt(string, pos);
             int cval = JSRuntime.valueInRadix(c, radix);
             if (cval < 0) {
                 if (pos != startPos) {
@@ -2364,7 +2315,7 @@ public final class JSRuntime {
             value += cval;
             pos++;
         }
-        if (value == 0 && negate && string.charAt(startPos) == '0') {
+        if (value == 0 && negate && Strings.charAt(string, startPos) == '0') {
             return -0.0;
         }
 
@@ -2379,13 +2330,13 @@ public final class JSRuntime {
     }
 
     @TruffleBoundary
-    public static double parseRawDontFitLong(String string, int radix, int startPos, int endPos, boolean negate) {
+    public static double parseRawDontFitLong(TruffleString string, int radix, int startPos, int endPos, boolean negate) {
         assert startPos < endPos;
         int pos = startPos;
 
         double value = 0;
         while (pos < endPos) {
-            char c = string.charAt(pos);
+            char c = Strings.charAt(string, pos);
             int cval = JSRuntime.valueInRadix(c, radix);
             if (cval < 0) {
                 if (pos != startPos) {
@@ -2536,7 +2487,7 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Object toPropertyKey(Object arg) {
-        if (arg instanceof String) {
+        if (Strings.isTString(arg)) {
             return arg;
         } else if (arg instanceof Symbol) {
             return arg;
@@ -2544,8 +2495,8 @@ public final class JSRuntime {
         Object key = toPrimitive(arg);
         if (key instanceof Symbol) {
             return key;
-        } else if (isString(key)) {
-            return key.toString();
+        } else if (Strings.isTString(key)) {
+            return key;
         }
         return toString(key);
     }
@@ -2597,11 +2548,11 @@ public final class JSRuntime {
      * ES2015, 7.1.16 CanonicalNumericIndexString().
      */
     @TruffleBoundary
-    public static Object canonicalNumericIndexString(String s) {
-        if (s.isEmpty() || !isNumericIndexStart(s.charAt(0))) {
+    public static Object canonicalNumericIndexString(TruffleString s) {
+        if (Strings.isEmpty(s) || !isNumericIndexStart(Strings.charAt(s, 0))) {
             return Undefined.instance;
         }
-        if ("-0".equals(s)) {
+        if (Strings.NEGATIVE_ZERO.equals(s)) {
             return -0.0;
         }
         Number n = stringToNumber(s);
@@ -2637,13 +2588,11 @@ public final class JSRuntime {
      */
     public static int comparePropertyKeys(Object key1, Object key2) {
         assert isPropertyKey(key1) && isPropertyKey(key2);
-        boolean isString1 = key1 instanceof String;
-        boolean isString2 = key2 instanceof String;
+        boolean isString1 = Strings.isTString(key1);
+        boolean isString2 = Strings.isTString(key2);
         if (isString1 && isString2) {
-            String str1 = (String) key1;
-            String str2 = (String) key2;
-            long index1 = JSRuntime.propertyNameToArrayIndex(str1);
-            long index2 = JSRuntime.propertyNameToArrayIndex(str2);
+            long index1 = JSRuntime.propertyNameToArrayIndex((TruffleString) key1, TruffleString.ReadCharUTF16Node.getUncached());
+            long index2 = JSRuntime.propertyNameToArrayIndex((TruffleString) key2, TruffleString.ReadCharUTF16Node.getUncached());
             boolean isIndex1 = isArrayIndex(index1);
             boolean isIndex2 = isArrayIndex(index2);
             if (isIndex1 && isIndex2) {
@@ -2667,11 +2616,11 @@ public final class JSRuntime {
     /**
      * Carefully try getting the constructor name, must not throw.
      */
-    public static String getConstructorName(DynamicObject receiver) {
+    public static TruffleString getConstructorName(DynamicObject receiver) {
         // Try @@toStringTag first
         Object toStringTag = getDataProperty(receiver, Symbol.SYMBOL_TO_STRING_TAG);
-        if (JSRuntime.isString(toStringTag)) {
-            return JSRuntime.javaToString(toStringTag);
+        if (Strings.isTString(toStringTag)) {
+            return (TruffleString) toStringTag;
         }
 
         // Try function name of prototype.constructor
@@ -2804,10 +2753,7 @@ public final class JSRuntime {
         long index = 0;
         while (index < len) {
             Object next = JSObject.get(jsObj, index);
-            if (JSRuntime.isLazyString(next)) {
-                next = next.toString();
-            }
-            if (!(next instanceof String || next instanceof Symbol)) {
+            if (!(Strings.isTString(next) || next instanceof Symbol)) {
                 throw Errors.createTypeError("Symbol or String expected");
             }
             Boundaries.listAdd(list, next);
@@ -2858,6 +2804,50 @@ public final class JSRuntime {
         }
         builder.append('"');
         return builder.toString();
+    }
+
+    @TruffleBoundary
+    public static TruffleString quote(TruffleString value) {
+        int pos = 0;
+        while (pos < Strings.length(value)) {
+            char ch = Strings.charAt(value, pos);
+            if (ch < ' ' || ch == '\\' || ch == '"') {
+                break;
+            }
+            pos++;
+        }
+
+        TruffleStringBuilder builder = Strings.builderCreate(Strings.length(value) + 2);
+        Strings.builderAppend(builder, '"');
+        Strings.builderAppend(builder, value, 0, pos);
+        for (int i = pos; i < Strings.length(value); i++) {
+            char ch = Strings.charAt(value, i);
+            if (ch < ' ') {
+                if (ch == '\b') {
+                    Strings.builderAppend(builder, Strings.ESCAPE_B);
+                } else if (ch == '\f') {
+                    Strings.builderAppend(builder, Strings.ESCAPE_F);
+                } else if (ch == '\n') {
+                    Strings.builderAppend(builder, Strings.ESCAPE_N);
+                } else if (ch == '\r') {
+                    Strings.builderAppend(builder, Strings.ESCAPE_R);
+                } else if (ch == '\t') {
+                    Strings.builderAppend(builder, Strings.ESCAPE_T);
+                } else {
+                    Strings.builderAppend(builder, Strings.ESCAPE_U_00);
+                    Strings.builderAppend(builder, Character.forDigit((ch & 0xF0) >> 4, 16));
+                    Strings.builderAppend(builder, Character.forDigit((ch & 0x0F), 16));
+                }
+            } else if (ch == '\\') {
+                Strings.builderAppend(builder, Strings.ESCAPE_BACKSLASH);
+            } else if (ch == '"') {
+                Strings.builderAppend(builder, Strings.ESCAPE_QUOTE);
+            } else {
+                Strings.builderAppend(builder, ch);
+            }
+        }
+        Strings.builderAppend(builder, '"');
+        return Strings.builderToString(builder);
     }
 
     public static DynamicObject expectJSObject(Object to, BranchProfile errorBranch) {
@@ -2961,7 +2951,7 @@ public final class JSRuntime {
     }
 
     public static void iteratorClose(DynamicObject iterator) {
-        Object returnMethod = JSObject.get(iterator, RETURN);
+        Object returnMethod = JSObject.get(iterator, Strings.RETURN);
         if (returnMethod != Undefined.instance) {
             Object innerResult = call(returnMethod, iterator, new Object[]{});
             if (!isObject(innerResult)) {

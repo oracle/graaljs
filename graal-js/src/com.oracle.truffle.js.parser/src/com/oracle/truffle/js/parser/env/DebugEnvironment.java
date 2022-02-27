@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,9 +41,11 @@
 package com.oracle.truffle.js.parser.env;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 
 /**
  * Read-only environment based on a frame descriptor used to give debugger code access to the
@@ -68,7 +70,7 @@ public class DebugEnvironment extends Environment {
         return true;
     }
 
-    public boolean hasMember(String name) {
-        return InteropLibrary.getUncached().isMemberReadable(scope, name);
+    public boolean hasMember(TruffleString name) {
+        return InteropLibrary.getUncached().isMemberReadable(scope, Strings.toJavaString(name));
     }
 }

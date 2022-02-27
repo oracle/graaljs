@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.BooleanPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
@@ -50,17 +51,18 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
 public final class JSBoolean extends JSPrimitive implements JSConstructorFactory.Default {
 
-    public static final String TYPE_NAME = "boolean";
-    public static final String CLASS_NAME = "Boolean";
-    public static final String PROTOTYPE_NAME = "Boolean.prototype";
-    public static final String TRUE_NAME = "true";
-    public static final String FALSE_NAME = "false";
+    public static final TruffleString TYPE_NAME = Strings.LC_BOOLEAN;
+    public static final TruffleString CLASS_NAME = Strings.UC_BOOLEAN;
+    public static final TruffleString PROTOTYPE_NAME = Strings.BOOLEAN_PROTOTYPE;
+    public static final TruffleString TRUE_NAME = Strings.TRUE;
+    public static final TruffleString FALSE_NAME = Strings.FALSE;
 
     public static final JSBoolean INSTANCE = new JSBoolean();
 
@@ -105,17 +107,17 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public String getBuiltinToStringTag(DynamicObject object) {
+    public TruffleString getBuiltinToStringTag(DynamicObject object) {
         return getClassName(object);
     }
 
@@ -126,13 +128,13 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
 
     @TruffleBoundary
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return "[Boolean " + valueOf(obj) + "]";
+            return Strings.concatAll(Strings.BRACKET_BOOLEAN_SPC, Strings.fromBoolean(valueOf(obj)), Strings.BRACKET_CLOSE);
         } else {
             boolean primitiveValue = JSBoolean.valueOf(obj);
             return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth,
-                            getBuiltinToStringTag(obj), new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
+                            getBuiltinToStringTag(obj), new TruffleString[]{Strings.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
         }
     }
 

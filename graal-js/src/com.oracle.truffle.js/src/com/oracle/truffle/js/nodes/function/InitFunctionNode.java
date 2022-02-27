@@ -42,8 +42,11 @@ package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Properties;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.Accessor;
@@ -130,34 +133,34 @@ public class InitFunctionNode extends JavaScriptBaseNode {
         return execute(function, functionData.getLength(), functionData.getName());
     }
 
-    public final DynamicObject execute(DynamicObject function, int length, String name) {
+    public final DynamicObject execute(DynamicObject function, int length, TruffleString name) {
         // setLengthNode.putWithFlags(function, JSFunction.LENGTH, length, lengthFlags);
-        setLengthNode.putConstant(function, JSFunction.LENGTH, JSFunction.LENGTH_PROXY, lengthFlags);
+        Properties.putConstant(setLengthNode, function, JSFunction.LENGTH, JSFunction.LENGTH_PROXY, lengthFlags);
         assert JSFunction.getFunctionData(function).isBound() || length == (int) JSFunction.LENGTH_PROXY.get(function);
 
         // setNameNode.putWithFlags(function, JSFunction.NAME, name, nameFlags);
-        setNameNode.putConstant(function, JSFunction.NAME, JSFunction.NAME_PROXY, nameFlags);
-        assert JSFunction.getFunctionData(function).isBound() || name.equals(JSFunction.NAME_PROXY.get(function));
+        Properties.putConstant(setNameNode, function, JSFunction.NAME, JSFunction.NAME_PROXY, nameFlags);
+        assert JSFunction.getFunctionData(function).isBound() || Strings.equals(name, (TruffleString) JSFunction.NAME_PROXY.get(function));
 
         if (setPrototypeNode != null) {
-            setPrototypeNode.putConstant(function, JSObject.PROTOTYPE, JSFunction.PROTOTYPE_PROXY, prototypeFlags);
+            Properties.putConstant(setPrototypeNode, function, JSObject.PROTOTYPE, JSFunction.PROTOTYPE_PROXY, prototypeFlags);
         }
 
         if (context.getEcmaScriptVersion() >= 6) {
             if (!strictProperties) {
                 if (context.isOptionV8CompatibilityMode()) {
-                    setArgumentsNode.putConstant(function, JSFunction.ARGUMENTS, context.getArgumentsPropertyProxy(), argumentsCallerFlags | JSProperty.PROXY);
-                    setCallerNode.putConstant(function, JSFunction.CALLER, context.getCallerPropertyProxy(), argumentsCallerFlags | JSProperty.PROXY);
+                    Properties.putConstant(setArgumentsNode, function, JSFunction.ARGUMENTS, context.getArgumentsPropertyProxy(), argumentsCallerFlags | JSProperty.PROXY);
+                    Properties.putConstant(setCallerNode, function, JSFunction.CALLER, context.getCallerPropertyProxy(), argumentsCallerFlags | JSProperty.PROXY);
                 } else {
-                    setArgumentsNode.putConstant(function, JSFunction.ARGUMENTS, Undefined.instance, argumentsCallerFlags);
-                    setCallerNode.putConstant(function, JSFunction.CALLER, Undefined.instance, argumentsCallerFlags);
+                    Properties.putConstant(setArgumentsNode, function, JSFunction.ARGUMENTS, Undefined.instance, argumentsCallerFlags);
+                    Properties.putConstant(setCallerNode, function, JSFunction.CALLER, Undefined.instance, argumentsCallerFlags);
                 }
             }
         } else {
             if (strictProperties) {
                 Accessor throwerAccessor = JSFunction.getRealm(function).getThrowerAccessor();
-                setArgumentsNode.putWithFlags(function, JSFunction.ARGUMENTS, throwerAccessor, argumentsCallerFlags);
-                setCallerNode.putWithFlags(function, JSFunction.CALLER, throwerAccessor, argumentsCallerFlags);
+                Properties.putWithFlags(setArgumentsNode, function, JSFunction.ARGUMENTS, throwerAccessor, argumentsCallerFlags);
+                Properties.putWithFlags(setCallerNode, function, JSFunction.CALLER, throwerAccessor, argumentsCallerFlags);
             }
         }
         return function;

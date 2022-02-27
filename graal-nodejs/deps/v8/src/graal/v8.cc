@@ -853,18 +853,11 @@ namespace v8 {
     Local<String> String::Concat(Isolate* isolate, Local<String> left, Local<String> right) {
         GraalString* graal_left = reinterpret_cast<GraalString*> (*left);
         GraalString* graal_right = reinterpret_cast<GraalString*> (*right);
-        jstring java_left = (jstring) graal_left->GetJavaObject();
-        jstring java_right = (jstring) graal_right->GetJavaObject();
+        jobject java_left = graal_left->GetJavaObject();
+        jobject java_right = graal_right->GetJavaObject();
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
-        JNIEnv* env = graal_isolate->GetJNIEnv();
-        int left_length = env->GetStringLength(java_left);
-        int right_length = env->GetStringLength(java_right);
-        int length = left_length + right_length;
-        jchar* str = new jchar[length];
-        env->GetStringRegion(java_left, 0, left_length, str);
-        env->GetStringRegion(java_right, 0, right_length, str + left_length);
-        GraalString* graal_concat = GraalString::Allocate(graal_isolate, env->NewString(str, length));
-        delete[] str;
+        JNI_CALL(jobject, java_string, graal_isolate, GraalAccessMethod::string_concat, Object, java_left, java_right);
+        GraalString* graal_concat = GraalString::Allocate(graal_isolate, java_string);
         return reinterpret_cast<String*> (graal_concat);
     }
 
@@ -929,21 +922,22 @@ namespace v8 {
             str_ = nullptr;
             length_ = 0;
         } else {
-            jstring java_string = (jstring) java_string_;
-            int utf16length = env->GetStringLength(java_string);
-            const jchar* utf16chars = env->GetStringCritical(java_string, nullptr);
-            length_ = GraalString::Utf8Length(utf16chars, utf16length);
+            GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+            jobject java_string = (jobject) java_string_;
+
+            JNI_CALL(jint, utf8Length, graal_isolate, GraalAccessMethod::string_utf8_length, Int, java_string);
+            length_ = utf8Length;
             str_ = new char[length_ + 1];
-            GraalString::Utf8Write(utf16chars, utf16length, str_, length_ + 1, nullptr, 0);
-            env->ReleaseStringCritical(java_string, utf16chars);
+            JNI_CALL(jlong, result, graal_isolate, GraalAccessMethod::string_utf8_write, Long, java_string, (jlong) str_, (jint) length_);
+            *(str_ + length_) = 0;
         }
     }
 
     String::Value::~Value() {
         if (java_string_ != nullptr) {
             JNIEnv* env = reinterpret_cast<GraalIsolate*> (isolate_)->GetJNIEnv();
-            env->ReleaseStringChars((jstring) java_string_, (const jchar*) str_);
             env->DeleteLocalRef((jobject) java_string_);
+            delete[] str_;
         }
     }
 
@@ -958,8 +952,10 @@ namespace v8 {
             java_string_ = java_string;
         }
         isolate_ = reinterpret_cast<v8::Isolate*> (graal_isolate);
-        str_ = (uint16_t*) env->GetStringChars((jstring) java_string_, nullptr);
-        length_ = env->GetStringLength((jstring) java_string_);
+        JNI_CALL(jint, utf16Length, graal_isolate, GraalAccessMethod::string_length, Int, java_string_);
+        length_ = utf16Length;
+        str_ = new uint16_t[length_];
+        JNI_CALL(jint, result, graal_isolate, GraalAccessMethod::string_write, Int, java_string_, (jlong) str_, 0, (jint) length_);
     }
 
     void Template::Set(Local<Name> name, Local<Data> value, PropertyAttribute attributes) {
@@ -2060,7 +2056,7 @@ namespace v8 {
         GraalIsolate* graal_isolate = graal_object->Isolate();
         jobject java_object = graal_object->GetJavaObject();
         JNI_CALL(jobject, value, graal_isolate, GraalAccessMethod::string_object_value_of, Object, java_object);
-        GraalString* graal_string = GraalString::Allocate(graal_isolate, (jstring) value);
+        GraalString* graal_string = GraalString::Allocate(graal_isolate, value);
         return reinterpret_cast<v8::String*> (graal_string);
     }
 

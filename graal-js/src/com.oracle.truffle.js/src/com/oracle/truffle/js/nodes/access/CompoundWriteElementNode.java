@@ -40,13 +40,13 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext;
-
-import java.util.Set;
 
 public class CompoundWriteElementNode extends WriteElementNode {
     @Child private JSWriteFrameSlotNode writeIndexNode;

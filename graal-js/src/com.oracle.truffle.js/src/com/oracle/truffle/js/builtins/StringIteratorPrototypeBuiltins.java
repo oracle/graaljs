@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.StringIteratorPrototypeBuiltinsFactory.StringIteratorNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
@@ -53,9 +55,9 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -102,8 +104,8 @@ public final class StringIteratorPrototypeBuiltins extends JSBuiltinsContainer.S
         @Child private PropertySetNode setNextIndexNode;
         @Child private PropertySetNode setIteratedObjectNode;
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
-        private final ConditionProfile isSingleChar = ConditionProfile.createCountingProfile();
-        private final ConditionProfile isLowSurrogate = ConditionProfile.createCountingProfile();
+        @Child private TruffleString.ReadCharUTF16Node stringReadNode;
+        private final ConditionProfile isSurrogatePair = ConditionProfile.createCountingProfile();
 
         public StringIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -113,37 +115,35 @@ public final class StringIteratorPrototypeBuiltins extends JSBuiltinsContainer.S
             this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSString.ITERATED_STRING_ID, context);
             this.setNextIndexNode = PropertySetNode.createSetHidden(JSString.STRING_ITERATOR_NEXT_INDEX_ID, context);
             this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
+            this.stringReadNode = TruffleString.ReadCharUTF16Node.create();
         }
 
         @Specialization(guards = "isStringIterator(iterator)")
-        protected DynamicObject doStringIterator(VirtualFrame frame, DynamicObject iterator) {
+        protected DynamicObject doStringIterator(VirtualFrame frame, DynamicObject iterator,
+                        @Cached TruffleString.FromCodePointNode fromCodePointNode,
+                        @Cached TruffleString.SubstringByteIndexNode substringNode) {
             Object iteratedString = getIteratedObjectNode.getValue(iterator);
             if (iteratedString == Undefined.instance) {
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
-            String string = (String) iteratedString;
+            TruffleString string = (TruffleString) iteratedString;
             int index = getNextIndex(iterator);
-            int length = string.length();
+            int length = Strings.length(string);
 
             if (index >= length) {
                 setIteratedObjectNode.setValue(iterator, Undefined.instance);
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
-            char first = string.charAt(index);
-            String result;
-            if (isSingleChar.profile(!Character.isHighSurrogate(first) || index + 1 == length)) {
-                result = String.valueOf(first);
+            char first = Strings.charAt(stringReadNode, string, index);
+            TruffleString result;
+            if (isSurrogatePair.profile(Character.isHighSurrogate(first) && index + 1 < length) && Character.isLowSurrogate(Strings.charAt(stringReadNode, string, index + 1))) {
+                result = Strings.substring(substringNode, string, index, 2);
             } else {
-                char second = string.charAt(index + 1);
-                if (isLowSurrogate.profile(Character.isLowSurrogate(second))) {
-                    result = Boundaries.stringValueOf(new char[]{first, second});
-                } else {
-                    result = String.valueOf(first);
-                }
+                result = Strings.fromCodePoint(fromCodePointNode, first);
             }
-            setNextIndexNode.setValue(iterator, index + result.length());
+            setNextIndexNode.setValue(iterator, index + Strings.length(result));
             return createIterResultObjectNode.execute(frame, result, false);
         }
 

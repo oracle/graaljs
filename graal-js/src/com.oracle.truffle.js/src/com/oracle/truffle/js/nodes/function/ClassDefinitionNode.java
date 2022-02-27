@@ -50,6 +50,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
@@ -64,6 +65,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -279,12 +281,12 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     }
 
     @Override
-    public String getFunctionName() {
-        return hasName ? ((FunctionNameHolder) constructorFunctionNode).getFunctionName() : "";
+    public TruffleString getFunctionName() {
+        return hasName ? ((FunctionNameHolder) constructorFunctionNode).getFunctionName() : Strings.EMPTY_STRING;
     }
 
     @Override
-    public void setFunctionName(String name) {
+    public void setFunctionName(TruffleString name) {
         ((FunctionNameHolder) constructorFunctionNode).setFunctionName(name);
     }
 

@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.instrumentation;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
-
-import java.util.Set;
 
 public final class JSInputGeneratingNodeWrapper extends JavaScriptNode {
 

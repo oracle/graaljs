@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,6 +71,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAbsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAddNodeGen;
@@ -93,6 +94,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
@@ -397,7 +399,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw TemporalErrors.createTypeErrorOptionsUndefined();
             }
             DynamicObject roundTo;
-            if (JSRuntime.isString(roundToParam)) {
+            if (Strings.isTString(roundToParam)) {
                 roundTo = JSOrdinary.createWithNullPrototype(getContext());
                 JSRuntime.createDataPropertyOrThrow(roundTo, TemporalConstants.SMALLEST_UNIT, JSRuntime.toStringIsString(roundToParam));
             } else {
@@ -405,17 +407,17 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             boolean smallestUnitPresent = true;
             boolean largestUnitPresent = true;
-            String smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listEmpty, null);
+            TruffleString smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listEmpty, null);
             if (smallestUnit == null) {
                 smallestUnitPresent = false;
                 smallestUnit = NANOSECOND;
             }
-            String defaultLargestUnit = TemporalUtil.defaultTemporalLargestUnit(duration.getYears(),
+            TruffleString defaultLargestUnit = TemporalUtil.defaultTemporalLargestUnit(duration.getYears(),
                             duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
                             duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                             duration.getMicroseconds());
             defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(defaultLargestUnit, smallestUnit);
-            String largestUnit = toLargestTemporalUnit(roundTo, TemporalUtil.listEmpty, null, null);
+            TruffleString largestUnit = toLargestTemporalUnit(roundTo, TemporalUtil.listEmpty, null, null);
             if (largestUnit == null) {
                 largestUnitPresent = false;
                 largestUnit = defaultLargestUnit;
@@ -426,7 +428,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw Errors.createRangeError("unit expected");
             }
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            String roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
+            TruffleString roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(roundTo, maximum, false, isObjectNode, toNumber);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), getRealm(), roundTo);
@@ -474,14 +476,14 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw TemporalErrors.createTypeErrorOptionsUndefined();
             }
             DynamicObject totalOf;
-            if (JSRuntime.isString(totalOfParam)) {
+            if (Strings.isTString(totalOfParam)) {
                 totalOf = JSOrdinary.createWithNullPrototype(getContext());
                 JSRuntime.createDataPropertyOrThrow(totalOf, TemporalConstants.UNIT, JSRuntime.toStringIsString(totalOfParam));
             } else {
                 totalOf = getOptionsObject(totalOfParam);
             }
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), getRealm(), totalOf);
-            String unit = toTemporalDurationTotalUnit(totalOf);
+            TruffleString unit = toTemporalDurationTotalUnit(totalOf);
             JSTemporalDurationRecord unbalanceResult = TemporalUtil.unbalanceDurationRelative(getContext(), getRealm(),
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), unit, relativeTo);
             DynamicObject intermediate = Undefined.instance;
@@ -528,7 +530,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected String toString(Object thisObj) {
+        protected TruffleString toString(Object thisObj) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             return JSTemporalDuration.temporalDurationToString(
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
@@ -545,7 +547,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected String toString(Object duration, Object opt,
+        protected TruffleString toString(Object duration, Object opt,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalDurationObject dur = requireTemporalDuration(duration);
             DynamicObject options = getOptionsObject(opt);
@@ -554,7 +556,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 errorBranch.enter();
                 throw Errors.createRangeError("unexpected precision minute");
             }
-            String roundingMode = toTemporalRoundingMode(options, TRUNC);
+            TruffleString roundingMode = toTemporalRoundingMode(options, TRUNC);
             JSTemporalDurationRecord result = TemporalUtil.roundDuration(getContext(), getRealm(), namesNode,
                             dur.getYears(), dur.getMonths(), dur.getWeeks(), dur.getDays(), dur.getHours(), dur.getMinutes(), dur.getSeconds(), dur.getMilliseconds(), dur.getMicroseconds(),
                             dur.getNanoseconds(), (long) precision.getIncrement(), precision.getUnit(), roundingMode, Undefined.instance);

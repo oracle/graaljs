@@ -79,7 +79,6 @@ import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT16ARRAY_OBJEC
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT32ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT8ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT8CLAMPEDARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.LAZY_STRING_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.MAP_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.MODULE_REQUEST;
 import static com.oracle.truffle.trufflenode.ValueType.NULL_VALUE;
@@ -167,6 +166,8 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.JSONBuiltins;
 import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -205,6 +206,7 @@ import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -241,7 +243,6 @@ import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
@@ -281,6 +282,28 @@ import com.oracle.truffle.trufflenode.threading.SharedMemMessagingManager;
 @SuppressWarnings("static-method")
 public final class GraalJSAccess {
 
+    public static final TruffleString RESOLVE = Strings.constant("Resolve");
+    public static final TruffleString REJECT = Strings.constant("Reject");
+    public static final TruffleString ARRAY_BUFFER_GET_CONTENTS = Strings.constant("ArrayBufferGetContents");
+    public static final TruffleString GRAAL_EXTENSION = Strings.constant("graalExtension");
+    public static final TruffleString IS_TRACE_CATEGORY_ENABLED = Strings.constant("isTraceCategoryEnabled");
+    public static final TruffleString TRACE = Strings.constant("trace");
+    public static final TruffleString TOTAL = Strings.constant("total");
+    public static final TruffleString CURRENT = Strings.constant("current");
+    public static final TruffleString OTHER = Strings.constant("other");
+    public static final TruffleString JS_MEMORY_ESTIMATE = Strings.constant("jsMemoryEstimate");
+    public static final TruffleString JS_MEMORY_RANGE = Strings.constant("jsMemoryRange");
+    public static final TruffleString STRINGIFY = Strings.constant("stringify");
+    public static final TruffleString NODE_INTERNAL_PER_CONTEXT = Strings.constant("node:internal/per_context");
+    public static final TruffleString NODE_INTERNAL_BOOTSTRAP = Strings.constant("node:internal/bootstrap");
+    public static final TruffleString NODE_INTERNAL_GRAAL_DEBUG = Strings.constant("node:internal/graal/debug");
+    public static final TruffleString NODE_INTERNAL_WORKER_IO = Strings.constant("node:internal/worker/io");
+    public static final TruffleString NODE_INTERNAL_MAIN_WORKER_THREAD = Strings.constant("node:internal/main/worker_thread");
+    public static final TruffleString NODE_INSPECTOR = Strings.constant("node:inspector");
+    public static final TruffleString DOT_JS = Strings.constant(".js");
+    public static final TruffleString SYNTAX_ERROR_COLON_SPC = Strings.constant("SyntaxError: ");
+    public static final TruffleString SHEBANG = Strings.constant("#!");
+
     private static final boolean VERBOSE = Boolean.getBoolean("truffle.node.js.verbose");
     private static final boolean USE_NIO_BUFFER = !"false".equals(System.getProperty("node.buffer.nio"));
     private static final boolean USE_SNAPSHOTS = !"false".equalsIgnoreCase(System.getProperty("truffle.node.js.snapshots"));
@@ -292,8 +315,8 @@ public final class GraalJSAccess {
     private static final Map<Integer, HiddenKey> INTERNAL_FIELD_KEYS_MAP = new ConcurrentHashMap<>();
     private static final HiddenKey[] INTERNAL_FIELD_KEYS_ARRAY = createInternalFieldKeysArray(10);
 
-    private static final Symbol RESOLVER_RESOLVE = Symbol.create("Resolve");
-    private static final Symbol RESOLVER_REJECT = Symbol.create("Reject");
+    private static final Symbol RESOLVER_RESOLVE = Symbol.create(RESOLVE);
+    private static final Symbol RESOLVER_REJECT = Symbol.create(REJECT);
 
     public static final HiddenKey HOLDER_KEY = new HiddenKey("Holder");
     public static final HiddenKey ACCESSOR_KEY = new HiddenKey("Accessor");
@@ -330,7 +353,7 @@ public final class GraalJSAccess {
      * the same file being loaded from the identical location, loading the same content from
      * different locations does not trigger any caching on the Node.js side.
      */
-    private final Map<String, Reference<String>> sourceCodeCache = new WeakHashMap<>();
+    private final Map<TruffleString, Reference<TruffleString>> sourceCodeCache = new WeakHashMap<>();
 
     /**
      * HostDefinedOptions, see v8::ScriptOrModule::GetHostDefinedOptions() and v8::PrimitiveArray.
@@ -460,7 +483,7 @@ public final class GraalJSAccess {
             return BOOLEAN_VALUE_TRUE;
         } else if (value == Boolean.FALSE) {
             return BOOLEAN_VALUE_FALSE;
-        } else if (value instanceof String) {
+        } else if (value instanceof TruffleString) {
             return STRING_VALUE;
         } else if (JSRuntime.isNumber(value)) {
             if (useSharedBuffer) {
@@ -471,8 +494,6 @@ public final class GraalJSAccess {
             return valueTypeJSObject((DynamicObject) value, useSharedBuffer);
         } else if (JSRuntime.isForeignObject(value)) {
             return valueTypeForeignObject((TruffleObject) value, useSharedBuffer);
-        } else if (JSRuntime.isString(value)) { // JSLazyString
-            return LAZY_STRING_VALUE;
         } else if (value instanceof Symbol) {
             return SYMBOL_VALUE;
         } else if (value instanceof BigInt) {
@@ -632,8 +653,8 @@ public final class GraalJSAccess {
         return ((JSExternalObject) obj).getPointer();
     }
 
-    public String valueUnknown(Object obj) {
-        return obj.toString();
+    public Object valueUnknown(Object obj) {
+        return Strings.fromObject(obj);
     }
 
     public Object valueToObject(Object context, Object value) {
@@ -663,7 +684,7 @@ public final class GraalJSAccess {
         return (double) JSRuntime.toUInt32(value);
     }
 
-    public String valueToString(Object value) {
+    public Object valueToString(Object value) {
         return JSRuntime.toString(value);
     }
 
@@ -802,7 +823,7 @@ public final class GraalJSAccess {
         }
     }
 
-    public String valueTypeOf(Object value) {
+    public Object valueTypeOf(Object value) {
         return JSRuntime.typeof(value);
     }
 
@@ -937,15 +958,15 @@ public final class GraalJSAccess {
     }
 
     public Object valueFlatten(Object value) {
-        if (value instanceof String) {
+        if (value instanceof TruffleString) {
             return value;
-        } else if (value instanceof JSLazyString) {
-            return ((JSLazyString) value).toString();
+        } else if (value instanceof String) {
+            throw CompilerDirectives.shouldNotReachHere();
         } else if (JSRuntime.isForeignObject(value)) {
             InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
             if (interop.isString(value)) {
                 try {
-                    return interop.asString(value);
+                    return interop.asTruffleString(value);
                 } catch (UnsupportedMessageException e) {
                 }
             }
@@ -1021,8 +1042,8 @@ public final class GraalJSAccess {
         return JSObject.getPrototype((DynamicObject) object);
     }
 
-    public String objectGetConstructorName(Object object) {
-        String name = "Object";
+    public Object objectGetConstructorName(Object object) {
+        TruffleString name = Strings.UC_OBJECT;
         if (JSDynamicObject.isJSDynamicObject(object)) {
             DynamicObject dynamicObject = (DynamicObject) object;
             Object constructor = JSObject.get(dynamicObject, JSObject.CONSTRUCTOR);
@@ -1035,7 +1056,7 @@ public final class GraalJSAccess {
                 try {
                     Object metaObject = interop.getMetaObject(object);
                     Object interopName = InteropLibrary.getUncached(metaObject).getMetaSimpleName(metaObject);
-                    name = InteropLibrary.getUncached(interopName).asString(interopName);
+                    name = InteropLibrary.getUncached(interopName).asTruffleString(interopName);
                 } catch (UnsupportedMessageException ex) {
                     throw Errors.shouldNotReachHere(ex);
                 }
@@ -1044,11 +1065,11 @@ public final class GraalJSAccess {
         return name;
     }
 
-    private static String foreignStringToString(Object foreignString) throws UnsupportedMessageException {
-        if (foreignString instanceof String) {
-            return (String) foreignString;
+    private static Object foreignStringToString(Object foreignString) throws UnsupportedMessageException {
+        if (foreignString instanceof TruffleString) {
+            return foreignString;
         } else {
-            return InteropLibrary.getFactory().getUncached(foreignString).asString(foreignString);
+            return InteropLibrary.getFactory().getUncached(foreignString).asTruffleString(foreignString);
         }
     }
 
@@ -1060,7 +1081,7 @@ public final class GraalJSAccess {
         Object[] namesArray;
         if (JSDynamicObject.isJSDynamicObject(object)) {
             DynamicObject dynamicObject = (DynamicObject) object;
-            List<String> names = JSObject.enumerableOwnNames(dynamicObject);
+            List<TruffleString> names = JSObject.enumerableOwnNames(dynamicObject);
             namesArray = names.toArray();
             convertArrayIndicesToNumbers(namesArray);
         } else {
@@ -1106,17 +1127,17 @@ public final class GraalJSAccess {
                 Iterable<Object> ownKeys = jsclass.ownPropertyKeys(dynamicObject);
                 for (Object key : ownKeys) {
                     Object keyToStore = key;
-                    if (key instanceof String) {
+                    if (key instanceof TruffleString) {
                         if (skipStrings) {
                             continue;
                         }
-                        boolean index = JSRuntime.isArrayIndex((String) key);
+                        boolean index = JSRuntime.isArrayIndexString((TruffleString) key);
                         if (index) {
                             if (skipIndices) {
                                 continue;
                             }
                             if (keepNumbers) {
-                                keyToStore = JSRuntime.stringToNumber((String) key);
+                                keyToStore = JSRuntime.stringToNumber((TruffleString) key);
                             }
                         }
                     } else {
@@ -1148,7 +1169,7 @@ public final class GraalJSAccess {
                             if (keepNumbers) {
                                 key = JSRuntime.longToIntOrDouble(i);
                             } else {
-                                key = String.valueOf(i);
+                                key = Strings.fromLong(i);
                             }
                             if (!writableOnly || library.isArrayElementWritable(object, i)) {
                                 keys.add(key);
@@ -1162,8 +1183,8 @@ public final class GraalJSAccess {
                     long size = membersLibrary.getArraySize(members);
                     for (long i = 0; i < size; i++) {
                         Object key = membersLibrary.readArrayElement(members, i);
-                        String stringKey = foreignStringToString(key);
-                        if (!writableOnly || library.isMemberWritable(object, stringKey)) {
+                        TruffleString stringKey = (TruffleString) foreignStringToString(key);
+                        if (!writableOnly || library.isMemberWritable(object, stringKey.toJavaStringUncached())) {
                             keys.add(stringKey);
                         }
                     }
@@ -1179,8 +1200,8 @@ public final class GraalJSAccess {
     private void convertArrayIndicesToNumbers(Object[] namesArray) {
         for (int i = 0; i < namesArray.length; i++) {
             Object name = namesArray[i];
-            if (name instanceof String && JSRuntime.isArrayIndex((String) name)) {
-                namesArray[i] = JSRuntime.stringToNumber((String) name);
+            if (name instanceof TruffleString && JSRuntime.isArrayIndexString((TruffleString) name)) {
+                namesArray[i] = JSRuntime.stringToNumber((TruffleString) name);
             }
         }
     }
@@ -1364,7 +1385,7 @@ public final class GraalJSAccess {
             }
         }
         CallTarget callTarget = new InteropArrayBufferGetContents().getCallTarget();
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "ArrayBufferGetContents");
+        return JSFunctionData.createCallOnly(context, callTarget, 1, ARRAY_BUFFER_GET_CONTENTS);
     }
 
     private ByteBuffer wasmMemoryAsByteBuffer(Object interopBuffer) {
@@ -1617,7 +1638,7 @@ public final class GraalJSAccess {
     }
 
     public Object symbolNew(Object name) {
-        return Symbol.create((String) name);
+        return Symbol.create((TruffleString) name);
     }
 
     public Object symbolName(Object symbol) {
@@ -1675,17 +1696,17 @@ public final class GraalJSAccess {
         return functionData.getConstructTarget().call(callArguments);
     }
 
-    public void functionSetName(Object function, String name) {
+    public void functionSetName(Object function, Object name) {
         DynamicObject functionObject = (DynamicObject) function;
         if (isAuxEngineCacheMode()) {
             objectSet(functionObject, JSFunction.NAME, name);
         } else {
             JSFunctionData functionData = JSFunction.getFunctionData(functionObject);
-            functionData.setName(name);
+            functionData.setName((TruffleString) name);
         }
     }
 
-    public String functionGetName(Object function) {
+    public Object functionGetName(Object function) {
         DynamicObject functionObject = (DynamicObject) function;
         if (isAuxEngineCacheMode()) {
             return JSRuntime.toString(objectGet(functionObject, JSFunction.NAME));
@@ -1859,7 +1880,7 @@ public final class GraalJSAccess {
 
     public void functionTemplateSetClassName(Object templateObj, Object name) {
         FunctionTemplate functionTemplate = (FunctionTemplate) templateObj;
-        functionTemplate.setClassName((String) name);
+        functionTemplate.setClassName((TruffleString) name);
     }
 
     public Object functionTemplateInstanceTemplate(Object templateObj) {
@@ -2027,7 +2048,7 @@ public final class GraalJSAccess {
         ContextData.FunctionKey nodeType = global ? PropertyHandlerPrototypeGlobal : PropertyHandlerPrototype;
         JSFunctionData getPrototypeOfFunctionData = engineCacheData.getOrCreateFunctionData(nodeType, (c) -> {
             JavaScriptRootNode rootNode = new PropertyHandlerPrototypeNode(global);
-            return JSFunctionData.createCallOnly(c, rootNode.getCallTarget(), 0, "");
+            return JSFunctionData.createCallOnly(c, rootNode.getCallTarget(), 0, Strings.EMPTY_STRING);
         });
         DynamicObject getPrototypeOf = functionFromFunctionData(realm, getPrototypeOfFunctionData, null);
         JSObject.set(handler, JSProxy.GET_PROTOTYPE_OF, getPrototypeOf);
@@ -2122,7 +2143,8 @@ public final class GraalJSAccess {
         template.setInternalFieldCount(count);
     }
 
-    public Object scriptCompilerCompileFunctionInContext(Object context, String sourceName, String body, Object[] arguments, Object[] exts, Object hostDefinedOptions) {
+    public Object scriptCompilerCompileFunctionInContext(Object context, Object sourceNameArg, Object body, Object[] arguments, Object[] exts, Object hostDefinedOptions) {
+        TruffleString sourceName = (TruffleString) sourceNameArg;
         if (VERBOSE) {
             System.err.println("FUNCTION IN CONTEXT: " + sourceName);
         }
@@ -2143,7 +2165,7 @@ public final class GraalJSAccess {
         } else {
             assert exts.length == 0;
             DynamicObject graalExtension = JSOrdinary.create(jsContext, realm);
-            JSObject.set(graalExtension, "graalExtension", extraArgument);
+            JSObject.set(graalExtension, GRAAL_EXTENSION, extraArgument);
             extensions = new Object[]{graalExtension};
         }
 
@@ -2156,11 +2178,13 @@ public final class GraalJSAccess {
         }
         String parameterList = params.toString();
 
+        String bodyJavaString = Strings.toJavaString((TruffleString) body);
+        String sourceNameJavaString = Strings.toJavaString(sourceName);
         try {
-            GraalJSParserHelper.checkFunctionSyntax(jsContext, parserOptions, parameterList, body, false, false, sourceName);
+            GraalJSParserHelper.checkFunctionSyntax(jsContext, parserOptions, parameterList, bodyJavaString, false, false, sourceNameJavaString);
         } catch (com.oracle.js.parser.ParserException ex) {
             // throw the correct JS error
-            nodeEvaluator.parseFunction(jsContext, parameterList, body, false, false, sourceName);
+            nodeEvaluator.parseFunction(jsContext, parameterList, bodyJavaString, false, false, sourceNameJavaString);
         }
 
         StringBuilder code = new StringBuilder();
@@ -2193,7 +2217,7 @@ public final class GraalJSAccess {
         }
 
         // hashbang would result in SyntaxError => comment it out
-        if (body.startsWith("#!")) {
+        if (Strings.startsWith((TruffleString) body, SHEBANG)) {
             code.append("//");
         }
 
@@ -2215,12 +2239,12 @@ public final class GraalJSAccess {
         Source source = null;
         if (hostDefinedOptions == null) {
             // sources of built-in modules
-            source = Source.newBuilder(JavaScriptLanguage.ID, body, sourceName).internal(isBootstrapSource(sourceName)).build();
+            source = Source.newBuilder(JavaScriptLanguage.ID, bodyJavaString, sourceNameJavaString).internal(isBootstrapSource(sourceName)).build();
         } else {
             if (!sourceName.isEmpty()) {
                 try {
-                    TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceName);
-                    source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(body).name(sourceName).build();
+                    TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceNameJavaString);
+                    source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(bodyJavaString).name(sourceNameJavaString).build();
                 } catch (InvalidPathException e) {
                     if (VERBOSE) {
                         System.err.println("INVALID PATH: " + sourceName);
@@ -2228,7 +2252,7 @@ public final class GraalJSAccess {
                 }
             }
             if (source == null) {
-                source = Source.newBuilder(JavaScriptLanguage.ID, body, sourceName).build();
+                source = Source.newBuilder(JavaScriptLanguage.ID, bodyJavaString, sourceNameJavaString).build();
             }
             hostDefinedOptionsMap.put(source, hostDefinedOptions);
         }
@@ -2263,8 +2287,8 @@ public final class GraalJSAccess {
         return new Object[]{function, scriptOrModule};
     }
 
-    private static boolean isBootstrapSource(String sourceName) {
-        return sourceName.startsWith("node:internal/per_context") || sourceName.startsWith("node:internal/bootstrap");
+    private static boolean isBootstrapSource(TruffleString sourceName) {
+        return Strings.startsWith(sourceName, NODE_INTERNAL_PER_CONTEXT) || Strings.startsWith(sourceName, NODE_INTERNAL_BOOTSTRAP);
     }
 
     public Object scriptCompile(Object context, Object sourceCode, Object fileName, Object hostDefinedOptions) {
@@ -2290,24 +2314,24 @@ public final class GraalJSAccess {
         }
     }
 
-    private static Object getExtraArgumentOfInternalScript(String moduleName, JSRealm realm) {
+    private static Object getExtraArgumentOfInternalScript(TruffleString moduleName, JSRealm realm) {
         Object extraArgument = null;
         JSContext context = realm.getContext();
         if (NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
             // NIO-based buffer APIs in internal/graal/buffer.js are initialized by passing one
             // extra argument to the module loading function.
             extraArgument = USE_NIO_BUFFER ? NIOBuffer.createInitFunction(realm) : Null.instance;
-        } else if ("node:internal/graal/debug".equals(moduleName)) {
+        } else if (NODE_INTERNAL_GRAAL_DEBUG.equals(moduleName)) {
             JSFunctionData setBreakPointData = getContextEmbedderData(context).getOrCreateFunctionData(SetBreakPoint, (c) -> {
                 CallTarget setBreakPointCallTarget = new SetBreakPointNode().getCallTarget();
                 return JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
             });
             DynamicObject setBreakPoint = JSFunction.create(realm, setBreakPointData);
             extraArgument = setBreakPoint;
-        } else if ("node:internal/worker/io".equals(moduleName) || "node:internal/main/worker_thread".equals(moduleName)) {
+        } else if (NODE_INTERNAL_WORKER_IO.equals(moduleName) || NODE_INTERNAL_MAIN_WORKER_THREAD.equals(moduleName)) {
             // The Shared-mem channel initialization is similar to NIO-based buffers.
             extraArgument = SharedMemMessagingBindings.createInitFunction(realm);
-        } else if ("node:inspector".equals(moduleName)) {
+        } else if (NODE_INSPECTOR.equals(moduleName)) {
             TruffleObject inspector = GraalJSAccess.get().lookupInstrument("inspect", TruffleObject.class);
             extraArgument = (inspector == null) ? Null.instance : inspector;
         }
@@ -2315,7 +2339,7 @@ public final class GraalJSAccess {
     }
 
     @TruffleBoundary
-    private static Object[] getInternalModuleUserArguments(Object[] args, String moduleName, JSRealm realm) {
+    private static Object[] getInternalModuleUserArguments(Object[] args, TruffleString moduleName, JSRealm realm) {
         Object[] userArgs = JSArguments.extractUserArguments(args);
         Object extraArgument = getExtraArgumentOfInternalScript(moduleName, realm);
         if (extraArgument == null) {
@@ -2343,8 +2367,8 @@ public final class GraalJSAccess {
     }
 
     public Object unboundScriptCompile(Object sourceCode, Object fileName, Object hostDefinedOptions) {
-        String sourceCodeStr = (String) sourceCode;
-        String fileNameStr = (String) fileName;
+        TruffleString sourceCodeStr = (TruffleString) sourceCode;
+        TruffleString fileNameStr = (TruffleString) fileName;
         Source source = UnboundScript.createSource(internSourceCode(sourceCodeStr), fileNameStr);
 
         hostDefinedOptionsMap.put(source, hostDefinedOptions);
@@ -2355,11 +2379,11 @@ public final class GraalJSAccess {
         return new UnboundScript(source, functionNode);
     }
 
-    private static ByteBuffer getCoreModuleBinarySnapshot(String moduleID) {
+    private static ByteBuffer getCoreModuleBinarySnapshot(TruffleString moduleID) {
         assert UnboundScript.isCoreModule(moduleID);
         // remove 'node:' prefix and append '.js' suffix
-        String modulePath = moduleID.substring(5) + ".js";
-        ByteBuffer snapshotBinary = NativeAccess.getCoreModuleBinarySnapshot(modulePath);
+        TruffleString modulePath = Strings.concat(Strings.substring(moduleID, 5), DOT_JS);
+        ByteBuffer snapshotBinary = NativeAccess.getCoreModuleBinarySnapshot(Strings.toJavaString(modulePath));
         if (VERBOSE) {
             if (snapshotBinary == null) {
                 System.err.printf("no snapshot for %s\n", moduleID);
@@ -2399,13 +2423,13 @@ public final class GraalJSAccess {
         return new Script(scriptNode, parseResult, jsRealm, unboundScript.getId());
     }
 
-    public String unboundScriptGetContent(Object script) {
-        return ((UnboundScript) script).getSource().getCharacters().toString();
+    public Object unboundScriptGetContent(Object script) {
+        return Strings.fromJavaString(((UnboundScript) script).getSource().getCharacters().toString());
     }
 
-    private String internSourceCode(String sourceCode) {
-        Reference<String> cacheEntry = sourceCodeCache.get(sourceCode);
-        String entry = null;
+    private TruffleString internSourceCode(TruffleString sourceCode) {
+        Reference<TruffleString> cacheEntry = sourceCodeCache.get(sourceCode);
+        TruffleString entry = null;
         if (cacheEntry == null || (entry = cacheEntry.get()) == null) {
             sourceCodeCache.put(sourceCode, new WeakReference<>(sourceCode));
             return sourceCode;
@@ -2455,7 +2479,7 @@ public final class GraalJSAccess {
         JSFunctionData functionData = engineCacheData.getOrCreateFunctionDataFromPropertyHandler(template, mode, (c) -> {
             JavaScriptRootNode rootNode = new ExecuteNativePropertyHandlerNode(context, mode);
             CallTarget callbackCallTarget = rootNode.getCallTarget();
-            return JSFunctionData.create(context, callbackCallTarget, callbackCallTarget, 0, "", false, false, false, true);
+            return JSFunctionData.create(context, callbackCallTarget, callbackCallTarget, 0, Strings.EMPTY_STRING, false, false, false, true);
         });
         DynamicObject functionObj = functionFromFunctionData(realm, functionData, proxy);
         JSObjectUtil.putHiddenProperty(functionObj, OBJECT_TEMPLATE_KEY, template);
@@ -2504,10 +2528,10 @@ public final class GraalJSAccess {
         // Patch stack property of SyntaxErrors so that it looks like the one from V8
         Matcher matcher = messageSyntaxErrorMatcher(exception);
         if (matcher != null) {
-            String stack = JSRuntime.toString(JSObject.get((DynamicObject) exceptionObject, JSError.STACK_NAME));
-            if (stack.startsWith(truffleException.getMessage())) {
-                String message = matcher.group(SYNTAX_ERROR_MESSAGE_GROUP);
-                stack = "SyntaxError: " + message + stack.substring(truffleException.getMessage().length());
+            TruffleString stack = JSRuntime.toString(JSObject.get((DynamicObject) exceptionObject, JSError.STACK_NAME));
+            if (Strings.startsWith(stack, Strings.fromJavaString(truffleException.getMessage()))) {
+                TruffleString message = Strings.fromJavaString(matcher.group(SYNTAX_ERROR_MESSAGE_GROUP));
+                stack = Strings.concatAll(SYNTAX_ERROR_COLON_SPC, message, Strings.substring(stack, truffleException.getMessage().length()));
                 JSObject.set((DynamicObject) exceptionObject, JSError.STACK_NAME, stack);
             }
         }
@@ -2532,7 +2556,7 @@ public final class GraalJSAccess {
                 } else {
                     stackFrame = stackTrace[index++];
                 }
-            } while (JSFunction.BUILTIN_SOURCE_NAME.equals(stackFrame.getFileName()));
+            } while (JSFunction.TS_BUILTIN_SOURCE_NAME.equals(stackFrame.getFileName()));
             return stackFrame;
         }
         return null;
@@ -2559,10 +2583,10 @@ public final class GraalJSAccess {
         return null;
     }
 
-    private static String messageSyntaxErrorResourceName(Object exception) {
+    private static TruffleString messageSyntaxErrorResourceName(Object exception) {
         Matcher matcher = messageSyntaxErrorMatcher(exception);
         if (matcher != null) {
-            return matcher.group(SYNTAX_ERROR_RESOURCE_NAME_GROUP);
+            return Strings.fromJavaString(matcher.group(SYNTAX_ERROR_RESOURCE_NAME_GROUP));
         }
         return null;
     }
@@ -2585,16 +2609,16 @@ public final class GraalJSAccess {
         return -1;
     }
 
-    private static String messageSyntaxErrorSourceLine(Object exception) {
+    private static TruffleString messageSyntaxErrorSourceLine(Object exception) {
         Matcher matcher = messageSyntaxErrorMatcher(exception);
         if (matcher != null) {
-            return matcher.group(SYNTAX_ERROR_SOURCE_LINE_GROUP);
+            return Strings.fromJavaString(matcher.group(SYNTAX_ERROR_SOURCE_LINE_GROUP));
         }
         return null;
     }
 
     public Object messageGetScriptResourceName(Object exception) {
-        String resourceName = messageSyntaxErrorResourceName(exception);
+        TruffleString resourceName = messageSyntaxErrorResourceName(exception);
         if (resourceName != null) {
             return resourceName;
         }
@@ -2602,7 +2626,7 @@ public final class GraalJSAccess {
         if (stackFrame != null) {
             return stackFrame.getFileName();
         }
-        return "unknown";
+        return Strings.UNKNOWN;
     }
 
     public int messageGetLineNumber(Object exception) {
@@ -2630,7 +2654,7 @@ public final class GraalJSAccess {
     }
 
     public Object messageGetSourceLine(Object exception) {
-        String sourceLine = messageSyntaxErrorSourceLine(exception);
+        TruffleString sourceLine = messageSyntaxErrorSourceLine(exception);
         if (sourceLine != null) {
             return sourceLine;
         }
@@ -2638,7 +2662,7 @@ public final class GraalJSAccess {
         if (stackFrame != null) {
             return stackFrame.getLine();
         }
-        return "unknown";
+        return Strings.UNKNOWN;
     }
 
     public Object messageGetStackTrace(Object exception) {
@@ -2650,7 +2674,7 @@ public final class GraalJSAccess {
     }
 
     public Object messageGet(Object exception) {
-        return "Uncaught " + ((Throwable) exception).getMessage();
+        return Strings.fromJavaString("Uncaught " + ((Throwable) exception).getMessage());
     }
 
     public Object stackTraceCurrentStackTrace() {
@@ -2878,10 +2902,10 @@ public final class GraalJSAccess {
                     return Undefined.instance;
                 }
             };
-            return JSFunctionData.createCallOnly(realm.getContext(), rootNode.getCallTarget(), 0, "gc");
+            return JSFunctionData.createCallOnly(realm.getContext(), rootNode.getCallTarget(), 0, Strings.GC);
         });
         DynamicObject function = JSFunction.create(realm, functionData);
-        JSObject.set(global, "gc", function);
+        JSObject.set(global, Strings.GC, function);
     }
 
     @TruffleBoundary
@@ -2922,17 +2946,17 @@ public final class GraalJSAccess {
         ContextData engineCacheData = getContextEmbedderData(realm.getContext());
         JSFunctionData isEnabledFunctionData = engineCacheData.getOrCreateFunctionData(ConstantFalse, (c) -> {
             CallTarget target = RootNode.createConstantNode(false).getCallTarget();
-            return JSFunctionData.createCallOnly(c, target, 0, "isTraceCategoryEnabled");
+            return JSFunctionData.createCallOnly(c, target, 0, IS_TRACE_CATEGORY_ENABLED);
         });
         DynamicObject isEnabledFunction = JSFunction.create(realm, isEnabledFunctionData);
-        JSObject.set(extras, "isTraceCategoryEnabled", isEnabledFunction);
+        JSObject.set(extras, IS_TRACE_CATEGORY_ENABLED, isEnabledFunction);
 
         JSFunctionData traceFunctionData = engineCacheData.getOrCreateFunctionData(ConstantUndefined, (c) -> {
             CallTarget target = RootNode.createConstantNode(Undefined.instance).getCallTarget();
-            return JSFunctionData.createCallOnly(c, target, 0, "trace");
+            return JSFunctionData.createCallOnly(c, target, 0, TRACE);
         });
         DynamicObject traceFunction = JSFunction.create(realm, traceFunctionData);
-        JSObject.set(extras, "trace", traceFunction);
+        JSObject.set(extras, TRACE, traceFunction);
         return extras;
     }
 
@@ -3386,10 +3410,10 @@ public final class GraalJSAccess {
 
         JSRealm realm = getCurrentRealm();
         DynamicObject result = JSOrdinary.create(mainJSContext, realm);
-        JSObject.set(result, "total", createMemoryInfoObject(used, total, realm));
+        JSObject.set(result, TOTAL, createMemoryInfoObject(used, total, realm));
 
         if (detailed) {
-            JSObject.set(result, "current", createMemoryInfoObject(used, total, realm));
+            JSObject.set(result, CURRENT, createMemoryInfoObject(used, total, realm));
 
             int contexts = childContextSet.size();
             Object[] array = new Object[contexts];
@@ -3397,7 +3421,7 @@ public final class GraalJSAccess {
                 array[i] = createMemoryInfoObject(0, total, realm);
             }
 
-            JSObject.set(result, "other", JSArray.createConstantObjectArray(mainJSContext, realm, array));
+            JSObject.set(result, OTHER, JSArray.createConstantObjectArray(mainJSContext, realm, array));
         }
 
         promiseResolverResolve(resolver, result);
@@ -3406,8 +3430,8 @@ public final class GraalJSAccess {
     private Object createMemoryInfoObject(double used, double total, JSRealm realm) {
         Object range = JSArray.createConstantDoubleArray(mainJSContext, realm, new double[]{used, total});
         DynamicObject result = JSOrdinary.create(mainJSContext, realm);
-        JSObject.set(result, "jsMemoryEstimate", used);
-        JSObject.set(result, "jsMemoryRange", range);
+        JSObject.set(result, JS_MEMORY_ESTIMATE, used);
+        JSObject.set(result, JS_MEMORY_RANGE, range);
         return result;
     }
 
@@ -3453,12 +3477,97 @@ public final class GraalJSAccess {
         return JSBoolean.valueOf((DynamicObject) object);
     }
 
-    public Object stringObjectNew(Object context, Object value) {
-        JSRealm jsRealm = (JSRealm) context;
-        return JSString.create(jsRealm.getContext(), jsRealm, (String) value);
+    public Object stringEmpty() {
+        return Strings.EMPTY_STRING;
     }
 
-    public String stringObjectValueOf(Object object) {
+    public Object stringNew(Object str) {
+        return Strings.fromJavaString((String) str);
+    }
+
+    public Object stringNewFromTwoByte(long nativeBuffer, int length) {
+        return TruffleString.fromNativePointerUncached(NativeBufferWrapper.create(nativeBuffer), 0, length << 1, TruffleString.Encoding.UTF_16, true);
+    }
+
+    public int stringLength(Object a) {
+        return Strings.length((TruffleString) a);
+    }
+
+    public boolean stringEquals(Object a, Object b) {
+        return Strings.equals((TruffleString) a, (TruffleString) b);
+    }
+
+    public Object stringConcat(Object a, Object b) {
+        return Strings.concat((TruffleString) a, (TruffleString) b);
+    }
+
+    public int stringUTF8Length(Object str) {
+        return ((TruffleString) str).switchEncodingUncached(TruffleString.Encoding.UTF_8).byteLength(TruffleString.Encoding.UTF_8);
+    }
+
+    public long stringUTF8Write(Object str, long targetNativeBuffer, int nativeBufferLength) {
+        TruffleString utf8Str = ((TruffleString) str).switchEncodingUncached(TruffleString.Encoding.UTF_8);
+        int utf8Length = utf8Str.byteLength(TruffleString.Encoding.UTF_8);
+        final long codePointLength;
+        int copyLength = Math.min(utf8Length, nativeBufferLength);
+        if (nativeBufferLength < utf8Length) {
+            while (copyLength > 0 && isUTF8ContinuationByte(utf8Str, copyLength)) {
+                copyLength--;
+            }
+            codePointLength = utf8Str.substringByteIndexUncached(0, copyLength, TruffleString.Encoding.UTF_8, true).codePointLengthUncached(TruffleString.Encoding.UTF_8);
+        } else {
+            codePointLength = utf8Str.codePointLengthUncached(TruffleString.Encoding.UTF_8);
+        }
+        utf8Str.copyToNativeMemoryNodeUncached(0, NativeBufferWrapper.create(targetNativeBuffer), 0, copyLength, TruffleString.Encoding.UTF_8);
+        return (codePointLength << 32) | copyLength;
+    }
+
+    private boolean isUTF8ContinuationByte(TruffleString utf8Str, int i) {
+        return (utf8Str.readByteUncached(i, TruffleString.Encoding.UTF_8) & 0xc0) == 0x80;
+    }
+
+    public int stringWriteOneByte(Object str, long targetNativeBuffer, int start, int length) {
+        TruffleString tString = (TruffleString) str;
+        int copyLength = getCopyLength(start, length, Strings.length(tString));
+        if (tString.getCodeRangeUncached(TruffleString.Encoding.UTF_16).isSubsetOf(TruffleString.CodeRange.LATIN_1)) {
+            TruffleString latin1Str = tString.switchEncodingUncached(TruffleString.Encoding.ISO_8859_1);
+            latin1Str.copyToNativeMemoryNodeUncached(start, NativeBufferWrapper.create(targetNativeBuffer), 0, copyLength, TruffleString.Encoding.ISO_8859_1);
+        } else {
+            byte[] tmp = new byte[copyLength];
+            for (int i = 0; i < copyLength; i++) {
+                tmp[i] = (byte) Strings.charAt(tString, start + i);
+            }
+            TruffleString latin1Str = TruffleString.fromByteArrayUncached(tmp, TruffleString.Encoding.ISO_8859_1);
+            latin1Str.copyToNativeMemoryNodeUncached(0, NativeBufferWrapper.create(targetNativeBuffer), 0, copyLength, TruffleString.Encoding.ISO_8859_1);
+        }
+        return copyLength;
+    }
+
+    public int stringWrite(Object str, long targetNativeBuffer, int start, int length) {
+        TruffleString utf16Str = (TruffleString) str;
+        int copyLength = getCopyLength(start, length, Strings.length(utf16Str));
+        utf16Str.copyToNativeMemoryNodeUncached(start << 1, NativeBufferWrapper.create(targetNativeBuffer), 0, copyLength << 1, TruffleString.Encoding.UTF_16);
+        return copyLength;
+    }
+
+    private static int getCopyLength(int regionStart, int regionLength, int stringLength) {
+        if ((regionLength == -1) || (regionStart + regionLength > stringLength)) {
+            return stringLength - regionStart;
+        } else {
+            return regionLength;
+        }
+    }
+
+    public boolean stringContainsOnlyOneByte(Object str) {
+        return ((TruffleString) str).getCodeRangeUncached(TruffleString.Encoding.UTF_16).isSubsetOf(TruffleString.CodeRange.LATIN_1);
+    }
+
+    public Object stringObjectNew(Object context, Object value) {
+        JSRealm jsRealm = (JSRealm) context;
+        return JSString.create(jsRealm.getContext(), jsRealm, (TruffleString) value);
+    }
+
+    public Object stringObjectValueOf(Object object) {
         return JSString.getString((DynamicObject) object);
     }
 
@@ -3467,41 +3576,41 @@ public final class GraalJSAccess {
         return JSNumber.create(jsRealm.getContext(), jsRealm, value);
     }
 
-    private static String regexpFlagsToString(int flags) {
-        StringBuilder builder = new StringBuilder();
+    private static TruffleString regexpFlagsToString(int flags) {
+        TruffleStringBuilder builder = Strings.builderCreate();
         if ((flags & 1 /* kGlobal */) != 0) {
-            builder.append('g');
+            Strings.builderAppend(builder, 'g');
         } else if ((flags & 2 /* kIgnoreCase */) != 0) {
-            builder.append('i');
+            Strings.builderAppend(builder, 'i');
         } else if ((flags & 4 /* kMultiline */) != 0) {
-            builder.append('m');
+            Strings.builderAppend(builder, 'm');
         } else if ((flags & 8 /* kSticky */) != 0) {
-            builder.append('y');
+            Strings.builderAppend(builder, 'y');
         } else if ((flags & 16 /* kUnicode */) != 0) {
-            builder.append('u');
+            Strings.builderAppend(builder, 'u');
         } else if ((flags & 32 /* kDotAll */) != 0) {
-            builder.append('s');
+            Strings.builderAppend(builder, 's');
         }
-        return builder.toString();
+        return Strings.builderToString(builder);
     }
 
     public Object regexpNew(Object context, Object pattern, int flags) {
         JSRealm jsRealm = (JSRealm) context;
         JSContext jsContext = jsRealm.getContext();
-        return regexpCreate(jsContext, jsRealm, (String) pattern, flags);
+        return regexpCreate(jsContext, jsRealm, (TruffleString) pattern, flags);
     }
 
-    public static Object regexpCreate(JSContext context, JSRealm realm, String pattern, int v8Flags) {
-        Object compiledRegexp = RegexCompilerInterface.compile(pattern, regexpFlagsToString(v8Flags), context, realm);
+    public static Object regexpCreate(JSContext context, JSRealm realm, Object pattern, int v8Flags) {
+        Object compiledRegexp = RegexCompilerInterface.compile((TruffleString) pattern, regexpFlagsToString(v8Flags), context, realm);
         return JSRegExp.create(context, realm, compiledRegexp);
     }
 
     @TruffleBoundary
-    public String regexpGetSource(Object regexp) {
+    public Object regexpGetSource(Object regexp) {
         return regexpPattern((DynamicObject) regexp);
     }
 
-    public static String regexpPattern(DynamicObject regexp) {
+    public static Object regexpPattern(DynamicObject regexp) {
         assert JSRegExp.isJSRegExp(regexp);
         Object compiledRegex = JSRegExp.getCompiledRegex(regexp);
         return TRegexUtil.InteropReadStringMemberNode.getUncached().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN);
@@ -3567,12 +3676,12 @@ public final class GraalJSAccess {
     public Object jsonParse(Object context, Object string) {
         JSRealm realm = (JSRealm) context;
         TruffleJSONParser parser = new TruffleJSONParser(realm.getContext());
-        return parser.parse((String) string, realm);
+        return parser.parse((TruffleString) string, realm);
     }
 
-    public String jsonStringify(Object context, Object object, String gap) {
-        DynamicObject stringify = ((JSRealm) context).lookupFunction(JSONBuiltins.BUILTINS, "stringify");
-        return (String) JSFunction.call(stringify, Undefined.instance, new Object[]{
+    public Object jsonStringify(Object context, Object object, Object gap) {
+        DynamicObject stringify = ((JSRealm) context).lookupFunction(JSONBuiltins.BUILTINS, STRINGIFY);
+        return (TruffleString) JSFunction.call(stringify, Undefined.instance, new Object[]{
                         object,
                         Undefined.instance, // replacer
                         (gap == null) ? Undefined.instance : gap
@@ -3640,10 +3749,10 @@ public final class GraalJSAccess {
 
     public Object moduleCompile(Object context, Object sourceCode, Object name, Object hostDefinedOptions) {
         JSRealm realm = (JSRealm) context;
-        String moduleName = (String) name;
-        Source.LiteralBuilder builder = Source.newBuilder(JavaScriptLanguage.ID, (String) sourceCode, moduleName);
+        TruffleString moduleName = (TruffleString) name;
+        Source.LiteralBuilder builder = Source.newBuilder(JavaScriptLanguage.ID, Strings.toJavaString((TruffleString) sourceCode), Strings.toJavaString(moduleName));
         try {
-            builder = builder.uri(new URI(moduleName));
+            builder = builder.uri(new URI(Strings.toJavaString(moduleName)));
         } catch (URISyntaxException usex) {
         }
         builder.mimeType(JavaScriptLanguage.MODULE_MIME_TYPE);
@@ -3735,7 +3844,7 @@ public final class GraalJSAccess {
         return record.getModule().getRequestedModules().size();
     }
 
-    public String moduleGetRequest(Object module, int index) {
+    public Object moduleGetRequest(Object module, int index) {
         JSModuleRecord record = (JSModuleRecord) module;
         return record.getModule().getRequestedModules().get(index).getSpecifier();
     }
@@ -3755,35 +3864,35 @@ public final class GraalJSAccess {
         return System.identityHashCode(module);
     }
 
-    public Object moduleCreateSyntheticModule(String moduleName, Object[] exportNames, final long evaluationStepsCallback) {
+    public Object moduleCreateSyntheticModule(Object moduleName, Object[] exportNames, final long evaluationStepsCallback) {
         JSFrameDescriptor frameDescBuilder = new JSFrameDescriptor(Undefined.instance);
         List<Module.ExportEntry> localExportEntries = new ArrayList<>();
         for (Object exportName : exportNames) {
             frameDescBuilder.addFrameSlot(exportName);
-            localExportEntries.add(Module.ExportEntry.exportSpecifier((String) exportName));
+            localExportEntries.add(Module.ExportEntry.exportSpecifier((TruffleString) exportName));
         }
         FrameDescriptor frameDescriptor = frameDescBuilder.toFrameDescriptor();
         Module moduleNode = new Module(Collections.emptyList(), Collections.emptyList(), localExportEntries, Collections.emptyList(), Collections.emptyList(), null, null);
-        Source source = Source.newBuilder(JavaScriptLanguage.ID, "<unavailable>", moduleName).build();
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, "<unavailable>", Strings.toJavaString((TruffleString) moduleName)).build();
 
         EngineCacheData engineCacheData = getContextEngineCacheData(mainJSContext);
-        JSFunctionData functionData = engineCacheData.getOrCreateSyntheticModuleData(moduleName, exportNames, (c) -> {
+        JSFunctionData functionData = engineCacheData.getOrCreateSyntheticModuleData((TruffleString) moduleName, exportNames, (c) -> {
             JavaScriptRootNode rootNode = new SyntheticModuleRootNode(mainJSContext.getLanguage(), source, frameDescriptor);
             CallTarget callTarget = rootNode.getCallTarget();
-            return JSFunctionData.createCallOnly(mainJSContext, callTarget, 0, moduleName);
+            return JSFunctionData.createCallOnly(mainJSContext, callTarget, 0, (TruffleString) moduleName);
         });
 
         final JSModuleData parsedModule = new JSModuleData(moduleNode, source, functionData, frameDescriptor);
         return new NativeBackedModuleRecord(parsedModule, getModuleLoader(), evaluationStepsCallback);
     }
 
-    public String moduleRequestGetSpecifier(Object moduleRequest) {
+    public Object moduleRequestGetSpecifier(Object moduleRequest) {
         return ((ModuleRequest) moduleRequest).getSpecifier();
     }
 
     private static List<Object> moduleRequestGetImportAssertionsImpl(ModuleRequest request, boolean withSourceOffset) {
         List<Object> assertions = new ArrayList<>();
-        for (Map.Entry<String, String> entry : request.getAssertions().entrySet()) {
+        for (Map.Entry<TruffleString, TruffleString> entry : request.getAssertions().entrySet()) {
             assertions.add(entry.getKey());
             assertions.add(entry.getValue());
             if (withSourceOffset) {
@@ -3812,7 +3921,7 @@ public final class GraalJSAccess {
         }
     }
 
-    public void moduleSetSyntheticModuleExport(Object module, String exportName, Object exportValue) {
+    public void moduleSetSyntheticModuleExport(Object module, Object exportName, Object exportValue) {
         JSModuleRecord moduleRecord = (JSModuleRecord) module;
         FrameDescriptor frameDescriptor = moduleRecord.getFrameDescriptor();
         OptionalInt frameSlot = JSFrameUtil.findOptionalFrameSlotIndex(frameDescriptor, exportName);
@@ -3830,9 +3939,9 @@ public final class GraalJSAccess {
         return new UnboundScript(moduleRecord.getSource(), DUMMY_UNBOUND_MODULE_PARSE_RESULT);
     }
 
-    public String scriptOrModuleGetResourceName(Object scriptOrModule) {
+    public Object scriptOrModuleGetResourceName(Object scriptOrModule) {
         ScriptOrModule record = (ScriptOrModule) scriptOrModule;
-        return record.getSource().getName();
+        return Strings.fromJavaString(record.getSource().getName());
     }
 
     public Object scriptOrModuleGetHostDefinedOptions(Object scriptOrModule) {
@@ -4081,7 +4190,7 @@ public final class GraalJSAccess {
     }
 
     static class ESModuleLoader implements JSModuleLoader {
-        private final Map<ScriptOrModule, Map<String, JSModuleRecord>> cache = new HashMap<>();
+        private final Map<ScriptOrModule, Map<TruffleString, JSModuleRecord>> cache = new HashMap<>();
         private long resolver;
 
         void setResolver(long resolver) {
@@ -4090,8 +4199,8 @@ public final class GraalJSAccess {
 
         @Override
         public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
-            Map<String, JSModuleRecord> referrerCache = cache.get(referrer);
-            String specifier = moduleRequest.getSpecifier();
+            Map<TruffleString, JSModuleRecord> referrerCache = cache.get(referrer);
+            TruffleString specifier = moduleRequest.getSpecifier();
             if (referrerCache == null) {
                 referrerCache = new HashMap<>();
                 cache.put(referrer, referrerCache);

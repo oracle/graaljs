@@ -42,6 +42,7 @@ package com.oracle.truffle.trufflenode.buffer;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -61,7 +62,7 @@ import com.oracle.truffle.trufflenode.node.ArrayBufferGetContentsNode;
 
 public abstract class NIOBufferAccessNode extends JSBuiltinNode {
 
-    protected static final Charset utf8 = Charset.forName("UTF-8");
+    protected static final Charset utf8 = StandardCharsets.UTF_8;
 
     @Child protected ArrayBufferViewGetByteLengthNode getLenNode;
     @Child private ArrayBufferGetContentsNode interopArrayBufferGetContents;

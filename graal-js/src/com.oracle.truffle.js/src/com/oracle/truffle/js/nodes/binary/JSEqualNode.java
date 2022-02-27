@@ -52,6 +52,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -64,6 +65,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -123,7 +125,7 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doDoubleString(double a, String b) {
+    protected boolean doDoubleString(double a, TruffleString b) {
         return doDouble(a, stringToDouble(b));
     }
 
@@ -148,39 +150,40 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doBooleanString(boolean a, String b) {
+    protected boolean doBooleanString(boolean a, TruffleString b) {
         return doBooleanDouble(a, stringToDouble(b));
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = "isReferenceEquals(a, b)")
-    protected static boolean doStringIdentity(String a, String b) {
+    protected static boolean doStringIdentity(TruffleString a, TruffleString b) {
         return true;
     }
 
     @Specialization(replaces = "doStringIdentity")
-    protected static boolean doString(String a, String b) {
-        return a.equals(b);
+    protected static boolean doString(TruffleString a, TruffleString b,
+                    @Cached TruffleString.EqualNode equalsNode) {
+        return Strings.equals(equalsNode, a, b);
     }
 
     @Specialization
-    protected boolean doStringDouble(String a, double b) {
+    protected boolean doStringDouble(TruffleString a, double b) {
         return doDouble(stringToDouble(a), b);
     }
 
     @Specialization
-    protected boolean doStringBoolean(String a, boolean b) {
+    protected boolean doStringBoolean(TruffleString a, boolean b) {
         return doDoubleBoolean(stringToDouble(a), b);
     }
 
     @Specialization
-    protected boolean doStringBigInt(String a, BigInt b) {
+    protected boolean doStringBigInt(TruffleString a, BigInt b) {
         BigInt aBigInt = JSRuntime.stringToBigInt(a);
         return (aBigInt != null) ? aBigInt.compareTo(b) == 0 : false;
     }
 
     @Specialization
-    protected boolean doBigIntString(BigInt a, String b) {
+    protected boolean doBigIntString(BigInt a, TruffleString b) {
         return doStringBigInt(b, a);
     }
 
@@ -223,8 +226,8 @@ public abstract class JSEqualNode extends JSCompareNode {
         }
     }
 
-    protected String getOverloadedOperatorName() {
-        return "==";
+    protected TruffleString getOverloadedOperatorName() {
+        return Strings.SYMBOL_EQUALS_EQUALS;
     }
 
     @Specialization(guards = {"isObject(a)", "!isObject(b)", "!hasOverloadedOperators(a)"})
@@ -343,13 +346,13 @@ public abstract class JSEqualNode extends JSCompareNode {
         return doDouble(JSRuntime.doubleValue(a), JSRuntime.doubleValue(b));
     }
 
-    @Specialization(guards = {"isJavaNumber(a)"})
-    protected boolean doStringNumber(Object a, String b) {
+    @Specialization(guards = "isJavaNumber(a)")
+    protected boolean doNumberString(Object a, TruffleString b) {
         return doDoubleString(JSRuntime.doubleValue((Number) a), b);
     }
 
-    @Specialization(guards = {"isJavaNumber(b)"})
-    protected boolean doStringNumber(String a, Object b) {
+    @Specialization(guards = "isJavaNumber(b)")
+    protected boolean doStringNumber(TruffleString a, Object b) {
         return doStringDouble(a, JSRuntime.doubleValue((Number) b));
     }
 

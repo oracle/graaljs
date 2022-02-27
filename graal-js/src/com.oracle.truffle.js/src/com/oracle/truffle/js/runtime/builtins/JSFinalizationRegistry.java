@@ -50,10 +50,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -63,8 +65,8 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
 
     public static final JSFinalizationRegistry INSTANCE = new JSFinalizationRegistry();
 
-    public static final String CLASS_NAME = "FinalizationRegistry";
-    public static final String PROTOTYPE_NAME = "FinalizationRegistry.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("FinalizationRegistry");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("FinalizationRegistry.prototype");
 
     public static final HiddenKey FINALIZATION_REGISTRY_ID = new HiddenKey("FinalizationRegistry");
 
@@ -100,19 +102,19 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
     @Override
     @TruffleBoundary
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        return "[" + getClassName() + "]";
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        return Strings.addBrackets(getClassName());
     }
 
     public static boolean isJSFinalizationRegistry(Object obj) {

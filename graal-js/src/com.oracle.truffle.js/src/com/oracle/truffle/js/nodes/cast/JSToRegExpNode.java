@@ -76,7 +76,7 @@ public abstract class JSToRegExpNode extends JavaScriptBaseNode {
     protected JSRegExpObject createRegExp(Object patternObj,
                     @Cached("createUndefinedToEmpty()") JSToStringNode toStringNode,
                     @Cached("create(context)") CompileRegexNode compileRegexNode) {
-        String pattern = toStringNode.executeString(patternObj);
+        Object pattern = toStringNode.executeString(patternObj);
         Object regex = compileRegexNode.compile(pattern);
         return getCreateRegExpNode().createRegExp(regex);
     }

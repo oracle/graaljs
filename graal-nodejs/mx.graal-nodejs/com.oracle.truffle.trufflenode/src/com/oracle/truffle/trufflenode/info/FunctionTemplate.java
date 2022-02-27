@@ -44,7 +44,9 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
@@ -65,7 +67,7 @@ public final class FunctionTemplate {
     private final FunctionTemplate signature;
     private final int length;
     private FunctionTemplate parent;
-    private String className = "";
+    private TruffleString className = Strings.EMPTY_STRING;
     private boolean readOnlyPrototype;
     private JSFunctionData functionData;
     private DynamicObject functionObj;
@@ -143,11 +145,11 @@ public final class FunctionTemplate {
         return length;
     }
 
-    public String getClassName() {
+    public TruffleString getClassName() {
         return className;
     }
 
-    public void setClassName(String className) {
+    public void setClassName(TruffleString className) {
         this.className = className;
     }
 
@@ -198,7 +200,7 @@ public final class FunctionTemplate {
     public static class Descriptor {
 
         private final int length;
-        private final String className;
+        private final TruffleString className;
         private final boolean readOnlyPrototype;
         private final boolean prototypeTemplateNull;
         private final boolean singleFunctionTemplate;

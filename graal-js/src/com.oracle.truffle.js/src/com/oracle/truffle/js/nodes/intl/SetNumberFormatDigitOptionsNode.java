@@ -67,16 +67,17 @@ public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode
     private final BranchProfile errorBranch = BranchProfile.create();
 
     protected SetNumberFormatDigitOptionsNode(JSContext context) {
-        this.getMinIntDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_INTEGER_DIGITS);
-        this.getMinFracDigitsOption = PropertyGetNode.create(IntlUtil.MINIMUM_FRACTION_DIGITS, context);
-        this.getMaxFracDigitsOption = PropertyGetNode.create(IntlUtil.MAXIMUM_FRACTION_DIGITS, context);
-        this.getMinSignificantDigitsOption = PropertyGetNode.create(IntlUtil.MINIMUM_SIGNIFICANT_DIGITS, context);
-        this.getMaxSignificantDigitsOption = PropertyGetNode.create(IntlUtil.MAXIMUM_SIGNIFICANT_DIGITS, context);
+        this.getMinIntDigitsOption = GetNumberOptionNode.create(context, IntlUtil.KEY_MINIMUM_INTEGER_DIGITS);
+        this.getMinFracDigitsOption = PropertyGetNode.create(IntlUtil.KEY_MINIMUM_FRACTION_DIGITS, context);
+        this.getMaxFracDigitsOption = PropertyGetNode.create(IntlUtil.KEY_MAXIMUM_FRACTION_DIGITS, context);
+        this.getMinSignificantDigitsOption = PropertyGetNode.create(IntlUtil.KEY_MINIMUM_SIGNIFICANT_DIGITS, context);
+        this.getMaxSignificantDigitsOption = PropertyGetNode.create(IntlUtil.KEY_MAXIMUM_SIGNIFICANT_DIGITS, context);
         this.getMnsdDNO = DefaultNumberOptionNode.create();
         this.getMxsdDNO = DefaultNumberOptionNode.create();
         this.getMnfdDNO = DefaultNumberOptionNode.create();
         this.getMxfdDNO = DefaultNumberOptionNode.create();
-        this.getRoundingPriorityOption = GetStringOptionNode.create(context, IntlUtil.ROUNDING_PRIORITY, new String[]{IntlUtil.AUTO, IntlUtil.MORE_PRECISION, IntlUtil.LESS_PRECISION}, IntlUtil.AUTO);
+        this.getRoundingPriorityOption = GetStringOptionNode.create(context, IntlUtil.KEY_ROUNDING_PRIORITY, new String[]{IntlUtil.AUTO, IntlUtil.MORE_PRECISION, IntlUtil.LESS_PRECISION},
+                        IntlUtil.AUTO);
     }
 
     public static SetNumberFormatDigitOptionsNode create(JSContext context) {

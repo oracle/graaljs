@@ -43,10 +43,11 @@ package com.oracle.truffle.js.nodes.intl;
 import com.ibm.icu.text.BreakIterator;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
@@ -62,18 +63,18 @@ public class CreateSegmentDataObjectNode extends JavaScriptBaseNode {
     protected CreateSegmentDataObjectNode(JSContext context) {
         super();
         this.context = context;
-        createSegmentPropertyNode = CreateDataPropertyNode.create(context, IntlUtil.SEGMENT);
-        createIndexPropertyNode = CreateDataPropertyNode.create(context, IntlUtil.INDEX);
-        createInputPropertyNode = CreateDataPropertyNode.create(context, IntlUtil.INPUT);
+        createSegmentPropertyNode = CreateDataPropertyNode.create(context, IntlUtil.KEY_SEGMENT);
+        createIndexPropertyNode = CreateDataPropertyNode.create(context, IntlUtil.KEY_INDEX);
+        createInputPropertyNode = CreateDataPropertyNode.create(context, IntlUtil.KEY_INPUT);
     }
 
     public static CreateSegmentDataObjectNode create(JSContext context) {
         return new CreateSegmentDataObjectNode(context);
     }
 
-    public DynamicObject execute(BreakIterator icuIterator, JSSegmenter.Granularity granularity, String string, int startIndex, int endIndex) {
+    public DynamicObject execute(BreakIterator icuIterator, JSSegmenter.Granularity granularity, TruffleString string, int startIndex, int endIndex) {
         DynamicObject result = JSOrdinary.create(context, getRealm());
-        createSegmentPropertyNode.executeVoid(result, Boundaries.substring(string, startIndex, endIndex));
+        createSegmentPropertyNode.executeVoid(result, Strings.substring(string, startIndex, endIndex - startIndex));
         createIndexPropertyNode.executeVoid(result, startIndex);
         createInputPropertyNode.executeVoid(result, string);
         if (granularity == JSSegmenter.Granularity.WORD) {
@@ -85,7 +86,7 @@ public class CreateSegmentDataObjectNode extends JavaScriptBaseNode {
     private void createIsWordLikeProperty(DynamicObject target, boolean isWordLike) {
         if (createIsWordLikePropertyNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            createIsWordLikePropertyNode = insert(CreateDataPropertyNode.create(context, IntlUtil.IS_WORD_LIKE));
+            createIsWordLikePropertyNode = insert(CreateDataPropertyNode.create(context, IntlUtil.KEY_IS_WORD_LIKE));
         }
         createIsWordLikePropertyNode.executeVoid(target, isWordLike);
     }

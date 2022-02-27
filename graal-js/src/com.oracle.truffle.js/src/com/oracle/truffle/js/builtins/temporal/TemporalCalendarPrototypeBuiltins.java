@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarDateAddNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarDateFromFieldsNodeGen;
@@ -102,6 +103,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarObject;
@@ -337,17 +339,17 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             assert calendar.getId().equals(ISO8601);
 
             IteratorRecord iter = getIterator(fieldsParam /* , sync */);
-            List<String> fieldNames = new ArrayList<>();
+            List<TruffleString> fieldNames = new ArrayList<>();
             Object next = Boolean.TRUE;
             while (next != Boolean.FALSE) {
                 next = iteratorStep(iter);
                 if (next != Boolean.FALSE) {
                     Object nextValue = getIteratorValue((DynamicObject) next);
-                    if (!JSRuntime.isString(nextValue)) {
+                    if (!Strings.isTString(nextValue)) {
                         iteratorCloseAbrupt(iter.getIterator());
                         throw Errors.createTypeError("string expected");
                     }
-                    String str = JSRuntime.toString(nextValue);
+                    TruffleString str = JSRuntime.toString(nextValue);
                     if (str != null && Boundaries.listContains(fieldNames, str)) {
                         iteratorCloseAbrupt(iter.getIterator());
                         throw Errors.createRangeError("");
@@ -488,7 +490,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalPlainDateObject one = (JSTemporalPlainDateObject) toTemporalDate(oneObj, Undefined.instance);
             JSTemporalPlainDateObject two = (JSTemporalPlainDateObject) toTemporalDate(twoObj, Undefined.instance);
             DynamicObject options = getOptionsObject(optionsParam);
-            String largestUnit = toLargestTemporalUnit(options, TemporalUtil.listTime, AUTO, DAY);
+            TruffleString largestUnit = toLargestTemporalUnit(options, TemporalUtil.listTime, AUTO, DAY);
             JSTemporalDurationRecord result = JSTemporalPlainDate.differenceISODate(
                             one.getYear(), one.getMonth(), one.getDay(), two.getYear(), two.getMonth(), two.getDay(),
                             largestUnit);
@@ -554,7 +556,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        public String monthCode(Object thisObj, Object temporalDateLike) {
+        public TruffleString monthCode(Object thisObj, Object temporalDateLike) {
             JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             Object dateLike = temporalDateLike;
@@ -749,7 +751,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        public String toString(Object thisObj) {
+        public TruffleString toString(Object thisObj) {
             JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             return calendar.getId();
         }

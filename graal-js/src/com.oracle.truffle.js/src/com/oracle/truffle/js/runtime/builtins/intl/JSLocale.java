@@ -46,10 +46,12 @@ import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
@@ -60,8 +62,9 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public final class JSLocale extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
-    public static final String CLASS_NAME = "Locale";
-    public static final String PROTOTYPE_NAME = "Locale.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("Locale");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Locale.prototype");
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Intl.Locale");
 
     public static final JSLocale INSTANCE = new JSLocale();
 
@@ -73,12 +76,12 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
@@ -87,33 +90,33 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         JSContext ctx = realm.getContext();
         DynamicObject localePrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, localePrototype, ctor);
-        JSObjectUtil.putToStringTag(localePrototype, "Intl.Locale");
+        JSObjectUtil.putToStringTag(localePrototype, TO_STRING_TAG);
         JSObjectUtil.putFunctionsFromContainer(realm, localePrototype, LocalePrototypeBuiltins.BUILTINS);
-        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.BASE_NAME);
-        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.CALENDAR);
-        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.CASE_FIRST);
-        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.COLLATION);
-        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.HOUR_CYCLE);
-        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.NUMERIC);
-        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.NUMBERING_SYSTEM);
-        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.LANGUAGE);
-        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.SCRIPT);
-        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.REGION);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_BASE_NAME);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_CALENDAR);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_CASE_FIRST);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_COLLATION);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_HOUR_CYCLE);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_NUMERIC);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_NUMBERING_SYSTEM);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_LANGUAGE);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_SCRIPT);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_REGION);
 
         if (ctx.getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion) {
-            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.CALENDARS);
-            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.COLLATIONS);
-            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.HOUR_CYCLES);
-            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.NUMBERING_SYSTEMS);
-            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.TIME_ZONES);
-            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.TEXT_INFO);
-            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.WEEK_INFO);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_CALENDARS);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_COLLATIONS);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_HOUR_CYCLES);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_NUMBERING_SYSTEMS);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_TIME_ZONES);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_TEXT_INFO);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_WEEK_INFO);
         }
 
         return localePrototype;
     }
 
-    private static void putLocalePropertyAccessor(JSRealm realm, DynamicObject prototype, String name) {
+    private static void putLocalePropertyAccessor(JSRealm realm, DynamicObject prototype, TruffleString name) {
         JSObjectUtil.putBuiltinAccessorProperty(prototype, name, realm.lookupAccessor(LocalePrototypeBuiltins.BUILTINS, name));
     }
 

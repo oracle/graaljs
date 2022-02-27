@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins.intl;
 
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 /**
@@ -50,9 +51,9 @@ public final class JSSegmentsObject extends JSNonProxyObject {
     // [[SegmentsSegmenter]] internal slot
     private final JSSegmenterObject segmentsSegmenter;
     // [[SegmentsString]] internal slot
-    private final String segmentsString;
+    private final TruffleString segmentsString;
 
-    protected JSSegmentsObject(Shape shape, JSSegmenterObject segmentsSegmenter, String segmentsString) {
+    protected JSSegmentsObject(Shape shape, JSSegmenterObject segmentsSegmenter, TruffleString segmentsString) {
         super(shape);
         this.segmentsSegmenter = segmentsSegmenter;
         this.segmentsString = segmentsString;
@@ -62,7 +63,7 @@ public final class JSSegmentsObject extends JSNonProxyObject {
         return segmentsSegmenter;
     }
 
-    public String getSegmentsString() {
+    public TruffleString getSegmentsString() {
         return segmentsString;
     }
 

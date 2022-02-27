@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.BigIntPrototypeBuiltinsFactory.JSBigIntToLocaleStringIntlNodeGen;
 import com.oracle.truffle.js.builtins.BigIntPrototypeBuiltinsFactory.JSBigIntToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.BigIntPrototypeBuiltinsFactory.JSBigIntToStringNodeGen;
@@ -59,6 +60,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
@@ -119,7 +121,7 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @TruffleBoundary
         protected JSException noBigIntFailure(Object value) {
-            throw Errors.createTypeError(String.format("%s is not a BigInt", JSRuntime.safeToString(value)));
+            throw Errors.createTypeError(JSRuntime.safeToString(value) + " is not a BigInt");
         }
 
         protected BigInt getBigIntValue(DynamicObject obj) {
@@ -149,23 +151,23 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isUndefined(radix)"})
-        protected String toStringBigIntRadix10(BigInt thisObj, Object radix) {
+        protected TruffleString toStringBigIntRadix10(BigInt thisObj, Object radix) {
             return toStringImpl(thisObj, 10);
         }
 
         @Specialization(guards = {"!isUndefined(radix)"})
-        protected String toStringBigInt(BigInt thisObj, Object radix) {
+        protected TruffleString toStringBigInt(BigInt thisObj, Object radix) {
             return toStringImpl(thisObj, radix);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSBigInt(thisObj)", "isUndefined(radix)"})
-        protected String toStringRadix10(DynamicObject thisObj, Object radix) {
+        protected TruffleString toStringRadix10(DynamicObject thisObj, Object radix) {
             return toStringImpl(JSBigInt.valueOf(thisObj), 10);
         }
 
         @Specialization(guards = {"isJSBigInt(thisObj)", "!isUndefined(radix)"})
-        protected String toString(DynamicObject thisObj, Object radix) {
+        protected TruffleString toString(DynamicObject thisObj, Object radix) {
             return toStringImpl(JSBigInt.valueOf(thisObj), radix);
         }
 
@@ -175,13 +177,13 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeError("BigInt.prototype.toString requires that 'this' be a BigInt");
         }
 
-        private String toStringImpl(BigInt numberVal, Object radix) {
+        private TruffleString toStringImpl(BigInt numberVal, Object radix) {
             int radixVal = toIntegerAsInt(radix);
             if (radixVal < 2 || radixVal > 36) {
                 radixErrorBranch.enter();
                 throw Errors.createRangeError("toString() expects radix in range 2-36");
             }
-            return numberVal.toString(radixVal);
+            return Strings.fromBigInt(numberVal, radixVal);
         }
     }
 
@@ -202,20 +204,20 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected String bigIntToLocaleString(BigInt thisObj, Object locales, Object options) {
+        protected TruffleString bigIntToLocaleString(BigInt thisObj, Object locales, Object options) {
             DynamicObject numberFormatObj = createNumberFormat(locales, options);
             return JSNumberFormat.format(numberFormatObj, thisObj);
         }
 
         @Specialization(guards = "isJSBigInt(thisObj)")
-        protected String jsBigIntToLocaleString(DynamicObject thisObj, Object locales, Object options) {
+        protected TruffleString jsBigIntToLocaleString(DynamicObject thisObj, Object locales, Object options) {
             DynamicObject numberFormatObj = createNumberFormat(locales, options);
             return JSNumberFormat.format(numberFormatObj, getBigIntValue(thisObj));
         }
 
         @Fallback
         @SuppressWarnings("unused")
-        protected String failForNonBigInts(Object notANumber, Object locales, Object options) {
+        protected Object failForNonBigInts(Object notANumber, Object locales, Object options) {
             throw noBigIntFailure(notANumber);
         }
 
@@ -228,21 +230,21 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected String toLocaleStringBigInt(BigInt thisObj) {
+        protected TruffleString toLocaleStringBigInt(BigInt thisObj) {
             return toLocaleStringImpl(thisObj);
         }
 
         @Specialization(guards = "isJSBigInt(thisObj)")
-        protected String toLocaleStringJSBigInt(DynamicObject thisObj) {
+        protected TruffleString toLocaleStringJSBigInt(DynamicObject thisObj) {
             return toLocaleStringImpl(getBigIntValue(thisObj));
         }
 
-        private static String toLocaleStringImpl(BigInt bi) {
-            return bi.toString();
+        private static TruffleString toLocaleStringImpl(BigInt bi) {
+            return Strings.fromBigInt(bi);
         }
 
         @Fallback
-        protected String failForNonBigInts(Object thisObject) {
+        protected Object failForNonBigInts(Object thisObject) {
             throw noBigIntFailure(thisObject);
         }
     }
