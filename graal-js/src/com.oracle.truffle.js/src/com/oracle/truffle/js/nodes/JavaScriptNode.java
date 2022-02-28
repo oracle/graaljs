@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -418,7 +418,12 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
                     functionFrame = frame.materialize();
                 }
                 if (block instanceof BlockScopeNode) {
-                    scopeFrame = (Frame) ((BlockScopeNode) block).getBlockScope((VirtualFrame) functionFrame);
+                    Object maybeScopeFrame = ((BlockScopeNode) block).getBlockScope((VirtualFrame) functionFrame);
+                    if (maybeScopeFrame instanceof Frame) {
+                        scopeFrame = (Frame) maybeScopeFrame;
+                    } else {
+                        scopeFrame = functionFrame;
+                    }
                 } else {
                     scopeFrame = functionFrame;
                 }
