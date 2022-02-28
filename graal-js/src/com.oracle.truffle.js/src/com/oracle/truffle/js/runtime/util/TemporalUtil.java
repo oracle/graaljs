@@ -860,13 +860,7 @@ public final class TemporalUtil {
         }
     }
 
-    // 13.37
     @TruffleBoundary
-    public static BigInteger roundNumberToIncrement(double x, double increment, TruffleString roundingMode) {
-        return roundNumberToIncrement(BigDecimal.valueOf(x), BigDecimal.valueOf(increment), roundingMode);
-    }
-
-    @TruffleBoundary // could throw exception
     public static BigInteger roundNumberToIncrement(BigDecimal x, BigDecimal increment, TruffleString roundingMode) {
         assert roundingMode.equals(CEIL) || roundingMode.equals(FLOOR) || roundingMode.equals(TRUNC) || roundingMode.equals(HALF_EXPAND);
 
@@ -896,7 +890,7 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static double roundNumberToIncrement(double x, double increment, String roundingMode) {
+    public static double roundNumberToIncrement(double x, double increment, TruffleString roundingMode) {
         assert roundingMode.equals(CEIL) || roundingMode.equals(FLOOR) || roundingMode.equals(TRUNC) || roundingMode.equals(HALF_EXPAND);
 
         double quotient = x / increment;
@@ -1315,15 +1309,15 @@ public final class TemporalUtil {
         return Strings.concat(Strings.length(numberPart) >= 2 ? Strings.UC_M : Strings.UC_M0, numberPart);
     }
 
-    public static String isoMonthCode(TemporalMonth date) {
+    public static TruffleString isoMonthCode(TemporalMonth date) {
         long month = date.getMonth();
         return buildISOMonthCode(month);
     }
 
     @TruffleBoundary
-    private static String buildISOMonthCode(long month) {
-        String monthCode = String.format("%1$02d", month);
-        return "M".concat(monthCode);
+    private static TruffleString buildISOMonthCode(long month) {
+        TruffleString monthCode = Strings.format("%1$02d", month);
+        return Strings.concat(Strings.fromJavaString("M"), monthCode);
     }
 
     /**
@@ -3276,7 +3270,7 @@ public final class TemporalUtil {
             assert unit.equals(NANOSECOND);
             quantity = nanoseconds;
         }
-        long result = bitol(TemporalUtil.roundNumberToIncrement(quantity, increment, roundingMode));
+        long result = dtol(TemporalUtil.roundNumberToIncrement(quantity, increment, roundingMode));
         if (unit.equals(DAY)) {
             return JSTemporalDurationRecord.create(0, 0, result, 0, 0, 0, 0, 0, 0);
         }
@@ -3937,7 +3931,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     private static TruffleString formatISOTimeZoneOffsetString(long offsetNs) {
-        long offsetNanoseconds = bitol(roundNumberToIncrement(offsetNs, 60_000_000_000L, HALF_EXPAND));
+        long offsetNanoseconds = dtol(roundNumberToIncrement(offsetNs, 60_000_000_000L, HALF_EXPAND));
         TruffleString sign = Strings.EMPTY_STRING;
         sign = (offsetNanoseconds >= 0) ? Strings.SYMBOL_PLUS : Strings.SYMBOL_MINUS;
         offsetNanoseconds = Math.abs(offsetNanoseconds);
@@ -4081,7 +4075,7 @@ public final class TemporalUtil {
                 return candidate.getNanoseconds();
             }
             if (matchBehaviour == MatchBehaviour.MATCH_MINUTES) {
-                long roundedCandidateNanoseconds = bitol(roundNumberToIncrement(candidateNanoseconds, 60_000_000_000L, HALF_EXPAND));
+                long roundedCandidateNanoseconds = dtol(roundNumberToIncrement(candidateNanoseconds, 60_000_000_000L, HALF_EXPAND));
                 if (roundedCandidateNanoseconds == offsetNs) {
                     return candidate.getNanoseconds();
                 }
@@ -4361,12 +4355,12 @@ public final class TemporalUtil {
             }
             return month;
         }
-        assert monthCode instanceof String;
-        int monthLength = ((String) monthCode).length();
+        assert monthCode instanceof TruffleString;
+        int monthLength = Strings.length((TruffleString) monthCode);
         if (monthLength != 3) {
             throw Errors.createRangeError("Month code should be in 3 character code.");
         }
-        String numberPart = ((String) monthCode).substring(1);
+        TruffleString numberPart = Strings.substring((TruffleString) monthCode, 1);
         double numberPart2 = stringToNumber.executeString(numberPart);
         if (Double.isNaN(numberPart2)) {
             throw Errors.createRangeError("The last character of the monthCode should be a number.");

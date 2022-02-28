@@ -56,10 +56,6 @@ public class JSTemporalDurationObject extends JSNonProxyObject {
     private final double microseconds;
     private final double nanoseconds;
 
-    protected JSTemporalDurationObject(Shape shape) {
-        this(shape, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-    }
-
     public JSTemporalDurationObject(Shape shape, double years, double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds, double microseconds,
                     double nanoseconds) {
         super(shape);

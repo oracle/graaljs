@@ -51,14 +51,6 @@ public class JSTemporalPlainDateObject extends JSNonProxyObject implements Tempo
     private final int day;
     private final DynamicObject calendar;
 
-    protected JSTemporalPlainDateObject(Shape shape) {
-        super(shape);
-        this.year = 0;
-        this.month = 0;
-        this.day = 0;
-        this.calendar = null;
-    }
-
     public JSTemporalPlainDateObject(Shape shape, int year, int month, int day, DynamicObject calendar) {
         super(shape);
         this.year = year;
