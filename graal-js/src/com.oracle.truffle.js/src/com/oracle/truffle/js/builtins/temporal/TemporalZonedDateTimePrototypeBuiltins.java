@@ -55,8 +55,8 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEK;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtobi;
-import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtoi;
+import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
 
 import java.math.BigInteger;
 import java.util.EnumSet;
@@ -111,7 +111,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
@@ -366,7 +365,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         private Object getterHoursInDay(JSTemporalZonedDateTimeObject zdt) {
             DynamicObject timeZone = zdt.getTimeZone();
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), zdt.getNanoseconds());
-            DynamicObject isoCalendar = TemporalUtil.getISO8601Calendar(getRealm());
+            DynamicObject isoCalendar = TemporalUtil.getISO8601Calendar(getContext(), getRealm());
             JSTemporalPlainDateTimeObject temporalDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), timeZone, instant, isoCalendar);
             int year = temporalDateTime.getYear();
             int month = temporalDateTime.getMonth();
@@ -394,13 +393,13 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalPlainDateTimeObject tdt = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), timeZone, instant, calendar);
             switch (property) {
                 case year:
-                    return JSTemporalCalendar.calendarYear(calendar, tdt);
+                    return TemporalUtil.calendarYear(calendar, tdt);
                 case month:
-                    return JSTemporalCalendar.calendarMonth(calendar, tdt);
+                    return TemporalUtil.calendarMonth(calendar, tdt);
                 case monthCode:
-                    return JSTemporalCalendar.calendarMonthCode(calendar, tdt);
+                    return TemporalUtil.calendarMonthCode(calendar, tdt);
                 case day:
-                    return JSTemporalCalendar.calendarDay(calendar, tdt);
+                    return TemporalUtil.calendarDay(calendar, tdt);
                 case hour:
                     return tdt.getHour();
                 case minute:
@@ -414,21 +413,21 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case nanosecond:
                     return tdt.getNanosecond();
                 case dayOfWeek:
-                    return JSTemporalCalendar.calendarDayOfWeek(calendar, tdt);
+                    return TemporalUtil.calendarDayOfWeek(calendar, tdt);
                 case dayOfYear:
-                    return JSTemporalCalendar.calendarDayOfYear(calendar, tdt);
+                    return TemporalUtil.calendarDayOfYear(calendar, tdt);
                 case weekOfYear:
-                    return JSTemporalCalendar.calendarWeekOfYear(calendar, tdt);
+                    return TemporalUtil.calendarWeekOfYear(calendar, tdt);
                 case daysInWeek:
-                    return JSTemporalCalendar.calendarWeekOfYear(calendar, tdt);
+                    return TemporalUtil.calendarWeekOfYear(calendar, tdt);
                 case daysInMonth:
-                    return JSTemporalCalendar.calendarDaysInMonth(calendar, tdt);
+                    return TemporalUtil.calendarDaysInMonth(calendar, tdt);
                 case daysInYear:
-                    return JSTemporalCalendar.calendarDaysInYear(calendar, tdt);
+                    return TemporalUtil.calendarDaysInYear(calendar, tdt);
                 case monthsInYear:
-                    return JSTemporalCalendar.calendarMonthsInYear(calendar, tdt);
+                    return TemporalUtil.calendarMonthsInYear(calendar, tdt);
                 case inLeapYear:
-                    return JSTemporalCalendar.calendarInLeapYear(calendar, tdt);
+                    return TemporalUtil.calendarInLeapYear(calendar, tdt);
             }
             CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
@@ -790,7 +789,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), zonedDateTime.getNanoseconds());
             DynamicObject calendar = zonedDateTime.getCalendar();
             JSTemporalPlainDateTimeObject tdt = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), timeZone, instant, calendar);
-            DynamicObject isoCalendar = TemporalUtil.getISO8601Calendar(getRealm());
+            DynamicObject isoCalendar = TemporalUtil.getISO8601Calendar(getContext(), getRealm());
             JSTemporalPlainDateTimeObject dtStart = TemporalUtil.createTemporalDateTime(getContext(), tdt.getYear(), tdt.getMonth(), tdt.getDay(), 0, 0, 0, 0, 0, 0, isoCalendar);
             JSTemporalInstantObject instantStart = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, dtStart, COMPATIBLE);
             BigInt startNs = instantStart.getNanoseconds();

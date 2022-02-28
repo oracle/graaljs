@@ -103,10 +103,10 @@ public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
             }
         }
         TruffleString identifier = toStringNode.executeString(item);
-        if (!JSTemporalCalendar.isBuiltinCalendar(identifier)) {
+        if (!TemporalUtil.isBuiltinCalendar(identifier)) {
             parseBranch.enter();
             identifier = TemporalUtil.parseTemporalCalendarString(identifier);
-            if (!JSTemporalCalendar.isBuiltinCalendar(identifier)) {
+            if (!TemporalUtil.isBuiltinCalendar(identifier)) {
                 throw TemporalErrors.createRangeErrorCalendarUnknown();
             }
         }

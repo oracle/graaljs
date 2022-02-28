@@ -79,14 +79,8 @@ public final class JSTemporalDurationRecord {
         return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, weeks, 0);
     }
 
-    public static JSTemporalDurationRecord createRemainder(double years, double months, double days, double hours, double minutes, double seconds, double milliseconds, double microseconds,
-                    double nanoseconds, double remainder) {
-        return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0, remainder);
-    }
-
     public static JSTemporalDurationRecord createWeeksRemainder(double years, double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds,
-                    double microseconds,
-                    double nanoseconds, double remainder) {
+                    double microseconds, double nanoseconds, double remainder) {
         return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, weeks, remainder);
     }
 

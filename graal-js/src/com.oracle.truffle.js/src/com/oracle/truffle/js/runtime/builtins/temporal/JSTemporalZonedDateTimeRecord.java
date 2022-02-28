@@ -50,7 +50,7 @@ public final class JSTemporalZonedDateTimeRecord extends JSTemporalDateTimeRecor
 
     private JSTemporalZonedDateTimeRecord(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
                     TruffleString calendar, boolean hasCalendar, boolean timeZoneZ, TruffleString timeZoneOffsetString, TruffleString timeZoneName) {
-        super(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, 0, false, calendar, hasCalendar);
+        super(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar, hasCalendar);
         this.timeZoneOffsetString = timeZoneOffsetString;
         this.timeZoneName = timeZoneName;
         this.timeZoneZ = timeZoneZ;

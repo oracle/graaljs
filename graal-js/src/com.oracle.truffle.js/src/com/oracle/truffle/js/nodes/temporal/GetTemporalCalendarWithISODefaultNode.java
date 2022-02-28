@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,7 +80,7 @@ public abstract class GetTemporalCalendarWithISODefaultNode extends JavaScriptBa
         } else {
             Object calendar = getCalendar((DynamicObject) item);
             if (isNullishProfile.profile(TemporalUtil.isNullish(calendar))) {
-                return TemporalUtil.getISO8601Calendar(getRealm());
+                return TemporalUtil.getISO8601Calendar(ctx, getRealm());
             } else {
                 return toTemporalCalendar(calendar);
             }

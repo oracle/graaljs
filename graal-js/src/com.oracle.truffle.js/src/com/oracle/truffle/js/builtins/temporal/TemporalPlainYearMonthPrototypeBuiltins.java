@@ -83,7 +83,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
@@ -202,19 +201,19 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                 case calendar:
                     return temporalYM.getCalendar();
                 case year:
-                    return JSTemporalCalendar.calendarYear(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarYear(temporalYM.getCalendar(), temporalYM);
                 case month:
-                    return JSTemporalCalendar.calendarMonth(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarMonth(temporalYM.getCalendar(), temporalYM);
                 case monthCode:
-                    return JSTemporalCalendar.calendarMonthCode(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarMonthCode(temporalYM.getCalendar(), temporalYM);
                 case daysInYear:
-                    return JSTemporalCalendar.calendarDaysInYear(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarDaysInYear(temporalYM.getCalendar(), temporalYM);
                 case daysInMonth:
-                    return JSTemporalCalendar.calendarDaysInMonth(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarDaysInMonth(temporalYM.getCalendar(), temporalYM);
                 case monthsInYear:
-                    return JSTemporalCalendar.calendarMonthsInYear(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarMonthsInYear(temporalYM.getCalendar(), temporalYM);
                 case inLeapYear:
-                    return JSTemporalCalendar.calendarInLeapYear(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarInLeapYear(temporalYM.getCalendar(), temporalYM);
             }
             CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
@@ -394,7 +393,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
             int day = 0;
             if (sign < 0) {
-                Object dayFromCalendar = JSTemporalCalendar.calendarDaysInMonth(calendar, ym);
+                Object dayFromCalendar = TemporalUtil.calendarDaysInMonth(calendar, ym);
                 day = TemporalUtil.toPositiveIntegerConstrainInt(dayFromCalendar);
             } else {
                 day = 1;
@@ -430,7 +429,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
             int day = 0;
             if (sign < 0) {
-                day = TemporalUtil.toPositiveIntegerConstrainInt(JSTemporalCalendar.calendarDaysInMonth(calendar, ym));
+                day = TemporalUtil.toPositiveIntegerConstrainInt(TemporalUtil.calendarDaysInMonth(calendar, ym));
             } else {
                 day = 1;
             }

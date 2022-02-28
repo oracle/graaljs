@@ -96,7 +96,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
@@ -294,29 +293,29 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case nanosecond:
                     return temporalDT.getNanosecond();
                 case year:
-                    return JSTemporalCalendar.calendarYear(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarYear(temporalDT.getCalendar(), temporalDT);
                 case month:
-                    return JSTemporalCalendar.calendarMonth(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarMonth(temporalDT.getCalendar(), temporalDT);
                 case day:
-                    return JSTemporalCalendar.calendarDay(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarDay(temporalDT.getCalendar(), temporalDT);
                 case dayOfWeek:
                     return TemporalUtil.dayOfWeek(temporalDT.getCalendar(), temporalDT);
                 case dayOfYear:
                     return TemporalUtil.dayOfYear(temporalDT.getCalendar(), temporalDT);
                 case monthCode:
-                    return JSTemporalCalendar.calendarMonthCode(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarMonthCode(temporalDT.getCalendar(), temporalDT);
                 case weekOfYear:
-                    return JSTemporalCalendar.calendarWeekOfYear(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarWeekOfYear(temporalDT.getCalendar(), temporalDT);
                 case daysInWeek:
-                    return JSTemporalCalendar.calendarDaysInWeek(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarDaysInWeek(temporalDT.getCalendar(), temporalDT);
                 case daysInMonth:
-                    return JSTemporalCalendar.calendarDaysInMonth(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarDaysInMonth(temporalDT.getCalendar(), temporalDT);
                 case daysInYear:
-                    return JSTemporalCalendar.calendarDaysInYear(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarDaysInYear(temporalDT.getCalendar(), temporalDT);
                 case monthsInYear:
-                    return JSTemporalCalendar.calendarMonthsInYear(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarMonthsInYear(temporalDT.getCalendar(), temporalDT);
                 case inLeapYear:
-                    return JSTemporalCalendar.calendarInLeapYear(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarInLeapYear(temporalDT.getCalendar(), temporalDT);
 
             }
             CompilerDirectives.transferToInterpreter();

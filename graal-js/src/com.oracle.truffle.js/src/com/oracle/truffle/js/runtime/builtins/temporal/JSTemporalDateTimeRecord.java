@@ -56,11 +56,8 @@ public class JSTemporalDateTimeRecord {
     private final TruffleString calendar;
     private final boolean hasCalendar;
 
-    private final int weeks;
-    private final boolean hasWeeks;
-
     protected JSTemporalDateTimeRecord(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
-                    int weeks, boolean hasWeeks, TruffleString calendar, boolean hasCalendar) {
+                    TruffleString calendar, boolean hasCalendar) {
         this.year = year;
         this.month = month;
         this.day = day;
@@ -73,24 +70,16 @@ public class JSTemporalDateTimeRecord {
 
         this.calendar = calendar;
         this.hasCalendar = hasCalendar;
-
-        this.weeks = weeks;
-        this.hasWeeks = hasWeeks;
     }
 
     public static JSTemporalDateTimeRecord create(int year, int month, int day, int hour, int minute, int second,
                     int millisecond, int microsecond, int nanosecond) {
-        return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, 0, false, null, false);
+        return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, null, false);
     }
 
     public static JSTemporalDateTimeRecord createCalendar(int year, int month, int day, int hour, int minute, int second,
                     int millisecond, int microsecond, int nanosecond, TruffleString calendar) {
-        return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, 0, false, calendar, true);
-    }
-
-    public static JSTemporalDateTimeRecord createWeeks(int year, int month, int weeks, int day, int hour, int minute, int second,
-                    int millisecond, int microsecond, int nanosecond) {
-        return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, weeks, true, null, false);
+        return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar, true);
     }
 
     public int getYear() {
@@ -131,11 +120,6 @@ public class JSTemporalDateTimeRecord {
 
     public TruffleString getCalendar() {
         return hasCalendar ? calendar : null;
-    }
-
-    public int getWeeks() {
-        assert hasWeeks;
-        return weeks;
     }
 
     public boolean hasCalendar() {

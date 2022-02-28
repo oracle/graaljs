@@ -388,7 +388,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
             DynamicObject options = getOptionsObject(optionsParam);
-            JSTemporalDateTimeRecord result = JSTemporalCalendar.isoDateFromFields((DynamicObject) fields, options, getContext(),
+            JSTemporalDateTimeRecord result = TemporalUtil.isoDateFromFields((DynamicObject) fields, options, getContext(),
                             isObjectNode, toBoolean, toNumber, toString, stringToNumber, identicalNode);
 
             return JSTemporalPlainDate.create(getContext(), result.getYear(), result.getMonth(), result.getDay(), calendar);
@@ -416,7 +416,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
             DynamicObject options = getOptionsObject(optionsParam);
-            JSTemporalYearMonthDayRecord result = JSTemporalCalendar.isoYearMonthFromFields((DynamicObject) fields, options, getContext(),
+            JSTemporalYearMonthDayRecord result = TemporalUtil.isoYearMonthFromFields((DynamicObject) fields, options, getContext(),
                             isObjectNode, toBoolean, toNumber, toString, stringToNumber, identicalNode);
             return JSTemporalPlainYearMonth.create(getContext(), result.getYear(), result.getMonth(), calendar, result.getDay());
         }
@@ -443,7 +443,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
             DynamicObject options = getOptionsObject(optionsParam);
-            JSTemporalYearMonthDayRecord result = JSTemporalCalendar.isoMonthDayFromFields((DynamicObject) fields, options, getContext(),
+            JSTemporalYearMonthDayRecord result = TemporalUtil.isoMonthDayFromFields((DynamicObject) fields, options, getContext(),
                             isObjectNode, toBoolean, toNumber, toString, stringToNumber, identicalNode);
 
             return JSTemporalPlainMonthDay.create(getContext(), result.getMonth(), result.getDay(), calendar, result.getYear());
@@ -564,7 +564,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             !(dateLike instanceof JSTemporalPlainMonthDayObject) && !JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(dateLike))) {
                 dateLike = toTemporalDate(dateLike, Undefined.instance);
             }
-            return JSTemporalCalendar.isoMonthCode((TemporalMonth) dateLike);
+            return TemporalUtil.isoMonthCode((TemporalMonth) dateLike);
         }
 
     }
@@ -588,7 +588,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             } else {
                 tdl = (DynamicObject) temporalDateLike;
             }
-            return JSTemporalCalendar.isoDay(tdl);
+            return TemporalUtil.isoDay(tdl);
         }
     }
 

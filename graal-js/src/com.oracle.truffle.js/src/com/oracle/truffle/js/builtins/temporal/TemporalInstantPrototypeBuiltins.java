@@ -448,7 +448,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 }
             }
             DynamicObject timeZone = toTemporalTimeZone.executeDynamicObject(item);
-            DynamicObject calendar = TemporalUtil.getISO8601Calendar(getRealm());
+            DynamicObject calendar = TemporalUtil.getISO8601Calendar(getContext(), getRealm());
             return TemporalUtil.createTemporalZonedDateTime(getContext(), instant.getNanoseconds(), timeZone, calendar);
         }
     }
