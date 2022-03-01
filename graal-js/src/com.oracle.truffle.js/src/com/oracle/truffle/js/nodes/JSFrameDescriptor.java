@@ -87,7 +87,9 @@ public final class JSFrameDescriptor {
             throw new IllegalArgumentException("duplicate frame slot: " + identifier);
         }
         int index = size;
-        JSFrameSlot slot = new JSFrameSlot(index, toSlotName(identifier), toSlotFlags(flags), kind);
+        Object slotName = toSlotName(identifier);
+        assert JSFrameSlot.isAllowedIdentifierType(slotName) : slotName.getClass();
+        JSFrameSlot slot = new JSFrameSlot(index, slotName, toSlotFlags(flags), kind);
         size++;
         identifierToSlotMap.put(identifier, slot);
         assert identifierToSlotMap.size() == size;

@@ -66,7 +66,6 @@ public final class JSFrameSlot {
         this.identifier = Objects.requireNonNull(identifier);
         this.info = FrameSlotFlags.of(flags);
         this.kind = kind;
-        assert isAllowedIdentifierType(identifier) : identifier.getClass();
     }
 
     public JSFrameSlot(int index, Object identifier, int flags) {
