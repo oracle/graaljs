@@ -73,12 +73,12 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
     }
 
     public static BlockScopeNode create(JavaScriptNode block, JSFrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, JSFrameSlot parentSlot, boolean functionBlock,
-                    boolean captureFunctionFrame) {
-        return new FrameBlockScopeNode(block, blockScopeSlot.getIndex(), frameDescriptor, parentSlot.getIndex(), functionBlock, captureFunctionFrame);
+                    boolean captureFunctionFrame, int start, int end) {
+        return new FrameBlockScopeNode(block, blockScopeSlot.getIndex(), frameDescriptor, parentSlot.getIndex(), functionBlock, captureFunctionFrame, start, end);
     }
 
-    public static BlockScopeNode createVirtual(JavaScriptNode block, int start, int end) {
-        return new VirtualBlockScopeNode(block, start, end);
+    public static BlockScopeNode createVirtual(JavaScriptNode block, int frameStart, int frameEnd) {
+        return new VirtualBlockScopeNode(block, frameStart, frameEnd);
     }
 
     @Override
@@ -156,21 +156,26 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
         protected final boolean functionBlock;
         /** If true, put the virtual function frame in the parent scope slot. */
         protected final boolean captureFunctionFrame;
+        protected final int start;
+        protected final int end;
 
-        protected FrameBlockScopeNode(JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot, boolean functionBlock, boolean captureFunctionFrame) {
+        protected FrameBlockScopeNode(JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot,
+                        boolean functionBlock, boolean captureFunctionFrame, int start, int end) {
             super(block);
             this.blockScopeSlot = blockScopeSlot;
             this.parentSlot = parentSlot;
             this.functionBlock = functionBlock;
             this.captureFunctionFrame = captureFunctionFrame;
             this.frameDescriptor = frameDescriptor;
+            this.start = start;
+            this.end = end;
         }
 
         @Override
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
             if (materializedTags.contains(DeclareTag.class) && !DeclareTagProvider.isMaterializedFrameProvider(this)) {
                 JavaScriptNode materialized = DeclareTagProvider.createMaterializedBlockNode(cloneUninitialized(block, materializedTags),
-                                blockScopeSlot, frameDescriptor, parentSlot, getSourceSection(), functionBlock, captureFunctionFrame);
+                                blockScopeSlot, frameDescriptor, parentSlot, getSourceSection(), functionBlock, captureFunctionFrame, start, end);
                 transferSourceSectionAndTags(this, materialized);
                 return materialized;
             } else {
@@ -202,6 +207,16 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
             }
             frame.setObject(blockScopeSlot, parentScopeFrame);
             assert CompilerDirectives.inCompiledCode() || ScopeFrameNode.isBlockScopeFrame(blockScopeFrame) : blockScopeFrame.getFrameDescriptor();
+            if (!yield && start < end) {
+                clearVirtualSlots(frame);
+            }
+        }
+
+        @ExplodeLoop
+        private void clearVirtualSlots(VirtualFrame frame) {
+            for (int i = start; i < end; i++) {
+                frame.clear(i);
+            }
         }
 
         @Override
@@ -252,8 +267,18 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
         }
 
         @Override
+        public int getFrameStart() {
+            return start;
+        }
+
+        @Override
+        public int getFrameEnd() {
+            return end;
+        }
+
+        @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new FrameBlockScopeNode(cloneUninitialized(block, materializedTags), blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame);
+            return new FrameBlockScopeNode(cloneUninitialized(block, materializedTags), blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, start, end);
         }
     }
 

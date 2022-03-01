@@ -967,8 +967,8 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createBlockScope(JavaScriptNode block, JSFrameSlot blockScopeSlot, FrameDescriptor blockFrameDescriptor, JSFrameSlot parentSlot,
-                    boolean functionBlock, boolean captureFunctionFrame) {
-        return BlockScopeNode.create(block, blockScopeSlot, blockFrameDescriptor, parentSlot, functionBlock, captureFunctionFrame);
+                    boolean functionBlock, boolean captureFunctionFrame, int frameStart, int frameEnd) {
+        return BlockScopeNode.create(block, blockScopeSlot, blockFrameDescriptor, parentSlot, functionBlock, captureFunctionFrame, frameStart, frameEnd);
     }
 
     public JavaScriptNode createVirtualBlockScope(JavaScriptNode block, int start, int end) {

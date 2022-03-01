@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,8 +62,8 @@ public final class DeclareTagProvider {
     }
 
     public static JavaScriptNode createMaterializedBlockNode(JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot, SourceSection sourceSection,
-                    boolean functionBlock, boolean functionFrame) {
-        return new MaterializedFrameBlockScopeNode(block, blockScopeSlot, frameDescriptor, parentSlot, sourceSection, functionBlock, functionFrame);
+                    boolean functionBlock, boolean functionFrame, int start, int end) {
+        return new MaterializedFrameBlockScopeNode(block, blockScopeSlot, frameDescriptor, parentSlot, sourceSection, functionBlock, functionFrame, start, end);
     }
 
     public static boolean isMaterializedFrameProvider(JavaScriptNode node) {
@@ -105,8 +105,8 @@ public final class DeclareTagProvider {
         @Children private JavaScriptNode[] declarations;
 
         protected MaterializedFrameBlockScopeNode(JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot, SourceSection sourceSection,
-                        boolean functionBlock, boolean captureFunctionFrame) {
-            super(block, blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame);
+                        boolean functionBlock, boolean captureFunctionFrame, int start, int end) {
+            super(block, blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, start, end);
             this.declarations = initDeclarations(frameDescriptor, sourceSection);
         }
 
@@ -132,7 +132,7 @@ public final class DeclareTagProvider {
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new MaterializedFrameBlockScopeNode(cloneUninitialized(block, materializedTags),
-                            blockScopeSlot, frameDescriptor, parentSlot, getSourceSection(), functionBlock, captureFunctionFrame);
+                            blockScopeSlot, frameDescriptor, parentSlot, getSourceSection(), functionBlock, captureFunctionFrame, start, end);
         }
     }
 
