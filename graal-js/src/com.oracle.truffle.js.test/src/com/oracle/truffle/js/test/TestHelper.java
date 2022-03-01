@@ -43,7 +43,6 @@ package com.oracle.truffle.js.test;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
@@ -60,7 +59,11 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assume;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -158,14 +161,17 @@ public class TestHelper implements AutoCloseable {
         return fnCheckUndefined.execute(result).asBoolean();
     }
 
-    @SuppressWarnings("deprecation")
     public void runExpectSyntaxError(String sourceCode) {
         enterContext();
         try {
             getParser().parseScript(getJSContext(), sourceCode);
             fail("expected syntax error to be thrown");
         } catch (JSException e) {
-            assertTrue(e.isSyntaxError());
+            try {
+                assertEquals(ExceptionType.PARSE_ERROR, InteropLibrary.getUncached().getExceptionType(e));
+            } catch (UnsupportedMessageException unsupportedMessage) {
+                throw CompilerDirectives.shouldNotReachHere(unsupportedMessage);
+            }
         } finally {
             leaveContext();
         }
