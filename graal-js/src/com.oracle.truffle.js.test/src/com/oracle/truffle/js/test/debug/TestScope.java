@@ -811,6 +811,41 @@ public class TestScope {
     }
 
     @Test
+    public void testPartialBlockClosure() {
+        Source function = Source.newBuilder("js", "" +
+                        "function f(_) {\n" +
+                        "  {\n" +
+                        "    let x = 43;\n" +
+                        "    let y = 44;\n" +
+                        "    debugger;\n" +
+                        "    return function g() {\n" +
+                        "      debugger;\n" +
+                        "      return y;\n" +
+                        "    };\n" +
+                        "  }\n" +
+                        "}\n" +
+                        "f('unused')();\n", "partialblockclosure.js").buildLiteral();
+        try (DebuggerSession session = tester.startSession()) {
+            tester.startEval(function);
+
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, "f", 5, "debugger;", new String[]{"x", "43", "y", "44"}, new String[]{"_", "unused"});
+                event.prepareContinue();
+            });
+
+            tester.expectSuspended((SuspendedEvent event) -> {
+                if (closureOpt) {
+                    checkScope(event, "g", 7, "debugger;", new String[]{}, new String[]{"y", "44"});
+                } else {
+                    checkScope(event, "g", 7, "debugger;", new String[]{}, new String[]{"x", "43", "y", "44"}, new String[]{"_", "unused"});
+                }
+                event.prepareContinue();
+            });
+        }
+        assertEquals(Integer.toString(44), tester.expectDone());
+    }
+
+    @Test
     public void testScopeReceiverGlobal() {
         Source global = Source.newBuilder("js", "debugger;\n", "thisGlobal.js").buildLiteral();
         try (DebuggerSession session = tester.startSession()) {
