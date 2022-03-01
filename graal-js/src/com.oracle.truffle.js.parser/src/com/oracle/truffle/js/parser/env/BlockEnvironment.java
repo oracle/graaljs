@@ -45,7 +45,6 @@ import java.util.Objects;
 
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSFrameDescriptor;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
@@ -53,7 +52,6 @@ import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
-import com.oracle.truffle.js.runtime.util.InternalSlotId;
 
 public final class BlockEnvironment extends Environment {
 
@@ -147,7 +145,7 @@ public final class BlockEnvironment extends Environment {
     }
 
     private Object slotId(Object name) {
-        assert name instanceof TruffleString || name instanceof InternalSlotId : name;
+        assert JSFrameSlot.isAllowedIdentifierType(name) : name;
         if (isFunctionBlock) {
             return name;
         }

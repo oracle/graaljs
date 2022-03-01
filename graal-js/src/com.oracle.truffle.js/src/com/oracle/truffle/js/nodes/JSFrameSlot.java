@@ -46,8 +46,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.util.InternalSlotId;
 
 /**
  * Describes a JS frame slot. Used as a temporary representation during parsing.
@@ -62,9 +63,10 @@ public final class JSFrameSlot {
     public JSFrameSlot(int index, Object identifier, int flags, FrameSlotKind kind) {
         this.index = index;
         this.flags = flags;
-        this.identifier = Objects.requireNonNull(identifier instanceof String ? Strings.fromJavaString((String) identifier) : identifier);
+        this.identifier = Objects.requireNonNull(identifier);
         this.info = FrameSlotFlags.of(flags);
         this.kind = kind;
+        assert isAllowedIdentifierType(identifier) : identifier.getClass();
     }
 
     public JSFrameSlot(int index, Object identifier, int flags) {
@@ -133,6 +135,10 @@ public final class JSFrameSlot {
                         (flags != 0 ? ", " + flags : "") +
                         (kind != FrameSlotKind.Illegal ? ", " + kind : "") +
                         "]";
+    }
+
+    public static boolean isAllowedIdentifierType(Object identifier) {
+        return identifier instanceof TruffleString || identifier instanceof InternalSlotId;
     }
 
     /**

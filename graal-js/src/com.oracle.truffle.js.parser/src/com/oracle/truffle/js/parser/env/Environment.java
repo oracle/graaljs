@@ -71,7 +71,6 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.InternalSlotId;
 import com.oracle.truffle.js.runtime.util.Pair;
 
 public abstract class Environment {
@@ -164,7 +163,7 @@ public abstract class Environment {
     }
 
     public JSFrameSlot declareInternalSlot(Object name) {
-        assert name instanceof TruffleString || name instanceof InternalSlotId : name;
+        assert JSFrameSlot.isAllowedIdentifierType(name) : name;
         return getBlockFrameDescriptor().findOrAddFrameSlot(name);
     }
 
@@ -657,7 +656,7 @@ public abstract class Environment {
         protected final Object name;
 
         protected VarRef(Object name) {
-            assert name instanceof TruffleString || name instanceof InternalSlotId : name;
+            assert JSFrameSlot.isAllowedIdentifierType(name) : name;
             this.name = name;
         }
 
