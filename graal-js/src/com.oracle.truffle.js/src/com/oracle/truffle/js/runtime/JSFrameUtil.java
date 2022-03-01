@@ -51,8 +51,8 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InternalSlotId;
 
@@ -222,15 +222,6 @@ public final class JSFrameUtil {
 
     public static boolean isThisSlotIdentifier(Object identifier) {
         return THIS_SLOT_ID.equals(identifier);
-    }
-
-    public static int getThisSlotIndex(FrameDescriptor frameDescriptor) {
-        for (int i = 0; i < frameDescriptor.getNumberOfSlots(); i++) {
-            if (isThisSlotIdentifier(frameDescriptor.getSlotName(i))) {
-                return i;
-            }
-        }
-        return -1;
     }
 
     private static int findFrameSlotIndex(FrameDescriptor frameDescriptor, Object identifier) {

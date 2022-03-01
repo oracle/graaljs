@@ -752,19 +752,6 @@ public final class ScopeVariables implements TruffleObject {
         }
     }
 
-    static Object getThis(Frame frame) {
-        int thisSlot = JSFrameUtil.getThisSlotIndex(frame.getFrameDescriptor());
-        if (thisSlot < 0) {
-            return thisFromArguments(frame.getArguments());
-        } else {
-            Object thiz = frame.getValue(thisSlot);
-            if (thiz == Undefined.instance) {
-                thiz = thisFromFunctionOrArguments(frame.getArguments());
-            }
-            return thiz;
-        }
-    }
-
     static Object thisFromFunctionOrArguments(Object[] args) {
         // this can be either undefined or not populated yet
         // => try to avoid returning undefined in the latter case
