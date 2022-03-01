@@ -179,7 +179,7 @@ public final class ScopeVariables implements TruffleObject {
             if (frame != null) {
                 // For closures, we don't have any outer block nodes, only the RootNode.
                 if (ScopeFrameNode.isBlockScopeFrame(frame)) {
-                    if (getParentFrame(false) != null) {
+                    if (getParentFrame() != null) {
                         return true;
                     }
                 }
@@ -205,7 +205,7 @@ public final class ScopeVariables implements TruffleObject {
                 }
 
                 if (blockScopeNode instanceof BlockScopeNode.FrameBlockScopeNode) {
-                    enclosingFrame = getParentFrame(true);
+                    enclosingFrame = getParentFrame();
                     if (blockScopeNode.isFunctionBlock()) {
                         if (parentBlock instanceof BlockScopeNode) {
                             blockScopeNode = (BlockScopeNode) parentBlock;
@@ -228,7 +228,7 @@ public final class ScopeVariables implements TruffleObject {
             if (frame != null) {
                 // For closures, we don't have any outer block nodes, only the RootNode.
                 if (ScopeFrameNode.isBlockScopeFrame(frame)) {
-                    Frame parentBlockScope = getParentFrame(false);
+                    Frame parentBlockScope = getParentFrame();
                     if (parentBlockScope != null) {
                         return new ScopeVariables(parentBlockScope, true, blockOrRoot, null);
                     }
@@ -246,14 +246,12 @@ public final class ScopeVariables implements TruffleObject {
     }
 
     @TruffleBoundary
-    private Frame getParentFrame(boolean functionBlock) {
+    private Frame getParentFrame() {
         OptionalInt parentSlot = JSFrameUtil.findOptionalFrameSlotIndex(frame.getFrameDescriptor(), ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
         if (parentSlot.isPresent()) {
             Object parent = frame.getObject(parentSlot.getAsInt());
             if (parent instanceof Frame) {
                 return (Frame) parent;
-            } else if (functionFrame != null && functionFrame != frame && !functionBlock) {
-                return functionFrame;
             }
         }
         return null;
