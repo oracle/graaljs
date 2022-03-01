@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
@@ -93,7 +92,7 @@ public abstract class JSStringListFromIterableNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"!isUndefined(iterable)", "!isString(iterable)"})
-    protected static List<String> toArray(DynamicObject iterable,
+    protected static List<String> toArray(Object iterable,
                     @Cached("create(context)") GetIteratorNode getIteratorNode,
                     @Cached("create(context)") IteratorStepNode iteratorStepNode,
                     @Cached("create(context)") IteratorValueNode iteratorValueNode,
