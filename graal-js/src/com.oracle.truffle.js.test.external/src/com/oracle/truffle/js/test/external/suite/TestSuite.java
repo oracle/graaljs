@@ -79,6 +79,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.truffle.js.runtime.Strings;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.object.DynamicObject;
@@ -535,7 +536,7 @@ public abstract class TestSuite {
             UserScriptException use = (UserScriptException) cause;
             Object exceptionObject = use.getErrorObject();
             if (exceptionObject instanceof DynamicObject) {
-                return String.valueOf(JSObject.get((DynamicObject) exceptionObject, "message"));
+                return String.valueOf(JSObject.get((DynamicObject) exceptionObject, Strings.MESSAGE));
             }
         }
         return "";

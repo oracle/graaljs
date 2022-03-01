@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.js.parser;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
@@ -60,8 +61,11 @@ import com.oracle.js.parser.ir.Scope;
  */
 class ParserContextModuleNode extends ParserContextBaseNode {
 
+    private static final String MSG_DUPLICATE_EXPORT = "duplicate.export";
+    private static final String MSG_EXPORT_NOT_DEFINED = "export.not.defined";
+
     /** Module name. */
-    private final String name;
+    private final TruffleString name;
     private final Scope moduleScope;
     private final AbstractParser parser;
 
@@ -74,15 +78,15 @@ class ParserContextModuleNode extends ParserContextBaseNode {
     private List<ImportNode> imports = new ArrayList<>();
     private List<ExportNode> exports = new ArrayList<>();
 
-    private EconomicMap<String, ImportEntry> importedLocalNames = EconomicMap.create();
-    private EconomicSet<String> exportedNames = EconomicSet.create();
+    private EconomicMap<TruffleString, ImportEntry> importedLocalNames = EconomicMap.create();
+    private EconomicSet<TruffleString> exportedNames = EconomicSet.create();
 
     /**
      * Constructor.
      *
      * @param name name of the module
      */
-    ParserContextModuleNode(final String name, Scope moduleScope, AbstractParser parser) {
+    ParserContextModuleNode(final TruffleString name, Scope moduleScope, AbstractParser parser) {
         this.name = name;
         this.moduleScope = moduleScope;
         this.parser = parser;
@@ -93,7 +97,7 @@ class ParserContextModuleNode extends ParserContextBaseNode {
      *
      * @return name of the module
      */
-    public String getModuleName() {
+    public TruffleString getModuleName() {
         return name;
     }
 
@@ -118,7 +122,7 @@ class ParserContextModuleNode extends ParserContextBaseNode {
         localExportEntries.add(exportEntry);
         addExportedName(exportToken, exportEntry);
         if (!moduleScope.hasSymbol(exportEntry.getLocalName())) {
-            throw parser.error(AbstractParser.message("export.not.defined", exportEntry.getLocalName()), exportToken);
+            throw parser.error(AbstractParser.message(MSG_EXPORT_NOT_DEFINED, exportEntry.getLocalName().toJavaStringUncached()), exportToken);
         }
     }
 
@@ -133,7 +137,7 @@ class ParserContextModuleNode extends ParserContextBaseNode {
 
     private void addExportedName(long exportToken, ExportEntry exportEntry) {
         if (!exportedNames.add(exportEntry.getExportName())) {
-            throw parser.error(AbstractParser.message("duplicate.export", exportEntry.getExportName()), exportToken);
+            throw parser.error(AbstractParser.message(MSG_DUPLICATE_EXPORT, exportEntry.getExportName().toJavaStringUncached()), exportToken);
         }
     }
 
@@ -143,7 +147,7 @@ class ParserContextModuleNode extends ParserContextBaseNode {
             if (export.getNamedExports() != null) {
                 assert export.getExportIdentifier() == null;
                 for (ExportSpecifierNode s : export.getNamedExports().getExportSpecifiers()) {
-                    String localName = s.getIdentifier().getName();
+                    TruffleString localName = s.getIdentifier().getName();
                     ExportEntry ee;
                     if (s.getExportIdentifier() != null) {
                         ee = ExportEntry.exportSpecifier(s.getExportIdentifier().getName(), localName);
@@ -166,7 +170,7 @@ class ParserContextModuleNode extends ParserContextBaseNode {
                     }
                 }
             } else if (export.getFrom() != null) {
-                String specifier = export.getFrom().getModuleSpecifier().getValue();
+                TruffleString specifier = export.getFrom().getModuleSpecifier().getValue();
                 ModuleRequest moduleRequest = ModuleRequest.create(specifier, export.getAssertions());
                 if (export.getExportIdentifier() == null) {
                     addStarExportEntry(ExportEntry.exportStarFrom(moduleRequest));

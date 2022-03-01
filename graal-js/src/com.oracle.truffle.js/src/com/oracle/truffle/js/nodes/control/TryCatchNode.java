@@ -73,6 +73,7 @@ import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -321,7 +322,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
                 String message = exception.getRawMessage();
                 assert message != null;
                 errorObj = createErrorFromJSException(context, realm, exception.getErrorType());
-                initErrorObjectNode.execute(errorObj, exception, message);
+                initErrorObjectNode.execute(errorObj, exception, Strings.fromJavaString(message));
                 exception.setErrorObject(errorObj);
             }
             return errorObj;

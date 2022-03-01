@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.util.List;
 
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * IR representation for a list of statements.
@@ -190,7 +191,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
      * @return an existing symbol with the specified name defined in the current block, or null if
      *         this block doesn't define a symbol with this name.
      */
-    public Symbol getExistingSymbol(final String name) {
+    public Symbol getExistingSymbol(final TruffleString name) {
         return scope.getExistingSymbol(name);
     }
 
@@ -199,7 +200,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
      *
      * @param name the name of the symbol
      */
-    public boolean hasSymbol(final String name) {
+    public boolean hasSymbol(final TruffleString name) {
         return scope.hasSymbol(name);
     }
 

@@ -47,12 +47,13 @@ import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.FrequencyBasedPolymorphicAccessNode.FrequencyBasedPropertySetNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -82,10 +83,11 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"cachedKey != null", "!isArrayIndex(cachedKey)", "propertyKeyEquals(cachedKey, key)"}, limit = "MAX_DEPTH")
+    @Specialization(guards = {"cachedKey != null", "!isArrayIndex(cachedKey)", "propertyKeyEquals(equalsNode, cachedKey, key)"}, limit = "MAX_DEPTH")
     void doCachedKey(DynamicObject target, Object key, Object value, Object receiver,
                     @Cached("cachedPropertyKey(key)") Object cachedKey,
-                    @Cached("createSet(cachedKey)") PropertySetNode propertyNode) {
+                    @Cached("createSet(cachedKey)") PropertySetNode propertyNode,
+                    @Cached TruffleString.EqualNode equalsNode) {
         propertyNode.setValue(target, value, receiver);
     }
 
@@ -106,7 +108,7 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
 
     private void doArrayIndexLong(DynamicObject target, long index, Object value, Object receiver, JSClass jsclass) {
         if (setOwn) {
-            createDataPropertyOrThrow(target, Boundaries.stringValueOf(index), value);
+            createDataPropertyOrThrow(target, Strings.fromLong(index), value);
         } else {
             jsclass.set(target, index, value, receiver, strict, this);
         }
@@ -129,14 +131,15 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
                     @Cached("createBinaryProfile()") ConditionProfile getType,
                     @Cached("create()") JSClassProfile jsclassProfile,
                     @Cached("createBinaryProfile()") ConditionProfile highFrequency,
-                    @Cached("createFrequencyBasedPropertySet(context, setOwn, strict, superProperty)") FrequencyBasedPropertySetNode hotKey) {
+                    @Cached("createFrequencyBasedPropertySet(context, setOwn, strict, superProperty)") FrequencyBasedPropertySetNode hotKey,
+                    @Cached TruffleString.EqualNode equalsNode) {
         Object arrayIndex = toArrayIndexNode.execute(key);
         if (getType.profile(arrayIndex instanceof Long)) {
             long index = (long) arrayIndex;
             doArrayIndexLong(target, index, value, receiver, jsclassProfile.getJSClass(target));
         } else {
             assert JSRuntime.isPropertyKey(arrayIndex);
-            if (highFrequency.profile(hotKey.executeFastSet(target, arrayIndex, value, receiver))) {
+            if (highFrequency.profile(hotKey.executeFastSet(target, arrayIndex, value, receiver, equalsNode))) {
                 return;
             }
             if (setOwn) {

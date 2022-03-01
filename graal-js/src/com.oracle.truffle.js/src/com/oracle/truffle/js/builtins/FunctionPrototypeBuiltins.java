@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,11 +53,13 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.HasInstanceNodeGen;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSApplyNodeGen;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSBindNodeGen;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSCallNodeGen;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSFunctionToStringNodeGen;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -72,6 +74,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -233,11 +236,11 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             Object targetName = getFunctionNameNode.getValue(thisFnObj);
-            if (!JSRuntime.isString(targetName)) {
-                targetName = "";
+            if (!JSGuards.isString(targetName)) {
+                targetName = Strings.EMPTY_STRING;
             }
             if (setNameProfile.profile(targetName != JSFunction.getName(thisFnObj))) {
-                ((JSFunctionObject.Bound) boundFunction).setTargetName((CharSequence) targetName);
+                ((JSFunctionObject.Bound) boundFunction).setTargetName((TruffleString) targetName);
             }
 
             return boundFunction;
@@ -277,10 +280,10 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             JSFunction.setFunctionLength(boundFunction, length);
 
             Object targetName = JSObject.get(thisObj, JSFunction.NAME);
-            if (!JSRuntime.isString(targetName)) {
-                targetName = "";
+            if (!Strings.isTString(targetName)) {
+                targetName = Strings.EMPTY_STRING;
             }
-            JSFunction.setBoundFunctionName(boundFunction, (String) targetName);
+            JSFunction.setBoundFunctionName(boundFunction, (TruffleString) targetName);
 
             return boundFunction;
         }
@@ -304,8 +307,6 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     public abstract static class JSFunctionToStringNode extends JSBuiltinNode {
 
-        private static final String NATIVE_CODE_STR = "function () { [native code] }";
-
         public JSFunctionToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -315,55 +316,56 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = {"isJSFunction(fnObj)", "!isBoundTarget(fnObj)"})
-        protected String toStringDefault(DynamicObject fnObj) {
+        protected TruffleString toStringDefault(DynamicObject fnObj) {
             return toStringDefaultTarget(fnObj);
         }
 
         @Specialization(guards = {"isJSFunction(fnObj)", "isBoundTarget(fnObj)"})
-        protected String toStringBound(DynamicObject fnObj) {
+        protected TruffleString toStringBound(DynamicObject fnObj) {
             if (getContext().isOptionV8CompatibilityMode()) {
-                return NATIVE_CODE_STR;
+                return Strings.FUNCTION_NATIVE_CODE;
             } else {
-                String name = JSFunction.getName(fnObj);
+                TruffleString name = JSFunction.getName(fnObj);
                 return getNameIntl(name);
             }
         }
 
         @TruffleBoundary
-        private static String getNameIntl(String name) {
-            return "function " + name.substring(name.lastIndexOf(' ') + 1) + "() { [native code] }";
+        private static TruffleString getNameIntl(TruffleString name) {
+            int spacePos = Strings.lastIndexOf(name, ' ');
+            return Strings.concatAll(Strings.FUNCTION_SPC, spacePos < 0 ? name : Strings.substring(name, spacePos + 1), Strings.FUNCTION_NATIVE_CODE_BODY);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isES2019OrLater()", "!isJSFunction(fnObj)", "isCallable.executeBoolean(fnObj)"}, limit = "1")
-        protected String toStringCallable(Object fnObj,
+        protected TruffleString toStringCallable(Object fnObj,
                         @Cached @Shared("isCallable") IsCallableNode isCallable,
                         @CachedLibrary("fnObj") InteropLibrary interop) {
             if (interop.hasExecutableName(fnObj)) {
                 try {
                     Object name = interop.getExecutableName(fnObj);
-                    return getNameIntl(InteropLibrary.getUncached().asString(name));
+                    return getNameIntl(InteropLibrary.getUncached().asTruffleString(name));
                 } catch (UnsupportedMessageException e) {
                 }
             } else if (interop.isMetaObject(fnObj)) {
                 try {
                     Object name = interop.getMetaSimpleName(fnObj);
-                    return getNameIntl(InteropLibrary.getUncached().asString(name));
+                    return getNameIntl(InteropLibrary.getUncached().asTruffleString(name));
                 } catch (UnsupportedMessageException e) {
                 }
             }
-            return NATIVE_CODE_STR;
+            return Strings.FUNCTION_NATIVE_CODE;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isES2019OrLater()", "!isCallable.executeBoolean(fnObj)"}, limit = "1")
-        protected String toStringNotCallable(Object fnObj,
+        protected TruffleString toStringNotCallable(Object fnObj,
                         @Cached @Shared("isCallable") IsCallableNode isCallable) {
             throw Errors.createTypeErrorNotAFunction(fnObj);
         }
 
         @Specialization(guards = {"!isES2019OrLater()", "!isJSFunction(fnObj)"})
-        protected String toStringNotFunction(Object fnObj) {
+        protected TruffleString toStringNotFunction(Object fnObj) {
             throw Errors.createTypeErrorNotAFunction(fnObj);
         }
 
@@ -372,19 +374,19 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @TruffleBoundary
-        private static String toStringDefaultTarget(DynamicObject fnObj) {
+        private static TruffleString toStringDefaultTarget(DynamicObject fnObj) {
             CallTarget ct = JSFunction.getCallTarget(fnObj);
             if (!(ct instanceof RootCallTarget)) {
-                return ct.toString();
+                return Strings.fromJavaString(ct.toString());
             }
             RootCallTarget dct = (RootCallTarget) ct;
             RootNode rn = dct.getRootNode();
             SourceSection ssect = rn.getSourceSection();
-            String result;
+            TruffleString result;
             if (ssect == null || !ssect.isAvailable() || ssect.getSource().isInternal()) {
-                result = "function " + JSFunction.getName(fnObj) + "() { [native code] }";
+                result = Strings.concatAll(Strings.FUNCTION_SPC, JSFunction.getName(fnObj), Strings.FUNCTION_NATIVE_CODE_BODY);
             } else {
-                result = ssect.getCharacters().toString();
+                result = Strings.fromCharSequence(ssect.getCharacters());
             }
             return result;
         }

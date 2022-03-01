@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -97,7 +98,7 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static double doStringDouble(String value,
+    protected static double doStringDouble(TruffleString value,
                     @Cached("create()") JSStringToNumberNode stringToNumberNode) {
         return stringToNumberNode.executeString(value);
     }

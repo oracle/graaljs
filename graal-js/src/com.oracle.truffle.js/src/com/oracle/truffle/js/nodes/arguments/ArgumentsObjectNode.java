@@ -51,6 +51,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
@@ -106,12 +107,12 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
         JSArgumentsObject argumentsObject = JSArgumentsArray.createUnmapped(factory.getShape(realm), arguments);
         factory.initProto(argumentsObject, realm);
 
-        putLengthNode.putWithFlags(argumentsObject, JSArgumentsArray.LENGTH, arguments.length, JSAttributes.getDefaultNotEnumerable());
-        putSymbolIteratorNode.putWithFlags(argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.getDefaultNotEnumerable());
+        Properties.putWithFlags(putLengthNode, argumentsObject, JSArgumentsArray.LENGTH, arguments.length, JSAttributes.getDefaultNotEnumerable());
+        Properties.putWithFlags(putSymbolIteratorNode, argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.getDefaultNotEnumerable());
 
-        putCalleeNode.putWithFlags(argumentsObject, JSArgumentsArray.CALLEE, realm.getThrowerAccessor(), THROWER_ACCESSOR_PROPERTY_FLAGS);
+        Properties.putWithFlags(putCalleeNode, argumentsObject, JSArgumentsArray.CALLEE, realm.getThrowerAccessor(), THROWER_ACCESSOR_PROPERTY_FLAGS);
         if (context.getEcmaScriptVersion() < JSConfig.ECMAScript2017) {
-            putCallerNode.putWithFlags(argumentsObject, JSArgumentsArray.CALLER, realm.getThrowerAccessor(), THROWER_ACCESSOR_PROPERTY_FLAGS);
+            Properties.putWithFlags(putCallerNode, argumentsObject, JSArgumentsArray.CALLER, realm.getThrowerAccessor(), THROWER_ACCESSOR_PROPERTY_FLAGS);
         }
         return context.trackAllocation(argumentsObject);
     }
@@ -131,10 +132,10 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
         JSArgumentsObject argumentsObject = JSArgumentsArray.createMapped(factory.getShape(realm), arguments);
         factory.initProto(argumentsObject, realm);
 
-        putLengthNode.putWithFlags(argumentsObject, JSArgumentsArray.LENGTH, arguments.length, JSAttributes.getDefaultNotEnumerable());
-        putSymbolIteratorNode.putWithFlags(argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.getDefaultNotEnumerable());
+        Properties.putWithFlags(putLengthNode, argumentsObject, JSArgumentsArray.LENGTH, arguments.length, JSAttributes.getDefaultNotEnumerable());
+        Properties.putWithFlags(putSymbolIteratorNode, argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.getDefaultNotEnumerable());
 
-        putCalleeNode.putWithFlags(argumentsObject, JSArgumentsArray.CALLEE, callee, JSAttributes.getDefaultNotEnumerable());
+        Properties.putWithFlags(putCalleeNode, argumentsObject, JSArgumentsArray.CALLEE, callee, JSAttributes.getDefaultNotEnumerable());
         return context.trackAllocation(argumentsObject);
     }
 

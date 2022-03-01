@@ -43,21 +43,23 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.NumberFunctionBuiltins;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
 public final class JSNumber extends JSPrimitive implements JSConstructorFactory.Default.WithFunctions {
 
-    public static final String TYPE_NAME = "number";
-    public static final String CLASS_NAME = "Number";
-    public static final String PROTOTYPE_NAME = "Number.prototype";
+    public static final TruffleString TYPE_NAME = Strings.HINT_NUMBER;
+    public static final TruffleString CLASS_NAME = Strings.UC_NUMBER;
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Number.prototype");
 
     public static final JSNumber INSTANCE = new JSNumber();
 
@@ -106,15 +108,15 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
         WithFunctions.super.fillConstructor(realm, constructor);
 
         JSContext context = realm.getContext();
-        JSObjectUtil.putDataProperty(context, constructor, JSRuntime.NAN_STRING, Double.NaN);
-        JSObjectUtil.putDataProperty(context, constructor, "POSITIVE_INFINITY", Double.POSITIVE_INFINITY);
-        JSObjectUtil.putDataProperty(context, constructor, "NEGATIVE_INFINITY", Double.NEGATIVE_INFINITY);
-        JSObjectUtil.putDataProperty(context, constructor, "MAX_VALUE", Double.MAX_VALUE);
-        JSObjectUtil.putDataProperty(context, constructor, "MIN_VALUE", Double.MIN_VALUE);
+        JSObjectUtil.putDataProperty(context, constructor, Strings.NAN, Double.NaN);
+        JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_POSITIVE_INFINITY, Double.POSITIVE_INFINITY);
+        JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY);
+        JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_MAX_VALUE, Double.MAX_VALUE);
+        JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_MIN_VALUE, Double.MIN_VALUE);
         if (context.getEcmaScriptVersion() >= 6) {
-            JSObjectUtil.putDataProperty(context, constructor, "EPSILON", NUMBER_EPSILON);
-            JSObjectUtil.putDataProperty(context, constructor, "MAX_SAFE_INTEGER", MAX_SAFE_INTEGER);
-            JSObjectUtil.putDataProperty(context, constructor, "MIN_SAFE_INTEGER", MIN_SAFE_INTEGER);
+            JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_EPSILON, NUMBER_EPSILON);
+            JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_MAX_SAFE_INTEGER, MAX_SAFE_INTEGER);
+            JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_MIN_SAFE_INTEGER, MIN_SAFE_INTEGER);
         }
     }
 
@@ -127,29 +129,29 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public String getBuiltinToStringTag(DynamicObject object) {
+    public TruffleString getBuiltinToStringTag(DynamicObject object) {
         return getClassName(object);
     }
 
     @TruffleBoundary
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return super.toDisplayStringImpl(obj, allowSideEffects, format, depth);
         } else {
             Number primitiveValue = JSNumber.valueOf(obj);
             return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth,
-                            getBuiltinToStringTag(obj), new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
+                            getBuiltinToStringTag(obj), new TruffleString[]{Strings.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
         }
     }
 

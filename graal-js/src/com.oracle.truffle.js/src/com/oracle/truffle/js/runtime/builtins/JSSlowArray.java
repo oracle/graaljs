@@ -43,11 +43,12 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -60,7 +61,7 @@ import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 
 public final class JSSlowArray extends JSAbstractArray {
 
-    public static final String CLASS_NAME = "Array";
+    public static final TruffleString CLASS_NAME = Strings.constant("Array");
 
     public static final JSSlowArray INSTANCE = new JSSlowArray();
 
@@ -76,14 +77,14 @@ public final class JSSlowArray extends JSAbstractArray {
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return CLASS_NAME;
     }
 
     @TruffleBoundary
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
-        String indexAsString = Boundaries.stringValueOf(index);
+        Object indexAsString = Strings.fromLong(index);
         if (JSOrdinary.INSTANCE.hasOwnProperty(store, indexAsString)) {
             return JSOrdinary.INSTANCE.getOwnHelper(store, thisObj, indexAsString, encapsulatingNode);
         }
@@ -93,7 +94,7 @@ public final class JSSlowArray extends JSAbstractArray {
     @TruffleBoundary
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
-        String indexAsString = Boundaries.stringValueOf(index);
+        Object indexAsString = Strings.fromLong(index);
         if (JSOrdinary.INSTANCE.hasOwnProperty(thisObj, indexAsString)) {
             return ordinarySet(thisObj, indexAsString, value, receiver, isStrict, encapsulatingNode);
         }
@@ -130,7 +131,8 @@ public final class JSSlowArray extends JSAbstractArray {
      * @return whether the operation was successful
      */
     @Override
-    protected boolean defineOwnPropertyIndex(DynamicObject thisObj, String name, PropertyDescriptor descriptor, boolean doThrow) {
+    protected boolean defineOwnPropertyIndex(DynamicObject thisObj, TruffleString name, PropertyDescriptor descriptor, boolean doThrow) {
+        assert Strings.isTString(name);
         long index = JSRuntime.toUInt32(name);
         if (index >= getLength(thisObj)) {
             PropertyDescriptor desc = getOwnProperty(thisObj, LENGTH);
@@ -169,7 +171,7 @@ public final class JSSlowArray extends JSAbstractArray {
     private static boolean jsDefineProperty(DynamicObject thisObj, long index, PropertyDescriptor descriptor, boolean doThrow) {
         ScriptArray internalArray = arrayAccess().getArrayType(thisObj);
         boolean copyValue = (internalArray.hasElement(thisObj, index) && (!descriptor.hasValue() && !descriptor.hasGet()));
-        boolean succeed = DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, Boundaries.stringValueOf(index), descriptor, doThrow);
+        boolean succeed = DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, Strings.fromLong(index), descriptor, doThrow);
         if (copyValue) {
             JSObject.set(thisObj, index, internalArray.getElement(thisObj, index), doThrow, null);
         }

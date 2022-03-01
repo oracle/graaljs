@@ -54,6 +54,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNodeGen.GetPropertyProxyValueNodeGen;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNodeGen.UsesOrdinaryGetOwnPropertyNodeGen;
@@ -152,13 +153,14 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     @Specialization(guards = {
                     "allowCaching",
                     "cachedJSClass != null",
-                    "propertyKeyEquals(cachedPropertyKey, propertyKey)",
+                    "propertyKeyEquals(equalsNode, cachedPropertyKey, propertyKey)",
                     "cachedShape == thisObj.getShape()"}, assumptions = {"cachedShape.getValidAssumption()"}, limit = "3")
     PropertyDescriptor cachedOrdinary(DynamicObject thisObj, Object propertyKey,
                     @Cached("getJSClassIfOrdinary(thisObj)") JSClass cachedJSClass,
                     @Cached("thisObj.getShape()") Shape cachedShape,
                     @Cached("propertyKey") Object cachedPropertyKey,
-                    @Cached("cachedShape.getProperty(propertyKey)") Property cachedProperty) {
+                    @Cached("cachedShape.getProperty(propertyKey)") Property cachedProperty,
+                    @Cached TruffleString.EqualNode equalsNode) {
         assert JSRuntime.isPropertyKey(propertyKey) && JSObject.getJSClass(thisObj).usesOrdinaryGetOwnProperty();
         return ordinaryGetOwnProperty(thisObj, cachedProperty);
     }

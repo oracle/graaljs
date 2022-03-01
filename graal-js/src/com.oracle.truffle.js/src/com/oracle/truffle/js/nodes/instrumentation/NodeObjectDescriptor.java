@@ -48,6 +48,8 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Strings;
 
 /**
  * A container class used to store per-node attributes used by the instrumentation framework.
@@ -61,6 +63,11 @@ public final class NodeObjectDescriptor implements TruffleObject {
     @TruffleBoundary
     public void addProperty(String name, Object value) {
         data.put(name, value);
+    }
+
+    @TruffleBoundary
+    public void addProperty(TruffleString name, Object value) {
+        addProperty(Strings.toJavaString(name), value);
     }
 
     @SuppressWarnings("static-method")

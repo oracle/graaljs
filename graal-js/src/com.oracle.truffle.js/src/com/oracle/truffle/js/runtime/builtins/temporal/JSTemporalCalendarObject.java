@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,23 +41,25 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 
 public class JSTemporalCalendarObject extends JSNonProxyObject {
 
-    private final String id;
+    private final TruffleString id;
 
     protected JSTemporalCalendarObject(Shape shape) {
         super(shape);
-        this.id = "iso8601";
+        this.id = TemporalConstants.ISO8601;
     }
 
-    protected JSTemporalCalendarObject(Shape shape, String id) {
+    protected JSTemporalCalendarObject(Shape shape, TruffleString id) {
         super(shape);
         this.id = id;
     }
 
-    public String getId() {
+    public TruffleString getId() {
         return id;
     }
 }

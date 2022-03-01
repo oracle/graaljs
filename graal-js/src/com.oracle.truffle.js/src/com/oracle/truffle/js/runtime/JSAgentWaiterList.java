@@ -40,14 +40,15 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 
 /**
  * Java-based implementation of ECMA2017 WaiterList (24.4.1.2).
@@ -107,14 +108,14 @@ public class JSAgentWaiterList {
         private final int agentSignifier;
         private final PromiseCapabilityRecord promiseCapability;
         private final double timeout;
-        private String result;
+        private TruffleString result;
         private final JSAgentWaiterListEntry wl;
         private final JSAgent agent;
 
         private long creationTimestamp;
         private boolean notified;
 
-        private WaiterRecord(int agentSignifier, PromiseCapabilityRecord promiseCapability, double timeout, String result, JSAgentWaiterListEntry wl, JSAgent agent) {
+        private WaiterRecord(int agentSignifier, PromiseCapabilityRecord promiseCapability, double timeout, TruffleString result, JSAgentWaiterListEntry wl, JSAgent agent) {
             this.agentSignifier = agentSignifier;
             this.promiseCapability = promiseCapability;
             this.timeout = timeout;
@@ -125,7 +126,7 @@ public class JSAgentWaiterList {
             this.notified = false;
         }
 
-        public static WaiterRecord create(int agentSignifier, PromiseCapabilityRecord promiseCapability, double timeout, String result, JSAgentWaiterListEntry wl, JSAgent agent) {
+        public static WaiterRecord create(int agentSignifier, PromiseCapabilityRecord promiseCapability, double timeout, TruffleString result, JSAgentWaiterListEntry wl, JSAgent agent) {
             return new WaiterRecord(agentSignifier, promiseCapability, timeout, result, wl, agent);
         }
 
@@ -141,11 +142,11 @@ public class JSAgentWaiterList {
             return timeout;
         }
 
-        public String getResult() {
+        public TruffleString getResult() {
             return result;
         }
 
-        public void setResult(String result) {
+        public void setResult(TruffleString result) {
             this.result = result;
         }
 

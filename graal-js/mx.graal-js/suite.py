@@ -24,7 +24,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "f8a7ade084c739c1635b0f6bfcfd80c963c97822",
+           "version" : "94f51568be0f91b1bc9f2572abf85d240b0b3e08",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -59,8 +59,8 @@ suite = {
     },
 
     "TEST262" : {
-      "sha1" : "6cb6db2ed35eb1bfb707867c41c679e17013fe2e",
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/test262-d86b913c.tar.bz2"],
+      "sha1" : "294b84ed164ee44fa5449a5a2d8cb8bf1b9e7169",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/test262-18ce639a.tar.bz2"],
     },
 
     "TESTNASHORN" : {
@@ -120,7 +120,6 @@ suite = {
         "com.oracle.truffle.js.annotations",
         "com.oracle.truffle.js.codec",
         "com.oracle.truffle.js.runtime.doubleconv",
-        "truffle:TRUFFLE_API",
         "truffle:ICU4J",
       ],
       "requires" : [
@@ -152,7 +151,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK"
+        "truffle:TRUFFLE_API",
       ],
       "jacoco" : "include",
       "javaCompliance" : "11+",
@@ -186,7 +185,9 @@ suite = {
     "com.oracle.truffle.js.codec" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : [],
+      "dependencies" : [
+        "truffle:TRUFFLE_API",
+      ],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "11+",

@@ -57,6 +57,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
 /**
@@ -82,7 +83,7 @@ public abstract class JSStringListFromIterableNode extends JavaScriptBaseNode {
     @Specialization(guards = {"isString(s)"})
     @TruffleBoundary
     protected static List<String> stringToList(Object s) {
-        int[] codePoints = JSRuntime.toStringIsString(s).codePoints().toArray();
+        int[] codePoints = Strings.toJavaString(JSRuntime.toStringIsString(s)).codePoints().toArray();
         int length = codePoints.length;
         List<String> result = new ArrayList<>(length);
         for (int i = 0; i < length; i++) {
@@ -109,11 +110,11 @@ public abstract class JSStringListFromIterableNode extends JavaScriptBaseNode {
             if (!isFalse(next)) {
 
                 Object nextValue = iteratorValueNode.execute(next);
-                if (!JSRuntime.isString(nextValue)) {
+                if (!Strings.isTString(nextValue)) {
                     iteratorCloseNode.executeAbrupt(iteratorRecord.getIterator());
                     throw Errors.createTypeError("nonString value encountered!");
                 }
-                Boundaries.listAdd(list, JSRuntime.toString(nextValue));
+                Boundaries.listAdd(list, Strings.toJavaString(JSRuntime.toString(nextValue)));
             }
         }
         return list;

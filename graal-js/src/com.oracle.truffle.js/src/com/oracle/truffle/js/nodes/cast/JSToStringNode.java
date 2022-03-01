@@ -48,17 +48,16 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNodeGen.JSToStringWrapperNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -97,72 +96,66 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         return JSToStringNodeGen.create(false, true);
     }
 
-    public abstract String executeString(Object operand);
+    public abstract TruffleString executeString(Object operand);
 
     @Specialization
-    protected String doLazyString(JSLazyString value,
-                    @Cached("createBinaryProfile()") ConditionProfile flattenProfile) {
-        return value.toString(flattenProfile);
-    }
-
-    @Specialization
-    protected String doString(String value) {
+    protected TruffleString doString(TruffleString value) {
         return value;
     }
 
     @Specialization(guards = "isJSNull(value)")
-    protected String doNull(@SuppressWarnings("unused") Object value) {
+    protected TruffleString doNull(@SuppressWarnings("unused") Object value) {
         return Null.NAME;
     }
 
     @Specialization(guards = "isUndefined(value)")
-    protected String doUndefined(@SuppressWarnings("unused") Object value) {
-        return undefinedToEmpty ? "" : Undefined.NAME;
+    protected TruffleString doUndefined(@SuppressWarnings("unused") Object value) {
+        return undefinedToEmpty ? Strings.EMPTY_STRING : Undefined.NAME;
     }
 
     @Specialization
-    protected String doBoolean(boolean value) {
+    protected TruffleString doBoolean(boolean value) {
         return JSRuntime.booleanToString(value);
     }
 
     @Specialization
-    protected String doInteger(int value) {
-        return Boundaries.stringValueOf(value);
+    protected TruffleString doInteger(int value) {
+        return Strings.fromInt(value);
     }
 
     @Specialization
-    protected String doBigInt(BigInt value) {
-        return Boundaries.stringValueOf(value);
+    protected TruffleString doBigInt(BigInt value) {
+        return Strings.fromBigInt(value);
     }
 
     @Specialization
-    protected String doLong(long value) {
-        return Boundaries.stringValueOf(value);
+    protected TruffleString doLong(long value) {
+        return Strings.fromLong(value);
     }
 
     @Specialization
-    protected String doDouble(double d, @Cached("create()") JSDoubleToStringNode doubleToStringNode) {
+    protected TruffleString doDouble(double d, @Cached("create()") JSDoubleToStringNode doubleToStringNode) {
         return doubleToStringNode.executeString(d);
     }
 
     @Specialization(guards = "isJSDynamicObject(value)", replaces = "doUndefined")
-    protected String doJSObject(DynamicObject value,
+    protected TruffleString doJSObject(DynamicObject value,
                     @Cached("createHintString()") JSToPrimitiveNode toPrimitiveHintStringNode) {
-        return (undefinedToEmpty && (value == Undefined.instance)) ? "" : getToStringNode().executeString(toPrimitiveHintStringNode.execute(value));
+        return (undefinedToEmpty && (value == Undefined.instance)) ? Strings.EMPTY_STRING : getToStringNode().executeString(toPrimitiveHintStringNode.execute(value));
     }
 
     @TruffleBoundary
     @Specialization
-    protected String doSymbol(Symbol value) {
+    protected TruffleString doSymbol(Symbol value) {
         if (symbolToString) {
-            return value.toString();
+            return value.toTString();
         } else {
             throw Errors.createTypeErrorCannotConvertToString("a Symbol value", this);
         }
     }
 
     @Specialization(guards = {"isForeignObject(object)"})
-    protected String doTruffleObject(Object object,
+    protected TruffleString doTruffleObject(Object object,
                     @Cached("createHintString()") JSToPrimitiveNode toPrimitiveNode) {
         return getToStringNode().executeString(toPrimitiveNode.execute(object));
     }
@@ -189,11 +182,11 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
 
         @Override
         public boolean isResultAlwaysOfType(Class<?> clazz) {
-            return clazz == String.class;
+            return clazz == TruffleString.class;
         }
 
         @Specialization
-        protected String doDefault(Object value) {
+        protected Object doDefault(Object value) {
             if (toStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toStringNode = insert(JSToStringNode.create());

@@ -51,6 +51,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
@@ -62,9 +63,9 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
     @Child @Executed JavaScriptNode argumentsArrayNode;
     @Child @Executed JavaScriptNode rhsNode;
     @Child private WriteElementNode writeArgumentsElementNode;
-    private final String name;
+    private final TruffleString name;
 
-    JSGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs, String name) {
+    JSGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs, TruffleString name) {
         this.argumentIndex = index;
         this.argumentsArrayNode = argumentsArray;
         this.rhsNode = rhs;
@@ -72,7 +73,7 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
         this.name = name;
     }
 
-    public static JSGuardDisconnectedArgumentWrite create(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs, String name) {
+    public static JSGuardDisconnectedArgumentWrite create(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs, TruffleString name) {
         return JSGuardDisconnectedArgumentWriteNodeGen.create(index, argumentsArrayAccess, argumentsArray, rhs, name);
     }
 

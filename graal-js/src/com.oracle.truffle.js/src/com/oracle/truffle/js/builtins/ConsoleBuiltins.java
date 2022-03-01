@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import java.util.Map;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ConsoleBuiltinsFactory.JSConsoleAssertNodeGen;
 import com.oracle.truffle.js.builtins.ConsoleBuiltinsFactory.JSConsoleClearNodeGen;
 import com.oracle.truffle.js.builtins.ConsoleBuiltinsFactory.JSConsoleCountNodeGen;
@@ -64,7 +65,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSConsoleUtil;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -145,8 +146,6 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
 
     public abstract static class JSConsoleOperation extends JSBuiltinNode {
 
-        protected static final String DEFAULT = "default";
-
         public JSConsoleOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -158,6 +157,9 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
     }
 
     public abstract static class JSConsoleAssertNode extends JSConsoleOperation {
+
+        public static final TruffleString ASSERTION_FAILED_COLON = Strings.constant("Assertion failed:");
+        public static final TruffleString ASSERTION_FAILED = Strings.constant("Assertion failed");
 
         @Child private JSGlobalPrintNode printNode;
         @Child private JSToBooleanNode toBooleanNode;
@@ -176,7 +178,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
                 if (data.length > 1) {
                     System.arraycopy(data, 1, arr, 1, data.length - 1);
                 }
-                arr[0] = data.length > 1 ? "Assertion failed:" : "Assertion failed";
+                arr[0] = data.length > 1 ? ASSERTION_FAILED_COLON : ASSERTION_FAILED;
                 printNode.executeObjectArray(arr);
             }
             return Undefined.instance;
@@ -211,10 +213,10 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
         @Specialization
         @TruffleBoundary
         protected DynamicObject count(Object label) {
-            String key = label == Undefined.instance ? DEFAULT : toStringNode.executeString(label);
+            TruffleString key = label == Undefined.instance ? Strings.DEFAULT : toStringNode.executeString(label);
             int count = 0;
             JSConsoleUtil console = getConsoleUtil();
-            Map<String, Integer> countMap = console.getCountMap();
+            Map<TruffleString, Integer> countMap = console.getCountMap();
             if (countMap.containsKey(key)) {
                 count = countMap.get(key);
             }
@@ -222,10 +224,10 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
 
             PrintWriter writer = getRealm().getOutputWriter();
             writer.append(console.getConsoleIndentationString());
-            writer.append(key);
+            writer.append(Strings.toJavaString(key));
             writer.append(": ");
             writer.append(String.valueOf(count));
-            writer.append(JSRuntime.LINE_SEPARATOR);
+            writer.append(Strings.toJavaString(Strings.LINE_SEPARATOR));
             writer.flush();
             return Undefined.instance;
         }
@@ -243,7 +245,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
         @Specialization
         @TruffleBoundary
         protected DynamicObject count(Object label) {
-            String key = label == Undefined.instance ? DEFAULT : toStringNode.executeString(label);
+            Object key = label == Undefined.instance ? Strings.DEFAULT : toStringNode.executeString(label);
             getConsoleUtil().getCountMap().remove(key);
             return Undefined.instance;
         }
@@ -297,7 +299,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
         @Specialization
         @TruffleBoundary
         protected DynamicObject time(Object label) {
-            String key = label == Undefined.instance ? DEFAULT : toStringNode.executeString(label);
+            TruffleString key = label == Undefined.instance ? Strings.DEFAULT : toStringNode.executeString(label);
             getConsoleUtil().getTimeMap().put(key, getRealm().currentTimeMillis());
             return Undefined.instance;
         }
@@ -316,13 +318,13 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
         @Specialization
         @TruffleBoundary
         protected DynamicObject timeEnd(Object label) {
-            String key = label == Undefined.instance ? DEFAULT : toStringNode.executeString(label);
-            Map<String, Long> timeMap = getConsoleUtil().getTimeMap();
+            TruffleString key = label == Undefined.instance ? Strings.DEFAULT : toStringNode.executeString(label);
+            Map<TruffleString, Long> timeMap = getConsoleUtil().getTimeMap();
             if (timeMap.containsKey(key)) {
                 long start = timeMap.remove(key);
                 long end = getRealm().currentTimeMillis();
                 long delta = end - start;
-                printNode.executeObjectArray(new Object[]{key + ":", String.valueOf(delta) + "ms"});
+                printNode.executeObjectArray(new Object[]{Strings.concat(key, Strings.COLON), Strings.concat(Strings.fromLong(delta), Strings.MS)});
             }
             return Undefined.instance;
         }
@@ -342,8 +344,8 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
         @Specialization
         @TruffleBoundary
         protected DynamicObject timeLog(Object... data) {
-            String key = data.length == 0 || data[0] == Undefined.instance ? DEFAULT : toStringNode.executeString(data[0]);
-            Map<String, Long> timeMap = getConsoleUtil().getTimeMap();
+            TruffleString key = data.length == 0 || data[0] == Undefined.instance ? Strings.DEFAULT : toStringNode.executeString(data[0]);
+            Map<TruffleString, Long> timeMap = getConsoleUtil().getTimeMap();
             if (timeMap.containsKey(key)) {
                 long start = timeMap.get(key);
                 long end = getRealm().currentTimeMillis();
@@ -353,8 +355,8 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
                 if (data.length > 1) {
                     System.arraycopy(data, 1, arr, 2, data.length - 1);
                 }
-                arr[0] = key + ":";
-                arr[1] = String.valueOf(delta) + "ms";
+                arr[0] = Strings.concat(key, Strings.COLON);
+                arr[1] = Strings.concat(Strings.fromLong(delta), Strings.MS);
                 printNode.executeObjectArray(arr);
             }
             return Undefined.instance;

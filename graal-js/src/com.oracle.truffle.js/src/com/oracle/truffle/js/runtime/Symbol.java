@@ -48,6 +48,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
@@ -64,79 +65,79 @@ public final class Symbol implements TruffleObject {
      * A method that determines if a constructor object recognizes an object as one of the
      * constructor's instances. Called by the semantics of the instanceof operator.
      */
-    public static final Symbol SYMBOL_HAS_INSTANCE = Symbol.create("Symbol.hasInstance");
+    public static final Symbol SYMBOL_HAS_INSTANCE = Symbol.create(Strings.constant("Symbol.hasInstance"));
     /**
      * A Boolean valued property that if true indicates that an object should be flatten to its
      * array elements by Array.prototype.concat.
      */
-    public static final Symbol SYMBOL_IS_CONCAT_SPREADABLE = Symbol.create("Symbol.isConcatSpreadable");
+    public static final Symbol SYMBOL_IS_CONCAT_SPREADABLE = Symbol.create(Strings.constant("Symbol.isConcatSpreadable"));
     /**
      * A method that returns the default iterator for an object. Called by the semantics of the
      * for-of statement.
      */
-    public static final Symbol SYMBOL_ITERATOR = Symbol.create("Symbol.iterator");
+    public static final Symbol SYMBOL_ITERATOR = Symbol.create(Strings.constant("Symbol.iterator"));
     /**
      * A method that returns the default asynchronous iterator for an object. Called by the
      * semantics of the for-await-of statement.
      */
-    public static final Symbol SYMBOL_ASYNC_ITERATOR = Symbol.create("Symbol.asyncIterator");
+    public static final Symbol SYMBOL_ASYNC_ITERATOR = Symbol.create(Strings.constant("Symbol.asyncIterator"));
     /**
      * A regular expression method that matches the regular expression against a string. Called by
      * the String.prototype.match method.
      */
-    public static final Symbol SYMBOL_MATCH = Symbol.create("Symbol.match");
+    public static final Symbol SYMBOL_MATCH = Symbol.create(Strings.constant("Symbol.match"));
     /**
      * A regular expression method that returns an iterator, that yields matches of the regular
      * expression against a string. Called by the String.prototype.matchAll method.
      */
-    public static final Symbol SYMBOL_MATCH_ALL = Symbol.create("Symbol.matchAll");
+    public static final Symbol SYMBOL_MATCH_ALL = Symbol.create(Strings.constant("Symbol.matchAll"));
     /**
      * A regular expression method that replaces matched substrings of a string. Called by the
      * String.prototype.replace method.
      */
-    public static final Symbol SYMBOL_REPLACE = Symbol.create("Symbol.replace");
+    public static final Symbol SYMBOL_REPLACE = Symbol.create(Strings.constant("Symbol.replace"));
     /**
      * A regular expression method that returns the index within a string that matches the regular
      * expression. Called by the String.prototype.search method.
      */
-    public static final Symbol SYMBOL_SEARCH = Symbol.create("Symbol.search");
+    public static final Symbol SYMBOL_SEARCH = Symbol.create(Strings.constant("Symbol.search"));
     /**
      * A function valued property that is the constructor function that is used to create derived
      * objects.
      */
-    public static final Symbol SYMBOL_SPECIES = Symbol.create("Symbol.species");
+    public static final Symbol SYMBOL_SPECIES = Symbol.create(Strings.constant("Symbol.species"));
     /**
      * A regular expression method that splits a string at the indices that match the regular
      * expression. Called by the String.prototype.split method.
      */
-    public static final Symbol SYMBOL_SPLIT = Symbol.create("Symbol.split");
+    public static final Symbol SYMBOL_SPLIT = Symbol.create(Strings.constant("Symbol.split"));
     /**
      * A method that converts an object to a corresponding primitive value. Called by the
      * ToPrimitive abstract operation.
      */
-    public static final Symbol SYMBOL_TO_PRIMITIVE = Symbol.create("Symbol.toPrimitive");
+    public static final Symbol SYMBOL_TO_PRIMITIVE = Symbol.create(Strings.constant("Symbol.toPrimitive"));
     /**
      * A property whose String value that is used in the creation of the default string description
      * of an object. Called by the built-in method Object.prototype.toString.
      */
-    public static final Symbol SYMBOL_TO_STRING_TAG = Symbol.create("Symbol.toStringTag");
+    public static final Symbol SYMBOL_TO_STRING_TAG = Symbol.create(Strings.constant("Symbol.toStringTag"));
     /**
      * A property whose value is an Object whose own property names are property names that are
      * excluded from the with environment bindings of the associated object.
      */
-    public static final Symbol SYMBOL_UNSCOPABLES = Symbol.create("Symbol.unscopables");
+    public static final Symbol SYMBOL_UNSCOPABLES = Symbol.create(Strings.constant("Symbol.unscopables"));
 
     /**
      * [[Description]] of Symbol if it is a String value, {@code null} otherwise ([[Description]] is
      * undefined).
      */
-    private final String description;
+    private final TruffleString description;
 
-    private Symbol(String description) {
+    private Symbol(TruffleString description) {
         this.description = description;
     }
 
-    public static Symbol create(String description) {
+    public static Symbol create(TruffleString description) {
         return new Symbol(description);
     }
 
@@ -144,19 +145,23 @@ public final class Symbol implements TruffleObject {
         return (description == null) ? Undefined.instance : description;
     }
 
-    public String getName() {
-        return description == null ? "" : description;
+    public TruffleString getName() {
+        return description == null ? Strings.EMPTY_STRING : description;
     }
 
     @Override
     @TruffleBoundary
     public String toString() {
-        return "Symbol(" + getName() + ")";
+        return Strings.toJavaString(toTString());
+    }
+
+    public TruffleString toTString() {
+        return Strings.concatAll(Strings.SYMBOL_PAREN_OPEN, getName(), Strings.PAREN_CLOSE);
     }
 
     @TruffleBoundary
-    public String toFunctionNameString() {
-        return (description == null) ? "" : '[' + description + ']';
+    public TruffleString toFunctionNameString() {
+        return (description == null) ? Strings.EMPTY_STRING : Strings.concatAll(Strings.BRACKET_OPEN, description, Strings.BRACKET_CLOSE);
     }
 
     @Override

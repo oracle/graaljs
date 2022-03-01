@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.js.test.external.suite;
 
-import java.nio.ByteBuffer;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,6 +56,7 @@ import org.graalvm.polyglot.Value;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.parser.JSParser;
@@ -63,6 +64,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -150,7 +152,7 @@ public class TestCallable extends AbstractTestCallable {
         }
 
         try {
-            Value value = context.getBindings(JavaScriptLanguage.ID).getMember(EVAL_USING_SNAPSHOT_NAME);
+            Value value = context.getBindings(JavaScriptLanguage.ID).getMember(Strings.toJavaString(EVAL_USING_SNAPSHOT_NAME));
             String path = (source.getPath() == null) ? "" : source.getPath();
             return value.execute(source.getCharacters(), path, source.getName(), cacheSnapshot);
         } catch (RuntimeException ex) {
@@ -174,7 +176,7 @@ public class TestCallable extends AbstractTestCallable {
         contextBuilder.err(err);
     }
 
-    private static final String EVAL_USING_SNAPSHOT_NAME = "evalUsingSnapshot";
+    private static final TruffleString EVAL_USING_SNAPSHOT_NAME = Strings.constant("evalUsingSnapshot");
     private static final Map<com.oracle.truffle.api.source.Source, byte[]> snapshotCache = new ConcurrentHashMap<>();
 
     // Installs a built-in for the evaluation using snapshot. A built-in

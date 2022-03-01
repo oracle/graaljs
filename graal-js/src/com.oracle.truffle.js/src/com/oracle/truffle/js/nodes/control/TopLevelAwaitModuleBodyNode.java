@@ -142,7 +142,7 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
 
         @Override
         public String getName() {
-            if (functionName != null && !"".equals(functionName)) {
+            if (functionName != null && !functionName.isEmpty()) {
                 return functionName;
             }
             return ":top-level-await-module";

@@ -54,6 +54,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.annotations.GenerateDecoder;
 import com.oracle.truffle.js.annotations.GenerateProxy;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
@@ -228,6 +229,7 @@ import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -410,7 +412,7 @@ public class NodeFactory {
         return null;
     }
 
-    public JavaScriptNode createTypeofIdentical(JavaScriptNode subject, String typeString) {
+    public JavaScriptNode createTypeofIdentical(JavaScriptNode subject, TruffleString typeString) {
         return JSTypeofIdenticalNode.create(subject, typeString);
     }
 
@@ -446,7 +448,7 @@ public class NodeFactory {
         return JSConstantNode.createDouble(value);
     }
 
-    public JavaScriptNode createConstantString(String value) {
+    public JavaScriptNode createConstantString(TruffleString value) {
         return JSConstantNode.createString(value);
     }
 
@@ -623,7 +625,7 @@ public class NodeFactory {
         return ScopeFrameNode.create(frameLevel, scopeLevel, blockScopeSlot);
     }
 
-    public JavaScriptNode createReadLexicalGlobal(String name, boolean hasTemporalDeadZone, JSContext context) {
+    public JavaScriptNode createReadLexicalGlobal(TruffleString name, boolean hasTemporalDeadZone, JSContext context) {
         return GlobalPropertyNode.createLexicalGlobal(context, name, hasTemporalDeadZone);
     }
 
@@ -631,14 +633,14 @@ public class NodeFactory {
         return GlobalScopeNode.create(context);
     }
 
-    public JavaScriptNode createGlobalScopeTDZCheck(JSContext context, String name, boolean checkTDZ) {
+    public JavaScriptNode createGlobalScopeTDZCheck(JSContext context, TruffleString name, boolean checkTDZ) {
         if (!checkTDZ) {
             return createGlobalScope(context);
         }
         return GlobalScopeNode.createWithTDZCheck(context, name);
     }
 
-    public JavaScriptNode createGlobalVarWrapper(String varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
+    public JavaScriptNode createGlobalVarWrapper(TruffleString varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
         return new GlobalScopeVarWrapperNode(varName, defaultDelegate, dynamicScope, scopeAccessNode);
     }
 
@@ -756,19 +758,19 @@ public class NodeFactory {
 
     // ##### Property nodes
 
-    public JSTargetableNode createReadProperty(JSContext context, JavaScriptNode base, String propertyName) {
+    public JSTargetableNode createReadProperty(JSContext context, JavaScriptNode base, TruffleString propertyName) {
         return PropertyNode.createProperty(context, base, propertyName);
     }
 
-    public JSTargetableNode createReadProperty(JSContext context, JavaScriptNode base, String propertyName, boolean method) {
+    public JSTargetableNode createReadProperty(JSContext context, JavaScriptNode base, TruffleString propertyName, boolean method) {
         return PropertyNode.createProperty(context, base, propertyName, method);
     }
 
-    public WritePropertyNode createWriteProperty(JavaScriptNode target, Object propertyKey, JavaScriptNode rhs, JSContext context, boolean strictMode) {
-        return WritePropertyNode.create(target, propertyKey, rhs, context, strictMode);
+    public WritePropertyNode createWriteProperty(JavaScriptNode target, TruffleString name, JavaScriptNode rhs, JSContext context, boolean strictMode) {
+        return WritePropertyNode.create(target, name, rhs, context, strictMode);
     }
 
-    public WritePropertyNode createWriteProperty(JavaScriptNode target, String name, JavaScriptNode rhs, JSContext context, boolean isStrict, boolean isGlobal, boolean verifyHasProperty) {
+    public WritePropertyNode createWriteProperty(JavaScriptNode target, TruffleString name, JavaScriptNode rhs, JSContext context, boolean isStrict, boolean isGlobal, boolean verifyHasProperty) {
         return WritePropertyNode.create(target, name, rhs, context, isStrict, isGlobal, verifyHasProperty);
     }
 
@@ -776,7 +778,7 @@ public class NodeFactory {
         return ConstantVariableWriteNode.create(rhs, doThrow);
     }
 
-    public JSTargetableNode createReadGlobalProperty(JSContext context, String name) {
+    public JSTargetableNode createReadGlobalProperty(JSContext context, TruffleString name) {
         return GlobalPropertyNode.createPropertyNode(context, name);
     }
 
@@ -786,7 +788,8 @@ public class NodeFactory {
 
     // ##### Function nodes
 
-    public FunctionRootNode createFunctionRootNode(AbstractBodyNode body, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection, String internalFunctionName) {
+    public FunctionRootNode createFunctionRootNode(AbstractBodyNode body, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection,
+                    TruffleString internalFunctionName) {
         FunctionRootNode functionRoot = FunctionRootNode.create(body, frameDescriptor, functionData, sourceSection, internalFunctionName);
 
         if (JSConfig.LazyFunctionData) {
@@ -830,8 +833,8 @@ public class NodeFactory {
         return ArgumentsObjectNode.create(context, unmapped, leadingArgumentCount);
     }
 
-    public JavaScriptNode createThrowError(JSErrorType errorType, String message) {
-        return RuntimeErrorNode.create(errorType, message);
+    public JavaScriptNode createThrowError(JSErrorType errorType, TruffleString message) {
+        return RuntimeErrorNode.create(errorType, Strings.toJavaString(message));
     }
 
     public JavaScriptNode createObjectLiteral(JSContext context, ArrayList<ObjectLiteralMemberNode> members) {
@@ -846,15 +849,15 @@ public class NodeFactory {
         return ArrayLiteralNode.createWithSpread(context, elements);
     }
 
-    public ObjectLiteralMemberNode createAccessorMember(String keyName, boolean isStatic, boolean enumerable, JavaScriptNode getter, JavaScriptNode setter) {
+    public ObjectLiteralMemberNode createAccessorMember(TruffleString keyName, boolean isStatic, boolean enumerable, JavaScriptNode getter, JavaScriptNode setter) {
         return ObjectLiteralNode.newAccessorMember(keyName, isStatic, enumerable, getter, setter);
     }
 
-    public ObjectLiteralMemberNode createDataMember(String keyName, boolean isStatic, boolean enumerable, JavaScriptNode value, boolean isField) {
+    public ObjectLiteralMemberNode createDataMember(TruffleString keyName, boolean isStatic, boolean enumerable, JavaScriptNode value, boolean isField) {
         return ObjectLiteralNode.newDataMember(keyName, isStatic, enumerable, value, isField);
     }
 
-    public ObjectLiteralMemberNode createProtoMember(String keyName, boolean isStatic, JavaScriptNode value) {
+    public ObjectLiteralMemberNode createProtoMember(TruffleString keyName, boolean isStatic, JavaScriptNode value) {
         return ObjectLiteralNode.newProtoMember(keyName, isStatic, value);
     }
 
@@ -875,7 +878,7 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members,
-                    JSWriteFrameSlotNode writeClassBinding, String className, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods, JSFrameSlot blockScopeSlot) {
+                    JSWriteFrameSlotNode writeClassBinding, TruffleString className, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods, JSFrameSlot blockScopeSlot) {
         return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members,
                         writeClassBinding, className != null, instanceFieldCount, staticFieldCount, hasPrivateInstanceMethods, blockScopeSlot);
     }
@@ -904,9 +907,10 @@ public class NodeFactory {
         return ReturnNode.createTerminalPositionReturn(expression);
     }
 
-    public JSFunctionData createFunctionData(JSContext context, int length, String name, boolean isConstructor, boolean isDerived, boolean isStrict, boolean isBuiltin, boolean needsParentFrame,
+    public JSFunctionData createFunctionData(JSContext context, int length, TruffleString name, boolean isConstructor, boolean isDerived, boolean isStrict, boolean isBuiltin, boolean needsParentFrame,
                     boolean isGenerator, boolean isAsync, boolean isClassConstructor, boolean strictProperties, boolean needsNewTarget) {
-        return JSFunctionData.create(context, null, null, null, length, name, isConstructor, isDerived, isStrict, isBuiltin, needsParentFrame, isGenerator, isAsync, isClassConstructor,
+        return JSFunctionData.create(context, null, null, null, length, name, isConstructor, isDerived, isStrict, isBuiltin, needsParentFrame, isGenerator, isAsync,
+                        isClassConstructor,
                         strictProperties, needsNewTarget, false);
     }
 
@@ -979,8 +983,8 @@ public class NodeFactory {
         return JSToStringWrapperNode.create(operand);
     }
 
-    public JavaScriptNode createRegExpLiteral(JSContext context, String pattern, String flags) {
-        return RegExpLiteralNode.create(context, pattern, flags);
+    public JavaScriptNode createRegExpLiteral(JSContext context, TruffleString pattern, TruffleString flags) {
+        return RegExpLiteralNode.create(context, Strings.toJavaString(pattern), Strings.toJavaString(flags));
     }
 
     // ##### Iterator nodes
@@ -1055,11 +1059,11 @@ public class NodeFactory {
         return WithNode.create(expression, statement);
     }
 
-    public JavaScriptNode createWithVarWrapper(String propertyName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
+    public JavaScriptNode createWithVarWrapper(TruffleString propertyName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
         return WithVarWrapperNode.create(propertyName, withTarget, withAccessNode, globalDelegate);
     }
 
-    public JavaScriptNode createWithTarget(JSContext context, String propertyName, JavaScriptNode withVariable) {
+    public JavaScriptNode createWithTarget(JSContext context, TruffleString propertyName, JavaScriptNode withVariable) {
         return WithTargetNode.create(context, propertyName, withVariable);
     }
 
@@ -1115,15 +1119,15 @@ public class NodeFactory {
         return desc;
     }
 
-    public DeclareGlobalNode createDeclareGlobalVariable(String varName, boolean configurable) {
+    public DeclareGlobalNode createDeclareGlobalVariable(TruffleString varName, boolean configurable) {
         return DeclareGlobalVariableNode.create(varName, configurable);
     }
 
-    public DeclareGlobalNode createDeclareGlobalFunction(String varName, boolean configurable, JavaScriptNode valueNode) {
+    public DeclareGlobalNode createDeclareGlobalFunction(TruffleString varName, boolean configurable, JavaScriptNode valueNode) {
         return DeclareGlobalFunctionNode.create(varName, configurable, valueNode);
     }
 
-    public DeclareGlobalNode createDeclareGlobalLexicalVariable(String varName, boolean isConst) {
+    public DeclareGlobalNode createDeclareGlobalLexicalVariable(TruffleString varName, boolean isConst) {
         return DeclareGlobalLexicalVariableNode.create(varName, isConst);
     }
 
@@ -1152,11 +1156,11 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray, JSFrameSlot slot) {
-        return JSGuardDisconnectedArgumentRead.create(index, readElementNode, argumentsArray, (String) slot.getIdentifier());
+        return JSGuardDisconnectedArgumentRead.create(index, readElementNode, argumentsArray, (TruffleString) slot.getIdentifier());
     }
 
     public JavaScriptNode createGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs, JSFrameSlot slot) {
-        return JSGuardDisconnectedArgumentWrite.create(index, argumentsArrayAccess, argumentsArray, rhs, (String) slot.getIdentifier());
+        return JSGuardDisconnectedArgumentWrite.create(index, argumentsArrayAccess, argumentsArray, rhs, (TruffleString) slot.getIdentifier());
     }
 
     public JavaScriptNode createModuleBody(JavaScriptNode moduleBody) {
@@ -1179,7 +1183,7 @@ public class NodeFactory {
         return ResolveStarImportNode.create(context, moduleNode, moduleRequest, writeLocalNode);
     }
 
-    public JavaScriptNode createResolveNamedImport(JSContext context, JavaScriptNode moduleNode, ModuleRequest moduleRequest, String importName, JSWriteFrameSlotNode writeLocalNode) {
+    public JavaScriptNode createResolveNamedImport(JSContext context, JavaScriptNode moduleNode, ModuleRequest moduleRequest, TruffleString importName, JSWriteFrameSlotNode writeLocalNode) {
         return ResolveNamedImportNode.create(context, moduleNode, moduleRequest, importName, writeLocalNode);
     }
 
@@ -1204,8 +1208,8 @@ public class NodeFactory {
         return InitializeInstanceElementsNode.create(context, target, constructor);
     }
 
-    public JavaScriptNode createNewPrivateName(String description) {
-        return NewPrivateNameNode.create(description);
+    public JavaScriptNode createNewPrivateName(TruffleString description) {
+        return NewPrivateNameNode.create(Strings.toJavaString(description));
     }
 
     public JavaScriptNode createPrivateFieldGet(JSContext context, JavaScriptNode target, JavaScriptNode key) {
@@ -1260,11 +1264,11 @@ public class NodeFactory {
         return PropertyNode.createGetHidden(context, function, JSFunction.DEBUG_SCOPE_ID);
     }
 
-    public JavaScriptNode createDebugVarWrapper(String varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
+    public JavaScriptNode createDebugVarWrapper(TruffleString varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
         return new DebugScopeVarWrapperNode(varName, defaultDelegate, dynamicScope, scopeAccessNode);
     }
 
-    public InternalSlotId createInternalSlotId(String description, int ordinal) {
+    public InternalSlotId createInternalSlotId(TruffleString description, int ordinal) {
         return new InternalSlotId(description, ordinal);
     }
 

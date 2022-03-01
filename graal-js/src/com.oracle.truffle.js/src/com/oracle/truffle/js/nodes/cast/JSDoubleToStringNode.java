@@ -41,11 +41,13 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 
 /**
  * This implements 9.8.1 ToString Applied to the Number Type.
@@ -57,37 +59,41 @@ public abstract class JSDoubleToStringNode extends JavaScriptBaseNode {
         return JSDoubleToStringNodeGen.create();
     }
 
-    public abstract String executeString(Object operand);
+    public abstract TruffleString executeString(Object operand);
 
     @Specialization
-    protected static String doInt(int i) {
-        return Boundaries.stringValueOf(i);
+    protected static TruffleString doInt(int i,
+                    @Cached @Shared("fromLongNode") TruffleString.FromLongNode fromLongNode) {
+        return Strings.fromLong(fromLongNode, i);
     }
 
     @Specialization
-    protected static String doLong(long i) {
-        return Boundaries.stringValueOf(i);
+    protected static TruffleString doLong(long i,
+                    @Cached @Shared("fromLongNode") TruffleString.FromLongNode fromLongNode) {
+        return Strings.fromLong(fromLongNode, i);
     }
 
     @Specialization
-    protected static String doDouble(double d,
-                    @Cached("createBinaryProfile()") ConditionProfile isInt,
-                    @Cached("createBinaryProfile()") ConditionProfile isNaN,
-                    @Cached("createBinaryProfile()") ConditionProfile isPositiveInfinity,
-                    @Cached("createBinaryProfile()") ConditionProfile isNegativeInfinity,
-                    @Cached("createBinaryProfile()") ConditionProfile isZero) {
+    protected static TruffleString doDouble(double d,
+                    @Cached @Shared("fromLongNode") TruffleString.FromLongNode fromLongNode,
+                    @Cached ConditionProfile isInt,
+                    @Cached ConditionProfile isNaN,
+                    @Cached ConditionProfile isPositiveInfinity,
+                    @Cached ConditionProfile isNegativeInfinity,
+                    @Cached ConditionProfile isZero,
+                    @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
         if (isZero.profile(d == 0)) {
-            return "0";
+            return Strings.ZERO;
         } else if (isInt.profile(JSRuntime.doubleIsRepresentableAsInt(d, true))) {
-            return doInt((int) d);
+            return doInt((int) d, fromLongNode);
         } else if (isNaN.profile(Double.isNaN(d))) {
-            return JSRuntime.NAN_STRING;
+            return Strings.NAN;
         } else if (isPositiveInfinity.profile(d == Double.POSITIVE_INFINITY)) {
-            return JSRuntime.INFINITY_STRING;
+            return Strings.INFINITY;
         } else if (isNegativeInfinity.profile(d == Double.NEGATIVE_INFINITY)) {
-            return JSRuntime.NEGATIVE_INFINITY_STRING;
+            return Strings.NEGATIVE_INFINITY;
         } else {
-            return JSRuntime.formatDtoA(d);
+            return Strings.fromJavaString(fromJavaStringNode, JSRuntime.formatDtoA(d));
         }
     }
 }

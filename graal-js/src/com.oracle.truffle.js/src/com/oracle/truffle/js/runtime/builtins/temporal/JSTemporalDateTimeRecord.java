@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 public class JSTemporalDateTimeRecord {
     private final long year;
     private final long month;
@@ -51,14 +53,14 @@ public class JSTemporalDateTimeRecord {
     private final long microsecond;
     private final long nanosecond;
 
-    private final String calendar;
+    private final TruffleString calendar;
     private final boolean hasCalendar;
 
     private final long weeks;
     private final boolean hasWeeks;
 
     protected JSTemporalDateTimeRecord(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
-                    long weeks, boolean hasWeeks, String calendar, boolean hasCalendar) {
+                    long weeks, boolean hasWeeks, TruffleString calendar, boolean hasCalendar) {
         this.year = year;
         this.month = month;
         this.day = day;
@@ -82,7 +84,7 @@ public class JSTemporalDateTimeRecord {
     }
 
     public static JSTemporalDateTimeRecord createCalendar(long year, long month, long day, long hour, long minute, long second,
-                    long millisecond, long microsecond, long nanosecond, String calendar) {
+                    long millisecond, long microsecond, long nanosecond, TruffleString calendar) {
         return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, 0, false, calendar, true);
     }
 
@@ -127,7 +129,7 @@ public class JSTemporalDateTimeRecord {
         return nanosecond;
     }
 
-    public String getCalendar() {
+    public TruffleString getCalendar() {
         return hasCalendar ? calendar : null;
     }
 

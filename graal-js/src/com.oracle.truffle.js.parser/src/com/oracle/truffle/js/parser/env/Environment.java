@@ -51,6 +51,7 @@ import java.util.function.UnaryOperator;
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.js.parser.ir.Symbol;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSFrameDescriptor;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -67,6 +68,7 @@ import com.oracle.truffle.js.nodes.access.WritePropertyNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InternalSlotId;
@@ -74,10 +76,7 @@ import com.oracle.truffle.js.runtime.util.Pair;
 
 public abstract class Environment {
 
-    public static final String ARGUMENTS_NAME = "arguments";
-    public static final String THIS_NAME = "this";
-    public static final String SUPER_NAME = "super";
-    public static final String NEW_TARGET_NAME = "new.target";
+    public static final TruffleString NEW_TARGET_NAME = Strings.constant("new.target");
 
     private final Environment parent;
     private final FunctionEnvironment functionEnvironment;
@@ -165,7 +164,7 @@ public abstract class Environment {
     }
 
     public JSFrameSlot declareInternalSlot(Object name) {
-        assert name instanceof String || name instanceof InternalSlotId : name;
+        assert name instanceof TruffleString || name instanceof InternalSlotId : name;
         return getBlockFrameDescriptor().findOrAddFrameSlot(name);
     }
 
@@ -203,9 +202,9 @@ public abstract class Environment {
                 scopeLevel = 0;
             } else if (current instanceof BlockEnvironment && current.hasScopeFrame()) {
                 scopeLevel++;
-            } else if (current instanceof DebugEnvironment && name instanceof String) {
-                if (allowDebug && ((DebugEnvironment) current).hasMember((String) name)) {
-                    return new DebugVarRef((String) name, frameLevel);
+            } else if (current instanceof DebugEnvironment && name instanceof TruffleString) {
+                if (allowDebug && ((DebugEnvironment) current).hasMember((TruffleString) name)) {
+                    return new DebugVarRef((TruffleString) name, frameLevel);
                 }
             }
             current = current.getParent();
@@ -250,24 +249,23 @@ public abstract class Environment {
         }
     }
 
-    public final VarRef findLocalVar(String name) {
+    public final VarRef findLocalVar(TruffleString name) {
         return findVar(name, true, true, false, true, true, false);
     }
 
-    public final VarRef findVar(String name, boolean skipWith) {
+    public final VarRef findVar(TruffleString name, boolean skipWith) {
         return findVar(name, skipWith, skipWith, false, false, false, false);
     }
 
-    public final VarRef findBlockScopedVar(String name) {
+    public final VarRef findBlockScopedVar(TruffleString name) {
         return findVar(name, true, true, false, true, true, true);
     }
 
-    public final VarRef findVar(String name, boolean skipWith, boolean skipEval, boolean skipBlockScoped, boolean skipGlobal, boolean skipMapped) {
+    public final VarRef findVar(TruffleString name, boolean skipWith, boolean skipEval, boolean skipBlockScoped, boolean skipGlobal, boolean skipMapped) {
         return findVar(name, skipWith, skipEval, skipBlockScoped, skipGlobal, skipMapped, false);
     }
 
-    public final VarRef findVar(String name, boolean skipWith, boolean skipEval, boolean skipBlockScoped, boolean skipGlobal, boolean skipMapped, boolean skipVar) {
-        assert !name.equals(Null.NAME);
+    public final VarRef findVar(TruffleString name, boolean skipWith, boolean skipEval, boolean skipBlockScoped, boolean skipGlobal, boolean skipMapped, boolean skipVar) {
         Environment current = this;
         int frameLevel = 0;
         int scopeLevel = 0;
@@ -356,7 +354,7 @@ public abstract class Environment {
         }
     }
 
-    private WrapClosure makeEvalWrapClosure(WrapClosure wrapClosure, String name, int frameLevel, int scopeLevel, Environment current) {
+    private WrapClosure makeEvalWrapClosure(WrapClosure wrapClosure, TruffleString name, int frameLevel, int scopeLevel, Environment current) {
         final JSFrameSlot dynamicScopeSlot = current.findBlockFrameSlot(FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER);
         assert dynamicScopeSlot != null;
         return WrapClosure.compose(wrapClosure, new WrapClosure() {
@@ -380,7 +378,7 @@ public abstract class Environment {
         });
     }
 
-    private WrapClosure makeWithWrapClosure(WrapClosure wrapClosure, String name, Object withVarName) {
+    private WrapClosure makeWithWrapClosure(WrapClosure wrapClosure, TruffleString name, Object withVarName) {
         return WrapClosure.compose(wrapClosure, new WrapClosure() {
             @Override
             public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
@@ -422,7 +420,7 @@ public abstract class Environment {
         });
     }
 
-    private WrapClosure makeGlobalWrapClosure(WrapClosure wrapClosure, String name) {
+    private WrapClosure makeGlobalWrapClosure(WrapClosure wrapClosure, TruffleString name) {
         return WrapClosure.compose(wrapClosure, new WrapClosure() {
             @Override
             public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
@@ -444,7 +442,7 @@ public abstract class Environment {
         });
     }
 
-    private WrapClosure makeDebugWrapClosure(WrapClosure wrapClosure, String name, int frameLevel) {
+    private WrapClosure makeDebugWrapClosure(WrapClosure wrapClosure, TruffleString name, int frameLevel) {
         ensureFrameLevelAvailable(frameLevel);
         return WrapClosure.compose(wrapClosure, new WrapClosure() {
             @Override
@@ -521,7 +519,7 @@ public abstract class Environment {
     }
 
     public VarRef createTempVar() {
-        JSFrameSlot var = declareTempVar("tmp");
+        JSFrameSlot var = declareTempVar(Strings.constant("tmp"));
         return findTempVar(var);
     }
 
@@ -559,7 +557,7 @@ public abstract class Environment {
         };
     }
 
-    private JSFrameSlot declareTempVar(String prefix) {
+    private JSFrameSlot declareTempVar(TruffleString prefix) {
         return declareLocalVar(factory.createInternalSlotId(prefix, getFunctionFrameDescriptor().getSize()));
     }
 
@@ -659,7 +657,7 @@ public abstract class Environment {
         protected final Object name;
 
         protected VarRef(Object name) {
-            assert name instanceof String || name instanceof InternalSlotId : name;
+            assert name instanceof TruffleString || name instanceof InternalSlotId : name;
             this.name = name;
         }
 
@@ -683,9 +681,9 @@ public abstract class Environment {
             return null;
         }
 
-        public String getName() {
-            assert name instanceof String : name;
-            return (String) name;
+        public TruffleString getName() {
+            assert name instanceof TruffleString : name;
+            return (TruffleString) name;
         }
 
         public abstract JavaScriptNode createDeleteNode();
@@ -827,7 +825,7 @@ public abstract class Environment {
     }
 
     private abstract class AbstractArgumentsVarRef extends AbstractFrameVarRef {
-        AbstractArgumentsVarRef(int scopeLevel, int frameLevel, String name, Environment current) {
+        AbstractArgumentsVarRef(int scopeLevel, int frameLevel, TruffleString name, Environment current) {
             super(scopeLevel, frameLevel, name, current);
         }
 
@@ -838,7 +836,7 @@ public abstract class Environment {
     }
 
     private final class FunctionCalleeVarRef extends AbstractArgumentsVarRef {
-        FunctionCalleeVarRef(int frameLevel, String name, Environment current) {
+        FunctionCalleeVarRef(int frameLevel, TruffleString name, Environment current) {
             super(0, frameLevel, name, current);
         }
 
@@ -856,7 +854,7 @@ public abstract class Environment {
     private final class ArgumentsVarRef extends AbstractArgumentsVarRef {
         private final JSFrameSlot frameSlot;
 
-        ArgumentsVarRef(JSFrameSlot frameSlot, int scopeLevel, int frameLevel, String name, Environment current) {
+        ArgumentsVarRef(JSFrameSlot frameSlot, int scopeLevel, int frameLevel, TruffleString name, Environment current) {
             super(scopeLevel, frameLevel, name, current);
             this.frameSlot = frameSlot;
         }
@@ -890,7 +888,7 @@ public abstract class Environment {
         private final JSFrameSlot frameSlot;
         private final int parameterIndex;
 
-        public MappedArgumentVarRef(JSFrameSlot frameSlot, int scopeLevel, int frameLevel, String name, Environment current) {
+        public MappedArgumentVarRef(JSFrameSlot frameSlot, int scopeLevel, int frameLevel, TruffleString name, Environment current) {
             super(scopeLevel, frameLevel, name, current);
             assert !JSFrameUtil.hasTemporalDeadZone(frameSlot);
             assert current.function().hasSimpleParameterList();
@@ -921,13 +919,13 @@ public abstract class Environment {
     public class GlobalVarRef extends VarRef {
         private final boolean required;
 
-        public GlobalVarRef(String name) {
+        public GlobalVarRef(TruffleString name) {
             this(name, true);
         }
 
-        private GlobalVarRef(String name, boolean required) {
+        private GlobalVarRef(TruffleString name, boolean required) {
             super(name);
-            assert !name.equals(Null.NAME);
+            assert !Null.NAME.equals(name);
             this.required = required;
         }
 
@@ -985,7 +983,7 @@ public abstract class Environment {
         private final boolean required;
         private final boolean checkTDZ;
 
-        public GlobalLexVarRef(String name, boolean isConst) {
+        public GlobalLexVarRef(TruffleString name, boolean isConst) {
             this(name, isConst, true, false);
         }
 
@@ -1131,7 +1129,7 @@ public abstract class Environment {
     class DebugVarRef extends VarRef {
         private final int frameLevel;
 
-        DebugVarRef(String name, int frameLevel) {
+        DebugVarRef(TruffleString name, int frameLevel) {
             super(name);
             this.frameLevel = frameLevel;
             ensureFrameLevelAvailable(frameLevel);

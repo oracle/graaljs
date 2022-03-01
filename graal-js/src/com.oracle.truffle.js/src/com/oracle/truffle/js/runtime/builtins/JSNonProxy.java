@@ -48,16 +48,17 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Properties;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.Accessor;
@@ -79,6 +80,8 @@ import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
  * @see com.oracle.truffle.js.runtime.objects.JSNonProxyObject
  */
 public abstract class JSNonProxy extends JSClass {
+
+    public static final TruffleString GET_SYMBOL_SPECIES_NAME = Strings.constant("get [Symbol.species]");
 
     protected JSNonProxy() {
     }
@@ -109,7 +112,7 @@ public abstract class JSNonProxy extends JSClass {
     @TruffleBoundary
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
-        return getOwnHelper(store, thisObj, String.valueOf(index), encapsulatingNode);
+        return getOwnHelper(store, thisObj, Strings.fromLong(index), encapsulatingNode);
     }
 
     @TruffleBoundary
@@ -180,7 +183,7 @@ public abstract class JSNonProxy extends JSClass {
         List<Object> keyList = thisObj.getShape().getKeyList();
         List<Object> list = new ArrayList<>(keyList.size());
         for (Object key : keyList) {
-            if ((!symbols && key instanceof Symbol) || (!strings && key instanceof String)) {
+            if ((!symbols && key instanceof Symbol) || (!strings && Strings.isTString(key))) {
                 continue;
             }
             list.add(key);
@@ -209,7 +212,7 @@ public abstract class JSNonProxy extends JSClass {
                 }
                 return false;
             }
-            return DynamicObjectLibrary.getUncached().removeKey(object, key);
+            return Properties.removeKeyUncached(object, key);
         } else {
             /* the prototype might have a property with that name, but we don't care */
             return true;
@@ -219,7 +222,7 @@ public abstract class JSNonProxy extends JSClass {
     @TruffleBoundary
     @Override
     public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
-        return deletePropertyDefault(thisObj, String.valueOf(index), isStrict);
+        return deletePropertyDefault(thisObj, Strings.fromLong(index), isStrict);
     }
 
     @TruffleBoundary
@@ -231,7 +234,7 @@ public abstract class JSNonProxy extends JSClass {
     @TruffleBoundary
     @Override
     public boolean hasOwnProperty(DynamicObject thisObj, long index) {
-        return hasOwnProperty(thisObj, String.valueOf(index));
+        return hasOwnProperty(thisObj, Strings.fromLong(index));
     }
 
     @TruffleBoundary
@@ -274,7 +277,7 @@ public abstract class JSNonProxy extends JSClass {
     }
 
     protected static boolean ordinarySetIndex(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
-        Object key = Boundaries.stringValueOf(index);
+        Object key = Strings.fromLong(index);
         if (receiver != thisObj) {
             // OrdinarySet: set the property on the receiver instead
             return ordinarySetWithReceiver(thisObj, key, value, receiver, isStrict, encapsulatingNode);
@@ -583,7 +586,7 @@ public abstract class JSNonProxy extends JSClass {
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
@@ -618,7 +621,7 @@ public abstract class JSNonProxy extends JSClass {
         if (JSShape.isPrototypeInShape(shape)) {
             JSObjectUtil.setPrototypeImpl(thisObj, newPrototype);
         } else {
-            boolean success = DynamicObjectLibrary.getUncached().putIfPresent(thisObj, JSObject.HIDDEN_PROTO, newPrototype);
+            boolean success = Properties.putIfPresentUncached(thisObj, JSObject.HIDDEN_PROTO, newPrototype);
             assert success;
         }
         return true;
@@ -644,12 +647,12 @@ public abstract class JSNonProxy extends JSClass {
     }
 
     protected static DynamicObject createSymbolSpeciesGetterFunction(JSRealm realm) {
-        return JSFunction.create(realm, JSFunctionData.createCallOnly(realm.getContext(), realm.getContext().getSpeciesGetterFunctionCallTarget(), 0, "get [Symbol.species]"));
+        return JSFunction.create(realm, JSFunctionData.createCallOnly(realm.getContext(), realm.getContext().getSpeciesGetterFunctionCallTarget(), 0, GET_SYMBOL_SPECIES_NAME));
     }
 
     @Override
-    public String getBuiltinToStringTag(DynamicObject object) {
-        return "Object";
+    public TruffleString getBuiltinToStringTag(DynamicObject object) {
+        return Strings.UC_OBJECT;
     }
 
     @Override

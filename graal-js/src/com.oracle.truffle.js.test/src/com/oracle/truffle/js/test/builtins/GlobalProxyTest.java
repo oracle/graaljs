@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 
+import com.oracle.truffle.js.runtime.Strings;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Test;
 
@@ -74,7 +75,7 @@ public class GlobalProxyTest {
             JSContext context = helper.getJSContext();
             JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
             DynamicObject proxyHandler = JSOrdinary.create(context, realm);
-            JSObject.set(proxyHandler, "has", helper.runNoPolyglot("" +
+            JSObject.set(proxyHandler, Strings.fromJavaString("has"), helper.runNoPolyglot("" +
                             "(function() {\n" +
                             "  let Reflect = globalThis.Reflect;\n" +
                             "  return function has(target, key) {\n" +

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,15 +41,16 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public class JSTemporalTimeZoneObject extends JSNonProxyObject {
 
     private final BigInt offsetNanoseconds;
-    private final String identifier;
+    private final TruffleString identifier;
 
-    protected JSTemporalTimeZoneObject(Shape shape, BigInt offsetNanoseconds, String identifier) {
+    protected JSTemporalTimeZoneObject(Shape shape, BigInt offsetNanoseconds, TruffleString identifier) {
         super(shape);
         this.offsetNanoseconds = offsetNanoseconds;
         this.identifier = identifier;
@@ -59,7 +60,7 @@ public class JSTemporalTimeZoneObject extends JSNonProxyObject {
         return offsetNanoseconds;
     }
 
-    public String getIdentifier() {
+    public TruffleString getIdentifier() {
         return identifier;
     }
 }

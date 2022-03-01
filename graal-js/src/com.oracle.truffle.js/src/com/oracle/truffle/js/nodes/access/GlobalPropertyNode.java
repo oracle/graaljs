@@ -48,6 +48,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -55,35 +56,36 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 
 public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
 
-    private final String propertyName;
+    private final TruffleString propertyName;
     private final JSContext context;
     @Child private PropertyGetNode cache;
     @Child private JavaScriptNode globalObjectNode;
 
-    protected GlobalPropertyNode(JSContext context, String propertyName, JavaScriptNode globalObjectNode) {
+    protected GlobalPropertyNode(JSContext context, TruffleString propertyName, JavaScriptNode globalObjectNode) {
         this.propertyName = propertyName;
         this.context = context;
         this.globalObjectNode = globalObjectNode;
         this.cache = PropertyGetNode.create(propertyName, true, context);
     }
 
-    public static JSTargetableNode createPropertyNode(JSContext ctx, String propertyName) {
+    public static JSTargetableNode createPropertyNode(JSContext ctx, TruffleString propertyName) {
         if (ctx != null && ctx.isOptionNashornCompatibilityMode()) {
-            if (propertyName.equals("__LINE__")) {
+            if (Strings.equals(propertyName, Strings.GLOBAL__LINE__)) {
                 return new GlobalConstantNode(propertyName, new GlobalConstantNode.LineNumberNode());
-            } else if (propertyName.equals("__FILE__")) {
+            } else if (Strings.equals(propertyName, Strings.GLOBAL__FILE__)) {
                 return new GlobalConstantNode(propertyName, new GlobalConstantNode.FileNameNode());
-            } else if (propertyName.equals("__DIR__")) {
+            } else if (Strings.equals(propertyName, Strings.GLOBAL__DIR__)) {
                 return new GlobalConstantNode(propertyName, new GlobalConstantNode.DirNameNode());
             }
         }
         return new GlobalPropertyNode(ctx, propertyName, null);
     }
 
-    public static JSTargetableNode createLexicalGlobal(JSContext ctx, String propertyName, boolean checkTDZ) {
+    public static JSTargetableNode createLexicalGlobal(JSContext ctx, TruffleString propertyName, boolean checkTDZ) {
         JavaScriptNode globalScope = checkTDZ ? GlobalScopeNode.createWithTDZCheck(ctx, propertyName) : GlobalScopeNode.create(ctx);
         return new GlobalPropertyNode(ctx, propertyName, globalScope);
     }
@@ -161,7 +163,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
         return cache.getValueDouble(evaluateTarget(frame));
     }
 
-    public String getPropertyKey() {
+    public Object getPropertyKey() {
         return propertyName;
     }
 
@@ -192,6 +194,6 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public String expressionToString() {
-        return getPropertyKey();
+        return getPropertyKey().toString();
     }
 }

@@ -44,6 +44,7 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 
@@ -100,7 +101,7 @@ public class TypedArrayAccess {
         ((JSTypedArrayObject) thisObj).arrayType = arrayType;
     }
 
-    public String getTypedArrayName(DynamicObject thisObj) {
+    public TruffleString getTypedArrayName(DynamicObject thisObj) {
         return getArrayType(thisObj).getFactory().getName();
     }
 }

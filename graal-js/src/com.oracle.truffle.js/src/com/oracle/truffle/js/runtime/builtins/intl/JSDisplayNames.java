@@ -49,11 +49,13 @@ import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.DisplayNamesFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.DisplayNamesPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
@@ -67,8 +69,9 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public final class JSDisplayNames extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
-    public static final String CLASS_NAME = "DisplayNames";
-    public static final String PROTOTYPE_NAME = "DisplayNames.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("DisplayNames");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("DisplayNames.prototype");
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Intl.DisplayNames");
 
     public static final JSDisplayNames INSTANCE = new JSDisplayNames();
 
@@ -80,12 +83,12 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
@@ -95,7 +98,7 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
         DynamicObject displayNamesPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, displayNamesPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, displayNamesPrototype, DisplayNamesPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(displayNamesPrototype, "Intl.DisplayNames");
+        JSObjectUtil.putToStringTag(displayNamesPrototype, TO_STRING_TAG);
         return displayNamesPrototype;
     }
 
@@ -129,12 +132,12 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
 
         DynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
             DynamicObject result = JSOrdinary.create(context, realm);
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.STYLE, style, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.TYPE, type, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.FALLBACK, fallback, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_TYPE, Strings.fromJavaString(type), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_FALLBACK, Strings.fromJavaString(fallback), JSAttributes.getDefault());
             if (languageDisplay != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.LANGUAGE_DISPLAY, languageDisplay, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LANGUAGE_DISPLAY, Strings.fromJavaString(languageDisplay), JSAttributes.getDefault());
             }
             return result;
         }
@@ -264,7 +267,7 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
             default:
                 throw Errors.shouldNotReachHere(type);
         }
-        return (result == null) ? Undefined.instance : result;
+        return (result == null) ? Undefined.instance : Strings.fromJavaString(result);
     }
 
     public static InternalState getInternalState(DynamicObject displayNamesObject) {

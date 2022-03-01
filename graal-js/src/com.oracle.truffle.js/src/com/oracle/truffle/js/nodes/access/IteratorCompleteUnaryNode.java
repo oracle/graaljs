@@ -40,15 +40,15 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
-
-import java.util.Set;
+import com.oracle.truffle.js.runtime.Strings;
 
 /**
  * IteratorComplete(iterResult) unary expression.
@@ -60,7 +60,7 @@ public class IteratorCompleteUnaryNode extends JavaScriptNode {
 
     protected IteratorCompleteUnaryNode(JSContext context, JavaScriptNode iterResultNode) {
         this.iterResultNode = iterResultNode;
-        this.getDoneNode = PropertyGetNode.create(JSRuntime.DONE, false, context);
+        this.getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
     }
 
     public static JavaScriptNode create(JSContext context, JavaScriptNode iterResultNode) {

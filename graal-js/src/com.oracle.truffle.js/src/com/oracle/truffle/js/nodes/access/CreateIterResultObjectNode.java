@@ -45,7 +45,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 
 /**
  * ES6 7.4.7 CreateIterResultObject (value, done).
@@ -57,8 +57,8 @@ public abstract class CreateIterResultObjectNode extends JavaScriptBaseNode {
 
     protected CreateIterResultObjectNode(JSContext context) {
         this.createObjectNode = CreateObjectNode.create(context);
-        this.createValuePropertyNode = CreateDataPropertyNode.create(context, JSRuntime.VALUE);
-        this.createDonePropertyNode = CreateDataPropertyNode.create(context, JSRuntime.DONE);
+        this.createValuePropertyNode = CreateDataPropertyNode.create(context, Strings.VALUE);
+        this.createDonePropertyNode = CreateDataPropertyNode.create(context, Strings.DONE);
     }
 
     public static CreateIterResultObjectNode create(JSContext context) {

@@ -44,8 +44,10 @@ package com.oracle.js.parser.ir;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.js.parser.ParserStrings;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * IR representation for class definitions.
@@ -61,7 +63,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
     private final boolean hasPrivateMethods;
     private final boolean hasPrivateInstanceMethods;
 
-    public static final String PRIVATE_CONSTRUCTOR_BINDING_NAME = "#constructor";
+    public static final TruffleString PRIVATE_CONSTRUCTOR_BINDING_NAME = ParserStrings.constant("#constructor");
 
     /**
      * Constructor.

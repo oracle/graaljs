@@ -40,9 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -50,17 +53,15 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-import java.util.Set;
-
 public class DeclareEvalVariableNode extends StatementNode {
     @Child private JavaScriptNode dynamicScopeNode;
     @Child private WriteNode initScopeNode;
     @Child private HasPropertyCacheNode hasProperty;
     @Child private PropertySetNode defineProperty;
     private final JSContext context;
-    private final String varName;
+    private final TruffleString varName;
 
-    public DeclareEvalVariableNode(JSContext context, String varName, JavaScriptNode dynamicScopeNode, WriteNode writeDynamicScopeNode) {
+    public DeclareEvalVariableNode(JSContext context, TruffleString varName, JavaScriptNode dynamicScopeNode, WriteNode writeDynamicScopeNode) {
         this.context = context;
         this.varName = varName;
         this.dynamicScopeNode = dynamicScopeNode;
@@ -89,7 +90,7 @@ public class DeclareEvalVariableNode extends StatementNode {
         return dynamicScope != Undefined.instance && dynamicScope != Null.instance && dynamicScope != null;
     }
 
-    public String getName() {
+    public Object getName() {
         return varName;
     }
 

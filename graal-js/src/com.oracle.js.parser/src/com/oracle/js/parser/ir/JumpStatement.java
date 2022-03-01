@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,12 +41,14 @@
 
 package com.oracle.js.parser.ir;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 /**
  * Common base class for jump statements (e.g. {@code break} and {@code continue}).
  */
 public abstract class JumpStatement extends Statement {
 
-    private final String labelName;
+    private final TruffleString labelName;
 
     /**
      * Constructor
@@ -56,7 +58,7 @@ public abstract class JumpStatement extends Statement {
      * @param finish finish
      * @param labelName label name for break or null if none
      */
-    JumpStatement(final int lineNumber, final long token, final int finish, final String labelName) {
+    JumpStatement(final int lineNumber, final long token, final int finish, final TruffleString labelName) {
         super(lineNumber, token, finish);
         this.labelName = labelName;
     }
@@ -81,7 +83,7 @@ public abstract class JumpStatement extends Statement {
      *
      * @return label name, or null if none
      */
-    public String getLabelName() {
+    public TruffleString getLabelName() {
         return labelName;
     }
 

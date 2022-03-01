@@ -85,7 +85,7 @@ public class NodeLibraryTest extends JSTest {
             Object[] args = JSArguments.createZeroArg(Undefined.instance, parsedFunction.createFunctionObject());
             FrameDescriptor frameDesc = rootNode.getFrameDescriptor();
             MaterializedFrame frame = Truffle.getRuntime().createMaterializedFrame(args, frameDesc);
-            int pSlot = IntStream.range(0, frameDesc.getNumberOfSlots()).filter(i -> "p".equals(frameDesc.getSlotName(i))).findFirst().orElseThrow(
+            int pSlot = IntStream.range(0, frameDesc.getNumberOfSlots()).filter(i -> String.valueOf(frameDesc.getSlotName(i)).equals("p")).findFirst().orElseThrow(
                             () -> new AssertionError("frame slot 'p' not found"));
             frame.setInt(pSlot, 42);
             Object scope = NodeLibrary.getUncached().getScope(blockScopeNode, frame, true);

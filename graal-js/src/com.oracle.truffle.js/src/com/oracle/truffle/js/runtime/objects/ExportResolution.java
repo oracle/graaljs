@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.Objects;
 
 import com.oracle.js.parser.ir.Module;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Result of the {@code ResolveExport} method of module records.
@@ -76,11 +77,11 @@ public abstract class ExportResolution {
     }
 
     @TruffleBoundary
-    public String getBindingName() {
+    public TruffleString getBindingName() {
         throw new UnsupportedOperationException();
     }
 
-    public static ExportResolution resolved(JSModuleRecord module, String bindingName) {
+    public static ExportResolution resolved(JSModuleRecord module, TruffleString bindingName) {
         return new Resolved(module, bindingName);
     }
 
@@ -97,9 +98,9 @@ public abstract class ExportResolution {
 
     private static class Resolved extends ExportResolution {
         private final JSModuleRecord module;
-        private final String bindingName;
+        private final TruffleString bindingName;
 
-        Resolved(JSModuleRecord module, String bindingName) {
+        Resolved(JSModuleRecord module, TruffleString bindingName) {
             this.module = module;
             this.bindingName = bindingName;
         }
@@ -110,7 +111,7 @@ public abstract class ExportResolution {
         }
 
         @Override
-        public String getBindingName() {
+        public TruffleString getBindingName() {
             return bindingName;
         }
 

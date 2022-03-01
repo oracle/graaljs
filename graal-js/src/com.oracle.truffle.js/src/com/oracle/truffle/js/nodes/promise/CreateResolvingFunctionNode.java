@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.PromiseHook;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
@@ -226,7 +227,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 return new AsyncStackTraceInfo(promise, null);
             }
         }
-        return JSFunctionData.createCallOnly(context, new PromiseResolveRootNode().getCallTarget(), 1, "");
+        return JSFunctionData.createCallOnly(context, new PromiseResolveRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
     private static JSFunctionData createPromiseResolveThenableJobImpl(JSContext context) {
@@ -245,7 +246,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 return promiseResolveThenable.execute(promiseToResolve, thenable, then);
             }
         }
-        return JSFunctionData.createCallOnly(context, new PromiseResolveThenableJob().getCallTarget(), 0, "");
+        return JSFunctionData.createCallOnly(context, new PromiseResolveThenableJob().getCallTarget(), 0, Strings.EMPTY_STRING);
     }
 
     private DynamicObject createPromiseRejectFunction(DynamicObject promise, AlreadyResolved alreadyResolved) {
@@ -296,6 +297,6 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 return new AsyncStackTraceInfo(promise, null);
             }
         }
-        return JSFunctionData.createCallOnly(context, new PromiseRejectRootNode().getCallTarget(), 1, "");
+        return JSFunctionData.createCallOnly(context, new PromiseRejectRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 }

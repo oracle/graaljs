@@ -58,7 +58,7 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -79,7 +79,7 @@ public abstract class GetIteratorNode extends JavaScriptNode {
     protected GetIteratorNode(JSContext context, JavaScriptNode objectNode) {
         this.context = context;
         this.objectNode = objectNode;
-        this.getNextMethodNode = PropertyGetNode.create(JSRuntime.NEXT, context);
+        this.getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
     }
 
     public static GetIteratorNode create(JSContext context) {

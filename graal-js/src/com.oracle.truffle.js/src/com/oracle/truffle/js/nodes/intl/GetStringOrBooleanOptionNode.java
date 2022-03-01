@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.intl;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -50,6 +51,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -68,7 +70,7 @@ public abstract class GetStringOrBooleanOptionNode extends JavaScriptBaseNode {
     @Child JSToStringNode toStringNode;
     @Child JSToBooleanNode toBooleanNode;
 
-    protected GetStringOrBooleanOptionNode(JSContext context, String property, String[] values, Object trueValue, Object falsyValue, Object fallback) {
+    protected GetStringOrBooleanOptionNode(JSContext context, TruffleString property, String[] values, Object trueValue, Object falsyValue, Object fallback) {
         this.values = new HashSet<>(Arrays.asList(values));
         this.trueValue = trueValue;
         this.falsyValue = falsyValue;
@@ -81,7 +83,7 @@ public abstract class GetStringOrBooleanOptionNode extends JavaScriptBaseNode {
 
     public abstract Object executeValue(Object options);
 
-    public static GetStringOrBooleanOptionNode create(JSContext context, String property, String[] values, Object trueValue, Object falsyValue, Object fallback) {
+    public static GetStringOrBooleanOptionNode create(JSContext context, TruffleString property, String[] values, Object trueValue, Object falsyValue, Object fallback) {
         return GetStringOrBooleanOptionNodeGen.create(context, property, values, trueValue, falsyValue, fallback);
     }
 
@@ -101,7 +103,7 @@ public abstract class GetStringOrBooleanOptionNode extends JavaScriptBaseNode {
         if (!valueBoolean) {
             return falsyValue;
         }
-        String stringValue = toStringNode.executeString(value);
+        String stringValue = Strings.toJavaString(toStringNode.executeString(value));
         if (!isValid(stringValue)) {
             errorBranch.enter();
             throw Errors.createRangeErrorFormat("Value %s out of range for options property %s", this, stringValue, propertyGetNode.getKey());

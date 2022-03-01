@@ -52,6 +52,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -181,7 +182,7 @@ public abstract class JSObjectFactory {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             setProto = context.adoptNode(JSObjectUtil.createCached(JSObject.HIDDEN_PROTO, obj));
         }
-        setProto.put(obj, JSObject.HIDDEN_PROTO, prototype);
+        Properties.put(setProto, obj, JSObject.HIDDEN_PROTO, prototype);
     }
 
     public final <T extends DynamicObject> T trackAllocation(T obj) {

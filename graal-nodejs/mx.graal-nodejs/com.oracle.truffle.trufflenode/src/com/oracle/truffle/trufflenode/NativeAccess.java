@@ -146,9 +146,9 @@ public final class NativeAccess {
 
     public static native void notifyImportMetaInitializer(Object importMeta, Object module);
 
-    public static native Object executeResolveCallback(long callback, Object context, String specifier, Object importAssertions, Object referrer);
+    public static native Object executeResolveCallback(long callback, Object context, Object specifier, Object importAssertions, Object referrer);
 
-    public static native Object executeImportModuleDynamicallyCallback(Object context, Object referrer, String specifier, Object importAssertions);
+    public static native Object executeImportModuleDynamicallyCallback(Object context, Object referrer, Object specifier, Object importAssertions);
 
     public static native Object executePrepareStackTraceCallback(Object context, Object error, Object structuredStackTrace);
 
@@ -156,7 +156,7 @@ public final class NativeAccess {
 
     public static native Object readHostObject(long delegate);
 
-    public static native void throwDataCloneError(long delegate, String message);
+    public static native void throwDataCloneError(long delegate, Object message);
 
     public static native int getSharedArrayBufferId(long delegate, Object sharedArrayBuffer);
 

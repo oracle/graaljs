@@ -55,6 +55,7 @@ import com.oracle.truffle.api.profiles.PrimitiveValueProfile;
 import com.oracle.truffle.js.builtins.ForInIteratorPrototypeBuiltinsFactory.ForInIteratorPrototypeNextNodeGen;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.builtins.helper.ListSizeNode;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.HasOnlyShapePropertiesNode;
@@ -66,6 +67,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -86,7 +88,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
     protected ForInIteratorPrototypeBuiltins() {
         super(JSFunction.FOR_IN_ITERATOR_PROTOYPE_NAME);
-        defineFunction("next", 0);
+        defineFunction(Strings.NEXT, 0);
     }
 
     public enum EnumerateIteratorPrototype implements BuiltinEnum<EnumerateIteratorPrototype> {
@@ -106,9 +108,8 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget) {
-        switch (builtin.getName()) {
-            case "next":
-                return ForInIteratorPrototypeNextNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+        if (Strings.equals(Strings.NEXT, builtin.getName())) {
+            return ForInIteratorPrototypeNextNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -157,7 +158,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 if (valuesProfile.profile(state.iterateValues)) {
                     nextValue = JSObject.get(state.object, nextValue);
                 } else {
-                    assert nextValue instanceof String;
+                    assert JSGuards.isString(nextValue);
                 }
             }
             return createIterResultObjectNode.execute(frame, nextValue, done);
@@ -194,7 +195,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 while (state.remainingKeysIndex < state.remainingKeysSize) {
                     final Object next = listGet.execute(state.remainingKeys, state.remainingKeysIndex++);
                     final Object key = getKey(next);
-                    if (!(key instanceof String)) {
+                    if (!JSGuards.isString(key)) {
                         continue;
                     }
                     if (state.isVisitedKey(key)) {

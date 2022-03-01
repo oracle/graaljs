@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,6 +79,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSFrameDescriptor;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
@@ -108,6 +109,7 @@ import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
@@ -149,7 +151,7 @@ public final class GraalJSEvaluator implements JSParser {
     @TruffleBoundary(transferToInterpreterOnException = false)
     @Override
     public ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName) {
-        String wrappedBody = JSRuntime.LINE_SEPARATOR + body + JSRuntime.LINE_SEPARATOR;
+        String wrappedBody = "\n" + body + "\n";
         try {
             GraalJSParserHelper.checkFunctionSyntax(context, context.getParserOptions(), parameterList, wrappedBody, generatorFunction, asyncFunction, sourceName);
         } catch (com.oracle.js.parser.ParserException e) {
@@ -173,7 +175,7 @@ public final class GraalJSEvaluator implements JSParser {
         }
         code.append('(');
         code.append(parameterList);
-        code.append(JSRuntime.LINE_SEPARATOR);
+        code.append(Strings.toJavaString(Strings.LINE_SEPARATOR));
         code.append(") {");
         code.append(wrappedBody);
         code.append("})");
@@ -235,7 +237,7 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, boolean isStrict, String[] argumentNames) {
+    public ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, boolean isStrict, TruffleString[] argumentNames) {
         if (isModuleSource(source)) {
             return fakeScriptForModule(context, source);
         }
@@ -254,7 +256,7 @@ public final class GraalJSEvaluator implements JSParser {
     private ScriptNode fakeScriptForModule(JSContext context, Source source) {
         JSModuleData parsedModule = parseModule(context, source);
         RootNode rootNode = new ModuleScriptRoot(context, parsedModule, source);
-        JSFunctionData functionData = JSFunctionData.createCallOnly(context, rootNode.getCallTarget(), 0, "");
+        JSFunctionData functionData = JSFunctionData.createCallOnly(context, rootNode.getCallTarget(), 0, Strings.EMPTY_STRING);
         return ScriptNode.fromFunctionData(context, functionData);
     }
 
@@ -321,7 +323,7 @@ public final class GraalJSEvaluator implements JSParser {
                 throw JSRuntime.getException(error);
             }
         }
-        return JSFunctionData.createCallOnly(context, new TopLevelAwaitRejectedRootNode().getCallTarget(), 1, "");
+        return JSFunctionData.createCallOnly(context, new TopLevelAwaitRejectedRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
     private static DynamicObject createTopLevelAwaitResolve(JSContext context, JSRealm realm) {
@@ -337,7 +339,7 @@ public final class GraalJSEvaluator implements JSParser {
                 return Undefined.instance;
             }
         }
-        return JSFunctionData.createCallOnly(context, new TopLevelAwaitFulfilledRootNode().getCallTarget(), 1, "");
+        return JSFunctionData.createCallOnly(context, new TopLevelAwaitFulfilledRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
     @Override
@@ -399,12 +401,12 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public JSModuleRecord parseJSONModule(JSRealm realm, Source source) {
         assert isModuleSource(source) : source;
-        Object json = JSFunction.call(JSArguments.createOneArg(Undefined.instance, realm.getJsonParseFunctionObject(), source.getCharacters().toString()));
+        Object json = JSFunction.call(JSArguments.createOneArg(Undefined.instance, realm.getJsonParseFunctionObject(), Strings.fromJavaString(source.getCharacters().toString())));
         return createSyntheticJSONModule(realm, source, json);
     }
 
     private static JSModuleRecord createSyntheticJSONModule(JSRealm realm, Source source, Object hostDefined) {
-        final String exportName = "default";
+        final TruffleString exportName = Strings.DEFAULT;
         JSFrameDescriptor frameDescBuilder = new JSFrameDescriptor(Undefined.instance);
         JSFrameSlot slot = frameDescBuilder.addFrameSlot(exportName);
         FrameDescriptor frameDescriptor = frameDescBuilder.toFrameDescriptor();
@@ -430,7 +432,7 @@ public final class GraalJSEvaluator implements JSParser {
                 module.getEnvironment().setObject(defaultSlot, module.getHostDefined());
             }
         };
-        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), rootNode.getCallTarget(), 0, "");
+        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), rootNode.getCallTarget(), 0, Strings.EMPTY_STRING);
         final JSModuleData parseModule = new JSModuleData(moduleNode, source, functionData, frameDescriptor);
         return new JSModuleRecord(parseModule, realm.getModuleLoader(), hostDefined);
     }
@@ -452,10 +454,10 @@ public final class GraalJSEvaluator implements JSParser {
         if (moduleRequest.getAssertions().isEmpty()) {
             return;
         }
-        Map<String, String> supportedAssertions = new HashMap<>();
-        for (Map.Entry<String, String> assertion : moduleRequest.getAssertions().entrySet()) {
-            String key = assertion.getKey();
-            String value = assertion.getValue();
+        Map<TruffleString, TruffleString> supportedAssertions = new HashMap<>();
+        for (Map.Entry<TruffleString, TruffleString> assertion : moduleRequest.getAssertions().entrySet()) {
+            TruffleString key = assertion.getKey();
+            TruffleString value = assertion.getValue();
             if (context.getSupportedImportAssertions().contains(key)) {
                 supportedAssertions.put(key, value);
             }
@@ -463,17 +465,17 @@ public final class GraalJSEvaluator implements JSParser {
         moduleRequest.setAssertions(supportedAssertions);
     }
 
-    Collection<String> getExportedNames(JSModuleRecord moduleRecord) {
+    Collection<TruffleString> getExportedNames(JSModuleRecord moduleRecord) {
         return getExportedNames(moduleRecord, new HashSet<>());
     }
 
-    private Collection<String> getExportedNames(JSModuleRecord moduleRecord, Set<JSModuleRecord> exportStarSet) {
+    private Collection<TruffleString> getExportedNames(JSModuleRecord moduleRecord, Set<JSModuleRecord> exportStarSet) {
         if (exportStarSet.contains(moduleRecord)) {
             // Assert: We've reached the starting point of an import * circularity.
             return Collections.emptySortedSet();
         }
         exportStarSet.add(moduleRecord);
-        Collection<String> exportedNames = new HashSet<>();
+        Collection<TruffleString> exportedNames = new HashSet<>();
         Module module = moduleRecord.getModule();
         for (ExportEntry exportEntry : module.getLocalExportEntries()) {
             // Assert: module provides the direct binding for this export.
@@ -485,8 +487,8 @@ public final class GraalJSEvaluator implements JSParser {
         }
         for (ExportEntry exportEntry : module.getStarExportEntries()) {
             JSModuleRecord requestedModule = hostResolveImportedModule(moduleRecord, exportEntry.getModuleRequest());
-            Collection<String> starNames = getExportedNames(requestedModule, exportStarSet);
-            for (String starName : starNames) {
+            Collection<TruffleString> starNames = getExportedNames(requestedModule, exportStarSet);
+            for (TruffleString starName : starNames) {
                 if (!starName.equals(Module.DEFAULT_NAME)) {
                     if (!exportedNames.contains(starName)) {
                         exportedNames.add(starName);
@@ -499,7 +501,7 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public ExportResolution resolveExport(JSModuleRecord referencingModule, String exportName) {
+    public ExportResolution resolveExport(JSModuleRecord referencingModule, TruffleString exportName) {
         return resolveExport(referencingModule, exportName, new HashSet<>());
     }
 
@@ -517,8 +519,8 @@ public final class GraalJSEvaluator implements JSParser {
      * found or the request is found to be circular, null is returned. If the request is found to be
      * ambiguous, the string "ambiguous" is returned.
      */
-    private ExportResolution resolveExport(JSModuleRecord referencingModule, String exportName, Set<Pair<JSModuleRecord, String>> resolveSet) {
-        Pair<JSModuleRecord, String> resolved = new Pair<>(referencingModule, exportName);
+    private ExportResolution resolveExport(JSModuleRecord referencingModule, TruffleString exportName, Set<Pair<JSModuleRecord, TruffleString>> resolveSet) {
+        Pair<JSModuleRecord, TruffleString> resolved = new Pair<>(referencingModule, exportName);
         if (resolveSet.contains(resolved)) {
             // Assert: this is a circular import request.
             return ExportResolution.notFound();
@@ -577,9 +579,9 @@ public final class GraalJSEvaluator implements JSParser {
         }
 
         assert moduleRecord.getStatus() != Status.Unlinked;
-        Collection<String> exportedNames = getExportedNames(moduleRecord);
-        List<Pair<String, ExportResolution>> unambiguousNames = new ArrayList<>();
-        for (String exportedName : exportedNames) {
+        Collection<TruffleString> exportedNames = getExportedNames(moduleRecord);
+        List<Pair<TruffleString, ExportResolution>> unambiguousNames = new ArrayList<>();
+        for (TruffleString exportedName : exportedNames) {
             ExportResolution resolution = resolveExport(moduleRecord, exportedName);
             if (resolution.isNull()) {
                 throw Errors.createSyntaxError("Could not resolve export");
@@ -587,8 +589,8 @@ public final class GraalJSEvaluator implements JSParser {
                 unambiguousNames.add(new Pair<>(exportedName, resolution));
             }
         }
-        Map<String, ExportResolution> sortedNames = new LinkedHashMap<>();
-        unambiguousNames.stream().sorted(Comparator.comparing(Pair::getFirst)).forEachOrdered(p -> sortedNames.put(p.getFirst(), p.getSecond()));
+        Map<TruffleString, ExportResolution> sortedNames = new LinkedHashMap<>();
+        unambiguousNames.stream().sorted((a, b) -> a.getFirst().compareCharsUTF16Uncached(b.getFirst())).forEachOrdered(p -> sortedNames.put(p.getFirst(), p.getSecond()));
         DynamicObject namespace = JSModuleNamespace.create(moduleRecord.getContext(), JSRealm.get(null), moduleRecord, sortedNames);
         moduleRecord.setNamespace(namespace);
         return namespace;
@@ -817,7 +819,7 @@ public final class GraalJSEvaluator implements JSParser {
         PromiseCapabilityRecord capability = NewPromiseCapabilityNode.createDefault(realm);
         DynamicObject onFulfilled = createCallAsyncModuleFulfilled(realm, module);
         DynamicObject onRejected = createCallAsyncModuleRejected(realm, module);
-        Object then = JSObject.get(capability.getPromise(), "then");
+        Object then = JSObject.get(capability.getPromise(), Strings.THEN);
         JSFunction.call(JSArguments.create(capability.getPromise(), then, onFulfilled, onRejected));
         moduleExecution(realm, module, capability);
     }
@@ -844,7 +846,7 @@ public final class GraalJSEvaluator implements JSParser {
                 return asyncModuleExecutionFulfilled(getRealm(), (JSModuleRecord) module, dynamicImportResolutionResult);
             }
         }
-        return JSFunctionData.createCallOnly(context, new AsyncModuleFulfilledRoot().getCallTarget(), 1, "");
+        return JSFunctionData.createCallOnly(context, new AsyncModuleFulfilledRoot().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
     @TruffleBoundary
@@ -872,7 +874,7 @@ public final class GraalJSEvaluator implements JSParser {
                 return asyncModuleExecutionRejected(getRealm(), module, reaction);
             }
         }
-        return JSFunctionData.createCallOnly(context, new AsyncModuleExecutionRejectedRoot().getCallTarget(), 1, "");
+        return JSFunctionData.createCallOnly(context, new AsyncModuleExecutionRejectedRoot().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
     private static void gatherAvailableAncestors(JSModuleRecord module, Set<JSModuleRecord> execList) {

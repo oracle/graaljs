@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -51,7 +52,6 @@ import java.util.MissingResourceException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
-import java.time.ZoneId;
 
 import com.ibm.icu.text.CaseMap;
 import com.ibm.icu.text.CaseMap.Lower;
@@ -66,9 +66,11 @@ import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -189,6 +191,7 @@ public final class IntlUtil {
     public static final String OR_SHORT = "or-short";
     public static final String ORDINAL = "ordinal";
     public static final String PERCENT = "percent";
+    public static final String PLURAL_CATEGORIES = "pluralCategories";
     public static final String QUARTER = "quarter";
     public static final String REGION = "region";
     public static final String ROUNDING_INCREMENT = "roundingIncrement";
@@ -245,6 +248,171 @@ public final class IntlUtil {
     public static final String WEEK_OF_YEAR = "weekOfYear";
     public static final String YEAR = "year";
     public static final String YEAR_NAME = "yearName";
+
+    public static final TruffleString KEY__2_DIGIT = Strings.constant(_2_DIGIT);
+    public static final TruffleString KEY_ACCENT = Strings.constant(ACCENT);
+    public static final TruffleString KEY_ACCOUNTING = Strings.constant(ACCOUNTING);
+    public static final TruffleString KEY_ALWAYS = Strings.constant(ALWAYS);
+    public static final TruffleString KEY_AUTO = Strings.constant(AUTO);
+    public static final TruffleString KEY_BEST_FIT = Strings.constant(BEST_FIT);
+    public static final TruffleString KEY_BASE = Strings.constant(BASE);
+    public static final TruffleString KEY_BASE_NAME = Strings.constant(BASE_NAME);
+    public static final TruffleString KEY_BASIC = Strings.constant(BASIC);
+    public static final TruffleString KEY_BREAK_TYPE = Strings.constant(BREAK_TYPE);
+    public static final TruffleString KEY_CALENDAR = Strings.constant(CALENDAR);
+    public static final TruffleString KEY_CALENDARS = Strings.constant(CALENDARS);
+    public static final TruffleString KEY_CARDINAL = Strings.constant(CARDINAL);
+    public static final TruffleString KEY_CASE = Strings.constant(CASE);
+    public static final TruffleString KEY_CASE_FIRST = Strings.constant(CASE_FIRST);
+    public static final TruffleString KEY_CEIL = Strings.constant(CEIL);
+    public static final TruffleString KEY_CODE = Strings.constant(CODE);
+    public static final TruffleString KEY_COLLATION = Strings.constant(COLLATION);
+    public static final TruffleString KEY_COLLATIONS = Strings.constant(COLLATIONS);
+    public static final TruffleString KEY_COMPACT = Strings.constant(COMPACT);
+    public static final TruffleString KEY_COMPACT_DISPLAY = Strings.constant(COMPACT_DISPLAY);
+    public static final TruffleString KEY_CONJUNCTION = Strings.constant(CONJUNCTION);
+    public static final TruffleString KEY_CURRENCY = Strings.constant(CURRENCY);
+    public static final TruffleString KEY_CURRENCY_DISPLAY = Strings.constant(CURRENCY_DISPLAY);
+    public static final TruffleString KEY_CURRENCY_SIGN = Strings.constant(CURRENCY_SIGN);
+    public static final TruffleString KEY_DATE_STYLE = Strings.constant(DATE_STYLE);
+    public static final TruffleString KEY_DATE_TIME_FIELD = Strings.constant(DATE_TIME_FIELD);
+    public static final TruffleString KEY_DAY = Strings.constant(DAY);
+    public static final TruffleString KEY_DAY_PERIOD = Strings.constant(DAY_PERIOD);
+    public static final TruffleString KEY_DEFAULT = Strings.constant(DEFAULT);
+    public static final TruffleString KEY_DECIMAL = Strings.constant(DECIMAL);
+    public static final TruffleString KEY_DIALECT = Strings.constant(DIALECT);
+    public static final TruffleString KEY_DIRECTION = Strings.constant(DIRECTION);
+    public static final TruffleString KEY_DISJUNCTION = Strings.constant(DISJUNCTION);
+    public static final TruffleString KEY_ELEMENT = Strings.constant(ELEMENT);
+    public static final TruffleString KEY_END_RANGE = Strings.constant(END_RANGE);
+    public static final TruffleString KEY_ENGINEERING = Strings.constant(ENGINEERING);
+    public static final TruffleString KEY_ERA = Strings.constant(ERA);
+    public static final TruffleString KEY_EXCEPT_ZERO = Strings.constant(EXCEPT_ZERO);
+    public static final TruffleString KEY_EXPAND = Strings.constant(EXPAND);
+    public static final TruffleString KEY_FALLBACK = Strings.constant(FALLBACK);
+    public static final TruffleString KEY_FALSE = Strings.constant(FALSE);
+    public static final TruffleString KEY_FIRST_DAY = Strings.constant(FIRST_DAY);
+    public static final TruffleString KEY_FLOOR = Strings.constant(FLOOR);
+    public static final TruffleString KEY_FORMAT_MATCHER = Strings.constant(FORMAT_MATCHER);
+    public static final TruffleString KEY_FRACTIONAL_SECOND_DIGITS = Strings.constant(FRACTIONAL_SECOND_DIGITS);
+    public static final TruffleString KEY_FRACTION_DIGITS = Strings.constant(FRACTION_DIGITS);
+    public static final TruffleString KEY_FULL = Strings.constant(FULL);
+    public static final TruffleString KEY_GRANULARITY = Strings.constant(GRANULARITY);
+    public static final TruffleString KEY_GRAPHEME = Strings.constant(GRAPHEME);
+    public static final TruffleString KEY_H11 = Strings.constant(H11);
+    public static final TruffleString KEY_H12 = Strings.constant(H12);
+    public static final TruffleString KEY_H23 = Strings.constant(H23);
+    public static final TruffleString KEY_H24 = Strings.constant(H24);
+    public static final TruffleString KEY_HALF_CEIL = Strings.constant(HALF_CEIL);
+    public static final TruffleString KEY_HALF_EVEN = Strings.constant(HALF_EVEN);
+    public static final TruffleString KEY_HALF_EXPAND = Strings.constant(HALF_EXPAND);
+    public static final TruffleString KEY_HALF_FLOOR = Strings.constant(HALF_FLOOR);
+    public static final TruffleString KEY_HALF_TRUNC = Strings.constant(HALF_TRUNC);
+    public static final TruffleString KEY_HOUR = Strings.constant(HOUR);
+    public static final TruffleString KEY_HOUR_CYCLE = Strings.constant(HOUR_CYCLE);
+    public static final TruffleString KEY_HOUR_CYCLES = Strings.constant(HOUR_CYCLES);
+    public static final TruffleString KEY_HOUR12 = Strings.constant(HOUR12);
+    public static final TruffleString KEY_INDEX = Strings.constant(INDEX);
+    public static final TruffleString KEY_INPUT = Strings.constant(INPUT);
+    public static final TruffleString KEY_IS_WORD_LIKE = Strings.constant(IS_WORD_LIKE);
+    public static final TruffleString KEY_IGNORE_PUNCTUATION = Strings.constant(IGNORE_PUNCTUATION);
+    public static final TruffleString KEY_LANGUAGE = Strings.constant(LANGUAGE);
+    public static final TruffleString KEY_LANGUAGE_DISPLAY = Strings.constant(LANGUAGE_DISPLAY);
+    public static final TruffleString KEY_LESS_PRECISION = Strings.constant(LESS_PRECISION);
+    public static final TruffleString KEY_LITERAL = Strings.constant(LITERAL);
+    public static final TruffleString KEY_LOCALE = Strings.constant(LOCALE);
+    public static final TruffleString KEY_LOCALE_MATCHER = Strings.constant(LOCALE_MATCHER);
+    public static final TruffleString KEY_LONG = Strings.constant(LONG);
+    public static final TruffleString KEY_LONG_GENERIC = Strings.constant(LONG_GENERIC);
+    public static final TruffleString KEY_LONG_OFFSET = Strings.constant(LONG_OFFSET);
+    public static final TruffleString KEY_LOOKUP = Strings.constant(LOOKUP);
+    public static final TruffleString KEY_LOOSE = Strings.constant(LOOSE);
+    public static final TruffleString KEY_LOWER = Strings.constant(LOWER);
+    public static final TruffleString KEY_LTR = Strings.constant(LTR);
+    public static final TruffleString KEY_MAXIMUM_FRACTION_DIGITS = Strings.constant(MAXIMUM_FRACTION_DIGITS);
+    public static final TruffleString KEY_MAXIMUM_SIGNIFICANT_DIGITS = Strings.constant(MAXIMUM_SIGNIFICANT_DIGITS);
+    public static final TruffleString KEY_MEDIUM = Strings.constant(MEDIUM);
+    public static final TruffleString KEY_MIN2 = Strings.constant(MIN2);
+    public static final TruffleString KEY_MINIMAL_DAYS = Strings.constant(MINIMAL_DAYS);
+    public static final TruffleString KEY_MINIMUM_FRACTION_DIGITS = Strings.constant(MINIMUM_FRACTION_DIGITS);
+    public static final TruffleString KEY_MINIMUM_INTEGER_DIGITS = Strings.constant(MINIMUM_INTEGER_DIGITS);
+    public static final TruffleString KEY_MINIMUM_SIGNIFICANT_DIGITS = Strings.constant(MINIMUM_SIGNIFICANT_DIGITS);
+    public static final TruffleString KEY_MINUTE = Strings.constant(MINUTE);
+    public static final TruffleString KEY_MONTH = Strings.constant(MONTH);
+    public static final TruffleString KEY_MORE_PRECISION = Strings.constant(MORE_PRECISION);
+    public static final TruffleString KEY_NAME = Strings.constant(NAME);
+    public static final TruffleString KEY_NARROW = Strings.constant(NARROW);
+    public static final TruffleString KEY_NARROW_SYMBOL = Strings.constant(NARROW_SYMBOL);
+    public static final TruffleString KEY_NEGATIVE = Strings.constant(NEGATIVE);
+    public static final TruffleString KEY_NEVER = Strings.constant(NEVER);
+    public static final TruffleString KEY_NONE = Strings.constant(NONE);
+    public static final TruffleString KEY_NORMAL = Strings.constant(NORMAL);
+    public static final TruffleString KEY_NOTATION = Strings.constant(NOTATION);
+    public static final TruffleString KEY_NUMERIC = Strings.constant(NUMERIC);
+    public static final TruffleString KEY_NUMBERING_SYSTEM = Strings.constant(NUMBERING_SYSTEM);
+    public static final TruffleString KEY_NUMBERING_SYSTEMS = Strings.constant(NUMBERING_SYSTEMS);
+    public static final TruffleString KEY_OR = Strings.constant(OR);
+    public static final TruffleString KEY_OR_NARROW = Strings.constant(OR_NARROW);
+    public static final TruffleString KEY_OR_SHORT = Strings.constant(OR_SHORT);
+    public static final TruffleString KEY_ORDINAL = Strings.constant(ORDINAL);
+    public static final TruffleString KEY_PERCENT = Strings.constant(PERCENT);
+    public static final TruffleString KEY_PLURAL_CATEGORIES = Strings.constant(PLURAL_CATEGORIES);
+    public static final TruffleString KEY_QUARTER = Strings.constant(QUARTER);
+    public static final TruffleString KEY_REGION = Strings.constant(REGION);
+    public static final TruffleString KEY_ROUNDING_INCREMENT = Strings.constant(ROUNDING_INCREMENT);
+    public static final TruffleString KEY_ROUNDING_MODE = Strings.constant(ROUNDING_MODE);
+    public static final TruffleString KEY_ROUNDING_PRIORITY = Strings.constant(ROUNDING_PRIORITY);
+    public static final TruffleString KEY_RTL = Strings.constant(RTL);
+    public static final TruffleString KEY_SCIENTIFIC = Strings.constant(SCIENTIFIC);
+    public static final TruffleString KEY_SCRIPT = Strings.constant(SCRIPT);
+    public static final TruffleString KEY_SEARCH = Strings.constant(SEARCH);
+    public static final TruffleString KEY_SEP = Strings.constant(SEP);
+    public static final TruffleString KEY_SECOND = Strings.constant(SECOND);
+    public static final TruffleString KEY_SEGMENT = Strings.constant(SEGMENT);
+    public static final TruffleString KEY_SENTENCE = Strings.constant(SENTENCE);
+    public static final TruffleString KEY_SENSITIVITY = Strings.constant(SENSITIVITY);
+    public static final TruffleString KEY_SHARED = Strings.constant(SHARED);
+    public static final TruffleString KEY_SHORT = Strings.constant(SHORT);
+    public static final TruffleString KEY_SHORT_GENERIC = Strings.constant(SHORT_GENERIC);
+    public static final TruffleString KEY_SHORT_OFFSET = Strings.constant(SHORT_OFFSET);
+    public static final TruffleString KEY_SIGNIFICANT_DIGITS = Strings.constant(SIGNIFICANT_DIGITS);
+    public static final TruffleString KEY_SIGN_DISPLAY = Strings.constant(SIGN_DISPLAY);
+    public static final TruffleString KEY_SORT = Strings.constant(SORT);
+    public static final TruffleString KEY_SOURCE = Strings.constant(SOURCE);
+    public static final TruffleString KEY_STANDARD = Strings.constant(STANDARD);
+    public static final TruffleString KEY_STANDARD_NARROW = Strings.constant(STANDARD_NARROW);
+    public static final TruffleString KEY_STANDARD_SHORT = Strings.constant(STANDARD_SHORT);
+    public static final TruffleString KEY_START_RANGE = Strings.constant(START_RANGE);
+    public static final TruffleString KEY_STRICT = Strings.constant(STRICT);
+    public static final TruffleString KEY_STRIP_IF_INTEGER = Strings.constant(STRIP_IF_INTEGER);
+    public static final TruffleString KEY_STYLE = Strings.constant(STYLE);
+    public static final TruffleString KEY_SYMBOL = Strings.constant(SYMBOL);
+    public static final TruffleString KEY_TERM = Strings.constant(TERM);
+    public static final TruffleString KEY_TEXT_INFO = Strings.constant(TEXT_INFO);
+    public static final TruffleString KEY_TIME_STYLE = Strings.constant(TIME_STYLE);
+    public static final TruffleString KEY_TIME_ZONE = Strings.constant(TIME_ZONE);
+    public static final TruffleString KEY_TIME_ZONES = Strings.constant(TIME_ZONES);
+    public static final TruffleString KEY_TIME_ZONE_NAME = Strings.constant(TIME_ZONE_NAME);
+    public static final TruffleString KEY_TRAILING_ZERO_DISPLAY = Strings.constant(TRAILING_ZERO_DISPLAY);
+    public static final TruffleString KEY_TRUNC = Strings.constant(TRUNC);
+    public static final TruffleString KEY_TYPE = Strings.constant(TYPE);
+    public static final TruffleString KEY_UND = Strings.constant(UND);
+    public static final TruffleString KEY_UNIT = Strings.constant(UNIT);
+    public static final TruffleString KEY_UNIT_DISPLAY = Strings.constant(UNIT_DISPLAY);
+    public static final TruffleString KEY_UNIT_NARROW = Strings.constant(UNIT_NARROW);
+    public static final TruffleString KEY_UNIT_SHORT = Strings.constant(UNIT_SHORT);
+    public static final TruffleString KEY_UPPER = Strings.constant(UPPER);
+    public static final TruffleString KEY_USAGE = Strings.constant(USAGE);
+    public static final TruffleString KEY_USE_GROUPING = Strings.constant(USE_GROUPING);
+    public static final TruffleString KEY_VALUE = Strings.constant(VALUE);
+    public static final TruffleString KEY_VARIANT = Strings.constant(VARIANT);
+    public static final TruffleString KEY_WORD = Strings.constant(WORD);
+    public static final TruffleString KEY_WEEKDAY = Strings.constant(WEEKDAY);
+    public static final TruffleString KEY_WEEKEND = Strings.constant(WEEKEND);
+    public static final TruffleString KEY_WEEK_INFO = Strings.constant(WEEK_INFO);
+    public static final TruffleString KEY_WEEK_OF_YEAR = Strings.constant(WEEK_OF_YEAR);
+    public static final TruffleString KEY_YEAR = Strings.constant(YEAR);
+    public static final TruffleString KEY_YEAR_NAME = Strings.constant(YEAR_NAME);
 
     // https://tc39.es/ecma402/#table-sanctioned-simple-unit-identifiers
     private static final Set<String> SANCTIONED_SIMPLE_UNIT_IDENTIFIERS = new HashSet<>(Arrays.asList(new String[]{
@@ -343,7 +511,7 @@ public final class IntlUtil {
             Locale noExtensionsLocale = Locale.forLanguageTag(locale).stripExtensions();
             Locale availableLocale = bestAvailableLocale(ctx, noExtensionsLocale);
             if (availableLocale != null) {
-                result.add(locale);
+                result.add(Strings.fromJavaString(locale));
             }
         }
         return result;
@@ -636,21 +804,21 @@ public final class IntlUtil {
     }
 
     @TruffleBoundary
-    public static String toLowerCase(JSContext ctx, String s, String[] locales) {
+    public static TruffleString toLowerCase(JSContext ctx, String s, String[] locales) {
         Locale strippedLocale = selectedLocaleStripped(ctx, locales);
         StringBuilder result = new StringBuilder();
         Lower tr = CaseMap.toLower();
         tr.apply(strippedLocale, s, result, null);
-        return result.toString();
+        return Strings.fromJavaString(result.toString());
     }
 
     @TruffleBoundary
-    public static String toUpperCase(JSContext ctx, String s, String[] locales) {
+    public static TruffleString toUpperCase(JSContext ctx, String s, String[] locales) {
         Locale strippedLocale = selectedLocaleStripped(ctx, locales);
         StringBuilder result = new StringBuilder();
         Upper tr = CaseMap.toUpper();
         tr.apply(strippedLocale, s, result, null);
-        return result.toString();
+        return Strings.fromJavaString(result.toString());
     }
 
     @TruffleBoundary
@@ -668,13 +836,13 @@ public final class IntlUtil {
 
     public static DynamicObject makePart(JSContext context, JSRealm realm, String type, String value, String unit, String source) {
         DynamicObject p = JSOrdinary.create(context, realm);
-        JSObject.set(p, TYPE, type);
-        JSObject.set(p, VALUE, value);
+        JSObject.set(p, KEY_TYPE, Strings.fromJavaString(type));
+        JSObject.set(p, KEY_VALUE, Strings.fromJavaString(value));
         if (unit != null) {
-            JSObject.set(p, UNIT, unit);
+            JSObject.set(p, KEY_UNIT, Strings.fromJavaString(unit));
         }
         if (source != null) {
-            JSObject.set(p, IntlUtil.SOURCE, source);
+            JSObject.set(p, IntlUtil.KEY_SOURCE, Strings.fromJavaString(source));
         }
         return p;
     }

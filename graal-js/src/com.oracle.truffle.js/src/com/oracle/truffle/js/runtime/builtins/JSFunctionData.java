@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -64,7 +65,7 @@ public final class JSFunctionData {
     @CompilationFinal private volatile CallTarget constructNewTarget;
 
     private final JSContext context;
-    @CompilationFinal private String name;
+    @CompilationFinal private TruffleString name;
     /** The ExpectedArgumentCount and initial value of the function's {@code length} property. */
     private final int length;
 
@@ -106,7 +107,7 @@ public final class JSFunctionData {
     private static final AtomicReferenceFieldUpdater<JSFunctionData, CallTarget> UPDATER_ROOT_TARGET = //
                     AtomicReferenceFieldUpdater.newUpdater(JSFunctionData.class, CallTarget.class, "rootTarget");
 
-    private JSFunctionData(JSContext context, CallTarget callTarget, CallTarget constructTarget, CallTarget constructNewTarget, int length, String name, int flags) {
+    private JSFunctionData(JSContext context, CallTarget callTarget, CallTarget constructTarget, CallTarget constructNewTarget, int length, TruffleString name, int flags) {
         this.context = context;
         this.callTarget = callTarget;
         this.constructTarget = constructTarget;
@@ -116,11 +117,11 @@ public final class JSFunctionData {
         this.flags = flags;
     }
 
-    public static JSFunctionData create(JSContext context, CallTarget callTarget, CallTarget constructTarget, CallTarget constructNewTarget, int length, String name, int flags) {
+    public static JSFunctionData create(JSContext context, CallTarget callTarget, CallTarget constructTarget, CallTarget constructNewTarget, int length, TruffleString name, int flags) {
         return new JSFunctionData(context, callTarget, constructTarget, constructNewTarget, length, name, flags);
     }
 
-    public static JSFunctionData create(JSContext context, CallTarget callTarget, CallTarget constructTarget, CallTarget constructNewTarget, int length, String name, boolean isConstructor,
+    public static JSFunctionData create(JSContext context, CallTarget callTarget, CallTarget constructTarget, CallTarget constructNewTarget, int length, TruffleString name, boolean isConstructor,
                     boolean isDerived, boolean isStrict, boolean isBuiltin, boolean needsParentFrame, boolean isGenerator, boolean isAsync, boolean isClassConstructor,
                     boolean strictFunctionProperties, boolean needsNewTarget, boolean isBound) {
         int flags = (isConstructor ? IS_CONSTRUCTOR : 0) | (isDerived ? IS_DERIVED : 0) | (isStrict ? IS_STRICT : 0) | (isBuiltin ? IS_BUILTIN : 0) |
@@ -129,25 +130,26 @@ public final class JSFunctionData {
         return create(context, callTarget, constructTarget, constructNewTarget, length, name, flags);
     }
 
-    public static JSFunctionData create(JSContext context, CallTarget callTarget, CallTarget constructTarget, int length, String name, boolean isConstructor, boolean isDerived, boolean strictMode,
+    public static JSFunctionData create(JSContext context, CallTarget callTarget, CallTarget constructTarget, int length, TruffleString name, boolean isConstructor, boolean isDerived,
+                    boolean strictMode,
                     boolean isBuiltin) {
         assert callTarget != null && constructTarget != null;
         return create(context, callTarget, constructTarget, constructTarget, length, name, isConstructor, isDerived, strictMode, isBuiltin, false, false, false, false,
                         hasStrictProperties(context, strictMode, isBuiltin), false, false);
     }
 
-    public static JSFunctionData createCallOnly(JSContext context, CallTarget callTarget, int length, String name) {
+    public static JSFunctionData createCallOnly(JSContext context, CallTarget callTarget, int length, TruffleString name) {
         assert callTarget != null;
         CallTarget constructTarget = context.getNotConstructibleCallTarget();
         return create(context, callTarget, constructTarget, length, name, false, false, false, true);
     }
 
-    public static JSFunctionData create(JSContext context, int length, String name, boolean isConstructor, boolean isDerived, boolean strictMode, boolean isBuiltin) {
+    public static JSFunctionData create(JSContext context, int length, TruffleString name, boolean isConstructor, boolean isDerived, boolean strictMode, boolean isBuiltin) {
         return create(context, null, null, null, length, name, isConstructor, isDerived, strictMode, isBuiltin, false, false, false, false,
                         hasStrictProperties(context, strictMode, isBuiltin), false, false);
     }
 
-    public static JSFunctionData create(JSContext context, CallTarget callTarget, int length, String name) {
+    public static JSFunctionData create(JSContext context, CallTarget callTarget, int length, TruffleString name) {
         assert callTarget != null;
         return create(context, callTarget, callTarget, callTarget, length, name, true, false, false, false, false, false, false, false, false, false, false);
     }
@@ -188,11 +190,11 @@ public final class JSFunctionData {
         return context;
     }
 
-    public String getName() {
+    public TruffleString getName() {
         return name;
     }
 
-    public void setName(String name) {
+    public void setName(TruffleString name) {
         this.name = name;
     }
 

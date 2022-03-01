@@ -54,6 +54,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.ProxyFunctionBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -66,6 +67,7 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -78,24 +80,26 @@ import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 
 public final class JSProxy extends AbstractJSClass implements PrototypeSupplier {
 
-    public static final String CLASS_NAME = "Proxy";
+    public static final TruffleString CLASS_NAME = Strings.constant("Proxy");
 
     public static final JSProxy INSTANCE = new JSProxy();
 
     /* 9.5: Internal methods */
-    public static final String GET_PROTOTYPE_OF = "getPrototypeOf";
-    public static final String SET_PROTOTYPE_OF = "setPrototypeOf";
-    public static final String IS_EXTENSIBLE = "isExtensible";
-    public static final String PREVENT_EXTENSIONS = "preventExtensions";
-    public static final String GET_OWN_PROPERTY_DESCRIPTOR = "getOwnPropertyDescriptor";
-    public static final String HAS = "has";
-    public static final String GET = "get";
-    public static final String SET = "set";
-    public static final String DELETE_PROPERTY = "deleteProperty";
-    public static final String DEFINE_PROPERTY = "defineProperty";
-    public static final String OWN_KEYS = "ownKeys";
-    public static final String APPLY = "apply";
-    public static final String CONSTRUCT = "construct";
+    public static final TruffleString GET_PROTOTYPE_OF = Strings.constant("getPrototypeOf");
+    public static final TruffleString SET_PROTOTYPE_OF = Strings.constant("setPrototypeOf");
+    public static final TruffleString IS_EXTENSIBLE = Strings.constant("isExtensible");
+    public static final TruffleString PREVENT_EXTENSIONS = Strings.constant("preventExtensions");
+    public static final TruffleString GET_OWN_PROPERTY_DESCRIPTOR = Strings.constant("getOwnPropertyDescriptor");
+    public static final TruffleString HAS = Strings.constant("has");
+    public static final TruffleString GET = Strings.constant("get");
+    public static final TruffleString SET = Strings.constant("set");
+    public static final TruffleString DELETE_PROPERTY = Strings.constant("deleteProperty");
+    public static final TruffleString DEFINE_PROPERTY = Strings.constant("defineProperty");
+    public static final TruffleString OWN_KEYS = Strings.constant("ownKeys");
+    public static final TruffleString APPLY = Strings.constant("apply");
+    public static final TruffleString CONSTRUCT = Strings.constant("construct");
+    public static final TruffleString FOREIGN = Strings.constant("Foreign");
+    public static final TruffleString PROXY_CALL = Strings.constant("ProxyCall");
 
     public static final HiddenKey REVOCABLE_PROXY = new HiddenKey("RevocableProxy");
 
@@ -122,13 +126,13 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return CLASS_NAME;
     }
 
     @Override
     public String toString() {
-        return CLASS_NAME;
+        return Strings.toJavaString(CLASS_NAME);
     }
 
     public static DynamicObject create(JSContext context, JSRealm realm, Object target, DynamicObject handler) {
@@ -189,7 +193,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @Override
     public Object getOwnHelper(DynamicObject store, Object receiver, long index, Node encapsulatingNode) {
         assert JSRuntime.isSafeInteger(index);
-        return proxyGetHelper(store, Boundaries.stringValueOf(index), receiver, encapsulatingNode);
+        return proxyGetHelper(store, Strings.fromLong(index), receiver, encapsulatingNode);
     }
 
     @TruffleBoundary
@@ -246,7 +250,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @TruffleBoundary
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
-        return proxySet(thisObj, Boundaries.stringValueOf(index), value, receiver, isStrict, encapsulatingNode);
+        return proxySet(thisObj, Strings.fromLong(index), value, receiver, isStrict, encapsulatingNode);
     }
 
     @TruffleBoundary
@@ -351,7 +355,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @TruffleBoundary
     @Override
     public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
-        return delete(thisObj, String.valueOf(index), isStrict);
+        return delete(thisObj, Strings.fromLong(index), isStrict);
     }
 
     @TruffleBoundary
@@ -543,7 +547,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     // internal methods
 
     @Override
-    public String getBuiltinToStringTag(DynamicObject object) {
+    public TruffleString getBuiltinToStringTag(DynamicObject object) {
         Object targetNonProxy = getTargetNonProxy(object);
         if (JSDynamicObject.isJSDynamicObject(targetNonProxy)) {
             if (JSArray.isJSArray(targetNonProxy)) {
@@ -551,7 +555,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             } else if (JSFunction.isJSFunction(targetNonProxy)) {
                 return JSFunction.CLASS_NAME;
             } else {
-                return "Object";
+                return Strings.UC_OBJECT;
             }
         } else {
             InteropLibrary interop = InteropLibrary.getUncached(targetNonProxy);
@@ -560,19 +564,23 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             } else if (interop.isExecutable(targetNonProxy) || interop.isInstantiable(targetNonProxy)) {
                 return JSFunction.CLASS_NAME;
             } else {
-                return "Object";
+                return Strings.UC_OBJECT;
             }
         }
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
             Object target = getTarget(obj);
             Object handler = getHandler(obj);
-            return "Proxy(" + JSRuntime.toDisplayStringInner(target, allowSideEffects, format, depth, obj) + ", " + JSRuntime.toDisplayStringInner(handler, allowSideEffects, format, depth, obj) + ")";
+            return Strings.concatAll(Strings.PROXY_PAREN,
+                            JSRuntime.toDisplayStringInner(target, allowSideEffects, format, depth, obj),
+                            Strings.COMMA_SPC,
+                            JSRuntime.toDisplayStringInner(handler, allowSideEffects, format, depth, obj),
+                            Strings.PAREN_CLOSE);
         }
     }
 
@@ -591,7 +599,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         return new JSConstructor(proxyConstructor, dummyPrototype);
     }
 
-    public static Object getTrapFromObject(DynamicObject maybeHandler, String trapName) {
+    public static Object getTrapFromObject(DynamicObject maybeHandler, TruffleString trapName) {
         Object method = JSObject.get(maybeHandler, trapName);
         if (method == Undefined.instance || method == Null.instance) {
             return Undefined.instance;
@@ -868,7 +876,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             RootCallTarget callTarget = new ProxyCallRootNode(c, false, false).getCallTarget();
             RootCallTarget constructTarget = new ProxyCallRootNode(c, true, false).getCallTarget();
             RootCallTarget constructNewTarget = new ProxyCallRootNode(c, true, true).getCallTarget();
-            return JSFunctionData.create(c, callTarget, constructTarget, constructNewTarget, 0, "ProxyCall", 0);
+            return JSFunctionData.create(c, callTarget, constructTarget, constructNewTarget, 0, PROXY_CALL, 0);
         });
     }
 

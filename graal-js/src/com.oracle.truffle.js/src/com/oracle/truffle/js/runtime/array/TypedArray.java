@@ -51,6 +51,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -65,7 +66,7 @@ public abstract class TypedArray extends ScriptArray {
     private final int bytesPerElement;
     private final boolean offset;
     private final byte bufferType;
-    private final String name;
+    private final TruffleString name;
     private final TypedArrayFactory factory;
 
     protected static final byte BUFFER_TYPE_ARRAY = 0;
@@ -164,7 +165,7 @@ public abstract class TypedArray extends ScriptArray {
         return bytesPerElement;
     }
 
-    public final String getName() {
+    public final TruffleString getName() {
         return name;
     }
 

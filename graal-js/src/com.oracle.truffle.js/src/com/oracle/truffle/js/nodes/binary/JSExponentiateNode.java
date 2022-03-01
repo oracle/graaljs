@@ -40,18 +40,20 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-
-import java.util.Set;
+import com.oracle.truffle.js.runtime.Strings;
 
 @NodeInfo(shortName = "**")
 public abstract class JSExponentiateNode extends JSBinaryNode {
@@ -116,8 +118,8 @@ public abstract class JSExponentiateNode extends JSBinaryNode {
         return overloadedOperatorNode.execute(a, b);
     }
 
-    protected String getOverloadedOperatorName() {
-        return "**";
+    protected TruffleString getOverloadedOperatorName() {
+        return Strings.SYMBOL_STAR_STAR;
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = "doDouble")

@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -156,6 +157,6 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
                 return Undefined.instance;
             }
         }
-        return JSFunctionData.createCallOnly(context, new GetCapabilitiesExecutorNode().getCallTarget(), 2, "");
+        return JSFunctionData.createCallOnly(context, new GetCapabilitiesExecutorNode().getCallTarget(), 2, Strings.EMPTY_STRING);
     }
 }

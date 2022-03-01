@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
@@ -54,8 +57,7 @@ import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
-
-import java.util.Set;
+import com.oracle.truffle.js.runtime.Strings;
 
 @NodeInfo(shortName = "<<")
 public abstract class JSLeftShiftNode extends JSBinaryNode {
@@ -117,8 +119,8 @@ public abstract class JSLeftShiftNode extends JSBinaryNode {
         return overloadedOperatorNode.execute(a, b);
     }
 
-    protected String getOverloadedOperatorName() {
-        return "<<";
+    protected TruffleString getOverloadedOperatorName() {
+        return Strings.ANGLE_BRACKET_OPEN_2;
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInteger", "doIntegerDouble", "doDouble", "doBigInt"})

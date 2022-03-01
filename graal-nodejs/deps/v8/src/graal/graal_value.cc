@@ -394,7 +394,7 @@ v8::Local<v8::String> GraalValue::ToString(v8::Isolate* isolate) const {
     if (java_string == NULL) {
         return v8::Local<v8::String>();
     }
-    GraalString* graal_string = GraalString::Allocate(graal_isolate, (jstring) java_string);
+    GraalString* graal_string = GraalString::Allocate(graal_isolate, java_string);
     return reinterpret_cast<v8::String*> (graal_string);
 }
 
@@ -564,9 +564,9 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
             break;
         case STRING_VALUE:
             if (placement) {
-                result = GraalString::Allocate(isolate, (jstring) java_object, placement);
+                result = GraalString::Allocate(isolate, java_object, placement);
             } else {
-                result = GraalString::Allocate(isolate, (jstring) java_object);
+                result = GraalString::Allocate(isolate, java_object);
             }
             break;
         case NUMBER_VALUE:
@@ -631,9 +631,9 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
             JNI_CALL(jobject, value_string, isolate, GraalAccessMethod::value_string, Object, java_object);
             isolate->GetJNIEnv()->DeleteLocalRef(java_object);
             if (placement) {
-                result = GraalString::Allocate(isolate, (jstring) value_string, placement);
+                result = GraalString::Allocate(isolate, value_string, placement);
             } else {
-                result = GraalString::Allocate(isolate, (jstring) value_string);
+                result = GraalString::Allocate(isolate, value_string);
             }
             break;
         case ARRAY_BUFFER_VIEW_OBJECT:
@@ -769,9 +769,9 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
             JNI_CALL(jobject, value_unknown, isolate, GraalAccessMethod::value_unknown, Object, java_object);
             isolate->GetJNIEnv()->DeleteLocalRef(java_object);
             if (placement) {
-                result = GraalString::Allocate(isolate, (jstring) value_unknown, placement);
+                result = GraalString::Allocate(isolate, value_unknown, placement);
             } else {
-                result = GraalString::Allocate(isolate, (jstring) value_unknown);
+                result = GraalString::Allocate(isolate, value_unknown);
             }
             break;
     }
@@ -783,6 +783,6 @@ v8::Local<v8::String> GraalValue::TypeOf(v8::Isolate* isolate) {
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     jobject java_value = GetJavaObject();
     JNI_CALL(jobject, java_type, graal_isolate, GraalAccessMethod::value_type_of, Object, java_value);
-    GraalString* graal_type = GraalString::Allocate(graal_isolate, (jstring) java_type);
+    GraalString* graal_type = GraalString::Allocate(graal_isolate, java_type);
     return reinterpret_cast<v8::String*> (graal_type);
 }

@@ -46,6 +46,8 @@ import static org.junit.Assert.assertTrue;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Strings;
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.Before;
@@ -108,6 +110,8 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class MaterializedNodes {
 
+    public static final TruffleString TEST = Strings.constant("test");
+    public static final TruffleString FOO = Strings.constant("foo");
     private JSContext jsContext;
     private Context polyContext;
 
@@ -145,7 +149,7 @@ public class MaterializedNodes {
 
     @Test
     public void materializeMulti() {
-        JSTargetableNode undef = GlobalConstantNode.createGlobalConstant("test", Undefined.instance);
+        JSTargetableNode undef = GlobalConstantNode.createGlobalConstant(TEST, Undefined.instance);
         JavaScriptNode[] args = new JavaScriptNode[]{};
         JSFunctionCallNode c = JSFunctionCallNode.createInvoke(undef, args, false, false);
         c.setSourceSection(Source.newBuilder(JavaScriptLanguage.ID, "", "").build().createUnavailableSection());
@@ -213,13 +217,13 @@ public class MaterializedNodes {
 
     @Test
     public void materializeTwiceGlobalProperty() {
-        JavaScriptNode prop = GlobalPropertyNode.createPropertyNode(getDummyCx(), "foo");
+        JavaScriptNode prop = GlobalPropertyNode.createPropertyNode(getDummyCx(), FOO);
         assertNotMaterializedTwice(prop, ReadPropertyTag.class);
     }
 
     @Test
     public void materializeTwicePropertyRead() {
-        PropertyNode prop = PropertyNode.createProperty(getDummyCx(), dummy, "foo");
+        PropertyNode prop = PropertyNode.createProperty(getDummyCx(), dummy, FOO);
         assertNotMaterializedTwice(prop, ReadPropertyTag.class);
     }
 
@@ -243,7 +247,7 @@ public class MaterializedNodes {
 
     @Test
     public void materializeTwicePropertyWrite() {
-        WritePropertyNode prop = WritePropertyNode.create(dummy, "foo", dummy, getDummyCx(), false);
+        WritePropertyNode prop = WritePropertyNode.create(dummy, FOO, dummy, getDummyCx(), false);
         assertNotMaterializedTwice(prop, WritePropertyTag.class);
     }
 
@@ -343,7 +347,7 @@ public class MaterializedNodes {
 
     @Test
     public void materializeMultiInvoke() {
-        JSTargetableNode prop = PropertyNode.createProperty(getDummyCx(), dummy, "foo");
+        JSTargetableNode prop = PropertyNode.createProperty(getDummyCx(), dummy, FOO);
         prop.setSourceSection(dummySourceSection);
         JavaScriptNode[] args = new JavaScriptNode[]{};
         JSFunctionCallNode c = JSFunctionCallNode.createInvoke(prop, args, false, false);
@@ -352,7 +356,7 @@ public class MaterializedNodes {
 
     @Test
     public void materializeNew() {
-        JSTargetableNode prop = GlobalPropertyNode.createPropertyNode(getDummyCx(), "foo");
+        JSTargetableNode prop = GlobalPropertyNode.createPropertyNode(getDummyCx(), FOO);
         JavaScriptNode[] args = new JavaScriptNode[]{};
         AbstractFunctionArgumentsNode arguments = JSFunctionArgumentsNode.create(getDummyCx(), args);
         JSNewNode newnode = JSNewNode.create(getDummyCx(), prop, arguments);

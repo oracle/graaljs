@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.LexicalContext;
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -56,7 +57,8 @@ import com.oracle.truffle.js.runtime.objects.JSModuleData;
 
 public final class JavaScriptTranslator extends GraalJSTranslator {
 
-    private JavaScriptTranslator(LexicalContext lc, NodeFactory factory, JSContext context, Source source, String[] argumentNames, int prologLength, Environment environment, boolean isParentStrict) {
+    private JavaScriptTranslator(LexicalContext lc, NodeFactory factory, JSContext context, Source source, TruffleString[] argumentNames, int prologLength, Environment environment,
+                    boolean isParentStrict) {
         super(lc, factory, context, source, argumentNames, prologLength, environment, isParentStrict);
     }
 
@@ -69,7 +71,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
     }
 
     public static ScriptNode translateScript(NodeFactory factory, JSContext context, Source source, boolean isParentStrict, String prologue,
-                    String epilogue, String[] argumentNames) {
+                    String epilogue, TruffleString[] argumentNames) {
         return translateScript(factory, context, null, source, isParentStrict, false, false, null, prologue, epilogue, argumentNames);
     }
 
@@ -86,7 +88,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
     }
 
     private static ScriptNode translateScript(NodeFactory nodeFactory, JSContext context, Environment env, Source source, boolean isParentStrict,
-                    boolean isEval, boolean evalInFunction, DirectEvalContext directEval, String prologue, String epilogue, String[] argumentNames) {
+                    boolean isEval, boolean evalInFunction, DirectEvalContext directEval, String prologue, String epilogue, TruffleString[] argumentNames) {
         Scope parentScope = directEval == null ? null : directEval.scope;
         FunctionNode parserFunctionNode = GraalJSParserHelper.parseScript(context, source, context.getParserOptions().putStrict(isParentStrict), isEval, evalInFunction, parentScope, prologue,
                         epilogue, argumentNames);

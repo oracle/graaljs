@@ -50,6 +50,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -62,7 +63,6 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
 /**
  * This node optimizes the check whether the argument is null or undefined. Used from the
@@ -124,7 +124,7 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     }
 
     @Specialization
-    protected static boolean doLazyString(@SuppressWarnings("unused") JSLazyString operand) {
+    protected static boolean doTString(@SuppressWarnings("unused") TruffleString operand) {
         return false;
     }
 

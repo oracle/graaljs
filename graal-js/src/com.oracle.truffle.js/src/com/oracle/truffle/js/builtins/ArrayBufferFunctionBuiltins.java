@@ -45,6 +45,7 @@ import com.oracle.truffle.js.builtins.ArrayBufferFunctionBuiltinsFactory.JSIsArr
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
@@ -58,7 +59,7 @@ public final class ArrayBufferFunctionBuiltins extends JSBuiltinsContainer.Lambd
 
     protected ArrayBufferFunctionBuiltins() {
         super(JSArrayBuffer.CLASS_NAME);
-        defineFunction("isView", 1, (context, builtin) -> JSIsArrayBufferViewNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context)));
+        defineFunction(Strings.IS_VIEW, 1, (context, builtin) -> JSIsArrayBufferViewNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context)));
     }
 
     public abstract static class JSIsArrayBufferViewNode extends JSBuiltinNode {

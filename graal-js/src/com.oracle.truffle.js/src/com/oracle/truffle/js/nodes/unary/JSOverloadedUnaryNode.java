@@ -40,20 +40,20 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOperatorsAllowed;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 import com.oracle.truffle.js.runtime.objects.OperatorSet;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOperatorsAllowed;
 
 /**
  * This node implements unary operators applied to an operand with overloaded operators. The logic
@@ -62,13 +62,13 @@ import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOp
 @ImportStatic(OperatorSet.class)
 public abstract class JSOverloadedUnaryNode extends JavaScriptBaseNode {
 
-    private final String overloadedOperatorName;
+    private final TruffleString overloadedOperatorName;
 
-    protected JSOverloadedUnaryNode(String overloadedOperatorName) {
+    protected JSOverloadedUnaryNode(TruffleString overloadedOperatorName) {
         this.overloadedOperatorName = overloadedOperatorName;
     }
 
-    public static JSOverloadedUnaryNode create(String overloadedOperatorName) {
+    public static JSOverloadedUnaryNode create(TruffleString overloadedOperatorName) {
         return JSOverloadedUnaryNodeGen.create(overloadedOperatorName);
     }
 
@@ -94,14 +94,14 @@ public abstract class JSOverloadedUnaryNode extends JavaScriptBaseNode {
 
     private Object performOverloaded(JSFunctionCallNode callNode, Object operatorImplementation, Object operand) {
         if (operatorImplementation == null) {
-            throw Errors.createTypeError(Boundaries.stringConcat("No overload found for ", getOverloadedOperatorName()), this);
+            throw Errors.createTypeErrorNoOverloadFound(getOverloadedOperatorName(), this);
         }
         // What should be the value of 'this' when invoking overloaded operators?
         // Currently, we set it to 'undefined'.
         return callNode.executeCall(JSArguments.create(Undefined.instance, operatorImplementation, operand));
     }
 
-    protected String getOverloadedOperatorName() {
+    protected TruffleString getOverloadedOperatorName() {
         return overloadedOperatorName;
     }
 }

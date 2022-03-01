@@ -40,16 +40,20 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.*;
-import com.oracle.truffle.js.nodes.*;
-import com.oracle.truffle.js.runtime.*;
-import com.oracle.truffle.js.runtime.objects.*;
-
-import java.util.Set;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 /**
  * ES6 12.2.9.3 Runtime Semantics: GetTemplateObject(templateLiteral).
@@ -99,7 +103,7 @@ public abstract class GetTemplateObjectNode extends JavaScriptNode {
         DynamicObject template = cookedStrings.execute(frame);
         DynamicObject rawObj = rawStrings.execute(frame);
         JSObject.setIntegrityLevel(rawObj, true);
-        JSObjectUtil.putDataProperty(context, template, "raw", rawObj, JSAttributes.notConfigurableNotEnumerableNotWritable());
+        JSObjectUtil.putDataProperty(context, template, Strings.RAW, rawObj, JSAttributes.notConfigurableNotEnumerableNotWritable());
         JSObject.setIntegrityLevel(template, true);
 
         return template;

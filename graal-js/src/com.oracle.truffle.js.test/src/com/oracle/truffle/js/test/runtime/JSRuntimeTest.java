@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -72,6 +73,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
@@ -90,7 +92,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSStringObject;
 import com.oracle.truffle.js.runtime.builtins.JSSymbolObject;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.test.JSTest;
@@ -153,7 +154,7 @@ public class JSRuntimeTest extends JSTest {
 
     @Test
     public void testNumberToStringWorksForSafeInteger() {
-        assertEquals("42", JSRuntime.numberToString(SafeInteger.valueOf(42)));
+        assertEquals(Strings.constant("42"), JSRuntime.numberToString(SafeInteger.valueOf(42)));
     }
 
     @Test
@@ -168,9 +169,9 @@ public class JSRuntimeTest extends JSTest {
         testHelper.getJSContext(); // initialize JSContext
 
         assertEquals(42, JSRuntime.importValue(42));
-        assertEquals("42", JSRuntime.importValue("42"));
+        assertEquals(Strings.constant("42"), JSRuntime.importValue("42"));
         assertEquals(true, JSRuntime.importValue(true));
-        assertEquals("X", JSRuntime.importValue('X'));
+        assertEquals(Strings.constant("X"), JSRuntime.importValue('X'));
 
         // same for now, might not hold eternally
         assertSame(42, JSRuntime.importValue((byte) 42));
@@ -233,11 +234,11 @@ public class JSRuntimeTest extends JSTest {
         return new Object[]{0, 1,
                         true, false,
                         0.5,
-                        "foo",
+                        Strings.constant("foo"),
                         Symbol.SYMBOL_MATCH,
                         Null.instance,
                         Undefined.instance,
-                        JSString.create(ctx, realm, "hallo"),
+                        JSString.create(ctx, realm, Strings.constant("hallo")),
                         JSNumber.create(ctx, realm, 4711),
                         JSBoolean.create(ctx, realm, true),
                         JSOrdinary.create(ctx, realm),
@@ -269,8 +270,8 @@ public class JSRuntimeTest extends JSTest {
 
         for (int i = 0; i < values.length; i++) {
             Object v1 = values[i];
-            String r1 = JSRuntime.typeof(v1);
-            String r2 = node.executeString(v1);
+            Object r1 = JSRuntime.typeof(v1);
+            Object r2 = node.executeString(v1);
             assertTrue("wrong outcode of typeof for i=" + i, r1.equals(r2));
         }
     }
@@ -279,11 +280,11 @@ public class JSRuntimeTest extends JSTest {
     public void testSafeToStringCollections() {
         DynamicObject map = JSMap.create(testHelper.getJSContext(), testHelper.getRealm());
         JSMap.getInternalMap(map).put("foo", "bar");
-        assertEquals("Map(1){\"foo\" => \"bar\"}", JSRuntime.safeToString(map));
+        assertEquals(Strings.constant("Map(1){\"foo\" => \"bar\"}"), JSRuntime.safeToString(map));
 
         DynamicObject set = JSSet.create(testHelper.getJSContext(), testHelper.getRealm());
         JSSet.getInternalSet(set).put("foo", "UNUSED");
-        assertEquals("Set(1){\"foo\"}", JSRuntime.safeToString(set));
+        assertEquals(Strings.constant("Set(1){\"foo\"}"), JSRuntime.safeToString(set));
     }
 
     @Test
@@ -303,15 +304,15 @@ public class JSRuntimeTest extends JSTest {
         assertTrue(JSRuntime.isArrayIndex(Long.valueOf(4294967294L)));
         assertFalse(JSRuntime.isArrayIndex(Long.valueOf(4294967295L)));
         // String
-        assertFalse(JSRuntime.isArrayIndex("-1"));
-        assertTrue(JSRuntime.isArrayIndex("0"));
-        assertFalse(JSRuntime.isArrayIndex((Object) "-1"));
-        assertTrue(JSRuntime.isArrayIndex((Object) "0"));
-        assertTrue(JSRuntime.isArrayIndex((Object) "4294967294"));
-        assertFalse(JSRuntime.isArrayIndex((Object) "4294967295"));
-        assertFalse(JSRuntime.isArrayIndex((Object) "99999999999999999999999"));
-        assertFalse(JSRuntime.isArrayIndex((Object) "NaN"));
-        assertFalse(JSRuntime.isArrayIndex(null));
+        assertFalse(JSRuntime.isArrayIndexString(Strings.constant("-1")));
+        assertTrue(JSRuntime.isArrayIndexString(Strings.constant("0")));
+        assertFalse(JSRuntime.isArrayIndex(Strings.constant("-1")));
+        assertTrue(JSRuntime.isArrayIndex(Strings.constant("0")));
+        assertTrue(JSRuntime.isArrayIndex(Strings.constant("4294967294")));
+        assertFalse(JSRuntime.isArrayIndex(Strings.constant("4294967295")));
+        assertFalse(JSRuntime.isArrayIndex(Strings.constant("99999999999999999999999")));
+        assertFalse(JSRuntime.isArrayIndex(Strings.constant("NaN")));
+        assertFalse(JSRuntime.isArrayIndexString(null));
     }
 
     @Test
@@ -336,7 +337,7 @@ public class JSRuntimeTest extends JSTest {
     @Test
     public void testToPropertyKey() {
         // no conversion necessary
-        assertTrue(JSRuntime.isPropertyKey(JSRuntime.toPropertyKey("test")));
+        assertTrue(JSRuntime.isPropertyKey(JSRuntime.toPropertyKey(Strings.constant("test"))));
         assertTrue(JSRuntime.isPropertyKey(JSRuntime.toPropertyKey(Symbol.SYMBOL_SEARCH)));
 
         // conversion necessary
@@ -358,7 +359,7 @@ public class JSRuntimeTest extends JSTest {
                 Object[] args = frame.getArguments();
                 return "" + JSArguments.getUserArgument(args, 0) + JSArguments.getUserArgument(args, 1) + JSArguments.getUserArgument(args, 2);
             }
-        }.getCallTarget(), 0, "test"));
+        }.getCallTarget(), 0, Strings.TEST));
 
         assertEquals("foo42false", JSRuntime.call(fnObj, thisObj, defaultArgs));
         assertEquals("foo42false", JSRuntime.call(JSProxy.create(ctx, realm, fnObj, createOrdinaryObject()), thisObj, defaultArgs));
@@ -408,45 +409,8 @@ public class JSRuntimeTest extends JSTest {
         assertTrue(JSRuntime.toLength(42) == 42);
     }
 
-    @Test
-    public void testLength() {
-        testHelper.getJSContext(); // intializes Context
-
-        // lengthIntl(CharSequence)
-        assertEquals(3, JSRuntime.length("ABC"));
-        assertEquals(42, JSRuntime.length(new TestCharSequence()));
-        assertEquals(40, JSRuntime.length(createLazyString()));
-    }
-
-    private static CharSequence createLazyString() {
-        return JSLazyString.create("01234567890123456789", "01234567890123456789");
-    }
-
-    @Test
-    public void testCharAt() {
-        testHelper.getJSContext(); // initializes Context
-
-        // charAt(CharSequence, int)
-        assertEquals('A', JSRuntime.charAt("ABC", 0));
-        assertEquals('A', JSRuntime.charAt(new TestCharSequence(), 0));
-        assertEquals('0', JSRuntime.charAt(createLazyString(), 0));
-    }
-
-    private static class TestCharSequence implements CharSequence {
-        @Override
-        public int length() {
-            return 42;
-        }
-
-        @Override
-        public char charAt(int index) {
-            return 'A';
-        }
-
-        @Override
-        public CharSequence subSequence(int start, int end) {
-            return null;
-        }
+    private static TruffleString createLazyString() {
+        return Strings.concat(Strings.constant("01234567890123456789"), Strings.constant("01234567890123456789"));
     }
 
     @Test
@@ -498,9 +462,9 @@ public class JSRuntimeTest extends JSTest {
         assertThrowsTypeError(() -> JSRuntime.toObject(ctx, Undefined.instance));
 
         assertTrue(JSRuntime.toObject(ctx, true) instanceof JSBooleanObject);
-        assertTrue(JSRuntime.toObject(ctx, "String") instanceof JSStringObject);
+        assertTrue(JSRuntime.toObject(ctx, Strings.constant("String")) instanceof JSStringObject);
         assertTrue(JSRuntime.toObject(ctx, Math.PI) instanceof JSNumberObject);
-        assertTrue(JSRuntime.toObject(ctx, Symbol.create("sym")) instanceof JSSymbolObject);
+        assertTrue(JSRuntime.toObject(ctx, Symbol.create(Strings.constant("sym"))) instanceof JSSymbolObject);
         assertTrue(JSRuntime.toObject(ctx, BigInt.valueOf(1)) instanceof JSBigIntObject);
 
         Object object = createOrdinaryObject();
@@ -524,23 +488,23 @@ public class JSRuntimeTest extends JSTest {
         testHelper.getJSContext(); // initialize JSContext
 
         // toStringIsString(Object)
-        assertEquals("ABC", JSRuntime.toStringIsString("ABC"));
-        assertEquals(40, JSRuntime.toStringIsString(createLazyString()).length());
+        assertEquals(Strings.constant("ABC"), JSRuntime.toStringIsString(Strings.constant("ABC")));
+        assertEquals(40, Strings.toJavaString(JSRuntime.toStringIsString(createLazyString())).length());
     }
 
     @Test
     public void testTrimJSWhiteSpace() {
         // trimJSWhiteSpace(String)
-        assertEquals("A", JSRuntime.trimJSWhiteSpace(" A "));
-        assertEquals("A", JSRuntime.trimJSWhiteSpace("A "));
-        assertEquals("A", JSRuntime.trimJSWhiteSpace(" A"));
-        assertEquals("A", JSRuntime.trimJSWhiteSpace("A"));
-        assertEquals("A", JSRuntime.trimJSWhiteSpace(" A "));
-        assertEquals("AB", JSRuntime.trimJSWhiteSpace("AB  "));
-        assertEquals("AB", JSRuntime.trimJSWhiteSpace("  AB"));
-        assertEquals("AB", JSRuntime.trimJSWhiteSpace("AB"));
-        assertEquals("", JSRuntime.trimJSWhiteSpace("  "));
-        assertEquals("", JSRuntime.trimJSWhiteSpace(""));
+        assertEquals(Strings.constant("A"), JSRuntime.trimJSWhiteSpace(Strings.constant(" A ")));
+        assertEquals(Strings.constant("A"), JSRuntime.trimJSWhiteSpace(Strings.constant("A ")));
+        assertEquals(Strings.constant("A"), JSRuntime.trimJSWhiteSpace(Strings.constant(" A")));
+        assertEquals(Strings.constant("A"), JSRuntime.trimJSWhiteSpace(Strings.constant("A")));
+        assertEquals(Strings.constant("A"), JSRuntime.trimJSWhiteSpace(Strings.constant(" A ")));
+        assertEquals(Strings.constant("AB"), JSRuntime.trimJSWhiteSpace(Strings.constant("AB  ")));
+        assertEquals(Strings.constant("AB"), JSRuntime.trimJSWhiteSpace(Strings.constant("  AB")));
+        assertEquals(Strings.constant("AB"), JSRuntime.trimJSWhiteSpace(Strings.constant("AB")));
+        assertEquals(Strings.EMPTY_STRING, JSRuntime.trimJSWhiteSpace(Strings.constant("  ")));
+        assertEquals(Strings.EMPTY_STRING, JSRuntime.trimJSWhiteSpace(Strings.constant("")));
     }
 
     @Test
@@ -573,8 +537,8 @@ public class JSRuntimeTest extends JSTest {
         assertEquals(42.0, (double) JSRuntime.exportValue(SafeInteger.valueOf(42)), BIGDELTA);
 
         Object exportedLazyString = JSRuntime.exportValue(createLazyString());
-        assertTrue(exportedLazyString instanceof String);
-        assertEquals(createLazyString().toString(), exportedLazyString);
+        assertTrue(exportedLazyString instanceof TruffleString);
+        assertEquals(createLazyString(), exportedLazyString);
     }
 
     private static void assertThrowsTypeError(Runnable runnable) {
@@ -598,8 +562,8 @@ public class JSRuntimeTest extends JSTest {
         JSRuntime.requireObjectCoercible(Math.PI, context);
         JSRuntime.requireObjectCoercible(SafeInteger.valueOf(9876543210L), context);
         JSRuntime.requireObjectCoercible("foo", context);
-        JSRuntime.requireObjectCoercible(JSLazyString.create("long left part", "long right part"), context);
-        JSRuntime.requireObjectCoercible(Symbol.create("private"), context);
+        JSRuntime.requireObjectCoercible(Strings.concat(Strings.constant("long left part"), Strings.constant("long right part")), context);
+        JSRuntime.requireObjectCoercible(Symbol.create(Strings.constant("private")), context);
         JSRuntime.requireObjectCoercible(BigInt.valueOf(0), context);
         JSRuntime.requireObjectCoercible(createOrdinaryObject(), context);
 

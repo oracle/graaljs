@@ -44,8 +44,10 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -53,8 +55,8 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 
 public final class JSGlobal extends JSNonProxy {
 
-    public static final String CLASS_NAME = "global";
-    public static final String EVAL_NAME = "eval";
+    public static final TruffleString CLASS_NAME = Strings.constant("global");
+    public static final TruffleString EVAL_NAME = Strings.constant("eval");
 
     public static final JSGlobal INSTANCE = new JSGlobal();
 
@@ -96,7 +98,7 @@ public final class JSGlobal extends JSNonProxy {
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return CLASS_NAME;
     }
 

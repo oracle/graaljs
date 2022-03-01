@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,10 +49,13 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.runtime.Properties;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -86,9 +89,11 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
                     @CachedLibrary("target") DynamicObjectLibrary objectLibrary,
                     @Bind("objectLibrary.getProperty(target, key)") Property property,
                     @Cached IsCallableNode isCallable,
-                    @Cached BranchProfile proxyBranch) {
+                    @Cached BranchProfile proxyBranch,
+                    @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
+        TruffleString tStringKey = Strings.fromJavaString(fromJavaStringNode, key);
         if (JSProperty.isAccessor(property)) {
-            Accessor accessor = (Accessor) objectLibrary.getOrDefault(target, key, null);
+            Accessor accessor = (Accessor) Properties.getOrDefault(objectLibrary, target, tStringKey, null);
             if ((query & READABLE) != 0 && accessor.hasGetter()) {
                 return true;
             }
@@ -114,7 +119,7 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
                 return true;
             }
             if ((query & INVOCABLE) != 0) {
-                Object value = objectLibrary.getOrDefault(target, key, Undefined.instance);
+                Object value = Properties.getOrDefault(objectLibrary, target, tStringKey, Undefined.instance);
                 if (JSProperty.isProxy(property)) {
                     proxyBranch.enter();
                     value = ((PropertyProxy) value).get(target);
@@ -134,11 +139,13 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
     static boolean member(DynamicObject target, String key, int query,
                     @Cached GetPrototypeNode getPrototype,
                     @Cached IsCallableNode isCallable,
-                    @Cached IsExtensibleNode isExtensible) {
+                    @Cached IsExtensibleNode isExtensible,
+                    @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
+        TruffleString tStringKey = Strings.fromJavaString(fromJavaStringNode, key);
         PropertyDescriptor desc = null;
         boolean isProxy = false;
         for (DynamicObject proto = target; proto != Null.instance; proto = getPrototype.execute(proto)) {
-            desc = JSObject.getOwnProperty(proto, key);
+            desc = JSObject.getOwnProperty(proto, tStringKey);
             if (JSProxy.isJSProxy(proto)) {
                 isProxy = true;
                 break;

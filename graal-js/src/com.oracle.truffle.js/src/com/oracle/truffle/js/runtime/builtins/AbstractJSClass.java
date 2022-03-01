@@ -48,6 +48,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
@@ -62,7 +63,7 @@ public abstract class AbstractJSClass extends JSClass {
     @TruffleBoundary
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
-        throw Errors.createTypeErrorCannotGetProperty(JavaScriptLanguage.getCurrentLanguage().getJSContext(), String.valueOf(index), thisObj, false, encapsulatingNode);
+        throw Errors.createTypeErrorCannotGetProperty(JavaScriptLanguage.getCurrentLanguage().getJSContext(), Strings.fromLong(index), thisObj, false, encapsulatingNode);
     }
 
     @Override
@@ -109,7 +110,7 @@ public abstract class AbstractJSClass extends JSClass {
     @TruffleBoundary
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
-        throw Errors.createTypeErrorCannotSetProperty(String.valueOf(index), thisObj, encapsulatingNode);
+        throw Errors.createTypeErrorCannotSetProperty(Strings.fromLong(index), thisObj, encapsulatingNode);
     }
 
     @TruffleBoundary
@@ -121,7 +122,7 @@ public abstract class AbstractJSClass extends JSClass {
     @TruffleBoundary
     @Override
     public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
-        throw Errors.createTypeErrorCannotDeletePropertyOf(String.valueOf(index), thisObj);
+        throw Errors.createTypeErrorCannotDeletePropertyOf(Strings.fromLong(index), thisObj);
     }
 
     @Override

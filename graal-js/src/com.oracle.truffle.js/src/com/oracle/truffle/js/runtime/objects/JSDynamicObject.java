@@ -57,11 +57,13 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.TriState;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Properties;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
@@ -236,7 +238,7 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
      * "[object Array]".
      */
     @TruffleBoundary
-    public abstract String getClassName();
+    public abstract TruffleString getClassName();
 
     @Override
     @TruffleBoundary
@@ -257,16 +259,16 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
      * @see #getBuiltinToStringTag()
      */
     @TruffleBoundary
-    public String defaultToString() {
+    public TruffleString defaultToString() {
         JSContext context = getJSContext();
         if (context.getEcmaScriptVersion() <= 5) {
             return JSObjectUtil.formatToString(getClassName());
         }
-        String result = null;
+        TruffleString result = null;
         if (isObject()) {
             Object toStringTag = getValue(Symbol.SYMBOL_TO_STRING_TAG);
-            if (JSRuntime.isString(toStringTag)) {
-                result = Boundaries.javaToString(toStringTag);
+            if (Strings.isTString(toStringTag)) {
+                result = (TruffleString) toStringTag;
             }
         }
         if (result == null) {
@@ -282,7 +284,7 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
      * @see #defaultToString()
      */
     @TruffleBoundary
-    public String getBuiltinToStringTag() {
+    public TruffleString getBuiltinToStringTag() {
         return getClassName();
     }
 
@@ -293,7 +295,7 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
      * @param depth current nesting depth
      */
     @TruffleBoundary
-    public abstract String toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth);
+    public abstract TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth);
 
     /**
      * ES2015 7.3.15 TestIntegrityLevel(O, level).
@@ -386,11 +388,11 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
     }
 
     public static boolean hasProperty(DynamicObject obj, Object key) {
-        return DynamicObjectLibrary.getUncached().containsKey(obj, key);
+        return Properties.containsKeyUncached(obj, key);
     }
 
     public static Property getProperty(DynamicObject obj, Object key) {
-        return DynamicObjectLibrary.getUncached().getProperty(obj, key);
+        return Properties.getPropertyUncached(obj, key);
     }
 
     public static Object[] getKeyArray(DynamicObject obj) {
@@ -402,11 +404,11 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
     }
 
     public static Object getOrNull(DynamicObject obj, Object key) {
-        return DynamicObjectLibrary.getUncached().getOrDefault(obj, key, null);
+        return Properties.getOrDefaultUncached(obj, key, null);
     }
 
     public static Object getOrDefault(DynamicObject obj, Object key, Object defaultValue) {
-        return DynamicObjectLibrary.getUncached().getOrDefault(obj, key, defaultValue);
+        return Properties.getOrDefaultUncached(obj, key, defaultValue);
     }
 
     public static int getIntOrDefault(DynamicObject obj, Object key, int defaultValue) {
@@ -426,11 +428,11 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
     }
 
     public static void setPropertyFlags(DynamicObject obj, Object key, int flags) {
-        DynamicObjectLibrary.getUncached().setPropertyFlags(obj, key, flags);
+        Properties.setPropertyFlagsUncached(obj, key, flags);
     }
 
     public static int getPropertyFlags(DynamicObject obj, Object key) {
-        return DynamicObjectLibrary.getUncached().getProperty(obj, key).getFlags();
+        return Properties.getPropertyUncached(obj, key).getFlags();
     }
 
     /**
@@ -445,7 +447,7 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
      */
     public static boolean updatePropertyFlags(DynamicObject obj, Object key, IntUnaryOperator updateFunction) {
         DynamicObjectLibrary uncached = DynamicObjectLibrary.getUncached();
-        Property property = uncached.getProperty(obj, key);
+        Property property = Properties.getProperty(uncached, obj, key);
         if (property == null) {
             return false;
         }
@@ -462,7 +464,7 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
     }
 
     public static boolean removeKey(DynamicObject obj, Object key) {
-        return DynamicObjectLibrary.getUncached().removeKey(obj, key);
+        return Properties.removeKeyUncached(obj, key);
     }
 
     public static JSSharedData getJSSharedData(DynamicObject obj) {

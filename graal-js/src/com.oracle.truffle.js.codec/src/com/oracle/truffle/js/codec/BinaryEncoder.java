@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.codec;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -131,12 +133,12 @@ public class BinaryEncoder {
         }
     }
 
-    public void putString(String value) {
-        char[] array = value.toCharArray();
-        putUV(array.length);
-        ensureCapacity(2 * array.length);
-        for (char c : array) {
-            buffer.putChar(c);
+    public void putString(TruffleString value) {
+        int length = value.byteLength(TruffleString.Encoding.UTF_16);
+        putUV(length);
+        ensureCapacity(length);
+        for (int i = 0; i < length >> 1; i++) {
+            buffer.putChar((char) value.readCharUTF16Uncached(i));
         }
     }
 

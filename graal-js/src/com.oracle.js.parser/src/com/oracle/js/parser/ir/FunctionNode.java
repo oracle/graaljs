@@ -50,6 +50,7 @@ import com.oracle.js.parser.Source;
 import com.oracle.js.parser.Token;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * IR representation for function (or script.)
@@ -72,7 +73,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     private final Block body;
 
     /** Function name. */
-    private final String name;
+    private final TruffleString name;
 
     /** List of parameters. */
     private final List<IdentNode> parameters;
@@ -98,7 +99,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     private final Module module;
 
     /** Optional internal/inferred function name. */
-    private final String internalName;
+    private final TruffleString internalName;
 
     private boolean usesAncestorScope;
 
@@ -267,7 +268,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
                     final long firstToken,
                     final long lastToken,
                     final IdentNode ident,
-                    final String name,
+                    final TruffleString name,
                     final int length,
                     final int numOfParams,
                     final List<IdentNode> parameters,
@@ -275,7 +276,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
                     final Block body,
                     final Object endParserState,
                     final Module module,
-                    final String internalName) {
+                    final TruffleString internalName) {
         super(token, Token.descPosition(firstToken), finish);
 
         this.source = source;
@@ -299,7 +300,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
                     final long lastToken,
                     final Object endParserState,
                     final int flags,
-                    final String name,
+                    final TruffleString name,
                     final Block body,
                     final List<IdentNode> parameters,
                     final Source source) {
@@ -592,7 +593,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      *
      * @return the name
      */
-    public String getName() {
+    public TruffleString getName() {
         if (!isAnonymous()) {
             return getIdent().getName();
         }
@@ -606,7 +607,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      * @param name new name
      * @return new function node if changed, otherwise the same
      */
-    public FunctionNode setName(final LexicalContext lc, final String name) {
+    public FunctionNode setName(final LexicalContext lc, final TruffleString name) {
         if (this.name.equals(name)) {
             return this;
         }
@@ -621,7 +622,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
                         source));
     }
 
-    public String getInternalName() {
+    public TruffleString getInternalName() {
         return internalName;
     }
 

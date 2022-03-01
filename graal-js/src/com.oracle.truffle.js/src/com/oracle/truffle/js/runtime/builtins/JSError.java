@@ -46,12 +46,13 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.CallSitePrototypeBuiltins;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.ErrorFunctionBuiltins;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -61,6 +62,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.PrepareStackTraceCallback;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -74,27 +76,31 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSError extends JSNonProxy {
 
-    public static final String MESSAGE = "message";
+    public static final TruffleString MESSAGE = Strings.constant("message");
     public static final int MESSAGE_ATTRIBUTES = JSAttributes.getDefaultNotEnumerable();
-    public static final String NAME = "name";
-    public static final String CLASS_NAME = "Error";
-    public static final String PROTOTYPE_NAME = "Error.prototype";
+    public static final TruffleString NAME = Strings.constant("name");
+    public static final TruffleString CLASS_NAME = Strings.constant("Error");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Error.prototype");
     public static final HiddenKey EXCEPTION_PROPERTY_NAME = new HiddenKey("Exception");
-    public static final String STACK_NAME = "stack";
+    public static final TruffleString STACK_NAME = Strings.constant("stack");
     public static final HiddenKey FORMATTED_STACK_NAME = new HiddenKey("FormattedStack");
-    public static final String ERRORS_NAME = "errors";
+    public static final TruffleString ERRORS_NAME = Strings.constant("errors");
     public static final int ERRORS_ATTRIBUTES = JSAttributes.getDefaultNotEnumerable();
-    public static final String PREPARE_STACK_TRACE_NAME = "prepareStackTrace";
-    public static final String LINE_NUMBER_PROPERTY_NAME = "lineNumber";
-    public static final String COLUMN_NUMBER_PROPERTY_NAME = "columnNumber";
+    public static final TruffleString PREPARE_STACK_TRACE_NAME = Strings.constant("prepareStackTrace");
+    public static final TruffleString LINE_NUMBER_PROPERTY_NAME = Strings.constant("lineNumber");
+    public static final TruffleString COLUMN_NUMBER_PROPERTY_NAME = Strings.constant("columnNumber");
     public static final int DEFAULT_COLUMN_NUMBER = -1;
-    public static final String STACK_TRACE_LIMIT_PROPERTY_NAME = "stackTraceLimit";
+    public static final TruffleString STACK_TRACE_LIMIT_PROPERTY_NAME = Strings.constant("stackTraceLimit");
+    public static final TruffleString ANONYMOUS_FUNCTION_NAME_NASHORN = Strings.constant("<program>");
+    public static final TruffleString ANONYMOUS_FUNCTION_NAME = Strings.constant("<anonymous>");
+    public static final TruffleString TAB_AT = Strings.constant("\tat ");
+    public static final TruffleString SPACES_AT = Strings.constant("    at ");
 
     public static final JSError INSTANCE = new JSError();
 
     // CallSite
-    private static final String CALL_SITE_CLASS_NAME = "CallSite";
-    public static final String CALL_SITE_PROTOTYPE_NAME = "CallSite.prototype";
+    private static final TruffleString CALL_SITE_CLASS_NAME = Strings.constant("CallSite");
+    public static final TruffleString CALL_SITE_PROTOTYPE_NAME = Strings.constant("CallSite.prototype");
     public static final HiddenKey STACK_TRACE_ELEMENT_PROPERTY_NAME = new HiddenKey("StackTraceElement");
 
     public static final PropertyProxy STACK_PROXY = new PropertyProxy() {
@@ -140,20 +146,21 @@ public final class JSError extends JSNonProxy {
         return context.trackAllocation(obj);
     }
 
-    public static void setMessage(DynamicObject obj, String message) {
+    public static void setMessage(DynamicObject obj, TruffleString message) {
         assert !JSDynamicObject.hasProperty(obj, MESSAGE);
         JSObjectUtil.putDataProperty(obj, MESSAGE, message, MESSAGE_ATTRIBUTES);
     }
 
     public static DynamicObject create(JSErrorType errorType, JSRealm realm, Object message) {
-        assert message instanceof String || message == Undefined.instance;
+        assert Strings.isTString(message) || message == Undefined.instance;
         DynamicObject obj = createErrorObject(realm.getContext(), realm, errorType);
         String msg;
         if (message == Undefined.instance) {
             msg = null;
         } else {
-            msg = (String) message; // can only be String or undefined
-            setMessage(obj, msg);
+            assert Strings.isTString(message);
+            setMessage(obj, (TruffleString) message);
+            msg = Strings.toJavaString((TruffleString) message); // can only be String or undefined
         }
         setException(realm, obj, JSException.createCapture(errorType, msg, obj, realm), false);
         return obj;
@@ -164,7 +171,7 @@ public final class JSError extends JSNonProxy {
         JSContext context = realm.getContext();
         JSErrorType errorType = exception.getErrorType();
         DynamicObject obj = createErrorObject(context, realm, errorType);
-        setMessage(obj, message);
+        setMessage(obj, Strings.fromJavaString(message));
         setException(realm, obj, exception, context.isOptionNashornCompatibilityMode());
         return obj;
     }
@@ -173,7 +180,7 @@ public final class JSError extends JSNonProxy {
     public static DynamicObject createAggregateError(JSRealm realm, Object errors, String msg) {
         DynamicObject errorObj = createErrorObject(realm.getContext(), realm, JSErrorType.AggregateError);
         if (msg != null) {
-            setMessage(errorObj, msg);
+            setMessage(errorObj, Strings.fromJavaString(msg));
         }
         JSObjectUtil.putDataProperty(errorObj, ERRORS_NAME, errors, ERRORS_ATTRIBUTES);
         setException(realm, errorObj, JSException.createCapture(JSErrorType.AggregateError, msg, errorObj, realm), false);
@@ -192,7 +199,7 @@ public final class JSError extends JSNonProxy {
             errorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, proto);
         }
 
-        JSObjectUtil.putDataProperty(ctx, errorPrototype, MESSAGE, "", MESSAGE_ATTRIBUTES);
+        JSObjectUtil.putDataProperty(ctx, errorPrototype, MESSAGE, Strings.EMPTY_STRING, MESSAGE_ATTRIBUTES);
 
         if (errorType == JSErrorType.Error) {
             JSObjectUtil.putFunctionsFromContainer(realm, errorPrototype, ErrorPrototypeBuiltins.BUILTINS);
@@ -205,7 +212,7 @@ public final class JSError extends JSNonProxy {
 
     public static JSConstructor createErrorConstructor(JSRealm realm, JSErrorType errorType) {
         JSContext context = realm.getContext();
-        String name = errorType.toString();
+        TruffleString name = Strings.fromJavaString(errorType.toString());
         DynamicObject errorConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, name); // (Type)Error
         DynamicObject classPrototype = JSError.createErrorPrototype(realm, errorType); // (Type)Error.prototype
         if (errorType != JSErrorType.Error) {
@@ -351,12 +358,12 @@ public final class JSError extends JSNonProxy {
         return callSite;
     }
 
-    private static String getMessage(DynamicObject errorObj) {
+    private static TruffleString getMessage(DynamicObject errorObj) {
         Object message = JSObject.get(errorObj, MESSAGE);
         return (message == Undefined.instance) ? null : JSRuntime.toString(message);
     }
 
-    private static String getName(DynamicObject errorObj) {
+    private static TruffleString getName(DynamicObject errorObj) {
         Object name = JSObject.get(errorObj, NAME);
         return (name == Undefined.instance) ? null : JSRuntime.toString(name);
     }
@@ -367,80 +374,80 @@ public final class JSError extends JSNonProxy {
     }
 
     @TruffleBoundary
-    private static String formatStackTrace(JSStackTraceElement[] stackTrace, DynamicObject errObj, JSRealm realm) {
-        StringBuilder builder = new StringBuilder();
+    private static TruffleString formatStackTrace(JSStackTraceElement[] stackTrace, DynamicObject errObj, JSRealm realm) {
+        TruffleStringBuilder builder = Strings.builderCreate();
         if (!realm.getContext().isOptionNashornCompatibilityMode() || isInstanceOfJSError(errObj, realm)) {
-            String name = getName(errObj);
-            String message = getMessage(errObj);
+            TruffleString name = getName(errObj);
+            TruffleString message = getMessage(errObj);
             if (name != null) {
-                builder.append(name);
+                Strings.builderAppend(builder, name);
             } else {
-                builder.append("Error");
+                Strings.builderAppend(builder, Strings.UC_ERROR);
             }
-            if (message != null && message.length() > 0) {
-                if (builder.length() != 0) {
-                    builder.append(": ");
+            if (message != null && !message.isEmpty()) {
+                if (Strings.builderLength(builder) != 0) {
+                    Strings.builderAppend(builder, Strings.COLON_SPACE);
                 }
-                builder.append(message);
+                Strings.builderAppend(builder, message);
             }
         } else {
-            builder.append(JSObject.defaultToString(errObj));
+            Strings.builderAppend(builder, JSObject.defaultToString(errObj));
         }
         formatStackTraceIntl(stackTrace, builder, realm.getContext());
-        return builder.toString();
+        return Strings.builderToString(builder);
     }
 
-    private static void formatStackTraceIntl(JSStackTraceElement[] stackTrace, StringBuilder builder, JSContext context) {
+    private static void formatStackTraceIntl(JSStackTraceElement[] stackTrace, TruffleStringBuilder builder, JSContext context) {
         boolean nashornCompatibilityMode = context.isOptionNashornCompatibilityMode();
         for (JSStackTraceElement elem : stackTrace) {
-            builder.append(JSRuntime.LINE_SEPARATOR);
-            builder.append(nashornCompatibilityMode ? "\tat " : "    at ");
+            Strings.builderAppend(builder, Strings.LINE_SEPARATOR);
+            Strings.builderAppend(builder, nashornCompatibilityMode ? TAB_AT : SPACES_AT);
             if (!nashornCompatibilityMode) {
-                builder.append(elem.toString(context));
+                Strings.builderAppend(builder, elem.toString(context));
             } else {
-                String methodName = correctMethodName(elem.getFunctionName(), context);
-                builder.append(methodName);
-                builder.append(" (");
-                String fileName = elem.getFileName();
-                if (JSFunction.BUILTIN_SOURCE_NAME.equals(fileName)) {
-                    builder.append("native");
+                TruffleString methodName = correctMethodName(elem.getFunctionName(), context);
+                Strings.builderAppend(builder, methodName);
+                Strings.builderAppend(builder, Strings.SPACE_PAREN_OPEN);
+                TruffleString fileName = elem.getFileName();
+                if (Strings.equals(JSFunction.TS_BUILTIN_SOURCE_NAME, fileName)) {
+                    Strings.builderAppend(builder, Strings.NATIVE);
                 } else {
-                    builder.append(fileName);
-                    builder.append(":");
-                    builder.append(elem.getLineNumber());
+                    Strings.builderAppend(builder, fileName);
+                    Strings.builderAppend(builder, Strings.COLON);
+                    Strings.builderAppend(builder, elem.getLineNumber());
                 }
-                builder.append(")");
+                Strings.builderAppend(builder, Strings.PAREN_CLOSE);
             }
         }
     }
 
-    public static String correctMethodName(String methodName, JSContext context) {
+    public static TruffleString correctMethodName(TruffleString methodName, JSContext context) {
         if (methodName == null) {
-            return "";
+            return Strings.EMPTY_STRING;
         }
-        if (methodName.isEmpty()) {
+        if (Strings.isEmpty(methodName)) {
             return getAnonymousFunctionNameStackTrace(context);
         }
-        if (Boundaries.stringEndsWith(methodName, "]")) {
-            int idx = Boundaries.stringLastIndexOf(methodName, '[');
+        if (Strings.endsWith(methodName, Strings.BRACKET_CLOSE)) {
+            int idx = Strings.lastIndexOf(methodName, '[');
             if (idx >= 0) {
-                return Boundaries.substring(methodName, idx);
+                return Strings.substring(methodName, idx);
             }
         }
-        int idx = Boundaries.stringLastIndexOf(methodName, '.');
+        int idx = Strings.lastIndexOf(methodName, '.');
         if (idx >= 0) {
-            return Boundaries.substring(methodName, idx + 1);
+            return Strings.substring(methodName, idx + 1);
         }
         return methodName;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return CLASS_NAME;
     }
 
     @Override
-    public String getBuiltinToStringTag(DynamicObject object) {
+    public TruffleString getBuiltinToStringTag(DynamicObject object) {
         return getClassName(object);
     }
 
@@ -450,28 +457,29 @@ public final class JSError extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return super.toDisplayStringImpl(obj, allowSideEffects, format, depth);
         } else {
             Object name = getPropertyWithoutSideEffect(obj, NAME);
             Object message = getPropertyWithoutSideEffect(obj, MESSAGE);
-            String nameStr = name != null ? JSRuntime.toDisplayStringImpl(name, allowSideEffects, ToDisplayStringFormat.getDefaultFormat(), depth + 1, obj) : CLASS_NAME;
-            String messageStr = message != null ? JSRuntime.toDisplayStringImpl(message, allowSideEffects, ToDisplayStringFormat.getDefaultFormat(), depth + 1, obj) : "";
+            TruffleString nameStr = name != null ? JSRuntime.toDisplayStringImpl(name, allowSideEffects, ToDisplayStringFormat.getDefaultFormat(), depth + 1, obj) : CLASS_NAME;
+            TruffleString messageStr = message != null ? JSRuntime.toDisplayStringImpl(message, allowSideEffects, ToDisplayStringFormat.getDefaultFormat(), depth + 1, obj) : Strings.EMPTY_STRING;
             if (nameStr.isEmpty()) {
                 if (messageStr.isEmpty()) {
                     return CLASS_NAME;
                 }
                 return messageStr;
-            } else if (messageStr.isEmpty()) {
+            } else if (Strings.isEmpty(messageStr)) {
                 return nameStr;
             } else {
-                return nameStr + ": " + messageStr;
+                return Strings.concatAll(nameStr, Strings.COLON_SPACE, messageStr);
             }
         }
     }
 
-    private static Object getPropertyWithoutSideEffect(DynamicObject obj, String key) {
+    private static Object getPropertyWithoutSideEffect(DynamicObject obj, Object key) {
+        assert JSRuntime.isPropertyKey(key);
         Object value = JSDynamicObject.getOrNull(obj, key);
         if (value == null) {
             if (!JSProxy.isJSProxy(obj)) {
@@ -492,7 +500,7 @@ public final class JSError extends JSNonProxy {
         return true;
     }
 
-    public static String getAnonymousFunctionNameStackTrace(JSContext context) {
-        return context.isOptionNashornCompatibilityMode() ? "<program>" : "<anonymous>";
+    public static TruffleString getAnonymousFunctionNameStackTrace(JSContext context) {
+        return context.isOptionNashornCompatibilityMode() ? ANONYMOUS_FUNCTION_NAME_NASHORN : ANONYMOUS_FUNCTION_NAME;
     }
 }

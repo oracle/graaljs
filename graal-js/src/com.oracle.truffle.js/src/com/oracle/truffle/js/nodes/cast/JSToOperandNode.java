@@ -40,13 +40,13 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
+import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOperatorsAllowed;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
-
-import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOperatorsAllowed;
 
 /**
  * Converts a value to an 'operand', which is a preliminary step when invoking an overloaded

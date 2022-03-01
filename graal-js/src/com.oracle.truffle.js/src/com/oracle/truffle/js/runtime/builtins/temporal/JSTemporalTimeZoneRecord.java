@@ -40,18 +40,20 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 public final class JSTemporalTimeZoneRecord {
     private final boolean z;
-    private final String offsetString;
-    private final String name;
+    private final TruffleString offsetString;
+    private final TruffleString name;
 
-    private JSTemporalTimeZoneRecord(boolean z, String offsetString, String name) {
+    private JSTemporalTimeZoneRecord(boolean z, TruffleString offsetString, TruffleString name) {
         this.z = z;
         this.offsetString = offsetString;
         this.name = name;
     }
 
-    public static JSTemporalTimeZoneRecord create(boolean z, String offsetString, String name) {
+    public static JSTemporalTimeZoneRecord create(boolean z, TruffleString offsetString, TruffleString name) {
         return new JSTemporalTimeZoneRecord(z, offsetString, name);
     }
 
@@ -59,11 +61,11 @@ public final class JSTemporalTimeZoneRecord {
         return z;
     }
 
-    public String getOffsetString() {
+    public TruffleString getOffsetString() {
         return offsetString;
     }
 
-    public String getName() {
+    public TruffleString getName() {
         return name;
     }
 

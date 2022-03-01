@@ -46,10 +46,12 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
+import com.oracle.truffle.js.runtime.Strings;
 
 @ImportStatic(JSConfig.class)
 public abstract class CompileRegexNode extends JavaScriptBaseNode {
@@ -65,22 +67,24 @@ public abstract class CompileRegexNode extends JavaScriptBaseNode {
         return CompileRegexNodeGen.create(context);
     }
 
-    public final Object compile(String pattern) {
-        return compile(pattern, "");
+    public final Object compile(Object pattern) {
+        return compile(pattern, Strings.EMPTY_STRING);
     }
 
-    public final Object compile(CharSequence pattern, String flags) {
+    public final Object compile(Object pattern, Object flags) {
         return executeCompile(pattern, flags);
     }
 
-    protected abstract Object executeCompile(CharSequence pattern, String flags);
+    protected abstract Object executeCompile(Object pattern, Object flags);
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"stringEquals(pattern, cachedPattern)", "stringEquals(flags, cachedFlags)"}, limit = "MaxCompiledRegexCacheLength")
-    protected Object getCached(String pattern, String flags,
-                    @Cached("pattern") String cachedPattern,
-                    @Cached("flags") String cachedFlags,
-                    @Cached("createAssumedValue()") AssumedValue<Object> cachedCompiledRegex) {
+    @Specialization(guards = {"stringEquals(equalsNode, pattern, cachedPattern)", "stringEquals(equalsNode2, flags, cachedFlags)"}, limit = "MaxCompiledRegexCacheLength")
+    protected Object getCached(TruffleString pattern, TruffleString flags,
+                    @Cached("pattern") TruffleString cachedPattern,
+                    @Cached("flags") TruffleString cachedFlags,
+                    @Cached("createAssumedValue()") AssumedValue<Object> cachedCompiledRegex,
+                    @Cached TruffleString.EqualNode equalsNode,
+                    @Cached TruffleString.EqualNode equalsNode2) {
         // Note: we must not compile the regex while holding the AST lock (initializing @Cached).
         Object cached = cachedCompiledRegex.get();
         if (cached == null) {
@@ -90,20 +94,20 @@ public abstract class CompileRegexNode extends JavaScriptBaseNode {
         return cached;
     }
 
-    protected static boolean stringEquals(String a, String b) {
-        return a.equals(b);
+    protected static boolean stringEquals(TruffleString.EqualNode node, TruffleString a, TruffleString b) {
+        return Strings.equals(node, a, b);
     }
 
     @Specialization(guards = {"!TrimCompiledRegexCache"})
-    protected Object doCompileNoTrimCache(String pattern, String flags) {
+    protected Object doCompileNoTrimCache(TruffleString pattern, TruffleString flags) {
         // optional specialization that does not trim the cache
         return doCompile(pattern, flags);
     }
 
     @ReportPolymorphism.Megamorphic
     @Specialization(replaces = {"getCached"})
-    protected Object doCompile(String pattern, String flags) {
-        return RegexCompilerInterface.compile(pattern, flags, context, getRealm(), getIsCompiledRegexNullNode());
+    protected Object doCompile(TruffleString pattern, TruffleString flags) {
+        return RegexCompilerInterface.compile(Strings.toJavaString(pattern), Strings.toJavaString(flags), context, getRealm(), getIsCompiledRegexNullNode());
     }
 
     private InteropLibrary getIsCompiledRegexNullNode() {

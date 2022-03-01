@@ -52,6 +52,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InternalSlotId;
 
@@ -59,7 +60,7 @@ public final class JSFrameUtil {
     public static final MaterializedFrame NULL_MATERIALIZED_FRAME = Truffle.getRuntime().createMaterializedFrame(JSArguments.createNullArguments());
     public static final Object DEFAULT_VALUE = Undefined.instance;
 
-    private static final String THIS_SLOT_ID = "<this>";
+    private static final TruffleString THIS_SLOT_ID = Strings.constant("<this>");
     private static final Class<? extends MaterializedFrame> MATERIALIZED_FRAME_CLASS = NULL_MATERIALIZED_FRAME.getClass();
     private static final int IS_LET = Symbol.IS_LET;
     private static final int IS_CONST = Symbol.IS_CONST;
@@ -185,11 +186,11 @@ public final class JSFrameUtil {
 
     public static boolean isInternalIdentifier(Object identifier) {
         CompilerAsserts.neverPartOfCompilation();
-        if (identifier instanceof String) {
-            String name = (String) identifier;
-            if (name.startsWith(":")) {
+        if (identifier instanceof TruffleString) {
+            TruffleString name = (TruffleString) identifier;
+            if (Strings.startsWith(name, Strings.COLON)) {
                 return true;
-            } else if (name.startsWith("<") && name.endsWith(">")) {
+            } else if (Strings.startsWith(name, Strings.ANGLE_BRACKET_OPEN) && Strings.endsWith(name, Strings.ANGLE_BRACKET_CLOSE)) {
                 return true;
             }
             return false;
@@ -199,19 +200,19 @@ public final class JSFrameUtil {
         return true;
     }
 
-    public static String getPublicName(Object identifier) {
+    public static TruffleString getPublicName(Object identifier) {
         CompilerAsserts.neverPartOfCompilation();
-        if (identifier instanceof String) {
-            String name = (String) identifier;
-            if (name.startsWith(":")) {
-                return name.substring(1);
-            } else if (name.startsWith("<") && name.endsWith(">")) {
-                return name.substring(1, name.length() - 1);
+        if (identifier instanceof TruffleString) {
+            TruffleString name = (TruffleString) identifier;
+            if (Strings.startsWith(name, Strings.COLON)) {
+                return Strings.substring(name, 1);
+            } else if (Strings.startsWith(name, Strings.ANGLE_BRACKET_OPEN) && Strings.endsWith(name, Strings.ANGLE_BRACKET_CLOSE)) {
+                return Strings.substring(name, 1, Strings.length(name) - 2);
             } else {
                 return name;
             }
         } else {
-            return identifier.toString();
+            return Strings.fromObject(identifier);
         }
     }
 

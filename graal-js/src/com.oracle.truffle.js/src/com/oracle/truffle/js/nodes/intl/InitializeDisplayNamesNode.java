@@ -67,12 +67,12 @@ public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.getOptionsObjectNode = GetOptionsObjectNodeGen.create(context);
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
-        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, IntlUtil.LONG);
-        this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.TYPE,
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.KEY_STYLE, new String[]{IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, IntlUtil.LONG);
+        this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.KEY_TYPE,
                         new String[]{IntlUtil.LANGUAGE, IntlUtil.REGION, IntlUtil.SCRIPT, IntlUtil.CURRENCY, IntlUtil.CALENDAR, IntlUtil.DATE_TIME_FIELD}, null);
-        this.getFallbackOption = GetStringOptionNode.create(context, IntlUtil.FALLBACK, new String[]{IntlUtil.CODE, IntlUtil.NONE}, IntlUtil.CODE);
-        this.getLanguageDisplayOption = GetStringOptionNode.create(context, IntlUtil.LANGUAGE_DISPLAY, new String[]{IntlUtil.DIALECT, IntlUtil.STANDARD}, IntlUtil.DIALECT);
+        this.getFallbackOption = GetStringOptionNode.create(context, IntlUtil.KEY_FALLBACK, new String[]{IntlUtil.CODE, IntlUtil.NONE}, IntlUtil.CODE);
+        this.getLanguageDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_LANGUAGE_DISPLAY, new String[]{IntlUtil.DIALECT, IntlUtil.STANDARD}, IntlUtil.DIALECT);
     }
 
     public abstract DynamicObject executeInit(DynamicObject displayNames, Object locales, Object options);

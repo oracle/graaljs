@@ -52,6 +52,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -91,8 +92,8 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
             @Child private PropertyGetNode getArgs = PropertyGetNode.createGetHidden(RESOLVE_ELEMENT_ARGS_KEY, context);
             @Child private JSFunctionCallNode callResolve = JSFunctionCallNode.createCall();
             @Child private CreateObjectNode objectCreateNode = CreateObjectNode.create(context);
-            @Child private CreateDataPropertyNode createStatusPropertyNode = CreateDataPropertyNode.create(context, "status");
-            @Child private CreateDataPropertyNode createValuePropertyNode = CreateDataPropertyNode.create(context, "value");
+            @Child private CreateDataPropertyNode createStatusPropertyNode = CreateDataPropertyNode.create(context, Strings.STATUS);
+            @Child private CreateDataPropertyNode createValuePropertyNode = CreateDataPropertyNode.create(context, Strings.VALUE);
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -105,7 +106,7 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
                 Object value = valueNode.execute(frame);
 
                 DynamicObject obj = objectCreateNode.execute(frame);
-                createStatusPropertyNode.executeVoid(obj, "fulfilled");
+                createStatusPropertyNode.executeVoid(obj, Strings.FULFILLED);
                 createValuePropertyNode.executeVoid(obj, value);
 
                 args.values.set(args.index, obj);
@@ -117,7 +118,7 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
                 return Undefined.instance;
             }
         }
-        return JSFunctionData.createCallOnly(context, new PromiseAllSEttledResolveElementRootNode().getCallTarget(), 1, "");
+        return JSFunctionData.createCallOnly(context, new PromiseAllSEttledResolveElementRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
     private static JSFunctionData createRejectElementFunctionImpl(JSContext context) {
@@ -126,8 +127,8 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
             @Child private PropertyGetNode getArgs = PropertyGetNode.createGetHidden(RESOLVE_ELEMENT_ARGS_KEY, context);
             @Child private JSFunctionCallNode callResolve = JSFunctionCallNode.createCall();
             @Child private CreateObjectNode objectCreateNode = CreateObjectNode.create(context);
-            @Child private CreateDataPropertyNode createStatusPropertyNode = CreateDataPropertyNode.create(context, "status");
-            @Child private CreateDataPropertyNode createReasonPropertyNode = CreateDataPropertyNode.create(context, "reason");
+            @Child private CreateDataPropertyNode createStatusPropertyNode = CreateDataPropertyNode.create(context, Strings.STATUS);
+            @Child private CreateDataPropertyNode createReasonPropertyNode = CreateDataPropertyNode.create(context, Strings.REASON);
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -140,7 +141,7 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
                 Object value = valueNode.execute(frame);
 
                 DynamicObject obj = objectCreateNode.execute(frame);
-                createStatusPropertyNode.executeVoid(obj, "rejected");
+                createStatusPropertyNode.executeVoid(obj, Strings.REJECTED);
                 createReasonPropertyNode.executeVoid(obj, value);
 
                 args.values.set(args.index, obj);
@@ -152,6 +153,6 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
                 return Undefined.instance;
             }
         }
-        return JSFunctionData.createCallOnly(context, new PromiseAllSettledRejectElementRootNode().getCallTarget(), 1, "");
+        return JSFunctionData.createCallOnly(context, new PromiseAllSettledRejectElementRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 }

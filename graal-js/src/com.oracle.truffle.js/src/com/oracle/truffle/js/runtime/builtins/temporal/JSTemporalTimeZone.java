@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,12 +44,14 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.ID;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalTimeZoneFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalTimeZonePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
@@ -63,22 +65,23 @@ public final class JSTemporalTimeZone extends JSNonProxy implements JSConstructo
 
     public static final JSTemporalTimeZone INSTANCE = new JSTemporalTimeZone();
 
-    public static final String CLASS_NAME = "TimeZone";
-    public static final String PROTOTYPE_NAME = "TimeZone.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("TimeZone");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("TimeZone.prototype");
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.TimeZone");
 
     private JSTemporalTimeZone() {
     }
 
-    public static DynamicObject create(JSContext context, long nanoseconds, String identifier) {
+    public static DynamicObject create(JSContext context, long nanoseconds, TruffleString identifier) {
         return create(context, new BigInt(Boundaries.bigIntegerValueOf(nanoseconds)), identifier);
     }
 
-    public static DynamicObject create(JSContext context, BigInt nanoseconds, String identifier) {
+    public static DynamicObject create(JSContext context, BigInt nanoseconds, TruffleString identifier) {
         JSRealm realm = JSRealm.get(null);
         return create(context, realm, nanoseconds, identifier);
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm, BigInt nanoseconds, String identifier) {
+    public static DynamicObject create(JSContext context, JSRealm realm, BigInt nanoseconds, TruffleString identifier) {
         assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
         JSObjectFactory factory = context.getTemporalTimeZoneFactory();
         DynamicObject obj = factory.initProto(new JSTemporalTimeZoneObject(factory.getShape(realm), nanoseconds, identifier), realm);
@@ -86,12 +89,12 @@ public final class JSTemporalTimeZone extends JSNonProxy implements JSConstructo
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
-        return "Temporal.TimeZone";
+    public TruffleString getClassName(DynamicObject object) {
+        return TO_STRING_TAG;
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
@@ -104,15 +107,14 @@ public final class JSTemporalTimeZone extends JSNonProxy implements JSConstructo
 
         JSObjectUtil.putBuiltinAccessorProperty(prototype, ID, realm.lookupAccessor(TemporalTimeZonePrototypeBuiltins.BUILTINS, ID));
 
-        JSObjectUtil.putToStringTag(prototype, "Temporal.TimeZone");
+        JSObjectUtil.putToStringTag(prototype, TO_STRING_TAG);
 
         return prototype;
     }
 
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSTemporalTimeZone.INSTANCE, context);
-        return initialShape;
+        return JSObjectUtil.getProtoChildShape(prototype, JSTemporalTimeZone.INSTANCE, context);
     }
 
     @Override

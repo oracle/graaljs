@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,8 +49,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -63,6 +63,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotConstructNodeGen;
 import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotEvalFileNodeGen;
 import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotEvalNodeGen;
@@ -93,6 +94,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
@@ -227,7 +229,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         @Specialization
-        protected Object doString(String identifier, Object value,
+        protected Object doString(TruffleString identifier, Object value,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             Object polyglotBindings;
             try {
@@ -243,9 +245,9 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         protected Object doMaybeUnbox(TruffleObject identifier, Object value,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             if (interop.isString(identifier)) {
-                String unboxed;
+                TruffleString unboxed;
                 try {
-                    unboxed = interop.asString(identifier);
+                    unboxed = interop.asTruffleString(identifier);
                 } catch (UnsupportedMessageException e) {
                     throw Errors.createTypeErrorUnboxException(identifier, e, this);
                 }
@@ -268,7 +270,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         @Specialization
-        protected Object doString(String identifier,
+        protected Object doString(TruffleString identifier,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                         @Shared("importValue") @Cached ImportValueNode importValueNode) {
             Object polyglotBindings;
@@ -278,7 +280,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                 throw Errors.createErrorFromException(e);
             }
             try {
-                return importValueNode.executeWithTarget(interop.readMember(polyglotBindings, identifier));
+                return importValueNode.executeWithTarget(interop.readMember(polyglotBindings, Strings.toJavaString(identifier)));
             } catch (UnknownIdentifierException e) {
                 return Undefined.instance;
             } catch (UnsupportedMessageException e) {
@@ -291,9 +293,9 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                         @Shared("importValue") @Cached ImportValueNode importValueNode) {
             if (interop.isString(identifier)) {
-                String unboxed;
+                TruffleString unboxed;
                 try {
-                    unboxed = interop.asString(identifier);
+                    unboxed = interop.asTruffleString(identifier);
                 } catch (UnsupportedMessageException e) {
                     throw Errors.createTypeErrorUnboxException(identifier, e, this);
                 }
@@ -417,7 +419,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         @Specialization
-        protected Object member(TruffleObject obj, String name,
+        protected Object member(TruffleObject obj, TruffleString name,
                         @Shared("importValue") @Cached("create()") ImportValueNode foreignConvert,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             return JSInteropUtil.readMemberOrDefault(obj, name, Null.instance, interop, foreignConvert, this);
@@ -445,7 +447,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keyInterop) {
             try {
                 if (keyInterop.isString(key)) {
-                    return member(obj, keyInterop.asString(key), foreignConvert, interop);
+                    return member(obj, keyInterop.asTruffleString(key), foreignConvert, interop);
                 } else if (keyInterop.fitsInInt(key)) {
                     return arrayElement(obj, keyInterop.asInt(key), foreignConvert, interop);
                 }
@@ -470,12 +472,13 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         @Specialization
-        protected Object member(TruffleObject obj, String name, Object value,
+        protected Object member(TruffleObject obj, TruffleString name, Object value,
                         @Shared("exportValue") @Cached ExportValueNode exportValue,
-                        @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+                        @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
             Object convertedValue = exportValue.execute(value);
             try {
-                interop.writeMember(obj, name, convertedValue);
+                interop.writeMember(obj, Strings.toJavaString(toJavaStringNode, name), convertedValue);
                 return convertedValue;
             } catch (UnknownIdentifierException e) {
                 return Null.instance;
@@ -519,10 +522,11 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         protected Object unsupportedKey(TruffleObject obj, Object key, Object value,
                         @Shared("exportValue") @Cached ExportValueNode exportValue,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keyInterop) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keyInterop,
+                        @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
             try {
                 if (keyInterop.isString(key)) {
-                    return member(obj, keyInterop.asString(key), value, exportValue, interop);
+                    return member(obj, keyInterop.asTruffleString(key), value, exportValue, interop, toJavaStringNode);
                 } else if (keyInterop.fitsInInt(key)) {
                     return arrayElement(obj, keyInterop.asInt(key), value, exportValue, interop);
                 }
@@ -547,10 +551,11 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         @Specialization
-        protected boolean member(TruffleObject obj, String name,
-                        @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+        protected boolean member(TruffleObject obj, TruffleString name,
+                        @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
             try {
-                interop.removeMember(obj, name);
+                interop.removeMember(obj, Strings.toJavaString(toJavaStringNode, name));
                 return true;
             } catch (UnknownIdentifierException e) {
                 return false;
@@ -589,10 +594,11 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization(guards = {"!isString(key)", "!isNumber(key)"})
         protected Object unsupportedKey(TruffleObject obj, Object key,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keyInterop) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keyInterop,
+                        @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
             try {
                 if (keyInterop.isString(key)) {
-                    return member(obj, keyInterop.asString(key), interop);
+                    return member(obj, keyInterop.asTruffleString(key), interop, toJavaStringNode);
                 } else if (keyInterop.fitsInInt(key)) {
                     return arrayElementInt(obj, keyInterop.asInt(key), interop);
                 }
@@ -731,7 +737,8 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             super(context, builtin);
         }
 
-        protected Pair<String, String> getLanguageIdAndMimeType(String languageIdOrMimeType) {
+        protected Pair<String, String> getLanguageIdAndMimeType(TruffleString.ToJavaStringNode toJavaStringNode, TruffleString languageIdOrMimeTypeTS) {
+            String languageIdOrMimeType = Strings.toJavaString(toJavaStringNode, languageIdOrMimeTypeTS);
             String languageId = languageIdOrMimeType;
             String mimeType = null;
             if (languageIdOrMimeType.indexOf('/') >= 0) {
@@ -754,25 +761,27 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @SuppressWarnings("unused")
         @Specialization(guards = {"language.equals(cachedLanguage)"}, limit = "1")
         @TruffleBoundary
-        protected Object evalCachedLanguage(String language, String source,
-                        @Cached("language") String cachedLanguage,
-                        @Cached("getLanguageIdAndMimeType(language)") Pair<String, String> languagePair,
+        protected Object evalCachedLanguage(TruffleString language, TruffleString source,
+                        @Cached("language") TruffleString cachedLanguage,
+                        @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode,
+                        @Cached("getLanguageIdAndMimeType(toJavaStringNode, language)") Pair<String, String> languagePair,
                         @Cached @Shared("callNode") IndirectCallNode callNode) {
             return callNode.call(evalStringIntl(source, languagePair.getFirst(), languagePair.getSecond()));
         }
 
         @Specialization(replaces = "evalCachedLanguage")
         @TruffleBoundary
-        protected Object evalString(String language, String source,
+        protected Object evalString(TruffleString language, TruffleString source,
+                        @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode,
                         @Cached @Shared("callNode") IndirectCallNode callNode) {
-            Pair<String, String> pair = getLanguageIdAndMimeType(language);
+            Pair<String, String> pair = getLanguageIdAndMimeType(toJavaStringNode, language);
             return callNode.call(evalStringIntl(source, pair.getFirst(), pair.getSecond()));
         }
 
-        private CallTarget evalStringIntl(String sourceText, String languageId, String mimeType) {
+        private CallTarget evalStringIntl(TruffleString sourceText, String languageId, String mimeType) {
             CompilerAsserts.neverPartOfCompilation();
             getContext().checkEvalAllowed();
-            Source source = Source.newBuilder(languageId, sourceText, Evaluator.EVAL_SOURCE_NAME).mimeType(mimeType).build();
+            Source source = Source.newBuilder(languageId, Strings.toJavaString(sourceText), Evaluator.EVAL_SOURCE_NAME).mimeType(mimeType).build();
 
             TruffleLanguage.Env env = getRealm().getEnv();
             try {
@@ -798,27 +807,29 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @SuppressWarnings("unused")
         @Specialization(guards = {"language.equals(cachedLanguage)"}, limit = "1")
         @TruffleBoundary
-        protected Object evalFileCachedLanguage(String language, String file,
-                        @Cached("language") String cachedLanguage,
-                        @Cached("getLanguageIdAndMimeType(language)") Pair<String, String> languagePair,
+        protected Object evalFileCachedLanguage(TruffleString language, TruffleString file,
+                        @Cached("language") TruffleString cachedLanguage,
+                        @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode,
+                        @Cached("getLanguageIdAndMimeType(toJavaStringNode, language)") Pair<String, String> languagePair,
                         @Cached @Shared("callNode") IndirectCallNode callNode) {
             return callNode.call(evalFileIntl(file, languagePair.getFirst(), languagePair.getSecond()));
         }
 
         @Specialization(replaces = "evalFileCachedLanguage")
         @TruffleBoundary
-        protected Object evalFileString(String language, String file,
+        protected Object evalFileString(TruffleString language, TruffleString file,
+                        @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode,
                         @Cached @Shared("callNode") IndirectCallNode callNode) {
-            Pair<String, String> pair = getLanguageIdAndMimeType(language);
+            Pair<String, String> pair = getLanguageIdAndMimeType(toJavaStringNode, language);
             return callNode.call(evalFileIntl(file, pair.getFirst(), pair.getSecond()));
         }
 
-        private CallTarget evalFileIntl(String fileName, String languageId, String mimeType) {
+        private CallTarget evalFileIntl(TruffleString fileName, String languageId, String mimeType) {
             CompilerAsserts.neverPartOfCompilation();
             TruffleLanguage.Env env = getRealm().getEnv();
             Source source;
             try {
-                source = Source.newBuilder(languageId, env.getPublicTruffleFile(fileName)).mimeType(mimeType).build();
+                source = Source.newBuilder(languageId, env.getPublicTruffleFile(Strings.toJavaString(fileName))).mimeType(mimeType).build();
             } catch (AccessDeniedException e) {
                 throw Errors.createError("Cannot evaluate file " + fileName + ": permission denied");
             } catch (NoSuchFileException e) {

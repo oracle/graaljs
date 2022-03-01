@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.js.test;
 
+import com.oracle.truffle.js.runtime.Strings;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -66,5 +68,9 @@ public abstract class JSTest {
 
     public static Engine.Builder newEngineBuilder() {
         return Engine.newBuilder().allowExperimentalOptions(true);
+    }
+
+    public static void assertTStringEquals(String a, Object b) {
+        Assert.assertEquals(Strings.fromJavaString(a), b);
     }
 }

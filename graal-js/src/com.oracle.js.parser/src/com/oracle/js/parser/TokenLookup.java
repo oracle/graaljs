@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,8 @@
 
 package com.oracle.js.parser;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 import static com.oracle.js.parser.TokenKind.SPECIAL;
 import static com.oracle.js.parser.TokenType.IDENT;
 
@@ -75,7 +77,7 @@ public final class TokenLookup {
         // For each token type.
         for (final TokenType tokenType : TokenType.getValues()) {
             // Get the name.
-            final String name = tokenType.getName();
+            final TruffleString name = tokenType.getName();
 
             // Filter tokens.
             if (name == null) {
@@ -85,7 +87,7 @@ public final class TokenLookup {
             // Ignore null and special.
             if (tokenType.getKind() != SPECIAL) {
                 // Get the first character of the name.
-                final char first = name.charAt(0);
+                final char first = ParserStrings.charAt(name, 0);
                 // Translate that character into a table index.
                 final int index = first - tableBase;
                 assert index < tableLength : "Token name does not fit lookup table";
@@ -126,9 +128,9 @@ public final class TokenLookup {
      *
      * @return token type for keyword
      */
-    public static TokenType lookupKeyword(final char[] content, final int position, final int length) {
+    public static TokenType lookupKeyword(final TruffleString content, final int position, final int length) {
         // First character of keyword.
-        final char first = content[position];
+        final char first = ParserStrings.charAt(content, position);
 
         // Must be lower case character.
         if ('a' <= first && first <= 'z') {
@@ -144,10 +146,10 @@ public final class TokenLookup {
                 // if we have a length match maybe a keyword.
                 if (tokenLength == length) {
                     // Do an exact compare of string.
-                    final String name = tokenType.getName();
+                    final TruffleString name = tokenType.getName();
                     int i;
                     for (i = 0; i < length; i++) {
-                        if (content[position + i] != name.charAt(i)) {
+                        if (ParserStrings.charAt(content, position + i) != ParserStrings.charAt(name, i)) {
                             break;
                         }
                     }
@@ -191,15 +193,15 @@ public final class TokenLookup {
             // Search bucket list.
             while (tokenType != null) {
                 if (tokenType.getECMAScriptVersion() <= ecmaScriptVersion) {
-                    final String name = tokenType.getName();
+                    final TruffleString name = tokenType.getName();
 
-                    switch (name.length()) {
+                    switch (ParserStrings.length(name)) {
                         case 1:
                             // One character entry.
                             return tokenType;
                         case 2:
                             // Two character entry.
-                            if (name.charAt(1) == ch1) {
+                            if (ParserStrings.charAt(name, 1) == ch1) {
                                 // OptionalChainingPunctuator :: ?.[lookahead not in DecimalDigit]
                                 if (tokenType != TokenType.OPTIONAL_CHAIN || ch2 < '0' || '9' < ch2) {
                                     return tokenType;
@@ -208,16 +210,16 @@ public final class TokenLookup {
                             break;
                         case 3:
                             // Three character entry.
-                            if (name.charAt(1) == ch1 &&
-                                            name.charAt(2) == ch2) {
+                            if (ParserStrings.charAt(name, 1) == ch1 &&
+                                            ParserStrings.charAt(name, 2) == ch2) {
                                 return tokenType;
                             }
                             break;
                         case 4:
                             // Four character entry.
-                            if (name.charAt(1) == ch1 &&
-                                            name.charAt(2) == ch2 &&
-                                            name.charAt(3) == ch3) {
+                            if (ParserStrings.charAt(name, 1) == ch1 &&
+                                            ParserStrings.charAt(name, 2) == ch2 &&
+                                            ParserStrings.charAt(name, 3) == ch3) {
                                 return tokenType;
                             }
                             break;

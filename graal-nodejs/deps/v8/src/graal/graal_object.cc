@@ -228,7 +228,7 @@ bool GraalObject::SetPrototype(v8::Local<v8::Value> prototype) {
 
 v8::Local<v8::String> GraalObject::GetConstructorName() {
     JNI_CALL(jobject, java_name, Isolate(), GraalAccessMethod::object_get_constructor_name, Object, GetJavaObject());
-    GraalString* graal_name = GraalString::Allocate(Isolate(), (jstring) java_name);
+    GraalString* graal_name = GraalString::Allocate(Isolate(), java_name);
     return reinterpret_cast<v8::String*> (graal_name);
 }
 

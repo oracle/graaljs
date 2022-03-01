@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,42 +55,31 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 final class CommonJSResolution {
 
-    private static final String JS_EXT = ".js";
-    private static final String JSON_EXT = ".json";
-    private static final String NODE_EXT = ".node";
-    public static final String INDEX_JS = "index.js";
-    private static final String INDEX_JSON = "index.json";
-    private static final String INDEX_NODE = "index.node";
-    public static final String PACKAGE_JSON = "package.json";
-    private static final String NODE_MODULES = "node_modules";
-    public static final String PACKAGE_JSON_MAIN_PROPERTY_NAME = "main";
-    public static final String PACKAGE_JSON_TYPE_PROPERTY_NAME = "type";
-    public static final String PACKAGE_JSON_MODULE_VALUE = "module";
-
-    private static final String[] CORE_MODULES = new String[]{"assert", "async_hooks", "buffer", "child_process",
-                    "cluster", "console", "constants", "crypto", "dgram", "diagnostics_channel", "dns", "domain",
-                    "events", "fs", "http", "http2", "https", "inspector", "module", "net", "os", "path",
-                    "perf_hooks", "process", "punycode", "querystring", "readline", "repl", "stream",
-                    "string_decoder", "sys", "timers", "tls", "trace_events", "tty", "url", "util", "v8", "vm",
-                    "wasi", "worker_threads", "zlib"};
+    public static final String NODE_MODULES = "node_modules";
+    public static final TruffleString PACKAGE_JSON = Strings.constant("package.json");
+    public static final TruffleString INDEX_JS = Strings.constant("index.js");
+    public static final TruffleString INDEX_JSON = Strings.constant("index.json");
+    public static final TruffleString INDEX_NODE = Strings.constant("index.node");
 
     private CommonJSResolution() {
     }
 
-    static boolean isCoreModule(String moduleIdentifier) {
-        return Arrays.asList(CORE_MODULES).contains(moduleIdentifier);
+    static boolean isCoreModule(TruffleString moduleIdentifier) {
+        return Arrays.asList(Strings.CORE_MODULES).contains(moduleIdentifier);
     }
 
     static String getCurrentFileNameFromStack() {
@@ -140,15 +129,15 @@ final class CommonJSResolution {
      * @return A {@link TruffleFile} for the module executable file, or {@code null} if the module cannot be resolved.
      */
     @CompilerDirectives.TruffleBoundary
-    static TruffleFile resolve(JSRealm realm, String moduleIdentifier, TruffleFile entryPath) {
+    static TruffleFile resolve(JSRealm realm, TruffleString moduleIdentifier, TruffleFile entryPath) {
         // 1. If X is an empty module
-        if ("".equals(moduleIdentifier)) {
+        if (moduleIdentifier.isEmpty()) {
             return null;
         }
         TruffleLanguage.Env env = realm.getEnv();
         // 2. If X begins with '/'
         TruffleFile currentWorkingPath = entryPath;
-        if (moduleIdentifier.charAt(0) == '/') {
+        if (Strings.charAt(moduleIdentifier, 0) == '/') {
             currentWorkingPath = getFileSystemRootPath(env);
         }
         // 3. If X begins with './' or '/' or '../'
@@ -164,7 +153,7 @@ final class CommonJSResolution {
         return loadNodeModulesOrSelfReference(realm, moduleIdentifier, currentWorkingPath);
     }
 
-    private static TruffleFile loadNodeModulesOrSelfReference(JSRealm realm, String moduleIdentifier, TruffleFile startFolder) {
+    private static TruffleFile loadNodeModulesOrSelfReference(JSRealm realm, TruffleString moduleIdentifier, TruffleFile startFolder) {
         /* @formatter:off
          *
          * 1. let DIRS = NODE_MODULES_PATHS(START)
@@ -222,15 +211,15 @@ final class CommonJSResolution {
         if (fileExists(modulePath)) {
             return modulePath;
         }
-        TruffleFile moduleJs = env.getPublicTruffleFile(modulePath.toString() + JS_EXT);
+        TruffleFile moduleJs = env.getPublicTruffleFile(modulePath.toString() + Strings.JS_EXT);
         if (fileExists(moduleJs)) {
             return moduleJs;
         }
-        TruffleFile moduleJson = env.getPublicTruffleFile(modulePath.toString() + JSON_EXT);
+        TruffleFile moduleJson = env.getPublicTruffleFile(modulePath.toString() + Strings.JSON_EXT);
         if (fileExists(moduleJson)) {
             return moduleJson;
         }
-        if (fileExists(env.getPublicTruffleFile(modulePath.toString() + NODE_EXT))) {
+        if (fileExists(env.getPublicTruffleFile(modulePath.toString() + Strings.NODE_EXT))) {
             // .node files not supported.
             return null;
         }
@@ -276,8 +265,8 @@ final class CommonJSResolution {
         if (fileExists(packageJson)) {
             DynamicObject jsonObj = loadJsonObject(packageJson, realm);
             if (JSDynamicObject.isJSDynamicObject(jsonObj)) {
-                Object main = JSObject.get(jsonObj, PACKAGE_JSON_MAIN_PROPERTY_NAME);
-                if (!JSRuntime.isString(main)) {
+                Object main = JSObject.get(jsonObj, Strings.PACKAGE_JSON_MAIN_PROPERTY_NAME);
+                if (!Strings.isTString(main)) {
                     return loadIndex(env, modulePath);
                 }
                 TruffleFile module = joinPaths(env, modulePath, JSRuntime.safeToString(main));
@@ -306,7 +295,7 @@ final class CommonJSResolution {
                     return null;
                 }
                 DynamicObject parse = (DynamicObject) realm.getJsonParseFunctionObject();
-                String jsonString = source.getCharacters().toString();
+                TruffleString jsonString = Strings.fromJavaString(source.getCharacters().toString());
                 Object jsonObj = JSFunction.call(JSArguments.create(parse, parse, jsonString));
                 if (JSDynamicObject.isJSDynamicObject(jsonObj)) {
                     return (DynamicObject) jsonObj;
@@ -330,11 +319,11 @@ final class CommonJSResolution {
         return modulePath.exists() && modulePath.isRegularFile();
     }
 
-    private static boolean isPathFileName(String moduleIdentifier) {
-        return moduleIdentifier.startsWith("/") || moduleIdentifier.startsWith("./") || moduleIdentifier.startsWith("../");
+    private static boolean isPathFileName(TruffleString moduleIdentifier) {
+        return Strings.startsWith(moduleIdentifier, Strings.SLASH) || Strings.startsWith(moduleIdentifier, Strings.DOT_SLASH) || Strings.startsWith(moduleIdentifier, Strings.DOT_DOT_SLASH);
     }
 
-    public static TruffleFile joinPaths(TruffleLanguage.Env env, TruffleFile p1, String p2) {
+    public static TruffleFile joinPaths(TruffleLanguage.Env env, TruffleFile p1, TruffleString p2) {
         Objects.requireNonNull(p1);
         String pathSeparator = env.getFileNameSeparator();
         String pathName = p1.normalize().toString();

@@ -54,12 +54,13 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.interop.JSIteratorWrapper;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
-@ImportStatic({JSConfig.class, JSRuntime.class, Symbol.class})
+@ImportStatic({JSConfig.class, JSRuntime.class, Symbol.class, Strings.class})
 @GenerateUncached
 public abstract class JSInteropGetIteratorNode extends JSInteropCallNode {
     JSInteropGetIteratorNode() {
@@ -99,7 +100,7 @@ public abstract class JSInteropGetIteratorNode extends JSInteropCallNode {
             Object iterator = callNode.executeCall(JSArguments.createZeroArg(receiver, method));
             if (iterator instanceof JSObject) {
                 JSObject jsIterator = (JSObject) iterator;
-                Object nextMethod = getProperty(jsIterator, nextPropertyGetNode, JSRuntime.NEXT, null);
+                Object nextMethod = getProperty(jsIterator, nextPropertyGetNode, Strings.NEXT, null);
                 if (nextMethod != null && isCallableNode.executeBoolean(nextMethod)) {
                     return JSIteratorWrapper.create(IteratorRecord.create(jsIterator, nextMethod));
                 }

@@ -46,10 +46,10 @@
 
 #include "graal_name-inl.h"
 
-inline GraalString::GraalString(GraalIsolate* isolate, jstring java_string) : GraalName(isolate, java_string) {
+inline GraalString::GraalString(GraalIsolate* isolate, jobject java_string) : GraalName(isolate, java_string) {
 }
 
-inline GraalString* GraalString::Allocate(GraalIsolate* isolate, jstring java_object) {
+inline GraalString* GraalString::Allocate(GraalIsolate* isolate, jobject java_object) {
     GraalObjectPool<GraalString>* pool = isolate->GetGraalStringPool();
     if (pool->IsEmpty()) {
         return new GraalString(isolate, java_object);
@@ -60,7 +60,7 @@ inline GraalString* GraalString::Allocate(GraalIsolate* isolate, jstring java_ob
     }
 }
 
-GraalString* GraalString::Allocate(GraalIsolate* isolate, jstring java_object, void* placement) {
+GraalString* GraalString::Allocate(GraalIsolate* isolate, jobject java_object, void* placement) {
     return new (placement) GraalString(isolate, java_object);
 }
 

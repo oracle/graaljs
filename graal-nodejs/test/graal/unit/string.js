@@ -136,6 +136,12 @@ describe('String', function () {
             var result = module.String_CheckWriteOneByte(str);
             assert.strictEqual(result, true);
         });
+        it('should use just lower byte', function () {
+            assert.deepEqual([0x61], Array.from(Buffer.from('\u0161', 'latin1')));
+        });
+        it('should process each surrogate separately', function () {
+            assert.deepEqual([0x3D, 0xA9], Array.from(Buffer.from('\uD83D\uDCA9', 'latin1')));
+        });
     });
     describe('WriteUtf8', function () {
         it('should copy content to buffer', function () {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,10 +47,12 @@ import java.util.List;
 import java.util.function.Function;
 
 import com.oracle.js.parser.Lexer.LexerToken;
+import com.oracle.js.parser.ParserStrings;
 import com.oracle.js.parser.Token;
 import com.oracle.js.parser.TokenType;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Literal nodes represent JavaScript values.
@@ -98,8 +100,11 @@ public abstract class LiteralNode<T> extends Expression {
      *
      * @return String value of node.
      */
-    public String getString() {
-        return String.valueOf(value);
+    public TruffleString getString() {
+        if (value instanceof TruffleString) {
+            return (TruffleString) value;
+        }
+        return ParserStrings.constant(String.valueOf(value));
     }
 
     /**
@@ -130,7 +135,7 @@ public abstract class LiteralNode<T> extends Expression {
      * @return True if value is a string.
      */
     public boolean isString() {
-        return value instanceof String;
+        return value instanceof TruffleString;
     }
 
     /**
@@ -201,8 +206,8 @@ public abstract class LiteralNode<T> extends Expression {
         }
 
         @Override
-        public String getPropertyName() {
-            return String.valueOf(getObject());
+        public TruffleString getPropertyName() {
+            return ParserStrings.constant(String.valueOf(getObject()));
         }
     }
 
@@ -231,9 +236,9 @@ public abstract class LiteralNode<T> extends Expression {
     }
 
     private static final class NumberLiteralNode extends PrimitiveLiteralNode<Number> {
-        private final Function<Number, String> toStringConverter;
+        private final Function<Number, TruffleString> toStringConverter;
 
-        private NumberLiteralNode(final long token, final int finish, final Number value, final Function<Number, String> toStringConverter) {
+        private NumberLiteralNode(final long token, final int finish, final Number value, final Function<Number, TruffleString> toStringConverter) {
             super(Token.recast(token, TokenType.DECIMAL), finish, value);
             this.toStringConverter = toStringConverter;
         }
@@ -244,7 +249,7 @@ public abstract class LiteralNode<T> extends Expression {
         }
 
         @Override
-        public String getPropertyName() {
+        public TruffleString getPropertyName() {
             return toStringConverter == null ? super.getPropertyName() : toStringConverter.apply(getValue());
         }
     }
@@ -271,12 +276,12 @@ public abstract class LiteralNode<T> extends Expression {
      *
      * @return the new literal node
      */
-    public static LiteralNode<Number> newInstance(final long token, final int finish, final Number value, final Function<Number, String> toStringConverter) {
+    public static LiteralNode<Number> newInstance(final long token, final int finish, final Number value, final Function<Number, TruffleString> toStringConverter) {
         return new NumberLiteralNode(token, finish, value, toStringConverter);
     }
 
-    private static final class StringLiteralNode extends PrimitiveLiteralNode<String> {
-        private StringLiteralNode(final long token, final int finish, final String value) {
+    private static final class StringLiteralNode extends PrimitiveLiteralNode<TruffleString> {
+        private StringLiteralNode(final long token, final int finish, final TruffleString value) {
             super(Token.recast(token, TokenType.STRING), finish, value);
         }
 
@@ -296,7 +301,7 @@ public abstract class LiteralNode<T> extends Expression {
      *
      * @return the new literal node
      */
-    public static LiteralNode<String> newInstance(final long token, final String value) {
+    public static LiteralNode<TruffleString> newInstance(final long token, final TruffleString value) {
         long tokenWithDelimiter = Token.withDelimiter(token);
         int newFinish = Token.descPosition(tokenWithDelimiter) + Token.descLength(tokenWithDelimiter);
         return new StringLiteralNode(tokenWithDelimiter, newFinish, value);

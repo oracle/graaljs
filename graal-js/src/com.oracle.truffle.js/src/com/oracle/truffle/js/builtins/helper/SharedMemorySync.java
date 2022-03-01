@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,13 +42,13 @@ package com.oracle.truffle.js.builtins.helper;
 
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetArrayType;
 
+import java.lang.invoke.VarHandle;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.memory.MemoryFence;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSAgent;
@@ -74,7 +74,7 @@ public final class SharedMemorySync {
     // ##### Getters and setters with ordering and memory barriers
     @TruffleBoundary
     public static int doVolatileGet(DynamicObject target, int intArrayOffset) {
-        MemoryFence.acquire();
+        VarHandle.acquireFence();
         TypedArray array = typedArrayGetArrayType(target);
         TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) array;
         return typedArray.getInt(target, intArrayOffset, InteropLibrary.getUncached());
@@ -83,7 +83,7 @@ public final class SharedMemorySync {
     // ##### Getters and setters with ordering and memory barriers
     @TruffleBoundary
     public static BigInt doVolatileGetBigInt(DynamicObject target, int intArrayOffset) {
-        MemoryFence.acquire();
+        VarHandle.acquireFence();
         TypedArray array = typedArrayGetArrayType(target);
         TypedArray.TypedBigIntArray typedArray = (TypedArray.TypedBigIntArray) array;
         return typedArray.getBigInt(target, intArrayOffset, InteropLibrary.getUncached());
@@ -94,7 +94,7 @@ public final class SharedMemorySync {
         TypedArray array = typedArrayGetArrayType(target);
         TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) array;
         typedArray.setInt(target, index, value, InteropLibrary.getUncached());
-        MemoryFence.release();
+        VarHandle.releaseFence();
     }
 
     @TruffleBoundary
@@ -102,7 +102,7 @@ public final class SharedMemorySync {
         TypedArray array = typedArrayGetArrayType(target);
         TypedArray.TypedBigIntArray typedArray = (TypedArray.TypedBigIntArray) array;
         typedArray.setBigInt(target, index, value, InteropLibrary.getUncached());
-        MemoryFence.release();
+        VarHandle.releaseFence();
     }
 
     // ##### Atomic CAS primitives

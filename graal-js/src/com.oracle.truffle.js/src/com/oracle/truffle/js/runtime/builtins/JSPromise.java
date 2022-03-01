@@ -43,24 +43,26 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltins;
 import com.oracle.truffle.js.builtins.PromisePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSPromise extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies, PrototypeSupplier {
-    public static final String CLASS_NAME = "Promise";
-    public static final String PROTOTYPE_NAME = "Promise.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("Promise");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Promise.prototype");
 
     public static final JSPromise INSTANCE = new JSPromise();
 
-    public static final String RESOLVE = "resolve";
-    public static final String THEN = "then";
+    public static final TruffleString RESOLVE = Strings.constant("resolve");
+    public static final TruffleString THEN = Strings.constant("then");
 
     public static final HiddenKey PROMISE_RESULT = new HiddenKey("PromiseResult");
     public static final HiddenKey PROMISE_IS_HANDLED = new HiddenKey("PromiseIsHandled");
@@ -106,7 +108,7 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return CLASS_NAME;
     }
 
@@ -142,19 +144,19 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth,
-                        CLASS_NAME, new String[]{"PromiseStatus", "PromiseValue"}, new Object[]{getStatus(obj), getValue(obj)});
+                        CLASS_NAME, new TruffleString[]{Strings.PROMISE_STATUS, Strings.PROMISE_VALUE}, new Object[]{getStatus(obj), getValue(obj)});
     }
 
-    private static String getStatus(DynamicObject obj) {
+    private static TruffleString getStatus(DynamicObject obj) {
         if (isFulfilled(obj)) {
-            return "resolved";
+            return Strings.RESOLVED;
         } else if (isRejected(obj)) {
-            return "rejected";
+            return Strings.REJECTED;
         } else {
             assert isPending(obj);
-            return "pending";
+            return Strings.PENDING;
         }
     }
 
@@ -163,7 +165,7 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 

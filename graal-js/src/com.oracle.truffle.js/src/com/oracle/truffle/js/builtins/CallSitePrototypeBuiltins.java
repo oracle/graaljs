@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.CallSitePrototypeBuiltinsFactory.CallSiteGetBooleanNodeGen;
 import com.oracle.truffle.js.builtins.CallSitePrototypeBuiltinsFactory.CallSiteGetNodeGen;
 import com.oracle.truffle.js.builtins.CallSitePrototypeBuiltinsFactory.CallSiteGetNumberNodeGen;
@@ -53,6 +54,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -185,7 +187,7 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        final Object callSiteGet(DynamicObject thisObj) {
+        final Object getFunctionName(DynamicObject thisObj) {
             JSStackTraceElement stackTraceElement = getStackTraceElement(thisObj);
             switch (method) {
                 case getFunction:
@@ -203,13 +205,13 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 case getTypeName:
                     return JSRuntime.toJSNull(stackTraceElement.getTypeName());
                 case getFunctionName: {
-                    String functionName = stackTraceElement.getFunctionName();
-                    return functionName.isEmpty() ? Null.instance : functionName;
+                    TruffleString functionName = stackTraceElement.getFunctionName();
+                    return Strings.isEmpty(functionName) ? Null.instance : functionName;
                 }
                 case getMethodName: {
                     JSContext context = getContext();
-                    String methodName = stackTraceElement.getMethodName(context);
-                    if (methodName == null || methodName.isEmpty() || methodName.equals(JSError.getAnonymousFunctionNameStackTrace(context))) {
+                    TruffleString methodName = stackTraceElement.getMethodName(context);
+                    if (methodName == null || Strings.isEmpty(methodName) || methodName.equals(JSError.getAnonymousFunctionNameStackTrace(context))) {
                         return Null.instance;
                     } else {
                         return methodName;
@@ -217,15 +219,15 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 }
                 case getFileName:
                 case getScriptNameOrSourceURL: {
-                    String fileName = stackTraceElement.getFileName();
-                    if (fileName != null && !fileName.startsWith("<")) {
+                    TruffleString fileName = stackTraceElement.getFileName();
+                    if (fileName != null && !Strings.startsWith(fileName, Strings.ANGLE_BRACKET_OPEN)) {
                         return fileName;
                     } else {
                         return Null.instance;
                     }
                 }
                 case getEvalOrigin: {
-                    String evalOrigin = stackTraceElement.getEvalOrigin();
+                    TruffleString evalOrigin = stackTraceElement.getEvalOrigin();
                     if (evalOrigin != null) {
                         return evalOrigin;
                     } else {

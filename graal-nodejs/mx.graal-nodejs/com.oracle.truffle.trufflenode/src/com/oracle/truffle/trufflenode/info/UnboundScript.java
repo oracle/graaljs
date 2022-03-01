@@ -46,9 +46,15 @@ import java.nio.file.InvalidPathException;
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.Strings;
 
 public final class UnboundScript {
+
+    public static final TruffleString NODE_COLON = Strings.constant("node:");
+    public static final TruffleString UNKNOWN_SOURCE = Strings.constant("unknown source");
+
     private static int lastId;
     private final int id;
     private final Source source;
@@ -69,32 +75,34 @@ public final class UnboundScript {
         this(script.getScriptNode().getRootNode().getSourceSection().getSource(), script.getParseResult(), script.getId());
     }
 
-    public static Source createSource(String code, String fileName) {
-        String name = sourcefileName(fileName);
+    public static Source createSource(TruffleString code, TruffleString fileName) {
+        TruffleString name = sourcefileName(fileName);
         Source source;
+        String codeJavaString = Strings.toJavaString(code);
+        String nameJavaString = Strings.toJavaString(name);
         if (isCoreModule(name)) {
             // Core modules are kept in memory (i.e. there is no file that contains the source)
-            source = Source.newBuilder(JavaScriptLanguage.ID, code, name).build();
+            source = Source.newBuilder(JavaScriptLanguage.ID, codeJavaString, nameJavaString).build();
         } else {
             // We have the content already, but we need to associate the Source
             // with the corresponding file so that debugger knows where to add
             // the breakpoints.
             try {
-                TruffleFile truffleFile = JavaScriptLanguage.getCurrentEnv().getPublicTruffleFile(name);
-                source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(code).name(name).build();
+                TruffleFile truffleFile = JavaScriptLanguage.getCurrentEnv().getPublicTruffleFile(nameJavaString);
+                source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(codeJavaString).name(nameJavaString).build();
             } catch (InvalidPathException ex) {
-                source = Source.newBuilder(JavaScriptLanguage.ID, code, name).build();
+                source = Source.newBuilder(JavaScriptLanguage.ID, codeJavaString, nameJavaString).build();
             }
         }
         return source;
     }
 
-    public static boolean isCoreModule(String name) {
-        return name.startsWith("node:");
+    public static boolean isCoreModule(TruffleString name) {
+        return Strings.startsWith(name, NODE_COLON);
     }
 
-    private static String sourcefileName(String fileName) {
-        return (fileName == null) ? "unknown source" : fileName;
+    private static TruffleString sourcefileName(TruffleString fileName) {
+        return (fileName == null) ? UNKNOWN_SOURCE : fileName;
     }
 
     public int getId() {

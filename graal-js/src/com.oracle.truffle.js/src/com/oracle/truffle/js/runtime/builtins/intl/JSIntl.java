@@ -41,14 +41,16 @@
 package com.oracle.truffle.js.runtime.builtins.intl;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.IntlBuiltins;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSIntl {
 
-    public static final String CLASS_NAME = "Intl";
+    public static final TruffleString CLASS_NAME = Strings.constant("Intl");
 
     private JSIntl() {
     }

@@ -46,6 +46,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -64,6 +65,6 @@ public abstract class CommonJSGlobalExportsGetterBuiltin extends GlobalBuiltins.
     private DynamicObject getExportsObject() {
         DynamicObject moduleObject = CommonJSGlobalModuleGetterBuiltin.getOrCreateModuleObject(getContext(), getRealm());
         assert moduleObject != Undefined.instance && moduleObject != null;
-        return (DynamicObject) JSObject.get(moduleObject, CommonJSRequireBuiltin.EXPORTS_PROPERTY_NAME);
+        return (DynamicObject) JSObject.get(moduleObject, Strings.EXPORTS_PROPERTY_NAME);
     }
 }

@@ -53,11 +53,13 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
@@ -72,8 +74,9 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
 
     public static final JSTemporalPlainYearMonth INSTANCE = new JSTemporalPlainYearMonth();
 
-    public static final String CLASS_NAME = "PlainYearMonth";
-    public static final String PROTOTYPE_NAME = "PlainYearMonth.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("PlainYearMonth");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("PlainYearMonth.prototype");
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.PlainYearMonth");
 
     private JSTemporalPlainYearMonth() {
     }
@@ -95,12 +98,12 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
-        return "Temporal.PlainYearMonth";
+    public TruffleString getClassName(DynamicObject object) {
+        return TO_STRING_TAG;
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
@@ -120,15 +123,14 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
         JSObjectUtil.putBuiltinAccessorProperty(prototype, IN_LEAP_YEAR, realm.lookupAccessor(TemporalPlainYearMonthPrototypeBuiltins.BUILTINS, IN_LEAP_YEAR));
 
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalPlainYearMonthPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(prototype, "Temporal.PlainYearMonth");
+        JSObjectUtil.putToStringTag(prototype, TO_STRING_TAG);
 
         return prototype;
     }
 
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSTemporalPlainYearMonth.INSTANCE, context);
-        return initialShape;
+        return JSObjectUtil.getProtoChildShape(prototype, JSTemporalPlainYearMonth.INSTANCE, context);
     }
 
     @Override
@@ -159,18 +161,18 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
     }
 
     @TruffleBoundary
-    public static String temporalYearMonthToString(JSTemporalPlainYearMonthObject ym, String showCalendar) {
-        Object year = TemporalUtil.padISOYear(ym.getYear());
-        String month = String.format("%1$02d", ym.getMonth());
-        String result = year + "-" + month;
-        String calendarID = JSRuntime.toString(ym.getCalendar());
+    public static TruffleString temporalYearMonthToString(JSTemporalPlainYearMonthObject ym, TruffleString showCalendar) {
+        TruffleString year = TemporalUtil.padISOYear(ym.getYear());
+        TruffleString month = Strings.format("%1$02d", ym.getMonth());
+        TruffleString result = Strings.concatAll(year, Strings.DASH, month);
+        TruffleString calendarID = JSRuntime.toString(ym.getCalendar());
         if (!ISO8601.equals(calendarID)) {
-            String day = String.format("%1$02d", ym.getDay());
-            result += "-" + day;
+            TruffleString day = Strings.format("%1$02d", ym.getDay());
+            result = Strings.concatAll(result, Strings.DASH, day);
         }
-        String calendarString = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);
-        if (!"".equals(calendarString)) {
-            result += calendarString;
+        TruffleString calendarString = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);
+        if (!calendarString.isEmpty()) {
+            result = Strings.concat(result, calendarString);
         }
         return result;
     }

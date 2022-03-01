@@ -71,7 +71,7 @@ v8::Local<v8::String> GraalRegExp::GetSource() const {
     GraalIsolate* graal_isolate = Isolate();
     jobject java_regexp = GetJavaObject();
     JNI_CALL(jobject, java_source, graal_isolate, GraalAccessMethod::regexp_get_source, Object, java_regexp);
-    GraalString* graal_source = GraalString::Allocate(graal_isolate, (jstring) java_source);
+    GraalString* graal_source = GraalString::Allocate(graal_isolate, java_source);
     return reinterpret_cast<v8::String*> (graal_source);
 }
 

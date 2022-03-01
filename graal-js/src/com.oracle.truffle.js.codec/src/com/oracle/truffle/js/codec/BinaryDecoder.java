@@ -44,6 +44,8 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 /**
  * Utility for decoding values from a ByteBuffer.
  */
@@ -115,13 +117,9 @@ public class BinaryDecoder {
         return getSV();
     }
 
-    public String getString() {
-        int size = getUInt();
-        char[] array = new char[size];
-        for (int i = 0; i < size; i++) {
-            array[i] = buffer.getChar();
-        }
-        return new String(array);
+    public TruffleString getString() {
+        byte[] byteArray = getByteArray();
+        return TruffleString.fromByteArrayUncached(byteArray, TruffleString.Encoding.UTF_16);
     }
 
     public byte[] getByteArray() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,119 +40,136 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Strings;
+
 public final class TemporalConstants {
 
-    public static final String TEMPORAL = "Temporal";
+    public static final TruffleString TEMPORAL = Strings.constant("Temporal");
 
-    public static final String YEAR = "year";
-    public static final String MONTH = "month";
-    public static final String MONTH_CODE = "monthCode";
-    public static final String WEEK = "week";
-    public static final String DAY = "day";
-    public static final String HOUR = "hour";
-    public static final String MINUTE = "minute";
-    public static final String SECOND = "second";
-    public static final String MILLISECOND = "millisecond";
-    public static final String MICROSECOND = "microsecond";
-    public static final String NANOSECOND = "nanosecond";
+    public static final TruffleString YEAR = Strings.constant("year");
+    public static final TruffleString MONTH = Strings.constant("month");
+    public static final TruffleString MONTH_CODE = Strings.constant("monthCode");
+    public static final TruffleString WEEK = Strings.constant("week");
+    public static final TruffleString DAY = Strings.constant("day");
+    public static final TruffleString HOUR = Strings.constant("hour");
+    public static final TruffleString MINUTE = Strings.constant("minute");
+    public static final TruffleString SECOND = Strings.constant("second");
+    public static final TruffleString MILLISECOND = Strings.constant("millisecond");
+    public static final TruffleString MICROSECOND = Strings.constant("microsecond");
+    public static final TruffleString NANOSECOND = Strings.constant("nanosecond");
 
-    public static final String YEARS = "years";
-    public static final String MONTHS = "months";
-    public static final String WEEKS = "weeks";
-    public static final String DAYS = "days";
-    public static final String HOURS = "hours";
-    public static final String MINUTES = "minutes";
-    public static final String SECONDS = "seconds";
-    public static final String MILLISECONDS = "milliseconds";
-    public static final String MICROSECONDS = "microseconds";
-    public static final String NANOSECONDS = "nanoseconds";
+    public static final TruffleString YEARS = Strings.constant("years");
+    public static final TruffleString MONTHS = Strings.constant("months");
+    public static final TruffleString WEEKS = Strings.constant("weeks");
+    public static final TruffleString DAYS = Strings.constant("days");
+    public static final TruffleString HOURS = Strings.constant("hours");
+    public static final TruffleString MINUTES = Strings.constant("minutes");
+    public static final TruffleString SECONDS = Strings.constant("seconds");
+    public static final TruffleString MILLISECONDS = Strings.constant("milliseconds");
+    public static final TruffleString MICROSECONDS = Strings.constant("microseconds");
+    public static final TruffleString NANOSECONDS = Strings.constant("nanoseconds");
 
-    public static final String OFFSET = "offset";
-    public static final String ERA = "era";
-    public static final String ERA_YEAR = "eraYear";
-    public static final String OFFSET_NANOSECONDS = "offsetNanoseconds";
+    public static final TruffleString OFFSET = Strings.constant("offset");
+    public static final TruffleString ERA = Strings.constant("era");
+    public static final TruffleString ERA_YEAR = Strings.constant("eraYear");
+    public static final TruffleString OFFSET_NANOSECONDS = Strings.constant("offsetNanoseconds");
 
-    public static final String FIELDS = "fields";
-    public static final String CALENDAR = "calendar";
-    public static final String DAYS_IN_YEAR = "daysInYear";
-    public static final String DAYS_IN_MONTH = "daysInMonth";
-    public static final String DAYS_IN_WEEK = "daysInWeek";
-    public static final String MONTHS_IN_YEAR = "monthsInYear";
-    public static final String HOURS_IN_DAY = "hoursInDay";
-    public static final String IN_LEAP_YEAR = "inLeapYear";
+    public static final TruffleString FIELDS = Strings.constant("fields");
+    public static final TruffleString CALENDAR = Strings.constant("calendar");
+    public static final TruffleString DAYS_IN_YEAR = Strings.constant("daysInYear");
+    public static final TruffleString DAYS_IN_MONTH = Strings.constant("daysInMonth");
+    public static final TruffleString DAYS_IN_WEEK = Strings.constant("daysInWeek");
+    public static final TruffleString MONTHS_IN_YEAR = Strings.constant("monthsInYear");
+    public static final TruffleString HOURS_IN_DAY = Strings.constant("hoursInDay");
+    public static final TruffleString IN_LEAP_YEAR = Strings.constant("inLeapYear");
 
-    public static final String DAY_OF_WEEK = "dayOfWeek";
-    public static final String DAY_OF_YEAR = "dayOfYear";
-    public static final String WEEK_OF_YEAR = "weekOfYear";
+    public static final TruffleString DAY_OF_WEEK = Strings.constant("dayOfWeek");
+    public static final TruffleString DAY_OF_YEAR = Strings.constant("dayOfYear");
+    public static final TruffleString WEEK_OF_YEAR = Strings.constant("weekOfYear");
 
-    public static final String DATE_FROM_FIELDS = "dateFromFields";
-    public static final String REFERENCE_ISO_DAY = "referenceIsoDay";
-    public static final String REFERENCE_ISO_YEAR = "referenceIsoYear";
+    public static final TruffleString DATE_FROM_FIELDS = Strings.constant("dateFromFields");
+    public static final TruffleString REFERENCE_ISO_DAY = Strings.constant("referenceIsoDay");
+    public static final TruffleString REFERENCE_ISO_YEAR = Strings.constant("referenceIsoYear");
 
-    public static final String PLAIN_DATE = "plainDate";
+    public static final TruffleString ISO_DAY = Strings.constant("isoDay");
+    public static final TruffleString ISO_HOUR = Strings.constant("isoHour");
+    public static final TruffleString ISO_MICROSECOND = Strings.constant("isoMicrosecond");
+    public static final TruffleString ISO_MILLISECOND = Strings.constant("isoMillisecond");
+    public static final TruffleString ISO_MINUTE = Strings.constant("isoMinute");
+    public static final TruffleString ISO_MONTH = Strings.constant("isoMonth");
+    public static final TruffleString ISO_NANOSECOND = Strings.constant("isoNanosecond");
+    public static final TruffleString ISO_SECOND = Strings.constant("isoSecond");
+    public static final TruffleString ISO_YEAR = Strings.constant("isoYear");
 
-    public static final String ISO8601 = "iso8601";
-    public static final String GREGORY = "gregory";
-    public static final String JAPANESE = "japanese";
+    public static final TruffleString PLAIN_DATE = Strings.constant("plainDate");
+    public static final TruffleString PLAIN_TIME = Strings.constant("plainTime");
 
-    public static final String ISO_YEAR = "ISOYear";
-    public static final String ISO_MONTH = "ISOMonth";
-    public static final String ISO_DAY = "ISODay";
-    public static final String ISO_HOUR = "ISOHour";
-    public static final String ISO_MINUTE = "ISOMinute";
-    public static final String ISO_SECOND = "ISOSecond";
-    public static final String ISO_MILLISECOND = "ISOMillisecond";
-    public static final String ISO_MICROSECOND = "ISOMicrosecond";
-    public static final String ISO_NANOSECOND = "ISONanosecond";
+    public static final TruffleString ISO8601 = Strings.constant("iso8601");
+    public static final TruffleString GREGORY = Strings.constant("gregory");
+    public static final TruffleString JAPANESE = Strings.constant("japanese");
 
-    public static final String CONSTRAIN = "constrain";
-    public static final String REJECT = "reject";
-    public static final String PREFER = "prefer";
-    public static final String USE = "ure";
-    public static final String IGNORE = "ignore";
-    public static final String OVERFLOW = "overflow";
-    public static final String COMPATIBLE = "compatible";
+    public static final TruffleString CONSTRAIN = Strings.constant("constrain");
+    public static final TruffleString REJECT = Strings.constant("reject");
+    public static final TruffleString PREFER = Strings.constant("prefer");
+    public static final TruffleString USE = Strings.constant("ure");
+    public static final TruffleString IGNORE = Strings.constant("ignore");
+    public static final TruffleString OVERFLOW = Strings.constant("overflow");
+    public static final TruffleString COMPATIBLE = Strings.constant("compatible");
 
-    public static final String TIME_ZONE = "timeZone";
-    public static final String TIME_ZONE_OFFSET = "timeZoneOffset";
-    public static final String TIME_ZONE_IANA_NAME = "timeZoneIANAName";
-    public static final String TIME_ZONE_NAME = "timeZoneName";
+    public static final TruffleString TIME_ZONE = Strings.constant("timeZone");
+    public static final TruffleString TIME_ZONE_OFFSET = Strings.constant("timeZoneOffset");
+    public static final TruffleString TIME_ZONE_IANA_NAME = Strings.constant("timeZoneIANAName");
+    public static final TruffleString TIME_ZONE_NAME = Strings.constant("timeZoneName");
 
-    public static final String DATE_UNTIL = "dateUntil";
-    public static final String DATE_ADD = "dateAdd";
+    public static final TruffleString DATE_UNTIL = Strings.constant("dateUntil");
+    public static final TruffleString DATE_ADD = Strings.constant("dateAdd");
 
-    public static final String PRECISION = "Precision";
-    public static final String INCREMENT = "Increment";
-    public static final String UNIT = "unit";
-    public static final String SMALLEST_UNIT = "smallestUnit";
+    public static final TruffleString PRECISION = Strings.constant("Precision");
+    public static final TruffleString INCREMENT = Strings.constant("Increment");
+    public static final TruffleString UNIT = Strings.constant("unit");
+    public static final TruffleString SMALLEST_UNIT = Strings.constant("smallestUnit");
 
-    public static final String AUTO = "auto";
-    public static final String ALWAYS = "always";
-    public static final String NEVER = "never";
-    public static final String EARLIER = "earlier";
-    public static final String LATER = "later";
+    public static final TruffleString AUTO = Strings.constant("auto");
+    public static final TruffleString ALWAYS = Strings.constant("always");
+    public static final TruffleString NEVER = Strings.constant("never");
+    public static final TruffleString EARLIER = Strings.constant("earlier");
+    public static final TruffleString LATER = Strings.constant("later");
 
-    public static final String FLOOR = "floor";
-    public static final String CEIL = "ceil";
-    public static final String TRUNC = "trunc";
-    public static final String HALF_EXPAND = "halfExpand";
-    public static final String ROUNDING_MODE = "roundingMode";
-    public static final String ROUNDING_INCREMENT = "roundingIncrement";
+    public static final TruffleString FLOOR = Strings.constant("floor");
+    public static final TruffleString CEIL = Strings.constant("ceil");
+    public static final TruffleString TRUNC = Strings.constant("trunc");
+    public static final TruffleString HALF_EXPAND = Strings.constant("halfExpand");
+    public static final TruffleString ROUNDING_MODE = Strings.constant("roundingMode");
+    public static final TruffleString ROUNDING_INCREMENT = Strings.constant("roundingIncrement");
 
-    public static final String SIGN = "sign";
-    public static final String BLANK = "blank";
-    public static final String ID = "id";
+    public static final TruffleString SIGN = Strings.constant("sign");
+    public static final TruffleString BLANK = Strings.constant("blank");
+    public static final TruffleString ID = Strings.constant("id");
 
-    public static final String MERGE_FIELDS = "mergeFields";
-    public static final String RELATIVE_TO = "relativeTo";
-    public static final String LARGEST_UNIT = "largestUnit";
+    public static final TruffleString MERGE_FIELDS = Strings.constant("mergeFields");
+    public static final TruffleString RELATIVE_TO = Strings.constant("relativeTo");
+    public static final TruffleString LARGEST_UNIT = Strings.constant("largestUnit");
 
-    public static final String EPOCH_SECONDS = "epochSeconds";
-    public static final String EPOCH_MILLISECONDS = "epochMilliseconds";
-    public static final String EPOCH_MICROSECONDS = "epochMicroseconds";
-    public static final String EPOCH_NANOSECONDS = "epochNanoseconds";
+    public static final TruffleString EPOCH_SECONDS = Strings.constant("epochSeconds");
+    public static final TruffleString EPOCH_MILLISECONDS = Strings.constant("epochMilliseconds");
+    public static final TruffleString EPOCH_MICROSECONDS = Strings.constant("epochMicroseconds");
+    public static final TruffleString EPOCH_NANOSECONDS = Strings.constant("epochNanoseconds");
 
-    public static final String UTC = "UTC";
+    public static final TruffleString UTC = Strings.constant("UTC");
 
-    public static final String DISAMBIGUATION = "disambiguation";
+    public static final TruffleString DISAMBIGUATION = Strings.constant("disambiguation");
+    public static final TruffleString NOW = Strings.constant("Now");
+
+    public static final TruffleString GLOBAL_PLAIN_TIME = Strings.constant("PlainTime");
+    public static final TruffleString GLOBAL_PLAIN_DATE = Strings.constant("PlainDate");
+    public static final TruffleString GLOBAL_PLAIN_DATE_TIME = Strings.constant("PlainDateTime");
+    public static final TruffleString GLOBAL_DURATION = Strings.constant("Duration");
+    public static final TruffleString GLOBAL_CALENDAR = Strings.constant("Calendar");
+    public static final TruffleString GLOBAL_PLAIN_YEAR_MONTH = Strings.constant("PlainYearMonth");
+    public static final TruffleString GLOBAL_PLAIN_MONTH_DAY = Strings.constant("PlainMonthDay");
+    public static final TruffleString GLOBAL_TIME_ZONE = Strings.constant("TimeZone");
+    public static final TruffleString GLOBAL_INSTANT = Strings.constant("Instant");
+    public static final TruffleString GLOBAL_ZONED_DATE_TIME = Strings.constant("ZonedDateTime");
+    public static final TruffleString GLOBAL_TEMPORAL_NOW = Strings.constant("Temporal.Now");
 }

@@ -74,8 +74,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.Strings;
 
 /**
  * Utility class for {@code encodeURI} and {@code encodeURIComponent}.
@@ -176,41 +179,42 @@ public final class JSURLEncoder {
     }
 
     @TruffleBoundary(transferToInterpreterOnException = false)
-    public String encode(String s) {
-        int length = s.length();
-        StringBuilder buffer = null;
+    public TruffleString encode(TruffleString s) {
+        int length = Strings.length(s);
+        TruffleStringBuilder sb = null;
         CharsetEncoder encoder = null;
 
         int i = 0;
+        String javaStr = Strings.toJavaString(s);
         while (i < length) {
-            int c = s.charAt(i);
+            int c = Strings.charAt(s, i);
             if (needsNoEncoding(c)) {
-                if (buffer != null) {
-                    buffer.append((char) c);
+                if (sb != null) {
+                    Strings.builderAppend(sb, (char) c);
                 }
                 i++;
             } else {
-                if (buffer == null) {
-                    buffer = allocBuffer(s, i, length + 16);
+                if (sb == null) {
+                    sb = allocStringBuilder(s, i, length + 16);
                 }
                 if (encoder == null) {
                     encoder = charset.newEncoder();
                 }
-                i = encodeConvert(s, i, c, buffer, encoder);
+                i = encodeConvert(javaStr, i, c, sb, encoder);
             }
         }
-        return buffer != null ? buffer.toString() : s;
+        return sb != null ? Strings.builderToString(sb) : s;
     }
 
-    static StringBuilder allocBuffer(String s, int i, int estimatedLength) {
-        StringBuilder newBuffer = new StringBuilder(estimatedLength);
+    static TruffleStringBuilder allocStringBuilder(TruffleString s, int i, int estimatedLength) {
+        TruffleStringBuilder sb = Strings.builderCreate(estimatedLength);
         if (i > 0) {
-            newBuffer.append(s, 0, i);
+            Strings.builderAppend(sb, s, 0, i);
         }
-        return newBuffer;
+        return sb;
     }
 
-    private int encodeConvert(String s, int iParam, int cParam, StringBuilder buffer, CharsetEncoder encoder) {
+    private int encodeConvert(String s, int iParam, int cParam, TruffleStringBuilder buffer, CharsetEncoder encoder) {
         int i = iParam;
         int c = cParam;
         int startPos = i;
@@ -238,11 +242,11 @@ public final class JSURLEncoder {
         assert bb.arrayOffset() + bb.position() == 0;
         int length = bb.limit();
         for (int j = 0; j < length; j++) {
-            buffer.append('%');
+            Strings.builderAppend(buffer, '%');
             char ch = charForDigit((ba[j] >> 4) & 0xF, 16);
-            buffer.append(ch);
+            Strings.builderAppend(buffer, ch);
             ch = charForDigit(ba[j] & 0xF, 16);
-            buffer.append(ch);
+            Strings.builderAppend(buffer, ch);
         }
         return i;
     }

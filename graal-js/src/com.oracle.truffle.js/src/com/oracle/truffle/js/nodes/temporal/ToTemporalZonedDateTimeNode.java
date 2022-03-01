@@ -50,6 +50,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -100,7 +101,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             options = JSOrdinary.createWithNullPrototype(ctx);
         }
         JSTemporalDateTimeRecord result;
-        String offsetString = null;
+        TruffleString offsetString = null;
         DynamicObject timeZone = null;
         DynamicObject calendar = null;
         JSRealm realm = JSRealm.get(this);
@@ -112,7 +113,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                 return itemObj;
             }
             calendar = getTemporalCalendarNode.executeDynamicObject(itemObj);
-            List<String> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.listDHMMMMMNSY);
+            List<TruffleString> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.listDHMMMMMNSY);
             Boundaries.listAdd(fieldNames, TIME_ZONE);
             Boundaries.listAdd(fieldNames, OFFSET);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.listTimeZone);
@@ -127,10 +128,10 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options);
         } else {
             TemporalUtil.toTemporalOverflow(options, getOptionNode);
-            String string = toStringNode.executeString(item);
+            TruffleString string = toStringNode.executeString(item);
             JSTemporalZonedDateTimeRecord resultZDT = TemporalUtil.parseTemporalZonedDateTimeString(string);
             result = resultZDT;
-            String timeZoneName = resultZDT.getTimeZoneName();
+            TruffleString timeZoneName = resultZDT.getTimeZoneName();
             assert !TemporalUtil.isNullish(timeZoneName);
             if (!TemporalUtil.canParseAsTimeZoneNumericUTCOffset(timeZoneName)) {
                 if (!TemporalUtil.isValidTimeZoneName(timeZoneName)) {
@@ -152,8 +153,8 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
         if (offsetBehaviour == OffsetBehaviour.OPTION) {
             offsetNanoseconds = TemporalUtil.parseTimeZoneOffsetString(offsetString);
         }
-        String disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode);
-        String offset = TemporalUtil.toTemporalOffset(options, REJECT, getOptionNode);
+        TruffleString disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode);
+        TruffleString offset = TemporalUtil.toTemporalOffset(options, REJECT, getOptionNode);
         BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(),
                         result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNanoseconds, timeZone, disambiguation, offset,
                         matchBehaviour);

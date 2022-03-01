@@ -75,6 +75,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -243,7 +244,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                     return createIterResult.execute(frame, value, done);
                 }
             }
-            return JSFunctionData.createCallOnly(context, new AsyncFromSyncIteratorValueUnwrapRootNode().getCallTarget(), 1, "");
+            return JSFunctionData.createCallOnly(context, new AsyncFromSyncIteratorValueUnwrapRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
         }
     }
 
@@ -330,7 +331,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         public AsyncFromSyncReturn(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getReturn = GetMethodNode.create(context, "return");
+            this.getReturn = GetMethodNode.create(context, Strings.RETURN);
             this.createIterResult = CreateIterResultObjectNode.create(getContext());
         }
 
@@ -358,7 +359,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         public AsyncFromSyncThrow(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getThrow = GetMethodNode.create(context, "throw");
+            this.getThrow = GetMethodNode.create(context, Strings.THROW);
         }
 
         @Override

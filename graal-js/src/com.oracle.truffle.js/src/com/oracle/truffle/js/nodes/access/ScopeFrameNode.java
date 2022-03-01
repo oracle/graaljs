@@ -47,15 +47,17 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.Strings;
 
 public abstract class ScopeFrameNode extends JavaScriptBaseNode {
     public static final int PARENT_SCOPE_SLOT_INDEX = 0;
-    public static final Object PARENT_SCOPE_IDENTIFIER = "<parent>";
-    public static final Object BLOCK_SCOPE_IDENTIFIER = "<blockscope>";
-    public static final String EVAL_SCOPE_IDENTIFIER = "<evalscope>";
+    public static final TruffleString PARENT_SCOPE_IDENTIFIER = Strings.constant("<parent>");
+    public static final TruffleString BLOCK_SCOPE_IDENTIFIER = Strings.constant("<blockscope>");
+    public static final TruffleString EVAL_SCOPE_IDENTIFIER = Strings.constant("<evalscope>");
 
     public static ScopeFrameNode createCurrent() {
         return CurrentFrameNode.instance();

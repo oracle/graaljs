@@ -50,6 +50,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 
 /**
@@ -81,8 +82,8 @@ public abstract class PrivateFieldAddNode extends JavaScriptBaseNode {
     @Specialization(guards = {"isJSObject(target)"}, limit = "3")
     void doFieldAdd(DynamicObject target, HiddenKey key, Object value,
                     @CachedLibrary("target") DynamicObjectLibrary access) {
-        if (!access.containsKey(target, key)) {
-            access.putWithFlags(target, key, value, JSAttributes.getDefaultNotEnumerable());
+        if (!Properties.containsKey(access, target, key)) {
+            Properties.putWithFlags(access, target, key, value, JSAttributes.getDefaultNotEnumerable());
         } else {
             duplicate(key);
         }

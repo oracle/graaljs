@@ -40,10 +40,13 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
@@ -53,9 +56,8 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
-
-import java.util.Set;
 
 @NodeInfo(shortName = "-")
 public abstract class JSUnaryMinusNode extends JSUnaryNode {
@@ -123,8 +125,8 @@ public abstract class JSUnaryMinusNode extends JSUnaryNode {
         return overloadedOperatorNode.execute(a);
     }
 
-    protected String getOverloadedOperatorName() {
-        return "neg";
+    protected TruffleString getOverloadedOperatorName() {
+        return Strings.NEG;
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(a)"})

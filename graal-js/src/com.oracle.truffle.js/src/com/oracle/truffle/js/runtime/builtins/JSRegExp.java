@@ -48,19 +48,23 @@ import java.util.Comparator;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
@@ -78,24 +82,26 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
 
 public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
+    private static final TruffleString BRACKET_REG_EXP_SPC = Strings.constant("[RegExp ");
+
     public static final JSRegExp INSTANCE = new JSRegExp();
 
-    public static final String CLASS_NAME = "RegExp";
-    public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
-    public static final String MULTILINE = "multiline";
-    public static final String GLOBAL = "global";
-    public static final String IGNORE_CASE = "ignoreCase";
-    public static final String STICKY = "sticky";
-    public static final String UNICODE = "unicode";
-    public static final String DOT_ALL = "dotAll";
-    public static final String SOURCE = "source";
-    public static final String FLAGS = "flags";
-    public static final String LAST_INDEX = "lastIndex";
-    public static final String INPUT = "input";
-    public static final String GROUPS = "groups";
-    public static final String INDEX = "index";
-    public static final String INDICES = "indices";
-    public static final String HAS_INDICES = "hasIndices";
+    public static final TruffleString CLASS_NAME = Strings.constant("RegExp");
+    public static final TruffleString PROTOTYPE_NAME = Strings.concat(CLASS_NAME, Strings.DOT_PROTOTYPE);
+    public static final TruffleString MULTILINE = Strings.constant("multiline");
+    public static final TruffleString GLOBAL = Strings.constant("global");
+    public static final TruffleString IGNORE_CASE = Strings.constant("ignoreCase");
+    public static final TruffleString STICKY = Strings.constant("sticky");
+    public static final TruffleString UNICODE = Strings.constant("unicode");
+    public static final TruffleString DOT_ALL = Strings.constant("dotAll");
+    public static final TruffleString SOURCE = Strings.constant("source");
+    public static final TruffleString FLAGS = Strings.constant("flags");
+    public static final TruffleString LAST_INDEX = Strings.constant("lastIndex");
+    public static final TruffleString INPUT = Strings.constant("input");
+    public static final TruffleString GROUPS = Strings.constant("groups");
+    public static final TruffleString INDEX = Strings.constant("index");
+    public static final TruffleString INDICES = Strings.constant("indices");
+    public static final TruffleString HAS_INDICES = Strings.constant("hasIndices");
 
     public static final PropertyProxy LAZY_INDEX_PROXY = new LazyRegexResultIndexProxyProperty();
     public static final HiddenKey GROUPS_RESULT_ID = new HiddenKey("regexResult");
@@ -124,11 +130,11 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
 
     public static class LazyNamedCaptureGroupProperty implements PropertyProxy {
 
-        private final String groupName;
+        private final TruffleString groupName;
         private final int groupIndex;
         private final ConditionProfile isIndicesObject = ConditionProfile.createBinaryProfile();
 
-        public LazyNamedCaptureGroupProperty(String groupName, int groupIndex) {
+        public LazyNamedCaptureGroupProperty(TruffleString groupName, int groupIndex) {
             this.groupName = groupName;
             this.groupIndex = groupIndex;
         }
@@ -146,7 +152,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
             if (isIndicesObject.profile(groups.isIndices())) {
                 return LazyRegexResultIndicesArray.getIntIndicesArray(JavaScriptLanguage.getCurrentLanguage().getJSContext(), TRegexResultAccessor.getUncached(), regexResult, groupIndex);
             } else {
-                String input = groups.getInputString();
+                TruffleString input = groups.getInputString();
                 return materializeNode.materializeGroup(regexResult, groupIndex, input);
             }
         }
@@ -223,7 +229,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         initialize(ctx, thisObj, regex);
     }
 
-    public static DynamicObject createGroupsObject(JSContext context, JSRealm realm, JSObjectFactory groupsFactory, Object regexResult, String input, boolean isIndices) {
+    public static DynamicObject createGroupsObject(JSContext context, JSRealm realm, JSObjectFactory groupsFactory, Object regexResult, TruffleString input, boolean isIndices) {
         DynamicObject obj = JSRegExpGroupsObject.create(realm, groupsFactory, regexResult, input, isIndices);
         return context.trackAllocation(obj);
     }
@@ -238,32 +244,36 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         }
     }
 
-    private static final Comparator<Pair<Integer, String>> NAMED_GROUPS_COMPARATOR = new Comparator<>() {
+    private static final Comparator<Pair<Integer, TruffleString>> NAMED_GROUPS_COMPARATOR = new Comparator<>() {
         @Override
-        public int compare(Pair<Integer, String> group1, Pair<Integer, String> group2) {
+        public int compare(Pair<Integer, TruffleString> group1, Pair<Integer, TruffleString> group2) {
             return group1.getFirst() - group2.getFirst();
         }
     };
 
     @TruffleBoundary
     public static JSObjectFactory buildGroupsFactory(JSContext ctx, Object namedCaptureGroups) {
-        Shape groupsShape = ctx.getRegExpGroupsEmptyShape();
-        List<Object> keys = JSInteropUtil.keys(namedCaptureGroups);
-        List<Pair<Integer, String>> pairs = new ArrayList<>(keys.size());
-        for (Object key : keys) {
-            String groupName = (String) key;
-            int groupIndex = TRegexUtil.InteropReadIntMemberNode.getUncached().execute(namedCaptureGroups, groupName);
-            pairs.add(new Pair<>(groupIndex, groupName));
+        try {
+            Shape groupsShape = ctx.getRegExpGroupsEmptyShape();
+            List<Object> keys = JSInteropUtil.keys(namedCaptureGroups);
+            List<Pair<Integer, TruffleString>> pairs = new ArrayList<>(keys.size());
+            for (Object key : keys) {
+                int groupIndex = TRegexUtil.InteropReadIntMemberNode.getUncached().execute(namedCaptureGroups, InteropLibrary.getUncached().asString(key));
+                TruffleString groupName = InteropLibrary.getUncached().asTruffleString(key);
+                pairs.add(new Pair<>(groupIndex, groupName));
+            }
+            Collections.sort(pairs, NAMED_GROUPS_COMPARATOR);
+            Shape.DerivedBuilder builder = Shape.newBuilder(groupsShape);
+            for (Pair<Integer, TruffleString> pair : pairs) {
+                int groupIndex = pair.getFirst();
+                TruffleString groupName = pair.getSecond();
+                builder.addConstantProperty(groupName, new LazyNamedCaptureGroupProperty(groupName, groupIndex), JSAttributes.getDefault() | JSProperty.PROXY);
+            }
+            groupsShape = builder.build();
+            return JSObjectFactory.createBound(ctx, Null.instance, groupsShape);
+        } catch (UnsupportedMessageException e) {
+            throw CompilerDirectives.shouldNotReachHere();
         }
-        Collections.sort(pairs, NAMED_GROUPS_COMPARATOR);
-        Shape.DerivedBuilder builder = Shape.newBuilder(groupsShape);
-        for (Pair<Integer, String> pair : pairs) {
-            int groupIndex = pair.getFirst();
-            String groupName = pair.getSecond();
-            builder.addConstantProperty(groupName, new LazyNamedCaptureGroupProperty(groupName, groupIndex), JSAttributes.getDefault() | JSProperty.PROXY);
-        }
-        groupsShape = builder.build();
-        return JSObjectFactory.createBound(ctx, Null.instance, groupsShape);
     }
 
     /**
@@ -272,43 +282,15 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
      * Example: <code>/ab*c/gi</code>
      */
     @TruffleBoundary
-    public static String prototypeToString(DynamicObject thisObj) {
+    public static TruffleString prototypeToString(DynamicObject thisObj) {
         Object regex = getCompiledRegex(thisObj);
         InteropReadStringMemberNode readString = TRegexUtil.InteropReadStringMemberNode.getUncached();
-        String pattern = readString.execute(regex, TRegexUtil.Props.CompiledRegex.PATTERN);
-        if (pattern.length() == 0) {
-            pattern = "(?:)";
+        TruffleString pattern = readString.execute(regex, TRegexUtil.Props.CompiledRegex.PATTERN);
+        if (Strings.length(pattern) == 0) {
+            pattern = Strings.EMPTY_REGEX;
         }
-
-        StringBuilder sb = new StringBuilder(pattern.length() + MAX_FLAGS_LENGTH + 2);
-        sb.append('/');
-        sb.append(pattern);
-        sb.append('/');
-
-        Object flagsObj = TRegexUtil.InteropReadMemberNode.getUncached().execute(regex, TRegexUtil.Props.CompiledRegex.FLAGS);
-        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.HAS_INDICES)) {
-            sb.append('d');
-        }
-        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.GLOBAL)) {
-            sb.append('g');
-        }
-        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.IGNORE_CASE)) {
-            sb.append('i');
-        }
-        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.MULTILINE)) {
-            sb.append('m');
-        }
-        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.DOT_ALL)) {
-            sb.append('s');
-        }
-        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.UNICODE)) {
-            sb.append('u');
-        }
-        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.STICKY)) {
-            sb.append('y');
-        }
-
-        return sb.toString();
+        TruffleString flags = readString.execute(TRegexUtil.InteropReadMemberNode.getUncached().execute(regex, TRegexUtil.Props.CompiledRegex.FLAGS), TRegexUtil.Props.Flags.SOURCE);
+        return Strings.concatAll(Strings.SLASH, pattern, Strings.SLASH, flags);
     }
 
     // non-standard according to ES2015, 7.2.8 IsRegExp (@@match check missing)
@@ -350,7 +332,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         return prototype;
     }
 
-    private static void putRegExpPropertyAccessor(JSRealm realm, DynamicObject prototype, String name) {
+    private static void putRegExpPropertyAccessor(JSRealm realm, DynamicObject prototype, TruffleString name) {
         JSObjectUtil.putBuiltinAccessorProperty(prototype, name, realm.lookupAccessor(RegExpPrototypeBuiltins.RegExpPrototypeGetterBuiltins.BUILTINS, name));
     }
 
@@ -378,25 +360,25 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public String getBuiltinToStringTag(DynamicObject object) {
+    public TruffleString getBuiltinToStringTag(DynamicObject object) {
         return getClassName(object);
     }
 
     @Override
     @TruffleBoundary
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return "[RegExp " + prototypeToString(obj) + "]";
+            return Strings.concatAll(BRACKET_REG_EXP_SPC, prototypeToString(obj), Strings.BRACKET_CLOSE);
         } else {
             return prototypeToString(obj);
         }
@@ -408,9 +390,9 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     }
 
     @TruffleBoundary
-    public static CharSequence escapeRegExpPattern(CharSequence pattern) {
-        if (pattern.length() == 0) {
-            return "(?:)";
+    public static TruffleString escapeRegExpPattern(TruffleString pattern) {
+        if (Strings.length(pattern) == 0) {
+            return Strings.EMPTY_REGEX;
         }
         int extraChars = escapeRegExpExtraCharCount(pattern);
         if (extraChars == 0) {
@@ -432,19 +414,19 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
      * {@code "\\\n"}, which is escaped as {@code "\\n"} and where both the original and the escaped
      * pattern are of length 2.
      */
-    private static int escapeRegExpExtraCharCount(CharSequence pattern) {
+    private static int escapeRegExpExtraCharCount(TruffleString pattern) {
         // The body of this method mirrors that of escapeRegExpPattern. However, instead of actually
         // allocating and filling a new StringBuilder, it only scans the input pattern and takes
         // note of any characters that will need to be escaped.
         int extraChars = 0;
         boolean insideCharClass = false;
         int i = 0;
-        while (i < pattern.length()) {
-            switch (pattern.charAt(i)) {
+        while (i < Strings.length(pattern)) {
+            switch (Strings.charAt(pattern, i)) {
                 case '\\':
-                    assert i + 1 < pattern.length();
+                    assert i + 1 < Strings.length(pattern);
                     i++;
-                    switch (pattern.charAt(i)) {
+                    switch (Strings.charAt(pattern, i)) {
                         case '\n':
                         case '\r':
                             // We are replacing "\\\n" with "\\n" or "\\\r" with "\\r". We are not
@@ -493,18 +475,18 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
      * @return the escaped pattern
      */
     @TruffleBoundary
-    private static String escapeRegExpPattern(CharSequence pattern, int extraChars) {
-        StringBuilder sb = new StringBuilder(pattern.length() + extraChars);
+    private static TruffleString escapeRegExpPattern(TruffleString pattern, int extraChars) {
+        StringBuilder sb = new StringBuilder(Strings.length(pattern) + extraChars);
         boolean insideCharClass = false;
         int i = 0;
-        while (i < pattern.length()) {
-            char c = pattern.charAt(i);
+        while (i < Strings.length(pattern)) {
+            char c = Strings.charAt(pattern, i);
             switch (c) {
                 case '\\':
-                    assert i + 1 < pattern.length();
+                    assert i + 1 < Strings.length(pattern);
                     sb.append(c);
                     i++;
-                    c = pattern.charAt(i);
+                    c = Strings.charAt(pattern, i);
                     // The patterns used in RegExp objects can not only have literal LineTerminators
                     // (e.g. RegExp("\n")), they can also have identity escapes of literal
                     // LineTerminators (e.g. RegExp("\\\n")) (note that this is only valid when the
@@ -561,6 +543,6 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
             }
             i++;
         }
-        return sb.toString();
+        return Strings.fromJavaString(sb.toString());
     }
 }

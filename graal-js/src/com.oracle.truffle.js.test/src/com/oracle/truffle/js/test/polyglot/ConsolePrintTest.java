@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,8 @@ import static org.junit.Assert.assertEquals;
 import java.util.Collections;
 import java.util.Map;
 
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Strings;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -141,18 +143,18 @@ public class ConsolePrintTest extends JSTest {
     public void testFunctionObject() {
         Object result = testHelper.runNoPolyglot("function f(a,b) { return a+b; }; f.x=1; f;");
         testHelper.enterContext();
-        String converted = JSRuntime.safeToString(result);
+        TruffleString converted = JSRuntime.safeToString(result);
         testHelper.leaveContext();
-        assertEquals("function f(a,b) { return a+b; }", converted);
+        assertEquals(Strings.fromJavaString("function f(a,b) { return a+b; }"), converted);
     }
 
     @Test
     public void testInternalFunction() {
         Object result = testHelper.runNoPolyglot("Promise;");
         testHelper.enterContext();
-        String converted = JSRuntime.safeToString(result);
+        TruffleString converted = JSRuntime.safeToString(result);
         testHelper.leaveContext();
-        assertEquals("function Promise() { [native code] }", converted);
+        assertEquals(Strings.fromJavaString("function Promise() { [native code] }"), converted);
     }
 
     @Test

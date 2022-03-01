@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,8 +43,10 @@ package com.oracle.js.parser.ir;
 
 import java.util.Objects;
 
+import com.oracle.js.parser.ParserStrings;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * IR representation for an identifier.
@@ -69,7 +71,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     //@formatter:on
 
     /** Identifier. */
-    private final String name;
+    private final TruffleString name;
 
     private final int flags;
 
@@ -82,13 +84,13 @@ public final class IdentNode extends Expression implements PropertyKey, Function
      * @param finish finish position
      * @param name name of identifier
      */
-    public IdentNode(final long token, final int finish, final String name) {
+    public IdentNode(final long token, final int finish, final TruffleString name) {
         super(token, finish);
         this.name = Objects.requireNonNull(name);
         this.flags = 0;
     }
 
-    private IdentNode(final IdentNode identNode, final String name, final int flags) {
+    private IdentNode(final IdentNode identNode, final TruffleString name, final int flags) {
         super(identNode);
         this.name = name;
         this.flags = flags;
@@ -124,12 +126,12 @@ public final class IdentNode extends Expression implements PropertyKey, Function
      *
      * @return IdentNode name
      */
-    public String getName() {
+    public TruffleString getName() {
         return name;
     }
 
     @Override
-    public String getPropertyName() {
+    public TruffleString getPropertyName() {
         return getName();
     }
 
@@ -218,7 +220,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
      */
     public boolean isInternal() {
         assert name != null;
-        return name.charAt(0) == ':';
+        return ParserStrings.charAt(name, 0) == ':';
     }
 
     public boolean isThis() {

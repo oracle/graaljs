@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.arguments;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -48,8 +50,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 public class AccessIndexedArgumentNode extends JavaScriptNode implements RepeatableNode {
     protected final int index;

@@ -45,9 +45,11 @@ import java.util.Map;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -58,9 +60,9 @@ import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 
 public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
 
-    public static final String CALLEE = "callee";
-    public static final String CALLER = "caller";
-    protected static final String CLASS_NAME = "Arguments";
+    public static final TruffleString CALLEE = Strings.constant("callee");
+    public static final TruffleString CALLER = Strings.constant("caller");
+    protected static final TruffleString CLASS_NAME = Strings.constant("Arguments");
 
     @TruffleBoundary
     @Override
@@ -92,7 +94,7 @@ public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return CLASS_NAME;
     }
 
@@ -189,14 +191,14 @@ public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
         }
 
         if (isIndexConnected) {
-            assert key instanceof String : key;
-            definePropertyMapped(thisObj, (String) key, descriptor, index, oldValue, thisObj);
+            assert Strings.isTString(key) : key;
+            definePropertyMapped(thisObj, (TruffleString) key, descriptor, index, oldValue, thisObj);
         }
         return true;
     }
 
     @TruffleBoundary
-    private static void definePropertyMapped(DynamicObject thisObj, String name, PropertyDescriptor descriptor, long index, Object oldValueParam, DynamicObject obj) {
+    private static void definePropertyMapped(DynamicObject thisObj, TruffleString name, PropertyDescriptor descriptor, long index, Object oldValueParam, DynamicObject obj) {
         if (descriptor.isAccessorDescriptor()) {
             disconnectIndex(thisObj, index, oldValueParam);
         } else {

@@ -53,6 +53,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSAddNode;
 import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
@@ -63,9 +64,11 @@ import com.oracle.truffle.js.nodes.unary.JSOverloadedUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
+
     public enum Op {
         Inc(new IncOp()),
         Dec(new DecOp());
@@ -88,7 +91,7 @@ public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
 
         public abstract SafeInteger doSafeInteger(SafeInteger value);
 
-        public abstract String getOverloadedOperatorName();
+        public abstract TruffleString getOverloadedOperatorName();
     }
 
     protected static class IncOp extends LocalVarOp {
@@ -128,8 +131,8 @@ public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
         }
 
         @Override
-        public String getOverloadedOperatorName() {
-            return "++";
+        public TruffleString getOverloadedOperatorName() {
+            return Strings.SYMBOL_PLUS_PLUS;
         }
     }
 
@@ -170,8 +173,8 @@ public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
         }
 
         @Override
-        public String getOverloadedOperatorName() {
-            return "--";
+        public TruffleString getOverloadedOperatorName() {
+            return Strings.SYMBOL_MINUS_MINUS;
         }
     }
 
@@ -375,7 +378,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         return doubleValue;
     }
 
-    protected String getOverloadedOperatorName() {
+    protected TruffleString getOverloadedOperatorName() {
         return op.getOverloadedOperatorName();
     }
 
@@ -521,7 +524,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         return newValue;
     }
 
-    protected String getOverloadedOperatorName() {
+    protected TruffleString getOverloadedOperatorName() {
         return op.getOverloadedOperatorName();
     }
 

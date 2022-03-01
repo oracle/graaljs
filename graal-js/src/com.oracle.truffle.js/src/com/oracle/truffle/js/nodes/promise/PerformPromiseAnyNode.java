@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -179,13 +180,12 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
                 JSRealm realm = getRealm();
                 DynamicObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors);
                 DynamicObject aggregateErrorObject = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
-                String message = null;
                 DynamicObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);
-                GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, message, aggregateErrorObject, realm, stackTraceLimit, errorFunction, false);
-                initErrorObjectNode.execute(aggregateErrorObject, exception, message, errorsArray);
+                GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, null, aggregateErrorObject, realm, stackTraceLimit, errorFunction, false);
+                initErrorObjectNode.execute(aggregateErrorObject, exception, null, errorsArray);
                 return aggregateErrorObject;
             }
         }
-        return JSFunctionData.createCallOnly(context, new PromiseAnyRejectElementRootNode().getCallTarget(), 1, "");
+        return JSFunctionData.createCallOnly(context, new PromiseAnyRejectElementRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 }

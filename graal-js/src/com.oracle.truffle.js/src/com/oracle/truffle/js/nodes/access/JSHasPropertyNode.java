@@ -57,6 +57,7 @@ import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -184,7 +185,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
                 long index = JSRuntime.longValue((Number) propertyName);
                 return index >= 0 && index < JSInteropUtil.getArraySize(object, interop, this);
             } else {
-                if (!(propertyName instanceof Symbol) && interop.isMemberExisting(object, toStringNode.executeString(propertyName))) {
+                if (!(propertyName instanceof Symbol) && interop.isMemberExisting(object, Strings.toJavaString(toStringNode.executeString(propertyName)))) {
                     return true;
                 }
                 if (getLanguage().getJSContext().getContextOptions().hasForeignObjectPrototype()) {

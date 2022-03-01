@@ -46,6 +46,7 @@ import java.util.Set;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -62,13 +63,13 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class EvalVariableNode extends JSTargetableNode implements ReadNode, WriteNode {
 
     @Child private JavaScriptNode defaultDelegate;
-    private final String varName;
+    private final TruffleString varName;
     @Child private JavaScriptNode dynamicScopeNode;
     @Child private HasPropertyCacheNode hasPropertyNode;
     @Child private JSTargetableNode scopeAccessNode;
     private final JSContext context;
 
-    public EvalVariableNode(JSContext context, String varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
+    public EvalVariableNode(JSContext context, TruffleString varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
         this.varName = varName;
         this.defaultDelegate = Objects.requireNonNull(defaultDelegate);
         this.dynamicScopeNode = dynamicScope;
@@ -78,7 +79,7 @@ public final class EvalVariableNode extends JSTargetableNode implements ReadNode
         this.context = context;
     }
 
-    public String getPropertyName() {
+    public Object getPropertyName() {
         return varName;
     }
 

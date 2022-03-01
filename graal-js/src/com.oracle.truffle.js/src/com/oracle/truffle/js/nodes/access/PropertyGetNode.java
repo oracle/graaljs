@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,6 +75,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -92,6 +93,8 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSNoSuchMethodAdapter;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Properties;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -1026,8 +1029,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             Object key = root.getKey();
-            if (key instanceof String) {
-                return JavaPackage.getJavaClassOrConstructorOrSubPackage(root.getContext(), (DynamicObject) thisObj, (String) key);
+            if (Strings.isTString(key)) {
+                return JavaPackage.getJavaClassOrConstructorOrSubPackage(root.getContext(), (DynamicObject) thisObj, (TruffleString) key);
             } else {
                 return Undefined.instance;
             }
@@ -1044,11 +1047,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            String thisStr = JSRuntime.toStringIsString(thisObj);
-            if (root.getKey() instanceof String) {
-                Object boxedString = root.getRealm().getEnv().asBoxedGuestValue(thisStr);
+            TruffleString thisStr = JSRuntime.toStringIsString(thisObj);
+            if (Strings.isTString(root.getKey())) {
+                Object boxedString = root.getRealm().getEnv().asBoxedGuestValue(Strings.toJavaString(thisStr));
                 try {
-                    return interop.readMember(boxedString, (String) root.getKey());
+                    return interop.readMember(boxedString, Strings.toJavaString((TruffleString) root.getKey()));
                 } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                 }
             }
@@ -1158,11 +1161,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
 
         private Object getImpl(Object thisObj, Object key, PropertyGetNode root) {
-            if (!(key instanceof String)) {
+            if (!(Strings.isTString(key))) {
                 return maybeGetFromPrototype(thisObj, key);
             }
-            String stringKey = (String) key;
-
             if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(thisObj)) {
                 try {
                     return interop.readHashValue(thisObj, key);
@@ -1172,13 +1173,13 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     return Undefined.instance;
                 }
             }
-
             if (context.isOptionNashornCompatibilityMode()) {
                 Object result = tryGetters(thisObj, root);
                 if (result != null) {
                     return result;
                 }
             }
+            String stringKey = Strings.toJavaString((TruffleString) key);
             if (optimistic) {
                 try {
                     return interop.readMember(thisObj, stringKey);
@@ -1227,11 +1228,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             assert context.isOptionNashornCompatibilityMode();
             TruffleLanguage.Env env = getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
-                Object result = tryInvokeGetter(thisObj, "get", root);
+                Object result = tryInvokeGetter(thisObj, Strings.GET, root);
                 if (result != null) {
                     return result;
                 }
-                result = tryInvokeGetter(thisObj, "is", root);
+                result = tryInvokeGetter(thisObj, Strings.IS, root);
                 // Nashorn would only accept `isXyz` of type boolean. We cannot check upfront!
                 if (result != null) {
                     return result;
@@ -1240,9 +1241,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return null;
         }
 
-        private Object tryInvokeGetter(Object thisObj, String prefix, PropertyGetNode root) {
+        private Object tryInvokeGetter(Object thisObj, TruffleString prefix, PropertyGetNode root) {
             assert context.isOptionNashornCompatibilityMode();
-            String getterKey = root.getAccessorKey(prefix);
+            TruffleString getterKey = root.getAccessorKey(prefix);
             if (getterKey == null) {
                 return null;
             }
@@ -1250,11 +1251,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getterInterop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
-            if (!getterInterop.isMemberInvocable(thisObj, getterKey)) {
+            if (!getterInterop.isMemberInvocable(thisObj, Strings.toJavaString(getterKey))) {
                 return null;
             }
             try {
-                return getterInterop.invokeMember(thisObj, getterKey, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                return getterInterop.invokeMember(thisObj, Strings.toJavaString(getterKey), JSArguments.EMPTY_ARGUMENTS_ARRAY);
             } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
                 return null; // try the next fallback
             }
@@ -1653,8 +1654,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            CharSequence charSequence = (CharSequence) CompilerDirectives.castExact(thisObj, ((InstanceofCheckNode) receiverCheck).type);
-            return JSRuntime.length(charSequence);
+            TruffleString charSequence = (TruffleString) CompilerDirectives.castExact(thisObj, ((InstanceofCheckNode) receiverCheck).type);
+            return Strings.length(charSequence);
         }
 
         @Override
@@ -1678,8 +1679,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            CharSequence charSequence = JSString.getCharSequence(receiverCheck.getStore(thisObj));
-            return JSRuntime.length(charSequenceClassProfile.profile(charSequence));
+            TruffleString charSequence = JSString.getString(receiverCheck.getStore(thisObj));
+            return Strings.length(charSequenceClassProfile.profile(charSequence));
         }
 
         @Override
@@ -1707,7 +1708,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             DynamicObject store = receiverCheck.getStore(thisObj);
-            Object lazyRegexResult = readLazyRegexResult.getOrDefault(store, JSAbstractArray.LAZY_REGEX_RESULT_ID, null);
+            Object lazyRegexResult = Properties.getOrDefault(readLazyRegexResult, store, JSAbstractArray.LAZY_REGEX_RESULT_ID, null);
             assert lazyRegexResult != null;
             return readStartNode.execute(lazyRegexResult, TRegexUtil.Props.RegexResult.GET_START, 0);
         }
@@ -1739,7 +1740,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             if (isIndicesObject.profile(groups.isIndices())) {
                 return LazyRegexResultIndicesArray.getIntIndicesArray(root.getContext(), resultAccessor, regexResult, groupIndex);
             } else {
-                String input = groups.getInputString();
+                TruffleString input = groups.getInputString();
                 return materializeNode.materializeGroup(regexResult, groupIndex, input);
             }
         }
@@ -1825,7 +1826,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     private GetCacheNode createCachedPropertyNodeNotJSObject(Property property, Object thisObj, int depth) {
         final ReceiverCheckNode receiverCheck;
         if (depth == 0) {
-            if (isMethod() && JSRuntime.isString(thisObj) && context.isOptionNashornCompatibilityMode()) {
+            if (isMethod() && Strings.isTString(thisObj) && context.isOptionNashornCompatibilityMode()) {
                 // This hack ensures we get the Java method instead of the JavaScript property
                 // for length in s.length() where s is a java.lang.String. Required by Nashorn.
                 // We do this only for depth 0, because JavaScript prototype functions in turn
@@ -1928,7 +1929,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return null;
         }
         if (context.isOptionNashornCompatibilityMode() && getRealm().isJavaInteropEnabled()) {
-            if (JSRuntime.isString(thisObj) && isMethod()) {
+            if (Strings.isTString(thisObj) && isMethod()) {
                 return new JavaStringMethodGetNode(createPrimitiveReceiverCheck(thisObj, depth));
             }
         }

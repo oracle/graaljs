@@ -40,14 +40,19 @@
  */
 package com.oracle.truffle.trufflenode.buffer;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 
 public final class NIOBufferBuiltins extends JSBuiltinsContainer.SwitchEnum<NIOBufferBuiltins.Buffer> {
+
+    public static final TruffleString NIOBUFFER_PROTOTYPE = Strings.constant("NIOBuffer.prototype");
+
     protected NIOBufferBuiltins() {
-        super("NIOBuffer.prototype", Buffer.class);
+        super(NIOBUFFER_PROTOTYPE, Buffer.class);
     }
 
     public enum Buffer implements BuiltinEnum<Buffer> {

@@ -44,9 +44,11 @@ import java.lang.ref.WeakReference;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.WeakRefPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
@@ -54,8 +56,8 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
 
     public static final JSWeakRef INSTANCE = new JSWeakRef();
 
-    public static final String CLASS_NAME = "WeakRef";
-    public static final String PROTOTYPE_NAME = "WeakRef.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("WeakRef");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("WeakRef.prototype");
 
     private JSWeakRef() {
     }
@@ -96,18 +98,18 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        return "[" + getClassName() + "]";
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        return Strings.addBrackets(getClassName());
     }
 
     public static boolean isJSWeakRef(Object obj) {

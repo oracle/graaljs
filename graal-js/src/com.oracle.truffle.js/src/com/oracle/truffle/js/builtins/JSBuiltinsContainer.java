@@ -46,12 +46,14 @@ import java.util.function.Consumer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.function.BuiltinArgumentBuilder;
 import com.oracle.truffle.js.nodes.function.BuiltinNodeFactory;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 
@@ -59,15 +61,16 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
  * Intended to be subclassed by definitions of builtin functions.
  */
 public class JSBuiltinsContainer {
-    private final String name;
-    private final EconomicMap<String, JSBuiltin> builtins = EconomicMap.create();
+    private final TruffleString name;
+    private final EconomicMap<TruffleString, JSBuiltin> builtins = EconomicMap.create();
     private final EconomicMap<Object, Pair<JSBuiltin, JSBuiltin>> accessors = EconomicMap.create();
 
-    protected JSBuiltinsContainer(String name) {
+    protected JSBuiltinsContainer(TruffleString name) {
+        assert name == null || JSRuntime.isPropertyKey(name);
         this.name = name;
     }
 
-    public final JSBuiltin lookupFunctionByName(String methodName) {
+    public final JSBuiltin lookupFunctionByName(TruffleString methodName) {
         return builtins.get(methodName);
     }
 
@@ -101,11 +104,11 @@ public class JSBuiltinsContainer {
         return BuiltinArgumentBuilder.builder();
     }
 
-    public final String getName() {
+    public final TruffleString getName() {
         return name;
     }
 
-    public static <E extends Enum<E> & BuiltinEnum<E>> JSBuiltinsContainer fromEnum(String name, Class<E> builtinEnum) {
+    public static <E extends Enum<E> & BuiltinEnum<E>> JSBuiltinsContainer fromEnum(TruffleString name, Class<E> builtinEnum) {
         return new SwitchEnum<>(name, builtinEnum);
     }
 
@@ -118,24 +121,25 @@ public class JSBuiltinsContainer {
      */
     public abstract static class Switch extends JSBuiltinsContainer {
 
-        protected Switch(String name) {
+        protected Switch(TruffleString name) {
             super(name);
         }
 
-        protected final void defineFunction(String name, int length) {
+        protected final void defineFunction(TruffleString name, int length) {
             defineFunction(name, length, JSAttributes.getDefaultNotEnumerable());
         }
 
-        protected final void defineFunction(String name, int length, int attributeFlags) {
+        protected final void defineFunction(TruffleString name, int length, int attributeFlags) {
             defineBuiltin(name, length, attributeFlags, false, false);
         }
 
-        protected final void defineConstructor(String name, int length, boolean isNewTargetConstructor) {
-            assert !name.isEmpty();
+        protected final void defineConstructor(TruffleString name, int length, boolean isNewTargetConstructor) {
+            assert !Strings.isEmpty(name);
             defineBuiltin(name, length, JSAttributes.getDefaultNotEnumerable(), true, isNewTargetConstructor);
         }
 
-        private void defineBuiltin(String name, int length, int attributeFlags, boolean isConstructor, boolean isNewTargetConstructor) {
+        private void defineBuiltin(TruffleString name, int length, int attributeFlags, boolean isConstructor, boolean isNewTargetConstructor) {
+            assert JSRuntime.isPropertyKey(name);
             class FactoryImpl implements BuiltinNodeFactory {
                 private final boolean construct;
                 private final boolean newTarget;
@@ -151,7 +155,7 @@ public class JSBuiltinsContainer {
                 }
             }
 
-            assert !name.isEmpty();
+            assert !Strings.isEmpty(name);
             BuiltinNodeFactory call = new FactoryImpl(false, false);
             BuiltinNodeFactory construct = isConstructor ? new FactoryImpl(true, false) : null;
             BuiltinNodeFactory constructNewTarget = isNewTargetConstructor ? new FactoryImpl(true, true) : null;
@@ -167,7 +171,7 @@ public class JSBuiltinsContainer {
     public static class SwitchEnum<E extends Enum<E> & BuiltinEnum<E>> extends JSBuiltinsContainer {
         private final Class<E> enumType;
 
-        protected SwitchEnum(String name, Class<E> enumType) {
+        protected SwitchEnum(TruffleString name, Class<E> enumType) {
             super(name);
             this.enumType = enumType;
             for (E builtin : enumType.getEnumConstants()) {
@@ -200,13 +204,14 @@ public class JSBuiltinsContainer {
             BuiltinNodeFactory call = new FactoryImpl(false, false);
             BuiltinNodeFactory construct = builtinEnum.isConstructor() ? new FactoryImpl(true, false) : null;
             BuiltinNodeFactory constructNewTarget = builtinEnum.isNewTargetConstructor() ? new FactoryImpl(true, true) : null;
+            assert JSRuntime.isPropertyKey(builtinEnum.getName());
             register(createBuiltin(builtinEnum, call, construct, constructNewTarget));
         }
 
         private JSBuiltin createBuiltin(E builtinEnum, BuiltinNodeFactory functionNodeFactory, BuiltinNodeFactory constructorNodeFactory, BuiltinNodeFactory newTargetConstructorFactory) {
             Object key = builtinEnum.getKey();
             assert JSRuntime.isPropertyKey(key);
-            String name = builtinEnum.getName();
+            TruffleString name = builtinEnum.getName();
             int length = builtinEnum.getLength();
             int attributeFlags = JSAttributes.fromConfigurableEnumerableWritable(builtinEnum.isConfigurable(), builtinEnum.isEnumerable(), builtinEnum.isWritable());
             return new JSBuiltin(getName(), name, key, length, attributeFlags, builtinEnum.getECMAScriptVersion(), builtinEnum.isAnnexB(), functionNodeFactory,
@@ -227,22 +232,22 @@ public class JSBuiltinsContainer {
      */
     public abstract static class Lambda extends JSBuiltinsContainer {
 
-        protected Lambda(String name) {
+        protected Lambda(TruffleString name) {
             super(name);
         }
 
-        protected final void defineFunction(String name, int length, BuiltinNodeFactory nodeFactory) {
-            assert !name.isEmpty();
+        protected final void defineFunction(TruffleString name, int length, BuiltinNodeFactory nodeFactory) {
+            assert !Strings.isEmpty(name);
             register(new JSBuiltin(getName(), name, length, JSAttributes.getDefaultNotEnumerable(), nodeFactory));
         }
 
-        protected final void defineFunction(String name, int length, int attributeFlags, BuiltinNodeFactory nodeFactory) {
-            assert !name.isEmpty();
+        protected final void defineFunction(TruffleString name, int length, int attributeFlags, BuiltinNodeFactory nodeFactory) {
+            assert !Strings.isEmpty(name);
             register(new JSBuiltin(getName(), name, length, attributeFlags, nodeFactory));
         }
 
-        protected final void defineConstructor(String name, int length, BuiltinNodeFactory nodeFactory, BuiltinNodeFactory constructorFactory) {
-            assert !name.isEmpty();
+        protected final void defineConstructor(TruffleString name, int length, BuiltinNodeFactory nodeFactory, BuiltinNodeFactory constructorFactory) {
+            assert !Strings.isEmpty(name);
             register(new JSBuiltin(getName(), name, name, length, JSAttributes.getDefaultNotEnumerable(), 5, false, nodeFactory, constructorFactory, null));
         }
     }

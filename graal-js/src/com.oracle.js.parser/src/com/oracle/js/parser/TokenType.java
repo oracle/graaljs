@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,8 @@ import static com.oracle.js.parser.TokenKind.SPECIAL;
 import static com.oracle.js.parser.TokenKind.UNARY;
 
 import java.util.Locale;
+
+import com.oracle.truffle.api.strings.TruffleString;
 
 // Checkstyle: stop
 /**
@@ -241,7 +243,7 @@ public enum TokenType {
     private final TokenKind kind;
 
     /** Printable name of token. */
-    private final String name;
+    private final TruffleString name;
 
     /** Operator precedence. */
     private final int precedence;
@@ -266,7 +268,7 @@ public enum TokenType {
     TokenType(final TokenKind kind, final String name, final int precedence, final boolean isLeftAssociative, final int ecmaScriptVersion) {
         next = null;
         this.kind = kind;
-        this.name = name;
+        this.name = name == null ? null : ParserStrings.constant(name);
         this.precedence = precedence;
         this.isLeftAssociative = isLeftAssociative;
         this.ecmaScriptVersion = ecmaScriptVersion;
@@ -298,15 +300,15 @@ public enum TokenType {
 
     public int getLength() {
         assert name != null : "Token name not set";
-        return name.length();
+        return ParserStrings.length(name);
     }
 
-    public String getName() {
+    public TruffleString getName() {
         return name;
     }
 
-    public String getNameOrType() {
-        return name == null ? super.name().toLowerCase(Locale.ENGLISH) : name;
+    public TruffleString getNameOrType() {
+        return name == null ? ParserStrings.constant(super.name().toLowerCase(Locale.ENGLISH)) : name;
     }
 
     public TokenType getNext() {
@@ -334,7 +336,7 @@ public enum TokenType {
     }
 
     boolean startsWith(final char c) {
-        return name != null && name.length() > 0 && name.charAt(0) == c;
+        return name != null && !name.isEmpty() && ParserStrings.charAt(name, 0) == c;
     }
 
     static TokenType[] getValues() {
@@ -343,7 +345,7 @@ public enum TokenType {
 
     @Override
     public String toString() {
-        return getNameOrType();
+        return getNameOrType().toJavaStringUncached();
     }
 
     /**
@@ -386,4 +388,5 @@ public enum TokenType {
         // Avoid cloning of enumeration.
         tokenValues = TokenType.values();
     }
+
 }

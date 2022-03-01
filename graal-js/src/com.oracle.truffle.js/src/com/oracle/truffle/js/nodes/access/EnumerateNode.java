@@ -55,6 +55,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -165,7 +166,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
                 }
 
                 if (interop.isString(iteratedObject)) {
-                    String string = interop.asString(iteratedObject);
+                    TruffleString string = interop.asTruffleString(iteratedObject);
                     return enumerateString(string);
                 }
 
@@ -193,7 +194,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return newEmptyIterator();
     }
 
-    private DynamicObject enumerateString(String string) {
+    private DynamicObject enumerateString(TruffleString string) {
         return newForInIterator(JSString.create(context, getRealm(), string));
     }
 
@@ -227,5 +228,4 @@ public abstract class EnumerateNode extends JavaScriptNode {
                     @Cached("copyRecursive()") EnumerateNode enumerateNode) {
         return enumerateNode.execute(toObjectNode.execute(iteratedObject));
     }
-
 }

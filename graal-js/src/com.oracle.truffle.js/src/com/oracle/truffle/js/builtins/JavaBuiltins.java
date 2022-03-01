@@ -59,6 +59,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaAddToClasspathNodeGen;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaExtendNodeGen;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaFromNodeGen;
@@ -88,6 +89,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -96,6 +98,8 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuiltins.Java> {
+
+    public static final TruffleString SYNCHRONIZED_WRAPPER_NAME = Strings.constant("synchronizedWrapper");
 
     public static final JSBuiltinsContainer BUILTINS = new JavaBuiltins();
     public static final JSBuiltinsContainer BUILTINS_NASHORN_COMPAT = new JavaNashornCompatBuiltins();
@@ -229,7 +233,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Specialization
         @TruffleBoundary
-        protected Object type(String name) {
+        protected Object type(TruffleString name) {
             TruffleLanguage.Env env = getRealm().getEnv();
             Object javaType = lookupJavaType(name, env);
             if (javaType == null) {
@@ -244,16 +248,16 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         @TruffleBoundary
-        static Object lookupJavaType(String name, TruffleLanguage.Env env) {
+        static Object lookupJavaType(TruffleString name, TruffleLanguage.Env env) {
             if (env != null && env.isHostLookupAllowed()) {
                 try {
-                    Object found = env.lookupHostSymbol(name);
+                    Object found = env.lookupHostSymbol(Strings.toJavaString(name));
                     if (found != null) {
                         return found;
                     }
                 } catch (Exception ex) {
                 }
-                return lookForSubclasses(name, env);
+                return lookForSubclasses(Strings.toJavaString(name), env);
             } else {
                 throw Errors.createTypeError("Java Interop is not available");
             }
@@ -296,11 +300,11 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         @Specialization(guards = "isJavaInteropClass(type, typeInterop)")
-        protected String typeNameJavaInteropClass(Object type,
+        protected TruffleString typeNameJavaInteropClass(Object type,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary typeInterop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary stringInterop) {
             try {
-                return stringInterop.asString(typeInterop.getMetaQualifiedName(type));
+                return stringInterop.asTruffleString(typeInterop.getMetaQualifiedName(type));
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorInteropException(type, e, "Java.typeName", this);
             }
@@ -431,7 +435,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         }
 
-        private String toString(Object target) {
+        private TruffleString toString(Object target) {
             if (toStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toStringNode = insert(JSToStringNode.create());
@@ -455,7 +459,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 }
                 knownArrayClass = true;
             } else {
-                String className = toString(toType);
+                TruffleString className = toString(toType);
                 javaType = JavaTypeNode.lookupJavaType(className, env);
             }
             if (knownArrayClass || isJavaArrayClass(javaType, env, interop)) {
@@ -627,7 +631,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                     }
                 }
             }.getCallTarget();
-            return JSFunctionData.createCallOnly(getContext(), callTarget, 0, "synchronizedWrapper");
+            return JSFunctionData.createCallOnly(getContext(), callTarget, 0, SYNCHRONIZED_WRAPPER_NAME);
         }
 
         static Object unwrapJavaObject(Object object, TruffleLanguage.Env env) {
@@ -653,10 +657,10 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         @Specialization
-        protected Object doString(String fileName) {
+        protected Object doString(TruffleString fileName) {
             TruffleLanguage.Env env = getRealm().getEnv();
             try {
-                TruffleFile file = env.getPublicTruffleFile(fileName);
+                TruffleFile file = env.getPublicTruffleFile(Strings.toJavaString(fileName));
                 env.addToHostClassPath(file);
             } catch (SecurityException e) {
                 throw Errors.createErrorFromException(e);

@@ -44,9 +44,10 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 
 public abstract class JSTrimWhitespaceNode extends JavaScriptBaseNode {
 
@@ -57,54 +58,57 @@ public abstract class JSTrimWhitespaceNode extends JavaScriptBaseNode {
         return JSTrimWhitespaceNodeGen.create();
     }
 
-    public abstract String executeString(String operand);
+    public abstract TruffleString executeString(TruffleString operand);
 
-    protected boolean startsOrEndsWithWhitespace(String string) {
-        assert string.length() > 0;
-        return isWhiteSpace(string, 0) || isWhiteSpace(string, string.length() - 1);
+    protected boolean startsOrEndsWithWhitespace(TruffleString.ReadCharUTF16Node readRawNode, TruffleString string) {
+        assert Strings.length(string) > 0;
+        return isWhiteSpace(readRawNode, string, 0) || isWhiteSpace(readRawNode, string, Strings.length(string) - 1);
     }
 
-    @Specialization(guards = "string.length() == 0")
-    protected String doStringZero(String string) {
+    @Specialization(guards = "stringLength(string) == 0")
+    protected TruffleString doStringZero(TruffleString string) {
         return string;
     }
 
-    @Specialization(guards = {"string.length() > 0", "!startsOrEndsWithWhitespace(string)"})
-    protected String doStringNoWhitespace(String string) {
+    @Specialization(guards = {"stringLength(string) > 0", "!startsOrEndsWithWhitespace(readRawNode, string)"})
+    protected TruffleString doStringNoWhitespace(TruffleString string,
+                    @Cached @SuppressWarnings("unused") TruffleString.ReadCharUTF16Node readRawNode) {
         return string;
     }
 
-    @Specialization(guards = {"string.length() > 0", "startsOrEndsWithWhitespace(string)"})
-    protected String doString(String string,
-                    @Cached("create()") BranchProfile needFirstBranch,
-                    @Cached("create()") BranchProfile needLastBranch,
-                    @Cached("createBinaryProfile()") ConditionProfile needSubstring) {
-        int len = string.length();
+    @Specialization(guards = {"stringLength(string) > 0", "startsOrEndsWithWhitespace(readRawNode, string)"})
+    protected TruffleString doString(TruffleString string,
+                    @Cached BranchProfile needFirstBranch,
+                    @Cached BranchProfile needLastBranch,
+                    @Cached ConditionProfile needSubstring,
+                    @Cached TruffleString.ReadCharUTF16Node readRawNode,
+                    @Cached TruffleString.SubstringByteIndexNode substringNode) {
+        int len = Strings.length(string);
         int firstIdx = 0;
-        if (isWhiteSpace(string, 0)) {
+        if (isWhiteSpace(readRawNode, string, 0)) {
             needFirstBranch.enter();
-            firstIdx = JSRuntime.firstNonWhitespaceIndex(string, false);
+            firstIdx = JSRuntime.firstNonWhitespaceIndex(string, false, readRawNode);
         }
         int lastIdx = len - 1;
-        if (isWhiteSpace(string, len - 1)) {
+        if (isWhiteSpace(readRawNode, string, len - 1)) {
             needLastBranch.enter();
-            lastIdx = JSRuntime.lastNonWhitespaceIndex(string, false);
+            lastIdx = JSRuntime.lastNonWhitespaceIndex(string, false, readRawNode);
         }
         if (needSubstring.profile(firstIdx > lastIdx)) {
-            return "";
+            return Strings.EMPTY_STRING;
         } else {
-            return Boundaries.substring(string, firstIdx, lastIdx + 1);
+            return Strings.substring(substringNode, string, firstIdx, lastIdx + 1 - firstIdx);
         }
     }
 
-    private boolean isWhiteSpace(String str, int index) {
-        char c = str.charAt(index);
+    private boolean isWhiteSpace(TruffleString.ReadCharUTF16Node readRawNode, TruffleString str, int index) {
+        char c = Strings.charAt(readRawNode, str, index);
         if (isFastNonWhitespace.profile(0x0020 < c && c < 0x00A0)) {
             return false;
         } else if (isFastWhitespace.profile(c == ' ' || c == '\n' || c == '\r' || c == '\t')) {
             return true;
         } else {
-            return JSRuntime.isWhiteSpace(str.charAt(index));
+            return JSRuntime.isWhiteSpace(c);
         }
     }
 }

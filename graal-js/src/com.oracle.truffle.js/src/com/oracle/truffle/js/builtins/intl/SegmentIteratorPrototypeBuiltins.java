@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.SegmentIteratorPrototypeBuiltinsFactory.SegmentIteratorNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
@@ -107,7 +108,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         protected DynamicObject doSegmentIterator(VirtualFrame frame, JSSegmentIteratorObject iteratorObj,
                         @Cached("create(getContext())") CreateSegmentDataObjectNode createNextValueNode) {
             JSSegmenter.IteratorState iterator = iteratorObj.getIteratorState();
-            String iteratedString = iterator.getIteratedString();
+            TruffleString iteratedString = iterator.getIteratedString();
             BreakIterator icuIterator = iterator.getBreakIterator();
             JSSegmenter.Granularity segmenterGranularity = iterator.getSegmenterGranularity();
             int startIndex = findBoundaryCurrent(icuIterator);

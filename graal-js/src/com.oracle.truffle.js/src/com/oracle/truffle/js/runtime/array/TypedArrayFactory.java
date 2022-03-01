@@ -44,8 +44,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.TypedArray.BigInt64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.BigUint64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectBigInt64Array;
@@ -271,8 +273,8 @@ public enum TypedArrayFactory implements PrototypeSupplier {
         return ordinal();
     }
 
-    public final String getName() {
-        return name();
+    public final TruffleString getName() {
+        return Strings.fromJavaString(name());
     }
 
     abstract TypedArray instantiateArrayType(byte bufferType, boolean offset);

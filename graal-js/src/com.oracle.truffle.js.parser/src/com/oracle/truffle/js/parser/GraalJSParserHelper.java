@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.js.parser.Parser;
 import com.oracle.js.parser.ParserException;
 import com.oracle.js.parser.ScriptEnvironment;
 import com.oracle.js.parser.ScriptEnvironment.FunctionStatementBehavior;
+import com.oracle.js.parser.ParserStrings;
 import com.oracle.js.parser.Token;
 import com.oracle.js.parser.TokenType;
 import com.oracle.js.parser.ir.Expression;
@@ -57,6 +58,7 @@ import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.parser.internal.ir.debug.JSONWriter;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -68,6 +70,7 @@ import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 public final class GraalJSParserHelper {
 
     private static final String NEVER_PART_OF_COMPILATION_MESSAGE = "do not parse from compiled code";
+    public static final TruffleString COLON_MODULE = ParserStrings.constant(":module");
 
     private GraalJSParserHelper() {
         // should not be constructed
@@ -83,7 +86,7 @@ public final class GraalJSParserHelper {
     }
 
     public static FunctionNode parseScript(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions, boolean eval, boolean evalInFunction,
-                    Scope evalScope, String prologue, String epilogue, String[] argumentNames) {
+                    Scope evalScope, String prologue, String epilogue, TruffleString[] argumentNames) {
         return parseSource(context, truffleSource, parserOptions, false, eval, evalInFunction, evalScope, prologue, epilogue, argumentNames);
     }
 
@@ -92,7 +95,7 @@ public final class GraalJSParserHelper {
     }
 
     private static FunctionNode parseSource(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions,
-                    boolean parseModule, boolean eval, boolean evalInFunction, Scope evalScope, String prologue, String epilogue, String[] argumentNames) {
+                    boolean parseModule, boolean eval, boolean evalInFunction, Scope evalScope, String prologue, String epilogue, TruffleString[] argumentNames) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         CharSequence code;
         if (prologue.isEmpty() && epilogue.isEmpty()) {
@@ -119,7 +122,7 @@ public final class GraalJSParserHelper {
 
         FunctionNode parsed;
         if (parseModule) {
-            parsed = parser.parseModule(":module");
+            parsed = parser.parseModule(COLON_MODULE);
         } else if (eval) {
             parsed = parser.parseEval(evalInFunction, evalScope);
         } else if (argumentNames != null) {
@@ -161,7 +164,7 @@ public final class GraalJSParserHelper {
                     // validate regular expression
                     if (context.getContextOptions().isValidateRegExpLiterals()) {
                         try {
-                            RegexCompilerInterface.validate(context, regex.getExpression(), regex.getOptions(), parserOptions.getEcmaScriptVersion());
+                            RegexCompilerInterface.validate(context, regex.getExpression().toJavaStringUncached(), regex.getOptions().toJavaStringUncached(), parserOptions.getEcmaScriptVersion());
                         } catch (JSException e) {
                             throw error(e.getRawMessage());
                         }
@@ -170,7 +173,7 @@ public final class GraalJSParserHelper {
             }
 
             @Override
-            protected Function<Number, String> getNumberToStringConverter() {
+            protected Function<Number, TruffleString> getNumberToStringConverter() {
                 return JSRuntime::numberToString;
             }
         };

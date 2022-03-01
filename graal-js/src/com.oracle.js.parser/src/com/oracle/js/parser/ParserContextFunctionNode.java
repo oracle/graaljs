@@ -56,6 +56,7 @@ import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.js.parser.ir.Symbol;
 import com.oracle.js.parser.ir.VarNode;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * ParserContextNode that represents a function that is currently being parsed
@@ -63,7 +64,7 @@ import com.oracle.js.parser.ir.VarNode;
 class ParserContextFunctionNode extends ParserContextBaseNode {
 
     /** Function name */
-    private final String name;
+    private final TruffleString name;
 
     /** Function identifier node */
     private final IdentNode ident;
@@ -107,7 +108,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     private long yieldOrAwaitInParameters;
 
     private Module module;
-    private String internalName;
+    private TruffleString internalName;
 
     private List<Map.Entry<VarNode, Scope>> hoistedVarDeclarations;
     private List<Map.Entry<VarNode, Scope>> hoistableBlockFunctionDeclarations;
@@ -121,7 +122,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      * @param parameters The parameters of the function
      * @param parentScope The parent scope
      */
-    ParserContextFunctionNode(final long token, final IdentNode ident, final String name, final Namespace namespace, final int line, final int flags,
+    ParserContextFunctionNode(final long token, final IdentNode ident, final TruffleString name, final Namespace namespace, final int line, final int flags,
                     final List<IdentNode> parameters, final int length, Scope parentScope, Scope functionScope) {
         super(flags);
         this.ident = ident;
@@ -141,7 +142,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     /**
      * @return Name of the function
      */
-    public String getName() {
+    public TruffleString getName() {
         return name;
     }
 
@@ -231,7 +232,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      * @param base prefix for name
      * @return base if no collision exists, otherwise a name prefix with base
      */
-    public String uniqueName(final String base) {
+    public TruffleString uniqueName(final TruffleString base) {
         return namespace.uniqueName(base);
     }
 
@@ -548,7 +549,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     /**
      * Add a function-level binding if it is not shadowed by a parameter or var declaration.
      */
-    private void putFunctionSymbolIfAbsent(String bindingName, int symbolFlags) {
+    private void putFunctionSymbolIfAbsent(TruffleString bindingName, int symbolFlags) {
         if (hasParameterExpressions()) {
             Scope parameterScope = getParameterScope();
             if (!parameterScope.hasSymbol(bindingName) && !bodyScope.hasSymbol(bindingName)) {
@@ -593,11 +594,11 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         }
     }
 
-    public String getInternalName() {
+    public TruffleString getInternalName() {
         return internalName;
     }
 
-    public void setInternalName(String internalName) {
+    public void setInternalName(TruffleString internalName) {
         this.internalName = internalName;
     }
 
@@ -640,7 +641,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         for (Map.Entry<VarNode, Scope> entry : hoistedVarDeclarations) {
             VarNode varDecl = entry.getKey();
             Scope declScope = entry.getValue();
-            String varName = varDecl.getName().getName();
+            TruffleString varName = varDecl.getName().getName();
             for (Scope current = declScope; current != bodyScope; current = current.getParent()) {
                 Symbol existing = current.getExistingSymbol(varName);
                 if (existing != null && existing.isBlockScoped()) {
@@ -675,7 +676,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         next: for (Map.Entry<VarNode, Scope> entry : hoistableBlockFunctionDeclarations) {
             VarNode functionDecl = entry.getKey();
             Scope functionDeclScope = entry.getValue();
-            String varName = functionDecl.getName().getName();
+            TruffleString varName = functionDecl.getName().getName();
             for (Scope current = functionDeclScope.getParent(); current != null; current = current.getParent()) {
                 Symbol existing = current.getExistingSymbol(varName);
                 if (existing != null && (existing.isBlockScoped() && !existing.isCatchParameter())) {

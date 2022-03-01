@@ -44,6 +44,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 
 /**
@@ -56,7 +57,7 @@ public abstract class JSClassObject extends JSObject {
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return getJSClass().getClassName(this);
     }
 
@@ -166,12 +167,12 @@ public abstract class JSClassObject extends JSObject {
     }
 
     @Override
-    public String toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return getJSClass().toDisplayStringImpl(this, allowSideEffects, format, depth);
     }
 
     @Override
-    public String getBuiltinToStringTag() {
+    public TruffleString getBuiltinToStringTag() {
         return getJSClass().getBuiltinToStringTag(this);
     }
 

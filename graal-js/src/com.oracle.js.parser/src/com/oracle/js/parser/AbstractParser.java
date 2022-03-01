@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,11 +54,17 @@ import java.util.function.Function;
 import com.oracle.js.parser.Lexer.LexerToken;
 import com.oracle.js.parser.ir.IdentNode;
 import com.oracle.js.parser.ir.LiteralNode;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Base class for parsers.
  */
 public abstract class AbstractParser {
+
+    private static final String MSG_EXPECTED = "expected";
+    private static final String MSG_EXPECTED_STMT = "expected.stmt";
+    private static final String MSG_PARSER_ERROR = "parser.error.";
+
     /** Source to parse. */
     protected final Source source;
 
@@ -192,7 +198,7 @@ public abstract class AbstractParser {
     }
 
     // sourceURL= after directive comment
-    private static final String SOURCE_URL_PREFIX = "sourceURL=";
+    private static final TruffleString SOURCE_URL_PREFIX = ParserStrings.constant("sourceURL=");
 
     // currently only @sourceURL=foo supported
     private void checkDirectiveComment() {
@@ -201,10 +207,10 @@ public abstract class AbstractParser {
             return;
         }
 
-        final String comment = (String) lexer.getValueOf(token, isStrictMode);
+        final TruffleString comment = ((TruffleString) lexer.getValueOf(token, isStrictMode));
         // 4 characters for directive comment marker //@\s or //#\s
-        if (comment.startsWith(SOURCE_URL_PREFIX, 4)) {
-            source.setExplicitURL(comment.substring(4 + SOURCE_URL_PREFIX.length()));
+        if (ParserStrings.startsWith(comment, SOURCE_URL_PREFIX, 4)) {
+            source.setExplicitURL(ParserStrings.substring(comment, 4 + ParserStrings.length(SOURCE_URL_PREFIX)).toJavaStringUncached());
         }
     }
 
@@ -254,7 +260,11 @@ public abstract class AbstractParser {
      * @return The message string
      */
     protected static String message(final String msgId, final String... args) {
-        return ECMAErrors.getMessage("parser.error." + msgId, args);
+        return ECMAErrors.getMessage(MSG_PARSER_ERROR + msgId, args);
+    }
+
+    protected static String message(final String msgId, IdentNode ident) {
+        return ECMAErrors.getMessage(MSG_PARSER_ERROR + msgId, ident.getName().toJavaStringUncached());
     }
 
     /**
@@ -325,23 +335,23 @@ public abstract class AbstractParser {
      * @return the message string
      */
     protected final String expectMessage(final TokenType expected) {
-        final String tokenString = Token.toString(source, token);
+        final TruffleString tokenString = Token.toString(source, token);
         String msg;
 
         if (expected == null) {
-            msg = AbstractParser.message("expected.stmt", tokenString);
+            msg = AbstractParser.message(MSG_EXPECTED_STMT, tokenString.toJavaStringUncached());
         } else {
-            final String expectedName = expected.getNameOrType();
-            msg = AbstractParser.message("expected", expectedName, tokenString);
+            final TruffleString expectedName = expected.getNameOrType();
+            msg = AbstractParser.message(MSG_EXPECTED, expectedName.toJavaStringUncached(), tokenString.toJavaStringUncached());
         }
 
         return msg;
     }
 
     protected final String expectMessage(final TokenType expected, final long errorToken) {
-        final String expectedName = expected.getNameOrType();
-        final String tokenString = Token.toString(source, errorToken);
-        return AbstractParser.message("expected", expectedName, tokenString);
+        final TruffleString expectedName = expected.getNameOrType();
+        final TruffleString tokenString = Token.toString(source, errorToken);
+        return AbstractParser.message(MSG_EXPECTED, expectedName.toJavaStringUncached(), tokenString.toJavaStringUncached());
     }
 
     /**
@@ -430,13 +440,13 @@ public abstract class AbstractParser {
         long identToken = token;
 
         if (type == IDENT) {
-            final String ident = (String) getValue(identToken);
+            final TruffleString ident = (TruffleString) getValue(identToken);
 
             next();
 
             return createIdentNode(identToken, finish, ident);
         } else if (type.isContextualKeyword() || isNonStrictModeIdent()) {
-            final String ident = type.getName();
+            final TruffleString ident = type.getName();
 
             next();
 
@@ -449,7 +459,7 @@ public abstract class AbstractParser {
 
     /**
      * Creates a new {@link IdentNode} as if invoked with a
-     * {@link IdentNode#IdentNode(long, int, String) constructor} but making sure that the
+     * {@link IdentNode#IdentNode(long, int, TruffleString) constructor} but making sure that the
      * {@code name} is deduplicated within this parse job.
      *
      * @param identToken the token for the new {@code IdentNode}
@@ -458,13 +468,13 @@ public abstract class AbstractParser {
      * @return a newly constructed {@code IdentNode} with the specified token, finish, and name; the
      *         name will be deduplicated.
      */
-    protected IdentNode createIdentNode(final long identToken, final int identFinish, final String name) {
+    protected IdentNode createIdentNode(final long identToken, final int identFinish, final TruffleString name) {
         assert isInterned(name) : name;
         return new IdentNode(identToken, identFinish, name);
     }
 
-    private boolean isInterned(final String name) {
-        return isSame(lexer.stringIntern(name), name) || isSame(name.intern(), name);
+    private boolean isInterned(final TruffleString name) {
+        return isSame(lexer.stringIntern(name), name);
     }
 
     private static boolean isSame(Object a, Object b) {
@@ -508,8 +518,8 @@ public abstract class AbstractParser {
         // Fake out identifier.
         final long identToken = Token.recast(currentToken, IDENT);
         // Get IDENT.
-        final String ident = (String) getValue(identToken);
-        return ident != null && !ident.isEmpty() && Character.isJavaIdentifierStart(ident.charAt(0));
+        final TruffleString ident = (TruffleString) getValue(identToken);
+        return ident != null && !ident.isEmpty() && Character.isJavaIdentifierStart(ParserStrings.charAt(ident, 0));
     }
 
     /**
@@ -524,10 +534,10 @@ public abstract class AbstractParser {
             // Fake out identifier.
             final long identToken = Token.recast(token, IDENT);
             // Get IDENT.
-            final String ident = (String) getValue(identToken);
+            final TruffleString ident = (TruffleString) getValue(identToken);
             next();
             // Create IDENT node.
-            return createIdentNode(identToken, finish, ident);
+            return createIdentNode(identToken, finish, lexer.stringIntern(ident));
         } else {
             expect(IDENT);
             return null;
@@ -557,8 +567,8 @@ public abstract class AbstractParser {
             node = LiteralNode.newInstance(literalToken, finish, (BigInteger) value);
         } else if (value instanceof Number) {
             node = LiteralNode.newInstance(literalToken, finish, (Number) value, getNumberToStringConverter());
-        } else if (value instanceof String) {
-            node = LiteralNode.newInstance(literalToken, (String) value);
+        } else if (value instanceof TruffleString) {
+            node = LiteralNode.newInstance(literalToken, (TruffleString) value);
         } else if (value instanceof LexerToken) {
             validateLexerToken((LexerToken) value);
             node = LiteralNode.newInstance(literalToken, finish, (LexerToken) value);
@@ -582,7 +592,7 @@ public abstract class AbstractParser {
      *
      * @return custom number-to-string converter or {@code null} to use the default converter
      */
-    protected Function<Number, String> getNumberToStringConverter() {
+    protected Function<Number, TruffleString> getNumberToStringConverter() {
         return null;
     }
 }

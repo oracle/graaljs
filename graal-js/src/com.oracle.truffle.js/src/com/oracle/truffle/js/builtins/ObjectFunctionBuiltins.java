@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,8 +48,8 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ArityException;
@@ -64,6 +64,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectAssignNodeGen;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectCreateNodeGen;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectDefinePropertiesNodeGen;
@@ -117,7 +118,9 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -128,7 +131,6 @@ import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -356,11 +358,12 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "InteropLibraryLimit")
         protected DynamicObject getForeignObject(Object thisObj, Object property,
                         @CachedLibrary("thisObj") InteropLibrary interop,
-                        @Cached("create()") ImportValueNode toJSType) {
+                        @Cached("create()") ImportValueNode toJSType,
+                        @Cached TruffleString.ReadCharUTF16Node charAtNode) {
             Object propertyKey = toPropertyKeyNode.execute(property);
-            if (propertyKey instanceof String) {
+            if (Strings.isTString(propertyKey)) {
                 try {
-                    String member = (String) propertyKey;
+                    String member = Strings.toJavaString((TruffleString) propertyKey);
                     if (interop.hasMembers(thisObj)) {
                         if (interop.isMemberExisting(thisObj, member) && interop.isMemberReadable(thisObj, member)) {
                             PropertyDescriptor desc = PropertyDescriptor.createData(
@@ -371,7 +374,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                             return fromPropertyDescriptorNode.execute(desc, getContext());
                         }
                     }
-                    long index = JSRuntime.propertyNameToArrayIndex(member);
+                    long index = JSRuntime.propertyNameToArrayIndex((TruffleString) propertyKey, charAtNode);
                     if (JSRuntime.isArrayIndex(index) && interop.hasArrayElements(thisObj)) {
                         if (interop.isArrayElementExisting(thisObj, index) && interop.isArrayElementReadable(thisObj, index)) {
                             PropertyDescriptor desc = PropertyDescriptor.createData(
@@ -425,7 +428,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 PropertyDescriptor desc = getOwnPropertyNode.execute(thisObj, key);
                 if (desc != null) {
                     DynamicObject propDesc = fromPropertyDescriptorNode.execute(desc, getContext());
-                    putPropDescNode.putWithFlags(retObj, key, propDesc, JSAttributes.configurableEnumerableWritable());
+                    Properties.putWithFlags(putPropDescNode, retObj, key, propDesc, JSAttributes.configurableEnumerableWritable());
                 }
             }
             return retObj;
@@ -438,7 +441,6 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached("create()") ImportValueNode toJSType,
                         @Cached BranchProfile errorBranch) {
             DynamicObject result = JSOrdinary.create(getContext(), getRealm());
-
             try {
                 if (interop.hasMembers(thisObj)) {
                     Object keysObj = interop.getMembers(thisObj);
@@ -456,7 +458,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                                             interop.isMemberWritable(thisObj, member),
                                             interop.isMemberRemovable(thisObj, member));
                             DynamicObject propDesc = fromPropertyDescriptorNode.execute(desc, getContext());
-                            putPropDescNode.putWithFlags(result, member, propDesc, JSAttributes.configurableEnumerableWritable());
+                            Properties.putWithFlags(putPropDescNode, result, Strings.fromJavaString(member), propDesc, JSAttributes.configurableEnumerableWritable());
                         }
                     }
                 }
@@ -474,7 +476,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                                             interop.isArrayElementWritable(thisObj, i),
                                             interop.isArrayElementRemovable(thisObj, i));
                             DynamicObject propDesc = fromPropertyDescriptorNode.execute(desc, getContext());
-                            putPropDescNode.putWithFlags(result, Boundaries.stringValueOf(i), propDesc, JSAttributes.configurableEnumerableWritable());
+                            Properties.putWithFlags(putPropDescNode, result, Strings.fromLong(i), propDesc, JSAttributes.configurableEnumerableWritable());
                         }
                     }
                 }
@@ -496,7 +498,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    @ImportStatic({JSConfig.class})
+    @ImportStatic(JSConfig.class)
     public abstract static class ObjectGetOwnPropertyNamesOrSymbolsNode extends ObjectOperation {
         protected final boolean symbols;
 
@@ -531,6 +533,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected DynamicObject getForeignObjectNames(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keys,
                         @Cached BranchProfile errorBranch) {
             Object[] array;
             if (interop.hasMembers(thisObj)) {
@@ -545,7 +548,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     for (int i = 0; i < size; i++) {
                         Object key = members.readArrayElement(keysObj, i);
                         assert InteropLibrary.getUncached().isString(key);
-                        array[i] = key;
+                        array[i] = keys.asTruffleString(key);
                     }
                 } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
                     array = ScriptArray.EMPTY_OBJECT_ARRAY;
@@ -591,7 +594,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    @ImportStatic({JSConfig.class})
+    @ImportStatic(JSConfig.class)
     public abstract static class ObjectCreateNode extends ObjectDefineOperation {
         public ObjectCreateNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -663,13 +666,13 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
 
         @Specialization(guards = "isJSObject(thisObj)")
-        protected DynamicObject definePropertyJSObjectString(DynamicObject thisObj, String property, Object attributes) {
+        protected DynamicObject definePropertyJSObjectTString(DynamicObject thisObj, TruffleString property, Object attributes) {
             PropertyDescriptor desc = toPropertyDescriptor(attributes);
             JSRuntime.definePropertyOrThrow(thisObj, property, desc);
             return thisObj;
         }
 
-        @Specialization(replaces = "definePropertyJSObjectString")
+        @Specialization(replaces = "definePropertyJSObjectTString")
         protected DynamicObject definePropertyGeneric(Object thisObj, Object property, Object attributes) {
             DynamicObject object = asJSObject(thisObj);
             PropertyDescriptor desc = toPropertyDescriptor(attributes);
@@ -794,7 +797,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    @ImportStatic({JSConfig.class})
+    @ImportStatic(JSConfig.class)
     public abstract static class ObjectKeysNode extends ObjectOperation {
         @Child private EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
         @Child private InteropLibrary asString;
@@ -810,7 +813,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             int len = keyList.size();
             JSRealm realm = getRealm();
             if (hasElements.profile(len > 0)) {
-                assert keyList.stream().allMatch(String.class::isInstance);
+                assert keyList.stream().allMatch(Strings::isTString);
                 return JSArray.createConstant(getContext(), realm, keyList.toArray());
             }
             return JSArray.createEmptyChecked(getContext(), realm, 0);
@@ -822,7 +825,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected DynamicObject keysString(JSLazyString string) {
+        protected DynamicObject keysString(TruffleString string) {
             return keysDynamicObject(toOrAsJSObject(string));
         }
 
@@ -856,7 +859,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         throw Errors.createRangeErrorInvalidArrayLength();
                     }
                     if (size > 0) {
-                        SimpleArrayList<String> keys = SimpleArrayList.create(size);
+                        SimpleArrayList<TruffleString> keys = SimpleArrayList.create(size);
                         for (int i = 0; i < size; i++) {
                             Object key = members.readArrayElement(keysObj, i);
                             assert InteropLibrary.getUncached().isString(key);
@@ -880,16 +883,16 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return enumerableOwnPropertyNamesNode.execute(obj);
         }
 
-        private String asStringKey(Object key) throws UnsupportedMessageException {
+        private TruffleString asStringKey(Object key) throws UnsupportedMessageException {
             assert InteropLibrary.getUncached().isString(key);
-            if (key instanceof String) {
-                return (String) key;
+            if (Strings.isTString(key)) {
+                return (TruffleString) key;
             } else {
                 if (asString == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     asString = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
                 }
-                return asString.asString(key);
+                return asString.asTruffleString(key);
             }
         }
     }
@@ -999,7 +1002,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    @ImportStatic({JSConfig.class})
+    @ImportStatic(JSConfig.class)
     abstract static class AssignPropertiesNode extends JavaScriptBaseNode {
         protected final JSContext context;
 
@@ -1042,9 +1045,9 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 long length = JSInteropUtil.getArraySize(members, keysInterop, this);
                 for (long i = 0; i < length; i++) {
                     Object key = keysInterop.readArrayElement(members, i);
-                    String stringKey = key instanceof String ? (String) key : stringInterop.asString(key);
+                    String stringKey = Strings.interopAsString(stringInterop, key);
                     Object value = fromInterop.readMember(from, stringKey);
-                    write.executeWithTargetAndIndexAndValue(to, stringKey, value);
+                    write.executeWithTargetAndIndexAndValue(to, Strings.fromJavaString(stringKey), value);
                 }
             } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
                 throw Errors.createTypeErrorInteropException(from, e, "CopyDataProperties", this);
@@ -1052,7 +1055,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    @ImportStatic({JSConfig.class})
+    @ImportStatic(JSConfig.class)
     public abstract static class ObjectValuesOrEntriesNode extends ObjectOperation {
         protected final boolean entries;
 
@@ -1107,7 +1110,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     String stringKey = asStringKey(key);
                     Object value = importValue.executeWithTarget(interop.readMember(thisObj, stringKey));
                     if (entries) {
-                        value = JSArray.createConstant(getContext(), realm, new Object[]{key, value});
+                        value = JSArray.createConstant(getContext(), realm, new Object[]{Strings.interopAsTruffleString(key), value});
                     }
                     values.add(value, growProfile);
                 }
@@ -1253,7 +1256,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "isJSObject(target)")
-        protected DynamicObject bindProperties(DynamicObject target, JSLazyString source) {
+        protected DynamicObject bindProperties(DynamicObject target, TruffleString source) {
             return bindPropertiesDynamicObject(target, toJSObject(source));
         }
 
@@ -1284,17 +1287,13 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     long size = members.getArraySize(keysObj);
                     for (int i = 0; i < size; i++) {
                         Object key = members.readArrayElement(keysObj, i);
-                        String stringKey;
-                        if (key instanceof String) {
-                            stringKey = (String) key;
-                        } else {
-                            stringKey = InteropLibrary.getUncached().asString(key);
-                        }
-                        if (!JSObject.hasOwnProperty(target, key, targetProfile)) {
+                        String stringKey = Strings.interopAsString(key);
+                        TruffleString tStringKey = Strings.interopAsTruffleString(key);
+                        if (!JSObject.hasOwnProperty(target, tStringKey, targetProfile)) {
                             if (!extensible) {
                                 throw Errors.createTypeErrorNotExtensible(target, key);
                             }
-                            JSObjectUtil.defineProxyProperty(target, key, new ForeignBoundProperty(source, stringKey), JSAttributes.getDefault());
+                            JSObjectUtil.defineProxyProperty(target, tStringKey, new ForeignBoundProperty(source, stringKey), JSAttributes.getDefault());
                         }
                         if (hostObject) {
                             // Special handling of bean properties: when there is "getProp",
@@ -1309,7 +1308,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                             } else {
                                 continue;
                             }
-                            if (!JSObject.hasOwnProperty(target, beanProperty, targetProfile) && !interop.isMemberExisting(source, beanProperty)) {
+                            TruffleString tStringBeanProperty = Strings.fromJavaString(beanProperty);
+                            if (!JSObject.hasOwnProperty(target, tStringBeanProperty, targetProfile) && !interop.isMemberExisting(source, beanProperty)) {
                                 String getKey = beanAccessor("get", beanProperty);
                                 String getter;
                                 if (interop.isMemberExisting(source, getKey)) {
@@ -1324,7 +1324,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                                 }
                                 String setKey = beanAccessor("set", beanProperty);
                                 String setter = interop.isMemberExisting(source, setKey) ? setKey : null;
-                                JSObjectUtil.defineProxyProperty(target, beanProperty, new ForeignBoundBeanProperty(source, getter, setter), JSAttributes.getDefault());
+                                JSObjectUtil.defineProxyProperty(target, tStringBeanProperty, new ForeignBoundBeanProperty(source, getter, setter), JSAttributes.getDefault());
                             }
                         }
                     }

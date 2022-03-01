@@ -45,14 +45,16 @@ import java.util.StringJoiner;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 
 public final class GlobalEnvironment extends DerivedEnvironment {
     /** Entries: (name, const). */
-    private final EconomicMap<String, Boolean> lexicalDeclarations;
-    private final EconomicMap<String, Boolean> varDeclarations;
+    private final EconomicMap<TruffleString, Boolean> lexicalDeclarations;
+    private final EconomicMap<TruffleString, Boolean> varDeclarations;
 
     public GlobalEnvironment(Environment parent, NodeFactory factory, JSContext context) {
         super(parent, factory, context);
@@ -65,38 +67,31 @@ public final class GlobalEnvironment extends DerivedEnvironment {
         return null;
     }
 
-    public boolean addLexicalDeclaration(String name, boolean isConst) {
+    public boolean addLexicalDeclaration(TruffleString name, boolean isConst) {
         return lexicalDeclarations.put(name, isConst) == null;
     }
 
-    public boolean hasLexicalDeclaration(String name) {
+    public boolean hasLexicalDeclaration(TruffleString name) {
         return lexicalDeclarations.containsKey(name);
     }
 
-    public boolean hasConstDeclaration(String name) {
+    public boolean hasConstDeclaration(TruffleString name) {
         return lexicalDeclarations.get(name, Boolean.FALSE);
     }
 
-    public boolean addVarDeclaration(String name) {
+    public boolean addVarDeclaration(TruffleString name) {
         return varDeclarations.put(name, Boolean.FALSE) == null;
     }
 
-    public boolean hasVarDeclaration(String name) {
+    public boolean hasVarDeclaration(TruffleString name) {
         return varDeclarations.containsKey(name);
     }
 
     /**
      * Returns true for always-defined immutable value properties of the global object.
      */
-    public static boolean isGlobalObjectConstant(String name) {
-        switch (name) {
-            case "undefined":
-            case "NaN":
-            case "Infinity":
-                return true;
-            default:
-                return false;
-        }
+    public static boolean isGlobalObjectConstant(TruffleString name) {
+        return Strings.UNDEFINED.equals(name) || Strings.NAN.equals(name) || Strings.INFINITY.equals(name);
     }
 
     @Override

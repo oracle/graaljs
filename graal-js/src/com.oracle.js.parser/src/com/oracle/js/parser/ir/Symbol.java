@@ -41,6 +41,8 @@
 
 package com.oracle.js.parser.ir;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 /**
  * Symbol is a symbolic address for a value ("variable" if you wish). Identifiers in JavaScript
  * source, as well as certain synthetic variables created by the compiler are represented by Symbol
@@ -121,7 +123,7 @@ public final class Symbol implements Comparable<Symbol> {
     public static final int IS_NEW_TARGET = 1 << 26;
 
     /** Null or name identifying symbol. */
-    private final String name;
+    private final TruffleString name;
 
     /** Symbol flags. */
     private int flags;
@@ -132,7 +134,7 @@ public final class Symbol implements Comparable<Symbol> {
      * @param name name of symbol
      * @param flags symbol flags
      */
-    public Symbol(final String name, final int flags) {
+    public Symbol(final TruffleString name, final int flags) {
         this.name = name;
         this.flags = flags;
         assert (flags & KINDMASK) != 0;
@@ -164,7 +166,7 @@ public final class Symbol implements Comparable<Symbol> {
 
     @Override
     public int compareTo(final Symbol other) {
-        return name.compareTo(other.name);
+        return name.compareCharsUTF16Uncached(other.name);
     }
 
     /**
@@ -329,7 +331,7 @@ public final class Symbol implements Comparable<Symbol> {
      *
      * @return symbol name
      */
-    public String getName() {
+    public TruffleString getName() {
         return name;
     }
 

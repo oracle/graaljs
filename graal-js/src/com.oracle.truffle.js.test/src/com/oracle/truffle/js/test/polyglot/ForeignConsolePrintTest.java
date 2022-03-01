@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,7 +81,7 @@ public final class ForeignConsolePrintTest {
     }
 
     @Test
-    public void testToDisplayString() {
+    public void testToDisplayString() throws UnsupportedMessageException {
         ctx.enter();
         try {
             ctx.initialize(JavaScriptLanguage.ID);
@@ -95,8 +95,8 @@ public final class ForeignConsolePrintTest {
             JavaScriptLanguageView jslv = JavaScriptLanguageView.create(map);
             Object resWithSideEffects = InteropLibrary.getFactory().getUncached(jslv).toDisplayString(jslv, true);
             Object resWithoutSideEffects = InteropLibrary.getFactory().getUncached(jslv).toDisplayString(jslv, false);
-            assertEquals("{foo: \"bar\", fun: function test()}", resWithSideEffects);
-            assertEquals("{foo: \"bar\", fun: f()}", resWithoutSideEffects);
+            assertEquals("{foo: \"bar\", fun: function test()}", InteropLibrary.getUncached().asString(resWithSideEffects));
+            assertEquals("{foo: \"bar\", fun: f()}", InteropLibrary.getUncached().asString(resWithoutSideEffects));
         } finally {
             ctx.leave();
         }

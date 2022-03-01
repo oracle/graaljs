@@ -56,6 +56,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
@@ -82,6 +83,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -94,17 +96,19 @@ import com.oracle.truffle.js.runtime.objects.OperatorSet;
 
 public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
 
+    public static final TruffleString OPERATORS = Strings.constant("Operators");
+
+    private static final TruffleString LEFT_ID = Strings.constant("left");
+    private static final TruffleString RIGHT_ID = Strings.constant("right");
+    private static final TruffleString OPEN_ID = Strings.constant("open");
+
     public static final JSBuiltinsContainer BUILTINS = new OperatorsBuiltins();
 
     protected static final HiddenKey OPERATOR_DEFINITIONS_ID = new HiddenKey("OperatorDefinitions");
 
-    private static final String LEFT_ID = "left";
-    private static final String RIGHT_ID = "right";
-    private static final String OPEN_ID = "open";
-
     protected OperatorsBuiltins() {
         super(null);
-        defineFunction("Operators", 1, JSAttributes.getDefault(),
+        defineFunction(OPERATORS, 1, JSAttributes.getDefault(),
                         (context, builtin) -> OperatorsBuiltinsFactory.OperatorsNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context)));
     }
 
@@ -168,7 +172,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                     return createOverloadedOperatorsObjectNode.execute(prototype);
                 }
             }.getCallTarget();
-            JSFunctionData constructorFunctionData = JSFunctionData.create(getContext(), callTarget, 0, "");
+            JSFunctionData constructorFunctionData = JSFunctionData.create(getContext(), callTarget, 0, Strings.EMPTY_STRING);
             return JSFunction.create(getRealm(), constructorFunctionData);
         }
     }
@@ -273,8 +277,8 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                 throw Errors.createTypeErrorNotAnObject(table, this);
             }
 
-            EconomicMap<String, Object> selfOperatorDefinitions = Boundaries.economicMapCreate();
-            for (String operator : OperatorSet.ALL_OPERATORS) {
+            EconomicMap<TruffleString, Object> selfOperatorDefinitions = Boundaries.economicMapCreate();
+            for (TruffleString operator : OperatorSet.ALL_OPERATORS) {
                 if (tableHasKey(table, operator)) {
                     Object value = tableGet(table, operator);
                     if (!isCallable(value)) {
@@ -284,15 +288,15 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                 }
             }
 
-            EconomicSet<String> openOperators;
+            EconomicSet<TruffleString> openOperators;
             if (tableHasKey(table, OPEN_ID)) {
                 openOperators = Boundaries.economicSetCreate();
                 Object openSet = tableGet(table, OPEN_ID);
                 long openSetLength = getOpenSetLength(openSet);
                 for (int i = 0; i < openSetLength; i++) {
                     Object element = readOpenSetElement(openSet, i);
-                    if (!(JSRuntime.isString(element)) || !Boundaries.economicSetContains(OperatorSet.ALL_OPERATORS, JSRuntime.toStringIsString(element))) {
-                        throw Errors.createTypeError(Boundaries.stringConcat("unrecognized operator ", openOperatorToString(element)), this);
+                    if (!(Strings.isTString(element)) || !Boundaries.economicSetContains(OperatorSet.ALL_OPERATORS, JSRuntime.toStringIsString(element))) {
+                        throw Errors.createTypeError(Strings.toJavaString(Strings.concat(Strings.constant("unrecognized operator "), openOperatorToString(element))), this);
                     }
                     Boundaries.economicSetAdd(openOperators, JSRuntime.toStringIsString(element));
                 }
@@ -300,8 +304,8 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                 openOperators = OperatorSet.ALL_OPERATORS;
             }
 
-            EconomicMap<String, Object[]> leftOperatorDefinitions = Boundaries.economicMapCreate();
-            EconomicMap<String, Object[]> rightOperatorDefinitions = Boundaries.economicMapCreate();
+            EconomicMap<TruffleString, Object[]> leftOperatorDefinitions = Boundaries.economicMapCreate();
+            EconomicMap<TruffleString, Object[]> rightOperatorDefinitions = Boundaries.economicMapCreate();
             for (Object extraTable : extraTables) {
                 if (!tableIsObject(extraTable)) {
                     throw Errors.createTypeErrorNotAnObject(extraTable, this);
@@ -318,7 +322,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                     if (leftSet == null) {
                         throw Errors.createTypeError(Boundaries.stringFormat("the left: value %s must be a class with operators overloaded", getClassName(leftType)), this);
                     }
-                    for (String operator : OperatorSet.BINARY_OPERATORS) {
+                    for (TruffleString operator : OperatorSet.BINARY_OPERATORS) {
                         if (tableHasKey(extraTable, operator)) {
                             Object operatorImplementation = tableGet(extraTable, operator);
                             if (!isCallable(operatorImplementation)) {
@@ -345,7 +349,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                     if (rightSet == null) {
                         throw Errors.createTypeError(Boundaries.stringFormat("the right: value %s must be a class with operators overloaded", getClassName(rightType)), this);
                     }
-                    for (String operator : OperatorSet.BINARY_OPERATORS) {
+                    for (TruffleString operator : OperatorSet.BINARY_OPERATORS) {
                         if (tableHasKey(extraTable, operator)) {
                             Object operatorImplementation = tableGet(extraTable, operator);
                             if (!isCallable(operatorImplementation)) {
@@ -392,7 +396,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             return tableIsObjectNode.executeBoolean(table);
         }
 
-        protected boolean tableHasKey(Object table, String key) {
+        protected boolean tableHasKey(Object table, TruffleString key) {
             if (tableHasKeyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 tableHasKeyNode = insert(JSHasPropertyNode.create());
@@ -400,7 +404,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             return tableHasKeyNode.executeBoolean(table, key);
         }
 
-        protected Object tableGet(Object table, String key) {
+        protected Object tableGet(Object table, TruffleString key) {
             if (tableGetNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 tableGetNode = insert(ReadElementNode.create(getContext()));
@@ -432,7 +436,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             return readOpenSetElementNode.executeWithTargetAndIndex(openSet, index);
         }
 
-        protected String openOperatorToString(Object openOperator) {
+        protected TruffleString openOperatorToString(Object openOperator) {
             if (openOperatorToStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 openOperatorToStringNode = insert(JSToStringNode.create());
@@ -488,7 +492,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             }
         }
 
-        protected String getClassName(Object constructor) {
+        protected TruffleString getClassName(Object constructor) {
             if (getClassNameNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getClassNameNode = insert(PropertyGetNode.create(JSFunction.NAME, getContext()));

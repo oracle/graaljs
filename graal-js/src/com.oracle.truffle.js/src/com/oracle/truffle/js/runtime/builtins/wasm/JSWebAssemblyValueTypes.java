@@ -41,33 +41,36 @@
 
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Strings;
+
 /**
  * Represents the value types used in WebAssembly and provides some methods to check their string
  * representations.
  */
 public final class JSWebAssemblyValueTypes {
-    public static final String I32 = "i32";
-    public static final String I64 = "i64";
-    public static final String F32 = "f32";
-    public static final String F64 = "f64";
+    public static final TruffleString I32 = Strings.I_32;
+    public static final TruffleString I64 = Strings.I_64;
+    public static final TruffleString F32 = Strings.F_32;
+    public static final TruffleString F64 = Strings.F_64;
 
-    public static boolean isI32(String type) {
-        return type.equals(I32);
+    public static boolean isI32(TruffleString type) {
+        return Strings.equals(I32, type);
     }
 
-    public static boolean isI64(String type) {
-        return type.equals(I64);
+    public static boolean isI64(TruffleString type) {
+        return Strings.equals(I64, type);
     }
 
-    public static boolean isF32(String type) {
-        return type.equals(F32);
+    public static boolean isF32(TruffleString type) {
+        return Strings.equals(F32, type);
     }
 
-    public static boolean isF64(String type) {
-        return type.equals(F64);
+    public static boolean isF64(TruffleString type) {
+        return Strings.equals(F64, type);
     }
 
-    public static boolean isValueType(String type) {
+    public static boolean isValueType(TruffleString type) {
         return isI32(type) || isI64(type) || isF32(type) || isF64(type);
     }
 }

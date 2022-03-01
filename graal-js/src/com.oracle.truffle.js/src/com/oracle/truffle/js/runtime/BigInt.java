@@ -51,6 +51,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.interop.JSMetaType;
 
@@ -215,6 +216,16 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
     @TruffleBoundary
     public String toString(int radix) {
         return value.toString(radix);
+    }
+
+    @TruffleBoundary
+    public TruffleString toTString() {
+        return toTString(10);
+    }
+
+    @TruffleBoundary
+    public TruffleString toTString(int radix) {
+        return Strings.fromJavaString(value.toString(radix));
     }
 
     @TruffleBoundary

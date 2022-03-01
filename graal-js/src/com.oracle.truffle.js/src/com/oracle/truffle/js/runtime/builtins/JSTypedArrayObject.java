@@ -49,11 +49,13 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -83,13 +85,13 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return typedArrayAccess().getTypedArrayName(this);
     }
 
     @Override
-    public String getBuiltinToStringTag() {
-        return "Object";
+    public TruffleString getBuiltinToStringTag() {
+        return Strings.UC_OBJECT;
     }
 
     @ExportMessage

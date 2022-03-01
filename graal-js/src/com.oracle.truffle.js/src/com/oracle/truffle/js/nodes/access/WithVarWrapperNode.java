@@ -40,30 +40,31 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 public class WithVarWrapperNode extends JSTargetableNode implements ReadNode, WriteNode {
 
     @Child private JSTargetableNode withAccessNode;
     @Child private JavaScriptNode globalDelegate;
     @Child private JavaScriptNode withTarget;
-    private final String varName;
+    private final TruffleString varName;
 
-    protected WithVarWrapperNode(String varName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
+    protected WithVarWrapperNode(TruffleString varName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
         this.withAccessNode = withAccessNode;
         this.globalDelegate = globalDelegate;
         this.withTarget = withTarget;
         this.varName = varName;
     }
 
-    public static JavaScriptNode create(String varName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
+    public static JavaScriptNode create(TruffleString varName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
         return new WithVarWrapperNode(varName, withTarget, withAccessNode, globalDelegate);
     }
 

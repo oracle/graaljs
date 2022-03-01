@@ -47,6 +47,7 @@ import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.SegmentIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.intl.SegmenterFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.SegmenterPrototypeBuiltins;
@@ -54,6 +55,7 @@ import com.oracle.truffle.js.builtins.intl.SegmentsPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
@@ -66,28 +68,32 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public final class JSSegmenter extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
-    public static final String CLASS_NAME = "Segmenter";
-    public static final String PROTOTYPE_NAME = "Segmenter.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("Segmenter");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Segmenter.prototype");
 
-    public static final String SEGMENTS_PROTOTYPE_NAME = "Segments.prototype";
+    public static final TruffleString SEGMENTS_PROTOTYPE_NAME = Strings.constant("Segments.prototype");
 
-    public static final String ITERATOR_CLASS_NAME = "Segmenter String Iterator";
-    public static final String ITERATOR_PROTOTYPE_NAME = "Segment Iterator.prototype";
+    public static final TruffleString ITERATOR_CLASS_NAME = Strings.constant("Segmenter String Iterator");
+    public static final TruffleString ITERATOR_PROTOTYPE_NAME = Strings.constant("Segment Iterator.prototype");
+
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Intl.Segmenter");
+    public static final TruffleString GET_BREAK_TYPE = Strings.constant("get " + IntlUtil.BREAK_TYPE);
+    public static final TruffleString GET_INDEX = Strings.constant("get " + IntlUtil.INDEX);
 
     public static final JSSegmenter INSTANCE = new JSSegmenter();
 
     public static class IteratorState {
-        private final String iteratedString;
+        private final TruffleString iteratedString;
         private final BreakIterator breakIterator;
         private final Granularity granularity;
 
-        public IteratorState(String iteratedObject, BreakIterator breakIterator, Granularity granularity) {
+        public IteratorState(TruffleString iteratedObject, BreakIterator breakIterator, Granularity granularity) {
             this.iteratedString = iteratedObject;
             this.breakIterator = breakIterator;
             this.granularity = granularity;
         }
 
-        public String getIteratedString() {
+        public TruffleString getIteratedString() {
             return iteratedString;
         }
 
@@ -151,12 +157,12 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
@@ -166,7 +172,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         DynamicObject segmenterPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, segmenterPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, segmenterPrototype, SegmenterPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(segmenterPrototype, "Intl.Segmenter");
+        JSObjectUtil.putToStringTag(segmenterPrototype, TO_STRING_TAG);
         return segmenterPrototype;
     }
 
@@ -188,8 +194,8 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         return context.trackAllocation(obj);
     }
 
-    public static DynamicObject createSegmentIterator(JSContext context, JSRealm realm, DynamicObject segmenter, String value) {
-        BreakIterator icuIterator = JSSegmenter.createBreakIterator(segmenter, value);
+    public static DynamicObject createSegmentIterator(JSContext context, JSRealm realm, DynamicObject segmenter, TruffleString value) {
+        BreakIterator icuIterator = JSSegmenter.createBreakIterator(segmenter, Strings.toJavaString(value));
         Granularity granularity = JSSegmenter.getGranularity(segmenter);
         JSSegmenter.IteratorState iteratorState = new JSSegmenter.IteratorState(value, icuIterator, granularity);
         JSObjectFactory factory = context.getSegmentIteratorFactory();
@@ -198,7 +204,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         return context.trackAllocation(segmentIterator);
     }
 
-    public static DynamicObject createSegments(JSContext context, JSRealm realm, JSSegmenterObject segmenter, String string) {
+    public static DynamicObject createSegments(JSContext context, JSRealm realm, JSSegmenterObject segmenter, TruffleString string) {
         JSObjectFactory factory = context.getSegmentsFactory();
         JSSegmentsObject segments = new JSSegmentsObject(factory.getShape(realm), segmenter, string);
         factory.initProto(segments, realm);
@@ -243,8 +249,8 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
 
         DynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
             DynamicObject result = JSOrdinary.create(context, realm);
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.GRANULARITY, granularity.getName(), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_GRANULARITY, Strings.fromJavaString(granularity.getName()), JSAttributes.getDefault());
             return result;
         }
     }

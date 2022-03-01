@@ -51,6 +51,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltins;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
@@ -58,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -85,11 +87,11 @@ import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 
 public final class JSArray extends JSAbstractArray implements JSConstructorFactory.Default.WithFunctionsAndSpecies, PrototypeSupplier {
 
-    public static final String CLASS_NAME = "Array";
-    public static final String PROTOTYPE_NAME = "Array.prototype";
-    public static final String ITERATOR_CLASS_NAME = "Array Iterator";
-    public static final String ITERATOR_PROTOTYPE_NAME = "Array Iterator.prototype";
-    public static final String ENTRIES = "entries";
+    public static final TruffleString CLASS_NAME = Strings.constant("Array");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Array.prototype");
+    public static final TruffleString ITERATOR_CLASS_NAME = Strings.constant("Array Iterator");
+    public static final TruffleString ITERATOR_PROTOTYPE_NAME = Strings.constant("Array Iterator.prototype");
+    public static final TruffleString ENTRIES = Strings.constant("entries");
 
     public static final JSArray INSTANCE = new JSArray();
 
@@ -186,12 +188,12 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
@@ -211,41 +213,41 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         if (ctx.getEcmaScriptVersion() >= 6) {
             // The initial value of the @@iterator property is the same function object as the
             // initial value of the Array.prototype.values property.
-            putDataProperty(ctx, arrayPrototype, Symbol.SYMBOL_ITERATOR, JSDynamicObject.getOrNull(arrayPrototype, "values"), JSAttributes.getDefaultNotEnumerable());
+            putDataProperty(ctx, arrayPrototype, Symbol.SYMBOL_ITERATOR, JSDynamicObject.getOrNull(arrayPrototype, Strings.VALUES), JSAttributes.getDefaultNotEnumerable());
             putDataProperty(ctx, arrayPrototype, Symbol.SYMBOL_UNSCOPABLES, createUnscopables(ctx, unscopableNameList(ctx)), JSAttributes.configurableNotEnumerableNotWritable());
         }
         return arrayPrototype;
     }
 
-    private static List<String> unscopableNameList(JSContext context) {
-        List<String> names = new ArrayList<>();
+    private static List<TruffleString> unscopableNameList(JSContext context) {
+        List<TruffleString> names = new ArrayList<>();
         if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2022) {
-            names.add("at");
+            names.add(Strings.AT);
         }
-        names.add("copyWithin");
+        names.add(Strings.COPY_WITHIN);
         names.add(JSArray.ENTRIES);
-        names.add("fill");
-        names.add("find");
-        names.add("findIndex");
+        names.add(Strings.FILL);
+        names.add(Strings.FIND);
+        names.add(Strings.FIND_INDEX);
         if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
-            names.add("flat");
-            names.add("flatMap");
+            names.add(Strings.FLAT);
+            names.add(Strings.FLAT_MAP);
         }
         if (context.getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion) {
-            names.add("groupBy");
-            names.add("groupByToMap");
+            names.add(Strings.GROUP_BY);
+            names.add(Strings.GROUP_BY_TO_MAP);
         }
         if (context.getEcmaScriptVersion() >= 7) {
-            names.add("includes");
+            names.add(Strings.INCLUDES);
         }
-        names.add("keys");
-        names.add("values");
+        names.add(Strings.KEYS);
+        names.add(Strings.VALUES);
         return names;
     }
 
-    private static DynamicObject createUnscopables(JSContext context, List<String> unscopableNames) {
+    private static DynamicObject createUnscopables(JSContext context, List<TruffleString> unscopableNames) {
         DynamicObject unscopables = JSOrdinary.createWithNullPrototypeInit(context);
-        for (String name : unscopableNames) {
+        for (Object name : unscopableNames) {
             putDataProperty(context, unscopables, name, true, JSAttributes.getDefault());
         }
         return unscopables;
@@ -363,7 +365,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         return create(context, realm, LazyRegexResultArray.createLazyRegexResultArray(), array, length);
     }
 
-    public static DynamicObject createLazyRegexArray(JSContext context, JSRealm realm, int length, Object regexResult, String input, DynamicObject groups, DynamicObject indicesGroups) {
+    public static DynamicObject createLazyRegexArray(JSContext context, JSRealm realm, int length, Object regexResult, TruffleString input, DynamicObject groups, DynamicObject indicesGroups) {
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
         DynamicObject obj = createLazyRegexArray(context, realm, length);
         JSObjectUtil.putHiddenProperty(obj, JSArray.LAZY_REGEX_RESULT_ID, regexResult);

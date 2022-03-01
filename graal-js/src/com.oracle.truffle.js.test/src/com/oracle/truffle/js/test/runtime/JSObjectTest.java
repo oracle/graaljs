@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,8 @@ package com.oracle.truffle.js.test.runtime;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Strings;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
@@ -51,6 +53,10 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.test.JSTest;
 
 public class JSObjectTest extends JSTest {
+
+    private static final TruffleString X = Strings.constant("x");
+    private static final TruffleString Y = Strings.constant("y");
+    private static final TruffleString Z = Strings.constant("z");
 
     @Override
     public void setup() {
@@ -71,60 +77,60 @@ public class JSObjectTest extends JSTest {
     @Test
     public void testSetGet() {
         DynamicObject obj = createOrdinaryObject();
-        JSObject.set(obj, "x", 10);
-        assertEquals(10, JSObject.get(obj, "x"));
-        JSObject.set(obj, "y", 20);
-        assertEquals(10, JSObject.get(obj, "x"));
-        assertEquals(20, JSObject.get(obj, "y"));
+        JSObject.set(obj, X, 10);
+        assertEquals(10, JSObject.get(obj, X));
+        JSObject.set(obj, Y, 20);
+        assertEquals(10, JSObject.get(obj, X));
+        assertEquals(20, JSObject.get(obj, Y));
     }
 
     @Test
     public void testRemove() {
         DynamicObject obj = createOrdinaryObject();
-        JSObject.set(obj, "x", 10);
-        JSObject.set(obj, "y", 20);
-        assertEquals(10, JSObject.get(obj, "x"));
-        assertEquals(20, JSObject.get(obj, "y"));
+        JSObject.set(obj, X, 10);
+        JSObject.set(obj, Y, 20);
+        assertEquals(10, JSObject.get(obj, X));
+        assertEquals(20, JSObject.get(obj, Y));
         assertEquals(2, JSObject.ownPropertyKeys(obj).size());
 
-        JSObject.delete(obj, "x");
-        assertEquals(20, JSObject.get(obj, "y"));
+        JSObject.delete(obj, X);
+        assertEquals(20, JSObject.get(obj, Y));
         assertEquals(1, JSObject.ownPropertyKeys(obj).size());
-        assertEquals("y", JSObject.ownPropertyKeys(obj).get(0));
-        assertEquals(false, JSObject.hasProperty(obj, "x"));
+        assertEquals(Y, JSObject.ownPropertyKeys(obj).get(0));
+        assertEquals(false, JSObject.hasProperty(obj, X));
     }
 
     @Test
     public void testRemove2() {
         DynamicObject obj = createOrdinaryObject();
-        JSObject.set(obj, "x", 10);
-        JSObject.set(obj, "y", 20);
-        assertEquals(10, JSObject.get(obj, "x"));
-        assertEquals(20, JSObject.get(obj, "y"));
+        JSObject.set(obj, X, 10);
+        JSObject.set(obj, Y, 20);
+        assertEquals(10, JSObject.get(obj, X));
+        assertEquals(20, JSObject.get(obj, Y));
         assertEquals(2, JSObject.ownPropertyKeys(obj).size());
 
-        JSObject.delete(obj, "x");
-        assertEquals(20, JSObject.get(obj, "y"));
+        JSObject.delete(obj, X);
+        assertEquals(20, JSObject.get(obj, Y));
         assertEquals(1, JSObject.ownPropertyKeys(obj).size());
-        assertEquals("y", JSObject.ownPropertyKeys(obj).get(0));
-        assertEquals(false, JSObject.hasProperty(obj, "x"));
+        assertEquals(Y, JSObject.ownPropertyKeys(obj).get(0));
+        assertEquals(false, JSObject.hasProperty(obj, X));
 
-        JSObject.set(obj, "x", 11);
-        assertEquals(11, JSObject.get(obj, "x"));
-        assertEquals(20, JSObject.get(obj, "y"));
+        JSObject.set(obj, X, 11);
+        assertEquals(11, JSObject.get(obj, X));
+        assertEquals(20, JSObject.get(obj, Y));
         assertEquals(2, JSObject.ownPropertyKeys(obj).size());
-        assertTrue(JSObject.ownPropertyKeys(obj).contains("x") && JSObject.ownPropertyKeys(obj).contains("y"));
-        assertEquals(true, JSObject.hasProperty(obj, "x"));
-        assertEquals(true, JSObject.hasProperty(obj, "y"));
+        assertTrue(JSObject.ownPropertyKeys(obj).contains(X) && JSObject.ownPropertyKeys(obj).contains(Y));
+        assertEquals(true, JSObject.hasProperty(obj, X));
+        assertEquals(true, JSObject.hasProperty(obj, Y));
 
-        JSObject.delete(obj, "x");
-        JSObject.delete(obj, "x");
+        JSObject.delete(obj, X);
+        JSObject.delete(obj, X);
 
-        JSObject.set(obj, "x", 12);
-        JSObject.delete(obj, "y");
-        JSObject.set(obj, "z", 13);
+        JSObject.set(obj, X, 12);
+        JSObject.delete(obj, Y);
+        JSObject.set(obj, Z, 13);
 
-        JSObject.set(obj, "y", 21);
+        JSObject.set(obj, Y, 21);
         assertEquals(3, JSObject.ownPropertyKeys(obj).size());
     }
 
@@ -132,11 +138,11 @@ public class JSObjectTest extends JSTest {
     public void propertyTest() {
         DynamicObject po = createOrdinaryObject();
         for (int i = 0; i < 10000; i++) {
-            JSObject.set(po, String.valueOf(i), i);
+            JSObject.set(po, Strings.fromInt(i), i);
         }
         boolean ok = true;
         for (int i = 0; i < 10000; i++) {
-            ok = ok && (i == (Integer) JSObject.get(po, String.valueOf(i)));
+            ok = ok && (i == (Integer) JSObject.get(po, Strings.fromInt(i)));
         }
         assertTrue(ok);
     }

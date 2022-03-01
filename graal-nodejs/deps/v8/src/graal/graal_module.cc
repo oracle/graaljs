@@ -109,7 +109,7 @@ int GraalModule::GetModuleRequestsLength() const {
 v8::Local<v8::String> GraalModule::GetModuleRequest(int index) const {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_request, graal_isolate, GraalAccessMethod::module_get_request, Object, GetJavaObject(), (jint) index);
-    GraalString* graal_request = GraalString::Allocate(graal_isolate, (jstring) java_request);
+    GraalString* graal_request = GraalString::Allocate(graal_isolate, java_request);
     return reinterpret_cast<v8::String*> (graal_request);
 }
 

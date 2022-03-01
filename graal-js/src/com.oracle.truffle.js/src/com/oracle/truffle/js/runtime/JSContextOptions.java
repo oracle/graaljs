@@ -445,7 +445,7 @@ public final class JSContextOptions {
 
     public static final String DEBUG_PROPERTY_NAME_NAME = JS_OPTION_PREFIX + "debug-property-name";
     @Option(name = DEBUG_PROPERTY_NAME_NAME, category = OptionCategory.EXPERT, help = "The name used for the Graal.js debug builtin.") //
-    public static final OptionKey<String> DEBUG_PROPERTY_NAME = new OptionKey<>(JSRealm.DEBUG_CLASS_NAME);
+    public static final OptionKey<String> DEBUG_PROPERTY_NAME = new OptionKey<>(Strings.toJavaString(JSRealm.DEBUG_CLASS_NAME));
 
     public static final String PROFILE_TIME_NAME = JS_OPTION_PREFIX + "profile-time";
     @Option(name = PROFILE_TIME_NAME, category = OptionCategory.INTERNAL, help = "Enable time profiling.") //

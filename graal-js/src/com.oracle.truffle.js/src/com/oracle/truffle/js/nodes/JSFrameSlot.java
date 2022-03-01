@@ -47,6 +47,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.Strings;
 
 /**
  * Describes a JS frame slot. Used as a temporary representation during parsing.
@@ -61,7 +62,7 @@ public final class JSFrameSlot {
     public JSFrameSlot(int index, Object identifier, int flags, FrameSlotKind kind) {
         this.index = index;
         this.flags = flags;
-        this.identifier = Objects.requireNonNull(identifier);
+        this.identifier = Objects.requireNonNull(identifier instanceof String ? Strings.fromJavaString((String) identifier) : identifier);
         this.info = FrameSlotFlags.of(flags);
         this.kind = kind;
     }

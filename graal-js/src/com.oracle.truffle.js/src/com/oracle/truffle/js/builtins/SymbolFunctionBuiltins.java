@@ -44,6 +44,7 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.SymbolFunctionBuiltinsFactory.SymbolForNodeGen;
 import com.oracle.truffle.js.builtins.SymbolFunctionBuiltinsFactory.SymbolKeyForNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -105,12 +106,12 @@ public final class SymbolFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Symbol symbolFor(Object key) {
-            String stringKey = toStringNode.executeString(key);
+            TruffleString stringKey = toStringNode.executeString(key);
             return getOrCreateSymbol(getContext().getSymbolRegistry(), stringKey);
         }
 
         @TruffleBoundary
-        private static Symbol getOrCreateSymbol(Map<String, Symbol> symbolRegistry, String stringKey) {
+        private static Symbol getOrCreateSymbol(Map<TruffleString, Symbol> symbolRegistry, TruffleString stringKey) {
             Symbol symbol = symbolRegistry.get(stringKey);
             if (symbol == null) {
                 symbol = Symbol.create(stringKey);
@@ -131,8 +132,8 @@ public final class SymbolFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @TruffleBoundary
-        private static Object getKeyFor(Map<String, Symbol> symbolRegistry, Symbol symbol) {
-            for (Map.Entry<String, Symbol> entry : symbolRegistry.entrySet()) {
+        private static Object getKeyFor(Map<TruffleString, Symbol> symbolRegistry, Symbol symbol) {
+            for (Map.Entry<TruffleString, Symbol> entry : symbolRegistry.entrySet()) {
                 if (symbol.equals(entry.getValue())) {
                     return entry.getKey();
                 }

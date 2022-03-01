@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.NumberFormatPrototypeBuiltinsFactory.JSNumberFormatFormatRangeNodeGen;
 import com.oracle.truffle.js.builtins.intl.NumberFormatPrototypeBuiltinsFactory.JSNumberFormatFormatRangeToPartsNodeGen;
@@ -157,7 +158,7 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
         }
 
         @Specialization(guards = {"isJSNumberFormat(numberFormat)"})
-        public String doFormatRange(DynamicObject numberFormat, Object start, Object end,
+        public TruffleString doFormatRange(DynamicObject numberFormat, Object start, Object end,
                         @Cached("create(true)") ToIntlMathematicalValue startToIntlMVNode,
                         @Cached("create(true)") ToIntlMathematicalValue endToIntlMVNode,
                         @Cached BranchProfile errorBranch) {

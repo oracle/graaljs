@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.BigIntFunctionBuiltins;
 import com.oracle.truffle.js.builtins.BigIntPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -50,14 +51,15 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.Default.WithFunctions {
 
-    public static final String TYPE_NAME = "bigint";
-    public static final String CLASS_NAME = "BigInt";
-    public static final String PROTOTYPE_NAME = "BigInt.prototype";
+    public static final TruffleString TYPE_NAME = Strings.constant("bigint");
+    public static final TruffleString CLASS_NAME = Strings.constant("BigInt");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("BigInt.prototype");
 
     public static final JSBigInt INSTANCE = new JSBigInt();
 
@@ -104,24 +106,24 @@ public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
     @TruffleBoundary
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return super.toDisplayStringImpl(obj, allowSideEffects, format, depth);
         } else {
             BigInt primitiveValue = JSBigInt.valueOf(obj);
             return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth,
-                            getBuiltinToStringTag(obj), new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
+                            getBuiltinToStringTag(obj), new TruffleString[]{Strings.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
         }
     }
 

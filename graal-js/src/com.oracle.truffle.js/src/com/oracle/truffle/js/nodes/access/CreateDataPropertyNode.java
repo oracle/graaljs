@@ -56,6 +56,7 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
     @Child protected IsJSObjectNode isObject;
 
     protected CreateDataPropertyNode(JSContext context, Object key, boolean enumerable) {
+        assert JSRuntime.isPropertyKey(key);
         this.context = context;
         this.key = key;
         this.isObject = IsJSObjectNode.create();

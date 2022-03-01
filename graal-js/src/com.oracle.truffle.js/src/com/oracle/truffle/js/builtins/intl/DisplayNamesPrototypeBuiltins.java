@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins.intl;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.DisplayNamesPrototypeBuiltinsFactory.JSDisplayNamesOfNodeGen;
 import com.oracle.truffle.js.builtins.intl.DisplayNamesPrototypeBuiltinsFactory.JSDisplayNamesResolvedOptionsNodeGen;
@@ -50,6 +51,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
 
@@ -116,8 +118,8 @@ public final class DisplayNamesPrototypeBuiltins extends JSBuiltinsContainer.Swi
 
         @Specialization(guards = "isJSDisplayNames(displayNames)")
         public Object doDisplayNames(DynamicObject displayNames, Object code) {
-            String codeString = toStringNode.executeString(code);
-            return JSDisplayNames.of(displayNames, codeString);
+            TruffleString codeString = toStringNode.executeString(code);
+            return JSDisplayNames.of(displayNames, Strings.toJavaString(codeString));
         }
 
         @Specialization(guards = "!isJSDisplayNames(bummer)")

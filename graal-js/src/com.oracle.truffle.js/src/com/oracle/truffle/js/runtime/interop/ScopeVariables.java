@@ -63,6 +63,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.FrameDescriptorProvider;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
@@ -78,6 +79,8 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Properties;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -85,7 +88,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @ExportLibrary(InteropLibrary.class)
 public final class ScopeVariables implements TruffleObject {
 
-    public static final String RECEIVER_MEMBER = "this";
+    public static final TruffleString RECEIVER_MEMBER = Strings.THIS;
     static final int LIMIT = 4;
 
     final Frame frame;
@@ -514,7 +517,7 @@ public final class ScopeVariables implements TruffleObject {
                         }
                         objectLibrary = lib;
                     }
-                    return lib.getOrDefault(scope, key, Undefined.instance);
+                    return Properties.getOrDefault(lib, scope, key, Undefined.instance);
                 }
             }
             return new EvalRead();
@@ -575,8 +578,9 @@ public final class ScopeVariables implements TruffleObject {
         }
     }
 
-    static ResolvedSlot findSlot(String member, ScopeVariables receiver) {
+    static ResolvedSlot findSlot(String memberString, ScopeVariables receiver) {
         CompilerAsserts.neverPartOfCompilation();
+        TruffleString member = Strings.fromJavaString(memberString);
         if (receiver.frame == null) {
             return findSlotWithoutFrame(member, receiver.blockOrRoot);
         }
@@ -707,7 +711,7 @@ public final class ScopeVariables implements TruffleObject {
         return null; // Not found
     }
 
-    private static ResolvedSlot findSlotWithoutFrame(String member, Node blockOrRootNode) {
+    private static ResolvedSlot findSlotWithoutFrame(TruffleString member, Node blockOrRootNode) {
         CompilerAsserts.neverPartOfCompilation();
         Node descNode = blockOrRootNode;
         while (descNode != null) {

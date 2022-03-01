@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -105,7 +106,7 @@ public abstract class IsObjectNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static boolean doString(@SuppressWarnings("unused") CharSequence operand) {
+    protected static boolean doTString(@SuppressWarnings("unused") TruffleString operand) {
         return false;
     }
 

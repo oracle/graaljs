@@ -45,10 +45,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -56,8 +58,8 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 
 public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitializer {
-    private final String name;
-    private final String fullName;
+    private final TruffleString name;
+    private final TruffleString fullName;
     private final Object key;
     private final int length;
     private final byte attributeFlags;
@@ -71,12 +73,12 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
     private static final int GETTER_FLAG = 1 << 3;
     private static final int SETTER_FLAG = 1 << 4;
 
-    public JSBuiltin(String containerName, String functionName, Object key, int length, int attributeFlags, int ecmaScriptVersion,
+    public JSBuiltin(TruffleString containerName, TruffleString functionName, Object key, int length, int attributeFlags, int ecmaScriptVersion,
                     boolean annexB, BuiltinNodeFactory functionNodeFactory, BuiltinNodeFactory constructorNodeFactory, BuiltinNodeFactory newTargetConstructorFactory) {
         assert isAllowedKey(key);
         assert (byte) ecmaScriptVersion == ecmaScriptVersion && (byte) attributeFlags == attributeFlags;
         this.name = key instanceof Symbol ? ((Symbol) key).toFunctionNameString() : functionName;
-        this.fullName = (containerName == null) ? name : (containerName + "." + name);
+        this.fullName = (containerName == null) ? name : Strings.concatAll(containerName, Strings.DOT, name);
         this.key = key;
         this.length = length;
         this.ecmaScriptVersion = (byte) ecmaScriptVersion;
@@ -87,7 +89,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
         this.newTargetConstructorNodeFactory = newTargetConstructorFactory;
     }
 
-    public JSBuiltin(String containerName, String name, int length, int flags, BuiltinNodeFactory functionNodeFactory) {
+    public JSBuiltin(TruffleString containerName, TruffleString name, int length, int flags, BuiltinNodeFactory functionNodeFactory) {
         this(containerName, name, name, length, flags, 5, false, functionNodeFactory, null, null);
     }
 
@@ -98,7 +100,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
      * @return simple name of the built-in.
      */
     @Override
-    public String getName() {
+    public TruffleString getName() {
         return name;
     }
 
@@ -108,7 +110,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
      *
      * @return "fully-qualified" name of the built-in.
      */
-    public String getFullName() {
+    public TruffleString getFullName() {
         return fullName;
     }
 
@@ -187,20 +189,19 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
     private static boolean isAllowedKey(Object key) {
         if (key instanceof Symbol) {
             return true;
-        } else if (key instanceof String) {
-            String name = (String) key;
-            // "$_" is needed for JSRegExp
-            if (!name.isEmpty() && (!name.endsWith("_") || name.equals("$_")) && !name.startsWith("_") || (name.startsWith("__") && name.endsWith("__"))) {
-                return true;
-            }
+        } else if (Strings.isTString(key)) {
+            // "get $_" is needed for JSRegExp
+            TruffleString tsk = (TruffleString) key;
+            return !Strings.isEmpty(tsk) && (!Strings.endsWith(tsk, Strings.UNDERSCORE) || Strings.equals(tsk, Strings.$_)) && !Strings.startsWith(tsk, Strings.UNDERSCORE) ||
+                            (Strings.startsWith(tsk, Strings.UNDERSCORE_2) && Strings.endsWith(tsk, Strings.UNDERSCORE_2));
         }
         return false;
     }
 
-    private static int detectAccessor(String functionName) {
-        if (functionName.startsWith("get ")) {
+    private static int detectAccessor(TruffleString functionName) {
+        if (Strings.startsWith(functionName, Strings.GET_SPC)) {
             return GETTER_FLAG;
-        } else if (functionName.startsWith("set ")) {
+        } else if (Strings.startsWith(functionName, Strings.SET_SPC)) {
             return SETTER_FLAG;
         }
         return 0;

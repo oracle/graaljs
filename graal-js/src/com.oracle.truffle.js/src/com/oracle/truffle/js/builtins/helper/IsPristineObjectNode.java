@@ -46,11 +46,13 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -97,9 +99,10 @@ public abstract class IsPristineObjectNode extends JavaScriptBaseNode {
 
     public static IsPristineObjectNode createRegExpExecAndMatch(JSContext context) {
         assert context.getEcmaScriptVersion() >= 6;
+        assert Strings.equals(Strings.EXEC, (TruffleString) RegExpPrototypeBuiltins.RegExpPrototype.exec.getKey());
         return IsPristineObjectNode.create(JSRegExp.INSTANCE, JSRealm.get(null).getInitialRegExpPrototypeShape(),
                         Symbol.SYMBOL_MATCH,
-                        RegExpPrototypeBuiltins.RegExpPrototype.exec.getKey(),
+                        Strings.EXEC,
                         JSRegExp.FLAGS,
                         JSRegExp.GLOBAL,
                         JSRegExp.UNICODE,

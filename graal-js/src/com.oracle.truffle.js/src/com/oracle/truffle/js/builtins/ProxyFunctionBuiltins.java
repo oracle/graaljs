@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -75,7 +76,7 @@ public final class ProxyFunctionBuiltins extends JSBuiltinsContainer.Lambda {
 
     protected ProxyFunctionBuiltins() {
         super(JSProxy.CLASS_NAME);
-        defineFunction("revocable", 2, (context, builtin) -> RevocableNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context)));
+        defineFunction(Strings.REVOCABLE, 2, (context, builtin) -> RevocableNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context)));
     }
 
     public abstract static class RevocableNode extends JSBuiltinNode {
@@ -90,8 +91,8 @@ public final class ProxyFunctionBuiltins extends JSBuiltinsContainer.Lambda {
             this.proxyCreateNode = ConstructJSProxyNodeGen.create(context, builtin, false, null);
             this.setRevocableProxySlotNode = PropertySetNode.createSetHidden(JSProxy.REVOCABLE_PROXY, context);
             this.createObjectNode = CreateObjectNode.create(context);
-            this.createProxyPropertyNode = CreateDataPropertyNode.create(context, "proxy");
-            this.createRevokePropertyNode = CreateDataPropertyNode.create(context, "revoke");
+            this.createProxyPropertyNode = CreateDataPropertyNode.create(context, Strings.PROXY);
+            this.createRevokePropertyNode = CreateDataPropertyNode.create(context, Strings.REVOKE);
         }
 
         @Specialization
@@ -129,7 +130,7 @@ public final class ProxyFunctionBuiltins extends JSBuiltinsContainer.Lambda {
                     return Undefined.instance;
                 }
             }.getCallTarget();
-            return JSFunctionData.createCallOnly(context, callTarget, 0, ""); // anonymous
+            return JSFunctionData.createCallOnly(context, callTarget, 0, Strings.EMPTY_STRING); // anonymous
         }
     }
 }

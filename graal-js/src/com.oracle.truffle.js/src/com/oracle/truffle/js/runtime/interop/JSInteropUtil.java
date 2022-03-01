@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,12 +51,14 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -102,11 +104,11 @@ public final class JSInteropUtil {
     }
 
     public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue, InteropLibrary interop, ImportValueNode importValue, Node originatingNode) {
-        if (!(member instanceof String)) {
+        if (!Strings.isTString(member)) {
             return defaultValue;
         }
         try {
-            return importValue.executeWithTarget(interop.readMember(obj, (String) member));
+            return importValue.executeWithTarget(interop.readMember(obj, Strings.toJavaString((TruffleString) member)));
         } catch (UnknownIdentifierException e) {
             return defaultValue;
         } catch (UnsupportedMessageException e) {
@@ -133,11 +135,11 @@ public final class JSInteropUtil {
     }
 
     public static void writeMember(Object obj, Object member, Object value, InteropLibrary interop, ExportValueNode exportValue, Node originatingNode) {
-        if (!(member instanceof String)) {
+        if (!Strings.isTString(member)) {
             return;
         }
         try {
-            interop.writeMember(obj, (String) member, exportValue.execute(value));
+            interop.writeMember(obj, Strings.toJavaString((TruffleString) member), exportValue.execute(value));
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
             throw Errors.createTypeErrorInteropException(obj, e, "writeMember", member, originatingNode);
         }
@@ -151,7 +153,7 @@ public final class JSInteropUtil {
             if (interop.isBoolean(obj)) {
                 return interop.asBoolean(obj);
             } else if (interop.isString(obj)) {
-                return interop.asString(obj);
+                return interop.asTruffleString(obj);
             } else if (interop.isNumber(obj)) {
                 if (interop.fitsInInt(obj)) {
                     return interop.asInt(obj);
@@ -180,7 +182,7 @@ public final class JSInteropUtil {
             for (int i = 0; i < size; i++) {
                 Object key = keysInterop.readArrayElement(keysObj, i);
                 assert InteropLibrary.getUncached().isString(key);
-                keys.add(key);
+                keys.add(InteropLibrary.getUncached().asTruffleString(key));
             }
             return keys;
         } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
@@ -190,8 +192,8 @@ public final class JSInteropUtil {
 
     @TruffleBoundary
     public static boolean hasProperty(Object obj, Object key) {
-        if (key instanceof String) {
-            return InteropLibrary.getUncached().isMemberExisting(obj, (String) key);
+        if (key instanceof TruffleString) {
+            return InteropLibrary.getUncached().isMemberExisting(obj, Strings.toJavaString((TruffleString) key));
         } else {
             return false;
         }
@@ -199,9 +201,9 @@ public final class JSInteropUtil {
 
     @TruffleBoundary
     public static boolean remove(Object obj, Object key) {
-        if (key instanceof String) {
+        if (key instanceof TruffleString) {
             try {
-                InteropLibrary.getUncached().removeMember(obj, (String) key);
+                InteropLibrary.getUncached().removeMember(obj, Strings.toJavaString((TruffleString) key));
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
                 throw Errors.createTypeErrorInteropException(obj, e, "removeMember", key, null);
             }

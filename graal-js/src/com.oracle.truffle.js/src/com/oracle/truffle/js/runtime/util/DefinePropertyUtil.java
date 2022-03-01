@@ -108,6 +108,7 @@ public final class DefinePropertyUtil {
     }
 
     public static Property getPropertyByKey(DynamicObject thisObj, Object key) {
+        assert JSRuntime.isPropertyKey(key);
         return thisObj.getShape().getProperty(key);
     }
 
