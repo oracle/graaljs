@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -195,9 +195,11 @@ public final class JSFrameUtil {
         if (identifier instanceof TruffleString) {
             TruffleString name = (TruffleString) identifier;
             if (Strings.startsWith(name, Strings.COLON)) {
-                return Strings.substring(name, 1);
+                // leaks 1 char
+                return Strings.lazySubstring(name, 1);
             } else if (Strings.startsWith(name, Strings.ANGLE_BRACKET_OPEN) && Strings.endsWith(name, Strings.ANGLE_BRACKET_CLOSE)) {
-                return Strings.substring(name, 1, Strings.length(name) - 2);
+                // leaks 3 chars
+                return Strings.lazySubstring(name, 1, Strings.length(name) - 2);
             } else {
                 return name;
             }

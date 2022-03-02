@@ -41,8 +41,6 @@
 
 package com.oracle.js.parser;
 
-import com.oracle.truffle.api.strings.TruffleString;
-
 import java.io.IOException;
 import java.io.Reader;
 import java.net.URL;
@@ -51,6 +49,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.Objects;
+
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Source objects track the origin of JavaScript entities.
@@ -266,6 +266,8 @@ public final class Source {
      * @return Source content portion.
      */
     public TruffleString getString(final int start, final int len) {
+        // using lazy substring here is OK, since the underlying source string is kept alive as long
+        // as the script is running
         return data().substringByteIndexUncached(start * 2, len * 2, TruffleString.Encoding.UTF_16, true);
     }
 

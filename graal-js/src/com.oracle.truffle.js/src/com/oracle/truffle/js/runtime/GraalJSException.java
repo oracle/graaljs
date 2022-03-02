@@ -753,7 +753,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
             TruffleString propertyName = functionName;
             boolean accessor = false;
             if (Strings.startsWith(propertyName, Strings.GET_SPC) || Strings.startsWith(propertyName, Strings.SET_SPC)) {
-                propertyName = Strings.substring(propertyName, 4);
+                // leaks 4 chars
+                propertyName = Strings.lazySubstring(propertyName, 4);
                 accessor = true;
             }
             if (propertyName.isEmpty()) {

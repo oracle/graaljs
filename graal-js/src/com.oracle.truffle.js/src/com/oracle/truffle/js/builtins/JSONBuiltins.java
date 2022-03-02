@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -331,11 +331,11 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         }
 
         @TruffleBoundary
-        private static TruffleString makeGap(TruffleString spaceStr) {
+        private TruffleString makeGap(TruffleString spaceStr) {
             if (Strings.length(spaceStr) <= 10) {
                 return spaceStr;
             } else {
-                return Strings.substring(spaceStr, 0, 10);
+                return Strings.substring(getContext(), spaceStr, 0, 10);
             }
         }
 

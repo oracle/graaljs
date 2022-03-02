@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,7 +74,7 @@ public class CreateSegmentDataObjectNode extends JavaScriptBaseNode {
 
     public DynamicObject execute(BreakIterator icuIterator, JSSegmenter.Granularity granularity, TruffleString string, int startIndex, int endIndex) {
         DynamicObject result = JSOrdinary.create(context, getRealm());
-        createSegmentPropertyNode.executeVoid(result, Strings.substring(string, startIndex, endIndex - startIndex));
+        createSegmentPropertyNode.executeVoid(result, Strings.substring(context, string, startIndex, endIndex - startIndex));
         createIndexPropertyNode.executeVoid(result, startIndex);
         createInputPropertyNode.executeVoid(result, string);
         if (granularity == JSSegmenter.Granularity.WORD) {

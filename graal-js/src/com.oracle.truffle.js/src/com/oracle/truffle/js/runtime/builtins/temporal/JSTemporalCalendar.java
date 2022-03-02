@@ -270,7 +270,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
         if (monthLength != 3) {
             throw Errors.createRangeError("Month code should be in 3 character code.");
         }
-        TruffleString numberPart = Strings.substring((TruffleString) monthCode, 1);
+        TruffleString numberPart = Strings.lazySubstring((TruffleString) monthCode, 1);
         double numberPart2 = stringToNumber.executeString(numberPart);
         if (Double.isNaN(numberPart2)) {
             throw Errors.createRangeError("The last character of the monthCode should be a number.");

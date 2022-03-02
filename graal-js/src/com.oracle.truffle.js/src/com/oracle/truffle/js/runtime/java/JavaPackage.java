@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -135,7 +135,7 @@ public final class JavaPackage extends JSNonProxy {
             // constructor directly? e.g. java.awt["Color(int,int,int)"]
             int openParen = Strings.indexOf(name, '(');
             if (openParen != -1) {
-                TruffleString className = Strings.substring(name, 0, openParen);
+                TruffleString className = Strings.substring(context, name, 0, openParen);
                 Object javaClass = lookupClass(realm, thisObj, className);
                 if (javaClass != null) {
                     return javaClass;

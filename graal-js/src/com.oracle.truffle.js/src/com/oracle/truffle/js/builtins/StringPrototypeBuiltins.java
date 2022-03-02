@@ -569,7 +569,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (indexOutOfBounds.profile(pos < 0 || pos >= Strings.length(thisObj))) {
                 return Strings.EMPTY_STRING;
             } else {
-                return Strings.substring(substringNode, thisObj, pos, 1);
+                return Strings.substring(getContext(), substringNode, thisObj, pos, 1);
             }
         }
 
@@ -715,7 +715,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 fromIndex = end;
                 length = start - end;
             }
-            return Strings.substring(substringNode, thisStr, fromIndex, length);
+            return Strings.substring(getContext(), substringNode, thisStr, fromIndex, length);
         }
 
         @Specialization(replaces = {"substring", "substringStart"})
@@ -917,7 +917,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 substringNode = insert(TruffleString.SubstringByteIndexNode.create());
             }
-            return Strings.substring(substringNode, a, fromIndex);
+            return Strings.substring(getContext(), substringNode, a, fromIndex);
         }
 
         private TruffleString substring(TruffleString a, int fromIndex, int length) {
@@ -925,7 +925,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 substringNode = insert(TruffleString.SubstringByteIndexNode.create());
             }
-            return Strings.substring(substringNode, a, fromIndex, length);
+            return Strings.substring(getContext(), substringNode, a, fromIndex, length);
         }
 
         private int indexOf(TruffleString s1, TruffleString s2, int fromIndex) {
@@ -1125,7 +1125,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     start = matchEnd + (matchEnd == start ? 1 : 0);
                     result = parent.matchIgnoreLastIndex(regExp, input, start);
                 }
-                splits.add(Strings.substring(input, start), parent.growProfile);
+                splits.add(parent.substring(input, start), parent.growProfile);
                 return splits.toArray();
             }
         }
@@ -1177,13 +1177,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        protected static ReplaceStringParser.Token[] parseReplaceValue(TruffleString replaceValue) {
-            return ReplaceStringParser.parse(replaceValue, 0, false);
+        protected ReplaceStringParser.Token[] parseReplaceValue(TruffleString replaceValue) {
+            return ReplaceStringParser.parse(getContext(), replaceValue, 0, false);
         }
 
         protected static void appendSubstitution(TruffleStringBuilder sb, TruffleString input, TruffleString replaceStr, TruffleString searchStr, int pos, BranchProfile dollarProfile,
                         JSStringReplaceBaseNode node) {
-            ReplaceStringParser.process(replaceStr, 0, false, dollarProfile, new ReplaceStringConsumer(sb, input, replaceStr, searchStr, pos), node);
+            ReplaceStringParser.process(node.getContext(), replaceStr, 0, false, dollarProfile, new ReplaceStringConsumer(sb, input, replaceStr, searchStr, pos), node);
         }
 
         protected static final class ReplaceStringConsumer implements ReplaceStringParser.Consumer<JSStringReplaceBaseNode, TruffleStringBuilder> {
@@ -1755,7 +1755,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             void appendReplacementRegex(TruffleStringBuilder sb, TruffleString input, Object result, int groupCount, TruffleString replaceStr, JSStringReplaceES5Node parent,
                             Object tRegexCompiledRegex) {
                 if (emptyReplace.profile(!Strings.isEmpty(replaceStr))) {
-                    ReplaceStringParser.process(replaceStr, groupCount, false, dollarProfile, new RegExpPrototypeBuiltins.ReplaceStringConsumerTRegex(
+                    ReplaceStringParser.process(parent.getContext(), replaceStr, groupCount, false, dollarProfile, new RegExpPrototypeBuiltins.ReplaceStringConsumerTRegex(
                                     sb, input, replaceStr, parent.resultAccessor.captureGroupStart(result, 0), parent.resultAccessor.captureGroupEnd(result, 0), result, tRegexCompiledRegex), this);
                 }
             }
@@ -1812,7 +1812,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             @Override
             void appendReplacementRegex(TruffleStringBuilder sb, TruffleString input, Object result, int groupCount, DynamicObject replaceFunc, JSStringReplaceES5Node parent,
                             Object tRegexCompiledRegex) {
-                parent.append(sb, callReplaceValueFunc(result, input, groupCount, replaceFunc));
+                parent.append(sb, callReplaceValueFunc(parent.getContext(), result, input, groupCount, replaceFunc));
             }
 
             @Override
@@ -1824,8 +1824,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 parent.append(sb, replaceStr);
             }
 
-            private TruffleString callReplaceValueFunc(Object result, TruffleString input, int groupCount, DynamicObject replaceFunc) {
-                Object[] matches = resultMaterializer.materializeFull(result, groupCount, input);
+            private TruffleString callReplaceValueFunc(JSContext context, Object result, TruffleString input, int groupCount, DynamicObject replaceFunc) {
+                Object[] matches = resultMaterializer.materializeFull(context, result, groupCount, input);
                 Object[] arguments = createArguments(matches, parentNode.resultAccessor.captureGroupStart(result, 0), input, replaceFunc);
                 Object replaceValue = functionCallNode.executeCall(arguments);
                 return toStringNode.executeString(replaceValue);
@@ -2122,7 +2122,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 finalLenEmptyBranch.enter();
                 return Strings.EMPTY_STRING;
             }
-            return Strings.substring(substringNode, thisStr, startInt, startInt + finalLen - startInt);
+            return Strings.substring(getContext(), substringNode, thisStr, startInt, startInt + finalLen - startInt);
         }
     }
 
@@ -2274,7 +2274,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             List<Object> matches = new ArrayList<>();
             int lastIndex = 0;
             while (resultAccessor.isMatch(result)) {
-                Boundaries.listAdd(matches, resultMaterializer.materializeGroup(result, 0, input));
+                Boundaries.listAdd(matches, resultMaterializer.materializeGroup(getContext(), result, 0, input));
 
                 int thisIndex = resultAccessor.captureGroupEnd(result, 0);
                 lastIndex = thisIndex + (thisIndex == lastIndex ? 1 : 0);
@@ -2333,7 +2333,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             } else if (lengthExceeded.profile(firstIdx >= Strings.length(string))) {
                 return Strings.EMPTY_STRING;
             } else {
-                return Strings.substring(substringNode, string, firstIdx);
+                return Strings.substring(getContext(), substringNode, string, firstIdx);
             }
         }
     }
@@ -2360,7 +2360,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (lengthExceeded.profile(lastIdx >= Strings.length(string))) {
                 return string;
             } else {
-                return Strings.substring(substringNode, string, 0, lastIdx + 1);
+                return Strings.substring(getContext(), substringNode, string, 0, lastIdx + 1);
             }
         }
     }
@@ -2454,7 +2454,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             int istart = JSRuntime.getOffset(start, len, offsetProfile1);
             int iend = JSRuntime.getOffset(end, len, offsetProfile2);
             if (canReturnEmpty.profile(iend > istart)) {
-                return Strings.substring(substringNode, thisObj, istart, iend - istart);
+                return Strings.substring(getContext(), substringNode, thisObj, istart, iend - istart);
             } else {
                 return Strings.EMPTY_STRING;
             }
@@ -2471,7 +2471,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             int len = Strings.length(str);
             int istart = JSRuntime.getOffset(start, len, offsetProfile1);
             if (canReturnEmpty.profile(len > istart)) {
-                return Strings.substring(substringNode, str, istart, len - istart);
+                return Strings.substring(getContext(), substringNode, str, istart, len - istart);
             } else {
                 return Strings.EMPTY_STRING;
             }
@@ -2488,7 +2488,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             long iend = isUndefined.profile(end == Undefined.instance) ? len : JSRuntime.getOffset(toIntegerAsInt(end), len, offsetProfile2);
             if (canReturnEmpty.profile(iend > istart)) {
                 int begin = (int) istart;
-                return Strings.substring(substringNode, s, begin, (int) iend - begin);
+                return Strings.substring(getContext(), substringNode, s, begin, (int) iend - begin);
             } else {
                 return Strings.EMPTY_STRING;
             }
@@ -2929,7 +2929,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (k < 0 || k >= Strings.length(thisStr)) {
                 return Undefined.instance;
             }
-            return Strings.substring(substringNode, thisStr, k, 1);
+            return Strings.substring(getContext(), substringNode, thisStr, k, 1);
         }
     }
 }

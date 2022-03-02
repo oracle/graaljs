@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -68,7 +69,7 @@ public class WebAssemblyHostFunction implements TruffleObject {
     private final boolean returnTypeIsI64;
     private final boolean anyArgTypeIsI64;
 
-    public WebAssemblyHostFunction(Object fn, TruffleString typeInfo) {
+    public WebAssemblyHostFunction(JSContext context, Object fn, TruffleString typeInfo) {
         assert JSRuntime.isCallable(fn);
 
         this.fn = fn;
@@ -76,7 +77,7 @@ public class WebAssemblyHostFunction implements TruffleObject {
         int idxOpen = Strings.indexOf(typeInfo, '(');
         int idxClose = Strings.indexOf(typeInfo, ')');
 
-        this.returnType = Strings.substring(typeInfo, idxClose + 1);
+        this.returnType = Strings.substring(context, typeInfo, idxClose + 1);
         this.returnTypeIsI64 = JSWebAssemblyValueTypes.isI64(returnType);
         this.anyArgTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxOpen + 1, idxClose) >= 0;
     }

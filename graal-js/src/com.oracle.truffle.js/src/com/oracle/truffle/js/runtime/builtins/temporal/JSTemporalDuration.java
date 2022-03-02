@@ -53,7 +53,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SIGN;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
-import static com.oracle.truffle.js.runtime.util.TemporalParser.group;
 
 import java.math.BigDecimal;
 import java.util.regex.Matcher;
@@ -274,6 +273,12 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
     }
 
+    private static TruffleString group(TruffleString string, Matcher matcher, int groupNumber) {
+        int start = matcher.start(groupNumber);
+        // lazy string never escapes in only caller parseTemporalDurationString
+        return start < 0 ? null : Strings.lazySubstring(string, start, matcher.end(groupNumber) - start);
+    }
+
     private static boolean empty(TruffleString s) {
         assert s != null;
         return s.isEmpty();
@@ -282,7 +287,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     private static long parseDurationIntl(TruffleString string, Matcher matcher, int i) {
         int start = matcher.start(i);
         if (start >= 0) {
-            TruffleString numstr = Strings.substring(string, start, matcher.end(i) - (start + 1));
+            TruffleString numstr = Strings.lazySubstring(string, start, matcher.end(i) - (start + 1));
             try {
                 return TemporalUtil.toIntegerOrInfinity(numstr).longValue();
             } catch (NumberFormatException ex) {
@@ -295,12 +300,14 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     private static Pair<TruffleString, TruffleString> parseDurationIntlWithFraction(TruffleString string, Matcher matcher, int i) {
         int start = matcher.start(i);
         if (start >= 0) {
-            TruffleString numstr = Strings.substring(string, start, matcher.end(i) - (start + 1));
+            // using lazySubstring, because the return value never escapes in the only caller,
+            // parseTemporalDurationString
+            TruffleString numstr = Strings.lazySubstring(string, start, matcher.end(i) - (start + 1));
 
             int idx = Strings.indexOf(numstr, '.');
             if (idx >= 0) {
-                TruffleString wholePart = Strings.substring(numstr, 0, idx);
-                TruffleString fractionalPart = Strings.substring(numstr, idx + 1);
+                TruffleString wholePart = Strings.lazySubstring(numstr, 0, idx);
+                TruffleString fractionalPart = Strings.lazySubstring(numstr, idx + 1);
                 return new Pair<>(wholePart, fractionalPart);
             } else {
                 return new Pair<>(numstr, Strings.EMPTY_STRING);
@@ -429,7 +436,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                         !AUTO.equals(precision)) {
             long fraction = Math.abs(milliseconds) * 1_000_000L + Math.abs(microseconds) * 1_000 + Math.abs(nanoseconds);
             TruffleString decimalPart = Strings.format("000000000%1$09d", fraction);
-            decimalPart = Strings.substring(decimalPart, Strings.length(decimalPart) - 9);
+            decimalPart = Strings.lazySubstring(decimalPart, Strings.length(decimalPart) - 9);
 
             if (AUTO.equals(precision)) {
                 int pos = Strings.length(decimalPart) - 1;
@@ -437,13 +444,13 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                     pos--;
                 }
                 if (pos != (Strings.length(decimalPart) - 1)) {
-                    decimalPart = Strings.substring(decimalPart, 0, pos + 1);
+                    decimalPart = Strings.lazySubstring(decimalPart, 0, pos + 1);
                 }
             } else if (((Number) precision).doubleValue() == 0.0) {
                 decimalPart = Strings.EMPTY_STRING;
             } else {
                 Number n = (Number) precision;
-                decimalPart = Strings.substring(decimalPart, 0, Math.min(Strings.length(decimalPart), n.intValue()));
+                decimalPart = Strings.lazySubstring(decimalPart, 0, Math.min(Strings.length(decimalPart), n.intValue()));
             }
             TruffleString secondsPart = Strings.format("%d", Math.abs(seconds));
             if (!decimalPart.equals(Strings.EMPTY_STRING)) {

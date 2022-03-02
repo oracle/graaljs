@@ -1379,13 +1379,13 @@ public class Lexer extends Scanner {
             switch (ParserStrings.charAt(valueString, 1)) {
                 case 'x':
                 case 'X':
-                    return new BigInteger(ParserStrings.substring(valueString, 2).toJavaStringUncached(), 16);
+                    return new BigInteger(ParserStrings.lazySubstring(valueString, 2).toJavaStringUncached(), 16);
                 case 'o':
                 case 'O':
-                    return new BigInteger(ParserStrings.substring(valueString, 2).toJavaStringUncached(), 8);
+                    return new BigInteger(ParserStrings.lazySubstring(valueString, 2).toJavaStringUncached(), 8);
                 case 'b':
                 case 'B':
-                    return new BigInteger(ParserStrings.substring(valueString, 2).toJavaStringUncached(), 2);
+                    return new BigInteger(ParserStrings.lazySubstring(valueString, 2).toJavaStringUncached(), 2);
                 default:
                     return new BigInteger(valueString.toJavaStringUncached(), 10);
             }

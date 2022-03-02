@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -322,7 +322,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
             if (resultAccessor.isMatch(result) && compiledRegexAccessor.groupCount(realm.getStaticRegexResultCompiledRegex()) > groupNumber) {
                 int start = resultAccessor.captureGroupStart(result, groupNumber);
                 if (start >= 0) {
-                    return Strings.substring(substringNode, getInput(), start, resultAccessor.captureGroupEnd(result, groupNumber) - start);
+                    return Strings.substring(getContext(), substringNode, getInput(), start, resultAccessor.captureGroupEnd(result, groupNumber) - start);
                 }
             }
             return Strings.EMPTY_STRING;
@@ -346,7 +346,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
                 if (groupNumber > 0) {
                     int start = resultAccessor.captureGroupStart(result, groupNumber);
                     if (start >= 0) {
-                        return Strings.substring(substringNode, getInput(), start, resultAccessor.captureGroupEnd(result, groupNumber) - start);
+                        return Strings.substring(getContext(), substringNode, getInput(), start, resultAccessor.captureGroupEnd(result, groupNumber) - start);
                     }
                 }
             }
@@ -367,7 +367,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
             Object result = getResultNode.execute();
             if (resultAccessor.isMatch(result)) {
                 int start = resultAccessor.captureGroupStart(result, 0);
-                return Strings.substring(substringNode, getInput(), 0, start);
+                return Strings.substring(getContext(), substringNode, getInput(), 0, start);
             } else {
                 return Strings.EMPTY_STRING;
             }
@@ -387,7 +387,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
             Object result = getResultNode.execute();
             if (resultAccessor.isMatch(result)) {
                 int end = resultAccessor.captureGroupEnd(result, 0);
-                return Strings.substring(substringNode, getInput(), end);
+                return Strings.substring(getContext(), substringNode, getInput(), end);
             } else {
                 return Strings.EMPTY_STRING;
             }

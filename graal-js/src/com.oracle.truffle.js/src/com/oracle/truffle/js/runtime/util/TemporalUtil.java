@@ -634,9 +634,9 @@ public final class TemporalUtil {
             long mus;
             long ns;
             try {
-                ms = Strings.parseLong(Strings.substring(fraction, 0, 3));
-                mus = Strings.parseLong(Strings.substring(fraction, 3, 3));
-                ns = Strings.parseLong(Strings.substring(fraction, 6, 3));
+                ms = Strings.parseLong(Strings.lazySubstring(fraction, 0, 3));
+                mus = Strings.parseLong(Strings.lazySubstring(fraction, 3, 3));
+                ns = Strings.parseLong(Strings.lazySubstring(fraction, 6, 3));
             } catch (TruffleString.NumberFormatException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
@@ -730,17 +730,26 @@ public final class TemporalUtil {
                             Strings.format("%1$03d", millisecond),
                             Strings.format("%1$03d", microsecond),
                             Strings.format("%1$03d", nanosecond));
-            fractionString = Strings.substring(fractionString, 0, (int) toLong(precision));
+            // leaks no more than 9 chars
+            fractionString = Strings.lazySubstring(fractionString, 0, (int) toLong(precision));
         }
         return Strings.concatAll(secondString, Strings.DOT, fractionString);
     }
 
     private static TruffleString longestSubstring(TruffleString str) {
-        TruffleString s = str;
-        while (Strings.endsWith(s, Strings.ZERO)) {
-            s = Strings.substring(s, 0, Strings.length(s) - 1);
+        int length = Strings.length(str);
+        while (length > 0 && Strings.charAt(str, length - 1) == '0') {
+            length--;
         }
-        return s;
+        if (length == 0) {
+            return Strings.EMPTY_STRING;
+        }
+        if (length == Strings.length(str)) {
+            return str;
+        }
+        assert Strings.length(str) <= 9;
+        // leaks no more than 8 chars
+        return Strings.lazySubstring(str, 0, length);
     }
 
     // 13.33
@@ -3473,10 +3482,7 @@ public final class TemporalUtil {
 
         TruffleString post = Strings.EMPTY_STRING;
         if (nanoseconds != 0) {
-            TruffleString fraction = Strings.format("%1$09d", nanoseconds);
-            while (Strings.endsWith(fraction, Strings.ZERO)) {
-                fraction = Strings.substring(fraction, 0, Strings.length(fraction) - 1);
-            }
+            TruffleString fraction = longestSubstring(Strings.format("%1$09d", nanoseconds));
             post = Strings.concatAll(Strings.COLON, s, Strings.DOT, fraction);
         } else if (seconds != 0) {
             post = Strings.concat(Strings.COLON, s);
@@ -3496,7 +3502,7 @@ public final class TemporalUtil {
             nanoseconds = 0;
         } else {
             TruffleString fraction = Strings.concat(rec.getOffsetFraction(), ZEROS);
-            fraction = Strings.substring(fraction, 0, 9);
+            fraction = Strings.lazySubstring(fraction, 0, 9);
             try {
                 nanoseconds = Strings.parseLong(fraction, 10);
             } catch (TruffleString.NumberFormatException e) {

@@ -284,7 +284,7 @@ public class NashornJSONParser {
                     Strings.builderAppend(sb, source, start, pos - 1);
                     return Strings.builderToString(sb);
                 }
-                return Strings.substring(source, start, pos - 1 - start);
+                return Strings.substring(context, source, start, pos - 1 - start);
             }
         }
 
@@ -387,7 +387,7 @@ public class NashornJSONParser {
 
         final double d;
         try {
-            d = Strings.parseDouble(Strings.substring(source, start, pos - start));
+            d = Strings.parseDouble(Strings.lazySubstring(source, start, pos - start));
         } catch (TruffleString.NumberFormatException e) {
             throw numberError(start);
         }

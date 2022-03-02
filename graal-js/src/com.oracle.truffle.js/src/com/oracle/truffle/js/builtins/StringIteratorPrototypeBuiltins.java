@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -139,7 +139,7 @@ public final class StringIteratorPrototypeBuiltins extends JSBuiltinsContainer.S
             char first = Strings.charAt(stringReadNode, string, index);
             TruffleString result;
             if (isSurrogatePair.profile(Character.isHighSurrogate(first) && index + 1 < length) && Character.isLowSurrogate(Strings.charAt(stringReadNode, string, index + 1))) {
-                result = Strings.substring(substringNode, string, index, 2);
+                result = Strings.substring(getContext(), substringNode, string, index, 2);
             } else {
                 result = Strings.fromCodePoint(fromCodePointNode, first);
             }

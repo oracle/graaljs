@@ -429,6 +429,11 @@ public final class JSContextOptions {
     public static final OptionKey<Integer> STRING_LENGTH_LIMIT = new OptionKey<>(JSConfig.StringLengthLimit);
     @CompilationFinal private int stringLengthLimit;
 
+    public static final String STRING_LAZY_SUBSTRINGS_NAME = JS_OPTION_PREFIX + "string-lazy-substrings";
+    @Option(name = STRING_LAZY_SUBSTRINGS_NAME, category = OptionCategory.EXPERT, help = "Allow lazy substrings.") //
+    public static final OptionKey<Boolean> STRING_LAZY_SUBSTRINGS = new OptionKey<>(true);
+    @CompilationFinal private boolean stringLazySubstrings;
+
     public static final String BIND_MEMBER_FUNCTIONS_NAME = JS_OPTION_PREFIX + "bind-member-functions";
     @Option(name = BIND_MEMBER_FUNCTIONS_NAME, category = OptionCategory.EXPERT, help = "Bind functions returned by Value.getMember to the receiver object.") //
     public static final OptionKey<Boolean> BIND_MEMBER_FUNCTIONS = new OptionKey<>(true);
@@ -679,6 +684,7 @@ public final class JSContextOptions {
         this.functionConstructorCacheSize = readIntegerOption(FUNCTION_CONSTRUCTOR_CACHE_SIZE);
         this.regexCacheSize = readIntegerOption(REGEX_CACHE_SIZE);
         this.stringLengthLimit = readIntegerOption(STRING_LENGTH_LIMIT);
+        this.stringLazySubstrings = readBooleanOption(STRING_LAZY_SUBSTRINGS);
         this.bindMemberFunctions = readBooleanOption(BIND_MEMBER_FUNCTIONS);
         this.commonJSRequire = readBooleanOption(COMMONJS_REQUIRE);
         this.regexRegressionTestMode = readBooleanOption(REGEX_REGRESSION_TEST_MODE);
@@ -1011,6 +1017,10 @@ public final class JSContextOptions {
         return stringLengthLimit;
     }
 
+    public boolean isStringLazySubstrings() {
+        return stringLazySubstrings;
+    }
+
     public boolean bindMemberFunctions() {
         return bindMemberFunctions;
     }
@@ -1157,6 +1167,7 @@ public final class JSContextOptions {
         hash = 53 * hash + this.functionConstructorCacheSize;
         hash = 53 * hash + this.regexCacheSize;
         hash = 53 * hash + this.stringLengthLimit;
+        hash = 53 * hash + (this.stringLazySubstrings ? 1 : 0);
         hash = 53 * hash + (this.bindMemberFunctions ? 1 : 0);
         hash = 53 * hash + (this.commonJSRequire ? 1 : 0);
         hash = 53 * hash + (this.regexRegressionTestMode ? 1 : 0);
@@ -1291,6 +1302,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.stringLengthLimit != other.stringLengthLimit) {
+            return false;
+        }
+        if (this.stringLazySubstrings != other.stringLazySubstrings) {
             return false;
         }
         if (this.bindMemberFunctions != other.bindMemberFunctions) {

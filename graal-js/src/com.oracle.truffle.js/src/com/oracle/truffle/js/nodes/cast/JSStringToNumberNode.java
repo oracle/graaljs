@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -175,7 +175,7 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
     @TruffleBoundary
     protected double doHex(TruffleString input) {
         try {
-            return Strings.parseBigInteger(Strings.substring(input, 2), 16).doubleValue();
+            return Strings.parseBigInteger(Strings.lazySubstring(input, 2), 16).doubleValue();
         } catch (NumberFormatException ex) {
             return Double.NaN;
         }
@@ -191,7 +191,7 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
     @TruffleBoundary
     protected double doOctal(TruffleString input) {
         try {
-            return Strings.parseBigInteger(Strings.substring(input, 2), 8).doubleValue();
+            return Strings.parseBigInteger(Strings.lazySubstring(input, 2), 8).doubleValue();
         } catch (NumberFormatException ex) {
             return Double.NaN;
         }
@@ -207,7 +207,7 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
     @TruffleBoundary
     protected double doBinary(TruffleString input) {
         try {
-            return Strings.parseBigInteger(Strings.substring(input, 2), 2).doubleValue();
+            return Strings.parseBigInteger(Strings.lazySubstring(input, 2), 2).doubleValue();
         } catch (NumberFormatException ex) {
             return Double.NaN;
         }

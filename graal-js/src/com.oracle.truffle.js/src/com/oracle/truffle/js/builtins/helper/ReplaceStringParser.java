@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 
 /**
@@ -192,26 +193,28 @@ public final class ReplaceStringParser<T> {
         }
     }
 
+    private final JSContext context;
     private final TruffleString replaceStr;
     private final int maxGroupNumber; // exclusive
     private final boolean parseNamedCaptureGroups;
     private int index = 0;
 
-    private ReplaceStringParser(TruffleString replaceStr, int maxGroupNumber, boolean parseNamedCaptureGroups) {
+    private ReplaceStringParser(JSContext context, TruffleString replaceStr, int maxGroupNumber, boolean parseNamedCaptureGroups) {
+        this.context = context;
         this.replaceStr = replaceStr;
         this.maxGroupNumber = maxGroupNumber;
         this.parseNamedCaptureGroups = parseNamedCaptureGroups;
     }
 
-    public static <T, R> R process(TruffleString replaceStr, int maxGroupNumber, boolean parseNamedCaptureGroups, BranchProfile hasDollarProfile, Consumer<T, R> consumer, T node) {
-        new ReplaceStringParser<T>(replaceStr, maxGroupNumber, parseNamedCaptureGroups).process(consumer, node, hasDollarProfile);
+    public static <T, R> R process(JSContext context, TruffleString replaceStr, int maxGroupNumber, boolean parseNamedCaptureGroups, BranchProfile hasDollarProfile, Consumer<T, R> consumer, T node) {
+        new ReplaceStringParser<T>(context, replaceStr, maxGroupNumber, parseNamedCaptureGroups).process(consumer, node, hasDollarProfile);
         return consumer.getResult();
     }
 
     @TruffleBoundary
-    public static Token[] parse(TruffleString replaceStr, int maxGroupNumber, boolean parseNamedCaptureGroups) {
+    public static Token[] parse(JSContext context, TruffleString replaceStr, int maxGroupNumber, boolean parseNamedCaptureGroups) {
         TokenConsumer consumer = new TokenConsumer();
-        new ReplaceStringParser<Void>(replaceStr, maxGroupNumber, parseNamedCaptureGroups).process(consumer, null, BranchProfile.create());
+        new ReplaceStringParser<Void>(context, replaceStr, maxGroupNumber, parseNamedCaptureGroups).process(consumer, null, BranchProfile.create());
         return consumer.getResult();
     }
 
@@ -278,7 +281,7 @@ public final class ReplaceStringParser<T> {
                     int groupNameStart = dollarPos + 2;
                     int groupNameEnd = Strings.indexOf(replaceStr, '>', groupNameStart);
                     if (groupNameEnd >= 0) {
-                        namedCaptureGroup(consumer, node, dollarPos, Strings.substring(replaceStr, groupNameStart, groupNameEnd - groupNameStart), groupNameEnd + 1);
+                        namedCaptureGroup(consumer, node, dollarPos, Strings.substring(context, replaceStr, groupNameStart, groupNameEnd - groupNameStart), groupNameEnd + 1);
                         return;
                     }
                 }

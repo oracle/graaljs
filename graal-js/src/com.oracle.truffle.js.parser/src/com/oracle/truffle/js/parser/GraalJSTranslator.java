@@ -839,7 +839,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             assert !functionNode.isAnonymous();
             TruffleString name = functionNode.getName();
             if (functionNode.isGetter() && Strings.startsWith(name, Strings.GET_SPC) || (functionNode.isSetter() && Strings.startsWith(name, Strings.SET_SPC))) {
-                name = Strings.substring(name, 4);
+                // leaks 4 chars
+                name = Strings.lazySubstring(name, 4);
             }
             return name;
         }

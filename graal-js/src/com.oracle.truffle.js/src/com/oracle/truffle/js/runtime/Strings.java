@@ -654,20 +654,32 @@ public final class Strings extends ParserStrings {
         return TruffleStringBuilder.ToStringNode.getUncached().execute(sb);
     }
 
-    public static TruffleString substring(TruffleString s, int fromIndex) {
-        return substring(s, fromIndex, length(s) - fromIndex);
+    public static TruffleString lazySubstring(TruffleString s, int fromIndex) {
+        return substring(true, TruffleString.SubstringByteIndexNode.getUncached(), s, fromIndex, length(s) - fromIndex);
     }
 
-    public static TruffleString substring(TruffleString.SubstringByteIndexNode node, TruffleString s, int fromIndex) {
-        return substring(node, s, fromIndex, length(s) - fromIndex);
+    public static TruffleString lazySubstring(TruffleString s, int fromIndex, int length) {
+        return substring(true, TruffleString.SubstringByteIndexNode.getUncached(), s, fromIndex, length);
     }
 
-    public static TruffleString substring(TruffleString s, int fromIndex, int length) {
-        return substring(TruffleString.SubstringByteIndexNode.getUncached(), s, fromIndex, length);
+    public static TruffleString substring(JSContext context, TruffleString s, int fromIndex) {
+        return substring(context, s, fromIndex, length(s) - fromIndex);
     }
 
-    public static TruffleString substring(TruffleString.SubstringByteIndexNode node, TruffleString s, int fromIndex, int length) {
-        return length == 0 ? Strings.EMPTY_STRING : node.execute(s, fromIndex << 1, length << 1, TruffleString.Encoding.UTF_16, true);
+    public static TruffleString substring(JSContext context, TruffleString.SubstringByteIndexNode node, TruffleString s, int fromIndex) {
+        return substring(context, node, s, fromIndex, length(s) - fromIndex);
+    }
+
+    public static TruffleString substring(JSContext context, TruffleString s, int fromIndex, int length) {
+        return substring(context, TruffleString.SubstringByteIndexNode.getUncached(), s, fromIndex, length);
+    }
+
+    public static TruffleString substring(JSContext context, TruffleString.SubstringByteIndexNode node, TruffleString s, int fromIndex, int length) {
+        return substring(context.getContextOptions().isStringLazySubstrings(), node, s, fromIndex, length);
+    }
+
+    public static TruffleString substring(boolean lazy, TruffleString.SubstringByteIndexNode node, TruffleString s, int fromIndex, int length) {
+        return length == 0 ? Strings.EMPTY_STRING : node.execute(s, fromIndex << 1, length << 1, TruffleString.Encoding.UTF_16, lazy);
     }
 
     public static boolean endsWith(TruffleString s1, TruffleString s2) {
@@ -763,15 +775,16 @@ public final class Strings extends ParserStrings {
         if (length(s) == length(search)) {
             return replace;
         }
-        TruffleString result = EMPTY_STRING;
+        TruffleStringBuilder sb = builderCreate(length(s));
         int lastEndPos = 0;
         do {
-            result = concat(result, substring(s, lastEndPos, pos - lastEndPos));
-            result = concat(result, replace);
+            builderAppend(sb, s, lastEndPos, pos);
+            builderAppend(sb, replace);
             lastEndPos = pos + length(search);
             pos = indexOf(s, search, lastEndPos);
         } while (pos >= 0);
-        return concat(result, substring(s, lastEndPos, length(s) - lastEndPos));
+        builderAppend(sb, s, lastEndPos, length(s));
+        return builderToString(sb);
     }
 
     public static int compareTo(TruffleString a, TruffleString b) {
@@ -808,7 +821,7 @@ public final class Strings extends ParserStrings {
         return s.toUpperCase(locale);
     }
 
-    public static TruffleString trim(TruffleString s) {
+    public static TruffleString trim(JSContext context, TruffleString s) {
         int len = length(s);
         int st = 0;
         while ((st < len) && (charAt(s, st) <= ' ')) {
@@ -817,7 +830,7 @@ public final class Strings extends ParserStrings {
         while ((st < len) && (charAt(s, len - 1) <= ' ')) {
             len--;
         }
-        return ((st > 0) || (len < length(s))) ? substring(s, st, len) : s;
+        return ((st > 0) || (len < length(s))) ? substring(context, s, st, len) : s;
     }
 
     public static long parseLong(TruffleString s) throws TruffleString.NumberFormatException {
@@ -1030,7 +1043,7 @@ public final class Strings extends ParserStrings {
     }
 
     @TruffleBoundary
-    public static TruffleString[] split(TruffleString str, TruffleString delimiter) {
+    public static TruffleString[] split(JSContext context, TruffleString str, TruffleString delimiter) {
         if (isEmpty(str)) {
             return new TruffleString[0];
         }
@@ -1041,11 +1054,11 @@ public final class Strings extends ParserStrings {
         ArrayList<TruffleString> ret = new ArrayList<>();
         int lastEnd = 0;
         do {
-            ret.add(substring(str, lastEnd, pos - lastEnd));
+            ret.add(substring(context, str, lastEnd, pos - lastEnd));
             lastEnd = pos + length(delimiter);
             pos = indexOf(str, delimiter, lastEnd);
         } while (pos >= 0);
-        ret.add(substring(str, lastEnd, length(str) - lastEnd));
+        ret.add(substring(context, str, lastEnd, length(str) - lastEnd));
         return ret.toArray(new TruffleString[0]);
     }
 }
