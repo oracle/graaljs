@@ -655,11 +655,20 @@ public final class Strings extends ParserStrings {
     }
 
     public static TruffleString lazySubstring(TruffleString s, int fromIndex) {
-        return substring(true, TruffleString.SubstringByteIndexNode.getUncached(), s, fromIndex, length(s) - fromIndex);
+        return lazySubstring(s, fromIndex, length(s) - fromIndex);
     }
 
     public static TruffleString lazySubstring(TruffleString s, int fromIndex, int length) {
-        return substring(true, TruffleString.SubstringByteIndexNode.getUncached(), s, fromIndex, length);
+        return lazySubstring(TruffleString.SubstringByteIndexNode.getUncached(), s, fromIndex, length);
+    }
+
+    /**
+     * Create a lazy substring, unconditionally. Use this method instead of
+     * {@link #substring(JSContext, TruffleString, int, int)} when the resulting string is known to
+     * never escape into user code, or the amount of memory leaked is constant and very small.
+     */
+    public static TruffleString lazySubstring(TruffleString.SubstringByteIndexNode node, TruffleString s, int fromIndex, int length) {
+        return substring(true, node, s, fromIndex, length);
     }
 
     public static TruffleString substring(JSContext context, TruffleString s, int fromIndex) {
@@ -678,6 +687,11 @@ public final class Strings extends ParserStrings {
         return substring(context.getContextOptions().isStringLazySubstrings(), node, s, fromIndex, length);
     }
 
+    /**
+     * Create a substring. If {@code lazy} is {@code true}, the internal array of string {@code s}
+     * is re-used, without copying. This is a memory leak, since the resulting string's internal
+     * array is never trimmed.
+     */
     public static TruffleString substring(boolean lazy, TruffleString.SubstringByteIndexNode node, TruffleString s, int fromIndex, int length) {
         return length == 0 ? Strings.EMPTY_STRING : node.execute(s, fromIndex << 1, length << 1, TruffleString.Encoding.UTF_16, lazy);
     }
@@ -821,7 +835,7 @@ public final class Strings extends ParserStrings {
         return s.toUpperCase(locale);
     }
 
-    public static TruffleString trim(JSContext context, TruffleString s) {
+    public static TruffleString lazyTrim(TruffleString s) {
         int len = length(s);
         int st = 0;
         while ((st < len) && (charAt(s, st) <= ' ')) {
@@ -830,7 +844,7 @@ public final class Strings extends ParserStrings {
         while ((st < len) && (charAt(s, len - 1) <= ' ')) {
             len--;
         }
-        return ((st > 0) || (len < length(s))) ? substring(context, s, st, len) : s;
+        return ((st > 0) || (len < length(s))) ? lazySubstring(s, st, len) : s;
     }
 
     public static long parseLong(TruffleString s) throws TruffleString.NumberFormatException {

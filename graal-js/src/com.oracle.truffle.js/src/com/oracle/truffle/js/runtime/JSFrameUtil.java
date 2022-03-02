@@ -195,10 +195,8 @@ public final class JSFrameUtil {
         if (identifier instanceof TruffleString) {
             TruffleString name = (TruffleString) identifier;
             if (Strings.startsWith(name, Strings.COLON)) {
-                // leaks 1 char
                 return Strings.lazySubstring(name, 1);
             } else if (Strings.startsWith(name, Strings.ANGLE_BRACKET_OPEN) && Strings.endsWith(name, Strings.ANGLE_BRACKET_CLOSE)) {
-                // leaks 3 chars
                 return Strings.lazySubstring(name, 1, Strings.length(name) - 2);
             } else {
                 return name;

@@ -730,7 +730,7 @@ public final class TemporalUtil {
                             Strings.format("%1$03d", millisecond),
                             Strings.format("%1$03d", microsecond),
                             Strings.format("%1$03d", nanosecond));
-            // leaks no more than 9 chars
+            // no leak, because this string is concatenated immediately after
             fractionString = Strings.lazySubstring(fractionString, 0, (int) toLong(precision));
         }
         return Strings.concatAll(secondString, Strings.DOT, fractionString);

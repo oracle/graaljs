@@ -2531,7 +2531,7 @@ public final class GraalJSAccess {
             TruffleString stack = JSRuntime.toString(JSObject.get((DynamicObject) exceptionObject, JSError.STACK_NAME));
             if (Strings.startsWith(stack, Strings.fromJavaString(truffleException.getMessage()))) {
                 TruffleString message = Strings.fromJavaString(matcher.group(SYNTAX_ERROR_MESSAGE_GROUP));
-                stack = Strings.concatAll(SYNTAX_ERROR_COLON_SPC, message, Strings.substring(jsRealm.getContext(), stack, truffleException.getMessage().length()));
+                stack = Strings.concatAll(SYNTAX_ERROR_COLON_SPC, message, Strings.lazySubstring(stack, truffleException.getMessage().length()));
                 JSObject.set((DynamicObject) exceptionObject, JSError.STACK_NAME, stack);
             }
         }

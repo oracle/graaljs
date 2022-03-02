@@ -265,7 +265,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         if (Strings.charAt(packageSpecifier, 0) != '@') {
             // Set packageName to the substring of packageSpecifier until the first "/"
             if (packageSpecifierSeparator != -1) {
-                packageName = Strings.substring(realm.getContext(), packageSpecifier, 0, packageSpecifierSeparator);
+                packageName = Strings.lazySubstring(packageSpecifier, 0, packageSpecifierSeparator);
             } else {
                 // or the end of the string.
                 packageName = packageSpecifier;
@@ -279,7 +279,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             // Set packageName to the substring of packageSpecifier until the second "/" separator
             int secondSeparator = Strings.indexOf(packageSpecifier, '/', packageSpecifierSeparator + 1);
             if (secondSeparator != -1) {
-                packageName = Strings.substring(realm.getContext(), packageSpecifier, 0, secondSeparator);
+                packageName = Strings.lazySubstring(packageSpecifier, 0, secondSeparator);
             } else {
                 // or the end of the string.
                 packageName = packageSpecifier;

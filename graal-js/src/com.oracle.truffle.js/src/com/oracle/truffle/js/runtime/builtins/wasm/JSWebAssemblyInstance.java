@@ -208,10 +208,11 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         int idxOpen = Strings.indexOf(typeInfo, '(');
         int idxClose = Strings.indexOf(typeInfo, ')');
         TruffleString name = Strings.substring(context, typeInfo, 0, idxOpen);
-        TruffleString argTypes = Strings.substring(context, typeInfo, idxOpen + 1, idxClose - (idxOpen + 1));
-        TruffleString returnType = Strings.substring(context, typeInfo, idxClose + 1);
+        TruffleString argTypes = Strings.lazySubstring(typeInfo, idxOpen + 1, idxClose - (idxOpen + 1));
+        TruffleString returnType = Strings.lazySubstring(typeInfo, idxClose + 1);
         TruffleString[] paramTypes = !Strings.isEmpty(argTypes) ? Strings.split(context, argTypes, Strings.SPACE) : new TruffleString[0];
         int argCount = paramTypes.length;
+        boolean returnTypeIsEmpty = returnType.isEmpty();
         boolean returnTypeIsI64 = JSWebAssemblyValueTypes.isI64(returnType);
         boolean anyArgTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxOpen + 1, idxClose) >= 0;
 
@@ -259,7 +260,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         }
                     }
 
-                    if (returnType.isEmpty()) {
+                    if (returnTypeIsEmpty) {
                         return Undefined.instance;
                     } else {
                         return toJSValueNode.execute(wasmResult);

@@ -1431,8 +1431,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     protected static TruffleString getAccessorKey(TruffleString getset, TruffleString key) {
         assert Strings.isTString(key);
         if (Strings.length(key) > 0 && Character.isLetter(Strings.charAt(key, 0))) {
-            // no memory is leaked by the lazy substrings here, since both combined use the full
-            // string
             return Strings.concatAll(getset, Strings.toUpperCase(Strings.lazySubstring(key, 0, 1), Locale.US), Strings.lazySubstring(key, 1));
         }
         return null;

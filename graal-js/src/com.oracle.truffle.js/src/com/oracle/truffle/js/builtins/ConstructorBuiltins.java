@@ -1041,7 +1041,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @TruffleBoundary
         private double parseDate(TruffleString target) {
-            Integer[] fields = getContext().getEvaluator().parseDate(getRealm(), Strings.toJavaString(Strings.trim(getContext(), target)), false);
+            Integer[] fields = getContext().getEvaluator().parseDate(getRealm(), Strings.toJavaString(Strings.lazyTrim(target)), false);
             if (gotFieldsProfile.profile(fields != null)) {
                 return JSDate.makeDate(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], fields[6], fields[7]);
             }

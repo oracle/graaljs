@@ -331,9 +331,9 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @TruffleBoundary
-        private TruffleString getNameIntl(TruffleString name) {
+        private static TruffleString getNameIntl(TruffleString name) {
             int spacePos = Strings.lastIndexOf(name, ' ');
-            return Strings.concatAll(Strings.FUNCTION_SPC, spacePos < 0 ? name : Strings.substring(getContext(), name, spacePos + 1), Strings.FUNCTION_NATIVE_CODE_BODY);
+            return Strings.concatAll(Strings.FUNCTION_SPC, spacePos < 0 ? name : Strings.lazySubstring(name, spacePos + 1), Strings.FUNCTION_NATIVE_CODE_BODY);
         }
 
         @SuppressWarnings("unused")
