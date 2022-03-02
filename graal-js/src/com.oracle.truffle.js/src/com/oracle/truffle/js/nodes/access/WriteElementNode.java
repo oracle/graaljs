@@ -1676,7 +1676,7 @@ public class WriteElementNode extends JSTargetableNode {
                 if (isImmutable.profile(longIndex >= 0 && longIndex < Strings.length(string))) {
                     // cannot set characters of immutable strings
                     if (root.isStrict) {
-                        throw Errors.createTypeErrorNotWritableProperty(Strings.fromLong(longIndex), string, this);
+                        throw Errors.createTypeErrorNotWritableIndex(longIndex, string, this);
                     }
                     return;
                 }
@@ -1690,7 +1690,7 @@ public class WriteElementNode extends JSTargetableNode {
             if (isImmutable.profile(index >= 0 && index < Strings.length(string))) {
                 // cannot set characters of immutable strings
                 if (root.isStrict) {
-                    throw Errors.createTypeErrorNotWritableProperty(Strings.fromLong(index), string, this);
+                    throw Errors.createTypeErrorNotWritableIndex(index, string, this);
                 }
                 return;
             } else {
