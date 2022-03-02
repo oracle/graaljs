@@ -503,7 +503,7 @@ public class WriteElementNode extends JSTargetableNode {
         if (JSDynamicObject.isJSDynamicObject(target)) {
             return new JSObjectWriteElementTypeCacheNode(next);
         } else if (Strings.isTString(target)) {
-            return new StringWriteElementTypeCacheNode(target.getClass(), next);
+            return new StringWriteElementTypeCacheNode(next);
         } else if (target instanceof Boolean) {
             return new BooleanWriteElementTypeCacheNode(next);
         } else if (target instanceof Number) {
@@ -1658,51 +1658,49 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private static class StringWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
-        private final Class<?> stringClass;
         private final ConditionProfile isIndexProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isImmutable = ConditionProfile.createBinaryProfile();
         @Child private ToArrayIndexNode toArrayIndexNode;
 
-        StringWriteElementTypeCacheNode(Class<?> stringClass, WriteElementTypeCacheNode next) {
+        StringWriteElementTypeCacheNode(WriteElementTypeCacheNode next) {
             super(next);
-            this.stringClass = stringClass;
             this.toArrayIndexNode = ToArrayIndexNode.createNoToPropertyKey();
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
-            TruffleString charSequence = (TruffleString) CompilerDirectives.castExact(target, stringClass);
+            TruffleString string = (TruffleString) target;
             Object convertedIndex = toArrayIndexNode.execute(index);
             if (isIndexProfile.profile(convertedIndex instanceof Long)) {
                 long longIndex = (long) convertedIndex;
-                if (isImmutable.profile(longIndex >= 0 && longIndex < Strings.length(charSequence))) {
+                if (isImmutable.profile(longIndex >= 0 && longIndex < Strings.length(string))) {
                     // cannot set characters of immutable strings
                     if (root.isStrict) {
-                        throw Errors.createTypeErrorNotWritableProperty(Strings.fromLong(longIndex), charSequence, this);
+                        throw Errors.createTypeErrorNotWritableProperty(Strings.fromLong(longIndex), string, this);
                     }
                     return;
                 }
             }
-            JSObject.setWithReceiver(JSString.create(root.context, getRealm(), charSequence), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
+            JSObject.setWithReceiver(JSString.create(root.context, getRealm(), string), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
-            TruffleString charSequence = (TruffleString) CompilerDirectives.castExact(target, stringClass);
-            if (isImmutable.profile(index >= 0 && index < Strings.length(charSequence))) {
+            TruffleString string = (TruffleString) target;
+            if (isImmutable.profile(index >= 0 && index < Strings.length(string))) {
                 // cannot set characters of immutable strings
                 if (root.isStrict) {
-                    throw Errors.createTypeErrorNotWritableProperty(Strings.fromLong(index), charSequence, this);
+                    throw Errors.createTypeErrorNotWritableProperty(Strings.fromLong(index), string, this);
                 }
                 return;
             } else {
-                JSObject.setWithReceiver(JSString.create(root.context, getRealm(), charSequence), index, value, target, root.isStrict, classProfile, root);
+                JSObject.setWithReceiver(JSString.create(root.context, getRealm(), string), index, value, target, root.isStrict, classProfile, root);
             }
         }
 
         @Override
         public boolean guard(Object target) {
-            return CompilerDirectives.isExact(target, stringClass);
+            return target instanceof TruffleString;
         }
     }
 

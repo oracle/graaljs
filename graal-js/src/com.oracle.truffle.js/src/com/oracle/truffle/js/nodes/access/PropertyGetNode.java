@@ -74,7 +74,6 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JSTypesGen;
@@ -1654,8 +1653,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            TruffleString charSequence = (TruffleString) CompilerDirectives.castExact(thisObj, ((InstanceofCheckNode) receiverCheck).type);
-            return Strings.length(charSequence);
+            TruffleString string = (TruffleString) thisObj;
+            return Strings.length(string);
         }
 
         @Override
@@ -1665,7 +1664,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     }
 
     public static final class StringObjectLengthPropertyGetNode extends LinkedPropertyGetNode {
-        private final ValueProfile charSequenceClassProfile = ValueProfile.createClassProfile();
 
         public StringObjectLengthPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
@@ -1679,8 +1677,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            TruffleString charSequence = JSString.getString(receiverCheck.getStore(thisObj));
-            return Strings.length(charSequenceClassProfile.profile(charSequence));
+            TruffleString string = JSString.getString(receiverCheck.getStore(thisObj));
+            return Strings.length(string);
         }
 
         @Override
