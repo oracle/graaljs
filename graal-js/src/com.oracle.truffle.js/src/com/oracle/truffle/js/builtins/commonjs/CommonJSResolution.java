@@ -75,11 +75,55 @@ final class CommonJSResolution {
     public static final TruffleString INDEX_JSON = Strings.constant("index.json");
     public static final TruffleString INDEX_NODE = Strings.constant("index.node");
 
+    public static final TruffleString[] CORE_MODULES = new TruffleString[]{
+                    Strings.constant("assert"),
+                    Strings.constant("async_hooks"),
+                    Strings.constant("buffer"),
+                    Strings.constant("child_process"),
+                    Strings.constant("cluster"),
+                    Strings.constant("console"),
+                    Strings.constant("constants"),
+                    Strings.constant("crypto"),
+                    Strings.constant("dgram"),
+                    Strings.constant("diagnostics_channel"),
+                    Strings.constant("dns"),
+                    Strings.constant("domain"),
+                    Strings.constant("events"),
+                    Strings.constant("fs"),
+                    Strings.constant("http"),
+                    Strings.constant("http2"),
+                    Strings.constant("https"),
+                    Strings.constant("inspector"),
+                    Strings.constant("module"),
+                    Strings.constant("net"),
+                    Strings.constant("os"),
+                    Strings.constant("path"),
+                    Strings.constant("perf_hooks"),
+                    Strings.constant("process"),
+                    Strings.constant("punycode"),
+                    Strings.constant("querystring"),
+                    Strings.constant("readline"),
+                    Strings.constant("repl"),
+                    Strings.constant("stream"),
+                    Strings.constant("string_decoder"),
+                    Strings.constant("sys"),
+                    Strings.constant("timers"),
+                    Strings.constant("tls"),
+                    Strings.constant("trace_events"),
+                    Strings.constant("tty"),
+                    Strings.constant("url"),
+                    Strings.constant("util"),
+                    Strings.constant("v8"),
+                    Strings.constant("vm"),
+                    Strings.constant("wasi"),
+                    Strings.constant("worker_threads"),
+                    Strings.constant("zlib")};
+
     private CommonJSResolution() {
     }
 
     static boolean isCoreModule(TruffleString moduleIdentifier) {
-        return Arrays.asList(Strings.CORE_MODULES).contains(moduleIdentifier);
+        return Arrays.asList(CORE_MODULES).contains(moduleIdentifier);
     }
 
     static String getCurrentFileNameFromStack() {

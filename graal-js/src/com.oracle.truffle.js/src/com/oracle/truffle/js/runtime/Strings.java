@@ -421,12 +421,6 @@ public final class Strings extends ParserStrings {
     public static final TruffleString PACKAGE_JSON_MAIN_PROPERTY_NAME = constant("main");
     public static final TruffleString PACKAGE_JSON_TYPE_PROPERTY_NAME = constant("type");
     public static final TruffleString PACKAGE_JSON_MODULE_VALUE = constant("module");
-    public static final TruffleString[] CORE_MODULES = new TruffleString[]{
-                    constant("assert"), constant("async_hooks"), constant("buffer"), constant("child_process"), constant("cluster"), constant("console"), constant("constants"), constant("crypto"),
-                    constant("dgram"), constant("diagnostics_channel"), constant("dns"), constant("domain"), constant("events"), constant("fs"), constant("http"), constant("http2"), constant("https"),
-                    constant("inspector"), constant("module"), constant("net"), constant("os"), constant("path"), constant("perf_hooks"), constant("process"), constant("punycode"),
-                    constant("querystring"), constant("readline"), constant("repl"), constant("stream"), constant("string_decoder"), constant("sys"), constant("timers"), constant("tls"),
-                    constant("trace_events"), constant("tty"), constant("url"), constant("util"), constant("v8"), constant("vm"), constant("wasi"), constant("worker_threads"), constant("zlib")};
 
     /* Test262 */
     public static final TruffleString CREATE_REALM = constant("createRealm");
