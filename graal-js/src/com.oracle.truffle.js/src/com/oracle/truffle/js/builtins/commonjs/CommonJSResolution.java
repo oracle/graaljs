@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.IntStream;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
@@ -75,6 +76,7 @@ final class CommonJSResolution {
     public static final TruffleString INDEX_JSON = Strings.constant("index.json");
     public static final TruffleString INDEX_NODE = Strings.constant("index.node");
 
+    /** Known node core modules. Array must be sorted! */
     public static final TruffleString[] CORE_MODULES = new TruffleString[]{
                     Strings.constant("assert"),
                     Strings.constant("async_hooks"),
@@ -119,11 +121,15 @@ final class CommonJSResolution {
                     Strings.constant("worker_threads"),
                     Strings.constant("zlib")};
 
+    static {
+        assert IntStream.range(0, CORE_MODULES.length - 1).allMatch(i -> Strings.compareTo(CORE_MODULES[i], CORE_MODULES[i + 1]) <= 0);
+    }
+
     private CommonJSResolution() {
     }
 
     static boolean isCoreModule(TruffleString moduleIdentifier) {
-        return Arrays.asList(CORE_MODULES).contains(moduleIdentifier);
+        return Arrays.binarySearch(CORE_MODULES, moduleIdentifier, Strings::compareTo) >= 0;
     }
 
     static String getCurrentFileNameFromStack() {
