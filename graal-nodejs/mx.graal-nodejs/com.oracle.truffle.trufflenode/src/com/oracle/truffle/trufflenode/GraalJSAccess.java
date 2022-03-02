@@ -2538,9 +2538,8 @@ public final class GraalJSAccess {
         return exceptionObject;
     }
 
-    @SuppressWarnings("deprecation")
     public boolean tryCatchHasTerminated(Object exception) {
-        return (exception instanceof GraalJSKillException) || (exception instanceof com.oracle.truffle.api.TruffleException && ((com.oracle.truffle.api.TruffleException) exception).isCancelled());
+        return exception instanceof GraalJSKillException;
     }
 
     private static GraalJSException.JSStackTraceElement messageGraalJSExceptionStackFrame(Object exception) {
@@ -3137,9 +3136,9 @@ public final class GraalJSAccess {
         return null;
     }
 
-    @SuppressWarnings("deprecation")
     public void isolateInternalErrorCheck(Object exception) {
-        boolean internalError = !(exception instanceof com.oracle.truffle.api.TruffleException) && !(exception instanceof StackOverflowError) && !(exception instanceof OutOfMemoryError) &&
+        boolean internalError = !(exception instanceof com.oracle.truffle.api.exception.AbstractTruffleException) && !(exception instanceof StackOverflowError) &&
+                        !(exception instanceof OutOfMemoryError) &&
                         !(exception instanceof ControlFlowException) && !(exception instanceof GraalJSKillException);
         if (internalError) {
             ((Throwable) exception).printStackTrace();
