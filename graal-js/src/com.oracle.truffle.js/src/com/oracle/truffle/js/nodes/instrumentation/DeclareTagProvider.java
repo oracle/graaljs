@@ -61,8 +61,8 @@ public final class DeclareTagProvider {
     }
 
     public static JavaScriptNode createMaterializedBlockNode(JavaScriptNode original, JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot,
-                    boolean functionBlock, boolean captureFunctionFrame, int start, int end) {
-        return new MaterializedFrameBlockScopeNode(original, block, blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, start, end);
+                    boolean functionBlock, boolean captureFunctionFrame, boolean generatorFunctionBlock, int start, int end) {
+        return new MaterializedFrameBlockScopeNode(original, block, blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, generatorFunctionBlock, start, end);
     }
 
     public static boolean isMaterializedFrameProvider(JavaScriptNode node) {
@@ -105,13 +105,14 @@ public final class DeclareTagProvider {
         @Children private JavaScriptNode[] declarations;
 
         protected MaterializedFrameBlockScopeNode(JavaScriptNode original, JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot,
-                        boolean functionBlock, boolean captureFunctionFrame, int start, int end) {
-            this(block, blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, start, end, initDeclarations(frameDescriptor, original));
+                        boolean functionBlock, boolean captureFunctionFrame, boolean generatorFunctionBlock, int start, int end) {
+            this(block, blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, generatorFunctionBlock, start, end,
+                            initDeclarations(frameDescriptor, original));
         }
 
         protected MaterializedFrameBlockScopeNode(JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot,
-                        boolean functionBlock, boolean captureFunctionFrame, int start, int end, JavaScriptNode[] declarations) {
-            super(block, blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, start, end);
+                        boolean functionBlock, boolean captureFunctionFrame, boolean generatorFunctionBlock, int start, int end, JavaScriptNode[] declarations) {
+            super(block, blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, generatorFunctionBlock, start, end);
             this.declarations = declarations;
         }
 
@@ -137,7 +138,8 @@ public final class DeclareTagProvider {
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new MaterializedFrameBlockScopeNode(cloneUninitialized(block, materializedTags),
-                            blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, start, end, cloneUninitialized(declarations, materializedTags));
+                            blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, generatorFunctionBlock, start, end,
+                            cloneUninitialized(declarations, materializedTags));
         }
     }
 

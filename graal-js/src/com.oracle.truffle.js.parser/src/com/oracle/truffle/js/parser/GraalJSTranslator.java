@@ -1470,7 +1470,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
                 FunctionNode function = lc.getCurrentFunction();
                 assert function.hasClosures() || !hasClosures(function.getBody()) : function;
-                if (!function.isModule() && !function.isGenerator() && (allowScopeOptimization()
+                if (!function.isModule() && (allowScopeOptimization()
                                 ? BlockEnvironment.isScopeCaptured(scope)
                                 : (function.hasClosures() || function.hasEval()))) {
                     functionEnv = new BlockEnvironment(environment, factory, context, scope);
@@ -3664,15 +3664,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 wrappedInBlockScopeNode++;
                 if (newEnv instanceof BlockEnvironment) {
                     BlockEnvironment blockEnv = (BlockEnvironment) newEnv;
-                    // Generator functions and modules do not have an extra block environment
-                    // since their frames are always materialized anyway; so we need to capture the
-                    // function frame in this case. Note that isModule implies isGenerator.
                     if (blockEnv.hasScopeFrame()) {
-                        boolean captureFunctionFrame = blockEnv.getParent() == blockEnv.function() && blockEnv.function().isGeneratorFunction();
                         return factory.createBlockScope(block, blockEnv.function().getBlockScopeSlot(), blockEnv.getBlockFrameDescriptor().toFrameDescriptor(),
-                                        blockEnv.getParentSlot(), blockEnv.isFunctionBlock(), captureFunctionFrame, blockEnv.getStart(), blockEnv.getEnd());
+                                        blockEnv.getParentSlot(), blockEnv.isFunctionBlock(), blockEnv.capturesFunctionFrame(), blockEnv.isGeneratorFunctionBlock(),
+                                        blockEnv.getStart(), blockEnv.getEnd());
                     } else if (blockEnv.getStart() < blockEnv.getEnd()) {
-                        // not required, but this node clears the block's frame slots on leave
                         return factory.createVirtualBlockScope(block, blockEnv.getStart(), blockEnv.getEnd());
                     }
                 }

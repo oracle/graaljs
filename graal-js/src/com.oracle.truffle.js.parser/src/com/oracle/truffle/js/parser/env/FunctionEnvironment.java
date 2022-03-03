@@ -567,6 +567,10 @@ public final class FunctionEnvironment extends Environment {
         return scope;
     }
 
+    public boolean isModule() {
+        return getScope().isModuleScope();
+    }
+
     @Override
     protected String toStringImpl(Map<String, Integer> state) {
         int currentFrameLevel = state.getOrDefault("frameLevel", 0);

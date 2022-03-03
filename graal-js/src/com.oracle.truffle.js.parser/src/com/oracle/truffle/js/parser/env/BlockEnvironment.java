@@ -191,6 +191,17 @@ public final class BlockEnvironment extends Environment {
         return scope;
     }
 
+    public boolean isGeneratorFunctionBlock() {
+        return isFunctionBlock && function().isGeneratorFunction();
+    }
+
+    public boolean capturesFunctionFrame() {
+        // Modules do not have an extra block environment since their frames are expected to contain
+        // the module's exported bindings and are always materialized anyway; so we need to capture
+        // it as the parent of the outermost block scope frame, if any.
+        return scopeLevel == 1 && function().isModule();
+    }
+
     @Override
     protected String toStringImpl(Map<String, Integer> state) {
         int currentFrameLevel = state.getOrDefault("frameLevel", 0);
