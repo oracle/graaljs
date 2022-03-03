@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -147,7 +147,8 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         public DataViewAccessNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.factory = typedArrayFactoryFromType(Strings.substring(builtin.getName(), 3));
+            // string doesn't escape
+            this.factory = typedArrayFactoryFromType(Strings.lazySubstring(builtin.getName(), 3));
             this.toBooleanNode = factory.getBytesPerElement() == 1 ? null : JSToBooleanNode.create();
         }
 

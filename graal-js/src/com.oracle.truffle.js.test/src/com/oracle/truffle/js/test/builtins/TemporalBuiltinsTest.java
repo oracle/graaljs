@@ -46,7 +46,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import com.oracle.truffle.js.runtime.Strings;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -54,6 +53,7 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
 import com.oracle.truffle.js.runtime.util.TemporalParser;
 import com.oracle.truffle.js.test.JSTest;
@@ -765,13 +765,21 @@ public class TemporalBuiltinsTest extends JSTest {
 
     @Test
     public void testParsing() {
-        TemporalParser parser = new TemporalParser(Strings.fromJavaString("2019-11-18T15:23:30.123456789+01:00[Europe/Madrid][u-ca=gregory]"));
-        JSTemporalParserRecord rec = parser.parseISODateTime();
-        assertEquals(2019, rec.getYear());
-        assertEquals(11, rec.getMonth());
-        assertEquals(18, rec.getDay());
-        assertEquals(Strings.fromJavaString("Europe/Madrid"), rec.getTimeZoneIANAName());
-        assertEquals(Strings.fromJavaString("gregory"), rec.getCalendar());
+        try (Context ctx = getJSContext()) {
+            try {
+                ctx.enter();
+                ctx.initialize(ID);
+                TemporalParser parser = new TemporalParser(Strings.fromJavaString("2019-11-18T15:23:30.123456789+01:00[Europe/Madrid][u-ca=gregory]"));
+                JSTemporalParserRecord rec = parser.parseISODateTime();
+                assertEquals(2019, rec.getYear());
+                assertEquals(11, rec.getMonth());
+                assertEquals(18, rec.getDay());
+                assertEquals(Strings.fromJavaString("Europe/Madrid"), rec.getTimeZoneIANAName());
+                assertEquals(Strings.fromJavaString("gregory"), rec.getCalendar());
+            } finally {
+                ctx.leave();
+            }
+        }
     }
 
     @Test

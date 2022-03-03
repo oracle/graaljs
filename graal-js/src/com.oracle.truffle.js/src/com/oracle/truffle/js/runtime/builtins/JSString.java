@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -147,7 +147,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     public Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         long value = JSRuntime.propertyKeyToArrayIndex(key);
         if (0 <= value && value < getStringLength(store)) {
-            return Strings.substring(getString(store), (int) value, 1);
+            return Strings.substring(JavaScriptLanguage.get(encapsulatingNode).getJSContext(), getString(store), (int) value, 1);
         }
         return super.getOwnHelper(store, thisObj, key, encapsulatingNode);
     }
@@ -156,7 +156,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
         if (0 <= index && index < getStringLength(store)) {
-            return Strings.substring(getString(store), (int) index, 1);
+            return Strings.substring(JavaScriptLanguage.get(encapsulatingNode).getJSContext(), getString(store), (int) index, 1);
         }
         return super.getOwnHelper(store, thisObj, Strings.fromLong(index), encapsulatingNode);
     }
@@ -363,7 +363,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
         if (len <= index) {
             return null;
         }
-        TruffleString resultStr = Strings.substring(s, (int) index, 1);
+        TruffleString resultStr = Strings.substring(JavaScriptLanguage.get(null).getJSContext(), s, (int) index, 1);
         return PropertyDescriptor.createData(resultStr, true, false, false);
     }
 

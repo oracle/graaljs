@@ -446,11 +446,11 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     @SuppressWarnings("unchecked")
-    private static ReadElementTypeCacheNode makeTypeCacheNode(Object target, ReadElementTypeCacheNode next) {
+    private ReadElementTypeCacheNode makeTypeCacheNode(Object target, ReadElementTypeCacheNode next) {
         if (JSDynamicObject.isJSDynamicObject(target)) {
             return new JSObjectReadElementTypeCacheNode(next);
         } else if (Strings.isTString(target)) {
-            return new StringReadElementTypeCacheNode(next);
+            return new StringReadElementTypeCacheNode(context, next);
         } else if (target instanceof Boolean) {
             return new BooleanReadElementTypeCacheNode(next);
         } else if (target instanceof Number) {
@@ -1026,7 +1026,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             LazyRegexResultArray lazyRegexResultArray = (LazyRegexResultArray) array;
             if (inBounds.profile(lazyRegexResultArray.hasElement(target, (int) index))) {
-                return LazyRegexResultArray.materializeGroup(getMaterializeResultNode(), target, (int) index, lazyRegexResultNode, lazyRegexResultOriginalInputNode);
+                return LazyRegexResultArray.materializeGroup(context, getMaterializeResultNode(), target, (int) index, lazyRegexResultNode, lazyRegexResultOriginalInputNode);
             } else {
                 return readOutOfBounds(target, index, receiver, defaultValue, context);
             }
@@ -1365,13 +1365,15 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     private static class StringReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
+        private final JSContext context;
         private final ConditionProfile arrayIndexProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile stringIndexInBounds = ConditionProfile.createBinaryProfile();
         @Child private ToArrayIndexNode toArrayIndexNode;
         @Child private TruffleString.SubstringByteIndexNode substringByteIndexNode;
 
-        StringReadElementTypeCacheNode(ReadElementTypeCacheNode next) {
+        StringReadElementTypeCacheNode(JSContext context, ReadElementTypeCacheNode next) {
             super(next);
+            this.context = context;
             this.toArrayIndexNode = ToArrayIndexNode.createNoToPropertyKey();
             this.substringByteIndexNode = TruffleString.SubstringByteIndexNode.create();
         }
@@ -1383,7 +1385,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             if (arrayIndexProfile.profile(convertedIndex instanceof Long)) {
                 int intIndex = ((Long) convertedIndex).intValue();
                 if (stringIndexInBounds.profile(intIndex >= 0 && intIndex < Strings.length(string))) {
-                    return Strings.substring(substringByteIndexNode, string, intIndex, 1);
+                    return Strings.substring(context, substringByteIndexNode, string, intIndex, 1);
                 }
             }
             return JSObject.getOrDefault(JSString.create(root.context, getRealm(), string), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
@@ -1393,7 +1395,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
             TruffleString string = (TruffleString) target;
             if (stringIndexInBounds.profile(index >= 0 && index < Strings.length(string))) {
-                return Strings.substring(substringByteIndexNode, string, index, 1);
+                return Strings.substring(context, substringByteIndexNode, string, index, 1);
             } else {
                 return JSObject.getOrDefault(JSString.create(root.context, getRealm(), string), index, receiver, defaultValue, jsclassProfile, root);
             }
@@ -1403,7 +1405,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
             TruffleString string = (TruffleString) target;
             if (stringIndexInBounds.profile(index >= 0 && index < Strings.length(string))) {
-                return Strings.substring(substringByteIndexNode, string, (int) index, 1);
+                return Strings.substring(context, substringByteIndexNode, string, (int) index, 1);
             } else {
                 return JSObject.getOrDefault(JSString.create(root.context, getRealm(), string), index, receiver, defaultValue, jsclassProfile, root);
             }

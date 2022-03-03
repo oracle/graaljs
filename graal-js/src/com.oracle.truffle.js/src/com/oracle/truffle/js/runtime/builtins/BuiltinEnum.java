@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -117,7 +117,8 @@ public interface BuiltinEnum<E extends Enum<? extends BuiltinEnum<E>>> {
 
     static TruffleString stripName(TruffleString name) {
         if (Strings.endsWith(name, Strings.UNDERSCORE) && !Strings.endsWith(name, Strings.UNDERSCORE_2)) {
-            return Strings.substring(name, 0, Strings.length(name) - 1);
+            // just one char is leaked, lazy substring is OK here
+            return Strings.lazySubstring(name, 0, Strings.length(name) - 1);
         } else {
             return name;
         }

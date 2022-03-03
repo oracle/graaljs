@@ -595,7 +595,7 @@ public final class JSRuntime {
             if (!sci && Strings.length(str) <= 18 && Strings.indexOf(str, '.') == -1) {
                 // 18 digits always fit into long
                 if (hex) {
-                    return Strings.parseLong(Strings.substring(str, 2), 16);
+                    return Strings.parseLong(Strings.lazySubstring(str, 2), 16);
                 } else {
                     return stringToNumberLong(str);
                 }
@@ -1875,7 +1875,9 @@ public final class JSRuntime {
         } else if (firstIdx > lastIdx) {
             return Strings.EMPTY_STRING;
         }
-        return Strings.substring(string, firstIdx, lastIdx + 1 - firstIdx);
+        // using unconditional lazy substring because the string doesn't escape in the only caller
+        // of this method, stringToNumber
+        return Strings.lazySubstring(string, firstIdx, lastIdx + 1 - firstIdx);
     }
 
     public static int firstNonWhitespaceIndex(TruffleString string, boolean useLineTerminators, TruffleString.ReadCharUTF16Node charAtNode) {

@@ -1721,13 +1721,15 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static final class LazyNamedCaptureGroupPropertyGetNode extends LinkedPropertyGetNode {
 
+        private final JSContext context;
         private final int groupIndex;
         @Child private TRegexMaterializeResultNode materializeNode = TRegexMaterializeResultNode.create();
         @Child private TRegexResultAccessor resultAccessor = TRegexResultAccessor.create();
         private final ConditionProfile isIndicesObject = ConditionProfile.createBinaryProfile();
 
-        public LazyNamedCaptureGroupPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, int groupIndex) {
+        public LazyNamedCaptureGroupPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, int groupIndex, JSContext context) {
             super(receiverCheck);
+            this.context = context;
             assert isLazyNamedCaptureGroupProperty(property);
             this.groupIndex = groupIndex;
         }
@@ -1741,7 +1743,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return LazyRegexResultIndicesArray.getIntIndicesArray(root.getContext(), resultAccessor, regexResult, groupIndex);
             } else {
                 TruffleString input = groups.getInputString();
-                return materializeNode.materializeGroup(regexResult, groupIndex, input);
+                return materializeNode.materializeGroup(context, regexResult, groupIndex, input);
             }
         }
     }
@@ -1880,7 +1882,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return new LazyRegexResultIndexPropertyGetNode(dataProperty, receiverCheck);
             } else if (isLazyNamedCaptureGroupProperty(property)) {
                 int groupIndex = ((JSRegExp.LazyNamedCaptureGroupProperty) JSProperty.getConstantProxy(property)).getGroupIndex();
-                return new LazyNamedCaptureGroupPropertyGetNode(dataProperty, receiverCheck, groupIndex);
+                return new LazyNamedCaptureGroupPropertyGetNode(dataProperty, receiverCheck, groupIndex, context);
             } else {
                 return new ProxyPropertyGetNode(dataProperty, receiverCheck);
             }

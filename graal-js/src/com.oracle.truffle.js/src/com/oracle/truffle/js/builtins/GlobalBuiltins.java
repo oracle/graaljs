@@ -1088,7 +1088,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     // parseRawDontFitLong() can produce an incorrect result
                     // due to subtle rounding errors (for radix 10) but the spec.
                     // requires exact processing for this radix
-                    return parseDouble(Strings.substring(substringNode, inputStr, firstIdx, len), negate);
+                    return parseDouble(Strings.lazySubstring(substringNode, inputStr, firstIdx, len), negate);
                 } else {
                     return JSRuntime.parseRawDontFitLong(inputStr, radix, firstIdx, lastValidIdx, negate);
                 }

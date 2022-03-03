@@ -95,7 +95,7 @@ public class ParserStrings {
         return TruffleStringBuilder.ToStringNode.getUncached().execute(sb);
     }
 
-    public static TruffleString substring(TruffleString s, int fromIndex) {
+    public static TruffleString lazySubstring(TruffleString s, int fromIndex) {
         int fromByteIndex = fromIndex * 2;
         return s.substringByteIndexUncached(fromByteIndex, s.byteLength(TruffleString.Encoding.UTF_16) - fromByteIndex, TruffleString.Encoding.UTF_16, true);
     }

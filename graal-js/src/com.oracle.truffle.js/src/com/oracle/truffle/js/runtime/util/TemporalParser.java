@@ -45,6 +45,8 @@ import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
 
@@ -65,6 +67,7 @@ public final class TemporalParser {
     private static final String patternDateSpecMonthDay = "^[\\-]?(\\d\\d)[\\-]?(\\d\\d)";
     private static final String patternTimeZoneIANAName = "^([A-Za-z_]+(/[A-Za-z\\-_]+)*)";
 
+    private final JSContext context;
     private final TruffleString input;
     private TruffleString rest;
     private int pos;
@@ -92,6 +95,7 @@ public final class TemporalParser {
     private TruffleString offsetFraction;
 
     public TemporalParser(TruffleString input) {
+        context = JavaScriptLanguage.get(null).getJSContext();
         this.input = input;
     }
 
@@ -328,7 +332,8 @@ public final class TemporalParser {
 
     private void move(int newPos) {
         pos += newPos;
-        rest = (pos >= 0 && Strings.length(input) > pos) ? Strings.substring(input, pos) : Strings.EMPTY_STRING;
+        // using unconditional lazy substrings because "rest" doesn't escape the parser
+        rest = (pos >= 0 && Strings.length(input) > pos) ? Strings.lazySubstring(input, pos) : Strings.EMPTY_STRING;
     }
 
     private boolean parseDateSpecYearMonth() {
@@ -337,7 +342,7 @@ public final class TemporalParser {
             year = group(rest, matcher, 1);
             month = group(rest, matcher, 2);
             if (Strings.charAt(year, 0) == '\u2212') {
-                year = Strings.concat(Strings.DASH, Strings.substring(year, 1));
+                year = Strings.concat(Strings.DASH, Strings.lazySubstring(year, 1));
             }
             move(matcher.end(2));
             return true;
@@ -364,7 +369,7 @@ public final class TemporalParser {
             month = group(rest, matcher, 2);
             day = group(rest, matcher, 3);
             if (Strings.charAt(year, 0) == '\u2212') {
-                year = Strings.concat(Strings.DASH, Strings.substring(year, 1));
+                year = Strings.concat(Strings.DASH, Strings.lazySubstring(year, 1));
             }
             move(matcher.end(3));
             return true;
@@ -418,7 +423,7 @@ public final class TemporalParser {
             offsetMinute = group(rest, matcher, 4);
             offsetSecond = group(rest, matcher, 6);
             offsetFraction = group(rest, matcher, 8);
-            timeZoneNumericUTCOffset = Strings.substring(rest, matcher.start(1), matcher.end(3) != -1 ? matcher.end(3) : Strings.length(rest));
+            timeZoneNumericUTCOffset = Strings.substring(context, rest, matcher.start(1), matcher.end(3) != -1 ? matcher.end(3) : Strings.length(rest));
 
             move(matcher.end(3));
 
@@ -443,7 +448,7 @@ public final class TemporalParser {
             offsetMinute = group(rest, matcher, 4);
             offsetSecond = group(rest, matcher, 6);
             offsetFraction = group(rest, matcher, 8);
-            timeZoneNumericUTCOffset = Strings.substring(rest, matcher.start(1), matcher.end(3) != -1 ? matcher.end(3) : Strings.length(rest));
+            timeZoneNumericUTCOffset = Strings.substring(context, rest, matcher.start(1), matcher.end(3) != -1 ? matcher.end(3) : Strings.length(rest));
 
             if (offsetHour == null) {
                 return false;
@@ -519,8 +524,8 @@ public final class TemporalParser {
         return patternObj.matcher(Strings.toJavaString(input));
     }
 
-    public static TruffleString group(TruffleString string, Matcher matcher, int groupNumber) {
+    private TruffleString group(TruffleString string, Matcher matcher, int groupNumber) {
         int start = matcher.start(groupNumber);
-        return start < 0 ? null : Strings.substring(string, start, matcher.end(groupNumber) - start);
+        return start < 0 ? null : Strings.substring(context, string, start, matcher.end(groupNumber) - start);
     }
 }

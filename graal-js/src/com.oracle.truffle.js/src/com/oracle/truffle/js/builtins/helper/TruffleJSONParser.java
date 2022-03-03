@@ -275,7 +275,7 @@ public class TruffleJSONParser {
             c = get();
         }
         int sLength = pos - startPos;
-        TruffleString s = Strings.substring(parseStr, startPos, sLength);
+        TruffleString s = Strings.substring(context, parseStr, startPos, sLength);
         if (hasEscapes) {
             return unquoteJSON(s, sLength, firstEscape - startPos);
         } else {
@@ -425,7 +425,7 @@ public class TruffleJSONParser {
                 }
             }
         }
-        TruffleString valueStr = Strings.substring(parseStr, startPos, endPos - startPos);
+        TruffleString valueStr = Strings.lazySubstring(parseStr, startPos, endPos - startPos);
         return parseAsDouble(sign, valueStr);
     }
 
@@ -543,7 +543,7 @@ public class TruffleJSONParser {
     protected void skipString(TruffleString expected) {
         int length = Strings.length(expected);
         assert len >= pos + length;
-        assert Strings.equals(Strings.substring(parseStr, pos, length), expected);
+        assert Strings.equals(Strings.lazySubstring(parseStr, pos, length), expected);
         pos += length;
         skipWhitespace();
     }

@@ -12,6 +12,7 @@ See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) fo
 * Implemented the [Array Grouping v3](https://github.com/tc39/proposal-array-grouping) proposal.
 * Implemented the [Temporal](https://github.com/tc39/proposal-temporal) proposal. It is available behind the experimental option `--js.temporal`.
 * Moved the internal string representation to the new TruffleString type.
+* Added option `--js.string-lazy-substrings` (default: true) to allow toggling the copying behavior of string slices. When enabled, string slices internally create string views instead of copying the given string region, which increases performance but may also increase memory utilization.
 
 ## Version 22.0.0
 * ECMAScript 2022 mode/features enabled by default.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -130,11 +130,13 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
 
     public static class LazyNamedCaptureGroupProperty implements PropertyProxy {
 
+        private final JSContext context;
         private final TruffleString groupName;
         private final int groupIndex;
         private final ConditionProfile isIndicesObject = ConditionProfile.createBinaryProfile();
 
-        public LazyNamedCaptureGroupProperty(TruffleString groupName, int groupIndex) {
+        public LazyNamedCaptureGroupProperty(JSContext context, TruffleString groupName, int groupIndex) {
+            this.context = context;
             this.groupName = groupName;
             this.groupIndex = groupIndex;
         }
@@ -153,7 +155,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
                 return LazyRegexResultIndicesArray.getIntIndicesArray(JavaScriptLanguage.getCurrentLanguage().getJSContext(), TRegexResultAccessor.getUncached(), regexResult, groupIndex);
             } else {
                 TruffleString input = groups.getInputString();
-                return materializeNode.materializeGroup(regexResult, groupIndex, input);
+                return materializeNode.materializeGroup(context, regexResult, groupIndex, input);
             }
         }
 
@@ -267,7 +269,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
             for (Pair<Integer, TruffleString> pair : pairs) {
                 int groupIndex = pair.getFirst();
                 TruffleString groupName = pair.getSecond();
-                builder.addConstantProperty(groupName, new LazyNamedCaptureGroupProperty(groupName, groupIndex), JSAttributes.getDefault() | JSProperty.PROXY);
+                builder.addConstantProperty(groupName, new LazyNamedCaptureGroupProperty(ctx, groupName, groupIndex), JSAttributes.getDefault() | JSProperty.PROXY);
             }
             groupsShape = builder.build();
             return JSObjectFactory.createBound(ctx, Null.instance, groupsShape);

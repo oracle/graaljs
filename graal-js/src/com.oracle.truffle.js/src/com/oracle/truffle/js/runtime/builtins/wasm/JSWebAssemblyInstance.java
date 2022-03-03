@@ -207,11 +207,12 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
 
         int idxOpen = Strings.indexOf(typeInfo, '(');
         int idxClose = Strings.indexOf(typeInfo, ')');
-        TruffleString name = Strings.substring(typeInfo, 0, idxOpen);
-        TruffleString argTypes = Strings.substring(typeInfo, idxOpen + 1, idxClose - (idxOpen + 1));
-        TruffleString returnType = Strings.substring(typeInfo, idxClose + 1);
-        TruffleString[] paramTypes = !Strings.isEmpty(argTypes) ? Strings.split(argTypes, Strings.SPACE) : new TruffleString[0];
+        TruffleString name = Strings.substring(context, typeInfo, 0, idxOpen);
+        TruffleString argTypes = Strings.lazySubstring(typeInfo, idxOpen + 1, idxClose - (idxOpen + 1));
+        TruffleString returnType = Strings.lazySubstring(typeInfo, idxClose + 1);
+        TruffleString[] paramTypes = !Strings.isEmpty(argTypes) ? Strings.split(context, argTypes, Strings.SPACE) : new TruffleString[0];
         int argCount = paramTypes.length;
+        boolean returnTypeIsEmpty = returnType.isEmpty();
         boolean returnTypeIsI64 = JSWebAssemblyValueTypes.isI64(returnType);
         boolean anyArgTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxOpen + 1, idxClose) >= 0;
 
@@ -259,7 +260,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         }
                     }
 
-                    if (returnType.isEmpty()) {
+                    if (returnTypeIsEmpty) {
                         return Undefined.instance;
                     } else {
                         return toJSValueNode.execute(wasmResult);
@@ -310,7 +311,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         wasmValue = JSWebAssembly.getExportedFunction((DynamicObject) value);
                     } else {
                         TruffleString typeInfo = asTString(descriptorInterop.readMember(descriptor, "type"));
-                        wasmValue = createHostFunction(value, typeInfo);
+                        wasmValue = createHostFunction(context, value, typeInfo);
                     }
                 } else if (Strings.equals(Strings.GLOBAL, externType)) {
                     boolean isNumber = JSRuntime.isNumber(value);
@@ -370,8 +371,8 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     }
 
     @TruffleBoundary
-    private static Object createHostFunction(Object fn, TruffleString typeInfo) {
-        return new WebAssemblyHostFunction(fn, typeInfo);
+    private static Object createHostFunction(JSContext context, Object fn, TruffleString typeInfo) {
+        return new WebAssemblyHostFunction(context, fn, typeInfo);
     }
 
     private static TruffleString asTString(Object string) throws UnsupportedMessageException {

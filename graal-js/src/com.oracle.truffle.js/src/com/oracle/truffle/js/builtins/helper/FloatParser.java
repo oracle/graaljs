@@ -84,7 +84,8 @@ public class FloatParser {
     }
 
     private double parseValidSubstring() throws TruffleString.NumberFormatException {
-        return Strings.parseDouble(parseDoubleNode, Strings.substring(substringNode, input, 0, pos));
+        // always use lazy substring here, since the substring never escapes
+        return Strings.parseDouble(parseDoubleNode, Strings.substring(true, substringNode, input, 0, pos));
     }
 
     private void strDecimalLiteral() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.Props.CompiledRegex;
@@ -679,24 +680,24 @@ public final class TRegexUtil {
             return UNCACHED;
         }
 
-        public Object materializeGroup(Object regexResult, int i, TruffleString input) {
-            return materializeGroup(resultAccessor, substringNode, regexResult, i, input);
+        public Object materializeGroup(JSContext context, Object regexResult, int i, TruffleString input) {
+            return materializeGroup(context, resultAccessor, substringNode, regexResult, i, input);
         }
 
-        public static Object materializeGroup(TRegexResultAccessor accessor, TruffleString.SubstringByteIndexNode substringNode, Object regexResult, int i, TruffleString input) {
+        public static Object materializeGroup(JSContext context, TRegexResultAccessor accessor, TruffleString.SubstringByteIndexNode substringNode, Object regexResult, int i, TruffleString input) {
             final int beginIndex = accessor.captureGroupStart(regexResult, i);
             if (beginIndex == Constants.CAPTURE_GROUP_NO_MATCH) {
                 assert i > 0;
                 return Undefined.instance;
             } else {
-                return Strings.substring(substringNode, input, beginIndex, accessor.captureGroupEnd(regexResult, i) - beginIndex);
+                return Strings.substring(context, substringNode, input, beginIndex, accessor.captureGroupEnd(regexResult, i) - beginIndex);
             }
         }
 
-        public Object[] materializeFull(Object regexResult, int groupCount, TruffleString input) {
+        public Object[] materializeFull(JSContext context, Object regexResult, int groupCount, TruffleString input) {
             Object[] result = new Object[groupCount];
             for (int i = 0; i < groupCount; i++) {
-                result[i] = materializeGroup(regexResult, i, input);
+                result[i] = materializeGroup(context, regexResult, i, input);
             }
             return result;
         }

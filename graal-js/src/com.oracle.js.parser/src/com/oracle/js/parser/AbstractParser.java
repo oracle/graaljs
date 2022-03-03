@@ -210,7 +210,7 @@ public abstract class AbstractParser {
         final TruffleString comment = ((TruffleString) lexer.getValueOf(token, isStrictMode));
         // 4 characters for directive comment marker //@\s or //#\s
         if (ParserStrings.startsWith(comment, SOURCE_URL_PREFIX, 4)) {
-            source.setExplicitURL(ParserStrings.substring(comment, 4 + ParserStrings.length(SOURCE_URL_PREFIX)).toJavaStringUncached());
+            source.setExplicitURL(ParserStrings.lazySubstring(comment, 4 + ParserStrings.length(SOURCE_URL_PREFIX)).toJavaStringUncached());
         }
     }
 
