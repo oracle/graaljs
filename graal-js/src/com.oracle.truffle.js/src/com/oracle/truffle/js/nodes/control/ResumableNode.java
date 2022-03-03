@@ -56,9 +56,7 @@ public interface ResumableNode {
     static JavaScriptNode createResumableNode(ResumableNode node, int stateSlot) {
         assert !(node instanceof SuspendNode) : node;
         JavaScriptNode original = (JavaScriptNode) node;
-        JavaScriptNode wrappedNode = GeneratorWrapperNode.createWrapper(original, stateSlot);
-        JavaScriptNode.transferSourceSectionAndTags(original, wrappedNode);
-        return wrappedNode;
+        return GeneratorWrapperNode.createWrapper(original, stateSlot);
     }
 
     default void resetState(VirtualFrame frame, int stateSlot) {

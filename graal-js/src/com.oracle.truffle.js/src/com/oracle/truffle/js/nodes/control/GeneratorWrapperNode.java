@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,8 +61,7 @@ public final class GeneratorWrapperNode extends JavaScriptNode implements Repeat
 
     public static JavaScriptNode createWrapper(JavaScriptNode child, int stateSlot) {
         JavaScriptNode wrapper = new GeneratorWrapperNode(child, stateSlot);
-        Node realChild = child instanceof WrapperNode ? ((WrapperNode) child).getDelegateNode() : child;
-        wrapper.setSourceSection(realChild.getSourceSection());
+        JavaScriptNode.transferSourceSectionAndTags(child, wrapper);
         return wrapper;
     }
 
