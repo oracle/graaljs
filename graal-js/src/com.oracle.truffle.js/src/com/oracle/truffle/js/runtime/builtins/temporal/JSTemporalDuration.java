@@ -53,7 +53,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SIGN;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
-import static com.oracle.truffle.js.runtime.util.TemporalParser.group;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.bitoi;
 
 import java.math.BigDecimal;
@@ -195,7 +194,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         long monthsMV = 0;
         long daysMV = 0;
         long weeksMV = 0;
-        long hoursMV = 0;
+        double hoursMV = 0;
         double minutesMV = 0;
         double secondsMV = 0;
         BigDecimal millisecondsMV = BigDecimal.ZERO;
@@ -229,7 +228,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 minutesPair = parseDurationIntlWithFraction(string, matcher, 8);
                 secondsPair = parseDurationIntlWithFraction(string, matcher, 9);
 
-                hoursMV = TemporalUtil.toIntegerOrInfinity(hoursPair.getFirst()).longValue();
+                hoursMV = TemporalUtil.toIntegerOrInfinity(hoursPair.getFirst()).doubleValue();
                 fHours = hoursPair.getSecond();
 
                 minutes = minutesPair.getFirst();

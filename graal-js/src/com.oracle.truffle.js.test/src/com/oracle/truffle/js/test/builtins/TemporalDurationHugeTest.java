@@ -45,7 +45,6 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -70,23 +69,15 @@ public class TemporalDurationHugeTest extends JSTest {
                         "const i2 = new Temporal.Instant(2345678901234567890n);" +
                         "const result = i2.since(i1); \n" +
                         "result.nanoseconds === 101 && result.seconds === 1111111011;";
-
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, code);
-            Assert.assertTrue(result.asBoolean());
-        }
+        testTrue(code);
     }
 
     @Test
     public void testInstantToString() {
         String code = "const i1 = new Temporal.Instant(1234567890123456789n);\n" +
                         "const i2 = new Temporal.Instant(8640000000000000000000n); \n" +
-                        "console.log(i1.toString()); console.log(i2.toString()); \n" +
                         "i1.toString() === '2009-02-13T23:31:30.123456789Z' && i2.toString() === '+275760-09-13T00:00:00Z';";
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, code);
-            Assert.assertTrue(result.asBoolean());
-        }
+        testTrue(code);
     }
 
     @Test
@@ -96,59 +87,43 @@ public class TemporalDurationHugeTest extends JSTest {
                         "const theFuture = new Temporal.ZonedDateTime(2345678901234567890n, '-08:00');\n" +
                         "var r = theFuture.since(thePast);\n" +
                         "r.toString() === 'PT308641H56M51.111111101S' && r.nanoseconds === 101 && r.seconds === 51;";
-
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, code);
-            Assert.assertTrue(result.asBoolean());
-        }
+        testTrue(code);
     }
 
     @Test
     public void testDurationHugeYears() {
         // consistent with Polyfill run on Node 14
         String code = "let d = new Temporal.Duration(9223372036854776000);\n" +
-                        // "print(d.toString());" +
                         "d.years === 9223372036854776000 && d.toString() === 'P9223372036854775808Y';";
-
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, code);
-            Assert.assertTrue(result.asBoolean());
-        }
+        testTrue(code);
     }
 
     @Test
     public void testDurationHugeYearsScientific() {
         // consistent with Polyfill
         String code = "let d = new Temporal.Duration(1e100);\n" +
-                        // "print(d.years); print(d.toString());" +
                         "d.years === 1e+100 && d.toString() === 'P10000000000000000159028911097599180468360808563945281389781327557747838772170381060813469985856815104Y';";
-
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, code);
-            Assert.assertTrue(result.asBoolean());
-        }
+        testTrue(code);
     }
 
     @Test
     public void testDurationHugeNanoseconds() {
         // consistent with Polyfill run on Node 14
         String code = "let d = new Temporal.Duration(0,0,0,0,0,0,0,0,0,9223372036854776000);\n" +
-                        // "print(d.toString()); \n" +
                         "d.nanoseconds === 9223372036854776000 && d.toString() === 'PT9223372036.854775808S' ;";
-
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, code);
-            Assert.assertTrue(result.asBoolean());
-        }
+        testTrue(code);
     }
 
     @Test
-    public void testDurationFromHuge() {
-        String code = "var duration = Temporal.Duration.from({nanoseconds: 1e100}); duration.toString();\n";
-        String expected = "PT10000000000000000159028911097599180468360808563945281389781327557747838772170381060813469985.856815104S";
-        try (Context ctx = getJSContext()) {
-            Assert.assertEquals(expected, ctx.eval(ID, code).asString());
-        }
+    public void testDurationConstructorAndFromHuge() {
+        String code1 = "var dur = Temporal.Duration.from({nanoseconds: 1e100});\n" +
+                        "dur.toString() === 'PT10000000000000000159028911097599180468360808563945281389781327557747838772170381060813469985.856815104S'";
+        testTrue(code1);
+
+        String code2 = "var dur1 = Temporal.Duration.from('PT' + (2n**100n) + 'H');\n" +
+                        "var dur2= new Temporal.Duration(0, 0, 0, 0, 2**100);\n" +
+                        "dur1.toString() === dur2.toString() && dur1.toString() == 'PT1267650600228229401496703205376H';";
+        testTrue(code2);
     }
 
     @Test
@@ -156,11 +131,7 @@ public class TemporalDurationHugeTest extends JSTest {
         String code = "var duration = new Temporal.Duration(0,0,0,5e18);\n" +
                         "duration = duration.add(duration);" +
                         "duration.toString() === 'P10000000000000000000D' ;";
-
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, code);
-            Assert.assertTrue(result.asBoolean());
-        }
+        testTrue(code);
     }
 
     @Test
@@ -201,10 +172,13 @@ public class TemporalDurationHugeTest extends JSTest {
         String code = "var time = new Temporal.PlainTime(1, 2, 3);\n" +
                         "var duration = Temporal.Duration.from({nanoseconds: 1e100});\n" +
                         "var result = time.add(duration);\n" +
-                        "result.toString();";
-        String expected = "00:48:00.328088104";
+                        "result.toString() === '00:48:00.328088104';";
+        testTrue(code);
+    }
+
+    private static void testTrue(String code) {
         try (Context ctx = getJSContext()) {
-            Assert.assertEquals(expected, ctx.eval(ID, code).asString());
+            Assert.assertTrue(ctx.eval(ID, code).asBoolean());
         }
     }
 }
