@@ -3668,7 +3668,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         return factory.createBlockScope(block, blockEnv.function().getBlockScopeSlot(), blockEnv.getBlockFrameDescriptor().toFrameDescriptor(),
                                         blockEnv.getParentSlot(), blockEnv.isFunctionBlock(), blockEnv.capturesFunctionFrame(), blockEnv.isGeneratorFunctionBlock(),
                                         blockEnv.getStart(), blockEnv.getEnd());
-                    } else if (blockEnv.getStart() < blockEnv.getEnd()) {
+                    } else if (blockEnv.getStart() < blockEnv.getEnd() && !blockEnv.isFunctionBlock()) {
                         return factory.createVirtualBlockScope(block, blockEnv.getStart(), blockEnv.getEnd());
                     }
                 }

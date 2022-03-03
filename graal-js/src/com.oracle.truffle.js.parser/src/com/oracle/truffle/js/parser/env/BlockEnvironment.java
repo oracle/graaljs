@@ -165,7 +165,9 @@ public final class BlockEnvironment extends Environment {
             getBlockFrameDescriptor().findOrAddFrameSlot(id, symbol.getFlags(), FrameSlotKind.Illegal);
         } else {
             JSFrameSlot slot = getFunctionFrameDescriptor().findOrAddFrameSlot(id, symbol.getFlags() | (!isFunctionBlock ? JSFrameUtil.IS_HOISTED_FROM_BLOCK : 0), FrameSlotKind.Illegal);
-            updateSlotRange(slot);
+            if (!isFunctionBlock) {
+                updateSlotRange(slot);
+            }
         }
     }
 
