@@ -166,16 +166,16 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
             this.parentSlot = parentSlot;
             this.functionBlock = functionBlock;
             this.captureFunctionFrame = captureFunctionFrame;
-            this.frameDescriptor = frameDescriptor;
             this.start = start;
             this.end = end;
+            this.frameDescriptor = frameDescriptor;
         }
 
         @Override
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
             if (materializedTags.contains(DeclareTag.class) && !DeclareTagProvider.isMaterializedFrameProvider(this)) {
-                JavaScriptNode materialized = DeclareTagProvider.createMaterializedBlockNode(cloneUninitialized(block, materializedTags),
-                                blockScopeSlot, frameDescriptor, parentSlot, getSourceSection(), functionBlock, captureFunctionFrame, start, end);
+                JavaScriptNode materialized = DeclareTagProvider.createMaterializedBlockNode(this, cloneUninitialized(block, materializedTags),
+                                blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, start, end);
                 transferSourceSectionAndTags(this, materialized);
                 return materialized;
             } else {
@@ -278,7 +278,8 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new FrameBlockScopeNode(cloneUninitialized(block, materializedTags), blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, start, end);
+            return new FrameBlockScopeNode(cloneUninitialized(block, materializedTags),
+                            blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, start, end);
         }
     }
 

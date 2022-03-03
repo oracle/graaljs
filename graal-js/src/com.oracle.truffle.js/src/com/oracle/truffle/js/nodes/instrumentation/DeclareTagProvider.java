@@ -48,7 +48,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode.FrameBlockScopeNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
@@ -57,13 +56,13 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class DeclareTagProvider {
 
-    public static JavaScriptNode createMaterializedFunctionBodyNode(JavaScriptNode body, SourceSection sourceSection, FrameDescriptor frameDescriptor) {
-        return new MaterializedFunctionBodyNode(body, sourceSection, frameDescriptor);
+    public static JavaScriptNode createMaterializedFunctionBodyNode(JavaScriptNode original, JavaScriptNode body, FrameDescriptor frameDescriptor) {
+        return new MaterializedFunctionBodyNode(original, body, frameDescriptor);
     }
 
-    public static JavaScriptNode createMaterializedBlockNode(JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot, SourceSection sourceSection,
-                    boolean functionBlock, boolean functionFrame, int start, int end) {
-        return new MaterializedFrameBlockScopeNode(block, blockScopeSlot, frameDescriptor, parentSlot, sourceSection, functionBlock, functionFrame, start, end);
+    public static JavaScriptNode createMaterializedBlockNode(JavaScriptNode original, JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot,
+                    boolean functionBlock, boolean captureFunctionFrame, int start, int end) {
+        return new MaterializedFrameBlockScopeNode(original, block, blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, start, end);
     }
 
     public static boolean isMaterializedFrameProvider(JavaScriptNode node) {
@@ -80,8 +79,8 @@ public final class DeclareTagProvider {
     private DeclareTagProvider() {
     }
 
-    private static JavaScriptNode[] initDeclarations(FrameDescriptor frameDescriptor, SourceSection sourceSection) {
-        assert sourceSection != null;
+    private static JavaScriptNode[] initDeclarations(FrameDescriptor frameDescriptor, JavaScriptNode locationNode) {
+        assert locationNode != null;
         if (frameDescriptor != null) {
             List<Integer> slots = new ArrayList<>();
             for (int i = 0; i < frameDescriptor.getNumberOfSlots(); i++) {
@@ -91,8 +90,9 @@ public final class DeclareTagProvider {
             }
             JavaScriptNode[] declarations = new JavaScriptNode[slots.size()];
             for (int i = 0; i < slots.size(); i++) {
-                declarations[i] = new DeclareProviderNode(frameDescriptor, slots.get(i));
-                declarations[i].setSourceSection(sourceSection);
+                JavaScriptNode declaration = new DeclareProviderNode(frameDescriptor, slots.get(i));
+                JavaScriptNode.transferSourceSection(locationNode, declaration);
+                declarations[i] = declaration;
             }
             return declarations;
         } else {
@@ -104,10 +104,15 @@ public final class DeclareTagProvider {
 
         @Children private JavaScriptNode[] declarations;
 
-        protected MaterializedFrameBlockScopeNode(JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot, SourceSection sourceSection,
+        protected MaterializedFrameBlockScopeNode(JavaScriptNode original, JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot,
                         boolean functionBlock, boolean captureFunctionFrame, int start, int end) {
+            this(block, blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, start, end, initDeclarations(frameDescriptor, original));
+        }
+
+        protected MaterializedFrameBlockScopeNode(JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot,
+                        boolean functionBlock, boolean captureFunctionFrame, int start, int end, JavaScriptNode[] declarations) {
             super(block, blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, start, end);
-            this.declarations = initDeclarations(frameDescriptor, sourceSection);
+            this.declarations = declarations;
         }
 
         @ExplodeLoop
@@ -132,7 +137,7 @@ public final class DeclareTagProvider {
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new MaterializedFrameBlockScopeNode(cloneUninitialized(block, materializedTags),
-                            blockScopeSlot, frameDescriptor, parentSlot, getSourceSection(), functionBlock, captureFunctionFrame, start, end);
+                            blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, start, end, cloneUninitialized(declarations, materializedTags));
         }
     }
 
@@ -140,12 +145,13 @@ public final class DeclareTagProvider {
 
         @Children private JavaScriptNode[] declarations;
 
-        private final FrameDescriptor frameDescriptor;
+        protected MaterializedFunctionBodyNode(JavaScriptNode original, JavaScriptNode body, FrameDescriptor frameDescriptor) {
+            this(body, initDeclarations(frameDescriptor, original));
+        }
 
-        protected MaterializedFunctionBodyNode(JavaScriptNode body, SourceSection sourceSection, FrameDescriptor frameDescriptor) {
+        protected MaterializedFunctionBodyNode(JavaScriptNode body, JavaScriptNode[] declarations) {
             super(body);
-            this.frameDescriptor = frameDescriptor;
-            this.declarations = initDeclarations(frameDescriptor, sourceSection);
+            this.declarations = declarations;
         }
 
         @ExplodeLoop
@@ -159,7 +165,7 @@ public final class DeclareTagProvider {
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new MaterializedFunctionBodyNode(cloneUninitialized(getBody(), materializedTags), getSourceSection(), frameDescriptor);
+            return new MaterializedFunctionBodyNode(cloneUninitialized(getBody(), materializedTags), cloneUninitialized(declarations, materializedTags));
         }
     }
 
