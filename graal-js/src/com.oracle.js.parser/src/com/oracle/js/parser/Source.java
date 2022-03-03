@@ -266,8 +266,17 @@ public final class Source {
      * @return Source content portion.
      */
     public TruffleString getString(final int start, final int len) {
-        // using lazy substring here is OK, since the underlying source string is kept alive as long
-        // as the script is running
+        return data().substringByteIndexUncached(start * 2, len * 2, TruffleString.Encoding.UTF_16, false);
+    }
+
+    /**
+     * Fetch a portion of source content as a lazy substring.
+     *
+     * @param start start index in source
+     * @param len length of portion
+     * @return Source content portion.
+     */
+    public TruffleString getLazyString(final int start, final int len) {
         return data().substringByteIndexUncached(start * 2, len * 2, TruffleString.Encoding.UTF_16, true);
     }
 

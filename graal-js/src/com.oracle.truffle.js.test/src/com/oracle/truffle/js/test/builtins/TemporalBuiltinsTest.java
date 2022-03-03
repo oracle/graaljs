@@ -766,16 +766,19 @@ public class TemporalBuiltinsTest extends JSTest {
     @Test
     public void testParsing() {
         try (Context ctx = getJSContext()) {
-            ctx.enter();
-            ctx.initialize(ID);
-            TemporalParser parser = new TemporalParser(Strings.fromJavaString("2019-11-18T15:23:30.123456789+01:00[Europe/Madrid][u-ca=gregory]"));
-            JSTemporalParserRecord rec = parser.parseISODateTime();
-            assertEquals(2019, rec.getYear());
-            assertEquals(11, rec.getMonth());
-            assertEquals(18, rec.getDay());
-            assertEquals(Strings.fromJavaString("Europe/Madrid"), rec.getTimeZoneIANAName());
-            assertEquals(Strings.fromJavaString("gregory"), rec.getCalendar());
-            ctx.leave();
+            try {
+                ctx.enter();
+                ctx.initialize(ID);
+                TemporalParser parser = new TemporalParser(Strings.fromJavaString("2019-11-18T15:23:30.123456789+01:00[Europe/Madrid][u-ca=gregory]"));
+                JSTemporalParserRecord rec = parser.parseISODateTime();
+                assertEquals(2019, rec.getYear());
+                assertEquals(11, rec.getMonth());
+                assertEquals(18, rec.getDay());
+                assertEquals(Strings.fromJavaString("Europe/Madrid"), rec.getTimeZoneIANAName());
+                assertEquals(Strings.fromJavaString("gregory"), rec.getCalendar());
+            } finally {
+                ctx.leave();
+            }
         }
     }
 

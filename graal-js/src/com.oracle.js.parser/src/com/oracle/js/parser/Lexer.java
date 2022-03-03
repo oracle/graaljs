@@ -2050,19 +2050,19 @@ public class Lexer extends Scanner {
         switch (Token.descType(token)) {
             case DECIMAL:
             case NON_OCTAL_DECIMAL:
-                return Lexer.valueOf(source.getString(start, len), 10); // number
+                return Lexer.valueOf(source.getLazyString(start, len), 10); // number
             case HEXADECIMAL:
-                return Lexer.valueOf(source.getString(start + 2, len - 2), 16); // number
+                return Lexer.valueOf(source.getLazyString(start + 2, len - 2), 16); // number
             case OCTAL_LEGACY:
-                return Lexer.valueOf(source.getString(start, len), 8); // number
+                return Lexer.valueOf(source.getLazyString(start, len), 8); // number
             case OCTAL:
-                return Lexer.valueOf(source.getString(start + 2, len - 2), 8); // number
+                return Lexer.valueOf(source.getLazyString(start + 2, len - 2), 8); // number
             case BINARY_NUMBER:
-                return Lexer.valueOf(source.getString(start + 2, len - 2), 2); // number
+                return Lexer.valueOf(source.getLazyString(start + 2, len - 2), 2); // number
             case BIGINT:
-                return Lexer.valueOfBigInt(source.getString(start, len - 1)); // number
+                return Lexer.valueOfBigInt(source.getLazyString(start, len - 1)); // number
             case FLOATING:
-                final TruffleString str = removeUnderscores(source.getString(start, len));
+                final TruffleString str = removeUnderscores(source.getLazyString(start, len));
                 final double value;
                 try {
                     value = str.parseDoubleUncached();

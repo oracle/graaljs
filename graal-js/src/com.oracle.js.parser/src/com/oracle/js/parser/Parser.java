@@ -1227,7 +1227,7 @@ public class Parser extends AbstractParser {
                 // A directive is either a string or an escape string
                 if (tt == TokenType.STRING || tt == TokenType.ESCSTRING) {
                     // Make sure that we don't unescape anything. Return as seen in source!
-                    return source.getString(lit.getStart() + 1, Token.descLength(litToken) - 2);
+                    return source.getLazyString(lit.getStart() + 1, Token.descLength(litToken) - 2);
                 }
             }
         }
