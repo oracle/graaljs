@@ -59,6 +59,7 @@ import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.control.YieldException;
 import com.oracle.truffle.js.nodes.instrumentation.DeclareTagProvider;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -193,7 +194,13 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
                 assert parentScopeFrame == Undefined.instance;
                 parentScopeFrame = frame.materialize();
             }
-            MaterializedFrame scopeFrame = Truffle.getRuntime().createVirtualFrame(frame.getArguments(), frameDescriptor).materialize();
+            Object[] arguments;
+            if (parentScopeFrame == Undefined.instance) {
+                arguments = JSArguments.createZeroArg(Undefined.instance, JSFrameUtil.getFunctionObject(frame));
+            } else {
+                arguments = JSFrameUtil.castMaterializedFrame(parentScopeFrame).getArguments();
+            }
+            MaterializedFrame scopeFrame = Truffle.getRuntime().createVirtualFrame(arguments, frameDescriptor).materialize();
             scopeFrame.setObject(parentSlot, parentScopeFrame);
             frame.setObject(blockScopeSlot, scopeFrame);
             return frame;
