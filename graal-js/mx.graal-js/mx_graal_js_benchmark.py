@@ -59,7 +59,7 @@ class GraalJsVm(GuestVm):
         for _ in range(runs):
             code, out, _ = self.host_vm().run_launcher('js', ['--experimental-options', '--engine.TraceCache', '--engine.Cache=' + cache_file] + extra_args + args, cwd)
             if code != 0:
-                return code, out, {},
+                return code, out, {}
         return self.host_vm().run_launcher('js', ['--experimental-options', '--engine.CacheLoad=' + cache_file] + args, cwd)
 
     def run(self, cwd, args):
