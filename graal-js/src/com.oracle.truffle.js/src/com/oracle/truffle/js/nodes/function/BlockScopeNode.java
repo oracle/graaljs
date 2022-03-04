@@ -72,8 +72,9 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
     }
 
     public static BlockScopeNode create(JavaScriptNode block, JSFrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, JSFrameSlot parentSlot,
-                    boolean functionBlock, boolean captureFunctionFrame, boolean generatorFunctionBlock, int start, int end) {
-        return new FrameBlockScopeNode(block, blockScopeSlot.getIndex(), frameDescriptor, parentSlot.getIndex(), functionBlock, captureFunctionFrame, generatorFunctionBlock, start, end);
+                    boolean functionBlock, boolean captureFunctionFrame, boolean generatorFunctionBlock, boolean hasParentBlock, int start, int end) {
+        return new FrameBlockScopeNode(block, blockScopeSlot.getIndex(), frameDescriptor, parentSlot.getIndex(),
+                        functionBlock, captureFunctionFrame, generatorFunctionBlock, hasParentBlock, start, end);
     }
 
     public static BlockScopeNode createVirtual(JavaScriptNode block, int frameStart, int frameEnd) {
@@ -157,19 +158,21 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
         protected final boolean captureFunctionFrame;
         /** If true, this is a block scope in the generator function prologue. */
         protected final boolean generatorFunctionBlock;
+        protected final boolean hasParentBlock;
         /** Virtual frame slots start index (inclusive). */
         protected final int start;
         /** Virtual frame slots end index (exclusive). */
         protected final int end;
 
         protected FrameBlockScopeNode(JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot,
-                        boolean functionBlock, boolean captureFunctionFrame, boolean generatorFunctionBlock, int start, int end) {
+                        boolean functionBlock, boolean captureFunctionFrame, boolean generatorFunctionBlock, boolean hasParentBlock, int start, int end) {
             super(block);
             this.blockScopeSlot = blockScopeSlot;
             this.parentSlot = parentSlot;
             this.functionBlock = functionBlock;
             this.captureFunctionFrame = captureFunctionFrame;
             this.generatorFunctionBlock = generatorFunctionBlock;
+            this.hasParentBlock = hasParentBlock;
             this.start = start;
             this.end = end;
             this.frameDescriptor = frameDescriptor;
@@ -179,7 +182,7 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
             if (materializedTags.contains(DeclareTag.class) && !DeclareTagProvider.isMaterializedFrameProvider(this)) {
                 JavaScriptNode materialized = DeclareTagProvider.createMaterializedBlockNode(this, cloneUninitialized(block, materializedTags),
-                                blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, generatorFunctionBlock, start, end);
+                                blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, generatorFunctionBlock, hasParentBlock, start, end);
                 transferSourceSectionAndTags(this, materialized);
                 return materialized;
             } else {
@@ -195,10 +198,11 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
                 parentScopeFrame = frame.materialize();
             }
             Object[] arguments;
-            if (parentScopeFrame == Undefined.instance) {
-                arguments = JSArguments.createZeroArg(Undefined.instance, JSFrameUtil.getFunctionObject(frame));
-            } else {
+            if (hasParentBlock) {
                 arguments = JSFrameUtil.castMaterializedFrame(parentScopeFrame).getArguments();
+            } else {
+                assert parentScopeFrame == Undefined.instance || captureFunctionFrame;
+                arguments = JSArguments.createZeroArg(Undefined.instance, JSFrameUtil.getFunctionObject(frame));
             }
             MaterializedFrame scopeFrame = Truffle.getRuntime().createVirtualFrame(arguments, frameDescriptor).materialize();
             scopeFrame.setObject(parentSlot, parentScopeFrame);
@@ -294,7 +298,7 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new FrameBlockScopeNode(cloneUninitialized(block, materializedTags),
-                            blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, generatorFunctionBlock, start, end);
+                            blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, generatorFunctionBlock, hasParentBlock, start, end);
         }
     }
 
