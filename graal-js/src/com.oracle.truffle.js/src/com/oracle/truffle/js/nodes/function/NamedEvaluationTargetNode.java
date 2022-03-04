@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,27 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.parser.env;
+package com.oracle.truffle.js.nodes.function;
 
-import com.oracle.truffle.js.nodes.JSFrameSlot;
-import com.oracle.truffle.js.nodes.NodeFactory;
-import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
 
-public class EvalEnvironment extends Environment {
-    private final boolean isDirectEval;
+@GenerateWrapper
+public abstract class NamedEvaluationTargetNode extends JavaScriptNode {
 
-    public EvalEnvironment(Environment parent, NodeFactory factory, JSContext context, boolean isDirectEval) {
-        super(parent, factory, context);
-        assert parent == null || parent.function() == null || parent.function().isDeepFrozen();
-        this.isDirectEval = isDirectEval;
-    }
-
-    public boolean isDirectEval() {
-        return isDirectEval;
-    }
+    public abstract Object executeWithName(VirtualFrame frame, Object name);
 
     @Override
-    public JSFrameSlot findBlockFrameSlot(Object name) {
-        throw new UnsupportedOperationException();
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new NamedEvaluationTargetNodeWrapper(this, probe);
     }
 }

@@ -51,8 +51,8 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InternalSlotId;
 
@@ -72,8 +72,10 @@ public final class JSFrameUtil {
     private static final int IS_PRIVATE_METHOD_OR_ACCESSOR = Symbol.IS_PRIVATE_NAME_METHOD | Symbol.IS_PRIVATE_NAME_ACCESSOR;
     private static final int IS_PARAM = Symbol.IS_PARAM;
     private static final int IS_ARGUMENTS = Symbol.IS_ARGUMENTS;
+    private static final int IS_CLOSED_OVER = Symbol.IS_CLOSED_OVER;
+    public static final int IS_HOISTED_FROM_BLOCK = 1 << 31;
     public static final int SYMBOL_FLAG_MASK = HAS_TDZ | IS_HOISTABLE_DECLARATION | IS_IMPORT_BINDING | IS_PARAM | IS_ARGUMENTS |
-                    IS_PRIVATE_NAME | IS_PRIVATE_NAME_STATIC | IS_PRIVATE_METHOD_OR_ACCESSOR;
+                    IS_PRIVATE_NAME | IS_PRIVATE_NAME_STATIC | IS_PRIVATE_METHOD_OR_ACCESSOR | IS_CLOSED_OVER | IS_HOISTED_FROM_BLOCK;
 
     private JSFrameUtil() {
         // this utility class should not be instantiated
@@ -159,6 +161,14 @@ public final class JSFrameUtil {
         return (getFlags(frameSlot) & IS_ARGUMENTS) != 0;
     }
 
+    public static boolean isClosedOver(JSFrameSlot frameSlot) {
+        return (getFlags(frameSlot) & IS_CLOSED_OVER) != 0;
+    }
+
+    public static boolean isHoistedFromBlock(FrameDescriptor desc, int index) {
+        return (getFlags(desc, index) & IS_HOISTED_FROM_BLOCK) != 0;
+    }
+
     public static MaterializedFrame getParentFrame(Frame frame) {
         return JSArguments.getEnclosingFrame(frame.getArguments());
     }
@@ -212,15 +222,6 @@ public final class JSFrameUtil {
 
     public static boolean isThisSlotIdentifier(Object identifier) {
         return THIS_SLOT_ID.equals(identifier);
-    }
-
-    public static int getThisSlotIndex(FrameDescriptor frameDescriptor) {
-        for (int i = 0; i < frameDescriptor.getNumberOfSlots(); i++) {
-            if (isThisSlotIdentifier(frameDescriptor.getSlotName(i))) {
-                return i;
-            }
-        }
-        return -1;
     }
 
     private static int findFrameSlotIndex(FrameDescriptor frameDescriptor, Object identifier) {

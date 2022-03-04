@@ -110,14 +110,23 @@ public final class Symbol implements Comparable<Symbol> {
     /** Is this symbol the function 'arguments' binding? */
     public static final int IS_ARGUMENTS = 1 << 21;
 
+    /** Is this symbol used? */
+    public static final int IS_USED = 1 << 22;
+    /** Is this symbol closed over by an inner function closure? */
+    public static final int IS_CLOSED_OVER = 1 << 23;
+    /** Is this symbol used by an inner scope within the same function? */
+    public static final int IS_USED_IN_INNER_SCOPE = 1 << 24;
+
+    /** Is this the home object, used by super property accesses. */
+    public static final int IS_SUPER = 1 << 25;
+    /** Is this the {@code new.target}. */
+    public static final int IS_NEW_TARGET = 1 << 26;
+
     /** Null or name identifying symbol. */
     private final TruffleString name;
 
     /** Symbol flags. */
     private int flags;
-
-    /** Number of times this symbol is used in code */
-    private int useCount;
 
     /**
      * Constructor
@@ -234,6 +243,24 @@ public final class Symbol implements Comparable<Symbol> {
     }
 
     /**
+     * Check if this symbol represents {@code super}
+     *
+     * @return true if super
+     */
+    public boolean isSuper() {
+        return (flags & IS_SUPER) != 0;
+    }
+
+    /**
+     * Check if this symbol represents {@code new.target}
+     *
+     * @return true if {@code new.target}
+     */
+    public boolean isNewTarget() {
+        return (flags & IS_NEW_TARGET) != 0;
+    }
+
+    /**
      * Check if this symbol is a let
      *
      * @return true if let
@@ -306,15 +333,6 @@ public final class Symbol implements Comparable<Symbol> {
      */
     public TruffleString getName() {
         return name;
-    }
-
-    /**
-     * Get the symbol's use count
-     *
-     * @return the number of times the symbol is used in code.
-     */
-    public int getUseCount() {
-        return useCount;
     }
 
     /**
@@ -408,5 +426,47 @@ public final class Symbol implements Comparable<Symbol> {
      */
     public boolean isArguments() {
         return (flags & IS_ARGUMENTS) != 0;
+    }
+
+    /**
+     * Is this symbol used.
+     */
+    public boolean isUsed() {
+        return (flags & IS_USED) != 0;
+    }
+
+    /**
+     * Mark this symbol as used.
+     */
+    public void setUsed() {
+        flags |= IS_USED;
+    }
+
+    /**
+     * Is this symbol captured by a closure.
+     */
+    public boolean isClosedOver() {
+        return (flags & IS_CLOSED_OVER) != 0;
+    }
+
+    /**
+     * Mark this symbol as captured by a closure.
+     */
+    public void setClosedOver() {
+        flags |= IS_CLOSED_OVER;
+    }
+
+    /**
+     * Is this symbol captured by an inner scope.
+     */
+    public boolean isUsedInInnerScope() {
+        return (flags & IS_USED_IN_INNER_SCOPE) != 0;
+    }
+
+    /**
+     * Mark this symbol as captured by an inner scope.
+     */
+    public void setUsedInInnerScope() {
+        flags |= IS_USED_IN_INNER_SCOPE;
     }
 }

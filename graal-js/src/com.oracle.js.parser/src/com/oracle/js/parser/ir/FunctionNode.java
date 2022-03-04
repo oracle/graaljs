@@ -204,6 +204,9 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     /** Is this function a (class or object) method? */
     public static final int IS_METHOD = 1 << 20;
 
+    /** If one of these flags are set, this function does not have a function self binding. */
+    public static final int NO_FUNCTION_SELF = IS_PROGRAM | IS_ANONYMOUS | IS_DECLARED | IS_METHOD;
+
     /** Is this the constructor method? */
     public static final int IS_CLASS_CONSTRUCTOR = 1 << 21;
 
@@ -675,7 +678,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      * @return true if this is a named function expression
      */
     public boolean isNamedFunctionExpression() {
-        return !getFlag(IS_PROGRAM | IS_ANONYMOUS | IS_DECLARED | IS_METHOD);
+        return !getFlag(NO_FUNCTION_SELF);
     }
 
     /**

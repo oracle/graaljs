@@ -40,15 +40,19 @@
  */
 package com.oracle.truffle.js.parser.env;
 
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.Strings;
+import java.util.Map;
+import java.util.StringJoiner;
+
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 
 public final class GlobalEnvironment extends DerivedEnvironment {
+    /** Entries: (name, const). */
     private final EconomicMap<TruffleString, Boolean> lexicalDeclarations;
     private final EconomicMap<TruffleString, Boolean> varDeclarations;
 
@@ -88,5 +92,10 @@ public final class GlobalEnvironment extends DerivedEnvironment {
      */
     public static boolean isGlobalObjectConstant(TruffleString name) {
         return Strings.UNDEFINED.equals(name) || Strings.NAN.equals(name) || Strings.INFINITY.equals(name);
+    }
+
+    @Override
+    protected String toStringImpl(Map<String, Integer> state) {
+        return "Global" + new StringJoiner(", ", "{", "}").add(joinElements(lexicalDeclarations.getKeys())).add(joinElements(varDeclarations.getKeys())).toString();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.function;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -50,28 +49,36 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.FrameDescriptorProvider;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
+import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.control.YieldException;
 import com.oracle.truffle.js.nodes.instrumentation.DeclareTagProvider;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public abstract class BlockScopeNode extends JavaScriptNode implements ResumableNode.WithObjectState, RepeatingNode {
+public abstract class BlockScopeNode extends NamedEvaluationTargetNode implements RepeatingNode {
     @Child protected JavaScriptNode block;
 
     protected BlockScopeNode(JavaScriptNode block) {
         this.block = block;
     }
 
-    public static BlockScopeNode create(JavaScriptNode block, JSFrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, JSFrameSlot parentSlot, boolean functionBlock,
-                    boolean captureFunctionFrame) {
-        return new FrameBlockScopeNode(block, blockScopeSlot.getIndex(), frameDescriptor, parentSlot.getIndex(), functionBlock, captureFunctionFrame);
+    public static BlockScopeNode create(JavaScriptNode block, JSFrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, JSFrameSlot parentSlot,
+                    boolean functionBlock, boolean captureFunctionFrame, boolean generatorFunctionBlock, boolean hasParentBlock, int start, int end) {
+        return new FrameBlockScopeNode(block, blockScopeSlot.getIndex(), frameDescriptor, parentSlot.getIndex(),
+                        functionBlock, captureFunctionFrame, generatorFunctionBlock, hasParentBlock, start, end);
+    }
+
+    public static BlockScopeNode createVirtual(JavaScriptNode block, int frameStart, int frameEnd) {
+        return new VirtualBlockScopeNode(block, frameStart, frameEnd);
     }
 
     @Override
@@ -94,7 +101,11 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
 
     public abstract VirtualFrame appendScopeFrame(VirtualFrame frame);
 
-    public abstract void exitScope(VirtualFrame frame);
+    public final void exitScope(VirtualFrame frame) {
+        exitScope(frame, false);
+    }
+
+    public abstract void exitScope(VirtualFrame frame, boolean yield);
 
     public abstract Object getBlockScope(VirtualFrame frame);
 
@@ -104,6 +115,15 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
     public boolean executeRepeating(VirtualFrame frame) {
         try {
             return ((RepeatingNode) block).executeRepeating(appendScopeFrame(frame));
+        } finally {
+            exitScope(frame);
+        }
+    }
+
+    @Override
+    public Object executeWithName(VirtualFrame frame, Object name) {
+        try {
+            return ((NamedEvaluationTargetNode) block).executeWithName(appendScopeFrame(frame), name);
         } finally {
             exitScope(frame);
         }
@@ -120,7 +140,15 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         return block.isResultAlwaysOfType(clazz);
     }
 
-    public static class FrameBlockScopeNode extends BlockScopeNode implements FrameDescriptorProvider {
+    public int getFrameStart() {
+        return -1;
+    }
+
+    public int getFrameEnd() {
+        return -1;
+    }
+
+    public static class FrameBlockScopeNode extends BlockScopeNode implements ResumableNode.WithObjectState, FrameDescriptorProvider {
         protected final int blockScopeSlot;
         protected final int parentSlot;
         protected final FrameDescriptor frameDescriptor;
@@ -128,21 +156,33 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         protected final boolean functionBlock;
         /** If true, put the virtual function frame in the parent scope slot. */
         protected final boolean captureFunctionFrame;
+        /** If true, this is a block scope in the generator function prologue. */
+        protected final boolean generatorFunctionBlock;
+        protected final boolean hasParentBlock;
+        /** Virtual frame slots start index (inclusive). */
+        protected final int start;
+        /** Virtual frame slots end index (exclusive). */
+        protected final int end;
 
-        protected FrameBlockScopeNode(JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot, boolean functionBlock, boolean captureFunctionFrame) {
+        protected FrameBlockScopeNode(JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot,
+                        boolean functionBlock, boolean captureFunctionFrame, boolean generatorFunctionBlock, boolean hasParentBlock, int start, int end) {
             super(block);
             this.blockScopeSlot = blockScopeSlot;
             this.parentSlot = parentSlot;
             this.functionBlock = functionBlock;
             this.captureFunctionFrame = captureFunctionFrame;
+            this.generatorFunctionBlock = generatorFunctionBlock;
+            this.hasParentBlock = hasParentBlock;
+            this.start = start;
+            this.end = end;
             this.frameDescriptor = frameDescriptor;
         }
 
         @Override
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
             if (materializedTags.contains(DeclareTag.class) && !DeclareTagProvider.isMaterializedFrameProvider(this)) {
-                JavaScriptNode materialized = DeclareTagProvider.createMaterializedBlockNode(cloneUninitialized(block, materializedTags),
-                                blockScopeSlot, frameDescriptor, parentSlot, getSourceSection(), functionBlock, captureFunctionFrame);
+                JavaScriptNode materialized = DeclareTagProvider.createMaterializedBlockNode(this, cloneUninitialized(block, materializedTags),
+                                blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, generatorFunctionBlock, hasParentBlock, start, end);
                 transferSourceSectionAndTags(this, materialized);
                 return materialized;
             } else {
@@ -157,15 +197,28 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
                 assert parentScopeFrame == Undefined.instance;
                 parentScopeFrame = frame.materialize();
             }
-            MaterializedFrame scopeFrame = Truffle.getRuntime().createVirtualFrame(frame.getArguments(), frameDescriptor).materialize();
+            Object[] arguments;
+            if (hasParentBlock) {
+                arguments = JSFrameUtil.castMaterializedFrame(parentScopeFrame).getArguments();
+            } else {
+                assert parentScopeFrame == Undefined.instance || captureFunctionFrame;
+                arguments = JSArguments.createZeroArg(Undefined.instance, JSFrameUtil.getFunctionObject(frame));
+            }
+            MaterializedFrame scopeFrame = Truffle.getRuntime().createVirtualFrame(arguments, frameDescriptor).materialize();
             scopeFrame.setObject(parentSlot, parentScopeFrame);
             frame.setObject(blockScopeSlot, scopeFrame);
             return frame;
         }
 
         @Override
-        public void exitScope(VirtualFrame frame) {
+        public void exitScope(VirtualFrame frame, boolean yield) {
             MaterializedFrame blockScopeFrame = JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
+            assert blockScopeFrame.getFrameDescriptor() == frameDescriptor : blockScopeFrame.getFrameDescriptor();
+            if (generatorFunctionBlock) {
+                // Keep block scope entered when exiting the generator function prologue.
+                // When the generator starts, it expects the block scope to still be entered.
+                return;
+            }
             Object parentScopeFrame = blockScopeFrame.getObject(parentSlot);
             if (captureFunctionFrame) {
                 assert ((Frame) parentScopeFrame).getFrameDescriptor() == frame.getFrameDescriptor();
@@ -173,7 +226,16 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
                 parentScopeFrame = Undefined.instance;
             }
             frame.setObject(blockScopeSlot, parentScopeFrame);
-            assert CompilerDirectives.inCompiledCode() || ScopeFrameNode.isBlockScopeFrame(blockScopeFrame) : blockScopeFrame.getFrameDescriptor();
+            if (!yield && start < end) {
+                clearVirtualSlots(frame);
+            }
+        }
+
+        @ExplodeLoop
+        private void clearVirtualSlots(VirtualFrame frame) {
+            for (int i = start; i < end; i++) {
+                frame.clear(i);
+            }
         }
 
         @Override
@@ -195,13 +257,15 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
             } else {
                 setBlockScope(frame, state);
             }
+            boolean yield = false;
             try {
                 return block.execute(frame);
             } catch (YieldException e) {
+                yield = true;
                 setState(frame, stateSlot, getBlockScope(frame));
                 throw e;
             } finally {
-                exitScope(frame);
+                exitScope(frame, yield);
             }
         }
 
@@ -222,8 +286,101 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         }
 
         @Override
+        public int getFrameStart() {
+            return start;
+        }
+
+        @Override
+        public int getFrameEnd() {
+            return end;
+        }
+
+        @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new FrameBlockScopeNode(cloneUninitialized(block, materializedTags), blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame);
+            return new FrameBlockScopeNode(cloneUninitialized(block, materializedTags),
+                            blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame, generatorFunctionBlock, hasParentBlock, start, end);
+        }
+    }
+
+    /**
+     * Represents a local block scope that has been merged into the function's virtual frame. Serves
+     * as metadata to reconstruct the original block structure for debugging purposes and clears the
+     * block's frame slots on leave to limit value lifetimes. Not needed for correct execution.
+     */
+    public static class VirtualBlockScopeNode extends BlockScopeNode implements ResumableNode {
+        protected final int start;
+        protected final int end;
+
+        /** A value other than undefined to signal that block node is entered. */
+        private static final Object SCOPE_PLACEHOLDER = Null.instance;
+
+        protected VirtualBlockScopeNode(JavaScriptNode block, int start, int end) {
+            super(block);
+            this.start = start;
+            this.end = end;
+        }
+
+        @Override
+        public VirtualFrame appendScopeFrame(VirtualFrame frame) {
+            return frame;
+        }
+
+        @ExplodeLoop
+        @Override
+        public void exitScope(VirtualFrame frame, boolean yield) {
+            // Clear frame slots when exiting the scope.
+            // Note: we must not clear the slots on yield/await.
+            if (!yield) {
+                for (int i = start; i < end; i++) {
+                    frame.clear(i);
+                }
+            }
+        }
+
+        @Override
+        public Object resume(VirtualFrame frame, int stateSlot) {
+            boolean yield = false;
+            try {
+                return block.execute(appendScopeFrame(frame));
+            } catch (YieldException e) {
+                yield = true;
+                throw e;
+            } finally {
+                exitScope(frame, yield);
+            }
+        }
+
+        /**
+         * @see TryCatchNode#resume
+         */
+        @Override
+        public Object getBlockScope(VirtualFrame frame) {
+            return SCOPE_PLACEHOLDER;
+        }
+
+        @Override
+        public void setBlockScope(VirtualFrame frame, Object state) {
+            assert state == SCOPE_PLACEHOLDER;
+        }
+
+        @Override
+        public boolean isFunctionBlock() {
+            return false;
+        }
+
+        @Override
+        public int getFrameStart() {
+            return start;
+        }
+
+        @Override
+        public int getFrameEnd() {
+            return end;
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new VirtualBlockScopeNode(cloneUninitialized(block, materializedTags), start, end);
         }
     }
 }

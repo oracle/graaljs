@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,18 @@
  */
 package com.oracle.truffle.js.parser.env;
 
+import java.util.Map;
 import java.util.Objects;
 
+import com.oracle.js.parser.ir.Scope;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.js.nodes.JSFrameDescriptor;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.util.DebugCounter;
 
 public final class BlockEnvironment extends Environment {
 
@@ -55,23 +59,47 @@ public final class BlockEnvironment extends Environment {
     private final JSFrameSlot parentSlot;
     private final int scopeLevel;
     private final boolean isFunctionBlock;
+    private final Scope scope;
+    private final JSFrameSlot blockScopeSlot;
+    private int frameStart = -1;
+    private int frameEnd = -1;
 
-    public BlockEnvironment(Environment parent, NodeFactory factory, JSContext context, boolean isFunctionBlock) {
+    private static final DebugCounter reifiedScopes = DebugCounter.create("Reified scopes");
+    private static final DebugCounter virtualScopes = DebugCounter.create("Virtual scopes");
+
+    public BlockEnvironment(Environment parent, NodeFactory factory, JSContext context, Scope blockScope) {
         super(parent, factory, context);
-        this.blockFrameDescriptor = factory.createBlockFrameDescriptor();
-        this.parentSlot = Objects.requireNonNull(blockFrameDescriptor.findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER));
-        this.scopeLevel = parent.getScopeLevel() + 1;
-        this.isFunctionBlock = isFunctionBlock;
-        parent.function().getOrCreateBlockScopeSlot();
+        this.isFunctionBlock = blockScope != null && (blockScope.isFunctionTopScope() || blockScope.isEvalScope());
+        this.scope = blockScope;
+        if (isScopeCaptured(blockScope) || !context.getContextOptions().isScopeOptimization()) {
+            this.blockFrameDescriptor = factory.createBlockFrameDescriptor();
+            this.parentSlot = Objects.requireNonNull(blockFrameDescriptor.findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER));
+            this.scopeLevel = parent.getScopeLevel() + 1;
+            this.blockScopeSlot = parent.function().getOrCreateBlockScopeSlot();
+            reifiedScopes.inc();
+        } else {
+            this.blockFrameDescriptor = null;
+            this.parentSlot = null;
+            this.scopeLevel = parent.getScopeLevel();
+            this.blockScopeSlot = parent.getCurrentBlockScopeSlot();
+            virtualScopes.inc();
+        }
+    }
+
+    public static boolean isScopeCaptured(Scope blockScope) {
+        return blockScope == null || blockScope.hasClosures() || blockScope.hasNestedEval() || blockScope.isClassHeadScope();
     }
 
     public BlockEnvironment(Environment parent, NodeFactory factory, JSContext context) {
-        this(parent, factory, context, false);
+        this(parent, factory, context, null);
     }
 
     @Override
     public JSFrameSlot findBlockFrameSlot(Object name) {
-        JSFrameSlot slot = getBlockFrameDescriptor().findFrameSlot(name);
+        if (!hasScopeFrame()) {
+            return null;
+        }
+        JSFrameSlot slot = getBlockFrameDescriptor().findFrameSlot(slotId(name));
         if (slot != null && JSFrameUtil.isPrivateName(slot)) {
             // Private names are only visible from within the corresponding PrivateEnvironment.
             return null;
@@ -80,8 +108,17 @@ public final class BlockEnvironment extends Environment {
     }
 
     @Override
+    public JSFrameSlot findFunctionFrameSlot(Object name) {
+        return getFunctionFrameDescriptor().findFrameSlot(slotId(name));
+    }
+
+    @Override
     public JSFrameDescriptor getBlockFrameDescriptor() {
-        return blockFrameDescriptor;
+        if (blockFrameDescriptor != null) {
+            return blockFrameDescriptor;
+        } else {
+            return getFunctionFrameDescriptor();
+        }
     }
 
     public JSFrameSlot getParentSlot() {
@@ -94,11 +131,85 @@ public final class BlockEnvironment extends Environment {
     }
 
     @Override
+    public boolean hasScopeFrame() {
+        return blockFrameDescriptor != null;
+    }
+
+    @Override
     public JSFrameSlot getCurrentBlockScopeSlot() {
-        return function().getBlockScopeSlot();
+        return blockScopeSlot;
     }
 
     public boolean isFunctionBlock() {
         return isFunctionBlock;
+    }
+
+    private Object slotId(Object name) {
+        assert JSFrameSlot.isAllowedIdentifierType(name) : name;
+        if (isFunctionBlock) {
+            return name;
+        }
+        return JSFrameDescriptor.scopedIdentifier(name, scope);
+    }
+
+    @Override
+    public JSFrameSlot declareInternalSlot(Object name) {
+        return getBlockFrameDescriptor().findOrAddFrameSlot(slotId(name), 0, FrameSlotKind.Illegal);
+    }
+
+    @Override
+    public void addFrameSlotFromSymbol(com.oracle.js.parser.ir.Symbol symbol) {
+        Object id = slotId(symbol.getName());
+        assert (!hasScopeFrame() || !getBlockFrameDescriptor().contains(id)) && !getFunctionFrameDescriptor().contains(id) : symbol;
+        if (symbol.isClosedOver() || (scope != null && scope.hasNestedEval()) || !context.getContextOptions().isScopeOptimization()) {
+            getBlockFrameDescriptor().findOrAddFrameSlot(id, symbol.getFlags(), FrameSlotKind.Illegal);
+        } else {
+            JSFrameSlot slot = getFunctionFrameDescriptor().findOrAddFrameSlot(id, symbol.getFlags() | (!isFunctionBlock ? JSFrameUtil.IS_HOISTED_FROM_BLOCK : 0), FrameSlotKind.Illegal);
+            if (!isFunctionBlock) {
+                updateSlotRange(slot);
+            }
+        }
+    }
+
+    private void updateSlotRange(JSFrameSlot slot) {
+        if (slot.getIndex() < frameStart || frameStart == -1) {
+            frameStart = slot.getIndex();
+        }
+        if (slot.getIndex() >= frameEnd || frameEnd == -1) {
+            frameEnd = slot.getIndex() + 1;
+        }
+    }
+
+    public int getStart() {
+        return frameStart;
+    }
+
+    public int getEnd() {
+        return frameEnd;
+    }
+
+    @Override
+    public Scope getScope() {
+        return scope;
+    }
+
+    public boolean isGeneratorFunctionBlock() {
+        return isFunctionBlock && function().isGeneratorFunction();
+    }
+
+    public boolean capturesFunctionFrame() {
+        // Modules do not have an extra block environment since their frames are expected to contain
+        // the module's exported bindings and are always materialized anyway; so we need to capture
+        // it as the parent of the outermost block scope frame, if any.
+        return scopeLevel == 1 && function().isModule();
+    }
+
+    @Override
+    protected String toStringImpl(Map<String, Integer> state) {
+        int currentFrameLevel = state.getOrDefault("frameLevel", 0);
+        int currentScopeLevel = state.getOrDefault("scopeLevel", 0);
+        state.put("scopeLevel", currentScopeLevel + (hasScopeFrame() ? 1 : 0));
+        return "Block(" + currentFrameLevel + ", " + currentScopeLevel + ")" +
+                        " size=" + getBlockFrameDescriptor().getSize() + " " + joinElements(getBlockFrameDescriptor().getIdentifiers()) + " " + scope;
     }
 }

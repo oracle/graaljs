@@ -609,6 +609,11 @@ public final class JSContextOptions {
         }
     }));
 
+    public static final String SCOPE_OPTIMIZATION_NAME = JS_OPTION_PREFIX + "scope-optimization";
+    @Option(name = SCOPE_OPTIMIZATION_NAME, category = OptionCategory.INTERNAL, help = "Allow scope optimizations around closures.") //
+    public static final OptionKey<Boolean> SCOPE_OPTIMIZATION = new OptionKey<>(true);
+    @CompilationFinal private boolean scopeOptimization;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -713,6 +718,7 @@ public final class JSContextOptions {
         this.temporal = readBooleanOption(TEMPORAL);
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
+        this.scopeOptimization = readBooleanOption(SCOPE_OPTIMIZATION);
     }
 
     private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
@@ -1132,6 +1138,10 @@ public final class JSContextOptions {
         return esmBareSpecifierRelativeLookup;
     }
 
+    public boolean isScopeOptimization() {
+        return scopeOptimization;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -1196,6 +1206,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.privateFieldsIn ? 1 : 0);
         hash = 53 * hash + (this.esmBareSpecifierRelativeLookup ? 1 : 0);
         hash = 53 * hash + (this.temporal ? 1 : 0);
+        hash = 53 * hash + (this.scopeOptimization ? 1 : 0);
         return hash;
     }
 
@@ -1389,6 +1400,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.temporal != other.temporal) {
+            return false;
+        }
+        if (this.scopeOptimization != other.scopeOptimization) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

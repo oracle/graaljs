@@ -249,12 +249,16 @@ public class TestHelper implements AutoCloseable {
         }
 
         public Object call(Object[] args) {
-            DynamicObject funObj = JSFunction.create(getRealm(), functionData);
+            DynamicObject funObj = createFunctionObject();
             return JSFunction.call(funObj, Null.instance, args);
         }
 
         public RootNode getRootNode() {
             return ((RootCallTarget) functionData.getCallTarget()).getRootNode();
+        }
+
+        public DynamicObject createFunctionObject() {
+            return JSFunction.create(getRealm(), functionData);
         }
     }
 

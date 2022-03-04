@@ -41,14 +41,15 @@
 
 package com.oracle.js.parser.ir;
 
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.StringJoiner;
 
-import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
+
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Represents a binding scope (corresponds to LexicalEnvironment or VariableEnvironment).
@@ -66,8 +67,12 @@ public final class Scope {
     private static final int MODULE_SCOPE = 1 << 5;
     private static final int FUNCTION_TOP_SCOPE = 1 << 6;
     private static final int SWITCH_BLOCK_SCOPE = 1 << 7;
-    private static final int CLASS_SCOPE = 1 << 8;
-    private static final int EVAL_SCOPE = 1 << 9;
+    /** Class head scope = LexicalEnvironment of the class (containing the class name binding). */
+    private static final int CLASS_HEAD_SCOPE = 1 << 8;
+    /** Class body scope = PrivateEnvironment of the class (containing private names and brands). */
+    private static final int CLASS_BODY_SCOPE = 1 << 9;
+    private static final int EVAL_SCOPE = 1 << 10;
+    private static final int ARROW_FUNCTION_PARAMETER_SCOPE = 1 << 11;
 
     /** Scope is in a function context. {@code new.target} is available. */
     private static final int IN_FUNCTION = 1 << 16;
@@ -80,12 +85,15 @@ public final class Scope {
 
     /** Symbol table - keys must be returned in the order they were put in. */
     protected final EconomicMap<TruffleString, Symbol> symbols;
-    protected List<Map.Entry<VarNode, Scope>> hoistedVarDeclarations;
-    protected List<Map.Entry<VarNode, Scope>> hoistableBlockFunctionDeclarations;
+    /** Use map. */
+    protected EconomicMap<TruffleString, UseInfo> uses;
 
     private boolean closed;
     private boolean hasBlockScopedOrRedeclaredSymbols;
     private boolean hasPrivateNames;
+    private boolean hasClosures;
+    private boolean hasEval;
+    private boolean hasNestedEval;
 
     private Scope(Scope parent, int type, int flags) {
         this.parent = parent;
@@ -101,7 +109,7 @@ public final class Scope {
     private static int computeFlags(Scope parent, int functionFlags) {
         if ((functionFlags & FunctionNode.IS_ARROW) != 0) {
             // propagate flags from enclosing function scope.
-            return parent.flags;
+            return parent == null ? 0 : parent.flags;
         } else {
             int flags = 0;
             flags |= IN_FUNCTION;
@@ -138,15 +146,21 @@ public final class Scope {
     }
 
     public static Scope createFunctionParameter(Scope parent, int functionFlags) {
-        return new Scope(parent, FUNCTION_PARAMETER_SCOPE | FUNCTION_TOP_SCOPE, computeFlags(parent, functionFlags));
+        return new Scope(parent, FUNCTION_PARAMETER_SCOPE | FUNCTION_TOP_SCOPE |
+                        ((functionFlags & FunctionNode.IS_ARROW) != 0 ? ARROW_FUNCTION_PARAMETER_SCOPE : 0),
+                        computeFlags(parent, functionFlags));
     }
 
     public static Scope createSwitchBlock(Scope parent) {
         return new Scope(parent, BLOCK_SCOPE | SWITCH_BLOCK_SCOPE);
     }
 
-    public static Scope createClass(Scope parent) {
-        return new Scope(parent, BLOCK_SCOPE | CLASS_SCOPE);
+    public static Scope createClassHead(Scope parent) {
+        return new Scope(parent, BLOCK_SCOPE | CLASS_HEAD_SCOPE);
+    }
+
+    public static Scope createClassBody(Scope parent) {
+        return new Scope(parent, CLASS_BODY_SCOPE);
     }
 
     public static Scope createEval(Scope parent, boolean strict) {
@@ -272,83 +286,13 @@ public final class Scope {
         return null;
     }
 
-    public void recordHoistedVarDeclaration(final VarNode varDecl, final Scope scope) {
-        assert !varDecl.isBlockScoped();
-        if (hoistedVarDeclarations == null) {
-            hoistedVarDeclarations = new ArrayList<>();
-        }
-        hoistedVarDeclarations.add(new AbstractMap.SimpleImmutableEntry<>(varDecl, scope));
-    }
-
-    public VarNode verifyHoistedVarDeclarations() {
-        if (!hasHoistedVarDeclarations()) {
-            // nothing to do
-            return null;
-        }
-        for (Map.Entry<VarNode, Scope> entry : hoistedVarDeclarations) {
-            VarNode varDecl = entry.getKey();
-            Scope declScope = entry.getValue();
-            TruffleString varName = varDecl.getName().getName();
-            for (Scope current = declScope; current != this; current = current.getParent()) {
-                Symbol existing = current.getExistingSymbol(varName);
-                if (existing != null && existing.isBlockScoped()) {
-                    if (existing.isCatchParameter()) {
-                        continue; // B.3.5 VariableStatements in Catch Blocks
-                    }
-                    // let the caller throw the error
-                    return varDecl;
-                }
-            }
-        }
-        return null;
-    }
-
-    public boolean hasHoistedVarDeclarations() {
-        return hoistedVarDeclarations != null;
-    }
-
-    public void recordHoistableBlockFunctionDeclaration(final VarNode functionDeclaration, final Scope scope) {
-        assert functionDeclaration.isFunctionDeclaration() && functionDeclaration.isBlockScoped();
-        if (hoistableBlockFunctionDeclarations == null) {
-            hoistableBlockFunctionDeclarations = new ArrayList<>();
-        }
-        hoistableBlockFunctionDeclarations.add(new AbstractMap.SimpleImmutableEntry<>(functionDeclaration, scope));
-    }
-
-    public void declareHoistedBlockFunctionDeclarations() {
-        if (hoistableBlockFunctionDeclarations == null) {
-            // nothing to do
-            return;
-        }
-        next: for (Map.Entry<VarNode, Scope> entry : hoistableBlockFunctionDeclarations) {
-            VarNode functionDecl = entry.getKey();
-            Scope functionDeclScope = entry.getValue();
-            TruffleString varName = functionDecl.getName().getName();
-            for (Scope current = functionDeclScope.getParent(); current != null; current = current.getParent()) {
-                Symbol existing = current.getExistingSymbol(varName);
-                if (existing != null && (existing.isBlockScoped() && !existing.isCatchParameter())) {
-                    // lexical declaration found, do not hoist
-                    continue next;
-                }
-                if (current.isFunctionBodyScope()) {
-                    break;
-                }
-            }
-            // declare var (if not already declared) and hoist the function declaration
-            if (getExistingSymbol(varName) == null) {
-                putSymbol(new Symbol(varName, Symbol.IS_VAR | (isGlobalScope() ? Symbol.IS_GLOBAL : 0)));
-            }
-            functionDeclScope.getExistingSymbol(varName).setHoistedBlockFunctionDeclaration();
-        }
-    }
-
     /**
      * Add a private bound identifier.
      *
      * @return true if the private name was added, false if it was already declared (duplicate name)
      */
     public boolean addPrivateName(TruffleString name, int symbolFlags) {
-        assert isClassScope();
+        assert isClassBodyScope();
         // Register a declared private name.
         if (hasSymbol(name)) {
             assert getExistingSymbol(name).isPrivateName();
@@ -400,12 +344,20 @@ public final class Scope {
         return (type & SWITCH_BLOCK_SCOPE) != 0;
     }
 
-    public boolean isClassScope() {
-        return (type & CLASS_SCOPE) != 0;
+    public boolean isClassBodyScope() {
+        return (type & CLASS_BODY_SCOPE) != 0;
+    }
+
+    public boolean isClassHeadScope() {
+        return (type & CLASS_HEAD_SCOPE) != 0;
     }
 
     public boolean isEvalScope() {
         return (type & EVAL_SCOPE) != 0;
+    }
+
+    public boolean isArrowFunctionParameterScope() {
+        return (type & ARROW_FUNCTION_PARAMETER_SCOPE) != 0;
     }
 
     public boolean inFunction() {
@@ -431,19 +383,344 @@ public final class Scope {
         if (closed) {
             return;
         }
-        if (hoistableBlockFunctionDeclarations != null) {
-            declareHoistedBlockFunctionDeclarations();
+        resolveUses();
+        closed = true;
+    }
+
+    /**
+     * Clears defined symbols and moves any local uses into the parent scope.
+     */
+    public void kill() {
+        assert !closed : "scope is closed";
+        assert isKillable() : "must not be killed";
+        symbols.clear();
+        if (uses != null) {
+            if (parent != null && !parent.closed) {
+                MapCursor<TruffleString, UseInfo> cursor = uses.getEntries();
+                while (cursor.advance()) {
+                    TruffleString usedName = cursor.getKey();
+                    UseInfo useInfo = cursor.getValue();
+                    assert useInfo.isUnresolved();
+                    if (useInfo.use == this) {
+                        parent.addLocalUse(usedName);
+                    }
+                    if (useInfo.hasInnerUse()) {
+                        useInfo.use = null;
+                        parent.addUsesFromInnerScope(usedName, useInfo);
+                    }
+                }
+            }
+            uses = null;
         }
         closed = true;
+    }
+
+    /**
+     * Records the use of an identifier reference in this scope to be resolved.
+     */
+    public void addIdentifierReference(TruffleString name) {
+        addLocalUse(name);
+    }
+
+    private UseInfo getUseInfo(TruffleString name) {
+        if (uses == null) {
+            return null;
+        }
+        return uses.get(name);
+    }
+
+    private void putUseInfo(TruffleString name, UseInfo useInfo) {
+        if (uses == null) {
+            uses = EconomicMap.create();
+        }
+        uses.put(name, useInfo);
+    }
+
+    private void removeUseInfo(TruffleString name) {
+        if (uses == null) {
+            return;
+        }
+        uses.removeKey(name);
+    }
+
+    /**
+     * Records or resolves a use in this scope.
+     */
+    private void addLocalUse(TruffleString name) {
+        assert !closed : "scope is closed";
+        UseInfo foundUse = getUseInfo(name);
+        Symbol foundSymbol = symbols.get(name);
+        if (foundSymbol != null) {
+            // declared in this scope, can be resolved immediately.
+            if (foundUse == null) {
+                foundUse = UseInfo.resolvedLocal(name, this);
+                putUseInfo(name, foundUse);
+                assert foundUse.use == this;
+            } else {
+                assert foundUse.use == this || foundUse.use == null;
+                foundUse.use = this;
+            }
+            resolveUse(foundUse, this, foundSymbol);
+        } else {
+            // as of yet unresolved, could still be resolved in the current scope later
+            // or in one of the outer scopes eventually.
+            if (foundUse == null) {
+                foundUse = UseInfo.unresolved(name);
+                putUseInfo(name, foundUse);
+                assert foundUse.use == null;
+            } else {
+                assert foundUse.def == null;
+                assert foundUse.use == this || foundUse.use == null;
+            }
+            foundUse.use = this;
+        }
+    }
+
+    /**
+     * Used to resolve or forward unresolved uses from inner scopes.
+     */
+    private void addUsesFromInnerScope(TruffleString name, UseInfo useInfo) {
+        assert !closed : "scope is closed";
+        if (useInfo.use == null && useInfo.innerUseScopes == null) {
+            return;
+        }
+
+        Symbol foundSymbol = symbols.get(name);
+        if (foundSymbol != null && !isKillable()) {
+            // declared here, so we can resolve it immediately.
+            resolveUse(useInfo, this, foundSymbol);
+            return;
+        }
+        // merge unresolved use into the parent scope
+        UseInfo foundUse = getUseInfo(name);
+        if (foundUse == null) {
+            foundUse = UseInfo.unresolved(name);
+            putUseInfo(name, foundUse);
+        } else {
+            assert foundUse.use == this || foundUse.use == null;
+        }
+
+        if (useInfo.innerUseScopes != null) {
+            for (Scope innerScope : useInfo.innerUseScopes) {
+                foundUse.addInnerUse(innerScope);
+            }
+        }
+        if (useInfo.use != null) {
+            foundUse.addInnerUse(useInfo.use);
+        }
+    }
+
+    private boolean isKillable() {
+        // Delay resolution while parsing cover arrow parameter list in case it will be revoked.
+        return isArrowFunctionParameterScope();
+    }
+
+    /**
+     * Resolves free variables in this scope and forwards unresolved uses to the parent scope.
+     */
+    public void resolveUses() {
+        if (uses == null || uses.isEmpty()) {
+            return;
+        }
+
+        boolean hasDeclarations = hasDeclarations();
+        MapCursor<TruffleString, UseInfo> cursor = uses.getEntries();
+        while (cursor.advance()) {
+            TruffleString usedName = cursor.getKey();
+            UseInfo useInfo = cursor.getValue();
+            if (useInfo.isUnresolved()) {
+                Symbol foundSymbol;
+                if (hasDeclarations && (foundSymbol = symbols.get(usedName)) != null) {
+                    // resolved in this scope
+                    resolveUse(useInfo, this, foundSymbol);
+                } else {
+                    // unresolved, pass on to parent scope, if possible
+                    if (parent == null || parent.closed) {
+                        // A closed parent scope implies a parsing boundary, e.g. eval().
+                        // We cannot make any symbols available that are not already captured.
+                        // We could resolve these symbols statically but there is currently
+                        // no advantage in doing so early.
+                        markUseUnresolvable(useInfo);
+                        if (useInfo.use == null) {
+                            cursor.remove();
+                        }
+                    } else {
+                        parent.addUsesFromInnerScope(usedName, useInfo);
+                        if (useInfo.use == null) {
+                            // no use in this scope, skip this scope and remove the use here.
+                            cursor.remove();
+                        }
+                    }
+                }
+            }
+        }
+        if (uses.isEmpty()) {
+            uses = null; // free unused memory
+        }
+
+        // Note: In case of nested eval, we would still not have to capture variables that are
+        // shadowed in all inner scopes that contain eval.
+        // Consider e.g.: `{ let x; { let x; { eval("..."); } } }`
+        // Here the outer x would not have to be captured (only the inner x). For simplicity,
+        // we currently assume all variables in scopes that contain (nested) eval may be captured.
+    }
+
+    /**
+     * Resolve use in the local and any inner scopes to the scope defining the symbol.
+     */
+    private static void resolveUse(UseInfo useInfo, Scope defScope, Symbol foundSymbol) {
+        TruffleString name = useInfo.name;
+        // cannot change a resolved scope
+        assert useInfo.def == null || useInfo.def == defScope;
+        assert name.equals(foundSymbol.getName());
+        assert defScope.hasSymbol(foundSymbol.getName());
+        if (useInfo.use != null) {
+            markSymbolUsed(foundSymbol, defScope, useInfo.use);
+        }
+        if (useInfo.innerUseScopes != null) {
+            for (Scope inner : useInfo.innerUseScopes) {
+                UseInfo innerUse = inner.getUseInfo(name);
+                if (innerUse == null) {
+                    innerUse = UseInfo.unresolved(name);
+                    innerUse.use = inner;
+                    inner.putUseInfo(name, innerUse);
+                }
+                innerUse.def = defScope;
+                innerUse.innerUseScopes = null;
+
+                markSymbolUsed(foundSymbol, defScope, inner);
+            }
+            useInfo.innerUseScopes = null;
+        }
+        useInfo.def = defScope;
+    }
+
+    private static void markSymbolUsed(Symbol foundSymbol, Scope defScope, Scope useScope) {
+        foundSymbol.setUsed();
+        if (defScope != useScope) {
+            boolean inClosure = isInClosure(defScope, useScope);
+            if (inClosure) {
+                foundSymbol.setClosedOver();
+                defScope.hasClosures = true;
+            } else {
+                foundSymbol.setUsedInInnerScope();
+            }
+        }
+    }
+
+    private static void markUseUnresolvable(UseInfo useInfo) {
+        TruffleString name = useInfo.name;
+        assert useInfo.def == null : name; // must not be resolved
+
+        if (useInfo.innerUseScopes != null) {
+            for (Scope inner : useInfo.innerUseScopes) {
+                UseInfo innerUse = inner.getUseInfo(name);
+                if (innerUse != null) {
+                    assert innerUse.def == null : name; // must not be resolved
+                    if (innerUse.use != null) {
+                        innerUse.use.removeUseInfo(name);
+                    }
+                }
+            }
+            useInfo.innerUseScopes = null;
+        }
+    }
+
+    /**
+     * Checks if there is a function boundary between the inner and outer scopes.
+     */
+    private static boolean isInClosure(Scope outer, Scope inner) {
+        assert inner != null && outer != null;
+        Scope current = inner;
+        while (current != null && current != outer) {
+            if (current.isFunctionTopScope()) {
+                // scopes cross a function boundary
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
+    }
+
+    /**
+     * Returns true if the scope has closed over variables.
+     */
+    public boolean hasClosures() {
+        return hasClosures;
+    }
+
+    /**
+     * Does this scope contain a direct eval.
+     */
+    public boolean hasEval() {
+        return hasEval;
+    }
+
+    /**
+     * Marks this scope as containing a direct eval.
+     */
+    public void setHasEval() {
+        if (!hasEval) {
+            hasEval = true;
+            setHasNestedEval();
+        }
+    }
+
+    /**
+     * Does this scope or any nested scopes contain a direct eval.
+     */
+    public boolean hasNestedEval() {
+        return hasNestedEval;
+    }
+
+    public void setHasNestedEval() {
+        // taint all parent scopes
+        for (Scope current = this; current != null; current = current.parent) {
+            if (current.hasNestedEval || current.closed) {
+                break;
+            }
+            current.hasNestedEval = true;
+        }
     }
 
     @Override
     public String toString() {
         StringJoiner names = new StringJoiner(",", "(", ")");
-        for (TruffleString name : symbols.getKeys()) {
-            names.add(name.toJavaStringUncached());
+        for (Symbol symbol : symbols.getValues()) {
+            String name = symbol.getName().toJavaStringUncached();
+            String mark = "";
+            if (symbol.isClosedOver()) {
+                mark += "'";
+            } else if (symbol.isUsedInInnerScope()) {
+                mark += "\"";
+            } else if (hasNestedEval) {
+                if (!symbol.isUsed()) {
+                    mark += "*";
+                }
+            } else if (!symbol.isUsed()) {
+                mark += "-";
+            }
+            names.add(name + mark);
         }
-        return "[" + getScopeKindName() + "Scope" + names + (parent == null ? "" : ", " + parent + "") + "]";
+
+        String usedNames = "";
+        if (uses != null) {
+            StringJoiner sj = new StringJoiner(",", ">(", ")").setEmptyValue("");
+            for (TruffleString use : uses.getKeys()) {
+                if (!symbols.containsKey(use)) {
+                    sj.add(use.toJavaStringUncached());
+                }
+            }
+            usedNames = sj.toString();
+        }
+
+        String taint = "";
+        if (hasClosures) {
+            taint += "'";
+        } else if (hasNestedEval) {
+            taint += "*";
+        }
+        return "[" + getScopeKindName() + "Scope" + taint + names + usedNames + (parent == null ? "" : ", " + parent + "") + "]";
     }
 
     private String getScopeKindName() {
@@ -459,11 +736,65 @@ public final class Scope {
             return "Catch";
         } else if (isSwitchBlockScope()) {
             return "Switch";
-        } else if (isClassScope()) {
+        } else if (isClassHeadScope()) {
             return "Class";
+        } else if (isClassBodyScope()) {
+            return "Private";
         } else if (isEvalScope()) {
             return "Eval";
         }
         return "";
+    }
+
+    /**
+     * Tracks use of symbol in the current and any nested scopes.
+     */
+    static final class UseInfo {
+        /** Used name. */
+        TruffleString name;
+        /** Resolved scope in which the symbol has been defined. Must be a parent scope. */
+        Scope def;
+        /** Local scope in which the symbol is used. */
+        Scope use;
+        /** Inner scopes with unresolved uses of the symbol. */
+        List<Scope> innerUseScopes;
+
+        private UseInfo(TruffleString name, Scope use, Scope def) {
+            this.name = Objects.requireNonNull(name);
+            this.use = use;
+            this.def = def;
+        }
+
+        static UseInfo resolvedLocal(TruffleString name, Scope local) {
+            return new UseInfo(name, local, local);
+        }
+
+        static UseInfo unresolved(TruffleString name) {
+            return new UseInfo(name, null, null);
+        }
+
+        /**
+         * Add an unresolved use of the symbol in an inner scope.
+         */
+        void addInnerUse(Scope useScope) {
+            if (innerUseScopes == null) {
+                innerUseScopes = new ArrayList<>();
+            }
+            // there should not be any duplicate scopes in the list
+            assert !innerUseScopes.stream().anyMatch(s -> s == useScope) : name;
+            innerUseScopes.add(useScope);
+        }
+
+        boolean isResolved() {
+            return !isUnresolved();
+        }
+
+        boolean isUnresolved() {
+            return def == null || innerUseScopes != null;
+        }
+
+        boolean hasInnerUse() {
+            return innerUseScopes != null;
+        }
     }
 }

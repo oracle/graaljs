@@ -54,7 +54,7 @@ import com.oracle.js.parser.ir.Scope;
  */
 class ParserContextClassNode extends ParserContextBaseNode implements ParserContextScopableNode {
 
-    private final Scope scope;
+    private Scope scope;
     protected EconomicMap<TruffleString, IdentNode> unresolvedPrivateIdentifiers;
 
     /**
@@ -64,12 +64,17 @@ class ParserContextClassNode extends ParserContextBaseNode implements ParserCont
      */
     ParserContextClassNode(Scope scope) {
         this.scope = scope;
-        assert scope.isClassScope();
+        assert scope.isClassHeadScope() || scope.isClassBodyScope();
     }
 
     @Override
     public Scope getScope() {
         return scope;
+    }
+
+    public void setScope(Scope scope) {
+        assert scope.isClassHeadScope() || scope.isClassBodyScope();
+        this.scope = scope;
     }
 
     /**

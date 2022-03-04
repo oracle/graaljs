@@ -189,6 +189,10 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         return scope;
     }
 
+    public Scope getClassHeadScope() {
+        return scope.isClassBodyScope() ? scope.getParent() : scope;
+    }
+
     public boolean hasInstanceFields() {
         return instanceFieldCount != 0;
     }

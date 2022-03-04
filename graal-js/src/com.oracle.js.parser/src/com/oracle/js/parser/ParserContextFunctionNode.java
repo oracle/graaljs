@@ -40,9 +40,11 @@
  */
 package com.oracle.js.parser;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import com.oracle.js.parser.ir.Block;
 import com.oracle.js.parser.ir.Expression;
@@ -107,6 +109,9 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     private Module module;
     private TruffleString internalName;
+
+    private List<Map.Entry<VarNode, Scope>> hoistedVarDeclarations;
+    private List<Map.Entry<VarNode, Scope>> hoistableBlockFunctionDeclarations;
 
     /**
      * @param token The token for the function
@@ -196,6 +201,20 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      */
     public boolean usesThis() {
         return getFlag(FunctionNode.USES_THIS) != 0;
+    }
+
+    /**
+     * @return true if the function uses super.
+     */
+    public boolean usesSuper() {
+        return getFlag(FunctionNode.USES_SUPER) != 0;
+    }
+
+    /**
+     * @return true if the function uses new.target.
+     */
+    public boolean usesNewTarget() {
+        return getFlag(FunctionNode.USES_NEW_TARGET) != 0;
     }
 
     /**
@@ -433,9 +452,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     private void initParameterBlock() {
-        if (parameterBlock == null) {
-            createParameterBlock();
-        }
+        createParameterBlock();
 
         if (parameters != null) {
             for (int i = 0; i < parameters.size(); i++) {
@@ -448,6 +465,10 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     public ParserContextBlockNode createParameterBlock() {
         assert bodyScope == null : "parameter block must be created before body block";
+        assert !isScriptOrModule();
+        if (parameterBlock != null) {
+            return parameterBlock;
+        }
         parameterBlock = new ParserContextBlockNode(token, Scope.createFunctionParameter(parentScope, getFlags()));
         parameterBlock.setFlag(Block.IS_PARAMETER_BLOCK | Block.IS_SYNTHETIC);
         return parameterBlock;
@@ -521,21 +542,54 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
                         getFlag(FunctionNode.DEFINES_ARGUMENTS | FunctionNode.IS_ARROW | FunctionNode.IS_CLASS_FIELD_INITIALIZER) == 0;
     }
 
+    private boolean hasFunctionSelf() {
+        return getFlag(FunctionNode.NO_FUNCTION_SELF) == 0 && !name.isEmpty();
+    }
+
+    /**
+     * Add a function-level binding if it is not shadowed by a parameter or var declaration.
+     */
+    private void putFunctionSymbolIfAbsent(TruffleString bindingName, int symbolFlags) {
+        if (hasParameterExpressions()) {
+            Scope parameterScope = getParameterScope();
+            if (!parameterScope.hasSymbol(bindingName) && !bodyScope.hasSymbol(bindingName)) {
+                parameterScope.putSymbol(new Symbol(bindingName, Symbol.IS_LET | symbolFlags | Symbol.HAS_BEEN_DECLARED));
+            }
+        } else {
+            if (!bodyScope.hasSymbol(bindingName)) {
+                bodyScope.putSymbol(new Symbol(bindingName, Symbol.IS_VAR | symbolFlags | Symbol.HAS_BEEN_DECLARED));
+            }
+        }
+    }
+
     public void finishBodyScope() {
-        assert !isScriptOrModule();
+        if (hoistableBlockFunctionDeclarations != null) {
+            declareHoistedBlockFunctionDeclarations();
+        }
+        if (isScriptOrModule()) {
+            return;
+        }
         if (needsArguments()) {
-            if (hasParameterExpressions()) {
-                Scope parameterScope = getParameterScope();
-                if (!parameterScope.hasSymbol(Parser.ARGUMENTS_NAME) && !bodyScope.hasSymbol(Parser.ARGUMENTS_NAME)) {
-                    parameterScope.putSymbol(new Symbol(Parser.ARGUMENTS_NAME, Symbol.IS_LET | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
-                }
-            } else {
-                if (!bodyScope.hasSymbol(Parser.ARGUMENTS_NAME)) {
-                    bodyScope.putSymbol(new Symbol(Parser.ARGUMENTS_NAME, Symbol.IS_VAR | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
-                }
+            putFunctionSymbolIfAbsent(Parser.ARGUMENTS_NAME, Symbol.IS_ARGUMENTS);
+        }
+        if (hasFunctionSelf()) {
+            putFunctionSymbolIfAbsent(name, Symbol.IS_FUNCTION_SELF);
+        }
+        if (!isArrow()) {
+            boolean needsThisForEval = hasEval() || hasArrowEval();
+            if (usesThis() || usesSuper() || needsThisForEval || getFlag(FunctionNode.HAS_DIRECT_SUPER) != 0) {
+                putFunctionSymbolIfAbsent(TokenType.THIS.getName(), Symbol.IS_THIS);
+            }
+            if (usesSuper() || (isMethod() && needsThisForEval)) {
+                putFunctionSymbolIfAbsent(TokenType.SUPER.getName(), Symbol.IS_SUPER);
+            }
+            if (usesNewTarget() || needsThisForEval) {
+                putFunctionSymbolIfAbsent(Parser.NEW_TARGET_NAME, Symbol.IS_NEW_TARGET);
             }
         }
         if (hasParameterExpressions()) {
+            // Lock the scopes to make sure we don't add any more symbols. Not strictly necessary.
+            bodyScope.close();
             getParameterScope().close();
         }
     }
@@ -568,6 +622,77 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     public long getYieldOrAwaitInParameters() {
         return yieldOrAwaitInParameters;
+    }
+
+    public void recordHoistedVarDeclaration(final VarNode varDecl, final Scope scope) {
+        assert !varDecl.isBlockScoped();
+        assert scope.isBlockScope();
+        if (hoistedVarDeclarations == null) {
+            hoistedVarDeclarations = new ArrayList<>();
+        }
+        hoistedVarDeclarations.add(new AbstractMap.SimpleImmutableEntry<>(varDecl, scope));
+    }
+
+    public VarNode verifyHoistedVarDeclarations() {
+        if (!hasHoistedVarDeclarations()) {
+            // nothing to do
+            return null;
+        }
+        for (Map.Entry<VarNode, Scope> entry : hoistedVarDeclarations) {
+            VarNode varDecl = entry.getKey();
+            Scope declScope = entry.getValue();
+            TruffleString varName = varDecl.getName().getName();
+            for (Scope current = declScope; current != bodyScope; current = current.getParent()) {
+                Symbol existing = current.getExistingSymbol(varName);
+                if (existing != null && existing.isBlockScoped()) {
+                    if (existing.isCatchParameter()) {
+                        continue; // B.3.5 VariableStatements in Catch Blocks
+                    }
+                    // let the caller throw the error
+                    return varDecl;
+                }
+            }
+        }
+        return null;
+    }
+
+    public boolean hasHoistedVarDeclarations() {
+        return hoistedVarDeclarations != null;
+    }
+
+    public void recordHoistableBlockFunctionDeclaration(final VarNode functionDeclaration, final Scope scope) {
+        assert functionDeclaration.isFunctionDeclaration() && functionDeclaration.isBlockScoped();
+        if (hoistableBlockFunctionDeclarations == null) {
+            hoistableBlockFunctionDeclarations = new ArrayList<>();
+        }
+        hoistableBlockFunctionDeclarations.add(new AbstractMap.SimpleImmutableEntry<>(functionDeclaration, scope));
+    }
+
+    public void declareHoistedBlockFunctionDeclarations() {
+        if (hoistableBlockFunctionDeclarations == null) {
+            // nothing to do
+            return;
+        }
+        next: for (Map.Entry<VarNode, Scope> entry : hoistableBlockFunctionDeclarations) {
+            VarNode functionDecl = entry.getKey();
+            Scope functionDeclScope = entry.getValue();
+            TruffleString varName = functionDecl.getName().getName();
+            for (Scope current = functionDeclScope.getParent(); current != null; current = current.getParent()) {
+                Symbol existing = current.getExistingSymbol(varName);
+                if (existing != null && (existing.isBlockScoped() && !existing.isCatchParameter())) {
+                    // lexical declaration found, do not hoist
+                    continue next;
+                }
+                if (current.isFunctionBodyScope()) {
+                    break;
+                }
+            }
+            // declare var (if not already declared) and hoist the function declaration
+            if (bodyScope.getExistingSymbol(varName) == null) {
+                bodyScope.putSymbol(new Symbol(varName, Symbol.IS_VAR | (bodyScope.isGlobalScope() ? Symbol.IS_GLOBAL : 0)));
+            }
+            functionDeclScope.getExistingSymbol(varName).setHoistedBlockFunctionDeclaration();
+        }
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.parser.env;
 
-import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
 
@@ -64,11 +63,6 @@ public final class WithEnvironment extends DerivedEnvironment {
 
     public Object getWithVarIdentifier() {
         return withVarIdentifier;
-    }
-
-    @Override
-    protected JSFrameSlot findBlockFrameSlot(Object name) {
-        return null;
     }
 
     @Override

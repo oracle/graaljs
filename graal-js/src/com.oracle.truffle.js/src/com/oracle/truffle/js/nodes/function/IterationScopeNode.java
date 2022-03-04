@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,7 +83,7 @@ public abstract class IterationScopeNode extends JavaScriptNode {
         @Override
         public VirtualFrame execute(VirtualFrame frame) {
             VirtualFrame prevFrame = JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
-            VirtualFrame nextFrame = Truffle.getRuntime().createVirtualFrame(frame.getArguments(), frameDescriptor).materialize();
+            VirtualFrame nextFrame = Truffle.getRuntime().createVirtualFrame(prevFrame.getArguments(), frameDescriptor).materialize();
             copyParentSlot(nextFrame, prevFrame);
             copySlots(nextFrame, prevFrame);
             frame.setObject(blockScopeSlot, nextFrame);

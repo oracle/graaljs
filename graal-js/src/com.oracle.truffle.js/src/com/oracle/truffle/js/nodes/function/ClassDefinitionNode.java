@@ -73,7 +73,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 /**
  * ES6 14.5.14 Runtime Semantics: ClassDefinitionEvaluation.
  */
-public final class ClassDefinitionNode extends JavaScriptNode implements FunctionNameHolder, ResumableNode.WithObjectState {
+public final class ClassDefinitionNode extends NamedEvaluationTargetNode implements FunctionNameHolder, ResumableNode.WithObjectState {
 
     private final JSContext context;
     @Child private JavaScriptNode constructorFunctionNode;
@@ -125,7 +125,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
 
     @Override
     public DynamicObject execute(VirtualFrame frame) {
-        return executeWithClassName(frame, null);
+        return executeWithName(frame, null);
     }
 
     @Override
@@ -136,14 +136,15 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
             resetState(frame, stateSlot);
             resumptionRecord = (ClassDefinitionResumptionRecord) maybeState;
         }
-        return executeWithClassName(frame, null, resumptionRecord, stateSlot);
+        return executeWithName(frame, null, resumptionRecord, stateSlot);
     }
 
-    public DynamicObject executeWithClassName(VirtualFrame frame, Object className) {
-        return executeWithClassName(frame, className, null, -1);
+    @Override
+    public DynamicObject executeWithName(VirtualFrame frame, Object className) {
+        return executeWithName(frame, className, null, -1);
     }
 
-    private DynamicObject executeWithClassName(VirtualFrame frame, Object className, ClassDefinitionResumptionRecord resumptionRecord, int stateSlot) {
+    private DynamicObject executeWithName(VirtualFrame frame, Object className, ClassDefinitionResumptionRecord resumptionRecord, int stateSlot) {
         DynamicObject proto;
         DynamicObject constructor;
         Object[][] instanceFields;

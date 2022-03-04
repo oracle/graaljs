@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,24 +40,22 @@
  */
 package com.oracle.truffle.js.nodes;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.StringJoiner;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.UnmodifiableEconomicSet;
 
+import com.oracle.js.parser.ir.Scope;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSFrameDescriptor {
 
     private final Object defaultValue;
-    private final List<JSFrameSlot> slots = new ArrayList<>();
     private final EconomicMap<Object, JSFrameSlot> identifierToSlotMap = EconomicMap.create();
     private int size;
     private FrameDescriptor frameDescriptor;
@@ -89,11 +87,12 @@ public final class JSFrameDescriptor {
             throw new IllegalArgumentException("duplicate frame slot: " + identifier);
         }
         int index = size;
-        JSFrameSlot slot = new JSFrameSlot(index, identifier, flags, kind);
+        Object slotName = toSlotName(identifier);
+        assert JSFrameSlot.isAllowedIdentifierType(slotName) : slotName.getClass();
+        JSFrameSlot slot = new JSFrameSlot(index, slotName, toSlotFlags(flags), kind);
         size++;
-        slots.add(slot);
         identifierToSlotMap.put(identifier, slot);
-        assert slots.size() == size && identifierToSlotMap.size() == size;
+        assert identifierToSlotMap.size() == size;
         return slot;
     }
 
@@ -133,10 +132,14 @@ public final class JSFrameDescriptor {
         return this.size;
     }
 
-    @SuppressWarnings("unchecked")
-    public UnmodifiableEconomicSet<Object> getIdentifiers() {
+    public boolean contains(Object identifier) {
         CompilerAsserts.neverPartOfCompilation();
-        return (UnmodifiableEconomicSet<Object>) identifierToSlotMap;
+        return identifierToSlotMap.containsKey(identifier);
+    }
+
+    public Iterable<Object> getIdentifiers() {
+        CompilerAsserts.neverPartOfCompilation();
+        return identifierToSlotMap.getKeys();
     }
 
     public FrameDescriptor toFrameDescriptor() {
@@ -146,7 +149,7 @@ public final class JSFrameDescriptor {
 
         FrameDescriptor.Builder b = FrameDescriptor.newBuilder(size);
         b.defaultValue(defaultValue);
-        for (JSFrameSlot slot : slots) {
+        for (JSFrameSlot slot : identifierToSlotMap.getValues()) {
             int index = b.addSlot(slot.getKind(), slot.getIdentifier(), slot.getInfo());
             assert slot.getIndex() == index;
         }
@@ -169,8 +172,64 @@ public final class JSFrameDescriptor {
         return desc;
     }
 
+    private static int toSlotFlags(int flags) {
+        // other bits not needed
+        return flags & JSFrameUtil.SYMBOL_FLAG_MASK;
+    }
+
+    private static Object toSlotName(Object identifier) {
+        if (identifier instanceof ScopedIdentifier) {
+            return ((ScopedIdentifier) identifier).identifier;
+        } else {
+            return identifier;
+        }
+    }
+
+    /**
+     * A scoped identifier is only equal to identifiers of the same scope.
+     */
+    public static Object scopedIdentifier(Object identifier, Scope scope) {
+        return new ScopedIdentifier(identifier, scope);
+    }
+
     @Override
     public String toString() {
-        return "FrameDescriptor[size=" + size + ", slots=" + slots.stream().map(slot -> slot.getIdentifier().toString()).collect(Collectors.joining(", ", "{", "}")) + "]";
+        StringJoiner slots = new StringJoiner(", ", "{", "}");
+        for (JSFrameSlot slot : identifierToSlotMap.getValues()) {
+            slots.add(slot.getIdentifier().toString());
+        }
+        return "FrameDescriptor[size=" + size + ", slots=" + slots + "]";
+    }
+
+    private static final class ScopedIdentifier {
+        final Object identifier;
+        final Scope scope;
+
+        ScopedIdentifier(Object identifier, Scope scope) {
+            this.identifier = Objects.requireNonNull(identifier);
+            this.scope = scope;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(identifier, scope);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof ScopedIdentifier)) {
+                return false;
+            }
+            ScopedIdentifier other = (ScopedIdentifier) obj;
+            return Objects.equals(identifier, other.identifier) && Objects.equals(scope, other.scope);
+        }
+
+        @Override
+        public String toString() {
+            return identifier.toString();
+        }
     }
 }

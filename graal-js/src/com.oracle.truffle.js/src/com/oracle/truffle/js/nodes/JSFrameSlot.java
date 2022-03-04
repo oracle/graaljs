@@ -46,8 +46,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.util.InternalSlotId;
 
 /**
  * Describes a JS frame slot. Used as a temporary representation during parsing.
@@ -62,7 +63,7 @@ public final class JSFrameSlot {
     public JSFrameSlot(int index, Object identifier, int flags, FrameSlotKind kind) {
         this.index = index;
         this.flags = flags;
-        this.identifier = Objects.requireNonNull(identifier instanceof String ? Strings.fromJavaString((String) identifier) : identifier);
+        this.identifier = Objects.requireNonNull(identifier);
         this.info = FrameSlotFlags.of(flags);
         this.kind = kind;
     }
@@ -135,6 +136,10 @@ public final class JSFrameSlot {
                         "]";
     }
 
+    public static boolean isAllowedIdentifierType(Object identifier) {
+        return identifier instanceof TruffleString || identifier instanceof InternalSlotId;
+    }
+
     /**
      * Interning cache for boxed integer representation of frame slot flags.
      *
@@ -151,7 +156,7 @@ public final class JSFrameSlot {
 
         static Integer of(int flags) {
             Integer boxed = Integer.valueOf(flags);
-            if (flags >= 128) {
+            if (flags < -128 || flags > 127) {
                 Integer cached = cachedFlags.get(boxed);
                 if (cached != null) {
                     return cached;

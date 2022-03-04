@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 
 /**
@@ -58,7 +57,7 @@ public class NamedEvaluationNode extends JavaScriptNode {
     protected NamedEvaluationNode(JavaScriptNode expressionNode, JavaScriptNode nameNode) {
         this.nameNode = nameNode;
         this.expressionNode = expressionNode;
-        this.setFunctionNameNode = JSNodeUtil.getWrappedNode(expressionNode) instanceof ClassDefinitionNode ? null : SetFunctionNameNode.create();
+        this.setFunctionNameNode = expressionNode instanceof NamedEvaluationTargetNode ? null : SetFunctionNameNode.create();
     }
 
     public static JavaScriptNode create(JavaScriptNode expressionNode, JavaScriptNode nameNode) {
@@ -68,10 +67,14 @@ public class NamedEvaluationNode extends JavaScriptNode {
     @Override
     public Object execute(VirtualFrame frame) {
         Object name = nameNode.execute(frame);
+        return executeWithName(frame, name);
+    }
+
+    public Object executeWithName(VirtualFrame frame, Object name) {
         Object function;
-        JavaScriptNode unwrappedExprNode;
-        if ((unwrappedExprNode = JSNodeUtil.getWrappedNode(expressionNode)) instanceof ClassDefinitionNode) {
-            function = ((ClassDefinitionNode) unwrappedExprNode).executeWithClassName(frame, name);
+        if (expressionNode instanceof NamedEvaluationTargetNode) {
+            assert setFunctionNameNode == null;
+            function = ((NamedEvaluationTargetNode) expressionNode).executeWithName(frame, name);
         } else {
             function = expressionNode.execute(frame);
             setFunctionNameNode.execute(function, name);

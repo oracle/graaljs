@@ -99,6 +99,7 @@ import static com.oracle.js.parser.TokenType.TEMPLATE_HEAD;
 import static com.oracle.js.parser.TokenType.TEMPLATE_MIDDLE;
 import static com.oracle.js.parser.TokenType.TEMPLATE_TAIL;
 import static com.oracle.js.parser.TokenType.TERNARY;
+import static com.oracle.js.parser.TokenType.THIS;
 import static com.oracle.js.parser.TokenType.VAR;
 import static com.oracle.js.parser.TokenType.VOID;
 import static com.oracle.js.parser.TokenType.WHILE;
@@ -114,7 +115,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.collections.Pair;
 
 import com.oracle.js.parser.ir.AccessNode;
@@ -175,6 +175,7 @@ import com.oracle.js.parser.ir.VarNode;
 import com.oracle.js.parser.ir.WhileNode;
 import com.oracle.js.parser.ir.WithNode;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Builds the IR.
@@ -188,7 +189,7 @@ public class Parser extends AbstractParser {
     private static final TruffleString CONSTRUCTOR_NAME = ParserStrings.constant("constructor");
     private static final TruffleString PRIVATE_CONSTRUCTOR_NAME = ParserStrings.constant("#constructor");
     private static final TruffleString PROTO_NAME = ParserStrings.constant("__proto__");
-    private static final TruffleString NEW_TARGET_NAME = ParserStrings.constant("new.target");
+    static final TruffleString NEW_TARGET_NAME = ParserStrings.constant("new.target");
     private static final TruffleString IMPORT_META_NAME = ParserStrings.constant("import.meta");
     private static final TruffleString PROTOTYPE_NAME = ParserStrings.constant("prototype");
     /** Function.prototype.apply method name. */
@@ -579,6 +580,8 @@ public class Parser extends AbstractParser {
      * parameter identifiers is expected to be parsed. Errors will be thrown and the error manager
      * will contain information if parsing should fail. This method is used to check if parameter
      * Strings passed to "Function" constructor is a valid or not.
+     *
+     * @see #parseFunctionBody
      */
     public void parseFormalParameterList() {
         try {
@@ -587,6 +590,7 @@ public class Parser extends AbstractParser {
 
             scanFirstToken();
 
+            assert lc.getCurrentScope() == null;
             formalParameterList(TokenType.EOF, false, false);
         } catch (final Exception e) {
             handleParseException(e);
@@ -599,6 +603,7 @@ public class Parser extends AbstractParser {
      * String passed to "Function" constructor is a valid function body or not.
      *
      * @return function node resulting from successful parse
+     * @see #parseFormalParameterList
      */
     public FunctionNode parseFunctionBody(boolean generator, boolean async) {
         try {
@@ -767,7 +772,7 @@ public class Parser extends AbstractParser {
                     final int functionLine, final Block body) {
         assert body.isFunctionBody() || (body.isParameterBlock() && ((BlockStatement) body.getLastStatement()).getBlock().isFunctionBody());
 
-        VarNode varNode = function.getBodyScope().verifyHoistedVarDeclarations();
+        VarNode varNode = function.verifyHoistedVarDeclarations();
         if (varNode != null) {
             throw error(ECMAErrors.getMessage(MSG_SYNTAX_ERROR_REDECLARE_VARIABLE, varNode.getName().getName().toJavaStringUncached()), varNode.getToken());
         }
@@ -896,8 +901,13 @@ public class Parser extends AbstractParser {
     }
 
     private IdentNode markArguments(final IdentNode ident) {
-        if (lc.getCurrentScope().inClassFieldInitializer()) {
+        Scope currentScope = lc.getCurrentScope();
+        if (currentScope.inClassFieldInitializer()) {
             throw error(AbstractParser.message(MSG_ARGUMENTS_IN_FIELD_INITIALIZER), ident.getToken());
+        }
+        if (currentScope.isGlobalScope()) {
+            // arguments has no special meaning in the global scope
+            return ident;
         }
         // skip over arrow functions, e.g. function f() { return (() => arguments.length)(); }
         lc.getCurrentNonArrowFunction().setFlag(FunctionNode.USES_ARGUMENTS);
@@ -1158,9 +1168,11 @@ public class Parser extends AbstractParser {
             addFunctionDeclarations(script);
         } finally {
             functionDeclarations = null;
+            script.finishBodyScope();
             restoreBlock(body);
             lc.pop(script);
         }
+
         body.setFlag(Block.NEEDS_SCOPE);
         final Block programBody = new Block(functionToken, finish, body.getFlags() | Block.IS_SYNTHETIC | Block.IS_BODY, body.getScope(), body.getStatements());
         script.setLastToken(token);
@@ -1662,11 +1674,11 @@ public class Parser extends AbstractParser {
      */
     private ClassNode classTail(int classLineNumber, long classToken, IdentNode className, boolean yield, boolean await) {
         assert isStrictMode;
-        Scope classScope = Scope.createClass(lc.getCurrentScope());
+        Scope classHeadScope = Scope.createClassHead(lc.getCurrentScope());
         if (className != null) {
-            classScope.putSymbol(new Symbol(className.getName(), Symbol.IS_CONST));
+            classHeadScope.putSymbol(new Symbol(className.getName(), Symbol.IS_CONST));
         }
-        ParserContextClassNode classNode = new ParserContextClassNode(classScope);
+        ParserContextClassNode classNode = new ParserContextClassNode(classHeadScope);
         lc.push(classNode);
         try {
             Expression classHeritage = null;
@@ -1685,6 +1697,9 @@ public class Parser extends AbstractParser {
             }
 
             expect(LBRACE);
+
+            Scope classScope = Scope.createClassBody(classHeadScope);
+            classNode.setScope(classScope);
 
             PropertyNode constructor = null;
             ArrayList<PropertyNode> classElements = new ArrayList<>();
@@ -1826,10 +1841,11 @@ public class Parser extends AbstractParser {
 
             if (hasPrivateMethods) {
                 // synthetic binding providing access to the constructor for private brand checks.
-                classScope.putSymbol(new Symbol(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME, Symbol.IS_CONST | Symbol.HAS_BEEN_DECLARED));
+                classScope.putSymbol(new Symbol(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME, Symbol.IS_CONST | Symbol.IS_PRIVATE_NAME | Symbol.HAS_BEEN_DECLARED));
             }
 
             classScope.close();
+            classHeadScope.close();
             return new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements, classScope,
                             instanceFieldCount, staticElementCount, hasPrivateMethods, hasPrivateInstanceMethods);
         } finally {
@@ -1883,6 +1899,7 @@ public class Parser extends AbstractParser {
     private IdentNode privateIdentifierUse() {
         IdentNode privateIdent = parsePrivateIdentifier();
 
+        Scope currentScope = lc.getCurrentScope();
         ParserContextClassNode currentClass = lc.getCurrentClass();
         // In a class: try to eagerly resolve the private identifier; if it is not found,
         // defer resolving until the end of the class declaration.
@@ -1890,10 +1907,12 @@ public class Parser extends AbstractParser {
         if (currentClass != null) {
             currentClass.usePrivateName(privateIdent);
         } else {
-            if (!lc.getCurrentScope().findPrivateName(privateIdent.getName())) {
+            if (!currentScope.findPrivateName(privateIdent.getName())) {
                 throw error(AbstractParser.message(MSG_INVALID_PRIVATE_IDENT), privateIdent.getToken());
             }
         }
+
+        currentScope.addIdentifierReference(privateIdent.getName());
 
         return privateIdent;
     }
@@ -2059,7 +2078,9 @@ public class Parser extends AbstractParser {
         try {
             initializer = assignmentExpression(true, false, false);
         } finally {
+            function.finishBodyScope();
             restoreBlock(body);
+            lc.propagateFunctionFlags();
             lc.pop(function);
         }
 
@@ -2489,7 +2510,7 @@ public class Parser extends AbstractParser {
                     assert !scope.isFunctionBodyScope() && !scope.isFunctionParameterScope();
                     // If we already find a conflicting declaration, we can skip this step.
                     if (varScope.getExistingSymbol(name) == null && !scope.getParent().isLexicallyDeclaredName(name, true, true)) {
-                        varScope.recordHoistableBlockFunctionDeclaration(varNode, scope);
+                        function.recordHoistableBlockFunctionDeclaration(varNode, scope);
                     }
                 }
             }
@@ -2519,7 +2540,7 @@ public class Parser extends AbstractParser {
              */
             if (scope != varScope) {
                 assert scope.isBlockScope();
-                varScope.recordHoistedVarDeclaration(varNode, scope);
+                function.recordHoistedVarDeclaration(varNode, scope);
             }
         }
     }
@@ -2568,7 +2589,9 @@ public class Parser extends AbstractParser {
     }
 
     private IdentNode identifierReference(boolean yield, boolean await) {
-        return identifier(yield, await, CONTEXT_IDENTIFIER_REFERENCE, false);
+        IdentNode ident = identifier(yield, await, CONTEXT_IDENTIFIER_REFERENCE, false);
+        addIdentifierReference(ident.getName());
+        return ident;
     }
 
     private IdentNode labelIdentifier(boolean yield, boolean await) {
@@ -2580,7 +2603,16 @@ public class Parser extends AbstractParser {
     }
 
     private IdentNode bindingIdentifier(boolean yield, boolean await, String contextString) {
-        return identifier(yield, await, contextString, true);
+        IdentNode ident = identifier(yield, await, contextString, true);
+        addIdentifierReference(ident.getName());
+        return ident;
+    }
+
+    private void addIdentifierReference(TruffleString name) {
+        Scope currentScope = lc.getCurrentScope();
+        if (currentScope != null) { // can be null when parsing/verifying a parameter list.
+            currentScope.addIdentifierReference(name);
+        }
     }
 
     private Expression bindingPattern(boolean yield, boolean await) {
@@ -3679,39 +3711,53 @@ public class Parser extends AbstractParser {
                 final long catchToken = token;
                 next();
 
-                if (type == LBRACE && ES2019_OPTIONAL_CATCH_BINDING) {
-                    catchBlocks.add(catchBlock(yield, await, catchToken, catchLine, null, null, null));
-                    break;
+                boolean optionalCatchBinding = type == LBRACE && ES2019_OPTIONAL_CATCH_BINDING;
+                if (!optionalCatchBinding) {
+                    expect(LPAREN);
                 }
 
-                expect(LPAREN);
-
-                final Expression catchParameter = bindingIdentifierOrPattern(yield, await, CONTEXT_CATCH_PARAMETER);
-                final IdentNode exception;
-                final Expression pattern;
-                if (catchParameter instanceof IdentNode) {
-                    exception = ((IdentNode) catchParameter).setIsCatchParameter();
-                    pattern = null;
-                } else {
-                    exception = new IdentNode(Token.recast(catchParameter.getToken(), IDENT), catchParameter.getFinish(), ERROR_BINDING_NAME).setIsCatchParameter();
-                    pattern = catchParameter;
-                }
-
-                // Nashorn extension: catch clause can have optional
-                // condition. So, a single try can have more than one
-                // catch clause each with it's own condition.
+                final ParserContextBlockNode catchBlock = newBlock(Scope.createCatchParameter(lc.getCurrentScope()));
                 final Expression ifExpression;
-                if (env.syntaxExtensions && type == IF) {
-                    next();
-                    // Get the exception condition.
-                    ifExpression = expression(yield, await);
-                } else {
-                    ifExpression = null;
+                try {
+                    final IdentNode exception;
+                    final Expression pattern;
+                    if (optionalCatchBinding) {
+                        exception = null;
+                        pattern = null;
+                        ifExpression = null;
+                    } else {
+                        if (isBindingIdentifier() || !(ES6_DESTRUCTURING && isES6())) {
+                            pattern = null;
+                            IdentNode catchParameter = bindingIdentifier(yield, await, CONTEXT_CATCH_PARAMETER);
+                            exception = catchParameter.setIsCatchParameter();
+                        } else {
+                            pattern = bindingPattern(yield, await);
+                            exception = new IdentNode(Token.recast(pattern.getToken(), IDENT), pattern.getFinish(), ERROR_BINDING_NAME).setIsCatchParameter();
+                        }
+
+                        // Nashorn extension: catch clause can have optional
+                        // condition. So, a single try can have more than one
+                        // catch clause each with it's own condition.
+                        if (env.syntaxExtensions && type == IF) {
+                            next();
+                            // Get the exception condition.
+                            ifExpression = expression(yield, await);
+                        } else {
+                            ifExpression = null;
+                        }
+
+                        expect(RPAREN);
+                    }
+
+                    final CatchNode catchNode = catchBody(yield, await, catchToken, catchLine, exception, pattern, ifExpression);
+                    appendStatement(catchNode);
+                } finally {
+                    restoreBlock(catchBlock);
                 }
 
-                expect(RPAREN);
-
-                catchBlocks.add(catchBlock(yield, await, catchToken, catchLine, exception, pattern, ifExpression));
+                int catchFinish = Math.max(finish, Token.descPosition(catchBlock.getToken()));
+                Block catchBlockNode = new Block(catchBlock.getToken(), catchFinish, catchBlock.getFlags() | Block.IS_SYNTHETIC, catchBlock.getScope(), catchBlock.getStatements());
+                catchBlocks.add(catchBlockNode);
 
                 // If unconditional catch then should to be the end.
                 if (ifExpression == null) {
@@ -3743,36 +3789,29 @@ public class Parser extends AbstractParser {
         appendStatement(new BlockStatement(startLine, new Block(tryToken, finish, outer.getFlags() | Block.IS_SYNTHETIC, outer.getScope(), outer.getStatements())));
     }
 
-    private Block catchBlock(boolean yield, boolean await, long catchToken, int catchLine, IdentNode exception, Expression pattern, Expression ifExpression) {
-        final ParserContextBlockNode catchBlock = newBlock(Scope.createCatchParameter(lc.getCurrentScope()));
-        try {
-            if (exception != null) {
-                VarNode exceptionVar = new VarNode(catchLine, Token.recast(exception.getToken(), LET), exception.getFinish(), exception.setIsDeclaredHere(), null, VarNode.IS_LET);
-                appendStatement(exceptionVar);
-                declareVar(catchBlock.getScope(), exceptionVar);
-                if (pattern != null) {
-                    verifyDestructuringBindingPattern(pattern, new Consumer<IdentNode>() {
-                        @Override
-                        public void accept(IdentNode identNode) {
-                            verifyStrictIdent(identNode, CONTEXT_CATCH_PARAMETER);
-                            final int varFlags = VarNode.IS_LET | VarNode.IS_DESTRUCTURING;
-                            final VarNode var = new VarNode(catchLine, Token.recast(identNode.getToken(), LET), identNode.getFinish(), identNode.setIsDeclaredHere(), null, varFlags);
-                            appendStatement(var);
-                            declareVar(catchBlock.getScope(), var);
-                        }
-                    });
-                }
+    private CatchNode catchBody(boolean yield, boolean await, long catchToken, int catchLine, IdentNode exception, Expression pattern, Expression ifExpression) {
+        if (exception != null) {
+            final Scope catchScope = lc.getCurrentScope();
+            assert catchScope.isCatchParameterScope();
+            VarNode exceptionVar = new VarNode(catchLine, Token.recast(exception.getToken(), LET), exception.getFinish(), exception.setIsDeclaredHere(), null, VarNode.IS_LET);
+            appendStatement(exceptionVar);
+            declareVar(catchScope, exceptionVar);
+            if (pattern != null) {
+                verifyDestructuringBindingPattern(pattern, new Consumer<IdentNode>() {
+                    @Override
+                    public void accept(IdentNode identNode) {
+                        verifyStrictIdent(identNode, CONTEXT_CATCH_PARAMETER);
+                        final int varFlags = VarNode.IS_LET | VarNode.IS_DESTRUCTURING;
+                        final VarNode var = new VarNode(catchLine, Token.recast(identNode.getToken(), LET), identNode.getFinish(), identNode.setIsDeclaredHere(), null, varFlags);
+                        appendStatement(var);
+                        declareVar(catchScope, var);
+                    }
+                });
             }
-
-            // Get CATCH body.
-            final Block catchBody = getBlock(yield, await, true);
-            final CatchNode catchNode = new CatchNode(catchLine, catchToken, finish, exception, pattern, ifExpression, catchBody, false);
-            appendStatement(catchNode);
-        } finally {
-            restoreBlock(catchBlock);
         }
-        int catchFinish = Math.max(finish, Token.descPosition(catchBlock.getToken()));
-        return new Block(catchBlock.getToken(), catchFinish, catchBlock.getFlags() | Block.IS_SYNTHETIC, catchBlock.getScope(), catchBlock.getStatements());
+
+        final Block catchBody = getBlock(yield, await, true);
+        return new CatchNode(catchLine, catchToken, finish, exception, pattern, ifExpression, catchBody, false);
     }
 
     /**
@@ -3818,17 +3857,19 @@ public class Parser extends AbstractParser {
         final long primaryToken = token;
 
         switch (type) {
-            case THIS:
+            case THIS: {
                 final TruffleString name = type.getName();
                 next();
                 markThis();
                 return new IdentNode(primaryToken, finish, name).setIsThis();
-            case IDENT:
+            }
+            case IDENT: {
                 final IdentNode ident = identifierReference(yield, await);
                 if (ident == null) {
                     break;
                 }
                 return detectSpecialProperty(ident);
+            }
             case NON_OCTAL_DECIMAL:
                 if (isStrictMode) {
                     throw error(AbstractParser.message(MSG_STRICT_NO_NONOCTALDECIMAL), token);
@@ -4072,23 +4113,23 @@ public class Parser extends AbstractParser {
                     final FunctionNode prevGetter = existingProperty.getGetter();
                     final FunctionNode prevSetter = existingProperty.getSetter();
 
-                    if (!isES6()) {
-                        checkPropertyRedefinition(property, value, getter, setter, prevValue, prevGetter, prevSetter);
-                    } else {
+                    if (isES6()) {
                         if (property.isProto() && existingProperty.isProto()) {
                             throw error(AbstractParser.message(MSG_MULTIPLE_PROTO_KEY), property.getToken());
                         }
-                    }
+                    } else {
+                        checkPropertyRedefinition(property, value, getter, setter, prevValue, prevGetter, prevSetter);
 
-                    if (!isES6() && value == null && prevValue == null) {
-                        // Update the map with existing (merged accessor) properties
-                        // for the purpose of checkPropertyRedefinition() above
-                        if (getter != null) {
-                            assert prevGetter != null || prevSetter != null;
-                            map.put(key, existingProperty.setGetter(getter));
-                        } else if (setter != null) {
-                            assert prevGetter != null || prevSetter != null;
-                            map.put(key, existingProperty.setSetter(setter));
+                        if (value == null && prevValue == null) {
+                            // Update the map with existing (merged accessor) properties
+                            // for the purpose of checkPropertyRedefinition() above
+                            if (getter != null) {
+                                assert prevGetter != null || prevSetter != null;
+                                map.put(key, existingProperty.setGetter(getter));
+                            } else if (setter != null) {
+                                assert prevGetter != null || prevSetter != null;
+                                map.put(key, existingProperty.setSetter(setter));
+                            }
                         }
                     }
                     break;
@@ -4280,17 +4321,19 @@ public class Parser extends AbstractParser {
         } else if (isIdentifier && (type == COMMARIGHT || type == RBRACE || type == ASSIGN) && isES6()) {
             IdentNode ident = (IdentNode) propertyName;
             verifyIdent(ident, yield, await);
-            IdentNode identInValue = createIdentNode(propertyToken, finish, lexer.stringIntern(ident.getPropertyName()));
+            ident = createIdentNode(propertyToken, finish, lexer.stringIntern(ident.getPropertyName()));
+            // IdentifierReference or CoverInitializedName
             if (type == ASSIGN && ES6_DESTRUCTURING) {
                 // If not destructuring, this is a SyntaxError
                 long assignToken = token;
                 coverInitializedName = true;
                 next();
                 Expression rhs = assignmentExpression(true, yield, await);
-                propertyValue = verifyAssignment(assignToken, identInValue, rhs, true);
+                propertyValue = verifyAssignment(assignToken, ident, rhs, true);
             } else {
-                propertyValue = detectSpecialProperty(identInValue);
+                propertyValue = detectSpecialProperty(ident);
             }
+            lc.getCurrentScope().addIdentifierReference(ident.getName());
         } else {
             expect(COLON);
 
@@ -4785,10 +4828,7 @@ public class Parser extends AbstractParser {
                         switch (type) {
                             case LBRACKET:
                             case PERIOD:
-                                ParserContextFunctionNode currentFunction = lc.getCurrentNonArrowFunction();
-                                if (currentFunction.isMethod()) {
-                                    currentFunction.setFlag(FunctionNode.USES_SUPER);
-                                }
+                                markSuperProperty();
                                 isSuper = true;
                                 break;
                             case LPAREN:
@@ -4972,9 +5012,13 @@ public class Parser extends AbstractParser {
         boolean first = true;
         boolean hasCoverInitializedName = false;
 
-        ParserContextFunctionNode cover = coverAsyncArrow ? createParserContextArrowFunctionNode(startToken, startLine, true, true) : null;
+        ParserContextFunctionNode cover = null;
+        ParserContextBlockNode parameterBlock = null;
         if (coverAsyncArrow) {
+            cover = createParserContextArrowFunctionNode(startToken, startLine, true, true);
             lc.push(cover);
+            parameterBlock = cover.createParameterBlock();
+            lc.push(parameterBlock);
         }
 
         try {
@@ -5010,6 +5054,7 @@ public class Parser extends AbstractParser {
             }
         } finally {
             if (coverAsyncArrow) {
+                lc.pop(parameterBlock);
                 lc.pop(cover);
             }
         }
@@ -5131,7 +5176,10 @@ public class Parser extends AbstractParser {
             next();
         }
 
+        assert !(isDeclaration && !isDefault) || isStatement; // sanity check
+
         IdentNode name = null;
+        boolean declared = isDeclaration;
 
         if (isBindingIdentifier()) {
             boolean yield = (!isDeclaration && generator) || (isDeclaration && isYield);
@@ -5143,7 +5191,10 @@ public class Parser extends AbstractParser {
             // are not allowed. But if we are reparsing then anon function
             // statement is possible - because it was used as function
             // expression in surrounding code.
-            if (!env.syntaxExtensions && reparsedFunction == null) {
+            if (env.syntaxExtensions) {
+                // statement is treated like an anonymous function expression, not a declaration.
+                declared = false;
+            } else if (reparsedFunction == null) {
                 expect(IDENT);
             }
         }
@@ -5151,14 +5202,20 @@ public class Parser extends AbstractParser {
         expect(LPAREN);
 
         boolean isAnonymous = name == null;
+        // Function declarations must be named, with the exception of default exports.
+        assert !declared || (!isAnonymous || isDefault);
+
         int functionFlags = (generator ? FunctionNode.IS_GENERATOR : 0) |
                         (async ? FunctionNode.IS_ASYNC : 0) |
-                        (isAnonymous ? FunctionNode.IS_ANONYMOUS : 0);
+                        (isAnonymous ? FunctionNode.IS_ANONYMOUS : 0) |
+                        (declared ? FunctionNode.IS_DECLARED : 0) |
+                        ((isStatement && !isAnonymous) ? FunctionNode.IS_STATEMENT : 0);
         final ParserContextFunctionNode functionNode = createParserContextFunctionNode(name, functionToken, functionFlags, functionLine);
         if (isAnonymous) {
             // name is null, generate anonymous name
             functionNode.setInternalName(getDefaultFunctionName());
         }
+
         lc.push(functionNode);
 
         Block functionBody;
@@ -5187,17 +5244,10 @@ public class Parser extends AbstractParser {
             lc.pop(functionNode);
         }
 
-        if (isStatement && !isAnonymous) {
-            functionNode.setFlag(FunctionNode.IS_STATEMENT);
-            if (topLevel || useBlockScope() || (!isStrictMode && env.functionStatement == ScriptEnvironment.FunctionStatementBehavior.ACCEPT)) {
-                functionNode.setFlag(FunctionNode.IS_DECLARED);
-            } else if (isStrictMode) {
-                throw error(JSErrorType.SyntaxError, AbstractParser.message(MSG_STRICT_NO_FUNC_DECL_HERE), functionToken);
-            } else if (env.functionStatement == ScriptEnvironment.FunctionStatementBehavior.ERROR) {
-                throw error(JSErrorType.SyntaxError, AbstractParser.message(MSG_NO_FUNC_DECL_HERE), functionToken);
-            } else if (env.functionStatement == ScriptEnvironment.FunctionStatementBehavior.WARNING) {
-                warning(JSErrorType.SyntaxError, AbstractParser.message(MSG_NO_FUNC_DECL_HERE_WARN), functionToken);
-            }
+        if ((isStatement && !isAnonymous) && !(topLevel || useBlockScope()) &&
+                        (isStrictMode || env.functionStatement != ScriptEnvironment.FunctionStatementBehavior.ACCEPT)) {
+            // For compatibility with Nashorn, we report the error after parsing the body.
+            reportIllegalES5BlockLevelFunctionDeclaration(functionToken);
         }
 
         verifyParameterList(functionNode);
@@ -5265,6 +5315,17 @@ public class Parser extends AbstractParser {
                 }
                 parametersSet.add(parameterName);
             }
+        }
+    }
+
+    private void reportIllegalES5BlockLevelFunctionDeclaration(long functionToken) {
+        assert !isES6();
+        if (isStrictMode) {
+            throw error(JSErrorType.SyntaxError, AbstractParser.message(MSG_STRICT_NO_FUNC_DECL_HERE), functionToken);
+        } else if (env.functionStatement == ScriptEnvironment.FunctionStatementBehavior.ERROR) {
+            throw error(JSErrorType.SyntaxError, AbstractParser.message(MSG_NO_FUNC_DECL_HERE), functionToken);
+        } else if (env.functionStatement == ScriptEnvironment.FunctionStatementBehavior.WARNING) {
+            warning(JSErrorType.SyntaxError, AbstractParser.message(MSG_NO_FUNC_DECL_HERE_WARN), functionToken);
         }
     }
 
@@ -5940,11 +6001,18 @@ public class Parser extends AbstractParser {
         assert type == LPAREN;
         next();
 
+        boolean canBeArrowParameterList = true;
         if (ES6_ARROW_FUNCTION && isES6() && type == RPAREN) {
             // ()
             nextOrEOL();
             expectDontAdvance(ARROW);
             return new ExpressionList(primaryToken, finish, Collections.emptyList());
+        } else if (type == FUNCTION || type == LPAREN) {
+            // Token after `(` is not valid in an arrow parameter list; therefore, it can only be a
+            // ParenthesizedExpression and we can parse it directly without the cover grammar.
+            // For simplicity, we only handle a few common cases here.
+            // e.g.: `(function(){})`, (()=>{}), ((42)), etc.
+            canBeArrowParameterList = false;
         }
 
         Expression assignmentExpression = null;
@@ -5952,17 +6020,19 @@ public class Parser extends AbstractParser {
         boolean hasRestParameter = false;
         long commaToken = 0L;
 
-        ParserContextFunctionNode cover = createParserContextArrowFunctionNode(primaryToken, startLine, false, true);
-        lc.push(cover);
+        ParserContextFunctionNode coverFunction = null;
+        ParserContextBlockNode parameterBlock = null;
+        if (canBeArrowParameterList) {
+            coverFunction = lc.push(createParserContextArrowFunctionNode(primaryToken, startLine, false, true));
+            parameterBlock = lc.push(coverFunction.createParameterBlock());
+        }
         try {
             while (true) {
                 if (ES6_ARROW_FUNCTION && ES6_REST_PARAMETER && isES6() && type == ELLIPSIS) {
                     // (a, b, ...rest) is not a valid expression, but a valid arrow function
-                    // parameter
-                    // list. Since the rest parameter is always last, we know that the cover
-                    // expression
-                    // has to end here with a binding identifier/pattern followed by RPAREN and
-                    // ARROW.
+                    // parameter list. Since the rest parameter is always last, we know that the
+                    // cover expression has to end here with a binding identifier or pattern
+                    // followed by `)` [NoLineTerminator] `=>`.
                     assignmentExpression = arrowFunctionRestParameter(assignmentExpression, commaToken, yield, await);
                     hasRestParameter = true;
                     break;
@@ -5971,8 +6041,9 @@ public class Parser extends AbstractParser {
                     break;
                 }
 
-                Expression rhs = assignmentExpression(true, yield, await, true);
-                hasCoverInitializedName = hasCoverInitializedName || hasCoverInitializedName(rhs);
+                Expression rhs = assignmentExpression(true, yield, await, canBeArrowParameterList);
+                hasCoverInitializedName = canBeArrowParameterList && (hasCoverInitializedName || hasCoverInitializedName(rhs));
+                assert canBeArrowParameterList || !hasCoverInitializedName(rhs);
 
                 if (assignmentExpression == null) {
                     assignmentExpression = rhs;
@@ -5988,7 +6059,10 @@ public class Parser extends AbstractParser {
                 next();
             }
         } finally {
-            lc.pop(cover);
+            if (canBeArrowParameterList) {
+                lc.pop(parameterBlock);
+                lc.pop(coverFunction);
+            }
         }
 
         boolean arrowAhead = lookaheadIsArrow();
@@ -6005,13 +6079,15 @@ public class Parser extends AbstractParser {
             expect(RPAREN);
         }
 
-        if (arrowAhead) {
-            // arrow parameter list
-            commitArrowHead(cover);
-        } else {
-            // parenthesized expression
-            assignmentExpression.makeParenthesized(Token.descPosition(primaryToken), finish);
-            revertArrowHead(cover);
+        if (canBeArrowParameterList) {
+            if (arrowAhead) {
+                // arrow parameter list
+                commitArrowHead(coverFunction);
+            } else {
+                // parenthesized expression
+                assignmentExpression.makeParenthesized(Token.descPosition(primaryToken), finish);
+                revertArrowHead(coverFunction);
+            }
         }
 
         return assignmentExpression;
@@ -6026,6 +6102,7 @@ public class Parser extends AbstractParser {
     }
 
     private void revertArrowHead(ParserContextFunctionNode cover) {
+        cover.getParameterScope().kill();
         // merge flags gathered during expression parsing into the current function's flags.
         lc.setCurrentFunctionFlag(cover.getFlags() & FunctionNode.ARROW_HEAD_FLAGS);
     }
@@ -6737,44 +6814,38 @@ public class Parser extends AbstractParser {
             module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, specifier));
         } else {
             // import ImportClause FromClause ;
-            List<ImportEntry> importEntries;
-            ImportClauseNode importClause;
+            final List<ImportEntry> importEntries = new ArrayList<>();
+            final ImportClauseNode importClause;
             final long startToken = token;
             if (type == MUL) {
                 NameSpaceImportNode namespaceNode = nameSpaceImport();
                 importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, namespaceNode);
-                importEntries = Collections.singletonList(
-                                ImportEntry.importStarAsNameSpaceFrom(namespaceNode.getBindingIdentifier().getName()));
+                importEntries.add(ImportEntry.importStarAsNameSpaceFrom(namespaceNode.getBindingIdentifier().getName()));
             } else if (type == LBRACE) {
-                NamedImportsNode namedImportsNode = namedImports();
+                NamedImportsNode namedImportsNode = namedImports(importEntries);
                 importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, namedImportsNode);
-                importEntries = convert(namedImportsNode);
             } else if (isBindingIdentifier()) {
                 // ImportedDefaultBinding
                 IdentNode importedDefaultBinding = importedBindingIdentifier();
                 declareImportBinding(importedDefaultBinding);
                 ImportEntry defaultImport = ImportEntry.importDefault(importedDefaultBinding.getName());
+                importEntries.add(defaultImport);
 
                 if (type == COMMARIGHT) {
                     next();
                     if (type == MUL) {
                         NameSpaceImportNode namespaceNode = nameSpaceImport();
                         importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, importedDefaultBinding, namespaceNode);
-                        importEntries = new ArrayList<>(2);
-                        importEntries.add(defaultImport);
                         importEntries.add(ImportEntry.importStarAsNameSpaceFrom(namespaceNode.getBindingIdentifier().getName()));
                     } else if (type == LBRACE) {
-                        NamedImportsNode namedImportsNode = namedImports();
+                        NamedImportsNode namedImportsNode = namedImports(importEntries);
                         importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, importedDefaultBinding, namedImportsNode);
-                        importEntries = convert(namedImportsNode);
-                        importEntries.add(0, defaultImport);
                     } else {
                         // expected NameSpaceImport or NamedImports
                         throw error(AbstractParser.message(MSG_EXPECTED_NAMED_IMPORT));
                     }
                 } else {
                     importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, importedDefaultBinding);
-                    importEntries = Collections.singletonList(defaultImport);
                 }
             } else {
                 // expected ImportClause or ModuleSpecifier
@@ -6896,7 +6967,7 @@ public class Parser extends AbstractParser {
      *     BindingIdentifier
      * </pre>
      */
-    private NamedImportsNode namedImports() {
+    private NamedImportsNode namedImports(List<ImportEntry> importEntries) {
         final long startToken = token;
         assert type == LBRACE;
         next();
@@ -6910,11 +6981,13 @@ public class Parser extends AbstractParser {
                 IdentNode localName = importedBindingIdentifier();
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importName));
                 declareImportBinding(localName);
+                importEntries.add(ImportEntry.importSpecifier(importName.getName(), localName.getName()));
             } else if (bindingIdentifier) {
                 verifyIdent(importName, false, false);
                 verifyStrictIdent(importName, CONTEXT_IMPORTED_BINDING);
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, importName, null));
                 declareImportBinding(importName);
+                importEntries.add(ImportEntry.importSpecifier(importName.getName()));
             } else {
                 // expected BindingIdentifier
                 throw error(AbstractParser.message(MSG_EXPECTED_BINDING_IDENTIFIER), nameToken);
@@ -7033,9 +7106,9 @@ public class Parser extends AbstractParser {
                 }
                 if (hoistableDeclaration) {
                     FunctionNode functionNode = (FunctionNode) assignmentExpression;
+                    assert functionNode.isDeclared();
                     if (!functionNode.isAnonymous()) {
                         ident = functionNode.getIdent();
-                        assignmentExpression = functionNode.setFlag(null, FunctionNode.IS_DECLARED);
                     }
                 }
                 if (ident == null) {
@@ -7158,6 +7231,7 @@ public class Parser extends AbstractParser {
 
     private void markEval() {
         lc.setCurrentFunctionFlag(FunctionNode.HAS_EVAL | FunctionNode.HAS_SCOPE_BLOCK);
+        lc.getCurrentScope().setHasEval();
     }
 
     private void prependStatement(final Statement statement) {
@@ -7166,6 +7240,15 @@ public class Parser extends AbstractParser {
 
     private void appendStatement(final Statement statement) {
         lc.appendStatementToCurrentNode(statement);
+    }
+
+    private void markSuperProperty() {
+        ParserContextFunctionNode currentFunction = lc.getCurrentNonArrowFunction();
+        if (currentFunction.isMethod()) {
+            currentFunction.setFlag(FunctionNode.USES_SUPER);
+            addIdentifierReference(SUPER.getName());
+            addIdentifierReference(THIS.getName());
+        }
     }
 
     private void markSuperCall() {
@@ -7178,6 +7261,7 @@ public class Parser extends AbstractParser {
 
     private void markThis() {
         lc.setCurrentFunctionFlag(FunctionNode.USES_THIS);
+        addIdentifierReference(THIS.getName());
     }
 
     private void markNewTarget() {
@@ -7189,6 +7273,7 @@ public class Parser extends AbstractParser {
         if (!fn.isProgram()) {
             fn.setFlag(FunctionNode.USES_NEW_TARGET);
         }
+        addIdentifierReference(NEW_TARGET_NAME);
     }
 
     private static boolean markApplyArgumentsCall(final ParserContext lc, List<Expression> arguments) {
@@ -7280,17 +7365,5 @@ public class Parser extends AbstractParser {
 
             return null;
         }
-    }
-
-    private static List<ImportEntry> convert(NamedImportsNode namedImportsNode) {
-        List<ImportEntry> importEntries = new ArrayList<>(namedImportsNode.getImportSpecifiers().size());
-        for (ImportSpecifierNode s : namedImportsNode.getImportSpecifiers()) {
-            if (s.getIdentifier() != null) {
-                importEntries.add(ImportEntry.importSpecifier(s.getIdentifier().getName(), s.getBindingIdentifier().getName()));
-            } else {
-                importEntries.add(ImportEntry.importSpecifier(s.getBindingIdentifier().getName()));
-            }
-        }
-        return importEntries;
     }
 }

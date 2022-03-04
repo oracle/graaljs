@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,23 +40,45 @@
  */
 package com.oracle.truffle.js.parser.env;
 
+import com.oracle.js.parser.ir.Scope;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.js.nodes.JSFrameDescriptor;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 
+/**
+ * PrivateEnvironment of a class.
+ */
 public final class PrivateEnvironment extends DerivedEnvironment {
 
-    public PrivateEnvironment(Environment parent, NodeFactory factory, JSContext context) {
+    private final Scope scope;
+
+    public PrivateEnvironment(Environment parent, NodeFactory factory, JSContext context, Scope scope) {
         super(parent, factory, context);
+        this.scope = scope;
     }
 
     @Override
-    protected JSFrameSlot findBlockFrameSlot(Object name) {
-        JSFrameSlot slot = getBlockFrameDescriptor().findFrameSlot(name);
+    public JSFrameSlot findBlockFrameSlot(Object name) {
+        JSFrameSlot slot = getBlockFrameDescriptor().findFrameSlot(JSFrameDescriptor.scopedIdentifier(name, scope));
         if (slot != null && JSFrameUtil.isPrivateName(slot)) {
+            // Only private names are visible in this environment.
             return slot;
         }
         return null;
+    }
+
+    @Override
+    public void addFrameSlotFromSymbol(com.oracle.js.parser.ir.Symbol symbol) {
+        Object id = JSFrameDescriptor.scopedIdentifier(symbol.getName(), scope);
+        assert !getBlockFrameDescriptor().contains(id) : symbol;
+        getBlockFrameDescriptor().findOrAddFrameSlot(id, symbol.getFlags(), FrameSlotKind.Illegal);
+    }
+
+    @Override
+    public Scope getScope() {
+        return scope;
     }
 }
