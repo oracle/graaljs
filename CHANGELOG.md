@@ -11,6 +11,7 @@ See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) fo
 * Implemented the [Intl.NumberFormat v3](https://github.com/tc39/proposal-intl-numberformat-v3) proposal.
 * Implemented the [Array Grouping v3](https://github.com/tc39/proposal-array-grouping) proposal.
 * Implemented the [Temporal](https://github.com/tc39/proposal-temporal) proposal. It is available behind the experimental option `--js.temporal`.
+* Optimized closures to only keep references on variables in the lexical environment that are needed by (one or more) closures. This optimization can be disabled with the experimental option `--js.scope-optimization=false`.
 * Moved the internal string representation to the new TruffleString type.
 
 ## Version 22.0.0
