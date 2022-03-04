@@ -75,8 +75,11 @@ public final class JSContextOptions {
     public static final String ECMASCRIPT_VERSION_LATEST = "latest";
     public static final String ECMASCRIPT_VERSION_STAGING = "staging";
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
-    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "" +
-                    "ECMAScript version (e.g. 5, 2015, 2022), '" + ECMASCRIPT_VERSION_LATEST + "' (latest supported version), or '" + ECMASCRIPT_VERSION_STAGING + "' (latest + staged features).") //
+    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = ECMASCRIPT_VERSION_LATEST + "|" + ECMASCRIPT_VERSION_STAGING + "|[5, " +
+                    JSConfig.LatestECMAScriptVersion + "]|[2015, " +
+                    (JSConfig.LatestECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta) + "]", help = "" +
+                                    "ECMAScript version to be compatible with. Default is '" + ECMASCRIPT_VERSION_LATEST + "' (latest supported version), staged features are in '" +
+                                    ECMASCRIPT_VERSION_STAGING + "'.") //
     public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSConfig.LatestECMAScriptVersion, new OptionType<>("ecmascript-version", new Function<String, Integer>() {
 
         @Override
@@ -184,7 +187,7 @@ public final class JSContextOptions {
     @CompilationFinal private boolean nashornCompatibilityMode;
 
     public static final String STACK_TRACE_LIMIT_NAME = JS_OPTION_PREFIX + "stack-trace-limit";
-    @Option(name = STACK_TRACE_LIMIT_NAME, category = OptionCategory.USER, help = "Number of stack frames to capture.") //
+    @Option(name = STACK_TRACE_LIMIT_NAME, category = OptionCategory.USER, usageSyntax = "[0, inf)", help = "Number of stack frames to capture.") //
     public static final OptionKey<Integer> STACK_TRACE_LIMIT = new OptionKey<>(JSConfig.StackTraceLimit);
     @CompilationFinal private int stackTraceLimit;
 
@@ -206,7 +209,7 @@ public final class JSContextOptions {
     @CompilationFinal private boolean parseOnly;
 
     public static final String TIME_ZONE_NAME = JS_OPTION_PREFIX + "timezone";
-    @Option(name = TIME_ZONE_NAME, category = OptionCategory.USER, help = "Set custom time zone ID.") //
+    @Option(name = TIME_ZONE_NAME, category = OptionCategory.USER, usageSyntax = "<TimeZoneID>", help = "Set custom time zone ID.") //
     public static final OptionKey<String> TIME_ZONE = new OptionKey<>("", new OptionType<>("ZoneId", new Function<String, String>() {
         @Override
         public String apply(String tz) {
@@ -223,7 +226,7 @@ public final class JSContextOptions {
     }));
 
     public static final String TIMER_RESOLUTION_NAME = JS_OPTION_PREFIX + "timer-resolution";
-    @Option(name = TIMER_RESOLUTION_NAME, category = OptionCategory.USER, help = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.") //
+    @Option(name = TIMER_RESOLUTION_NAME, category = OptionCategory.USER, usageSyntax = "<nanoseconds>", help = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.") //
     public static final OptionKey<Long> TIMER_RESOLUTION = new OptionKey<>(1000000L);
     private final CyclicAssumption timerResolutionCyclicAssumption = new CyclicAssumption("The " + TIMER_RESOLUTION_NAME + " option is stable.");
     @CompilationFinal private Assumption timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
@@ -285,11 +288,11 @@ public final class JSContextOptions {
     @CompilationFinal private boolean commonJSRequire;
 
     public static final String COMMONJS_REQUIRE_CWD_NAME = JS_OPTION_PREFIX + "commonjs-require-cwd";
-    @Option(name = COMMONJS_REQUIRE_CWD_NAME, category = OptionCategory.USER, help = "CommonJS default current working directory.") //
+    @Option(name = COMMONJS_REQUIRE_CWD_NAME, category = OptionCategory.USER, usageSyntax = "<path>", help = "CommonJS default current working directory.") //
     public static final OptionKey<String> COMMONJS_REQUIRE_CWD = new OptionKey<>("");
 
     public static final String COMMONJS_CORE_MODULES_REPLACEMENTS_NAME = JS_OPTION_PREFIX + "commonjs-core-modules-replacements";
-    @Option(name = COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, category = OptionCategory.USER, help = "Npm packages used to replace global Node.js builtins. Syntax: name1:module1,name2:module2,...") //
+    @Option(name = COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, category = OptionCategory.USER, usageSyntax = "<name>:<module>,...", help = "Npm packages used to replace global Node.js builtins.") //
     public static final OptionKey<Map<String, String>> COMMONJS_CORE_MODULES_REPLACEMENTS = new OptionKey<>(Collections.emptyMap(),
                     new OptionType<>("commonjs-require-globals", new Function<String, Map<String, String>>() {
                         @Override
@@ -313,7 +316,7 @@ public final class JSContextOptions {
                     }));
 
     public static final String COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME = JS_OPTION_PREFIX + "commonjs-global-properties";
-    @Option(name = COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME, category = OptionCategory.USER, help = "Npm package used to populate Node.js global object.") //
+    @Option(name = COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME, category = OptionCategory.USER, usageSyntax = "<packageName>", help = "Npm package used to populate Node.js global object.") //
     public static final OptionKey<String> COMMONJS_REQUIRE_GLOBAL_PROPERTIES = new OptionKey<>("");
 
     public static final String GRAAL_BUILTIN_NAME = JS_OPTION_PREFIX + "graal-builtin";
@@ -391,7 +394,7 @@ public final class JSContextOptions {
 
     // limit originally from TestV8 regress-1122.js, regress-605470.js
     public static final String FUNCTION_ARGUMENTS_LIMIT_NAME = JS_OPTION_PREFIX + "function-arguments-limit";
-    @Option(name = FUNCTION_ARGUMENTS_LIMIT_NAME, category = OptionCategory.EXPERT, help = "Maximum number of arguments for functions.") //
+    @Option(name = FUNCTION_ARGUMENTS_LIMIT_NAME, category = OptionCategory.EXPERT, usageSyntax = "<int>", help = "Maximum number of arguments for functions.") //
     public static final OptionKey<Long> FUNCTION_ARGUMENTS_LIMIT = new OptionKey<>(65535L);
     @CompilationFinal private long functionArgumentsLimit;
 
@@ -411,21 +414,21 @@ public final class JSContextOptions {
     @CompilationFinal private boolean validateRegExpLiterals;
 
     public static final String LOCALE_NAME = JS_OPTION_PREFIX + "locale";
-    @Option(name = LOCALE_NAME, category = OptionCategory.EXPERT, help = "Use a specific default locale for locale-sensitive operations.") //
+    @Option(name = LOCALE_NAME, category = OptionCategory.EXPERT, usageSyntax = "<locale>", help = "Use a specific default locale for locale-sensitive operations.") //
     public static final OptionKey<String> LOCALE = new OptionKey<>("");
 
     public static final String FUNCTION_CONSTRUCTOR_CACHE_SIZE_NAME = JS_OPTION_PREFIX + "function-constructor-cache-size";
-    @Option(name = FUNCTION_CONSTRUCTOR_CACHE_SIZE_NAME, category = OptionCategory.EXPERT, help = "Maximum size of the parsing cache used by the Function constructor to avoid re-parsing known sources.") //
+    @Option(name = FUNCTION_CONSTRUCTOR_CACHE_SIZE_NAME, category = OptionCategory.EXPERT, usageSyntax = "<int>", help = "Maximum size of the parsing cache used by the Function constructor to avoid re-parsing known sources.") //
     public static final OptionKey<Integer> FUNCTION_CONSTRUCTOR_CACHE_SIZE = new OptionKey<>(32);
     @CompilationFinal private int functionConstructorCacheSize;
 
     public static final String REGEX_CACHE_SIZE_NAME = JS_OPTION_PREFIX + "regex-cache-size";
-    @Option(name = REGEX_CACHE_SIZE_NAME, category = OptionCategory.EXPERT, help = "Maximum size of the regex cache used by the RegExp constructor to avoid re-parsing known sources.") //
+    @Option(name = REGEX_CACHE_SIZE_NAME, category = OptionCategory.EXPERT, usageSyntax = "<int>", help = "Maximum size of the regex cache used by the RegExp constructor to avoid re-parsing known sources.") //
     public static final OptionKey<Integer> REGEX_CACHE_SIZE = new OptionKey<>(128);
     @CompilationFinal private int regexCacheSize;
 
     public static final String STRING_LENGTH_LIMIT_NAME = JS_OPTION_PREFIX + "string-length-limit";
-    @Option(name = STRING_LENGTH_LIMIT_NAME, category = OptionCategory.EXPERT, help = "Maximum string length.") //
+    @Option(name = STRING_LENGTH_LIMIT_NAME, category = OptionCategory.EXPERT, usageSyntax = "<chars>", help = "Maximum string length.") //
     public static final OptionKey<Integer> STRING_LENGTH_LIMIT = new OptionKey<>(JSConfig.StringLengthLimit);
     @CompilationFinal private int stringLengthLimit;
 
@@ -449,7 +452,7 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> INTEROP_COMPLETE_PROMISES = new OptionKey<>(false);
 
     public static final String DEBUG_PROPERTY_NAME_NAME = JS_OPTION_PREFIX + "debug-property-name";
-    @Option(name = DEBUG_PROPERTY_NAME_NAME, category = OptionCategory.EXPERT, help = "The name used for the Graal.js debug builtin.") //
+    @Option(name = DEBUG_PROPERTY_NAME_NAME, category = OptionCategory.EXPERT, usageSyntax = "<name>", help = "The name used for the Graal.js debug builtin.") //
     public static final OptionKey<String> DEBUG_PROPERTY_NAME = new OptionKey<>(Strings.toJavaString(JSRealm.DEBUG_CLASS_NAME));
 
     public static final String PROFILE_TIME_NAME = JS_OPTION_PREFIX + "profile-time";
@@ -471,17 +474,17 @@ public final class JSContextOptions {
     @CompilationFinal private boolean lazyTranslation;
 
     public static final String MAX_TYPED_ARRAY_LENGTH_NAME = JS_OPTION_PREFIX + "max-typed-array-length";
-    @Option(name = MAX_TYPED_ARRAY_LENGTH_NAME, category = OptionCategory.EXPERT, help = "Maximum allowed length for TypedArrays.") //
+    @Option(name = MAX_TYPED_ARRAY_LENGTH_NAME, category = OptionCategory.EXPERT, usageSyntax = "<int>", help = "Maximum allowed length for TypedArrays.") //
     public static final OptionKey<Integer> MAX_TYPED_ARRAY_LENGTH = new OptionKey<>(JSConfig.MaxTypedArrayLength);
     @CompilationFinal private int maxTypedArrayLength;
 
     public static final String MAX_APPLY_ARGUMENT_LENGTH_NAME = JS_OPTION_PREFIX + "max-apply-argument-length";
-    @Option(name = MAX_APPLY_ARGUMENT_LENGTH_NAME, category = OptionCategory.EXPERT, help = "Maximum allowed number of arguments allowed in an apply function.") //
+    @Option(name = MAX_APPLY_ARGUMENT_LENGTH_NAME, category = OptionCategory.EXPERT, usageSyntax = "<int>", help = "Maximum allowed number of arguments allowed in an apply function.") //
     public static final OptionKey<Integer> MAX_APPLY_ARGUMENT_LENGTH = new OptionKey<>(JSConfig.MaxApplyArgumentLength);
     @CompilationFinal private int maxApplyArgumentLength;
 
     public static final String MAX_PROTOTYPE_CHAIN_LENGTH_NAME = JS_OPTION_PREFIX + "max-prototype-chain-length";
-    @Option(name = MAX_PROTOTYPE_CHAIN_LENGTH_NAME, category = OptionCategory.EXPERT, help = "Maximum allowed length of a prototype chain.") //
+    @Option(name = MAX_PROTOTYPE_CHAIN_LENGTH_NAME, category = OptionCategory.EXPERT, usageSyntax = "<int>", help = "Maximum allowed length of a prototype chain.") //
     public static final OptionKey<Integer> MAX_PROTOTYPE_CHAIN_LENGTH = new OptionKey<>(JSConfig.MaxPrototypeChainLength);
     @CompilationFinal private int maxPrototypeChainLength;
 
@@ -491,12 +494,12 @@ public final class JSContextOptions {
     @CompilationFinal private boolean asyncStackTraces;
 
     public static final String PROPERTY_CACHE_LIMIT_NAME = JS_OPTION_PREFIX + "property-cache-limit";
-    @Option(name = PROPERTY_CACHE_LIMIT_NAME, category = OptionCategory.INTERNAL, help = "Maximum allowed size of a property cache.") //
+    @Option(name = PROPERTY_CACHE_LIMIT_NAME, category = OptionCategory.INTERNAL, usageSyntax = "<int>", help = "Maximum allowed size of a property cache.") //
     public static final OptionKey<Integer> PROPERTY_CACHE_LIMIT = new OptionKey<>(JSConfig.PropertyCacheLimit);
     @CompilationFinal private int propertyCacheLimit;
 
     public static final String FUNCTION_CACHE_LIMIT_NAME = JS_OPTION_PREFIX + "function-cache-limit";
-    @Option(name = FUNCTION_CACHE_LIMIT_NAME, category = OptionCategory.INTERNAL, help = "Maximum allowed size of a function cache.") //
+    @Option(name = FUNCTION_CACHE_LIMIT_NAME, category = OptionCategory.INTERNAL, usageSyntax = "<int>", help = "Maximum allowed size of a function cache.") //
     public static final OptionKey<Integer> FUNCTION_CACHE_LIMIT = new OptionKey<>(JSConfig.FunctionCacheLimit);
     @CompilationFinal private int functionCacheLimit;
 
@@ -533,7 +536,7 @@ public final class JSContextOptions {
     }
 
     public static final String UNHANDLED_REJECTIONS_NAME = JS_OPTION_PREFIX + "unhandled-rejections";
-    @Option(name = UNHANDLED_REJECTIONS_NAME, category = OptionCategory.USER, help = "" +
+    @Option(name = UNHANDLED_REJECTIONS_NAME, category = OptionCategory.USER, usageSyntax = "none|warn|throw", help = "" +
                     "Configure unhandled promise rejections tracking. Accepted values: 'none', unhandled rejections are not tracked. " +
                     "'warn', a warning is printed to stderr when an unhandled rejection is detected. " +
                     "'throw', an exception is thrown when an unhandled rejection is detected.") //
@@ -594,7 +597,7 @@ public final class JSContextOptions {
     @CompilationFinal private boolean esmBareSpecifierRelativeLookup;
 
     public static final String CHARSET_NAME = JS_OPTION_PREFIX + "charset";
-    @Option(name = CHARSET_NAME, category = OptionCategory.EXPERT, help = "Charset used for decoding/encoding of the input/output streams.") //
+    @Option(name = CHARSET_NAME, category = OptionCategory.EXPERT, usageSyntax = "UTF-8|UTF-32|<name>", help = "Charset used for decoding/encoding of the input/output streams.") //
     public static final OptionKey<String> CHARSET = new OptionKey<>("", new OptionType<>("CharsetName", new Function<String, String>() {
         @Override
         public String apply(String name) {
@@ -751,13 +754,13 @@ public final class JSContextOptions {
         return helpMessage + " (default:" + key.getDefaultValue() + ")";
     }
 
-    public static OptionDescriptor newOptionDescriptor(OptionKey<?> key, String name, OptionCategory category, OptionStability stability, String help) {
-        return OptionDescriptor.newBuilder(key, name).category(category).help(helpWithDefault(help, key)).stability(stability).build();
+    public static OptionDescriptor newOptionDescriptor(OptionKey<?> key, String name, OptionCategory category, OptionStability stability, String help, String usageSyntax) {
+        return OptionDescriptor.newBuilder(key, name).category(category).help(helpWithDefault(help, key)).stability(stability).usageSyntax(usageSyntax).build();
     }
 
     public static void describeOptions(List<OptionDescriptor> options) {
         for (OptionDescriptor desc : new JSContextOptionsOptionDescriptors()) {
-            options.add(newOptionDescriptor(desc.getKey(), desc.getName(), desc.getCategory(), desc.getStability(), desc.getHelp()));
+            options.add(newOptionDescriptor(desc.getKey(), desc.getName(), desc.getCategory(), desc.getStability(), desc.getHelp(), desc.getUsageSyntax()));
         }
     }
 
