@@ -144,7 +144,6 @@ test-trace-events-worker-metadata: SKIP
 test-assert: FAIL
 test-async-hooks-async-await: FAIL
 test-async-local-storage-contexts: FAIL
-test-common-gc: FAIL
 test-crypto-op-during-process-exit: SKIP
 test-crypto-sign-verify: FAIL
 test-domain-async-id-map-leak: FAIL
@@ -164,7 +163,6 @@ test-fs-promises-file-handle-close: FAIL
 test-gc-http-client-connaborted: SKIP
 test-gc-http-client-onerror: SKIP
 test-gc-http-client-timeout: SKIP
-test-gc-net-timeout: SKIP
 test-gc-tls-external-memory: SKIP
 test-http-server-keepalive-req-gc: SKIP
 test-http2-response-splitting: SKIP
