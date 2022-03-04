@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -373,7 +373,7 @@ public abstract class JSNonProxy extends JSClass {
         assert JSRuntime.isPropertyKey(key);
         DynamicObject current = JSObject.getPrototype(thisObj);
         while (current != Null.instance) {
-            if (JSProxy.isJSProxy(current)) {
+            if (JSProxy.isJSProxy(current) || JSArrayBufferView.isJSArrayBufferView(current)) {
                 return JSObject.getJSClass(current).set(current, key, value, receiver, isStrict, encapsulatingNode);
             } else {
                 PropertyDescriptor desc = JSObject.getOwnProperty(current, key);

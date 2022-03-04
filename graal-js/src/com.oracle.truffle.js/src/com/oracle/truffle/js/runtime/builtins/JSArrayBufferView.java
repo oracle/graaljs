@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -222,9 +222,6 @@ public final class JSArrayBufferView extends JSNonProxy {
     @TruffleBoundary
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
-        if (thisObj != receiver) { // off-spec
-            return ordinarySetIndex(thisObj, index, value, receiver, isStrict, encapsulatingNode);
-        }
         Object numValue = convertValue(thisObj, value);
         if (!JSArrayBufferView.hasDetachedBuffer(thisObj)) {
             typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, isStrict);
@@ -236,9 +233,6 @@ public final class JSArrayBufferView extends JSNonProxy {
     @Override
     public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
-        if (thisObj != receiver) { // off-spec
-            return ordinarySet(thisObj, key, value, receiver, isStrict, encapsulatingNode);
-        }
         if (Strings.isTString(key)) {
             Object numericIndex = JSRuntime.canonicalNumericIndexString((TruffleString) key);
             if (numericIndex != Undefined.instance) {
