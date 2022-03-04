@@ -13,7 +13,7 @@ local defs = import 'defs.jsonnet';
 
   overlay: if debug then no_overlay else overlay,
 
-  specVersion: "2",
+  specVersion: "3",
 
   local deployBinary = {
     setup+: [

@@ -32,15 +32,10 @@ local common_json = (import "common.json");
   daily:       {targets+: ['daily']},
   weekly:      {targets+: ['weekly']},
 
-  local python3 = {
-    environment+: {
-      MX_PYTHON: "python3",
-    },
-  },
-
-  local common = python3 + {
+  local common = {
     packages+: {
-      'pip:pylint': '==1.9.3',
+      'python3': '==3.9.9',
+      'pip:pylint': '==2.4.4',
       'pip:ninja_syntax': '==1.7.2',
     },
     catch_files+: [
@@ -48,6 +43,7 @@ local common_json = (import "common.json");
       'npm-debug.log', // created on npm errors
     ],
     environment+: {
+      MX_PYTHON: "python3",
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
     },
   },
