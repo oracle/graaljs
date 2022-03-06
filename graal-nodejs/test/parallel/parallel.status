@@ -160,8 +160,6 @@ test-domain-no-error-handler-abort-on-uncaught-9: FAIL
 test-domain-throw-error-then-throw-from-uncaught-exception-handler: FAIL
 test-eventtarget: FAIL
 test-fs-promises-file-handle-close: FAIL
-test-gc-http-client-connaborted: SKIP
-test-gc-http-client-onerror: SKIP
 test-gc-http-client-timeout: SKIP
 test-gc-tls-external-memory: SKIP
 test-http-server-keepalive-req-gc: SKIP
