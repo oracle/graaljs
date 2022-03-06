@@ -222,11 +222,17 @@ public final class JSArrayBufferView extends JSNonProxy {
     @TruffleBoundary
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
-        Object numValue = convertValue(thisObj, value);
-        if (!JSArrayBufferView.hasDetachedBuffer(thisObj)) {
-            typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, isStrict);
+        if (thisObj == receiver) {
+            Object numValue = convertValue(thisObj, value);
+            if (!JSArrayBufferView.hasDetachedBuffer(thisObj)) {
+                typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, isStrict);
+            }
+            return true;
         }
-        return true;
+        if (!isValidIntegerIndex(thisObj, index)) {
+            return true;
+        }
+        return super.set(thisObj, index, value, receiver, isStrict, encapsulatingNode);
     }
 
     @TruffleBoundary
@@ -236,26 +242,42 @@ public final class JSArrayBufferView extends JSNonProxy {
         if (Strings.isTString(key)) {
             Object numericIndex = JSRuntime.canonicalNumericIndexString((TruffleString) key);
             if (numericIndex != Undefined.instance) {
-                // IntegerIndexedElementSet
-                Object numValue = convertValue(thisObj, value);
-                if (JSArrayBufferView.hasDetachedBuffer(thisObj)) {
+                if (thisObj == receiver) {
+                    // IntegerIndexedElementSet
+                    Object numValue = convertValue(thisObj, value);
+                    long index = validIntegerIndex(thisObj, (Number) numericIndex);
+                    if (index != -1) {
+                        typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, isStrict);
+                    }
                     return true;
                 }
-                if (!JSRuntime.isInteger(numericIndex)) {
+                if (!isValidIntegerIndex(thisObj, (Number) numericIndex)) {
                     return true;
                 }
-                if (numericIndex instanceof Double && JSRuntime.isNegativeZero(((Double) numericIndex).doubleValue())) {
-                    return true;
-                }
-                int length = JSArrayBufferView.typedArrayGetLength(thisObj);
-                long index = ((Number) numericIndex).longValue();
-                if (0 <= index && index < length) {
-                    typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, isStrict);
-                }
-                return true;
             }
         }
         return super.set(thisObj, key, value, receiver, isStrict, encapsulatingNode);
+    }
+
+    public static boolean isValidIntegerIndex(DynamicObject thisObj, Number numericIndex) {
+        return validIntegerIndex(thisObj, numericIndex) != -1;
+    }
+
+    // IsValidIntegerIndex() ? theIndex : -1
+    @TruffleBoundary
+    private static long validIntegerIndex(DynamicObject thisObj, Number numericIndex) {
+        if (JSArrayBufferView.hasDetachedBuffer(thisObj)) {
+            return -1;
+        }
+        if (!JSRuntime.isInteger(numericIndex)) {
+            return -1;
+        }
+        if (numericIndex instanceof Double && JSRuntime.isNegativeZero(((Double) numericIndex).doubleValue())) {
+            return -1;
+        }
+        int length = JSArrayBufferView.typedArrayGetLength(thisObj);
+        long index = numericIndex.longValue();
+        return (0 <= index && index < length) ? index : -1;
     }
 
     private static Object convertValue(DynamicObject thisObj, Object value) {
@@ -526,7 +548,7 @@ public final class JSArrayBufferView extends JSNonProxy {
         if (Strings.isTString(key)) {
             Object numericIndex = JSRuntime.canonicalNumericIndexString((TruffleString) key);
             if (numericIndex != Undefined.instance) {
-                boolean success = defineOwnPropertyIndex(thisObj, numericIndex, descriptor);
+                boolean success = defineOwnPropertyIndex(thisObj, (Number) numericIndex, descriptor);
                 if (doThrow && !success) {
                     // path only hit in V8CompatibilityMode; see JSRuntime.definePropertyOrThrow
                     throw Errors.createTypeError("Cannot defineOwnProperty on TypedArray");
@@ -538,21 +560,11 @@ public final class JSArrayBufferView extends JSNonProxy {
     }
 
     @TruffleBoundary
-    private static boolean defineOwnPropertyIndex(DynamicObject thisObj, Object numericIndex, PropertyDescriptor desc) {
-        // IsValidIntegerIndex
-        if (JSArrayBufferView.hasDetachedBuffer(thisObj) || !JSRuntime.isInteger(numericIndex)) {
+    private static boolean defineOwnPropertyIndex(DynamicObject thisObj, Number numericIndex, PropertyDescriptor desc) {
+        long index = validIntegerIndex(thisObj, numericIndex);
+        if (index == -1) {
             return false;
         }
-        double dIndex = ((Number) numericIndex).doubleValue();
-        if (JSRuntime.isNegativeZero(dIndex)) {
-            return false;
-        }
-        int length = JSArrayBufferView.typedArrayGetLength(thisObj);
-        long index = (long) dIndex;
-        if (index < 0 || index >= length) {
-            return false;
-        }
-
         if (desc.isAccessorDescriptor()) {
             return false;
         }
@@ -570,7 +582,7 @@ public final class JSArrayBufferView extends JSNonProxy {
             Object value = desc.getValue();
             Object numValue = convertValue(thisObj, value);
             if (!JSArrayBufferView.hasDetachedBuffer(thisObj)) {
-                assert index >= 0 && index < length;
+                assert index >= 0 && index < JSArrayBufferView.typedArrayGetLength(thisObj);
                 JSArrayBufferView.typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, true);
             }
         }
