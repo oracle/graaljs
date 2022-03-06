@@ -1080,7 +1080,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     protected static boolean alwaysUseStore(DynamicObject store, Object key) {
-        return JSProxy.isJSProxy(store) || (JSArrayBufferView.isJSArrayBufferView(store) && isNonIntegerIndex(key)) || key instanceof HiddenKey;
+        return (key instanceof HiddenKey) || JSProxy.isJSProxy(store) ||
+                        (JSArrayBufferView.isJSArrayBufferView(store) && (key instanceof TruffleString) && JSRuntime.canonicalNumericIndexString((TruffleString) key) != Undefined.instance);
     }
 
     protected final void deoptimize(CacheNode<?> stop) {
@@ -1388,11 +1389,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     protected static boolean isLazyNamedCaptureGroupProperty(Property property) {
         return JSProperty.isProxy(property) && JSProperty.getConstantProxy(property) instanceof JSRegExp.LazyNamedCaptureGroupProperty;
-    }
-
-    protected static boolean isNonIntegerIndex(Object key) {
-        assert !Strings.isTString(key) || Strings.equals(Strings.INFINITY, (TruffleString) key) || (JSRuntime.canonicalNumericIndexString((TruffleString) key) == Undefined.instance);
-        return Strings.isTString(key) && Strings.equals(Strings.INFINITY, (TruffleString) key);
     }
 
     private void traceRewriteInsert(Node newNode, int cacheDepth) {
