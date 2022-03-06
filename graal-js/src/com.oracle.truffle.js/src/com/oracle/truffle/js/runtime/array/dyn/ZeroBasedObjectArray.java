@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,8 @@ package com.oracle.truffle.js.runtime.array.dyn;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetLength;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetUsedLength;
+
+import java.util.Arrays;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -151,6 +153,9 @@ public final class ZeroBasedObjectArray extends AbstractObjectArray {
         long moveLength = usedLength - end;
         if (moveLength > 0) {
             System.arraycopy(array, (int) end, array, (int) start, (int) moveLength);
+        }
+        if (start < usedLength) {
+            Arrays.fill(array, (int) (start + Math.max(0, moveLength)), usedLength, null);
         }
         return this;
     }
