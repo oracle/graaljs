@@ -34,6 +34,7 @@ local common_json = (import "common.json");
 
   local common = {
     packages+: {
+      'mx': 'HEAD',
       'python3': '==3.9.9',
       'pip:pylint': '==2.4.4',
       'pip:ninja_syntax': '==1.7.2',
