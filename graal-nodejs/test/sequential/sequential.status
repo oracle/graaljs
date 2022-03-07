@@ -13,9 +13,6 @@ test-cpu-prof-dir-worker: PASS, FLAKY
 # unstable timing-sensitive test
 test-perf-hooks : SKIP
 
-# gc-related callback not invoked
-test-gc-http-client: SKIP
-
 # heapdump is not supported
 test-heapdump: SKIP
 test-heapdump-flag: SKIP

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -730,10 +730,14 @@ public abstract class AbstractWritableArray extends DynamicArray {
             if (newUsedLength == 0) {
                 setArrayOffset(object, 0);
                 setIndexOffset(object, 0);
+                assert usedStartIntl == arrayOffset;
+                assert usedEndIntl == arrayOffset + usedLength;
+                fillWithHoles(getArrayObject(object), usedStartIntl, usedEndIntl);
                 return this;
             }
         }
 
+        int arrayOffsetNew = arrayOffset;
         if (startIntl < 0) {
             int indexOffsetDelta = endIntl - startIntl;
             long indexOffsetNew = Math.max(0, indexOffset - indexOffsetDelta);
@@ -749,7 +753,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             setIndexOffset(object, indexOffsetNew);
         } else {
             if (startIntl < arrayOffset) {
-                int arrayOffsetNew = Math.max(startIntl, arrayOffset - (endIntl - startIntl));
+                arrayOffsetNew = Math.max(startIntl, arrayOffset - (endIntl - startIntl));
                 setArrayOffset(object, arrayOffsetNew);
             }
 
@@ -757,6 +761,11 @@ public abstract class AbstractWritableArray extends DynamicArray {
             if (length > 0) {
                 moveRangePrepared(object, endIntl, startIntl, length);
             }
+        }
+
+        if (usedDelta > 0) {
+            // Unused part of the internal array should not keep objects alive
+            fillWithHoles(getArrayObject(object), arrayOffsetNew + newUsedLength, arrayOffset + usedLength);
         }
 
         return this;
