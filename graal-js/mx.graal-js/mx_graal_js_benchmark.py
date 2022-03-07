@@ -65,11 +65,11 @@ class GraalJsVm(GuestVm):
     def run(self, cwd, args):
         if hasattr(self.host_vm(), 'run_launcher'):
             if self.config_name() == 'trace-cache':
-                return run_aux_cache(self, cwd, args, 1)
+                return self.run_aux_cache(cwd, args, 1)
             if self.config_name() == 'trace-cache-many-compilations':
-                return run_aux_cache(self, cwd, args, 20)
+                return self.run_aux_cache(cwd, args, 20)
             if self.config_name() == 'trace-cache-executed':
-                return run_aux_cache(self, cwd, args, 1, ['--engine.CacheCompile=executed'])
+                return self.run_aux_cache(cwd, args, 1, ['--engine.CacheCompile=executed'])
             else:
                 return self.host_vm().run_launcher('js', self._options + args, cwd)
         else:
