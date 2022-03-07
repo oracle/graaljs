@@ -15,6 +15,8 @@ local defs = import 'defs.jsonnet';
 
   specVersion: "3",
 
+  python_version: "3",
+
   local deployBinary = {
     setup+: [
       ['mx', '-p', 'graal-nodejs', 'sversions'],
