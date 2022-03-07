@@ -49,8 +49,8 @@ class GraalNodeJsVm(GuestVm):
 
     def run(self, cwd, args):
         args += self._options
-        if hasattr(self.host_vm(), 'run_lang'):
-            return self.host_vm().run_lang('node', args + self._options, cwd)
+        if hasattr(self.host_vm(), 'run_launcher'):
+            return self.host_vm().run_launcher('node', args + self._options, cwd)
         else:
             out = mx.TeeOutputCapture(mx.OutputCapture())
             args = self.host_vm().post_process_command_line_args(args)
