@@ -77,7 +77,13 @@ class GraalJsVm(GuestVm):
 
 
 def register_js_vms():
-    for config_name, options, priority in [('default', [], 10), ('interpreter', ['--experimental-options', '--engine.Compilation=false'], 100), ('trace-cache', [], 110)]:
+    for config_name, options, priority in [
+        ('default', [], 10),
+        ('interpreter', ['--experimental-options', '--engine.Compilation=false'], 100),
+        ('trace-cache', [], 110),
+        ('trace-cache-many-compilations', [], 120),
+        ('trace-cache-executed', [], 130),
+    ]:
         if mx.suite('js-benchmarks', fatalIfMissing=False):
             import mx_js_benchmarks
             mx_js_benchmarks.add_vm(GraalJsVm(config_name, options), _suite, priority)
