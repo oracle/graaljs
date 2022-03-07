@@ -53,16 +53,23 @@ class GraalJsVm(GuestVm):
     def with_host_vm(self, host_vm):
         return self.__class__(self.config_name(), self._options, host_vm)
 
+    def run_aux_cache(self, cwd, args, runs, extra_args=[]):
+        assert not self._options
+        cache_file = join(cwd, self.bmSuite.currently_running_benchmark() + '.img')
+        for i in range(runs):
+            code, out, _ = self.host_vm().run_launcher('js', ['--experimental-options', '--engine.TraceCache', '--engine.Cache=' + cache_file] + extra_args + args, cwd)
+            if code != 0:
+                return code, out, {},
+        return self.host_vm().run_launcher('js', ['--experimental-options', '--engine.CacheLoad=' + cache_file] + args, cwd)
+
     def run(self, cwd, args):
         if hasattr(self.host_vm(), 'run_launcher'):
             if self.config_name() == 'trace-cache':
-                assert not self._options
-                cache_file = join(cwd, self.bmSuite.currently_running_benchmark() + '.img')
-                code, out, _ = self.host_vm().run_launcher('js', ['--experimental-options', '--engine.TraceCache', '--engine.CacheStore=' + cache_file] + args, cwd)
-                if code != 0:
-                    return code, out, {},
-                else:
-                    return self.host_vm().run_launcher('js', ['--experimental-options', '--engine.CacheLoad=' + cache_file] + args, cwd)
+                return run_aux_cache(self, cwd, args, 1)
+            if self.config_name() == 'trace-cache-many-compilations':
+                return run_aux_cache(self, cwd, args, 20)
+            if self.config_name() == 'trace-cache-executed':
+                return run_aux_cache(self, cwd, args, 1, ['--engine.CacheCompile=executed'])
             else:
                 return self.host_vm().run_launcher('js', self._options + args, cwd)
         else:
