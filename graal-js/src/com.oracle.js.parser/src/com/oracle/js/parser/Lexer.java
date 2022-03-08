@@ -2100,7 +2100,7 @@ public class Lexer extends Scanner {
             case XML:
                 return valueOfXML(start, len); // XMLToken::LexerToken
             case DIRECTIVE_COMMENT:
-                return source.getString(start, len);
+                return source.getLazyString(start, len);
             case PRIVATE_IDENT:
                 return valueOfIdent(start, len, convertUnicode); // String
             default:

@@ -397,6 +397,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorNotWritableIndex(long index, Object thisObj, Node originatingNode) {
+        return createTypeErrorNotWritableProperty(Strings.fromLong(index), thisObj, originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorLengthNotWritable() {
         return Errors.createTypeError("Cannot assign to read only property 'length'");
     }
