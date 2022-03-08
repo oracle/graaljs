@@ -234,6 +234,8 @@ public final class Strings extends ParserStrings {
     public static final TruffleString FILL = constant("fill");
     public static final TruffleString FIND = constant("find");
     public static final TruffleString FIND_INDEX = constant("findIndex");
+    public static final TruffleString FIND_LAST = constant("findLast");
+    public static final TruffleString FIND_LAST_INDEX = constant("findLastIndex");
     public static final TruffleString FLAT = constant("flat");
     public static final TruffleString FLAT_MAP = constant("flatMap");
     public static final TruffleString INCLUDES = constant("includes");

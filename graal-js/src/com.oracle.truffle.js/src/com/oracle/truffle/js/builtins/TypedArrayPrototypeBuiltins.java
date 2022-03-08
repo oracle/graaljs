@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArra
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleSafepoint;
@@ -153,7 +154,11 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         includes(1),
 
         // ES2022
-        at(1);
+        at(1),
+
+        // ES 2023
+        findLast(1),
+        findLastIndex(1);
 
         private final int length;
 
@@ -172,6 +177,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSConfig.ECMAScript2016;
             } else if (this == at) {
                 return JSConfig.ECMAScript2022;
+            } else if (EnumSet.of(findLast, findLastIndex).contains(this)) {
+                return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -187,9 +194,13 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             case forEach:
                 return JSArrayBufferViewForEachNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case find:
-                return JSArrayFindNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return JSArrayFindNodeGen.create(context, builtin, true, false, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case findIndex:
-                return JSArrayFindIndexNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return JSArrayFindIndexNodeGen.create(context, builtin, true, false, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case findLast:
+                return JSArrayFindNodeGen.create(context, builtin, true, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case findLastIndex:
+                return JSArrayFindIndexNodeGen.create(context, builtin, true, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case fill:
                 return context.getEcmaScriptVersion() >= 9 ? JSArrayBufferViewFillNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context))
                                 : JSArrayFillNodeGen.create(context, builtin, true, args().withThis().fixedArgs(3).createArgumentNodes(context));

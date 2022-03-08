@@ -181,6 +181,7 @@ public class Test262Runnable extends TestRunnable {
                     "__proto__",
                     "__setter__",
                     "align-detached-buffer-semantics-with-web-reality",
+                    "array-find-from-last",
                     "arrow-function",
                     "async-functions",
                     "async-iteration",
@@ -244,7 +245,6 @@ public class Test262Runnable extends TestRunnable {
                     "IsHTMLDDA",
                     "ShadowRealm",
                     "arbitrary-module-namespace-names",
-                    "array-find-from-last",
                     "regexp-v-flag",
                     "resizable-arraybuffer",
                     "tail-call-optimization",
@@ -255,6 +255,7 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.DateTimeFormat-extend-timezonename",
                     "Intl.Locale-info",
                     "Intl.NumberFormat-v3",
+                    "array-find-from-last",
     }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {

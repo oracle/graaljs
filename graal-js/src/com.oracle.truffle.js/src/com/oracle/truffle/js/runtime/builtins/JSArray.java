@@ -229,6 +229,10 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         names.add(Strings.FILL);
         names.add(Strings.FIND);
         names.add(Strings.FIND_INDEX);
+        if (context.getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion) {
+            names.add(Strings.FIND_LAST);
+            names.add(Strings.FIND_LAST_INDEX);
+        }
         if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
             names.add(Strings.FLAT);
             names.add(Strings.FLAT_MAP);
@@ -242,7 +246,17 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         }
         names.add(Strings.KEYS);
         names.add(Strings.VALUES);
+        assert isSorted(names);
         return names;
+    }
+
+    private static boolean isSorted(List<TruffleString> list) {
+        for (int i = 0; i < list.size() - 1; i++) {
+            if (list.get(i).compareCharsUTF16Uncached(list.get(i + 1)) > 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static DynamicObject createUnscopables(JSContext context, List<TruffleString> unscopableNames) {
