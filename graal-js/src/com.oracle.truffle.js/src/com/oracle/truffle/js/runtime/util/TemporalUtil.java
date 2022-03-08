@@ -345,7 +345,7 @@ public final class TemporalUtil {
             value = toBoolean.executeBoolean(value);
         } else if (type.allowsNumber()) {
             value = toNumber.executeNumber(value);
-            if (Double.isNaN(((Number) value).doubleValue())) {
+            if (Double.isNaN(JSRuntime.doubleValue((Number) value))) {
                 throw TemporalErrors.createRangeErrorNumberIsNaN();
             }
         } else {
@@ -915,7 +915,7 @@ public final class TemporalUtil {
     }
 
     public static double toPositiveInteger(Object value) {
-        double result = toIntegerThrowOnInfinity(value).doubleValue();
+        double result = JSRuntime.doubleValue(toIntegerThrowOnInfinity(value));
         if (result <= 0) {
             throw Errors.createRangeError("positive value expected");
         }
@@ -926,14 +926,14 @@ public final class TemporalUtil {
     // used when caller would constrain/reject anyway
     public static int toPositiveIntegerConstrainInt(Object value) {
         Number result = toIntegerThrowOnInfinity(value);
-        double dResult = result.doubleValue();
+        double dResult = JSRuntime.doubleValue(result);
         if (dResult <= 0) {
             throw Errors.createRangeError("positive value expected");
         }
         if (dResult > Integer.MAX_VALUE) {
             return Integer.MAX_VALUE;
         }
-        return result.intValue();
+        return JSRuntime.intValue(result);
     }
 
     // 13.52
@@ -1467,7 +1467,7 @@ public final class TemporalUtil {
                 iVal = 0;
             } else {
                 any = true;
-                iVal = ltoi(TemporalUtil.toIntegerThrowOnInfinity(val).intValue());
+                iVal = JSRuntime.intValue(TemporalUtil.toIntegerThrowOnInfinity(val));
             }
             if (HOUR.equals(property)) {
                 hour = iVal;
@@ -1491,7 +1491,7 @@ public final class TemporalUtil {
 
     public static Number toIntegerThrowOnInfinity(Object value) {
         Number integer = toIntegerOrInfinity(value);
-        if (Double.isInfinite(integer.doubleValue())) {
+        if (Double.isInfinite(JSRuntime.doubleValue(integer))) {
             throw Errors.createRangeError("value outside bounds");
         }
         return integer;
@@ -1499,7 +1499,7 @@ public final class TemporalUtil {
 
     public static double toIntegerWithoutRounding(Object argument) {
         Number number = JSRuntime.toNumber(argument);
-        double dNumber = number.doubleValue();
+        double dNumber = JSRuntime.doubleValue(number);
         if (Double.isNaN(dNumber) || dNumber == 0.0d) {
             return 0.0;
         }
@@ -4301,7 +4301,7 @@ public final class TemporalUtil {
             throw Errors.createRangeError("Month code should be in 3 character code.");
         }
         TruffleString numberPart = Strings.substring(ctx, (TruffleString) monthCode, 1);
-        double numberPart2 = toIntegerOrInfinity.executeNumber(numberPart).doubleValue();
+        double numberPart2 = JSRuntime.doubleValue(toIntegerOrInfinity.executeNumber(numberPart));
 
         if (Double.isNaN(numberPart2)) {
             throw Errors.createRangeError("The last character of the monthCode should be a number.");
@@ -4310,7 +4310,7 @@ public final class TemporalUtil {
             throw Errors.createRangeError("monthCode out of bounds");
         }
 
-        double m1 = TemporalUtil.isNullish(month) ? -1 : toIntegerOrInfinity.executeNumber(month).doubleValue();
+        double m1 = TemporalUtil.isNullish(month) ? -1 : JSRuntime.doubleValue(toIntegerOrInfinity.executeNumber(month));
 
         if (!TemporalUtil.isNullish(month) && m1 != numberPart2) {
             throw Errors.createRangeError("Month does not equal the month code.");
@@ -4338,8 +4338,8 @@ public final class TemporalUtil {
         if (day == Undefined.instance) {
             throw TemporalErrors.createTypeErrorTemporalDayNotPresent();
         }
-        return TemporalUtil.regulateISODate(dtoi(toIntOrInfinityNode.executeNumber(year).doubleValue()), dtoi(toIntOrInfinityNode.executeNumber(month).doubleValue()),
-                        dtoi(toIntOrInfinityNode.executeNumber(day).doubleValue()), overflow);
+        return TemporalUtil.regulateISODate(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))), dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))),
+                        dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(day))), overflow);
     }
 
     // 12.1.40
@@ -4355,8 +4355,8 @@ public final class TemporalUtil {
         }
         Object month = resolveISOMonth(ctx, preparedFields, toIntOrInfinityNode, identicalNode);
 
-        JSTemporalYearMonthDayRecord result = TemporalUtil.regulateISOYearMonth(dtoi(toIntOrInfinityNode.executeNumber(year).doubleValue()),
-                        dtoi(toIntOrInfinityNode.executeNumber(month).doubleValue()), overflow);
+        JSTemporalYearMonthDayRecord result = TemporalUtil.regulateISOYearMonth(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))),
+                        dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))), overflow);
         return JSTemporalYearMonthDayRecord.create(result.getYear(), result.getMonth(), 1);
     }
 
@@ -4379,10 +4379,11 @@ public final class TemporalUtil {
         int referenceISOYear = 1972;
         JSTemporalDateTimeRecord result = null;
         if (monthCode == Undefined.instance) {
-            result = TemporalUtil.regulateISODate(dtoi(toIntOrInfinityNode.executeNumber(year).doubleValue()), dtoi(toIntOrInfinityNode.executeNumber(month).doubleValue()),
-                            dtoi(toIntOrInfinityNode.executeNumber(day).doubleValue()), overflow);
+            result = TemporalUtil.regulateISODate(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))), dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))),
+                            dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(day))), overflow);
         } else {
-            result = TemporalUtil.regulateISODate(referenceISOYear, dtoi(toIntOrInfinityNode.executeNumber(month).doubleValue()), dtoi(toIntOrInfinityNode.executeNumber(day).doubleValue()), overflow);
+            result = TemporalUtil.regulateISODate(referenceISOYear, dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))),
+                            dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(day))), overflow);
         }
         return JSTemporalYearMonthDayRecord.create(referenceISOYear, result.getMonth(), result.getDay());
     }
