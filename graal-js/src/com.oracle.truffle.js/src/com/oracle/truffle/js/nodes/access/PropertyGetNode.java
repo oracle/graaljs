@@ -604,11 +604,13 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected final JSDynamicObject getExpectedObject() {
+            assert isConstantObjectSpecialization();
             return expectedObjRef.get();
         }
 
         @Override
         protected final void clearExpectedObject() {
+            assert isConstantObjectSpecialization();
             expectedObjRef.clear();
         }
 
