@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.object.DynamicObject;
 
 public final class Accessor {
@@ -65,5 +67,22 @@ public final class Accessor {
 
     public boolean hasSetter() {
         return setter != Undefined.instance;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof Accessor)) {
+            return false;
+        }
+        Accessor other = (Accessor) obj;
+        return Objects.equals(getter, other.getter) && Objects.equals(setter, other.setter);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getter, setter);
     }
 }
