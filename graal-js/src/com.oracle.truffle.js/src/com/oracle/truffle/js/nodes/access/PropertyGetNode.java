@@ -904,27 +904,38 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Child private JSFunctionCallNode callNode;
         private final BranchProfile undefinedGetterBranch = BranchProfile.create();
-        private final Accessor finalAccessor;
+        @CompilationFinal private TruffleWeakReference<Accessor> finalAccessorRef;
         private final Property property;
 
         public FinalAccessorPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck, Accessor finalAccessor, JSDynamicObject expectedObj) {
             super(property, shapeCheck, expectedObj);
             assert JSProperty.isAccessor(property);
             this.callNode = JSFunctionCallNode.createCall();
-            this.finalAccessor = finalAccessor;
+            this.finalAccessorRef = new TruffleWeakReference<>(finalAccessor);
             this.property = property;
+        }
+
+        private Accessor getAccessor(Object thisObj, PropertyGetNode root, boolean guard) {
+            TruffleWeakReference<Accessor> weakRef = finalAccessorRef;
+            if (weakRef != null) {
+                if (isValidFinalAssumption()) {
+                    Accessor finalAccessor = weakRef.get();
+                    if (finalAccessor != null) {
+                        assert assertFinalValue(finalAccessor, thisObj, root);
+                        return finalAccessor;
+                    }
+                }
+                // Release unused weak reference and fall back to normal read.
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                finalAccessorRef = null;
+            }
+            DynamicObject store = receiverCheck.getStore(thisObj);
+            return (Accessor) property.getLocation().get(store, guard);
         }
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            Accessor accessor;
-            if (isValidFinalAssumption()) {
-                assert assertFinalValue(finalAccessor, thisObj, root);
-                accessor = finalAccessor;
-            } else {
-                DynamicObject store = receiverCheck.getStore(thisObj);
-                accessor = (Accessor) property.getLocation().get(store, guard);
-            }
+            Accessor accessor = getAccessor(thisObj, root, guard);
             DynamicObject getter = accessor.getGetter();
             if (getter != Undefined.instance) {
                 return callNode.executeCall(JSArguments.createZeroArg(receiver, getter));
