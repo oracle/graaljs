@@ -44,7 +44,7 @@ local common_json = (import "common.json");
       'npm-debug.log', // created on npm errors
     ],
     environment+: {
-      MX_PYTHON: "python3",
+      MX_PYTHON: "python3.9",
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
     },
   },
