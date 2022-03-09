@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.lang.ref.WeakReference;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -75,6 +73,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.utilities.TruffleWeakReference;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -590,12 +589,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     protected abstract static class AbstractFinalPropertyGetNode extends LinkedPropertyGetNode {
         private final Assumption finalAssumption;
-        private final WeakReference<JSDynamicObject> expectedObjRef;
+        private final TruffleWeakReference<JSDynamicObject> expectedObjRef;
 
         protected AbstractFinalPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck, JSDynamicObject expectedObj) {
             super(shapeCheck, IS_FINAL | (expectedObj != null ? IS_FINAL_CONSTANT_OBJECT : 0));
             this.finalAssumption = property.getLocation().isFinal() ? null : property.getLocation().getFinalAssumption();
-            this.expectedObjRef = expectedObj == null ? null : new WeakReference<>(expectedObj);
+            this.expectedObjRef = expectedObj == null ? null : new TruffleWeakReference<>(expectedObj);
         }
 
         @Override
