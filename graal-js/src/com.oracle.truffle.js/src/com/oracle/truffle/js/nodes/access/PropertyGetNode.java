@@ -637,25 +637,33 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static final class FinalObjectPropertyGetNode extends AbstractFinalPropertyGetNode {
 
-        private final Object finalValue;
+        @CompilationFinal private TruffleWeakReference<Object> finalValueRef;
         private final Location location;
 
         public FinalObjectPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck, Object value, JSDynamicObject expectedObjRef) {
             super(property, shapeCheck, expectedObjRef);
             assert JSProperty.isData(property);
-            this.finalValue = value;
+            this.finalValueRef = new TruffleWeakReference<>(value);
             this.location = property.getLocation();
         }
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            if (isValidFinalAssumption()) {
-                assert assertFinalValue(finalValue, thisObj, root);
-                return finalValue;
-            } else {
-                DynamicObject store = receiverCheck.getStore(thisObj);
-                return location.get(store, guard);
+            TruffleWeakReference<Object> weakRef = finalValueRef;
+            if (weakRef != null) {
+                if (isValidFinalAssumption()) {
+                    Object finalValue = weakRef.get();
+                    if (finalValue != null) {
+                        assert assertFinalValue(finalValue, thisObj, root);
+                        return finalValue;
+                    }
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                // Release unused weak reference and fall back to normal read.
+                finalValueRef = null;
             }
+            DynamicObject store = receiverCheck.getStore(thisObj);
+            return location.get(store, guard);
         }
     }
 
