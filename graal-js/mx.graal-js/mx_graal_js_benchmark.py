@@ -53,24 +53,36 @@ class GraalJsVm(GuestVm):
     def with_host_vm(self, host_vm):
         return self.__class__(self.config_name(), self._options, host_vm)
 
+    def run_aux_cache(self, cwd, args, runs, extra_args):
+        assert not self._options
+        cache_file = join(cwd, self.bmSuite.currently_running_benchmark() + '.img')
+        for _ in range(runs):
+            code, out, _ = self.host_vm().run_launcher('js', ['--experimental-options', '--engine.TraceCache', '--engine.Cache=' + cache_file] + extra_args + args, cwd)
+            if code != 0:
+                return code, out, {},
+        return self.host_vm().run_launcher('js', ['--experimental-options', '--engine.CacheLoad=' + cache_file] + args, cwd)
+
     def run(self, cwd, args):
         if hasattr(self.host_vm(), 'run_launcher'):
             if self.config_name() == 'trace-cache':
-                assert not self._options
-                cache_file = join(cwd, self.bmSuite.currently_running_benchmark() + '.img')
-                code, out, _ = self.host_vm().run_launcher('js', ['--experimental-options', '--engine.TraceCache', '--engine.CacheStore=' + cache_file] + args, cwd)
-                if code != 0:
-                    return code, out, {},
-                else:
-                    return self.host_vm().run_launcher('js', ['--experimental-options', '--engine.CacheLoad=' + cache_file] + args, cwd)
+                return self.run_aux_cache(cwd, args, 1, [])
+            if self.config_name() == 'trace-cache-many-compilations':
+                return self.run_aux_cache(cwd, args, 20, [])
+            if self.config_name() == 'trace-cache-executed':
+                return self.run_aux_cache(cwd, args, 1, ['--engine.CacheCompile=executed'])
             else:
                 return self.host_vm().run_launcher('js', self._options + args, cwd)
         else:
             return self.host_vm().run(cwd, mx_graal_js.graaljs_cmd_line(self._options + args))
 
-
 def register_js_vms():
-    for config_name, options, priority in [('default', [], 10), ('interpreter', ['--experimental-options', '--engine.Compilation=false'], 100), ('trace-cache', [], 110)]:
+    for config_name, options, priority in [
+        ('default', [], 10),
+        ('interpreter', ['--experimental-options', '--engine.Compilation=false'], 100),
+        ('trace-cache', [], 110),
+        ('trace-cache-many-compilations', [], 120),
+        ('trace-cache-executed', [], 130),
+    ]:
         if mx.suite('js-benchmarks', fatalIfMissing=False):
             import mx_js_benchmarks
             mx_js_benchmarks.add_vm(GraalJsVm(config_name, options), _suite, priority)
