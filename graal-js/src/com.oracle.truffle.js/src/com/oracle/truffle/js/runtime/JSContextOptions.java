@@ -46,6 +46,7 @@ import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -532,21 +533,20 @@ public final class JSContextOptions {
     public enum UnhandledRejectionsTrackingMode {
         NONE,
         WARN,
-        THROW,
+        THROW;
+
+        @Override
+        public String toString() {
+            return name().toLowerCase(Locale.ENGLISH);
+        }
     }
 
     public static final String UNHANDLED_REJECTIONS_NAME = JS_OPTION_PREFIX + "unhandled-rejections";
-    @Option(name = UNHANDLED_REJECTIONS_NAME, category = OptionCategory.USER, usageSyntax = "none|warn|throw", help = "" +
+    @Option(name = UNHANDLED_REJECTIONS_NAME, category = OptionCategory.USER, help = "" +
                     "Configure unhandled promise rejections tracking. Accepted values: 'none', unhandled rejections are not tracked. " +
                     "'warn', a warning is printed to stderr when an unhandled rejection is detected. " +
                     "'throw', an exception is thrown when an unhandled rejection is detected.") //
-    public static final OptionKey<UnhandledRejectionsTrackingMode> UNHANDLED_REJECTIONS = new OptionKey<>(UnhandledRejectionsTrackingMode.NONE, new OptionType<>("Mode", ur -> {
-        try {
-            return UnhandledRejectionsTrackingMode.valueOf(ur.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Unknown value '" + ur + "' for option " + UNHANDLED_REJECTIONS_NAME + ". Accepted values: 'none', 'warn', 'throw'.");
-        }
-    }));
+    public static final OptionKey<UnhandledRejectionsTrackingMode> UNHANDLED_REJECTIONS = new OptionKey<>(UnhandledRejectionsTrackingMode.NONE);
     @CompilationFinal private UnhandledRejectionsTrackingMode unhandledRejectionsMode;
 
     public static final String OPERATOR_OVERLOADING_NAME = JS_OPTION_PREFIX + "operator-overloading";
