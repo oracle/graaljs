@@ -251,8 +251,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         // ES2022
         at(1),
+
+        // ES 2023
         groupBy(1),
-        groupByToMap(1);
+        groupByToMap(1),
+        findLast(1),
+        findLastIndex(1);
 
         private final int length;
 
@@ -275,7 +279,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return JSConfig.ECMAScript2019;
             } else if (this == at) {
                 return JSConfig.ECMAScript2022;
-            } else if (EnumSet.of(groupBy, groupByToMap).contains(this)) {
+            } else if (EnumSet.of(groupBy, groupByToMap, findLast, findLastIndex).contains(this)) {
                 return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
@@ -329,9 +333,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return JSArrayReverseNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
 
             case find:
-                return JSArrayFindNodeGen.create(context, builtin, false, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return JSArrayFindNodeGen.create(context, builtin, false, false, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case findIndex:
-                return JSArrayFindIndexNodeGen.create(context, builtin, false, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return JSArrayFindIndexNodeGen.create(context, builtin, false, false, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case findLast:
+                return JSArrayFindNodeGen.create(context, builtin, false, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case findLastIndex:
+                return JSArrayFindIndexNodeGen.create(context, builtin, false, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case fill:
                 return JSArrayFillNodeGen.create(context, builtin, false, args().withThis().fixedArgs(3).createArgumentNodes(context));
             case copyWithin:
@@ -2632,9 +2640,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSArrayFindNode extends JSArrayOperation {
         @Child private JSToBooleanNode toBooleanNode = JSToBooleanNode.create();
         @Child private JSFunctionCallNode callNode = JSFunctionCallNode.createCall();
+        private final boolean isLast; // Array.prototype.find() vs .findLast()
 
-        public JSArrayFindNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
+        public JSArrayFindNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation, boolean isLast) {
             super(context, builtin, isTypedArrayImplementation);
+            this.isLast = isLast;
         }
 
         private Object callPredicate(Object function, Object target, Object value, double index, Object thisObj) {
@@ -2646,15 +2656,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
-
-            for (long idx = 0; idx < length; idx++) {
+            long idx = isLast ? length - 1 : 0;
+            while (isLast ? idx >= 0 : idx < length) {
                 Object value = read(thisObj, idx);
                 Object callbackResult = callPredicate(callbackFn, thisArg, value, idx, thisJSObj);
                 boolean testResult = toBooleanNode.executeBoolean(callbackResult);
                 if (testResult) {
-                    reportLoopCount(idx);
+                    reportLoopCount(isLast ? length - idx - 1 : idx);
                     return value;
                 }
+                idx = isLast ? idx - 1 : idx + 1;
             }
             reportLoopCount(length);
             return Undefined.instance;
@@ -2664,9 +2675,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSArrayFindIndexNode extends JSArrayOperation {
         @Child private JSToBooleanNode toBooleanNode = JSToBooleanNode.create();
         @Child private JSFunctionCallNode callNode = JSFunctionCallNode.createCall();
+        private final boolean isLast; // Array.prototype.findIndex() vs .findLastIndex()
 
-        public JSArrayFindIndexNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
+        public JSArrayFindIndexNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation, boolean isLast) {
             super(context, builtin, isTypedArrayImplementation);
+            this.isLast = isLast;
         }
 
         private Object callPredicate(Object function, Object target, Object value, double index, Object thisObj) {
@@ -2678,15 +2691,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
-
-            for (long idx = 0; idx < length; idx++) {
+            long idx = isLast ? length - 1 : 0;
+            while (isLast ? idx >= 0 : idx < length) {
                 Object value = read(thisObj, idx);
                 Object callbackResult = callPredicate(callbackFn, thisArg, value, idx, thisJSObj);
                 boolean testResult = toBooleanNode.executeBoolean(callbackResult);
                 if (testResult) {
-                    reportLoopCount(idx);
+                    reportLoopCount(isLast ? length - idx - 1 : idx);
                     return JSRuntime.positiveLongToIntOrDouble(idx);
                 }
+                idx = isLast ? idx - 1 : idx + 1;
             }
             reportLoopCount(length);
             return -1;
