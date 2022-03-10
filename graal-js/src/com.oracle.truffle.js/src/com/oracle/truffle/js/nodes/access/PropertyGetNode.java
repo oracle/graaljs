@@ -907,14 +907,14 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Child private JSFunctionCallNode callNode;
         private final BranchProfile undefinedGetterBranch = BranchProfile.create();
         @CompilationFinal private TruffleWeakReference<Accessor> finalAccessorRef;
-        private final Property property;
+        private final Location location;
 
         public FinalAccessorPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck, Accessor finalAccessor, JSDynamicObject expectedObj) {
             super(property, shapeCheck, expectedObj);
             assert JSProperty.isAccessor(property);
             this.callNode = JSFunctionCallNode.createCall();
             this.finalAccessorRef = new TruffleWeakReference<>(finalAccessor);
-            this.property = property;
+            this.location = property.getLocation();
         }
 
         private Accessor getAccessor(Object thisObj, PropertyGetNode root, boolean guard) {
@@ -932,7 +932,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 finalAccessorRef = null;
             }
             DynamicObject store = receiverCheck.getStore(thisObj);
-            return (Accessor) property.getLocation().get(store, guard);
+            return (Accessor) location.get(store, guard);
         }
 
         @Override
