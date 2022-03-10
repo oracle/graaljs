@@ -60,8 +60,8 @@ public abstract class JSToIntegerWithoutRoundingNode extends JavaScriptBaseNode 
 
     public abstract Object execute(Object value);
 
-    public final long executeLong(Object value) {
-        return (long) execute(value);
+    public final double executeDouble(Object value) {
+        return (double) execute(value);
     }
 
     public static JSToIntegerWithoutRoundingNode create() {
@@ -69,44 +69,44 @@ public abstract class JSToIntegerWithoutRoundingNode extends JavaScriptBaseNode 
     }
 
     @Specialization
-    protected static long doInteger(int value) {
+    protected static double doInteger(int value) {
         return value;
     }
 
     @Specialization
-    protected static long doLong(long value) {
+    protected static double doLong(long value) {
         return value;
     }
 
     @Specialization
-    protected static long doBoolean(boolean value) {
+    protected static double doBoolean(boolean value) {
         return JSRuntime.booleanToNumber(value);
     }
 
     @Specialization
-    protected static long doSafeInteger(SafeInteger value) {
+    protected static double doSafeInteger(SafeInteger value) {
         return value.longValue();
     }
 
     @Specialization
-    protected static long doDoubleInfinite(double value) {
+    protected static double doDoubleInfinite(double value) {
         if (Double.isNaN(value) || value == 0d) {
-            return 0;
+            return 0.0;
         }
         if (!JSRuntime.isIntegralNumber(value)) {
             throw Errors.createRangeError("integral number expected");
         }
-        return (long) value;
+        return value;
     }
 
     @Specialization(guards = "isJSNull(value)")
-    protected static long doNull(@SuppressWarnings("unused") Object value) {
-        return 0;
+    protected static double doNull(@SuppressWarnings("unused") Object value) {
+        return 0.0;
     }
 
     @Specialization(guards = "isUndefined(value)")
-    protected static long doUndefined(@SuppressWarnings("unused") Object value) {
-        return 0;
+    protected static double doUndefined(@SuppressWarnings("unused") Object value) {
+        return 0.0;
     }
 
     @Specialization
@@ -120,16 +120,16 @@ public abstract class JSToIntegerWithoutRoundingNode extends JavaScriptBaseNode 
     }
 
     @Specialization
-    protected long doString(TruffleString value,
+    protected double doString(TruffleString value,
                     @Cached.Shared("recToIntOrInf") @Cached("create()") JSToIntegerWithoutRoundingNode toIntOrInf,
                     @Cached("create()") JSStringToNumberNode stringToNumberNode) {
-        return toIntOrInf.executeLong(stringToNumberNode.executeString(value));
+        return toIntOrInf.executeDouble(stringToNumberNode.executeString(value));
     }
 
     @Specialization(guards = "isForeignObject(value)||isJSObject(value)")
-    protected long doJSOrForeignObject(Object value,
+    protected double doJSOrForeignObject(Object value,
                     @Cached.Shared("recToIntOrInf") @Cached("create()") JSToIntegerWithoutRoundingNode toIntOrInf,
                     @Cached("create()") JSToNumberNode toNumberNode) {
-        return toIntOrInf.executeLong(toNumberNode.executeNumber(value));
+        return toIntOrInf.executeDouble(toNumberNode.executeNumber(value));
     }
 }

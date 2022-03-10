@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,20 +46,12 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public class JSTemporalPlainDateObject extends JSNonProxyObject implements TemporalMonth, TemporalYear, TemporalDay, TemporalCalendar {
 
-    private final long year;
-    private final long month;
-    private final long day;
+    private final int year;
+    private final int month;
+    private final int day;
     private final DynamicObject calendar;
 
-    protected JSTemporalPlainDateObject(Shape shape) {
-        super(shape);
-        this.year = 0;
-        this.month = 0;
-        this.day = 0;
-        this.calendar = null;
-    }
-
-    public JSTemporalPlainDateObject(Shape shape, long year, long month, long day, DynamicObject calendar) {
+    public JSTemporalPlainDateObject(Shape shape, int year, int month, int day, DynamicObject calendar) {
         super(shape);
         this.year = year;
         this.month = month;
@@ -68,17 +60,17 @@ public class JSTemporalPlainDateObject extends JSNonProxyObject implements Tempo
     }
 
     @Override
-    public long getYear() {
+    public int getYear() {
         return year;
     }
 
     @Override
-    public long getMonth() {
+    public int getMonth() {
         return month;
     }
 
     @Override
-    public long getDay() {
+    public int getDay() {
         return day;
     }
 

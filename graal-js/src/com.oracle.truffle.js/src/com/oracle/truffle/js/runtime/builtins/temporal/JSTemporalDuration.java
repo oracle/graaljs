@@ -53,8 +53,10 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SIGN;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
+import static com.oracle.truffle.js.runtime.util.TemporalUtil.bitoi;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -66,10 +68,12 @@ import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltins;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
@@ -95,17 +99,24 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     private JSTemporalDuration() {
     }
 
-    public static DynamicObject create(JSContext context, long years, long months, long weeks, long days, long hours,
-                    long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
+    public static JSTemporalDurationObject createTemporalDuration(JSContext context, double years, double months, double weeks, double days, double hours,
+                    double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
         if (!TemporalUtil.validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
                         nanoseconds)) {
             throw Errors.createRangeError("Given duration outside range.");
         }
         JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalDurationFactory();
-        DynamicObject obj = factory.initProto(new JSTemporalDurationObject(factory.getShape(realm),
-                        years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds), realm);
+        JSTemporalDurationObject obj = factory.initProto(new JSTemporalDurationObject(factory.getShape(realm),
+                        nnz(years), nnz(months), nnz(weeks), nnz(days), nnz(hours), nnz(minutes), nnz(seconds), nnz(milliseconds), nnz(microseconds), nnz(nanoseconds)), realm);
         return context.trackAllocation(obj);
+    }
+
+    private static double nnz(double d) {
+        if (JSRuntime.isNegativeZero(d)) {
+            return 0;
+        }
+        return d;
     }
 
     @Override
@@ -183,7 +194,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         long monthsMV = 0;
         long daysMV = 0;
         long weeksMV = 0;
-        long hoursMV = 0;
+        double hoursMV = 0;
         double minutesMV = 0;
         double secondsMV = 0;
         BigDecimal millisecondsMV = BigDecimal.ZERO;
@@ -217,7 +228,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 minutesPair = parseDurationIntlWithFraction(string, matcher, 8);
                 secondsPair = parseDurationIntlWithFraction(string, matcher, 9);
 
-                hoursMV = TemporalUtil.toIntegerOrInfinity(hoursPair.getFirst()).longValue();
+                hoursMV = TemporalUtil.toIntegerOrInfinity(hoursPair.getFirst()).doubleValue();
                 fHours = hoursPair.getSecond();
 
                 minutes = minutesPair.getFirst();
@@ -325,20 +336,20 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                             d.getMicroseconds(), d.getNanoseconds());
         }
         boolean any = false;
-        long year = 0;
-        long month = 0;
-        long week = 0;
-        long day = 0;
-        long hour = 0;
-        long minute = 0;
-        long second = 0;
-        long millis = 0;
-        long micros = 0;
-        long nanos = 0;
+        double year = 0;
+        double month = 0;
+        double week = 0;
+        double day = 0;
+        double hour = 0;
+        double minute = 0;
+        double second = 0;
+        double millis = 0;
+        double micros = 0;
+        double nanos = 0;
         for (TruffleString property : TemporalUtil.DURATION_PROPERTIES) {
             Object val = JSObject.get(temporalDurationLike, property);
 
-            long lVal = 0;
+            double lVal = 0;
             if (val == Undefined.instance) {
                 lVal = 0;
             } else {
@@ -375,66 +386,72 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         return JSTemporalDurationRecord.createWeeks(year, month, week, day, hour, minute, second, millis, micros, nanos);
     }
 
-    // 7.5.8
-    public static DynamicObject createTemporalDuration(JSContext ctx, long years, long months, long weeks, long days, long hours,
-                    long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
-        if (!TemporalUtil.validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
-            throw Errors.createRangeError("Duration not valid.");
-        }
-        return create(ctx, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+    @TruffleBoundary
+    public static TruffleString temporalDurationToString(double yearsP, double monthsP, double weeksP, double daysP, double hoursP, double minutesP, double secondsP, double millisecondsP,
+                    double microsecondsP, double nanosecondsP, Object precision, JSNumberToBigIntNode toBigIntNode) {
+        int sign = TemporalUtil.durationSign(yearsP, monthsP, weeksP, daysP, hoursP, minutesP, secondsP, millisecondsP, microsecondsP, nanosecondsP);
+
+        BigInteger nanosecondsBI = toBigInteger(nanosecondsP, toBigIntNode);
+        BigInteger microsecondsBI = toBigInteger(microsecondsP, toBigIntNode);
+        BigInteger millisecondsBI = toBigInteger(millisecondsP, toBigIntNode);
+        BigInteger secondsBI = toBigInteger(secondsP, toBigIntNode);
+
+        BigInteger yearsBI = toBigIntegerOrNull(Math.abs(yearsP), toBigIntNode);
+        BigInteger monthsBI = toBigIntegerOrNull(Math.abs(monthsP), toBigIntNode);
+        BigInteger weeksBI = toBigIntegerOrNull(Math.abs(weeksP), toBigIntNode);
+        BigInteger daysBI = toBigIntegerOrNull(Math.abs(daysP), toBigIntNode);
+        BigInteger hoursBI = toBigIntegerOrNull(Math.abs(hoursP), toBigIntNode);
+        BigInteger minutesBI = toBigIntegerOrNull(Math.abs(minutesP), toBigIntNode);
+
+        boolean condition = secondsP != 0 || millisecondsP != 0 || microsecondsP != 0 || nanosecondsP != 0 ||
+                        (yearsP == 0 && monthsP == 0 && weeksP == 0 && daysP == 0 && hoursP == 0 && minutesP == 0);
+        return temporalDurationToStringIntl(yearsBI, monthsBI, weeksBI, daysBI, hoursBI, minutesBI, secondsBI, millisecondsBI, microsecondsBI, nanosecondsBI, precision, sign, condition);
     }
 
-    // 7.5.23
     @TruffleBoundary
-    public static TruffleString temporalDurationToString(long yearsP, long monthsP, long weeksP, long daysP, long hoursP, long minutesP, long secondsP, long millisecondsP, long microsecondsP,
-                    long nanosecondsP, Object precision) {
-        long years = yearsP;
-        long months = monthsP;
-        long weeks = weeksP;
-        long days = daysP;
-        long hours = hoursP;
-        long minutes = minutesP;
-        long seconds = secondsP;
-        long milliseconds = millisecondsP;
-        long microseconds = microsecondsP;
-        long nanoseconds = nanosecondsP;
+    private static TruffleString temporalDurationToStringIntl(BigInteger yearsP, BigInteger monthsP, BigInteger weeksP, BigInteger daysP, BigInteger hoursP, BigInteger minutesP, BigInteger secondsP,
+                    BigInteger millisecondsP, BigInteger microsecondsP, BigInteger nanosecondsP, Object precision, int sign, boolean condition) {
+        BigInteger[] res = nanosecondsP.divideAndRemainder(TemporalUtil.bi_1000);
+        BigInteger microseconds = microsecondsP.add(res[0]);
+        BigInteger nanoseconds = res[1];
 
-        int sign = TemporalUtil.durationSign(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-        microseconds += TemporalUtil.integralPartOf(nanoseconds / 1000d);
-        nanoseconds = TemporalUtil.remainder(nanoseconds, 1000);
-        milliseconds += TemporalUtil.integralPartOf(microseconds / 1000d);
-        microseconds = TemporalUtil.remainder(microseconds, 1000);
-        seconds += TemporalUtil.integralPartOf(milliseconds / 1000d);
-        milliseconds = TemporalUtil.remainder(milliseconds, 1000);
+        res = microseconds.divideAndRemainder(TemporalUtil.bi_1000);
+        BigInteger milliseconds = millisecondsP.add(res[0]);
+        microseconds = res[1];
+
+        res = milliseconds.divideAndRemainder(TemporalUtil.bi_1000);
+        BigInteger seconds = secondsP.add(res[0]);
+        milliseconds = res[1];
+
         StringBuilder datePart = new StringBuilder();
-        if (years != 0) {
-            datePart.append(Math.abs(years));
+        if (yearsP != null) {
+            datePart.append(yearsP.toString());
             datePart.append("Y");
         }
-        if (months != 0) {
-            datePart.append(Math.abs(months));
+        if (monthsP != null) {
+            datePart.append(monthsP.toString());
             datePart.append("M");
         }
-        if (weeks != 0) {
-            datePart.append(Math.abs(weeks));
+        if (weeksP != null) {
+            datePart.append(weeksP.toString());
             datePart.append("W");
         }
-        if (days != 0) {
-            datePart.append(Math.abs(days));
+        if (daysP != null) {
+            datePart.append(daysP.toString());
             datePart.append("D");
         }
         StringBuilder timePart = new StringBuilder();
-        if (hours != 0) {
-            timePart.append(Math.abs(hours));
+        if (hoursP != null) {
+            timePart.append(hoursP.toString());
             timePart.append("H");
         }
-        if (minutes != 0) {
-            timePart.append(Math.abs(minutes));
+        if (minutesP != null) {
+            timePart.append(minutesP.toString());
             timePart.append("M");
         }
-        if (seconds != 0 || milliseconds != 0 || microseconds != 0 || nanoseconds != 0 || (years == 0 && months == 0 && weeks == 0 && days == 0 && hours == 0 && minutes == 0) ||
-                        !AUTO.equals(precision)) {
-            long fraction = Math.abs(milliseconds) * 1_000_000L + Math.abs(microseconds) * 1_000 + Math.abs(nanoseconds);
+        if (condition || !AUTO.equals(precision)) {
+            // values clamped above
+            long fraction = Math.abs(bitoi(milliseconds)) * 1_000_000L + Math.abs(bitoi(microseconds)) * 1_000L + Math.abs(bitoi(nanoseconds));
             TruffleString decimalPart = Strings.format("000000000%1$09d", fraction);
             decimalPart = Strings.lazySubstring(decimalPart, Strings.length(decimalPart) - 9);
 
@@ -452,7 +469,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 Number n = (Number) precision;
                 decimalPart = Strings.lazySubstring(decimalPart, 0, Math.min(Strings.length(decimalPart), n.intValue()));
             }
-            TruffleString secondsPart = Strings.format("%d", Math.abs(seconds));
+            TruffleString secondsPart = Strings.fromJavaString(seconds.abs().toString());
             if (!decimalPart.equals(Strings.EMPTY_STRING)) {
                 secondsPart = Strings.concatAll(secondsPart, Strings.DOT, decimalPart);
             }
@@ -470,6 +487,13 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         }
         return Strings.builderToString(result);
     }
-    // endregion
 
+    private static BigInteger toBigIntegerOrNull(double value, JSNumberToBigIntNode toBigIntNode) {
+        return (value != 0) ? toBigIntNode.executeBigInt(value).bigIntegerValue() : null;
+    }
+
+    private static BigInteger toBigInteger(double value, JSNumberToBigIntNode toBigIntNode) {
+        return toBigIntNode.executeBigInt(value).bigIntegerValue();
+    }
+    // endregion
 }

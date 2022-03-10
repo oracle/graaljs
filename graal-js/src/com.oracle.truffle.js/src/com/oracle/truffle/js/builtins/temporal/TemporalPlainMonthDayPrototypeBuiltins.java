@@ -70,7 +70,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -161,9 +160,9 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalPlainMonthDayObject plainMD = (JSTemporalPlainMonthDayObject) thisObj;
             switch (property) {
                 case day:
-                    return JSTemporalCalendar.calendarDay(plainMD.getCalendar(), plainMD);
+                    return TemporalUtil.calendarDay(plainMD.getCalendar(), plainMD);
                 case monthCode:
-                    return JSTemporalCalendar.calendarMonthCode(plainMD.getCalendar(), plainMD);
+                    return TemporalUtil.calendarMonthCode(plainMD.getCalendar(), plainMD);
                 case calendar:
                     return plainMD.getCalendar();
             }

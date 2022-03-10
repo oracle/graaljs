@@ -83,13 +83,13 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     private JSTemporalPlainTime() {
     }
 
-    public static DynamicObject create(JSContext context, long hours, long minutes, long seconds, long milliseconds,
-                    long microseconds, long nanoseconds) {
+    public static DynamicObject create(JSContext context, int hours, int minutes, int seconds, int milliseconds,
+                    int microseconds, int nanoseconds) {
         if (!TemporalUtil.isValidTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
             throw TemporalErrors.createRangeErrorTimeOutsideRange();
         }
         JSRealm realm = JSRealm.get(null);
-        DynamicObject calendar = TemporalUtil.getISO8601Calendar(realm);
+        DynamicObject calendar = TemporalUtil.getISO8601Calendar(context, realm);
         JSObjectFactory factory = context.getTemporalPlainTimeFactory();
         DynamicObject obj = factory.initProto(new JSTemporalPlainTimeObject(factory.getShape(realm),
                         hours, minutes, seconds, milliseconds, microseconds, nanoseconds, calendar), realm);
@@ -163,7 +163,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
             Object value = JSObject.get(temporalTimeLike, property);
             if (value != Undefined.instance) {
                 any = true;
-                value = toInt.executeNumber(value);
+                value = toInt.executeDouble(value);
                 JSObjectUtil.putDataProperty(ctx, result, property, value);
             }
         }

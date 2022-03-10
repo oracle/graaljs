@@ -48,16 +48,16 @@ public final class JSTemporalZonedDateTimeRecord extends JSTemporalDateTimeRecor
     private final TruffleString timeZoneName;
     private final boolean timeZoneZ;
 
-    private JSTemporalZonedDateTimeRecord(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
+    private JSTemporalZonedDateTimeRecord(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
                     TruffleString calendar, boolean hasCalendar, boolean timeZoneZ, TruffleString timeZoneOffsetString, TruffleString timeZoneName) {
-        super(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, 0, false, calendar, hasCalendar);
+        super(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar, hasCalendar);
         this.timeZoneOffsetString = timeZoneOffsetString;
         this.timeZoneName = timeZoneName;
         this.timeZoneZ = timeZoneZ;
     }
 
-    public static JSTemporalZonedDateTimeRecord create(long year, long month, long day, long hour, long minute, long second,
-                    long millisecond, long microsecond, long nanosecond, TruffleString calendar, boolean timeZoneZ, TruffleString timeZoneOffsetString, TruffleString timeZoneName) {
+    public static JSTemporalZonedDateTimeRecord create(int year, int month, int day, int hour, int minute, int second,
+                    int millisecond, int microsecond, int nanosecond, TruffleString calendar, boolean timeZoneZ, TruffleString timeZoneOffsetString, TruffleString timeZoneName) {
         return new JSTemporalZonedDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond,
                         calendar, !TemporalUtil.isNullish(calendar), timeZoneZ, timeZoneOffsetString, timeZoneName);
     }

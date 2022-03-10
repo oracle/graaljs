@@ -65,6 +65,11 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
+    public static JSException createRangeErrorInvalidRelativeToString() {
+        return Errors.createRangeError("invalid relativeTo string");
+    }
+
+    @TruffleBoundary
     public static JSException createRangeErrorSmallestUnitOutOfRange() {
         return Errors.createRangeError("Smallest unit is out of range.");
     }
@@ -95,11 +100,6 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorPropertyNotUndefined(String property) {
-        return Errors.createTypeError(String.format("Property %s should not be undefined.", property));
-    }
-
-    @TruffleBoundary
     public static JSException createRangeErrorTimeOutsideRange() {
         return Errors.createRangeError("Given Time outside the range.");
     }
@@ -117,6 +117,11 @@ public final class TemporalErrors {
     @TruffleBoundary
     public static JSException createRangeErrorYearMonthOutsideRange() {
         return Errors.createRangeError("Given YearMonth outside the range.");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorMonthDayOutsideRange() {
+        return Errors.createRangeError("Given MonthDay outside the range.");
     }
 
     @TruffleBoundary
@@ -165,18 +170,8 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorConstructorExpected() {
-        return Errors.createTypeError("Constructor expected");
-    }
-
-    @TruffleBoundary
     public static JSException createRangeErrorCalendarNotSupported() {
         return Errors.createRangeError("Given calendar id not supported.");
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorInvalidDate() {
-        return Errors.createTypeError("Invalid date");
     }
 
     @TruffleBoundary

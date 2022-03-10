@@ -41,33 +41,33 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 public final class JSTemporalYearMonthDayRecord {
-    private final long year;
-    private final long month;
-    private final long day;
+    private final int year;
+    private final int month;
+    private final int day;
 
-    private JSTemporalYearMonthDayRecord(long year, long month, long day) {
+    private JSTemporalYearMonthDayRecord(int year, int month, int day) {
         this.year = year;
         this.month = month;
         this.day = day;
     }
 
-    public static JSTemporalYearMonthDayRecord create(long year, long month, long day) {
+    public static JSTemporalYearMonthDayRecord create(int year, int month, int day) {
         return new JSTemporalYearMonthDayRecord(year, month, day);
     }
 
-    public static JSTemporalYearMonthDayRecord create(long year, long month) {
+    public static JSTemporalYearMonthDayRecord create(int year, int month) {
         return new JSTemporalYearMonthDayRecord(year, month, 0);
     }
 
-    public long getYear() {
+    public int getYear() {
         return year;
     }
 
-    public long getMonth() {
+    public int getMonth() {
         return month;
     }
 
-    public long getDay() {
+    public int getDay() {
         return day;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,16 +46,18 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public class JSTemporalPlainTimeObject extends JSNonProxyObject implements TemporalTime {
 
-    private final long hour;
-    private final long minute;
-    private final long second;
-    private final long millisecond;
-    private final long microsecond;
-    private final long nanosecond;
+    // all values guaranteed to fit into int
+    // https://tc39.es/proposal-temporal/#sec-temporal-isvalidtime
+    private final int hour;
+    private final int minute;
+    private final int second;
+    private final int millisecond;
+    private final int microsecond;
+    private final int nanosecond;
     private final DynamicObject calendar;
 
-    protected JSTemporalPlainTimeObject(Shape shape, long hour, long minute, long second, long millisecond,
-                    long microsecond, long nanosecond, DynamicObject calendar) {
+    protected JSTemporalPlainTimeObject(Shape shape, int hour, int minute, int second, int millisecond,
+                    int microsecond, int nanosecond, DynamicObject calendar) {
         super(shape);
         this.hour = hour;
         this.minute = minute;
@@ -67,32 +69,32 @@ public class JSTemporalPlainTimeObject extends JSNonProxyObject implements Tempo
     }
 
     @Override
-    public long getHour() {
+    public int getHour() {
         return hour;
     }
 
     @Override
-    public long getMinute() {
+    public int getMinute() {
         return minute;
     }
 
     @Override
-    public long getSecond() {
+    public int getSecond() {
         return second;
     }
 
     @Override
-    public long getMillisecond() {
+    public int getMillisecond() {
         return millisecond;
     }
 
     @Override
-    public long getMicrosecond() {
+    public int getMicrosecond() {
         return microsecond;
     }
 
     @Override
-    public long getNanosecond() {
+    public int getNanosecond() {
         return nanosecond;
     }
 

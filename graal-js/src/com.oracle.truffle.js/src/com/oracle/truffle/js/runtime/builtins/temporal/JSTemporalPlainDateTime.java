@@ -101,7 +101,7 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
         return CLASS_NAME;
     }
 
-    public static JSTemporalPlainDateTimeObject create(JSContext context, long y, long m, long d, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
+    public static JSTemporalPlainDateTimeObject create(JSContext context, int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
                     DynamicObject calendar) {
         if (!TemporalUtil.isValidISODate(y, m, d)) {
             throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
@@ -175,7 +175,7 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
     }
 
     @TruffleBoundary
-    public static TruffleString temporalDateTimeToString(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
+    public static TruffleString temporalDateTimeToString(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
                     DynamicObject calendar, Object precision, TruffleString showCalendar) {
         TruffleString yearString = TemporalUtil.padISOYear(year);
         TruffleString monthString = Strings.format("%1$02d", month);

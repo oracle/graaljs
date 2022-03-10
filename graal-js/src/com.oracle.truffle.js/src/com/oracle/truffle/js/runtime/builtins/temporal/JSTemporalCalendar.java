@@ -40,43 +40,24 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.GREGORY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ID;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.JAPANESE;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltins;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
-import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.TemporalOverflowEnum;
 
 public final class JSTemporalCalendar extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
                 PrototypeSupplier {
@@ -106,7 +87,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     }
 
     public static DynamicObject create(JSContext context, JSRealm realm, TruffleString id) {
-        if (!isBuiltinCalendar(id)) {
+        if (!TemporalUtil.isBuiltinCalendar(id)) {
             throw TemporalErrors.createRangeErrorCalendarNotSupported();
         }
         JSObjectFactory factory = context.getTemporalCalendarFactory();
@@ -154,222 +135,5 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
 
     public static boolean isJSTemporalCalendar(Object obj) {
         return obj instanceof JSTemporalCalendarObject;
-    }
-
-    // 12.1.2
-    public static boolean isBuiltinCalendar(TruffleString id) {
-        return id.equals(ISO8601) || id.equals(GREGORY) || id.equals(JAPANESE);
-    }
-
-    // 12.1.3
-    public static JSTemporalCalendarObject getBuiltinCalendar(TruffleString id, JSContext ctx) {
-        if (!isBuiltinCalendar(id)) {
-            throw TemporalErrors.createRangeErrorCalendarNotSupported();
-        }
-        return (JSTemporalCalendarObject) create(ctx, id);
-    }
-
-    // 12.1.4
-    public static JSTemporalCalendarObject getISO8601Calendar(JSContext ctx) {
-        return getBuiltinCalendar(ISO8601, ctx);
-    }
-
-    private static Object executeFunction(DynamicObject obj, TruffleString fnName, Object... funcArgs) {
-        DynamicObject fn = (DynamicObject) JSObject.getMethod(obj, fnName);
-        return JSRuntime.call(fn, obj, funcArgs);
-    }
-
-    // 12.1.9
-    public static long calendarYear(DynamicObject calendar, DynamicObject dateLike) {
-        Object result = executeFunction(calendar, YEAR, dateLike);
-        if (result == Undefined.instance) {
-            throw Errors.createRangeError("");
-        }
-        return TemporalUtil.toIntegerThrowOnInfinity(result);
-    }
-
-    // 12.1.10
-    public static long calendarMonth(DynamicObject calendar, DynamicObject dateLike) {
-        Object result = executeFunction(calendar, MONTH, dateLike);
-        if (result == Undefined.instance) {
-            throw Errors.createRangeError("");
-        }
-        return TemporalUtil.toIntegerThrowOnInfinity(result);
-    }
-
-    // 12.1.11
-    public static TruffleString calendarMonthCode(DynamicObject calendar, DynamicObject dateLike) {
-        Object result = executeFunction(calendar, MONTH_CODE, dateLike);
-        if (result == Undefined.instance) {
-            throw Errors.createRangeError("");
-        }
-        return JSRuntime.toString(result);
-    }
-
-    // 12.1.12
-    public static long calendarDay(DynamicObject calendar, DynamicObject dateLike) {
-        Object result = executeFunction(calendar, DAY, dateLike);
-        if (result == Undefined.instance) {
-            throw Errors.createRangeError("");
-        }
-        return TemporalUtil.toIntegerThrowOnInfinity(result);
-    }
-
-    // 12.1.13
-    public static Object calendarDayOfWeek(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, DAY_OF_WEEK, dateLike);
-    }
-
-    // 12.1.14
-    public static Object calendarDayOfYear(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, DAY_OF_YEAR, dateLike);
-    }
-
-    // 12.1.15
-    public static Object calendarWeekOfYear(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, WEEK_OF_YEAR, dateLike);
-    }
-
-    // 12.1.16
-    public static Object calendarDaysInWeek(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, DAYS_IN_WEEK, dateLike);
-    }
-
-    // 12.1.17
-    public static Object calendarDaysInMonth(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, DAYS_IN_MONTH, dateLike);
-    }
-
-    // 12.1.18
-    public static Object calendarDaysInYear(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, DAYS_IN_YEAR, dateLike);
-    }
-
-    // 12.1.19
-    public static Object calendarMonthsInYear(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, MONTHS_IN_YEAR, dateLike);
-    }
-
-    // 12.1.20
-    public static Object calendarInLeapYear(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, IN_LEAP_YEAR, dateLike);
-    }
-
-    // 12.1.38
-    public static Object resolveISOMonth(DynamicObject fields, JSStringToNumberNode stringToNumber, JSIdenticalNode identicalNode) {
-        Object month = JSObject.get(fields, MONTH);
-        Object monthCode = JSObject.get(fields, MONTH_CODE);
-        if (TemporalUtil.isNullish(monthCode)) {
-            if (TemporalUtil.isNullish(month)) {
-                throw Errors.createTypeError("No month or month code present.");
-            }
-            return month;
-        }
-        assert monthCode instanceof TruffleString;
-        int monthLength = Strings.length((TruffleString) monthCode);
-        if (monthLength != 3) {
-            throw Errors.createRangeError("Month code should be in 3 character code.");
-        }
-        TruffleString numberPart = Strings.lazySubstring((TruffleString) monthCode, 1);
-        double numberPart2 = stringToNumber.executeString(numberPart);
-        if (Double.isNaN(numberPart2)) {
-            throw Errors.createRangeError("The last character of the monthCode should be a number.");
-        }
-        if (numberPart2 < 1 || numberPart2 > 12) {
-            throw Errors.createRangeError("monthCode out of bounds");
-        }
-
-        long m1 = TemporalUtil.isNullish(month) ? -1 : TemporalUtil.asLong(month);
-        long m2 = (long) numberPart2;
-
-        if (!TemporalUtil.isNullish(month) && m1 != m2) {
-            throw Errors.createRangeError("Month does not equal the month code.");
-        }
-        if (!identicalNode.executeBoolean(monthCode, TemporalUtil.buildISOMonthCode(numberPart))) {
-            throw Errors.createRangeError("Not same value");
-        }
-
-        return (long) numberPart2;
-    }
-
-    // 12.1.39
-    public static JSTemporalDateTimeRecord isoDateFromFields(DynamicObject fields, DynamicObject options, JSContext ctx, IsObjectNode isObject,
-                    JSToBooleanNode toBoolean, JSToNumberNode toNumber, JSToStringNode toString, JSStringToNumberNode stringToNumber,
-                    JSIdenticalNode identicalNode) {
-        assert isObject.executeBoolean(fields);
-        TemporalOverflowEnum overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toNumber, toString);
-        DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(ctx, fields, TemporalUtil.listDMMCY, TemporalUtil.listEmpty);
-        Object year = JSObject.get(preparedFields, YEAR);
-        if (year == Undefined.instance) {
-            throw TemporalErrors.createTypeErrorTemporalYearNotPresent();
-        }
-        Object month = resolveISOMonth(preparedFields, stringToNumber, identicalNode);
-        Object day = JSObject.get(preparedFields, DAY);
-        if (day == Undefined.instance) {
-            throw TemporalErrors.createTypeErrorTemporalDayNotPresent();
-        }
-        return TemporalUtil.regulateISODate((Long) year, (Long) month, (Long) day, overflow);
-    }
-
-    // 12.1.40
-    public static JSTemporalYearMonthDayRecord isoYearMonthFromFields(DynamicObject fields, DynamicObject options, JSContext ctx, IsObjectNode isObject,
-                    JSToBooleanNode toBoolean, JSToNumberNode toNumber,
-                    JSToStringNode toString, JSStringToNumberNode stringToNumber,
-                    JSIdenticalNode identicalNode) {
-        assert isObject.executeBoolean(fields);
-        TemporalOverflowEnum overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toNumber, toString);
-        DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(ctx, fields, TemporalUtil.listMMCY, TemporalUtil.listEmpty);
-        Object year = JSObject.get(preparedFields, YEAR);
-        if (year == Undefined.instance) {
-            throw TemporalErrors.createTypeErrorTemporalYearNotPresent();
-        }
-        Object month = resolveISOMonth(preparedFields, stringToNumber, identicalNode);
-
-        JSTemporalYearMonthDayRecord result = TemporalUtil.regulateISOYearMonth(TemporalUtil.asLong(year), TemporalUtil.asLong(month), overflow);
-        return JSTemporalYearMonthDayRecord.create(result.getYear(), result.getMonth(), 1);
-    }
-
-    // 12.1.41
-    public static JSTemporalYearMonthDayRecord isoMonthDayFromFields(DynamicObject fields, DynamicObject options, JSContext ctx, IsObjectNode isObject,
-                    JSToBooleanNode toBoolean, JSToNumberNode toNumber, JSToStringNode toString, JSStringToNumberNode stringToNumber, JSIdenticalNode identicalNode) {
-        assert isObject.executeBoolean(fields);
-        TemporalOverflowEnum overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toNumber, toString);
-        DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(ctx, fields, TemporalUtil.listDMMCY, TemporalUtil.listEmpty);
-        Object month = JSObject.get(preparedFields, MONTH);
-        Object monthCode = JSObject.get(preparedFields, MONTH_CODE);
-        Object year = JSObject.get(preparedFields, YEAR);
-        if (!TemporalUtil.isNullish(month) && TemporalUtil.isNullish(monthCode) && TemporalUtil.isNullish(year)) {
-            throw Errors.createTypeError("A year or a month code should be present.");
-        }
-        month = resolveISOMonth(preparedFields, stringToNumber, identicalNode);
-        Object day = JSObject.get(preparedFields, DAY);
-        if (day == Undefined.instance) {
-            throw Errors.createTypeError("Day not present.");
-        }
-        long referenceISOYear = 1972;
-        JSTemporalDateTimeRecord result = null;
-        if (monthCode == Undefined.instance) {
-            result = TemporalUtil.regulateISODate((Long) year, (Long) month, (Long) day, overflow);
-        } else {
-            result = TemporalUtil.regulateISODate(referenceISOYear, (Long) month, (Long) day, overflow);
-        }
-        return JSTemporalYearMonthDayRecord.create(referenceISOYear, result.getMonth(), result.getDay());
-    }
-
-    public static TruffleString isoMonthCode(TemporalMonth date) {
-        long month = date.getMonth();
-        return buildISOMonthCode(month);
-    }
-
-    @TruffleBoundary
-    private static TruffleString buildISOMonthCode(long month) {
-        TruffleString monthCode = Strings.format("%1$02d", month);
-        return Strings.concat(Strings.UC_M, monthCode);
-    }
-
-    // 12.1.45
-    public static long isoDay(DynamicObject temporalObject) {
-        TemporalDay day = (TemporalDay) temporalObject;
-        return day.getDay();
     }
 }

@@ -48,7 +48,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalTimeZoneFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalTimeZonePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
@@ -70,10 +69,6 @@ public final class JSTemporalTimeZone extends JSNonProxy implements JSConstructo
     public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.TimeZone");
 
     private JSTemporalTimeZone() {
-    }
-
-    public static DynamicObject create(JSContext context, long nanoseconds, TruffleString identifier) {
-        return create(context, new BigInt(Boundaries.bigIntegerValueOf(nanoseconds)), identifier);
     }
 
     public static DynamicObject create(JSContext context, BigInt nanoseconds, TruffleString identifier) {

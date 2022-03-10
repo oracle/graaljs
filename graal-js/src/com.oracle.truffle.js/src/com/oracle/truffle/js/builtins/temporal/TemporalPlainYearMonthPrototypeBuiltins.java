@@ -83,7 +83,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
@@ -202,19 +201,19 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                 case calendar:
                     return temporalYM.getCalendar();
                 case year:
-                    return JSTemporalCalendar.calendarYear(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarYear(temporalYM.getCalendar(), temporalYM);
                 case month:
-                    return JSTemporalCalendar.calendarMonth(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarMonth(temporalYM.getCalendar(), temporalYM);
                 case monthCode:
-                    return JSTemporalCalendar.calendarMonthCode(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarMonthCode(temporalYM.getCalendar(), temporalYM);
                 case daysInYear:
-                    return JSTemporalCalendar.calendarDaysInYear(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarDaysInYear(temporalYM.getCalendar(), temporalYM);
                 case daysInMonth:
-                    return JSTemporalCalendar.calendarDaysInMonth(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarDaysInMonth(temporalYM.getCalendar(), temporalYM);
                 case monthsInYear:
-                    return JSTemporalCalendar.calendarMonthsInYear(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarMonthsInYear(temporalYM.getCalendar(), temporalYM);
                 case inLeapYear:
-                    return JSTemporalCalendar.calendarInLeapYear(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarInLeapYear(temporalYM.getCalendar(), temporalYM);
             }
             CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
@@ -387,15 +386,15 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
 
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listEmpty, isObjectNode, toStringNode);
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), DAY, Undefined.instance);
+                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), DAY);
             DynamicObject options = getOptionsObject(optParam);
             DynamicObject calendar = ym.getCalendar();
             List<TruffleString> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.listMCY);
             int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
-            long day = 0;
+            int day = 0;
             if (sign < 0) {
-                Object dayFromCalendar = JSTemporalCalendar.calendarDaysInMonth(calendar, ym);
-                day = TemporalUtil.toPositiveInteger(dayFromCalendar);
+                Object dayFromCalendar = TemporalUtil.calendarDaysInMonth(calendar, ym);
+                day = TemporalUtil.toPositiveIntegerConstrainInt(dayFromCalendar);
             } else {
                 day = 1;
             }
@@ -421,21 +420,21 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
 
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listEmpty, isObjectNode, toStringNode);
+            duration = TemporalUtil.createNegatedTemporalDuration(duration); // #1862, PR 2002
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(),
-                            duration.getMicroseconds(), duration.getNanoseconds(), DAY, Undefined.instance);
+                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), DAY);
             DynamicObject options = getOptionsObject(optParam);
             DynamicObject calendar = ym.getCalendar();
             List<TruffleString> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.listMCY);
             int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
-            long day = 0;
+            int day = 0;
             if (sign < 0) {
-                day = JSRuntime.longValue((Number) JSTemporalCalendar.calendarDaysInMonth(calendar, ym));
+                day = TemporalUtil.toPositiveIntegerConstrainInt(TemporalUtil.calendarDaysInMonth(calendar, ym));
             } else {
                 day = 1;
             }
             DynamicObject date = TemporalUtil.createTemporalDate(getContext(), ym.getYear(), ym.getMonth(), day, calendar);
-            DynamicObject durationToAdd = JSTemporalDuration.createTemporalDuration(getContext(), -duration.getYears(), -duration.getMonths(), -duration.getWeeks(), -balanceResult.getDays(), 0, 0, 0,
+            DynamicObject durationToAdd = JSTemporalDuration.createTemporalDuration(getContext(), duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0,
                             0, 0, 0);
             DynamicObject addedDate = TemporalUtil.calendarDateAdd(calendar, date, durationToAdd, options, Undefined.instance);
             DynamicObject addedDateFields = TemporalUtil.prepareTemporalFields(getContext(), addedDate, fieldNames, TemporalUtil.listEmpty);

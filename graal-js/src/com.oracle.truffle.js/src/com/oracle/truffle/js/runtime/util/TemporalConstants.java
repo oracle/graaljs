@@ -44,7 +44,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Strings;
 
 public final class TemporalConstants {
-
     public static final TruffleString TEMPORAL = Strings.constant("Temporal");
 
     public static final TruffleString YEAR = Strings.constant("year");
@@ -172,4 +171,9 @@ public final class TemporalConstants {
     public static final TruffleString GLOBAL_INSTANT = Strings.constant("Instant");
     public static final TruffleString GLOBAL_ZONED_DATE_TIME = Strings.constant("ZonedDateTime");
     public static final TruffleString GLOBAL_TEMPORAL_NOW = Strings.constant("Temporal.Now");
+
+    public static final TruffleString MINUS_000000 = Strings.constant("-000000");
+    public static final TruffleString UNICODE_MINUS_SIGN_000000 = Strings.constant(TemporalUtil.UNICODE_MINUS_SIGN + "000000");
+    public static final TruffleString M = Strings.constant("M");
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,30 +40,32 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-public final class JSTemporalNanosecondsDaysRecord {
-    private final long days;
-    private final long nanoseconds;
-    private final long dayLength;
+import java.math.BigInteger;
 
-    private JSTemporalNanosecondsDaysRecord(long days, long nanoseconds, long dayLength) {
+public final class JSTemporalNanosecondsDaysRecord {
+    private final BigInteger days;
+    private final BigInteger nanoseconds;
+    private final BigInteger dayLength;
+
+    private JSTemporalNanosecondsDaysRecord(BigInteger days, BigInteger nanoseconds, BigInteger dayLength) {
         this.days = days;
         this.nanoseconds = nanoseconds;
         this.dayLength = dayLength;
     }
 
-    public static JSTemporalNanosecondsDaysRecord create(long days, long nanoseconds, long dayLength) {
+    public static JSTemporalNanosecondsDaysRecord create(BigInteger days, BigInteger nanoseconds, BigInteger dayLength) {
         return new JSTemporalNanosecondsDaysRecord(days, nanoseconds, dayLength);
     }
 
-    public long getDays() {
+    public BigInteger getDays() {
         return days;
     }
 
-    public long getNanoseconds() {
+    public BigInteger getNanoseconds() {
         return nanoseconds;
     }
 
-    public long getDayLength() {
+    public BigInteger getDayLength() {
         return dayLength;
     }
 

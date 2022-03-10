@@ -54,9 +54,11 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.OptionTypeEnum;
 
 /**
  * Implementation of GetOption() operation.
@@ -73,34 +75,37 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
     protected TemporalGetOptionNode() {
     }
 
-    public enum OptionTypeEnum {
-        STRING,
-        NUMBER,
-        BOOLEAN;
-    }
-
     public static TemporalGetOptionNode create() {
         return TemporalGetOptionNodeGen.create();
     }
 
-    public abstract Object execute(DynamicObject options, TruffleString property, OptionTypeEnum type, List<?> values, Object fallback);
+    public abstract Object execute(DynamicObject options, TruffleString property, OptionTypeEnum types, List<?> values, Object fallback);
 
     @Specialization
-    protected Object getOption(DynamicObject options, TruffleString property, OptionTypeEnum type, List<?> values, Object fallback) {
+    protected Object getOption(DynamicObject options, TruffleString property, OptionTypeEnum types, List<?> values, Object fallback) {
         assert JSRuntime.isObject(options);
         Object value = JSObject.get(options, property);
         if (isFallbackProfile.profile(value == Undefined.instance)) {
             return fallback;
         }
-        assert type == OptionTypeEnum.BOOLEAN || type == OptionTypeEnum.STRING;
-        if (type == OptionTypeEnum.BOOLEAN) {
+        OptionTypeEnum type;
+        if (value instanceof Boolean && types.allowsBoolean()) {
+            type = OptionTypeEnum.BOOLEAN;
+        } else if (Strings.isTString(value) && types.allowsString()) {
+            type = OptionTypeEnum.STRING;
+        } else if (JSRuntime.isNumber(value) && types.allowsNumber()) {
+            type = OptionTypeEnum.NUMBER;
+        } else {
+            type = types.getLast();
+        }
+        if (type.allowsBoolean()) {
             value = toBoolean(value);
-        } else if (type == OptionTypeEnum.NUMBER) {
+        } else if (type.allowsNumber()) {
             value = toNumber(value);
             if (Double.isNaN(((Number) value).doubleValue())) {
                 throw TemporalErrors.createRangeErrorNumberIsNaN();
             }
-        } else if (type == OptionTypeEnum.STRING) {
+        } else if (type.allowsString()) {
             value = toStringNode(value);
         }
         if (value != Undefined.instance && !Boundaries.listContainsUnchecked(values, value)) {

@@ -43,24 +43,21 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 import com.oracle.truffle.api.strings.TruffleString;
 
 public class JSTemporalDateTimeRecord {
-    private final long year;
-    private final long month;
-    private final long day;
-    private final long hour;
-    private final long minute;
-    private final long second;
-    private final long millisecond;
-    private final long microsecond;
-    private final long nanosecond;
+    private final int year;
+    private final int month;
+    private final int day;
+    private final int hour;
+    private final int minute;
+    private final int second;
+    private final int millisecond;
+    private final int microsecond;
+    private final int nanosecond;
 
     private final TruffleString calendar;
     private final boolean hasCalendar;
 
-    private final long weeks;
-    private final boolean hasWeeks;
-
-    protected JSTemporalDateTimeRecord(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
-                    long weeks, boolean hasWeeks, TruffleString calendar, boolean hasCalendar) {
+    protected JSTemporalDateTimeRecord(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
+                    TruffleString calendar, boolean hasCalendar) {
         this.year = year;
         this.month = month;
         this.day = day;
@@ -73,69 +70,56 @@ public class JSTemporalDateTimeRecord {
 
         this.calendar = calendar;
         this.hasCalendar = hasCalendar;
-
-        this.weeks = weeks;
-        this.hasWeeks = hasWeeks;
     }
 
-    public static JSTemporalDateTimeRecord create(long year, long month, long day, long hour, long minute, long second,
-                    long millisecond, long microsecond, long nanosecond) {
-        return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, 0, false, null, false);
+    public static JSTemporalDateTimeRecord create(int year, int month, int day, int hour, int minute, int second,
+                    int millisecond, int microsecond, int nanosecond) {
+        return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, null, false);
     }
 
-    public static JSTemporalDateTimeRecord createCalendar(long year, long month, long day, long hour, long minute, long second,
-                    long millisecond, long microsecond, long nanosecond, TruffleString calendar) {
-        return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, 0, false, calendar, true);
+    public static JSTemporalDateTimeRecord createCalendar(int year, int month, int day, int hour, int minute, int second,
+                    int millisecond, int microsecond, int nanosecond, TruffleString calendar) {
+        return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar, true);
     }
 
-    public static JSTemporalDateTimeRecord createWeeks(long year, long month, long weeks, long day, long hour, long minute, long second,
-                    long millisecond, long microsecond, long nanosecond) {
-        return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, weeks, true, null, false);
-    }
-
-    public long getYear() {
+    public int getYear() {
         return year;
     }
 
-    public long getMonth() {
+    public int getMonth() {
         return month;
     }
 
-    public long getDay() {
+    public int getDay() {
         return day;
     }
 
-    public long getHour() {
+    public int getHour() {
         return hour;
     }
 
-    public long getMinute() {
+    public int getMinute() {
         return minute;
     }
 
-    public long getSecond() {
+    public int getSecond() {
         return second;
     }
 
-    public long getMillisecond() {
+    public int getMillisecond() {
         return millisecond;
     }
 
-    public long getMicrosecond() {
+    public int getMicrosecond() {
         return microsecond;
     }
 
-    public long getNanosecond() {
+    public int getNanosecond() {
         return nanosecond;
     }
 
     public TruffleString getCalendar() {
         return hasCalendar ? calendar : null;
-    }
-
-    public long getWeeks() {
-        assert hasWeeks;
-        return weeks;
     }
 
     public boolean hasCalendar() {

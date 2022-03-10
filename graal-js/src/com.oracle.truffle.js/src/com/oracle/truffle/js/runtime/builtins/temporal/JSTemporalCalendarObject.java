@@ -43,16 +43,10 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
 
 public class JSTemporalCalendarObject extends JSNonProxyObject {
 
     private final TruffleString id;
-
-    protected JSTemporalCalendarObject(Shape shape) {
-        super(shape);
-        this.id = TemporalConstants.ISO8601;
-    }
 
     protected JSTemporalCalendarObject(Shape shape, TruffleString id) {
         super(shape);
