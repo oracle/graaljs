@@ -327,7 +327,12 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         state.dateFormat = dateFormat;
-        state.dateIntervalFormat = DateIntervalFormat.getInstance(skeleton, javaLocale);
+        try {
+            state.dateIntervalFormat = DateIntervalFormat.getInstance(skeleton, javaLocale);
+        } catch (IllegalArgumentException iaex) {
+            // workaround for ICU-21939
+            state.dateIntervalFormat = DateIntervalFormat.getInstance(normalizeYearInSkeleton(skeleton), javaLocale);
+        }
 
         if (state.calendar == null) {
             state.calendar = IntlUtil.normalizeCAType(Calendar.getInstance(javaLocale).getType());
@@ -351,6 +356,26 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         state.dateFormat.setTimeZone(timeZone);
         state.timeZone = timeZone.getID();
         state.initialized = true;
+    }
+
+    // workaround for ICU-21939, replaces less common year-related parts
+    // of the skeleton by the most common pattern symbol for year
+    private static String normalizeYearInSkeleton(String skeleton) {
+        StringBuilder sb = new StringBuilder();
+        for (char c : skeleton.toCharArray()) {
+            switch (c) {
+                case 'Y':
+                case 'u':
+                case 'U':
+                case 'r':
+                    sb.append('y');
+                    break;
+                default:
+                    sb.append(c);
+                    break;
+            }
+        }
+        return sb.toString();
     }
 
     private static int dateFormatStyle(String style) {
