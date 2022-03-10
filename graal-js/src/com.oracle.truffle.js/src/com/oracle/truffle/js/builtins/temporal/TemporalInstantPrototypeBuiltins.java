@@ -42,12 +42,7 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_EXPAND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
 
@@ -97,6 +92,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalInstantPrototypeBuiltins.TemporalInstantPrototype> {
 
@@ -267,9 +263,9 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
             JSTemporalInstantObject other = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(getContext(), otherObj);
             DynamicObject options = getOptionsObject(optionsParam);
-            TruffleString smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND);
-            TruffleString defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(SECOND, smallestUnit);
-            TruffleString largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, defaultLargestUnit);
+            Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND);
+            Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.SECOND, smallestUnit);
+            Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, defaultLargestUnit);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             TruffleString roundingMode = toTemporalRoundingMode(options, TRUNC);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
@@ -305,25 +301,25 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             } else {
                 roundTo = getOptionsObject(roundToParam);
             }
-            TruffleString smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMWD, null);
-            if (smallestUnit == null) {
+            Unit smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMWD, null);
+            if (smallestUnit == Unit.EMPTY) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorSmallestUnitExpected();
             }
             TruffleString roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
             double maximum;
-            if (HOUR.equals(smallestUnit)) {
+            if (Unit.HOUR == smallestUnit) {
                 maximum = 24;
-            } else if (MINUTE.equals(smallestUnit)) {
+            } else if (Unit.MINUTE == smallestUnit) {
                 maximum = 1440;
-            } else if (SECOND.equals(smallestUnit)) {
+            } else if (Unit.SECOND == smallestUnit) {
                 maximum = 86400;
-            } else if (MILLISECOND.equals(smallestUnit)) {
+            } else if (Unit.MILLISECOND == smallestUnit) {
                 maximum = 8.64 * 10_000_000;
-            } else if (MICROSECOND.equals(smallestUnit)) {
+            } else if (Unit.MICROSECOND == smallestUnit) {
                 maximum = 8.64 * 10_000_000_000d;
             } else {
-                assert NANOSECOND.equals(smallestUnit);
+                assert Unit.NANOSECOND == smallestUnit;
                 maximum = 8.64 * 10_000_000_000_000d;
             }
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(roundTo, maximum, true, isObjectNode, toNumber);

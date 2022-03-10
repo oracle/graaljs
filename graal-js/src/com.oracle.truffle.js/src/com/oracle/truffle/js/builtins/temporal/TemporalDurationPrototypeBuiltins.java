@@ -107,6 +107,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalDurationPrototypeBuiltins.TemporalDurationPrototype> {
 
@@ -410,21 +411,21 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             boolean smallestUnitPresent = true;
             boolean largestUnitPresent = true;
-            TruffleString smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listEmpty, null);
-            if (smallestUnit == null) {
+            Unit smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listEmpty, null);
+            if (smallestUnit == Unit.EMPTY) {
                 smallestUnitPresent = false;
-                smallestUnit = NANOSECOND;
+                smallestUnit = Unit.NANOSECOND;
             }
-            TruffleString defaultLargestUnit = TemporalUtil.defaultTemporalLargestUnit(duration.getYears(),
+            Unit defaultLargestUnit = TemporalUtil.defaultTemporalLargestUnit(duration.getYears(),
                             duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
                             duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                             duration.getMicroseconds());
             defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(defaultLargestUnit, smallestUnit);
-            TruffleString largestUnit = toLargestTemporalUnit(roundTo, TemporalUtil.listEmpty, null, null);
-            if (largestUnit == null) {
+            Unit largestUnit = toLargestTemporalUnit(roundTo, TemporalUtil.listEmpty, null, null);
+            if (largestUnit == Unit.EMPTY) {
                 largestUnitPresent = false;
                 largestUnit = defaultLargestUnit;
-            } else if (AUTO.equals(largestUnit)) {
+            } else if (Unit.AUTO == largestUnit) {
                 largestUnit = defaultLargestUnit;
             }
             if (!smallestUnitPresent && !largestUnitPresent) {
@@ -487,7 +488,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 totalOf = getOptionsObject(totalOfParam);
             }
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), getRealm(), totalOf);
-            TruffleString unit = toTemporalDurationTotalUnit(totalOf);
+            Unit unit = toTemporalDurationTotalUnit(totalOf);
             JSTemporalDurationRecord unbalanceResult = TemporalUtil.unbalanceDurationRelative(getContext(), getRealm(),
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), unit, relativeTo);
             DynamicObject intermediate = Undefined.instance;
@@ -501,26 +502,26 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             balanceResult.getDays(), balanceResult.getHours(), balanceResult.getMinutes(), balanceResult.getSeconds(), balanceResult.getMilliseconds(), balanceResult.getMicroseconds(),
                             balanceResult.getNanoseconds(), 1, unit, TRUNC, relativeTo);
             double whole = 0;
-            if (unit.equals(YEAR)) {
+            if (unit == Unit.YEAR) {
                 whole = roundResult.getYears();
-            } else if (unit.equals(MONTH)) {
+            } else if (unit == Unit.MONTH) {
                 whole = roundResult.getMonths();
-            } else if (unit.equals(WEEK)) {
+            } else if (unit == Unit.WEEK) {
                 whole = roundResult.getWeeks();
-            } else if (unit.equals(DAY)) {
+            } else if (unit == Unit.DAY) {
                 whole = roundResult.getDays();
-            } else if (unit.equals(HOUR)) {
+            } else if (unit == Unit.HOUR) {
                 whole = roundResult.getHours();
-            } else if (unit.equals(MINUTE)) {
+            } else if (unit == Unit.MINUTE) {
                 whole = roundResult.getMinutes();
-            } else if (unit.equals(SECOND)) {
+            } else if (unit == Unit.SECOND) {
                 whole = roundResult.getSeconds();
-            } else if (unit.equals(MILLISECOND)) {
+            } else if (unit == Unit.MILLISECOND) {
                 whole = roundResult.getMilliseconds();
-            } else if (unit.equals(MICROSECOND)) {
+            } else if (unit == Unit.MICROSECOND) {
                 whole = roundResult.getMicroseconds();
             } else {
-                assert NANOSECOND.equals(unit);
+                assert Unit.NANOSECOND == unit;
                 whole = roundResult.getNanoseconds();
             }
             return whole + roundResult.getRemainder();
@@ -559,7 +560,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalDurationObject dur = requireTemporalDuration(duration);
             DynamicObject options = getOptionsObject(opt);
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, getOptionNode());
-            if (precision.getUnit().equals(MINUTE)) {
+            if (precision.getUnit() == Unit.MINUTE) {
                 errorBranch.enter();
                 throw Errors.createRangeError("unexpected precision minute");
             }

@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public final class TemporalErrors {
 
@@ -80,8 +81,8 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
-    public static JSException createRangeErrorRelativeToNotUndefined(TruffleString unit) {
-        return Errors.createRangeError(String.format("RelativeTo object should be not undefined if unit is %s.", unit));
+    public static JSException createRangeErrorRelativeToNotUndefined(Unit unit) {
+        return Errors.createRangeError(String.format("RelativeTo object should be not undefined if unit is %s.", unit.toString()));
     }
 
     @TruffleBoundary

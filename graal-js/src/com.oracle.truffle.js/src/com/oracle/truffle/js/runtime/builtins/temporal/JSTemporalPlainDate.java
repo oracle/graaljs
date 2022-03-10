@@ -51,7 +51,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.IN_LEAP_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS_IN_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEK;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEK_OF_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 
@@ -76,6 +75,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.TemporalOverflowEnum;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public final class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
                 PrototypeSupplier {
@@ -157,9 +157,9 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     }
 
     // 3.5.5
-    public static JSTemporalDurationRecord differenceISODate(int y1, int m1, int d1, int y2, int m2, int d2, TruffleString largestUnit) {
-        assert largestUnit.equals(YEAR) || largestUnit.equals(MONTH) || largestUnit.equals(WEEK) || largestUnit.equals(DAY);
-        if (largestUnit.equals(YEAR) || largestUnit.equals(MONTH)) {
+    public static JSTemporalDurationRecord differenceISODate(int y1, int m1, int d1, int y2, int m2, int d2, Unit largestUnit) {
+        assert largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY;
+        if (largestUnit == Unit.YEAR || largestUnit == Unit.MONTH) {
             int sign = -TemporalUtil.compareISODate(y1, m1, d1, y2, m2, d2);
             if (sign == 0) {
                 return toRecordWeeksPlural(0, 0, 0, 0);
@@ -170,7 +170,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             JSTemporalDateTimeRecord mid = TemporalUtil.addISODate(y1, m1, d1, years, 0, 0, 0, TemporalOverflowEnum.CONSTRAIN);
             int midSign = -TemporalUtil.compareISODate(mid.getYear(), mid.getMonth(), mid.getDay(), y2, m2, d2);
             if (midSign == 0) {
-                if (largestUnit.equals(YEAR)) {
+                if (largestUnit == Unit.YEAR) {
                     return toRecordWeeksPlural(years, 0, 0, 0);
                 } else {
                     return toRecordWeeksPlural(0, years * 12, 0, 0); // sic!
@@ -184,7 +184,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             mid = TemporalUtil.addISODate(y1, m1, d1, years, months, 0, 0, TemporalOverflowEnum.CONSTRAIN);
             midSign = -TemporalUtil.compareISODate(mid.getYear(), mid.getMonth(), mid.getDay(), y2, m2, d2);
             if (midSign == 0) {
-                if (largestUnit.equals(YEAR)) {
+                if (largestUnit == Unit.YEAR) {
                     return toRecordPlural(years, months, 0);
                 } else {
                     return toRecordWeeksPlural(0, months + (years * 12), 0, 0); // sic!
@@ -207,13 +207,13 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             } else {
                 days = end.getDay() + (TemporalUtil.isoDaysInMonth(mid.getYear(), mid.getMonth()) - mid.getDay());
             }
-            if (largestUnit.equals(MONTH)) {
+            if (largestUnit == Unit.MONTH) {
                 months = months + (years * 12);
                 years = 0;
             }
             return toRecordWeeksPlural(years, months, 0, days);
         }
-        if (largestUnit.equals(DAY) || largestUnit.equals(WEEK)) {
+        if (largestUnit == Unit.DAY || largestUnit == Unit.WEEK) {
             JSTemporalDateTimeRecord smaller;
             JSTemporalDateTimeRecord greater;
             int sign;
@@ -234,7 +234,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
                 years = years - 1;
             }
             int weeks = 0;
-            if (largestUnit.equals(WEEK)) {
+            if (largestUnit == Unit.WEEK) {
                 weeks = Math.floorDiv(days, 7);
                 days = days % 7;
             }
