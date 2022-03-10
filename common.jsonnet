@@ -47,6 +47,7 @@ local common_json = (import "common.json");
       MX_PYTHON: "python3.9",
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
     },
+    python_version: "3",
   },
 
   linux: common + {
