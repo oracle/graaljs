@@ -327,11 +327,13 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         state.dateFormat = dateFormat;
+
+        Locale intervalFormatLocale = new Locale.Builder().setLocale(javaLocale).setUnicodeLocaleKeyword("hc", hc).build();
         try {
-            state.dateIntervalFormat = DateIntervalFormat.getInstance(skeleton, javaLocale);
+            state.dateIntervalFormat = DateIntervalFormat.getInstance(skeleton, intervalFormatLocale);
         } catch (IllegalArgumentException iaex) {
             // workaround for ICU-21939
-            state.dateIntervalFormat = DateIntervalFormat.getInstance(normalizeYearInSkeleton(skeleton), javaLocale);
+            state.dateIntervalFormat = DateIntervalFormat.getInstance(normalizeYearInSkeleton(skeleton), intervalFormatLocale);
         }
 
         if (state.calendar == null) {
