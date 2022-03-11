@@ -63,7 +63,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeOb
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.TemporalOverflowEnum;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
 
 /**
  * Implementation of ToTemporalTime() operation.
@@ -86,15 +86,15 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
         return ToTemporalTimeNodeGen.create(context);
     }
 
-    public abstract DynamicObject executeDynamicObject(Object value, TemporalOverflowEnum overflowParam);
+    public abstract DynamicObject executeDynamicObject(Object value, Overflow overflowParam);
 
     @Specialization
-    protected DynamicObject toTemporalTime(Object item, TemporalOverflowEnum overflowParam,
+    protected DynamicObject toTemporalTime(Object item, Overflow overflowParam,
                     @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToStringNode toStringNode,
                     @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode) {
-        TemporalOverflowEnum overflow = overflowParam == null ? TemporalOverflowEnum.CONSTRAIN : overflowParam;
-        assert overflow == TemporalOverflowEnum.CONSTRAIN || overflow == TemporalOverflowEnum.REJECT;
+        Overflow overflow = overflowParam == null ? Overflow.CONSTRAIN : overflowParam;
+        assert overflow == Overflow.CONSTRAIN || overflow == Overflow.REJECT;
         JSTemporalDurationRecord result2 = null;
         if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
             DynamicObject itemObj = (DynamicObject) item;

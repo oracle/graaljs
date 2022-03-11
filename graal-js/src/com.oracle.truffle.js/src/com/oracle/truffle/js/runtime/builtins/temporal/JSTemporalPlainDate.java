@@ -74,7 +74,7 @@ import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.TemporalOverflowEnum;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public final class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
@@ -167,7 +167,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             JSTemporalDateTimeRecord start = toRecord(y1, m1, d1);
             JSTemporalDateTimeRecord end = toRecord(y2, m2, d2);
             int years = end.getYear() - start.getYear();
-            JSTemporalDateTimeRecord mid = TemporalUtil.addISODate(y1, m1, d1, years, 0, 0, 0, TemporalOverflowEnum.CONSTRAIN);
+            JSTemporalDateTimeRecord mid = TemporalUtil.addISODate(y1, m1, d1, years, 0, 0, 0, Overflow.CONSTRAIN);
             int midSign = -TemporalUtil.compareISODate(mid.getYear(), mid.getMonth(), mid.getDay(), y2, m2, d2);
             if (midSign == 0) {
                 if (largestUnit == Unit.YEAR) {
@@ -181,7 +181,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
                 years = years - sign;
                 months = months + (sign * 12);
             }
-            mid = TemporalUtil.addISODate(y1, m1, d1, years, months, 0, 0, TemporalOverflowEnum.CONSTRAIN);
+            mid = TemporalUtil.addISODate(y1, m1, d1, years, months, 0, 0, Overflow.CONSTRAIN);
             midSign = -TemporalUtil.compareISODate(mid.getYear(), mid.getMonth(), mid.getDay(), y2, m2, d2);
             if (midSign == 0) {
                 if (largestUnit == Unit.YEAR) {
@@ -196,7 +196,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
                     years = years - sign;
                     months = 11 * sign;
                 }
-                mid = TemporalUtil.addISODate(y1, m1, d1, years, months, 0, 0, TemporalOverflowEnum.CONSTRAIN);
+                mid = TemporalUtil.addISODate(y1, m1, d1, years, months, 0, 0, Overflow.CONSTRAIN);
                 midSign = -TemporalUtil.compareISODate(mid.getYear(), mid.getMonth(), mid.getDay(), y2, m2, d2);
             }
             int days = 0;

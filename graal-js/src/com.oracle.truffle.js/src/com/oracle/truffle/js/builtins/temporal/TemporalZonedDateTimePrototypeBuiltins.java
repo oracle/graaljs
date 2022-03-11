@@ -128,8 +128,8 @@ import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.MatchBehaviour;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetBehaviour;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.TemporalOverflowEnum;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalZonedDateTimePrototypeBuiltins.TemporalZonedDateTimePrototype> {
@@ -372,7 +372,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             int month = temporalDateTime.getMonth();
             int day = temporalDateTime.getDay();
             JSTemporalPlainDateTimeObject today = TemporalUtil.createTemporalDateTime(getContext(), year, month, day, 0, 0, 0, 0, 0, 0, isoCalendar);
-            JSTemporalDateTimeRecord tomorrowFields = TemporalUtil.addISODate(year, month, day, 0, 0, 0, 1, TemporalOverflowEnum.REJECT);
+            JSTemporalDateTimeRecord tomorrowFields = TemporalUtil.addISODate(year, month, day, 0, 0, 0, 1, Overflow.REJECT);
             JSTemporalPlainDateTimeObject tomorrow = TemporalUtil.createTemporalDateTime(getContext(), tomorrowFields.getYear(), tomorrowFields.getMonth(), tomorrowFields.getDay(), 0, 0, 0, 0, 0, 0,
                             isoCalendar);
             JSTemporalInstantObject todayInstant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, today, COMPATIBLE);

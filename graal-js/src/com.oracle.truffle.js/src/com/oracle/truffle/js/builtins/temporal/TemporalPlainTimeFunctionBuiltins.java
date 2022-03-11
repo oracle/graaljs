@@ -54,7 +54,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.TemporalOverflowEnum;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
 
 public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainTimeFunctionBuiltins.TemporalPlainTimeFunction> {
 
@@ -101,7 +101,7 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
         protected Object from(Object item, Object options,
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime) {
             DynamicObject normalizedOptions = getOptionsObject(options);
-            TemporalOverflowEnum overflow = toTemporalOverflow(normalizedOptions);
+            Overflow overflow = toTemporalOverflow(normalizedOptions);
             if (isObject(item) && JSTemporalPlainTime.isJSTemporalPlainTime(item)) {
                 JSTemporalPlainTimeObject timeItem = (JSTemporalPlainTimeObject) item;
                 return JSTemporalPlainTime.create(getContext(),

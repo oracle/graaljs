@@ -105,7 +105,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.TemporalOverflowEnum;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
@@ -265,7 +265,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             JSTemporalDurationRecord result2 = TemporalUtil.regulateTime(
                             dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
                             dtoi(result.getNanoseconds()),
-                            TemporalOverflowEnum.REJECT);
+                            Overflow.REJECT);
             return JSTemporalPlainTime.create(getContext(),
                             dtoi(result2.getHours()), dtoi(result2.getMinutes()), dtoi(result2.getSeconds()), dtoi(result2.getMilliseconds()), dtoi(result2.getMicroseconds()),
                             dtoi(result2.getNanoseconds()));
@@ -296,7 +296,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             -duration.getMilliseconds(), -duration.getMicroseconds(), -duration.getNanoseconds());
             JSTemporalDurationRecord result2 = TemporalUtil.regulateTime(
                             result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(),
-                            TemporalOverflowEnum.REJECT);
+                            Overflow.REJECT);
             return JSTemporalPlainTime.create(getContext(),
                             dtoi(result2.getHours()), dtoi(result2.getMinutes()), dtoi(result2.getSeconds()), dtoi(result2.getMilliseconds()), dtoi(result2.getMicroseconds()),
                             dtoi(result2.getNanoseconds()));
@@ -333,7 +333,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             }
             DynamicObject partialTime = JSTemporalPlainTime.toPartialTime(timeLikeObj, isObjectNode, toIntThrows, getContext());
             DynamicObject normalizedOptions = getOptionsObject(options);
-            TemporalOverflowEnum overflow = toTemporalOverflow(normalizedOptions);
+            Overflow overflow = toTemporalOverflow(normalizedOptions);
             int hour;
             int minute;
             int second;

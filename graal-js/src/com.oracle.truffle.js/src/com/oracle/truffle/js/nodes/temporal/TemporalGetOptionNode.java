@@ -58,7 +58,8 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.OptionTypeEnum;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.OptionType;
 
 /**
  * Implementation of GetOption() operation.
@@ -79,22 +80,22 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
         return TemporalGetOptionNodeGen.create();
     }
 
-    public abstract Object execute(DynamicObject options, TruffleString property, OptionTypeEnum types, List<?> values, Object fallback);
+    public abstract Object execute(DynamicObject options, TruffleString property, TemporalUtil.OptionType types, List<?> values, Object fallback);
 
     @Specialization
-    protected Object getOption(DynamicObject options, TruffleString property, OptionTypeEnum types, List<?> values, Object fallback) {
+    protected Object getOption(DynamicObject options, TruffleString property, TemporalUtil.OptionType types, List<?> values, Object fallback) {
         assert JSRuntime.isObject(options);
         Object value = JSObject.get(options, property);
         if (isFallbackProfile.profile(value == Undefined.instance)) {
             return fallback;
         }
-        OptionTypeEnum type;
+        OptionType type;
         if (value instanceof Boolean && types.allowsBoolean()) {
-            type = OptionTypeEnum.BOOLEAN;
+            type = TemporalUtil.OptionType.BOOLEAN;
         } else if (Strings.isTString(value) && types.allowsString()) {
-            type = OptionTypeEnum.STRING;
+            type = TemporalUtil.OptionType.STRING;
         } else if (JSRuntime.isNumber(value) && types.allowsNumber()) {
-            type = OptionTypeEnum.NUMBER;
+            type = OptionType.NUMBER;
         } else {
             type = types.getLast();
         }
