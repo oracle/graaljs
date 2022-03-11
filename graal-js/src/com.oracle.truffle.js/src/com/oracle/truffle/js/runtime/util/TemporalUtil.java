@@ -746,31 +746,45 @@ public final class TemporalUtil {
     }
 
       public static void validateTemporalUnitRange(Unit largestUnit, Unit smallestUnit) {
-        if (smallestUnit == Unit.YEAR && !(largestUnit == Unit.YEAR)) {
-            throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
+        boolean error = false;
+        if (smallestUnit == Unit.YEAR) {
+            if (!(largestUnit == Unit.YEAR)) {
+                error=true;
+            }
+        } else if (smallestUnit == Unit.MONTH) {
+            if (!(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH)) {
+                error = true;
+            }
+        } else if (smallestUnit == Unit.WEEK) {
+            if (!(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK)) {
+                error = true;
+            }
+        } else if (smallestUnit == Unit.DAY) {
+            if (!(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY)) {
+                error = true;
+            }
+        } else if (smallestUnit == Unit.HOUR) {
+            if (!(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY || largestUnit == Unit.HOUR)) {
+                error = true;
+            }
+        } else if (smallestUnit == Unit.MINUTE) {
+            if (largestUnit == Unit.SECOND || largestUnit == Unit.MILLISECOND || largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND) {
+                error = true;
+            }
+        } else if (smallestUnit == Unit.SECOND) {
+            if (largestUnit == Unit.MILLISECOND || largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND) {
+                error = true;
+            }
+        } else if (smallestUnit == Unit.MILLISECOND) {
+            if (largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND) {
+                error = true;
+            }
+        } else if (smallestUnit == Unit.MICROSECOND) {
+            if (largestUnit == Unit.NANOSECOND) {
+                error = true;
+            }
         }
-        if (smallestUnit == Unit.MONTH && !(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH)) {
-            throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
-        }
-        if (smallestUnit == Unit.WEEK && !(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK)) {
-            throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
-        }
-        if (smallestUnit == Unit.DAY && !(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY)) {
-            throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
-        }
-        if (smallestUnit == Unit.HOUR && !(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY || largestUnit == Unit.HOUR)) {
-            throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
-        }
-        if (smallestUnit == Unit.MINUTE && (largestUnit == Unit.SECOND || largestUnit == Unit.MILLISECOND || largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND)) {
-            throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
-        }
-        if (smallestUnit == Unit.SECOND && (largestUnit == Unit.MILLISECOND || largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND)) {
-            throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
-        }
-        if (smallestUnit == Unit.MILLISECOND && (largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND)) {
-            throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
-        }
-        if (smallestUnit == Unit.MICROSECOND && largestUnit == Unit.NANOSECOND) {
+        if (error) {
             throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
         }
     }
