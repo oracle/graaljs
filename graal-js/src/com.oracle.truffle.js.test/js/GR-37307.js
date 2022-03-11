@@ -9,10 +9,6 @@
  * Tests potential memory leaks caused by Array.prototype.splice
  */
 
-// This test fails with graal-enterprise because the objects are kept alive
-// by FinalObjectPropertyGetNode
-if (!Graal.isGraalRuntime()) {
-
 load('assert.js');
 
 var collected = 0;
@@ -54,4 +50,3 @@ for (var i = 0; collected !== expected && i < 10; i++) {
 
 assertSame(expected, collected);
 
-}

@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.access;
 
 import java.io.PrintStream;
-import java.lang.ref.WeakReference;
 import java.util.Locale;
 import java.util.concurrent.locks.Lock;
 
@@ -62,6 +61,7 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.utilities.TruffleWeakReference;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -439,14 +439,14 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     protected static final class ConstantObjectPrototypeChainShapeCheckNode extends AbstractSingleRealmShapeCheckNode {
         private static final int STABLE_PROPERTY_ASSUMPTION_INDEX = 1;
 
-        private final WeakReference<DynamicObject> prototype;
+        private final TruffleWeakReference<DynamicObject> prototype;
 
         private ConstantObjectPrototypeChainShapeCheckNode(Shape shape, Assumption[] assumptions, DynamicObject prototype, JSContext context) {
             super(shape, assumptions, context);
-            this.prototype = new WeakReference<>(prototype);
+            this.prototype = new TruffleWeakReference<>(prototype);
         }
 
-        static AbstractShapeCheckNode create(Shape shape, DynamicObject thisObj, Object key, int depth, JSContext context) {
+        static AbstractShapeCheckNode create(Shape shape, JSDynamicObject thisObj, Object key, int depth, JSContext context) {
             Assumption[] ass = new Assumption[2 + depth * 3];
             int pos = 0;
             ass[pos++] = shape.getValidAssumption();
