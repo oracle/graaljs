@@ -107,6 +107,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalDurationPrototypeBuiltins.TemporalDurationPrototype> {
@@ -432,7 +433,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw Errors.createRangeError("unit expected");
             }
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            TruffleString roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
+            RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(roundTo, maximum, false, isObjectNode, toNumber);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), getRealm(), roundTo);
@@ -500,7 +501,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(), toBigIntNode.executeBigInt(duration.getNanoseconds()).bigIntegerValue(), unit, intermediate);
             JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), getRealm(), namesNode, unbalanceResult.getYears(), unbalanceResult.getMonths(), unbalanceResult.getWeeks(),
                             balanceResult.getDays(), balanceResult.getHours(), balanceResult.getMinutes(), balanceResult.getSeconds(), balanceResult.getMilliseconds(), balanceResult.getMicroseconds(),
-                            balanceResult.getNanoseconds(), 1, unit, TRUNC, relativeTo);
+                            balanceResult.getNanoseconds(), 1, unit, RoundingMode.TRUNC, relativeTo);
             double whole = 0;
             if (unit == Unit.YEAR) {
                 whole = roundResult.getYears();
@@ -564,7 +565,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 errorBranch.enter();
                 throw Errors.createRangeError("unexpected precision minute");
             }
-            TruffleString roundingMode = toTemporalRoundingMode(options, TRUNC);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC);
             JSTemporalDurationRecord result = TemporalUtil.roundDuration(getContext(), getRealm(), namesNode,
                             dur.getYears(), dur.getMonths(), dur.getWeeks(), dur.getDays(), dur.getHours(), dur.getMinutes(), dur.getSeconds(), dur.getMilliseconds(), dur.getMicroseconds(),
                             dur.getNanoseconds(), (long) precision.getIncrement(), precision.getUnit(), roundingMode, Undefined.instance);

@@ -106,6 +106,7 @@ import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.TemporalOverflowEnum;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainTimePrototypeBuiltins.TemporalPlainTimePrototype> {
@@ -400,7 +401,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND);
             Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, Unit.HOUR);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            TruffleString roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
             JSTemporalDurationRecord result = TemporalUtil.differenceTime(
@@ -437,7 +438,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND);
             Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, Unit.HOUR);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            TruffleString roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
             Double max = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double maximum = max == null ? Double.POSITIVE_INFINITY : max.doubleValue();
             long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
@@ -486,7 +487,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorSmallestUnitExpected();
             }
-            TruffleString roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
+            RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
             int maximum;
             if (smallestUnit == Unit.HOUR) {
                 maximum = 24;
@@ -642,7 +643,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             TemporalTime time = requireTemporalTime(thisObj);
             DynamicObject options = getOptionsObject(optionsParam);
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, getOptionNode());
-            TruffleString roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
             JSTemporalDurationRecord roundResult = TemporalUtil.roundTime(
                             time.getHour(), time.getMinute(), time.getSecond(),
                             time.getMillisecond(), time.getMicrosecond(), time.getNanosecond(),

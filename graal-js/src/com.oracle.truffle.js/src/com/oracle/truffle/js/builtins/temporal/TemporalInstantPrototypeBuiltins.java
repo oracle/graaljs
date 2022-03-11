@@ -92,6 +92,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalInstantPrototypeBuiltins.TemporalInstantPrototype> {
@@ -267,7 +268,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.SECOND, smallestUnit);
             Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, defaultLargestUnit);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            TruffleString roundingMode = toTemporalRoundingMode(options, TRUNC);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
 
@@ -306,7 +307,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorSmallestUnitExpected();
             }
-            TruffleString roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
+            RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
             double maximum;
             if (Unit.HOUR == smallestUnit) {
                 maximum = 24;
@@ -359,7 +360,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 timeZone = toTemporalTimeZone.executeDynamicObject(timeZoneRaw);
             }
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, getOptionNode());
-            TruffleString roundingMode = toTemporalRoundingMode(options, TRUNC);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC);
             BigInt ns = instant.getNanoseconds();
             BigInteger roundedNs = TemporalUtil.roundTemporalInstant(ns, (long) precision.getIncrement(), precision.getUnit(), roundingMode);
             DynamicObject roundedInstant = JSTemporalInstant.create(getContext(), new BigInt(roundedNs));

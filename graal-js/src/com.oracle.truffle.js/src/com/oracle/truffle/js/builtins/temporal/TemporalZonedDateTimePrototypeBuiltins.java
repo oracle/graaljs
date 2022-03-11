@@ -128,6 +128,7 @@ import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.MatchBehaviour;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetBehaviour;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.TemporalOverflowEnum;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
@@ -450,7 +451,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             DynamicObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
             DynamicObject options = getOptionsObject(optionsParam);
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, getOptionNode());
-            TruffleString roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
             TruffleString showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode());
             TruffleString showTimeZone = TemporalUtil.toShowTimeZoneNameOption(options, getOptionNode());
             TruffleString showOffset = TemporalUtil.toShowOffsetOption(options, getOptionNode());
@@ -680,7 +681,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.HOUR, smallestUnit);
             Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listEmpty, AUTO, defaultLargestUnit);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            TruffleString roundingMode = toTemporalRoundingMode(options, TRUNC);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
             if (!(Unit.YEAR == largestUnit || Unit.MONTH == largestUnit || Unit.WEEK == largestUnit || Unit.DAY == largestUnit)) {
@@ -730,7 +731,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.HOUR, smallestUnit);
             Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listEmpty, AUTO, defaultLargestUnit);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            TruffleString roundingMode = toTemporalRoundingMode(options, TRUNC);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC);
             roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
@@ -785,7 +786,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorSmallestUnitExpected();
             }
-            TruffleString roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
+            RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
             double roundingIncrement = TemporalUtil.toTemporalDateTimeRoundingIncrement(roundTo, smallestUnit, isObjectNode, toNumber);
             DynamicObject timeZone = zonedDateTime.getTimeZone();
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), zonedDateTime.getNanoseconds());

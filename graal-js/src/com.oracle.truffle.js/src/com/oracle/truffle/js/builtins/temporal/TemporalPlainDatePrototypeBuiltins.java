@@ -116,6 +116,7 @@ import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.OptionTypeEnum;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.TemporalOverflowEnum;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
@@ -439,8 +440,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         // 13.11
-        protected TruffleString toTemporalRoundingMode(DynamicObject options, TruffleString fallback) {
-            return (TruffleString) getOption(options, ROUNDING_MODE, OptionTypeEnum.STRING, TemporalUtil.listCFTH, fallback);
+        protected RoundingMode toTemporalRoundingMode(DynamicObject options, TruffleString fallback) {
+            return TemporalUtil.toRoundingMode((TruffleString) getOption(options, ROUNDING_MODE, OptionTypeEnum.STRING, TemporalUtil.listCFTH, fallback));
         }
 
         protected TemporalGetOptionNode getOptionNode() {
@@ -574,13 +575,13 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.DAY, smallestUnit);
             Unit largestUnit = toLargestTemporalUnit(options, disallowedUnits, AUTO, defaultLargestUnit);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            TruffleString roundingMode = toTemporalRoundingMode(options, TRUNC);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC);
             roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, null, false, isObjectNode, toNumber);
             DynamicObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, options, largestUnit);
             JSTemporalDurationObject result = TemporalUtil.calendarDateUntil(temporalDate.getCalendar(), temporalDate, other, untilOptions, Undefined.instance);
 
-            if (DAYS.equals(smallestUnit) && (roundingIncrement == 1)) {
+            if (smallestUnit == Unit.DAY && (roundingIncrement == 1)) {
                 return JSTemporalDuration.createTemporalDuration(getContext(), -result.getYears(), -result.getMonths(), -result.getWeeks(), -result.getDays(), 0, 0, 0, 0, 0, 0);
             }
             JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), getRealm(), namesNode, result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), 0, 0, 0, 0,
@@ -613,7 +614,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.DAY, smallestUnit);
             Unit largestUnit = toLargestTemporalUnit(options, disallowedUnits, AUTO, defaultLargestUnit);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            TruffleString roundingMode = toTemporalRoundingMode(options, TRUNC);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, null, false, isObjectNode, toNumber);
             DynamicObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, options, largestUnit);
             JSTemporalDurationObject result = TemporalUtil.calendarDateUntil(temporalDate.getCalendar(), (DynamicObject) thisObj, (DynamicObject) other, untilOptions);

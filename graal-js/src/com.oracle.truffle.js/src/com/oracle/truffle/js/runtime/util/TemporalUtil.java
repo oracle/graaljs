@@ -259,7 +259,7 @@ public final class TemporalUtil {
 
     public static final char UNICODE_MINUS_SIGN = '\u2212';
 
-    public static final MathContext mc_20_floor = new MathContext(20, RoundingMode.FLOOR);
+    public static final MathContext mc_20_floor = new MathContext(20, java.math.RoundingMode.FLOOR);
 
     public static final TruffleString FRACTIONAL_SECOND_DIGITS = Strings.constant("fractionalSecondDigits");
     public static final TruffleString ZEROS = Strings.constant("000000000");
@@ -345,6 +345,14 @@ public final class TemporalUtil {
         public TruffleString toTruffleString() {
             return Strings.fromJavaString(toString());
         }
+    }
+
+    public enum RoundingMode {
+        EMPTY,
+        CEIL,
+        FLOOR,
+        TRUNC,
+        HALF_EXPAND;
     }
 
     /**
@@ -858,15 +866,15 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static BigDecimal roundHalfAwayFromZero(BigDecimal x) {
         if (x.compareTo(BigDecimal.ZERO) < 0) {
-            return x.setScale(0, RoundingMode.HALF_DOWN);
+            return x.setScale(0, java.math.RoundingMode.HALF_DOWN);
         } else {
-            return x.setScale(0, RoundingMode.HALF_UP);
+            return x.setScale(0, java.math.RoundingMode.HALF_UP);
         }
     }
 
     @TruffleBoundary
-    public static BigInteger roundNumberToIncrement(BigDecimal x, BigDecimal increment, TruffleString roundingMode) {
-        assert roundingMode.equals(CEIL) || roundingMode.equals(FLOOR) || roundingMode.equals(TRUNC) || roundingMode.equals(HALF_EXPAND);
+    public static BigInteger roundNumberToIncrement(BigDecimal x, BigDecimal increment, RoundingMode roundingMode) {
+        assert roundingMode == RoundingMode.CEIL || roundingMode == RoundingMode.FLOOR || roundingMode == RoundingMode.TRUNC || roundingMode == RoundingMode.HALF_EXPAND;
 
         // algorithm from polyfill
         BigDecimal[] divRes = x.divideAndRemainder(increment);
@@ -874,17 +882,17 @@ public final class TemporalUtil {
         BigDecimal remainder = divRes[1];
         int sign = remainder.signum() < 0 ? -1 : 1;
 
-        if (roundingMode.equals(CEIL)) {
+        if (roundingMode == RoundingMode.CEIL) {
             if (sign > 0) {
                 quotient = quotient.add(BigDecimal.ONE);
             }
-        } else if (roundingMode.equals(FLOOR)) {
+        } else if (roundingMode == RoundingMode.FLOOR) {
             if (sign < 0) {
                 quotient = quotient.add(BigDecimal.valueOf(-1));
             }
-        } else if (roundingMode.equals(TRUNC)) {
+        } else if (roundingMode == RoundingMode.TRUNC) {
             // divMod already is truncation
-        } else if (roundingMode.equals(HALF_EXPAND)) {
+        } else if (roundingMode == RoundingMode.HALF_EXPAND) {
             if (remainder.multiply(BigDecimal.valueOf(2)).abs().compareTo(increment) >= 0) {
                 quotient = quotient.add(BigDecimal.valueOf(sign));
             }
@@ -894,23 +902,23 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static double roundNumberToIncrement(double x, double increment, TruffleString roundingMode) {
-        assert roundingMode.equals(CEIL) || roundingMode.equals(FLOOR) || roundingMode.equals(TRUNC) || roundingMode.equals(HALF_EXPAND);
+    public static double roundNumberToIncrement(double x, double increment, RoundingMode roundingMode) {
+        assert roundingMode == RoundingMode.CEIL || roundingMode == RoundingMode.FLOOR || roundingMode == RoundingMode.TRUNC || roundingMode == RoundingMode.HALF_EXPAND;
 
         double quotient = x / increment;
         double rounded = 0;
 
-        if (roundingMode.equals(CEIL)) {
+        if (roundingMode == RoundingMode.CEIL) {
             rounded = -Math.floor(-quotient);
-        } else if (roundingMode.equals(FLOOR)) {
+        } else if (roundingMode == RoundingMode.FLOOR) {
             rounded = Math.floor(quotient);
-        } else if (roundingMode.equals(TRUNC)) {
+        } else if (roundingMode == RoundingMode.TRUNC) {
             if (quotient > 0) {
                 rounded = Math.floor(quotient);
             } else {
                 rounded = Math.ceil(quotient);
             }
-        } else if (roundingMode.equals(HALF_EXPAND)) {
+        } else if (roundingMode == RoundingMode.HALF_EXPAND) {
             rounded = roundHalfAwayFromZero(quotient);
         }
         return rounded * increment;
@@ -1574,12 +1582,12 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static BigInteger roundTemporalInstant(BigInt ns, double increment, Unit unit, TruffleString roundingMode) {
+    public static BigInteger roundTemporalInstant(BigInt ns, double increment, Unit unit, RoundingMode roundingMode) {
         return roundTemporalInstant(new BigDecimal(ns.bigIntegerValue()), increment, unit, roundingMode);
     }
 
     @TruffleBoundary
-    public static BigInteger roundTemporalInstant(BigDecimal ns, double increment, Unit unit, TruffleString roundingMode) {
+    public static BigInteger roundTemporalInstant(BigDecimal ns, double increment, Unit unit, RoundingMode roundingMode) {
         BigDecimal incrementNs = BigDecimal.valueOf(increment);
         if (Unit.HOUR == unit) {
             incrementNs = incrementNs.multiply(BigDecimal.valueOf(3_600_000_000_000L));
@@ -1894,11 +1902,11 @@ public final class TemporalUtil {
         return TemporalUtil.requireTemporalMonthDay(monthDay);
     }
 
-    public static TruffleString negateTemporalRoundingMode(TruffleString roundingMode) {
-        if (CEIL.equals(roundingMode)) {
-            return FLOOR;
-        } else if (FLOOR.equals(roundingMode)) {
-            return CEIL;
+    public static RoundingMode negateTemporalRoundingMode(RoundingMode roundingMode) {
+        if (RoundingMode.CEIL == roundingMode) {
+            return RoundingMode.FLOOR;
+        } else if (RoundingMode.FLOOR == roundingMode) {
+            return RoundingMode.CEIL;
         }
         return roundingMode;
     }
@@ -2667,7 +2675,7 @@ public final class TemporalUtil {
                             dtol(ns1));
             BigInt endNs = addZonedDateTime(ctx, intermediateNs, timeZone, calendar, dtol(y2), dtol(mon2), dtol(w2), dtol(d2), dtol(h2), dtol(min2), dtol(s2), dtol(ms2), dtol(mus2), dtol(ns2));
             if (Unit.YEAR != largestUnit && Unit.MONTH != largestUnit && Unit.WEEK != largestUnit && Unit.DAY != largestUnit) {
-                long diffNs = bitol(differenceInstant(zdt.getNanoseconds(), endNs, 1d, Unit.NANOSECOND, HALF_EXPAND));
+                long diffNs = bitol(differenceInstant(zdt.getNanoseconds(), endNs, 1d, Unit.NANOSECOND, RoundingMode.HALF_EXPAND));
                 JSTemporalDurationRecord result = balanceDuration(ctx, namesNode, 0, 0, 0, 0, 0, 0, diffNs, largestUnit);
                 years = 0;
                 months = 0;
@@ -2860,7 +2868,7 @@ public final class TemporalUtil {
     // TODO doing long arithmetics here. Might need to change to double/BigInteger
     @TruffleBoundary
     public static JSTemporalDurationRecord roundDuration(JSContext ctx, JSRealm realm, EnumerableOwnPropertyNamesNode namesNode, double y, double m, double w, double d, double h, double min,
-                    double sec, double milsec, double micsec, double nsec, double increment, Unit unit, TruffleString roundingMode, DynamicObject relTo) {
+                    double sec, double milsec, double micsec, double nsec, double increment, Unit unit, RoundingMode roundingMode, DynamicObject relTo) {
         double years = y;
         double months = m;
         double weeks = w;
@@ -3113,7 +3121,7 @@ public final class TemporalUtil {
     // 7.5.21
     // TODO doing some long arithmetics here. Might need double/BigInteger
     public static JSTemporalDurationRecord adjustRoundedDurationDays(JSContext ctx, EnumerableOwnPropertyNamesNode namesNode, double years, double months, double weeks, double days, double hours,
-                    double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds, double increment, Unit unit, TruffleString roundingMode,
+                    double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds, double increment, Unit unit, RoundingMode roundingMode,
                     DynamicObject relativeToParam) {
         if (!(TemporalUtil.isTemporalZonedDateTime(relativeToParam)) || unit == Unit.YEAR || unit == Unit.MONTH || unit == Unit.WEEK || unit == Unit.DAY ||
                         (unit == Unit.NANOSECOND && increment == 1)) {
@@ -3212,7 +3220,7 @@ public final class TemporalUtil {
 
     // 4.5.15
     public static JSTemporalDurationRecord roundTime(int hours, int minutes, int seconds, int milliseconds, int microseconds,
-                    int nanoseconds, double increment, Unit unit, TruffleString roundingMode, Long dayLengthNsParam) {
+                    int nanoseconds, double increment, Unit unit, RoundingMode roundingMode, Long dayLengthNsParam) {
         double fractionalSecond = ((double) nanoseconds / 1_000_000_000) + ((double) microseconds / 1_000_000) +
                         ((double) milliseconds / 1_000) + seconds;
         double quantity;
@@ -3368,7 +3376,7 @@ public final class TemporalUtil {
     }
 
     public static JSTemporalDurationRecord roundISODateTime(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond,
-                    int nanosecond, double increment, Unit unit, TruffleString roundingMode, Long dayLength) {
+                    int nanosecond, double increment, Unit unit, RoundingMode roundingMode, Long dayLength) {
         JSTemporalDurationRecord rt = TemporalUtil.roundTime(hour, minute, second, millisecond, microsecond, nanosecond, increment, unit, roundingMode, dayLength);
         JSTemporalDateTimeRecord br = TemporalUtil.balanceISODate(year, month, day + dtoi(rt.getDays()));
         return JSTemporalDurationRecord.create(br.getYear(), br.getMonth(), br.getDay(),
@@ -3605,7 +3613,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
 
-    public static BigInteger differenceInstant(BigInt ns1, BigInt ns2, double roundingIncrement, Unit smallestUnit, TruffleString roundingMode) {
+    public static BigInteger differenceInstant(BigInt ns1, BigInt ns2, double roundingIncrement, Unit smallestUnit, RoundingMode roundingMode) {
         return roundTemporalInstant(ns2.subtract(ns1), roundingIncrement, smallestUnit, roundingMode);
     }
 
@@ -3857,12 +3865,12 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static TruffleString temporalZonedDateTimeToString(JSContext ctx, JSRealm realm, DynamicObject zonedDateTimeParam, Object precision, TruffleString showCalendar, TruffleString showTimeZone,
-                    TruffleString showOffset, Double incrementParam, Unit unitParam, TruffleString roundingModeParam) {
+                    TruffleString showOffset, Double incrementParam, Unit unitParam, RoundingMode roundingModeParam) {
         assert isTemporalZonedDateTime(zonedDateTimeParam);
         JSTemporalZonedDateTimeObject zonedDateTime = (JSTemporalZonedDateTimeObject) zonedDateTimeParam;
         double increment = incrementParam == null ? 1 : (double) incrementParam;
         Unit unit = (isNullish(unitParam) || unitParam == Unit.EMPTY) ? Unit.NANOSECOND : unitParam;
-        TruffleString roundingMode = isNullish(roundingModeParam) ? TRUNC : roundingModeParam;
+        RoundingMode roundingMode = (isNullish(roundingModeParam) || roundingModeParam == RoundingMode.EMPTY) ? RoundingMode.TRUNC : roundingModeParam;
 
         BigInteger ns = roundTemporalInstant(zonedDateTime.getNanoseconds(), (long) increment, unit, roundingMode);
         DynamicObject timeZone = zonedDateTime.getTimeZone();
@@ -3893,7 +3901,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     private static TruffleString formatISOTimeZoneOffsetString(long offsetNs) {
-        long offsetNanoseconds = dtol(roundNumberToIncrement(offsetNs, 60_000_000_000L, HALF_EXPAND));
+        long offsetNanoseconds = dtol(roundNumberToIncrement(offsetNs, 60_000_000_000L, RoundingMode.HALF_EXPAND));
         TruffleString sign = Strings.EMPTY_STRING;
         sign = (offsetNanoseconds >= 0) ? Strings.SYMBOL_PLUS : Strings.SYMBOL_MINUS;
         offsetNanoseconds = Math.abs(offsetNanoseconds);
@@ -4037,7 +4045,7 @@ public final class TemporalUtil {
                 return candidate.getNanoseconds();
             }
             if (matchBehaviour == MatchBehaviour.MATCH_MINUTES) {
-                long roundedCandidateNanoseconds = dtol(roundNumberToIncrement(candidateNanoseconds, 60_000_000_000L, HALF_EXPAND));
+                long roundedCandidateNanoseconds = dtol(roundNumberToIncrement(candidateNanoseconds, 60_000_000_000L, RoundingMode.HALF_EXPAND));
                 if (roundedCandidateNanoseconds == offsetNs) {
                     return candidate.getNanoseconds();
                 }
@@ -4549,5 +4557,21 @@ public final class TemporalUtil {
             return Unit.AUTO;
         }
         throw Errors.createTypeError("unexpected unit");
+    }
+
+    @TruffleBoundary
+    public static RoundingMode toRoundingMode(TruffleString mode) {
+        if (isNullish(mode)) {
+            return RoundingMode.EMPTY;
+        } else if (mode.equals(FLOOR)) {
+            return RoundingMode.FLOOR;
+        } else if (mode.equals(CEIL)) {
+            return RoundingMode.CEIL;
+        } else if (mode.equals(HALF_EXPAND)) {
+            return RoundingMode.HALF_EXPAND;
+        } else if (mode.equals(TRUNC)) {
+            return RoundingMode.TRUNC;
+        }
+        throw Errors.createTypeError("unexpected roundingMode");
     }
 }
