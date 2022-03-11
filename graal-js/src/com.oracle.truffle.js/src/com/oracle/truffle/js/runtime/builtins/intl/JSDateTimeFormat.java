@@ -57,6 +57,7 @@ import com.ibm.icu.text.ConstrainedFieldPosition;
 import com.ibm.icu.text.DateFormat;
 import com.ibm.icu.text.DateIntervalFormat;
 import com.ibm.icu.text.DateTimePatternGenerator;
+import com.ibm.icu.text.NumberingSystem;
 import com.ibm.icu.text.SimpleDateFormat;
 import com.ibm.icu.util.Calendar;
 import com.ibm.icu.util.GregorianCalendar;
@@ -327,11 +328,13 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         state.dateFormat = dateFormat;
+
+        Locale intervalFormatLocale = new Locale.Builder().setLocale(javaLocale).setUnicodeLocaleKeyword("hc", hc).build();
         try {
-            state.dateIntervalFormat = DateIntervalFormat.getInstance(skeleton, javaLocale);
+            state.dateIntervalFormat = DateIntervalFormat.getInstance(skeleton, intervalFormatLocale);
         } catch (IllegalArgumentException iaex) {
             // workaround for ICU-21939
-            state.dateIntervalFormat = DateIntervalFormat.getInstance(normalizeYearInSkeleton(skeleton), javaLocale);
+            state.dateIntervalFormat = DateIntervalFormat.getInstance(normalizeYearInSkeleton(skeleton), intervalFormatLocale);
         }
 
         if (state.calendar == null) {
@@ -827,6 +830,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         String formattedString = formattedRange.toString();
+        String digits = null;
 
         List<Object> parts = new ArrayList<>();
         int startRangeStart = 0;
@@ -860,8 +864,19 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                     throw Errors.shouldNotReachHere(fieldValue.toString());
                 }
             } else if (field instanceof DateFormat.Field) {
-                String type = fieldToType((DateFormat.Field) field);
                 String value = formattedString.substring(start, limit);
+                String type;
+                if (field == DateFormat.Field.YEAR) {
+                    // DateFormat.Field.YEAR covers both "year" and "yearName"
+                    if (digits == null) {
+                        String numberingSystem = getInternalState(dateTimeFormat).numberingSystem;
+                        digits = NumberingSystem.getInstanceByName(numberingSystem).getDescription();
+                    }
+                    boolean year = (value.length() > 0) && (digits.indexOf(value.charAt(0)) != -1);
+                    type = year ? IntlUtil.YEAR : IntlUtil.YEAR_NAME;
+                } else {
+                    type = fieldToType((DateFormat.Field) field);
+                }
                 String source = IntlUtil.sourceString(start, limit, startRangeStart, startRangeLimit, endRangeStart, endRangeLimit);
                 parts.add(makePart(context, realm, type, value, source));
                 lastLimit = limit;
