@@ -209,7 +209,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         TruffleString fSeconds = Strings.EMPTY_STRING;
 
         // P1Y1M1W1DT1H1M1.123456789S
-        Pattern regex = Pattern.compile("^([\\+-]?)[Pp](\\d+[Yy])?(\\d+[Mm])?(\\d+[Ww])?(\\d+[Dd])?([Tt]([\\d.]+[Hh])?([\\d.]+[Mm])?([\\d.]+[Ss])?)?$");
+        Pattern regex = Pattern.compile("^([\\+\u2212-]?)[Pp](\\d+[Yy])?(\\d+[Mm])?(\\d+[Ww])?(\\d+[Dd])?([Tt]([\\d.]+[Hh])?([\\d.]+[Mm])?([\\d.]+[Ss])?)?$");
         Matcher matcher = regex.matcher(Strings.toJavaString(string));
         if (matcher.matches()) {
             TruffleString sign = group(string, matcher, 1);
