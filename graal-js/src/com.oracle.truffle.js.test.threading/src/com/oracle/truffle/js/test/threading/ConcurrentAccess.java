@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -192,18 +192,19 @@ public class ConcurrentAccess {
                 startGate.await();
                 try {
                     for (int it = 0; it < 100000; it++) {
+                        contextLock.lock();
                         try {
                             try {
-                                contextLock.lock();
                                 cx.enter();
                                 String encoded = json.execute(42, 43).asString();
                                 assertEquals("{\"x\":42,\"y\":43}", encoded);
                             } finally {
                                 cx.leave();
-                                contextLock.unlock();
                             }
                         } catch (IllegalStateException e) {
                             hadException.set(true);
+                        } finally {
+                            contextLock.unlock();
                         }
                     }
                 } finally {
