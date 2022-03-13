@@ -83,6 +83,7 @@ suite = {
         "jdk.unsupported",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "spotbugs" : "true",
       "javaCompliance" : "11+",
       "checkstyleVersion" : "8.36.1",
       "workingSets" : "Truffle,JavaScript,NodeJS",
@@ -94,6 +95,7 @@ suite = {
         "com.oracle.truffle.trufflenode"
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "spotbugs" : "true",
       "checkstyle" : "com.oracle.truffle.trufflenode",
       "javaCompliance" : "11+",
       "workingSets" : "Truffle,JavaScript,NodeJS",
