@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,8 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
 import org.junit.Test;
+
+import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 
 public class TestInvocable {
 
@@ -143,6 +145,7 @@ public class TestInvocable {
         inv.getInterface(obj, String.class);
     }
 
+    @SuppressFBWarnings(value = "NP_NULL_PARAM_DEREF", justification = "Testing the refusal of null")
     @Test(expected = IllegalArgumentException.class)
     public void getInterfaceNull1() throws Exception {
         ScriptEngine engine = getEngine();
