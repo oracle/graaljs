@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -142,12 +142,15 @@ public final class JSTestRunner extends ParentRunner<TestCase> {
             @Override
             public FileVisitResult visitFile(Path sourceFile, BasicFileAttributes attrs) throws IOException {
                 String sourceFilePath = sourceFile.toString();
-                String sourceName = sourceFile.getFileName().toString();
-                String suffix = findSuffix(sourceName);
-                boolean isFixture = sourceFilePath.contains(FIXTURE_DIR);
-                if (suffix != null && !isFixture) {
-                    String baseName = sourceName.substring(0, sourceName.length() - suffix.length());
-                    foundCases.add(new TestCase(c, baseName, sourceName, sourceFile));
+                Path fileName = sourceFile.getFileName();
+                if (fileName != null) {
+                    String sourceName = fileName.toString();
+                    String suffix = findSuffix(sourceName);
+                    boolean isFixture = sourceFilePath.contains(FIXTURE_DIR);
+                    if (suffix != null && !isFixture) {
+                        String baseName = sourceName.substring(0, sourceName.length() - suffix.length());
+                        foundCases.add(new TestCase(c, baseName, sourceName, sourceFile));
+                    }
                 }
                 return FileVisitResult.CONTINUE;
             }
