@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.scriptengine.test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -236,7 +235,7 @@ public class TestEngine {
 
         Object result = engine.eval(mainModule);
 
-        assertSame(42, ((Number) result).intValue());
+        assertEquals(42, ((Number) result).intValue());
     }
 
     @Test

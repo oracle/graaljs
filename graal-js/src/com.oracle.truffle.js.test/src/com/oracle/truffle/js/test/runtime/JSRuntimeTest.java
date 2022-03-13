@@ -174,10 +174,10 @@ public class JSRuntimeTest extends JSTest {
         assertEquals(Strings.constant("X"), JSRuntime.importValue('X'));
 
         // same for now, might not hold eternally
-        assertSame(42, JSRuntime.importValue((byte) 42));
-        assertSame(42, JSRuntime.importValue((short) 42));
+        assertEquals(42, JSRuntime.importValue((byte) 42));
+        assertEquals(42, JSRuntime.importValue((short) 42));
 
-        assertSame(42, JSRuntime.importValue(42L));
+        assertEquals(42, JSRuntime.importValue(42L));
         assertEquals(Long.MAX_VALUE, JSRuntime.importValue(Long.MAX_VALUE));
         assertEquals(42.0, (double) JSRuntime.importValue((float) 42), BIGDELTA);
 

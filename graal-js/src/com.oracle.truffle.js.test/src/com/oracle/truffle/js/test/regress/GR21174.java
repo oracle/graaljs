@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.test.regress;
 
-import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -59,7 +59,7 @@ public class GR21174 {
                             + "new C().baz;";
             Value result = context.eval(JavaScriptLanguage.ID, code);
             assertTrue(result.isNumber());
-            assertSame(42, result.asInt());
+            assertEquals(42, result.asInt());
         }
     }
 
