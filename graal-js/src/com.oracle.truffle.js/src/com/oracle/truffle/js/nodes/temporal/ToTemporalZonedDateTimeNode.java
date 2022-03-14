@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.MatchBehaviour;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetBehaviour;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetOption;
 
 /**
  * Implementation of ToTemporalZonedDateTime() operation.
@@ -154,7 +155,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             offsetNanoseconds = TemporalUtil.parseTimeZoneOffsetString(offsetString);
         }
         TemporalUtil.Disambiguation disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode);
-        TruffleString offset = TemporalUtil.toTemporalOffset(options, REJECT, getOptionNode);
+        OffsetOption offset = TemporalUtil.toTemporalOffset(options, REJECT, getOptionNode);
         BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(),
                         result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNanoseconds, timeZone, disambiguation, offset,
                         matchBehaviour);

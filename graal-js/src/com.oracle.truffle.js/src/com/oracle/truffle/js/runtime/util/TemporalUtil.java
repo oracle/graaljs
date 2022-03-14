@@ -360,6 +360,13 @@ public final class TemporalUtil {
         REJECT
     }
 
+    public enum OffsetOption {
+        USE,
+        IGNORE,
+        PREFER,
+        REJECT
+    }
+
     /**
      * Note there also is {@link TemporalGetOptionNode}.
      */
@@ -639,7 +646,7 @@ public final class TemporalUtil {
             }
             BigInt epochNanoseconds = interpretISODateTimeOffset(ctx, realm,
                             result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
-                            result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNs, timeZoneObj, Disambiguation.COMPATIBLE, REJECT, matchBehaviour);
+                            result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNs, timeZoneObj, Disambiguation.COMPATIBLE, OffsetOption.REJECT, matchBehaviour);
             return createTemporalZonedDateTime(ctx, epochNanoseconds, timeZoneObj, calendar);
         }
         return JSTemporalPlainDate.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
@@ -3810,19 +3817,19 @@ public final class TemporalUtil {
             offsetNanoseconds = TemporalUtil.parseTimeZoneOffsetString(offsetString);
         }
         Disambiguation disambiguation = TemporalUtil.toTemporalDisambiguation(options);
-        TruffleString offset = TemporalUtil.toTemporalOffset(options, REJECT);
+        OffsetOption offset = TemporalUtil.toTemporalOffset(options, REJECT);
         BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(),
                         result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNanoseconds, timeZone, disambiguation, offset,
                         matchBehaviour);
         return TemporalUtil.createTemporalZonedDateTime(ctx, epochNanoseconds, timeZone, calendar);
     }
 
-    public static TruffleString toTemporalOffset(DynamicObject options, TruffleString fallback, TemporalGetOptionNode getOptionNode) {
-        return (TruffleString) getOptionNode.execute(options, OFFSET, OptionType.STRING, listPUIR, fallback);
+    public static OffsetOption toTemporalOffset(DynamicObject options, TruffleString fallback, TemporalGetOptionNode getOptionNode) {
+        return toOffsetOption((TruffleString) getOptionNode.execute(options, OFFSET, OptionType.STRING, listPUIR, fallback));
     }
 
-    public static TruffleString toTemporalOffset(DynamicObject options, TruffleString fallback) {
-        return (TruffleString) getOption(options, OFFSET, OptionType.STRING, listPUIR, fallback);
+    public static OffsetOption toTemporalOffset(DynamicObject options, TruffleString fallback) {
+        return toOffsetOption((TruffleString) getOption(options, OFFSET, OptionType.STRING, listPUIR, fallback));
     }
 
     public static TruffleString toShowTimeZoneNameOption(DynamicObject options, TemporalGetOptionNode getOptionNode) {
@@ -4040,21 +4047,21 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static BigInt interpretISODateTimeOffset(JSContext ctx, JSRealm realm, int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond,
-                    int nanosecond, OffsetBehaviour offsetBehaviour, Object offsetNanosecondsParam, DynamicObject timeZone, Disambiguation disambiguation, TruffleString offsetOption,
+                    int nanosecond, OffsetBehaviour offsetBehaviour, Object offsetNanosecondsParam, DynamicObject timeZone, Disambiguation disambiguation, OffsetOption offsetOption,
                     MatchBehaviour matchBehaviour) {
         double offsetNs = isNullish(offsetNanosecondsParam) ? Double.NaN : ((Number) offsetNanosecondsParam).doubleValue();
         DynamicObject calendar = getISO8601Calendar(ctx, realm);
         JSTemporalPlainDateTimeObject dateTime = createTemporalDateTime(ctx, year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar);
-        if (offsetBehaviour == OffsetBehaviour.WALL || IGNORE.equals(offsetOption)) {
+        if (offsetBehaviour == OffsetBehaviour.WALL || OffsetOption.IGNORE == offsetOption) {
             JSTemporalInstantObject instant = builtinTimeZoneGetInstantFor(ctx, timeZone, dateTime, disambiguation);
             return instant.getNanoseconds();
         }
-        if (offsetBehaviour == OffsetBehaviour.EXACT || USE.equals(offsetOption)) {
+        if (offsetBehaviour == OffsetBehaviour.EXACT || OffsetOption.USE == offsetOption) {
             BigInteger epochNanoseconds = getEpochFromISOParts(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
             return new BigInt(epochNanoseconds.subtract(BigInteger.valueOf((long) offsetNs)));
         }
         assert offsetBehaviour == OffsetBehaviour.OPTION;
-        assert PREFER.equals(offsetOption) || REJECT.equals(offsetOption);
+        assert OffsetOption.PREFER == offsetOption || OffsetOption.REJECT == offsetOption;
         List<JSTemporalInstantObject> possibleInstants = getPossibleInstantsFor(timeZone, dateTime);
         for (JSTemporalInstantObject candidate : possibleInstants) {
             long candidateNanoseconds = getOffsetNanosecondsFor(timeZone, candidate);
@@ -4068,7 +4075,7 @@ public final class TemporalUtil {
                 }
             }
         }
-        if (REJECT.equals(offsetOption)) {
+        if (OffsetOption.REJECT == offsetOption) {
             throw Errors.createRangeError("cannot interpret DateTime offset");
         }
         JSTemporalInstantObject instant = builtinTimeZoneGetInstantFor(ctx, timeZone, dateTime, disambiguation);
@@ -4604,5 +4611,19 @@ public final class TemporalUtil {
             return Disambiguation.REJECT;
         }
         throw Errors.createTypeError("unexpected disambiguation");
+    }
+
+    @TruffleBoundary
+    public static OffsetOption toOffsetOption(TruffleString offsetOption) {
+        if (offsetOption.equals(USE)) {
+            return OffsetOption.USE;
+        } else if (offsetOption.equals(IGNORE)) {
+            return OffsetOption.IGNORE;
+        } else if (offsetOption.equals(PREFER)) {
+            return OffsetOption.PREFER;
+        } else if (offsetOption.equals(REJECT)) {
+            return OffsetOption.REJECT;
+        }
+        throw Errors.createTypeError("unexpected offsetOption");
     }
 }
