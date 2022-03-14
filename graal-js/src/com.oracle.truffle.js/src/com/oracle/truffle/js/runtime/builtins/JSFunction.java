@@ -988,4 +988,15 @@ public final class JSFunction extends JSNonProxy {
         PropertyDescriptor desc = JSObject.getOwnProperty(realm.getArrayPrototype(), functionData.getName());
         return desc != null && desc.isDataDescriptor() && desc.getValue() == function;
     }
+
+    public static Source getCallerSource() {
+        RootNode callerRootNode = Truffle.getRuntime().iterateFrames(JSFunction::getFrameRootNode, 1);
+        if (callerRootNode != null) {
+            SourceSection callerSourceSection = callerRootNode.getSourceSection();
+            if (callerSourceSection != null && callerSourceSection.isAvailable()) {
+                return callerSourceSection.getSource();
+            }
+        }
+        return null;
+    }
 }

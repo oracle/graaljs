@@ -55,12 +55,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 import java.util.StringTokenizer;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
@@ -81,7 +78,6 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.GlobalNashornExtensionParseToJSONNodeGen;
@@ -567,18 +563,15 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
     private static TruffleFile tryResolveCallerRelativeFilePath(String path, TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
-        CallTarget caller = Truffle.getRuntime().getCallerFrame().getCallTarget();
-        if (caller instanceof RootCallTarget) {
-            SourceSection callerSourceSection = ((RootCallTarget) caller).getRootNode().getSourceSection();
-            if (callerSourceSection != null && callerSourceSection.isAvailable()) {
-                String callerPath = callerSourceSection.getSource().getPath();
-                if (callerPath != null) {
-                    TruffleFile callerFile = env.getPublicTruffleFile(callerPath);
-                    if (callerFile.isAbsolute()) {
-                        TruffleFile file = callerFile.resolveSibling(path).normalize();
-                        if (file.isRegularFile()) {
-                            return file;
-                        }
+        Source callerSource = JSFunction.getCallerSource();
+        if (callerSource != null) {
+            String callerPath = callerSource.getPath();
+            if (callerPath != null) {
+                TruffleFile callerFile = env.getPublicTruffleFile(callerPath);
+                if (callerFile.isAbsolute()) {
+                    TruffleFile file = callerFile.resolveSibling(path).normalize();
+                    if (file.isRegularFile()) {
+                        return file;
                     }
                 }
             }
