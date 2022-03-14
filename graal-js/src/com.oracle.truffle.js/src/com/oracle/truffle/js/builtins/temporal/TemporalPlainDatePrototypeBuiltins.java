@@ -562,10 +562,11 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         public DynamicObject since(Object thisObj, Object otherObj, Object optionsParam,
                         @Cached("create()") JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
+                        @Cached JSToStringNode toStringNode) {
             JSTemporalPlainDateObject temporalDate = requireTemporalDate(thisObj);
             JSTemporalPlainDateObject other = (JSTemporalPlainDateObject) toTemporalDate.executeDynamicObject(otherObj, Undefined.instance);
-            if (!TemporalUtil.calendarEquals(temporalDate.getCalendar(), other.getCalendar())) {
+            if (!TemporalUtil.calendarEquals(temporalDate.getCalendar(), other.getCalendar(), toStringNode)) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
@@ -602,10 +603,11 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         public DynamicObject until(Object thisObj, Object otherObj, Object optionsParam,
                         @Cached("create()") JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
+                        @Cached JSToStringNode toStringNode) {
             JSTemporalPlainDateObject temporalDate = requireTemporalDate(thisObj);
             JSTemporalPlainDateObject other = (JSTemporalPlainDateObject) toTemporalDate.executeDynamicObject(otherObj, Undefined.instance);
-            if (!TemporalUtil.calendarEquals(temporalDate.getCalendar(), other.getCalendar())) {
+            if (!TemporalUtil.calendarEquals(temporalDate.getCalendar(), other.getCalendar(), toStringNode)) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
@@ -749,7 +751,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         public boolean equals(Object thisObj, Object otherParam,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
+                        @Cached JSToStringNode toStringNode) {
             JSTemporalPlainDateObject temporalDate = requireTemporalDate(thisObj);
             JSTemporalPlainDateObject other = (JSTemporalPlainDateObject) toTemporalDate.executeDynamicObject(otherParam, Undefined.instance);
             if (temporalDate.getYear() != other.getYear()) {
@@ -761,7 +764,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             if (temporalDate.getDay() != other.getDay()) {
                 return false;
             }
-            return TemporalUtil.calendarEquals(temporalDate.getCalendar(), other.getCalendar());
+            return TemporalUtil.calendarEquals(temporalDate.getCalendar(), other.getCalendar(), toStringNode);
         }
     }
 

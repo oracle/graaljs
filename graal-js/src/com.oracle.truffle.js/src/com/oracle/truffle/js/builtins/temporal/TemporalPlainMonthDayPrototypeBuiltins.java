@@ -64,6 +64,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBui
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltinsFactory.JSTemporalPlainMonthDayValueOfNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltinsFactory.JSTemporalPlainMonthDayWithNodeGen;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -309,7 +310,8 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        protected boolean equals(Object thisObj, Object otherParam) {
+        protected boolean equals(Object thisObj, Object otherParam,
+                                 @Cached JSToStringNode toStringNode) {
             JSTemporalPlainMonthDayObject md = requireTemporalMonthDay(thisObj);
             JSTemporalPlainMonthDayObject other = (JSTemporalPlainMonthDayObject) JSTemporalPlainMonthDay.toTemporalMonthDay(otherParam, Undefined.instance, getContext(), getRealm());
             if (md.getMonth() != other.getMonth()) {
@@ -321,7 +323,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
             if (md.getYear() != other.getYear()) {
                 return false;
             }
-            return TemporalUtil.calendarEquals(md.getCalendar(), other.getCalendar());
+            return TemporalUtil.calendarEquals(md.getCalendar(), other.getCalendar(), toStringNode);
         }
     }
 }

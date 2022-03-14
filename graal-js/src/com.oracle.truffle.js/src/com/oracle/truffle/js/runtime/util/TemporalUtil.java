@@ -369,6 +369,7 @@ public final class TemporalUtil {
 
     public enum ShowCalendar {
         AUTO,
+        ALWAYS,
         NEVER
     }
 
@@ -1939,11 +1940,11 @@ public final class TemporalUtil {
         return roundingMode;
     }
 
-    public static boolean calendarEquals(DynamicObject one, DynamicObject two) {
+    public static boolean calendarEquals(DynamicObject one, DynamicObject two, JSToStringNode toStringNode) {
         if (one == two) {
             return true;
         }
-        if (JSRuntime.toString(one).equals(JSRuntime.toString(two))) {
+        if (Boundaries.equals(toStringNode.executeString(one), toStringNode.executeString(two))) {
             return true;
         }
         return false;
@@ -4118,23 +4119,26 @@ public final class TemporalUtil {
         return createTemporalZonedDateTime(ctx, intermediateNs, zdt.getTimeZone(), zdt.getCalendar());
     }
 
-    @TruffleBoundary
-    public static boolean timeZoneEquals(DynamicObject tz1, DynamicObject tz2) {
+    public static boolean timeZoneEquals(DynamicObject tz1, DynamicObject tz2, JSToStringNode toStringNode) {
         if (tz1 == tz2) {
             return true;
         }
-        TruffleString s1 = JSRuntime.toString(tz1);
-        TruffleString s2 = JSRuntime.toString(tz2);
-        return s1.equals(s2);
+        TruffleString s1 = toStringNode.executeString(tz1);
+        TruffleString s2 = toStringNode.executeString(tz2);
+        return Boundaries.equals(s1, s2);
     }
 
-    @TruffleBoundary
-    public static DynamicObject consolidateCalendars(DynamicObject one, DynamicObject two) {
+    public static DynamicObject consolidateCalendars(DynamicObject one, DynamicObject two, JSToStringNode toStringNode) {
         if (one == two) {
             return two;
         }
-        TruffleString s1 = JSRuntime.toString(one);
-        TruffleString s2 = JSRuntime.toString(two);
+        TruffleString s1 = toStringNode.executeString(one);
+        TruffleString s2 = toStringNode.executeString(two);
+        return consolidateCalendarsIntl(one, two, s1, s2);
+    }
+
+    @TruffleBoundary
+    private static DynamicObject consolidateCalendarsIntl(DynamicObject one, DynamicObject two, TruffleString s1, TruffleString s2) {
         if (s1.equals(s2)) {
             return two;
         }
@@ -4638,6 +4642,8 @@ public final class TemporalUtil {
             return ShowCalendar.AUTO;
         } else if (showCalendar.equals(NEVER)) {
             return ShowCalendar.NEVER;
+        } else if (showCalendar.equals(ALWAYS)) {
+            return ShowCalendar.ALWAYS;
         }
         throw Errors.createTypeError("unexpected showCalendar");
     }

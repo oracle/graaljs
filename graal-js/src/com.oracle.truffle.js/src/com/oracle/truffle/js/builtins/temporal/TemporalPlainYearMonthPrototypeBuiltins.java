@@ -321,7 +321,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         }
 
         @Specialization
-        protected boolean equals(Object thisObj, Object otherParam) {
+        protected boolean equals(Object thisObj, Object otherParam,
+                                 @Cached JSToStringNode toStringNode) {
             JSTemporalPlainYearMonthObject md = requireTemporalYearMonth(thisObj);
             JSTemporalPlainYearMonthObject other = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), getRealm(), otherParam, Undefined.instance);
             if (md.getMonth() != other.getMonth()) {
@@ -333,7 +334,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             if (md.getYear() != other.getYear()) {
                 return false;
             }
-            return TemporalUtil.calendarEquals(md.getCalendar(), other.getCalendar());
+            return TemporalUtil.calendarEquals(md.getCalendar(), other.getCalendar(), toStringNode);
         }
     }
 
@@ -460,7 +461,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
             JSTemporalPlainYearMonthObject other = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), getRealm(), otherParam, Undefined.instance);
             DynamicObject calendar = ym.getCalendar();
-            if (!TemporalUtil.calendarEquals(calendar, other.getCalendar())) {
+            if (!TemporalUtil.calendarEquals(calendar, other.getCalendar(), toStringNode)) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
@@ -498,11 +499,12 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         @Specialization
         protected Object since(Object thisObj, Object otherParam, Object optParam,
                         @Cached("create()") JSToNumberNode toNumberNode,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
+                        @Cached JSToStringNode toStringNode) {
             JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
             JSTemporalPlainYearMonthObject other = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), getRealm(), otherParam, Undefined.instance);
             DynamicObject calendar = ym.getCalendar();
-            if (!TemporalUtil.calendarEquals(calendar, other.getCalendar())) {
+            if (!TemporalUtil.calendarEquals(calendar, other.getCalendar(), toStringNode)) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
