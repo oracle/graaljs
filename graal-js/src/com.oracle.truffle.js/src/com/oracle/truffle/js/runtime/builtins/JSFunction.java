@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -320,7 +320,8 @@ public final class JSFunction extends JSNonProxy {
         assert JSFunction.isJSFunction(thisFnObj);
         JSContext context = realm.getContext();
         DynamicObject proto = JSObject.getPrototype(thisFnObj);
-        DynamicObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto, null, null, null);
+        DynamicObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto,
+                        ConditionProfile.getUncached(), ConditionProfile.getUncached(), ConditionProfile.getUncached(), null);
 
         long length = 0;
         boolean targetHasLength = JSObject.hasOwnProperty(thisFnObj, JSFunction.LENGTH);
@@ -347,32 +348,22 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static DynamicObject boundFunctionCreate(JSContext context, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments, DynamicObject proto,
-                    ConditionProfile isAsyncProfile, ConditionProfile setProtoProfile, Node node) {
+                    ConditionProfile isConstructorProfile, ConditionProfile isAsyncProfile, ConditionProfile setProtoProfile, Node node) {
         assert JSFunction.isJSFunction(boundTargetFunction);
         CompilerAsserts.partialEvaluationConstant(context);
 
-        boolean constructor = JSFunction.isConstructor(boundTargetFunction);
-        JSFunctionData functionData = context.getBoundFunctionData(constructor);
-        boolean isAsync = JSFunction.getFunctionData(boundTargetFunction).isAsync();
-        if ((isAsyncProfile == null ? isAsync : isAsyncProfile.profile(isAsync))) {
-            int length = Math.max(0, JSFunction.getLength(boundTargetFunction) - boundArguments.length);
-            functionData = makeBoundFunctionData(context, length, constructor, isAsync, functionData.getName());
-        }
+        JSFunctionData targetFunctionData = JSFunction.getFunctionData(boundTargetFunction);
+        boolean constructor = isConstructorProfile.profile(targetFunctionData.isConstructor());
+        boolean isAsync = isAsyncProfile.profile(targetFunctionData.isAsync());
+        JSFunctionData boundFunctionData = context.getBoundFunctionData(constructor, isAsync);
         JSRealm realm = getRealm(boundTargetFunction, context, node);
-        DynamicObject boundFunction = JSFunction.createBound(context, realm, functionData, boundTargetFunction, boundThis, boundArguments);
+        DynamicObject boundFunction = JSFunction.createBound(context, realm, boundFunctionData, boundTargetFunction, boundThis, boundArguments);
         boolean needSetProto = proto != realm.getFunctionPrototype();
-        if ((setProtoProfile == null ? needSetProto : setProtoProfile.profile(needSetProto))) {
+        if (setProtoProfile.profile(needSetProto)) {
             JSObject.setPrototype(boundFunction, proto);
         }
         assert JSObject.getPrototype(boundFunction) == proto;
         return boundFunction;
-    }
-
-    @TruffleBoundary
-    private static JSFunctionData makeBoundFunctionData(JSContext context, int length, boolean constructor, boolean isAsync, TruffleString name) {
-        return JSFunctionData.create(context,
-                        context.getBoundFunctionCallTarget(), context.getBoundFunctionConstructTarget(), context.getBoundFunctionConstructNewTarget(),
-                        length, name, constructor, false, true, false, false, false, isAsync, false, true, false, true);
     }
 
     @TruffleBoundary

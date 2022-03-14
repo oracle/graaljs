@@ -247,17 +247,15 @@ public class JSContext {
 
     private volatile CallTarget notConstructibleCallTargetCache;
     private volatile CallTarget generatorNotConstructibleCallTargetCache;
-    private volatile CallTarget boundFunctionCallTargetCache;
-    private volatile CallTarget boundFunctionConstructTargetCache;
-    private volatile CallTarget boundFunctionConstructNewTargetCache;
 
     private static final VarHandle notConstructibleCallTargetVarHandle;
     private static final VarHandle generatorNotConstructibleCallTargetVarHandle;
-    private static final VarHandle boundFunctionCallTargetVarHandle;
-    private static final VarHandle boundFunctionConstructTargetVarHandle;
-    private static final VarHandle boundFunctionConstructNewTargetVarHandle;
 
     public enum BuiltinFunctionKey {
+        BoundFunction,
+        BoundConstructor,
+        BoundFunctionAsync,
+        BoundConstructorAsync,
         ArrayFlattenIntoArray,
         AwaitFulfilled,
         AwaitRejected,
@@ -376,12 +374,6 @@ public class JSContext {
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
-
-    private volatile JSFunctionData boundFunctionData;
-    private volatile JSFunctionData boundConstructorFunctionData;
-
-    private static final VarHandle boundFunctionDataVarHandle;
-    private static final VarHandle boundConstructorFunctionDataVarHandle;
 
     final JSFunctionData throwerFunctionData;
     final JSFunctionData protoGetterFunctionData;
@@ -520,13 +512,6 @@ public class JSContext {
         try {
             notConstructibleCallTargetVarHandle = lookup.findVarHandle(JSContext.class, "notConstructibleCallTargetCache", CallTarget.class);
             generatorNotConstructibleCallTargetVarHandle = lookup.findVarHandle(JSContext.class, "generatorNotConstructibleCallTargetCache", CallTarget.class);
-
-            boundFunctionCallTargetVarHandle = lookup.findVarHandle(JSContext.class, "boundFunctionCallTargetCache", CallTarget.class);
-            boundFunctionConstructTargetVarHandle = lookup.findVarHandle(JSContext.class, "boundFunctionConstructTargetCache", CallTarget.class);
-            boundFunctionConstructNewTargetVarHandle = lookup.findVarHandle(JSContext.class, "boundFunctionConstructNewTargetCache", CallTarget.class);
-
-            boundFunctionDataVarHandle = lookup.findVarHandle(JSContext.class, "boundFunctionData", JSFunctionData.class);
-            boundConstructorFunctionDataVarHandle = lookup.findVarHandle(JSContext.class, "boundConstructorFunctionData", JSFunctionData.class);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw Errors.shouldNotReachHere(e);
         }
@@ -1329,63 +1314,41 @@ public class JSContext {
         }.getCallTarget();
     }
 
-    @TruffleBoundary
-    public CallTarget getBoundFunctionCallTarget() {
-        CallTarget result = boundFunctionCallTargetCache;
-        if (result != null) {
-            return result;
-        } else {
-            result = JSFunction.createBoundRootNode(this, false, false).getCallTarget();
-            if (!boundFunctionCallTargetVarHandle.compareAndSet(this, (CallTarget) null, result)) {
-                result = boundFunctionCallTargetCache;
+    public JSFunctionData getBoundFunctionData(boolean constructor, boolean async) {
+        if (async) {
+            // Mark bound async functions for MLE mode; see ExportValueNode.
+            if (constructor) {
+                return getOrCreateBuiltinFunctionData(BuiltinFunctionKey.BoundConstructorAsync, c -> makeBoundFunctionData(c, true, true));
+            } else {
+                return getOrCreateBuiltinFunctionData(BuiltinFunctionKey.BoundFunctionAsync, c -> makeBoundFunctionData(c, false, true));
             }
-            return Objects.requireNonNull(result);
+        } else {
+            if (constructor) {
+                return getOrCreateBuiltinFunctionData(BuiltinFunctionKey.BoundConstructor, c -> makeBoundFunctionData(c, true, false));
+            } else {
+                return getOrCreateBuiltinFunctionData(BuiltinFunctionKey.BoundFunction, c -> makeBoundFunctionData(c, false, false));
+            }
         }
     }
 
-    @TruffleBoundary
-    public CallTarget getBoundFunctionConstructTarget() {
-        CallTarget result = boundFunctionConstructTargetCache;
-        if (result != null) {
-            return result;
+    private static JSFunctionData makeBoundFunctionData(JSContext context, boolean constructor, boolean async) {
+        CallTarget callTarget;
+        CallTarget constructTarget;
+        CallTarget constructNewTarget;
+        // The call targets are the same for all bound function data instances, so reuse them.
+        if (constructor || async) {
+            JSFunctionData template = context.getBoundFunctionData(false, false);
+            callTarget = template.getCallTarget();
+            constructTarget = template.getConstructTarget();
+            constructNewTarget = template.getConstructNewTarget();
         } else {
-            result = JSFunction.createBoundRootNode(this, true, false).getCallTarget();
-            if (!boundFunctionConstructTargetVarHandle.compareAndSet(this, (CallTarget) null, result)) {
-                result = boundFunctionConstructTargetCache;
-            }
-            return Objects.requireNonNull(result);
+            callTarget = JSFunction.createBoundRootNode(context, false, false).getCallTarget();
+            constructTarget = JSFunction.createBoundRootNode(context, true, false).getCallTarget();
+            constructNewTarget = JSFunction.createBoundRootNode(context, true, true).getCallTarget();
         }
-    }
-
-    @TruffleBoundary
-    public CallTarget getBoundFunctionConstructNewTarget() {
-        CallTarget result = boundFunctionConstructNewTargetCache;
-        if (result != null) {
-            return result;
-        } else {
-            result = JSFunction.createBoundRootNode(this, true, true).getCallTarget();
-            if (!boundFunctionConstructNewTargetVarHandle.compareAndSet(this, (CallTarget) null, result)) {
-                result = Objects.requireNonNull(boundFunctionConstructNewTargetCache);
-            }
-            return Objects.requireNonNull(result);
-        }
-    }
-
-    public JSFunctionData getBoundFunctionData(boolean constructor) {
-        JSFunctionData result = constructor ? boundConstructorFunctionData : boundFunctionData;
-        if (result != null) {
-            return result;
-        } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            VarHandle handle = constructor ? boundConstructorFunctionDataVarHandle : boundFunctionDataVarHandle;
-            result = JSFunctionData.create(this,
-                            getBoundFunctionCallTarget(), getBoundFunctionConstructTarget(), getBoundFunctionConstructNewTarget(),
-                            0, Strings.BOUND, constructor, false, true, false, false, false, false, false, true, false, true);
-            if (!handle.compareAndSet(this, (JSFunctionData) null, result)) {
-                result = (JSFunctionData) handle.getVolatile(this);
-            }
-            return Objects.requireNonNull(result);
-        }
+        return JSFunctionData.create(context,
+                        callTarget, constructTarget, constructNewTarget,
+                        0, Strings.BOUND, constructor, false, true, false, false, false, async, false, true, false, true);
     }
 
     private JSAgent getJSAgent() {
