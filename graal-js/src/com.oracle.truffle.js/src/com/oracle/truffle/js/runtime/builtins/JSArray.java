@@ -283,7 +283,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         return INSTANCE.createConstructorAndPrototype(realm, ArrayFunctionBuiltins.BUILTINS);
     }
 
-    public static class ArrayLengthProxyProperty implements PropertyProxy {
+    public static final class ArrayLengthProxyProperty extends PropertyProxy {
         @Override
         public Object get(DynamicObject store) {
             assert isJSArray(store);

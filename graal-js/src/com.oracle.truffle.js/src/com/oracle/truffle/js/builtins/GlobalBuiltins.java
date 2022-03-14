@@ -1699,7 +1699,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
         }
 
-        private static class ScriptEngineGlobalScopeBindingsPropertyProxy implements PropertyProxy {
+        private static final class ScriptEngineGlobalScopeBindingsPropertyProxy extends PropertyProxy {
 
             private final TruffleString key;
             private final Object globalContextBindings;

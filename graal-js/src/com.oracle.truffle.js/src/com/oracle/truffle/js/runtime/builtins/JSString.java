@@ -309,7 +309,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
         return obj instanceof JSStringObject;
     }
 
-    public static final class StringLengthProxyProperty implements PropertyProxy {
+    public static final class StringLengthProxyProperty extends PropertyProxy {
         @Override
         public Object get(DynamicObject store) {
             return getStringLength(store);

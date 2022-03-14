@@ -124,7 +124,7 @@ public final class JSFunction extends JSNonProxy {
 
     public static final PropertyProxy PROTOTYPE_PROXY = new ClassPrototypeProxyProperty();
 
-    public static class FunctionLengthPropertyProxy implements PropertyProxy {
+    public static final class FunctionLengthPropertyProxy extends PropertyProxy {
         @Override
         public Object get(DynamicObject store) {
             assert JSFunction.isJSFunction(store);
@@ -134,7 +134,7 @@ public final class JSFunction extends JSNonProxy {
             return JSFunction.getLength(store);
         }
 
-        public int getProfiled(DynamicObject store, BranchProfile isBoundBranch) {
+        public static int getProfiled(DynamicObject store, BranchProfile isBoundBranch) {
             assert JSFunction.isJSFunction(store);
             if (JSFunction.isBoundFunction(store)) {
                 isBoundBranch.enter();
@@ -147,7 +147,7 @@ public final class JSFunction extends JSNonProxy {
 
     public static final PropertyProxy LENGTH_PROXY = new FunctionLengthPropertyProxy();
 
-    public static class FunctionNamePropertyProxy implements PropertyProxy {
+    public static final class FunctionNamePropertyProxy extends PropertyProxy {
         @Override
         public TruffleString get(DynamicObject store) {
             assert JSFunction.isJSFunction(store);
@@ -157,7 +157,7 @@ public final class JSFunction extends JSNonProxy {
             return JSFunction.getName(store);
         }
 
-        public Object getProfiled(DynamicObject store, BranchProfile isBoundBranch) {
+        public static Object getProfiled(DynamicObject store, BranchProfile isBoundBranch) {
             assert JSFunction.isJSFunction(store);
             if (JSFunction.isBoundFunction(store)) {
                 isBoundBranch.enter();
@@ -487,7 +487,7 @@ public final class JSFunction extends JSNonProxy {
         setClassPrototypeField(thisObj, value);
     }
 
-    public static final class ClassPrototypeProxyProperty implements PropertyProxy {
+    public static final class ClassPrototypeProxyProperty extends PropertyProxy {
         private ClassPrototypeProxyProperty() {
         }
 
@@ -876,7 +876,7 @@ public final class JSFunction extends JSNonProxy {
                         function == realm.getReflectConstructFunctionObject();
     }
 
-    public static class ArgumentsProxyProperty implements PropertyProxy {
+    public static final class ArgumentsProxyProperty extends PropertyProxy {
 
         private final JSContext context;
 
@@ -915,7 +915,7 @@ public final class JSFunction extends JSNonProxy {
 
     }
 
-    public static class CallerProxyProperty implements PropertyProxy {
+    public static final class CallerProxyProperty extends PropertyProxy {
 
         private final JSContext context;
 

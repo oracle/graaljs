@@ -1576,13 +1576,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static final class FunctionLengthPropertyGetNode extends LinkedPropertyGetNode {
         private final BranchProfile isBoundBranch = BranchProfile.create();
-        private final JSFunction.FunctionLengthPropertyProxy property;
 
         public FunctionLengthPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
             assert JSProperty.isData(property);
             assert isFunctionLengthProperty(property);
-            this.property = (JSFunction.FunctionLengthPropertyProxy) JSProperty.getConstantProxy(property);
         }
 
         @Override
@@ -1592,7 +1590,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            return property.getProfiled(receiverCheck.getStore(thisObj), isBoundBranch);
+            return JSFunction.FunctionLengthPropertyProxy.getProfiled(receiverCheck.getStore(thisObj), isBoundBranch);
         }
 
         @Override
@@ -1603,18 +1601,16 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static final class FunctionNamePropertyGetNode extends LinkedPropertyGetNode {
         private final BranchProfile isBoundBranch = BranchProfile.create();
-        private final JSFunction.FunctionNamePropertyProxy property;
 
         public FunctionNamePropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
             assert JSProperty.isData(property);
             assert isFunctionNameProperty(property);
-            this.property = (JSFunction.FunctionNamePropertyProxy) JSProperty.getConstantProxy(property);
         }
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            return property.getProfiled(receiverCheck.getStore(thisObj), isBoundBranch);
+            return JSFunction.FunctionNamePropertyProxy.getProfiled(receiverCheck.getStore(thisObj), isBoundBranch);
         }
     }
 
