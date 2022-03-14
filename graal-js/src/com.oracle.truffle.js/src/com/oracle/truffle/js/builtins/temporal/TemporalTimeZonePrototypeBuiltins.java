@@ -83,6 +83,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Disambiguation;
 
 public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalTimeZonePrototypeBuiltins.TemporalTimeZonePrototype> {
 
@@ -280,7 +281,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
             JSTemporalPlainDateTimeObject dateTime = (JSTemporalPlainDateTimeObject) toTemporalDateTime.executeDynamicObject(dateTimeParam, Undefined.instance);
             DynamicObject options = getOptionsObject(optionsParam);
-            TruffleString disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode());
+            Disambiguation disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode());
             return TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, dateTime, disambiguation);
         }
     }

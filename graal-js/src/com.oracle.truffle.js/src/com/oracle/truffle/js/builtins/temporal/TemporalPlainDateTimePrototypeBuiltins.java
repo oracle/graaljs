@@ -110,6 +110,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Disambiguation;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
@@ -720,7 +721,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalPlainDateTimeObject dateTime = requireTemporalDateTime(thisObj);
             JSTemporalTimeZoneObject timeZone = (JSTemporalTimeZoneObject) toTemporalTimeZone.executeDynamicObject(temporalTimeZoneLike);
             DynamicObject options = getOptionsObject(optionsParam);
-            TruffleString disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode());
+            Disambiguation disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode());
             JSTemporalInstantObject instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, dateTime, disambiguation);
             return TemporalUtil.createTemporalZonedDateTime(getContext(), instant.getNanoseconds(), timeZone, dateTime.getCalendar());
         }

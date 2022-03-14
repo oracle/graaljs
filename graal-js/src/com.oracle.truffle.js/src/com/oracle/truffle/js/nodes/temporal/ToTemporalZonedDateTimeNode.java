@@ -153,7 +153,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
         if (offsetBehaviour == OffsetBehaviour.OPTION) {
             offsetNanoseconds = TemporalUtil.parseTimeZoneOffsetString(offsetString);
         }
-        TruffleString disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode);
+        TemporalUtil.Disambiguation disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode);
         TruffleString offset = TemporalUtil.toTemporalOffset(options, REJECT, getOptionNode);
         BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(),
                         result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNanoseconds, timeZone, disambiguation, offset,

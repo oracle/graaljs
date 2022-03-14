@@ -353,6 +353,13 @@ public final class TemporalUtil {
         HALF_EXPAND
     }
 
+    public enum Disambiguation {
+        EARLIER,
+        LATER,
+        COMPATIBLE,
+        REJECT
+    }
+
     /**
      * Note there also is {@link TemporalGetOptionNode}.
      */
@@ -632,7 +639,7 @@ public final class TemporalUtil {
             }
             BigInt epochNanoseconds = interpretISODateTimeOffset(ctx, realm,
                             result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
-                            result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNs, timeZoneObj, COMPATIBLE, REJECT, matchBehaviour);
+                            result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNs, timeZoneObj, Disambiguation.COMPATIBLE, REJECT, matchBehaviour);
             return createTemporalZonedDateTime(ctx, epochNanoseconds, timeZoneObj, calendar);
         }
         return JSTemporalPlainDate.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
@@ -3733,12 +3740,12 @@ public final class TemporalUtil {
         return JSTemporalTimeZoneRecord.create(false, offsetString, name);
     }
 
-    public static TruffleString toTemporalDisambiguation(DynamicObject options, TemporalGetOptionNode getOptionNode) {
-        return (TruffleString) getOptionNode.execute(options, DISAMBIGUATION, OptionType.STRING, listCELR, COMPATIBLE);
+    public static Disambiguation toTemporalDisambiguation(DynamicObject options, TemporalGetOptionNode getOptionNode) {
+        return toDisambiguation((TruffleString) getOptionNode.execute(options, DISAMBIGUATION, OptionType.STRING, listCELR, COMPATIBLE));
     }
 
-    public static TruffleString toTemporalDisambiguation(DynamicObject options) {
-        return (TruffleString) getOption(options, DISAMBIGUATION, OptionType.STRING, listCELR, COMPATIBLE);
+    public static Disambiguation toTemporalDisambiguation(DynamicObject options) {
+        return toDisambiguation((TruffleString) getOption(options, DISAMBIGUATION, OptionType.STRING, listCELR, COMPATIBLE));
     }
 
     /**
@@ -3802,7 +3809,7 @@ public final class TemporalUtil {
         if (offsetBehaviour == OffsetBehaviour.OPTION) {
             offsetNanoseconds = TemporalUtil.parseTimeZoneOffsetString(offsetString);
         }
-        TruffleString disambiguation = TemporalUtil.toTemporalDisambiguation(options);
+        Disambiguation disambiguation = TemporalUtil.toTemporalDisambiguation(options);
         TruffleString offset = TemporalUtil.toTemporalOffset(options, REJECT);
         BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(),
                         result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNanoseconds, timeZone, disambiguation, offset,
@@ -3975,28 +3982,28 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static JSTemporalInstantObject builtinTimeZoneGetInstantFor(JSContext ctx, DynamicObject timeZone, JSTemporalPlainDateTimeObject dateTime, TruffleString disambiguation) {
+    public static JSTemporalInstantObject builtinTimeZoneGetInstantFor(JSContext ctx, DynamicObject timeZone, JSTemporalPlainDateTimeObject dateTime, Disambiguation disambiguation) {
         List<JSTemporalInstantObject> possibleInstants = getPossibleInstantsFor(timeZone, dateTime);
         return disambiguatePossibleInstants(ctx, possibleInstants, timeZone, dateTime, disambiguation);
     }
 
     @TruffleBoundary
     public static JSTemporalInstantObject disambiguatePossibleInstants(JSContext ctx, List<JSTemporalInstantObject> possibleInstants, DynamicObject timeZone, JSTemporalPlainDateTimeObject dateTime,
-                    TruffleString disambiguation) {
+                    Disambiguation disambiguation) {
         int n = possibleInstants.size();
         if (n == 1) {
             return possibleInstants.get(0);
         } else if (n != 0) {
-            if (EARLIER.equals(disambiguation) || COMPATIBLE.equals(disambiguation)) {
+            if (Disambiguation.EARLIER == disambiguation || Disambiguation.COMPATIBLE == disambiguation) {
                 return possibleInstants.get(0);
-            } else if (LATER.equals(disambiguation)) {
+            } else if (Disambiguation.LATER == disambiguation) {
                 return possibleInstants.get(n - 1);
             }
-            assert REJECT.equals(disambiguation);
+            assert Disambiguation.REJECT == disambiguation;
             throw Errors.createRangeError("invalid disambiguation");
         }
         assert n == 0;
-        if (REJECT.equals(disambiguation)) {
+        if (Disambiguation.REJECT == disambiguation) {
             throw Errors.createRangeError("disambiguation failed");
         }
         BigInteger epochNanoseconds = getEpochFromISOParts(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
@@ -4006,7 +4013,7 @@ public final class TemporalUtil {
         long offsetBefore = getOffsetNanosecondsFor(timeZone, dayBefore);
         long offsetAfter = getOffsetNanosecondsFor(timeZone, dayAfter);
         long nanoseconds = offsetAfter - offsetBefore;
-        if (EARLIER.equals(disambiguation)) {
+        if (Disambiguation.EARLIER == disambiguation) {
             JSTemporalDateTimeRecord earlier = addDateTime(ctx, dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
                             dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(), dateTime.getCalendar(), 0, 0, 0, 0, 0, 0, 0, 0, 0, -nanoseconds, Undefined.instance);
             JSTemporalPlainDateTimeObject earlierDateTime = createTemporalDateTime(ctx, earlier.getYear(), earlier.getMonth(), earlier.getDay(), earlier.getHour(), earlier.getMinute(),
@@ -4017,7 +4024,7 @@ public final class TemporalUtil {
             }
             return possibleInstants2.get(0);
         }
-        assert LATER.equals(disambiguation) || COMPATIBLE.equals(disambiguation);
+        assert Disambiguation.LATER == disambiguation || Disambiguation.COMPATIBLE == disambiguation;
         JSTemporalDateTimeRecord later = addDateTime(ctx, dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
                         dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(), dateTime.getCalendar(), 0, 0, 0, 0, 0, 0, 0, 0, 0, nanoseconds, Undefined.instance);
         JSTemporalPlainDateTimeObject laterDateTime = createTemporalDateTime(ctx, later.getYear(), later.getMonth(), later.getDay(), later.getHour(), later.getMinute(),
@@ -4033,7 +4040,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static BigInt interpretISODateTimeOffset(JSContext ctx, JSRealm realm, int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond,
-                    int nanosecond, OffsetBehaviour offsetBehaviour, Object offsetNanosecondsParam, DynamicObject timeZone, TruffleString disambiguation, TruffleString offsetOption,
+                    int nanosecond, OffsetBehaviour offsetBehaviour, Object offsetNanosecondsParam, DynamicObject timeZone, Disambiguation disambiguation, TruffleString offsetOption,
                     MatchBehaviour matchBehaviour) {
         double offsetNs = isNullish(offsetNanosecondsParam) ? Double.NaN : ((Number) offsetNanosecondsParam).doubleValue();
         DynamicObject calendar = getISO8601Calendar(ctx, realm);
@@ -4089,7 +4096,7 @@ public final class TemporalUtil {
         JSTemporalPlainDateTimeObject intermediateDateTime = createTemporalDateTime(ctx, addedDate.getYear(), addedDate.getMonth(), addedDate.getDay(),
                         temporalDateTime.getHour(), temporalDateTime.getMinute(), temporalDateTime.getSecond(),
                         temporalDateTime.getMillisecond(), temporalDateTime.getMicrosecond(), temporalDateTime.getNanosecond(), calendar);
-        JSTemporalInstantObject intermediateInstant = builtinTimeZoneGetInstantFor(ctx, timeZone, intermediateDateTime, COMPATIBLE);
+        JSTemporalInstantObject intermediateInstant = builtinTimeZoneGetInstantFor(ctx, timeZone, intermediateDateTime, Disambiguation.COMPATIBLE);
         return addInstant(intermediateInstant.getNanoseconds(), hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
     }
 
@@ -4583,5 +4590,19 @@ public final class TemporalUtil {
             return RoundingMode.TRUNC;
         }
         throw Errors.createTypeError("unexpected roundingMode");
+    }
+
+    @TruffleBoundary
+    public static Disambiguation toDisambiguation(TruffleString disambiguation) {
+        if (disambiguation.equals(EARLIER)) {
+            return Disambiguation.EARLIER;
+        } else if (disambiguation.equals(LATER)) {
+            return Disambiguation.LATER;
+        } else if (disambiguation.equals(COMPATIBLE)) {
+            return Disambiguation.COMPATIBLE;
+        } else if (disambiguation.equals(REJECT)) {
+            return Disambiguation.REJECT;
+        }
+        throw Errors.createTypeError("unexpected disambiguation");
     }
 }
