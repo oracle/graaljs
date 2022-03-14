@@ -1500,7 +1500,7 @@ public class JSRealm {
     }
 
     @TruffleBoundary
-    private synchronized void createTemplateRegistry() {
+    private void createTemplateRegistry() {
         if (templateRegistry == null) {
             templateRegistry = new WeakHashMap<>();
         }
