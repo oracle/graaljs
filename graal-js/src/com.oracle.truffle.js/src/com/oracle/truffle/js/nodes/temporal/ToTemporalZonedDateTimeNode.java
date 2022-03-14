@@ -126,7 +126,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             } else {
                 offsetString = toStringNode.executeString(offsetStringObj);
             }
-            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options);
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options, getOptionNode);
         } else {
             TemporalUtil.toTemporalOverflow(options, getOptionNode);
             TruffleString string = toStringNode.executeString(item);

@@ -608,7 +608,7 @@ public final class TemporalUtil {
 
             DynamicObject dateOptions = JSOrdinary.createWithNullPrototype(ctx);
             JSObjectUtil.putDataProperty(ctx, dateOptions, OVERFLOW, CONSTRAIN);
-            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, dateOptions);
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, dateOptions, null);
             offset = JSObject.get(valueObj, OFFSET);
             timeZone = JSObject.get(valueObj, TIME_ZONE);
             if (timeZone != Undefined.instance) {
@@ -1461,10 +1461,10 @@ public final class TemporalUtil {
         throw Errors.shouldNotReachHere("unknown overflow type: " + result);
     }
 
-    public static JSTemporalDateTimeRecord interpretTemporalDateTimeFields(DynamicObject calendar, DynamicObject fields, DynamicObject options) {
+    public static JSTemporalDateTimeRecord interpretTemporalDateTimeFields(DynamicObject calendar, DynamicObject fields, DynamicObject options, TemporalGetOptionNode getOptionNode) {
         JSTemporalDateTimeRecord timeResult = toTemporalTimeRecord(fields);
         JSTemporalPlainDateObject date = dateFromFields(calendar, fields, options);
-        Overflow overflow = toTemporalOverflow(options);
+        Overflow overflow = getOptionNode == null? toTemporalOverflow(options) : toTemporalOverflow(options, getOptionNode);
         JSTemporalDurationRecord timeResult2 = TemporalUtil.regulateTime(
                         timeResult.getHour(), timeResult.getMinute(), timeResult.getSecond(), timeResult.getMillisecond(), timeResult.getMicrosecond(), timeResult.getNanosecond(),
                         overflow);
@@ -1887,7 +1887,7 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static DynamicObject toTemporalYearMonth(JSContext ctx, JSRealm realm, Object item, DynamicObject optParam) {
+    public static DynamicObject toTemporalYearMonth(JSContext ctx, JSRealm realm, Object item, DynamicObject optParam, TemporalGetOptionNode getOptionNode) {
         DynamicObject options = optParam;
         if (optParam == Undefined.instance) {
             options = JSOrdinary.createWithNullPrototype(ctx);
@@ -1903,7 +1903,7 @@ public final class TemporalUtil {
             DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, listEmpty);
             return yearMonthFromFields(calendar, fields, options);
         }
-        TemporalUtil.toTemporalOverflow(options);
+        TemporalUtil.toTemporalOverflow(options, getOptionNode);
 
         TruffleString string = JSRuntime.toString(item);
         JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalYearMonthString(string);
@@ -2156,7 +2156,7 @@ public final class TemporalUtil {
             calendar = TemporalUtil.getTemporalCalendarWithISODefault(ctx, realm, itemObj);
             List<TruffleString> fieldNames = TemporalUtil.calendarFields(ctx, calendar, listDHMMMMMNSY);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, listEmpty);
-            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options);
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options, null);
         } else {
             TemporalUtil.toTemporalOverflow(options);
             TruffleString string = JSRuntime.toString(item);
@@ -3794,7 +3794,7 @@ public final class TemporalUtil {
             } else {
                 offsetString = JSRuntime.toString(offsetStringObj);
             }
-            result = interpretTemporalDateTimeFields(calendar, fields, options);
+            result = interpretTemporalDateTimeFields(calendar, fields, options, null);
         } else {
             toTemporalOverflow(options);
             TruffleString string = JSRuntime.toString(item);

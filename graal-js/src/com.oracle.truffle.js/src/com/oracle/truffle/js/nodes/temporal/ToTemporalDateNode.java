@@ -89,7 +89,8 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
     public DynamicObject toTemporalDate(Object itemParam, DynamicObject optionsParam,
                     @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToStringNode toStringNode,
-                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode) {
+                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
+                    @Cached TemporalGetOptionNode getOptionNode) {
         DynamicObject options = TemporalUtil.isNullish(optionsParam) ? JSOrdinary.createWithNullPrototype(ctx) : optionsParam;
         if (isObjectProfile.profile(isObjectNode.executeBoolean(itemParam))) {
             DynamicObject item = (DynamicObject) itemParam;
@@ -110,7 +111,7 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }
         JSRealm realm = JSRealm.get(this);
-        TemporalUtil.toTemporalOverflow(options);
+        TemporalUtil.toTemporalOverflow(options, getOptionNode);
         JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalDateString(toStringNode.executeString(itemParam));
         assert TemporalUtil.isValidISODate(result.getYear(), result.getMonth(), result.getDay());
         DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, realm, result.getCalendar());

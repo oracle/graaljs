@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
@@ -47,6 +48,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltin
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthFunctionBuiltinsFactory.JSTemporalPlainYearMonthCompareNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthFunctionBuiltinsFactory.JSTemporalPlainYearMonthFromNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -98,15 +100,15 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        protected Object from(Object item, Object optParam) {
-
+        protected Object from(Object item, Object optParam,
+                              @Cached TemporalGetOptionNode getOptionNode) {
             DynamicObject options = getOptionsObject(optParam);
             if (isObject(item) && JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(item)) {
                 JSTemporalPlainYearMonthObject pmd = (JSTemporalPlainYearMonthObject) item;
                 toTemporalOverflow(options);
                 return JSTemporalPlainYearMonth.create(getContext(), pmd.getYear(), pmd.getMonth(), pmd.getCalendar(), pmd.getDay());
             }
-            return TemporalUtil.toTemporalYearMonth(getContext(), getRealm(), item, options);
+            return TemporalUtil.toTemporalYearMonth(getContext(), getRealm(), item, options, getOptionNode);
         }
 
     }
@@ -118,10 +120,11 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        protected int compare(Object one, Object two) {
+        protected int compare(Object one, Object two,
+                              @Cached TemporalGetOptionNode getOptionNode) {
             JSRealm realm = JSRealm.get(this);
-            JSTemporalPlainYearMonthObject oneYM = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), realm, one, Undefined.instance);
-            JSTemporalPlainYearMonthObject twoYM = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), realm, two, Undefined.instance);
+            JSTemporalPlainYearMonthObject oneYM = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), realm, one, Undefined.instance, getOptionNode);
+            JSTemporalPlainYearMonthObject twoYM = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), realm, two, Undefined.instance, getOptionNode);
             return TemporalUtil.compareISODate(oneYM.getYear(), oneYM.getMonth(), oneYM.getDay(), twoYM.getYear(), twoYM.getMonth(), twoYM.getDay());
         }
 

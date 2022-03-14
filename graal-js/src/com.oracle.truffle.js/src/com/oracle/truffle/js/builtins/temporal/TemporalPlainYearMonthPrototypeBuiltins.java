@@ -77,6 +77,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -322,9 +323,10 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
 
         @Specialization
         protected boolean equals(Object thisObj, Object otherParam,
-                                 @Cached JSToStringNode toStringNode) {
+                                 @Cached JSToStringNode toStringNode,
+                                 @Cached TemporalGetOptionNode getOptionNode) {
             JSTemporalPlainYearMonthObject md = requireTemporalYearMonth(thisObj);
-            JSTemporalPlainYearMonthObject other = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), getRealm(), otherParam, Undefined.instance);
+            JSTemporalPlainYearMonthObject other = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), getRealm(), otherParam, Undefined.instance, getOptionNode);
             if (md.getMonth() != other.getMonth()) {
                 return false;
             }
@@ -457,9 +459,10 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("create()") JSToBooleanNode toBooleanNode,
                         @Cached("create()") JSToNumberNode toNumberNode,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
+                        @Cached TemporalGetOptionNode getOptionNode) {
             JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
-            JSTemporalPlainYearMonthObject other = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), getRealm(), otherParam, Undefined.instance);
+            JSTemporalPlainYearMonthObject other = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), getRealm(), otherParam, Undefined.instance, getOptionNode);
             DynamicObject calendar = ym.getCalendar();
             if (!TemporalUtil.calendarEquals(calendar, other.getCalendar(), toStringNode)) {
                 errorBranch.enter();
@@ -500,9 +503,10 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         protected Object since(Object thisObj, Object otherParam, Object optParam,
                         @Cached("create()") JSToNumberNode toNumberNode,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached JSToStringNode toStringNode) {
+                        @Cached JSToStringNode toStringNode,
+                        @Cached TemporalGetOptionNode getOptionNode) {
             JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
-            JSTemporalPlainYearMonthObject other = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), getRealm(), otherParam, Undefined.instance);
+            JSTemporalPlainYearMonthObject other = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), getRealm(), otherParam, Undefined.instance, getOptionNode);
             DynamicObject calendar = ym.getCalendar();
             if (!TemporalUtil.calendarEquals(calendar, other.getCalendar(), toStringNode)) {
                 errorBranch.enter();

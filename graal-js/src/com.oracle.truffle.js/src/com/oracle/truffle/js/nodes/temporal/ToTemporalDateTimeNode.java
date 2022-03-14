@@ -88,7 +88,8 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
     public DynamicObject toTemporalDateTime(Object item, DynamicObject optParam,
                     @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToStringNode toStringNode,
-                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode) {
+                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
+                    @Cached TemporalGetOptionNode getOptionNode) {
         DynamicObject options = optParam;
         if (TemporalUtil.isNullish(optParam)) {
             options = JSOrdinary.createWithNullPrototype(ctx);
@@ -110,10 +111,10 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
             calendar = getTemporalCalendarNode.executeDynamicObject(itemObj);
             List<TruffleString> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.listDHMMMMMNSY);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.listEmpty);
-            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options);
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options, getOptionNode);
         } else {
             JSRealm realm = JSRealm.get(this);
-            TemporalUtil.toTemporalOverflow(options);
+            TemporalUtil.toTemporalOverflow(options, getOptionNode);
             TruffleString string = toStringNode.executeString(item);
             result = TemporalUtil.parseTemporalDateTimeString(string);
             assert TemporalUtil.isValidISODate(result.getYear(), result.getMonth(), result.getDay());
