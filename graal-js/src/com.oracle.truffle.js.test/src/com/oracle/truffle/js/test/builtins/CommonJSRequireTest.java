@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -189,7 +189,10 @@ public class CommonJSRequireTest {
         String pathStr = path.toAbsolutePath().toString();
         if (System.getProperty("os.name").startsWith("Windows")) {
             // On Windows we support logical Unix-like paths
-            pathStr = pathStr.replaceFirst(path.getRoot().toString() + "\\", "/");
+            Path root = path.getRoot();
+            if (root != null) {
+                pathStr = pathStr.replaceFirst(root.toString() + "\\", "/");
+            }
             pathStr = pathStr.replace("\\", "/");
         }
         return pathStr;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,10 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
 
     private boolean savedSwitchConfigValue;
 
+    private static void setOptimizeNoFallthroughSwitch(boolean value) {
+        JSConfig.OptimizeNoFallthroughSwitch = value;
+    }
+
     @Before
     public void before() {
         savedSwitchConfigValue = JSConfig.OptimizeNoFallthroughSwitch;
@@ -61,12 +65,12 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
 
     @After
     public void after() {
-        JSConfig.OptimizeNoFallthroughSwitch = savedSwitchConfigValue;
+        setOptimizeNoFallthroughSwitch(savedSwitchConfigValue);
     }
 
     @Test
     public void desugaredSwitchBreak() {
-        JSConfig.OptimizeNoFallthroughSwitch = true;
+        setOptimizeNoFallthroughSwitch(true);
         // Graal.js converts certain switch statements to if-then-else chains. This generates nested
         // events.
         String src = "var a = 42;" +
@@ -105,7 +109,7 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
 
     @Test
     public void normalSwitchBreak() {
-        JSConfig.OptimizeNoFallthroughSwitch = false;
+        setOptimizeNoFallthroughSwitch(false);
         String src = "var a = 42;" +
                         "switch (a) {\n" +
                         "  case 1:" +
@@ -137,7 +141,7 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
 
     @Test
     public void desugaredSwitchDefault() {
-        JSConfig.OptimizeNoFallthroughSwitch = true;
+        setOptimizeNoFallthroughSwitch(true);
         // Graal.js converts certain switch statements to if-then-else chains. This generates nested
         // events.
         String src = "var a = 42;" +
@@ -176,7 +180,7 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
 
     @Test
     public void normalSwitchDefault() {
-        JSConfig.OptimizeNoFallthroughSwitch = false;
+        setOptimizeNoFallthroughSwitch(false);
         String src = "var a = 42;" +
                         "switch (a) {\n" +
                         "  case 1:" +
@@ -269,7 +273,7 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
 
     @Test
     public void desugaredSwitchNoBreak() {
-        JSConfig.OptimizeNoFallthroughSwitch = true;
+        setOptimizeNoFallthroughSwitch(true);
         String src = "var a = 42;" +
                         "switch (a) {" +
                         "  case 1:" +
@@ -288,7 +292,7 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
 
     @Test
     public void normalSwitchNoBreak() {
-        JSConfig.OptimizeNoFallthroughSwitch = false;
+        setOptimizeNoFallthroughSwitch(false);
         String src = "var a = 42;" +
                         "switch (a) {" +
                         "  case 1:" +

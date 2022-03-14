@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import java.util.Objects;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 
+import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.test.JSTest;
 
 /**
@@ -113,6 +114,7 @@ public class ContextSetup {
         }
     }
 
+    @SuppressFBWarnings(value = "NP_BOOLEAN_RETURN_NULL", justification = "Intentional non-risky usage, consistent with other parseSomethingOrNull methods")
     private static Boolean parseBooleanOrNull(String s) {
         if ("true".equals(s)) {
             return Boolean.TRUE;
