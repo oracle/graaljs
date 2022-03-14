@@ -1971,6 +1971,7 @@ public final class TemporalUtil {
         return magnitude;
     }
 
+    @TruffleBoundary
     public static double getPropertyFromRecord(JSTemporalDurationRecord d, TruffleString property) {
         if (YEARS.equals(property)) {
             return d.getYears();
