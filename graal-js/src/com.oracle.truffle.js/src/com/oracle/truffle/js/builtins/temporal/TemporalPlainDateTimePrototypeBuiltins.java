@@ -112,6 +112,7 @@ import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Disambiguation;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainDateTimePrototypeBuiltins.TemporalPlainDateTimePrototype> {
@@ -526,7 +527,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             DynamicObject options = getOptionsObject(optionsParam);
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, getOptionNode());
             RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC);
-            TruffleString showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode());
+            ShowCalendar showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode());
             JSTemporalDurationRecord result = TemporalUtil.roundISODateTime(
                             dt.getYear(), dt.getMonth(), dt.getDay(),
                             dt.getHour(), dt.getMinute(), dt.getSecond(),
@@ -553,7 +554,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             return JSTemporalPlainDateTime.temporalDateTimeToString(dt.getYear(), dt.getMonth(), dt.getDay(),
                             dt.getHour(), dt.getMinute(), dt.getSecond(),
                             dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(),
-                            dt.getCalendar(), AUTO, AUTO);
+                            dt.getCalendar(), AUTO, ShowCalendar.AUTO);
         }
     }
 

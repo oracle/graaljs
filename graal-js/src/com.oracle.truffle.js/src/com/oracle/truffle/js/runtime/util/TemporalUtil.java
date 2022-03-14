@@ -367,6 +367,11 @@ public final class TemporalUtil {
         REJECT
     }
 
+    public enum ShowCalendar {
+        AUTO,
+        NEVER
+    }
+
     /**
      * Note there also is {@link TemporalGetOptionNode}.
      */
@@ -1850,8 +1855,8 @@ public final class TemporalUtil {
         return JSTemporalZonedDateTime.isJSTemporalZonedDateTime(obj);
     }
 
-    public static TruffleString toShowCalendarOption(DynamicObject options, TemporalGetOptionNode getOptionNode) {
-        return (TruffleString) getOptionNode.execute(options, CALENDAR_NAME, OptionType.STRING, listAutoAlwaysNever, AUTO);
+    public static ShowCalendar toShowCalendarOption(DynamicObject options, TemporalGetOptionNode getOptionNode) {
+        return toShowCalendar((TruffleString) getOptionNode.execute(options, CALENDAR_NAME, OptionType.STRING, listAutoAlwaysNever, AUTO));
     }
 
     @TruffleBoundary
@@ -1865,10 +1870,10 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static TruffleString formatCalendarAnnotation(TruffleString id, TruffleString showCalendar) {
-        if (NEVER.equals(showCalendar)) {
+    public static TruffleString formatCalendarAnnotation(TruffleString id, ShowCalendar showCalendar) {
+        if (ShowCalendar.NEVER == showCalendar) {
             return Strings.EMPTY_STRING;
-        } else if (AUTO.equals(showCalendar) && ISO8601.equals(id)) {
+        } else if (ShowCalendar.AUTO == showCalendar && ISO8601.equals(id)) {
             return Strings.EMPTY_STRING;
         } else {
             return Strings.concatAll(BRACKET_U_CA_EQUALS, id, Strings.BRACKET_CLOSE);
@@ -3651,7 +3656,7 @@ public final class TemporalUtil {
         JSTemporalPlainDateTimeObject dateTime = builtinTimeZoneGetPlainDateTimeFor(ctx, outputTimeZone, instant, isoCalendar);
         TruffleString dateTimeString = JSTemporalPlainDateTime.temporalDateTimeToString(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
                         dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(), Undefined.instance,
-                        precision, NEVER);
+                        precision, ShowCalendar.NEVER);
         TruffleString timeZoneString = null;
         if (timeZone == Undefined.instance) {
             timeZoneString = Strings.UC_Z;
@@ -3840,7 +3845,7 @@ public final class TemporalUtil {
         return (TruffleString) getOptionNode.execute(options, OFFSET, OptionType.STRING, listAutoNever, AUTO);
     }
 
-    public static TruffleString temporalZonedDateTimeToString(JSContext ctx, JSRealm realm, DynamicObject zonedDateTime, Object precision, TruffleString showCalendar, TruffleString showTimeZone,
+    public static TruffleString temporalZonedDateTimeToString(JSContext ctx, JSRealm realm, DynamicObject zonedDateTime, Object precision, ShowCalendar showCalendar, TruffleString showTimeZone,
                     TruffleString showOffset) {
         return temporalZonedDateTimeToString(ctx, realm, zonedDateTime, precision, showCalendar, showTimeZone, showOffset, null, null, null);
     }
@@ -3888,7 +3893,7 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static TruffleString temporalZonedDateTimeToString(JSContext ctx, JSRealm realm, DynamicObject zonedDateTimeParam, Object precision, TruffleString showCalendar, TruffleString showTimeZone,
+    public static TruffleString temporalZonedDateTimeToString(JSContext ctx, JSRealm realm, DynamicObject zonedDateTimeParam, Object precision, ShowCalendar showCalendar, TruffleString showTimeZone,
                     TruffleString showOffset, Double incrementParam, Unit unitParam, RoundingMode roundingModeParam) {
         assert isTemporalZonedDateTime(zonedDateTimeParam);
         JSTemporalZonedDateTimeObject zonedDateTime = (JSTemporalZonedDateTimeObject) zonedDateTimeParam;
@@ -3903,7 +3908,7 @@ public final class TemporalUtil {
         JSTemporalPlainDateTimeObject temporalDateTime = builtinTimeZoneGetPlainDateTimeFor(ctx, timeZone, instant, isoCalendar);
         TruffleString dateTimeString = JSTemporalPlainDateTime.temporalDateTimeToString(temporalDateTime.getYear(), temporalDateTime.getMonth(), temporalDateTime.getDay(),
                         temporalDateTime.getHour(), temporalDateTime.getMinute(), temporalDateTime.getSecond(), temporalDateTime.getMillisecond(),
-                        temporalDateTime.getMicrosecond(), temporalDateTime.getNanosecond(), isoCalendar, precision, NEVER);
+                        temporalDateTime.getMicrosecond(), temporalDateTime.getNanosecond(), isoCalendar, precision, ShowCalendar.NEVER);
         TruffleString offsetString = null;
         TruffleString timeZoneString = null;
         if (NEVER.equals(showOffset)) {
@@ -4625,5 +4630,15 @@ public final class TemporalUtil {
             return OffsetOption.REJECT;
         }
         throw Errors.createTypeError("unexpected offsetOption");
+    }
+
+    @TruffleBoundary
+    public static ShowCalendar toShowCalendar(TruffleString showCalendar) {
+        if (showCalendar.equals(AUTO)) {
+            return ShowCalendar.AUTO;
+        } else if (showCalendar.equals(NEVER)) {
+            return ShowCalendar.NEVER;
+        }
+        throw Errors.createTypeError("unexpected showCalendar");
     }
 }

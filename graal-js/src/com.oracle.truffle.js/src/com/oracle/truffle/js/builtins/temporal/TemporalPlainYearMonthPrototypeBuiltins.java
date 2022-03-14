@@ -94,6 +94,7 @@ import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainYearMonthPrototypeBuiltins.TemporalPlainYearMonthPrototype> {
@@ -237,7 +238,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         protected TruffleString toString(Object thisObj, Object optParam) {
             JSTemporalPlainYearMonthObject md = requireTemporalYearMonth(thisObj);
             DynamicObject options = getOptionsObject(optParam);
-            TruffleString showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode());
+            ShowCalendar showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode());
             return JSTemporalPlainYearMonth.temporalYearMonthToString(md, showCalendar);
         }
     }
@@ -251,7 +252,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         @Specialization
         public TruffleString toLocaleString(Object thisObj) {
             JSTemporalPlainYearMonthObject time = requireTemporalYearMonth(thisObj);
-            return JSTemporalPlainYearMonth.temporalYearMonthToString(time, AUTO);
+            return JSTemporalPlainYearMonth.temporalYearMonthToString(time, ShowCalendar.AUTO);
         }
     }
 

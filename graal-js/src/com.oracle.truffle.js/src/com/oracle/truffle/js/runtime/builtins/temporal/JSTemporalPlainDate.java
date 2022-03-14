@@ -75,6 +75,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public final class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
@@ -257,7 +258,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     }
 
     @TruffleBoundary
-    public static TruffleString temporalDateToString(JSTemporalPlainDateObject date, TruffleString showCalendar) {
+    public static TruffleString temporalDateToString(JSTemporalPlainDateObject date, ShowCalendar showCalendar) {
         TruffleString yearString = TemporalUtil.padISOYear(date.getYear());
         TruffleString monthString = Strings.format("%1$02d", date.getMonth());
         TruffleString dayString = Strings.format("%1$02d", date.getDay());

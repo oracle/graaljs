@@ -77,6 +77,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 
 public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainMonthDayPrototypeBuiltins.TemporalPlainMonthDayPrototype> {
 
@@ -187,7 +188,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         protected TruffleString toString(Object thisObj, Object optParam) {
             JSTemporalPlainMonthDayObject md = requireTemporalMonthDay(thisObj);
             DynamicObject options = getOptionsObject(optParam);
-            TruffleString showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode());
+            ShowCalendar showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode());
             return JSTemporalPlainMonthDay.temporalMonthDayToString(md, showCalendar);
         }
     }
@@ -201,7 +202,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         public TruffleString toLocaleString(Object thisObj) {
             JSTemporalPlainMonthDayObject time = requireTemporalMonthDay(thisObj);
-            return JSTemporalPlainMonthDay.temporalMonthDayToString(time, TemporalConstants.AUTO);
+            return JSTemporalPlainMonthDay.temporalMonthDayToString(time, ShowCalendar.AUTO);
         }
     }
 

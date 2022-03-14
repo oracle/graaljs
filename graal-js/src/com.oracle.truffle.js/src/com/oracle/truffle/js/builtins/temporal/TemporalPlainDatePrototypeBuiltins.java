@@ -118,6 +118,7 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil.Disambiguation;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.OptionType;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainDatePrototypeBuiltins.TemporalPlainDatePrototype> {
@@ -658,7 +659,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected TruffleString toString(Object thisObj, Object optionsParam) {
             JSTemporalPlainDateObject date = requireTemporalDate(thisObj);
             DynamicObject options = getOptionsObject(optionsParam);
-            TruffleString showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode());
+            ShowCalendar showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode());
             return JSTemporalPlainDate.temporalDateToString(date, showCalendar);
         }
     }
@@ -672,7 +673,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         public TruffleString toLocaleString(Object thisObj) {
             JSTemporalPlainDateObject date = requireTemporalDate(thisObj);
-            return JSTemporalPlainDate.temporalDateToString(date, AUTO);
+            return JSTemporalPlainDate.temporalDateToString(date, ShowCalendar.AUTO);
         }
     }
 

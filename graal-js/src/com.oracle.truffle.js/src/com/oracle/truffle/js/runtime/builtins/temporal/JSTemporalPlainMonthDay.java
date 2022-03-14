@@ -70,6 +70,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 
 public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
                 PrototypeSupplier {
@@ -187,7 +188,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
     }
 
     @TruffleBoundary
-    public static TruffleString temporalMonthDayToString(JSTemporalPlainMonthDayObject md, TruffleString showCalendar) {
+    public static TruffleString temporalMonthDayToString(JSTemporalPlainMonthDayObject md, ShowCalendar showCalendar) {
         TruffleString monthString = Strings.format("%1$02d", md.getMonth());
         TruffleString dayString = Strings.format("%1$02d", md.getDay());
 

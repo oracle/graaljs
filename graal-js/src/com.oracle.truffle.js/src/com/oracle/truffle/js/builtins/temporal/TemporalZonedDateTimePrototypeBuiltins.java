@@ -132,6 +132,7 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetBehaviour;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetOption;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalZonedDateTimePrototypeBuiltins.TemporalZonedDateTimePrototype> {
@@ -454,7 +455,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             DynamicObject options = getOptionsObject(optionsParam);
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, getOptionNode());
             RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
-            TruffleString showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode());
+            ShowCalendar showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode());
             TruffleString showTimeZone = TemporalUtil.toShowTimeZoneNameOption(options, getOptionNode());
             TruffleString showOffset = TemporalUtil.toShowOffsetOption(options, getOptionNode());
             return TemporalUtil.temporalZonedDateTimeToString(getContext(), getRealm(), zonedDateTime, precision.getPrecision(), showCalendar, showTimeZone, showOffset, precision.getIncrement(),
@@ -471,7 +472,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         public TruffleString toLocaleString(Object thisObj) {
             DynamicObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
-            return TemporalUtil.temporalZonedDateTimeToString(getContext(), getRealm(), zonedDateTime, AUTO, AUTO, AUTO, AUTO);
+            return TemporalUtil.temporalZonedDateTimeToString(getContext(), getRealm(), zonedDateTime, AUTO, ShowCalendar.AUTO, AUTO, AUTO);
         }
     }
 
