@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,6 @@ import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
-import com.oracle.truffle.js.runtime.util.AssumptionUtil;
 
 /**
  * Checks if a scope binding is present and guards against TDZ and const assignment.
@@ -138,6 +137,6 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
         if (property == null) {
             return JSShape.getPropertyAssumption(shape, varName);
         }
-        return AssumptionUtil.neverValidAssumption();
+        return Assumption.NEVER_VALID;
     }
 }
