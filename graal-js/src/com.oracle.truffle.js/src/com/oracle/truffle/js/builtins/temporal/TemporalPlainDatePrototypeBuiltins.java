@@ -442,7 +442,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         // 13.11
         protected RoundingMode toTemporalRoundingMode(DynamicObject options, TruffleString fallback) {
-            return TemporalUtil.toRoundingMode((TruffleString) getOption(options, ROUNDING_MODE, TemporalUtil.OptionType.STRING, TemporalUtil.listCFTH, fallback));
+            return TemporalUtil.toRoundingMode((TruffleString) getOption(options, ROUNDING_MODE, TemporalUtil.OptionType.STRING, TemporalUtil.listRoundingMode, fallback));
         }
 
         protected TemporalGetOptionNode getOptionNode() {

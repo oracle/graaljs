@@ -227,9 +227,9 @@ public final class TemporalUtil {
     public static final List<TruffleString> listConstrainReject = List.of(CONSTRAIN, REJECT);
     public static final List<TruffleString> listTimeZone = List.of(TIME_ZONE);
     public static final List<TruffleString> listTimeZoneOffset = List.of(TIME_ZONE, OFFSET);
-    public static final List<TruffleString> listCFTH = List.of(CEIL, FLOOR, TRUNC, HALF_EXPAND);
-    public static final List<TruffleString> listPUIR = List.of(PREFER, USE, IGNORE, REJECT);
-    public static final List<TruffleString> listCELR = List.of(COMPATIBLE, EARLIER, LATER, REJECT);
+    public static final List<TruffleString> listRoundingMode = List.of(CEIL, FLOOR, TRUNC, HALF_EXPAND);
+    public static final List<TruffleString> listOffset = List.of(PREFER, USE, IGNORE, REJECT);
+    public static final List<TruffleString> listDisambiguation = List.of(COMPATIBLE, EARLIER, LATER, REJECT);
 
     public static final TruffleString[] TIME_LIKE_PROPERTIES = new TruffleString[]{HOUR, MICROSECOND, MILLISECOND, MINUTE, NANOSECOND, SECOND};
     public static final TruffleString[] DURATION_PROPERTIES = new TruffleString[]{DAYS, HOURS, MICROSECONDS, MILLISECONDS, MINUTES, MONTHS, NANOSECONDS, SECONDS, WEEKS, YEARS};
@@ -3754,11 +3754,11 @@ public final class TemporalUtil {
     }
 
     public static Disambiguation toTemporalDisambiguation(DynamicObject options, TemporalGetOptionNode getOptionNode) {
-        return toDisambiguation((TruffleString) getOptionNode.execute(options, DISAMBIGUATION, OptionType.STRING, listCELR, COMPATIBLE));
+        return toDisambiguation((TruffleString) getOptionNode.execute(options, DISAMBIGUATION, OptionType.STRING, listDisambiguation, COMPATIBLE));
     }
 
     public static Disambiguation toTemporalDisambiguation(DynamicObject options) {
-        return toDisambiguation((TruffleString) getOption(options, DISAMBIGUATION, OptionType.STRING, listCELR, COMPATIBLE));
+        return toDisambiguation((TruffleString) getOption(options, DISAMBIGUATION, OptionType.STRING, listDisambiguation, COMPATIBLE));
     }
 
     /**
@@ -3831,11 +3831,11 @@ public final class TemporalUtil {
     }
 
     public static OffsetOption toTemporalOffset(DynamicObject options, TruffleString fallback, TemporalGetOptionNode getOptionNode) {
-        return toOffsetOption((TruffleString) getOptionNode.execute(options, OFFSET, OptionType.STRING, listPUIR, fallback));
+        return toOffsetOption((TruffleString) getOptionNode.execute(options, OFFSET, OptionType.STRING, listOffset, fallback));
     }
 
     public static OffsetOption toTemporalOffset(DynamicObject options, TruffleString fallback) {
-        return toOffsetOption((TruffleString) getOption(options, OFFSET, OptionType.STRING, listPUIR, fallback));
+        return toOffsetOption((TruffleString) getOption(options, OFFSET, OptionType.STRING, listOffset, fallback));
     }
 
     public static TruffleString toShowTimeZoneNameOption(DynamicObject options, TemporalGetOptionNode getOptionNode) {
