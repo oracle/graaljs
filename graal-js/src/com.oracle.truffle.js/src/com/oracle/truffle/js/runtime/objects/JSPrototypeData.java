@@ -54,41 +54,11 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
  */
 public final class JSPrototypeData {
     private static final Shape[] EMPTY_SHAPE_ARRAY = new Shape[0];
-    private static final VarHandle PROTO_CHILD_TREES_VAR_HANDLE;
 
     /** Copy-on-write array. */
     private volatile Shape[] protoChildTrees;
 
-    public JSPrototypeData() {
-        this.protoChildTrees = EMPTY_SHAPE_ARRAY;
-    }
-
-    public Shape getProtoChildTree(JSClass jsclass) {
-        for (Shape childTree : protoChildTrees) {
-            if (JSShape.getJSClassNoCast(childTree) == jsclass) {
-                return childTree;
-            }
-        }
-        return null;
-    }
-
-    public Shape getOrAddProtoChildTree(JSClass jsclass, Shape newRootShape) {
-        CompilerAsserts.neverPartOfCompilation();
-        while (true) {
-            Shape existingRootShape = getProtoChildTree(jsclass);
-            if (existingRootShape != null) {
-                return existingRootShape;
-            } else {
-                Shape[] oldArray = protoChildTrees;
-                Shape[] newArray = Arrays.copyOf(oldArray, oldArray.length + 1);
-                newArray[oldArray.length] = newRootShape;
-                if (PROTO_CHILD_TREES_VAR_HANDLE.compareAndSet(this, oldArray, newArray)) {
-                    return newRootShape;
-                }
-            }
-        }
-    }
-
+    private static final VarHandle PROTO_CHILD_TREES_VAR_HANDLE;
     static {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         try {
@@ -96,5 +66,41 @@ public final class JSPrototypeData {
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw Errors.shouldNotReachHere(e);
         }
+    }
+
+    public JSPrototypeData() {
+    }
+
+    private static Shape lookupShapeByType(Shape[] shapes, JSClass jsclass) {
+        for (Shape shape : shapes) {
+            if (JSShape.getJSClassNoCast(shape) == jsclass) {
+                return shape;
+            }
+        }
+        return null;
+    }
+
+    public Shape getProtoChildTree(JSClass jsclass) {
+        return lookupShapeByType(getProtoChildTrees(), jsclass);
+    }
+
+    public Shape getOrAddProtoChildTree(JSClass jsclass, Shape newRootShape) {
+        CompilerAsserts.neverPartOfCompilation();
+        while (true) {
+            Shape[] oldArray = getProtoChildTrees();
+            Shape existingRootShape = lookupShapeByType(oldArray, jsclass);
+            if (existingRootShape != null) {
+                return existingRootShape;
+            }
+            Shape[] newArray = Arrays.copyOf(oldArray, oldArray.length + 1);
+            newArray[oldArray.length] = newRootShape;
+            if (PROTO_CHILD_TREES_VAR_HANDLE.compareAndSet(this, oldArray, newArray)) {
+                return newRootShape;
+            }
+        }
+    }
+
+    private Shape[] getProtoChildTrees() {
+        return protoChildTrees;
     }
 }
