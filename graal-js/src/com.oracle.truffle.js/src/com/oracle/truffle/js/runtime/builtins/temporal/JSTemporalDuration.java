@@ -463,7 +463,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 if (pos != (Strings.length(decimalPart) - 1)) {
                     decimalPart = Strings.lazySubstring(decimalPart, 0, pos + 1);
                 }
-            } else if ( (precision instanceof Number) && (((Number) precision).doubleValue() == 0.0)) {
+            } else if ((precision instanceof Number) && (((Number) precision).doubleValue() == 0.0)) {
                 decimalPart = Strings.EMPTY_STRING;
             } else {
                 Number n = (Number) precision;
