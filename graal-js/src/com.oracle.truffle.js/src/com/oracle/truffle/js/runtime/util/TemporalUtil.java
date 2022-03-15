@@ -105,7 +105,6 @@ import java.time.zone.ZoneRules;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.OptionalLong;
 import java.util.Set;
@@ -320,28 +319,27 @@ public final class TemporalUtil {
     }
 
     public enum Unit {
-        EMPTY,
-        AUTO,
-        YEAR,
-        MONTH,
-        WEEK,
-        DAY,
-        HOUR,
-        MINUTE,
-        SECOND,
-        MILLISECOND,
-        MICROSECOND,
-        NANOSECOND;
+        EMPTY(Strings.fromJavaString("")),
+        AUTO(TemporalConstants.AUTO),
+        YEAR(TemporalConstants.YEAR),
+        MONTH(TemporalConstants.MONTH),
+        WEEK(TemporalConstants.WEEK),
+        DAY(TemporalConstants.DAY),
+        HOUR(TemporalConstants.HOUR),
+        MINUTE(TemporalConstants.MINUTE),
+        SECOND(TemporalConstants.SECOND),
+        MILLISECOND(TemporalConstants.MILLISECOND),
+        MICROSECOND(TemporalConstants.MICROSECOND),
+        NANOSECOND(TemporalConstants.NANOSECOND);
 
-        @TruffleBoundary
-        @Override
-        public String toString() {
-            return name().toLowerCase(Locale.ENGLISH);
+        private final TruffleString name;
+
+        Unit(TruffleString name) {
+            this.name = name;
         }
 
-        @TruffleBoundary
         public TruffleString toTruffleString() {
-            return Strings.fromJavaString(toString());
+            return name;
         }
     }
 
