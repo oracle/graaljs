@@ -6231,6 +6231,9 @@ public class Parser extends AbstractParser {
         if (asyncArrow && exprLhs instanceof IdentNode && isBindingIdentifier() && lookaheadIsArrow()) {
             // async ident =>
             exprLhs = primaryExpression(yield, await);
+            if (exprLhs instanceof IdentNode && AWAIT.getName().equals(((IdentNode) exprLhs).getName())) {
+                throw error(AbstractParser.message(MSG_INVALID_ARROW_PARAMETER), exprLhs.getToken());
+            }
         }
 
         if (ES6_ARROW_FUNCTION && type == ARROW && isES6()) {
