@@ -69,6 +69,9 @@ test-v8-getheapsnapshot-twice: SKIP
 # https://example.com does not work in CI
 test-https-agent-unref-socket: SKIP
 
+# uses an expired certificate, see https://github.com/nodejs/node/pull/42342
+test-https-selfsigned-no-keycertsign-no-crash: FAIL
+
 # Worker resource limits are not supported
 test-worker-resource-limits: FAIL
 test-worker-nearheaplimit-deadlock: SKIP
