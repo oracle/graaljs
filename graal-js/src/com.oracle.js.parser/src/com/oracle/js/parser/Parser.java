@@ -6231,6 +6231,9 @@ public class Parser extends AbstractParser {
         if (asyncArrow && exprLhs instanceof IdentNode && isBindingIdentifier() && lookaheadIsArrow()) {
             // async ident =>
             exprLhs = primaryExpression(yield, await);
+            if (exprLhs instanceof IdentNode && AWAIT.getName().equals(((IdentNode) exprLhs).getName())) {
+                throw error(AbstractParser.message(MSG_INVALID_ARROW_PARAMETER), exprLhs.getToken());
+            }
         }
 
         if (ES6_ARROW_FUNCTION && type == ARROW && isES6()) {
@@ -6292,7 +6295,6 @@ public class Parser extends AbstractParser {
             coverArrowFunction = null;
         }
         assert functionNode.isArrow() && !functionNode.isCoverArrowHead();
-        assert functionNode.isAsync() == async;
         functionNode.setInternalName(ARROW_FUNCTION_NAME);
         functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
 
@@ -6303,6 +6305,7 @@ public class Parser extends AbstractParser {
             Block functionBody;
             try {
                 convertArrowFunctionParameterList(paramListExpr, functionNode);
+                assert functionNode.isAsync() == async;
                 functionBody = functionBody(functionNode);
             } finally {
                 restoreBlock(parameterBlock);
