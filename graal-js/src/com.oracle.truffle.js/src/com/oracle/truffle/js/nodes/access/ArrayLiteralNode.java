@@ -321,6 +321,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
                 try {
                     primitiveArray[i] = getElement(i).executeInt(frame);
                 } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     assert !(e.getResult() instanceof Integer);
                     return executeIntArrayFallback(frame, primitiveArray, i, e.getResult());
                 }
@@ -357,6 +358,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
                     }
                     primitiveArray[i] = doubleValue;
                 } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     assert !(e.getResult() instanceof Double);
                     if (e.getResult() instanceof Integer) {
                         primitiveArray[i] = (int) e.getResult();

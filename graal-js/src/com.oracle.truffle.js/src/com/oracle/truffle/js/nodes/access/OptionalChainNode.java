@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -103,6 +104,7 @@ public final class OptionalChainNode extends JavaScriptNode {
         try {
             return accessNode.executeInt(frame);
         } catch (ShortCircuitException ex) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new UnexpectedResultException(result);
         }
     }
@@ -112,6 +114,7 @@ public final class OptionalChainNode extends JavaScriptNode {
         try {
             return accessNode.executeDouble(frame);
         } catch (ShortCircuitException ex) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new UnexpectedResultException(result);
         }
     }

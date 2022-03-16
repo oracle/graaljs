@@ -566,6 +566,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
         if (value instanceof Integer) {
             return (int) value;
         } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new UnexpectedResultException(value);
         }
     }
@@ -575,6 +576,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
         if (value instanceof Double) {
             return (double) value;
         } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new UnexpectedResultException(value);
         }
     }
