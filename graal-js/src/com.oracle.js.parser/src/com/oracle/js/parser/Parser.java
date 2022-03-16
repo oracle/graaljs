@@ -6295,7 +6295,6 @@ public class Parser extends AbstractParser {
             coverArrowFunction = null;
         }
         assert functionNode.isArrow() && !functionNode.isCoverArrowHead();
-        assert functionNode.isAsync() == async;
         functionNode.setInternalName(ARROW_FUNCTION_NAME);
         functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
 
@@ -6306,6 +6305,7 @@ public class Parser extends AbstractParser {
             Block functionBody;
             try {
                 convertArrowFunctionParameterList(paramListExpr, functionNode);
+                assert functionNode.isAsync() == async;
                 functionBody = functionBody(functionNode);
             } finally {
                 restoreBlock(parameterBlock);
