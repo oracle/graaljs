@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -53,6 +54,7 @@ import com.oracle.truffle.js.runtime.Strings;
  * This implements 9.8.1 ToString Applied to the Number Type.
  *
  */
+@GenerateUncached
 public abstract class JSDoubleToStringNode extends JavaScriptBaseNode {
 
     public static JSDoubleToStringNode create() {

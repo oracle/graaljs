@@ -640,10 +640,11 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected TruffleString toString(Object thisObj, Object optionsParam) {
+        protected TruffleString toString(Object thisObj, Object optionsParam,
+                                         @Cached JSToStringNode toStringNode) {
             TemporalTime time = requireTemporalTime(thisObj);
             DynamicObject options = getOptionsObject(optionsParam);
-            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, getOptionNode());
+            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getOptionNode());
             RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
             JSTemporalDurationRecord roundResult = TemporalUtil.roundTime(
                             time.getHour(), time.getMinute(), time.getSecond(),

@@ -70,8 +70,6 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetOption;
 
 /**
  * Implementation of ToTemporalZonedDateTime() operation.
- *
- * Note there also is {@link TemporalUtil#toTemporalZonedDateTime}.
  */
 public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
 

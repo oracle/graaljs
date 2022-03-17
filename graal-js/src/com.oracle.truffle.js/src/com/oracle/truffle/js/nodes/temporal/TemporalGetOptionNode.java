@@ -42,7 +42,8 @@ package com.oracle.truffle.js.nodes.temporal;
 
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -64,14 +65,8 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil.OptionType;
 /**
  * Implementation of GetOption() operation.
  */
+@GenerateUncached
 public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
-
-    private final ConditionProfile isFallbackProfile = ConditionProfile.createBinaryProfile();
-    private final BranchProfile errorBranch = BranchProfile.create();
-
-    @Child private JSToStringNode toStringNode;
-    @Child private JSToBooleanNode toBooleanNode;
-    @Child private JSToNumberNode toNumberNode;
 
     protected TemporalGetOptionNode() {
     }
@@ -80,10 +75,19 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
         return TemporalGetOptionNodeGen.create();
     }
 
+    public static TemporalGetOptionNode getUncached() {
+        return TemporalGetOptionNodeGen.getUncached();
+    }
+
     public abstract Object execute(DynamicObject options, TruffleString property, TemporalUtil.OptionType types, List<?> values, Object fallback);
 
     @Specialization
-    protected Object getOption(DynamicObject options, TruffleString property, TemporalUtil.OptionType types, List<?> values, Object fallback) {
+    protected Object getOption(DynamicObject options, TruffleString property, TemporalUtil.OptionType types, List<?> values, Object fallback,
+                               @Cached BranchProfile errorBranch,
+                               @Cached("createBinaryProfile()") ConditionProfile isFallbackProfile,
+                               @Cached JSToBooleanNode toBooleanNode,
+                               @Cached(value = "create()", uncached = "createEmptyToString()") JSToStringNode toStringNode,
+                               @Cached(value = "create()", uncached = "createEmptyToNumber()") JSToNumberNode toNumberNode) {
         assert JSRuntime.isObject(options);
         Object value = JSObject.get(options, property);
         if (isFallbackProfile.profile(value == Undefined.instance)) {
@@ -100,43 +104,29 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
             type = types.getLast();
         }
         if (type.allowsBoolean()) {
-            value = toBoolean(value);
+            value = toBooleanNode.executeBoolean(value);
         } else if (type.allowsNumber()) {
-            value = toNumber(value);
+            // workaround as long as JSToStringNode cannot have an uncached version
+            value = toNumberNode == null ? JSRuntime.toNumber(value) : toNumberNode.executeNumber(value);
             if (Double.isNaN(((Number) value).doubleValue())) {
                 throw TemporalErrors.createRangeErrorNumberIsNaN();
             }
         } else if (type.allowsString()) {
-            value = toStringNode(value);
+            // workaround as long as JSToStringNode cannot have an uncached version
+            value = toStringNode == null ? JSRuntime.toString(value) : toStringNode.executeString(value);
         }
-        if (value != Undefined.instance && !Boundaries.listContainsUnchecked(values, value)) {
+        if (value != Undefined.instance && values != null && !Boundaries.listContainsUnchecked(values, value)) {
             errorBranch.enter();
             throw TemporalErrors.createRangeErrorOptionsNotContained(values, value);
         }
         return value;
     }
 
-    private TruffleString toStringNode(Object value) {
-        if (toStringNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toStringNode = insert(JSToStringNode.create());
-        }
-        return toStringNode.executeString(value);
+    protected JSToStringNode createEmptyToString() {
+        return null;
     }
 
-    private boolean toBoolean(Object value) {
-        if (toBooleanNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toBooleanNode = insert(JSToBooleanNode.create());
-        }
-        return toBooleanNode.executeBoolean(value);
-    }
-
-    private Number toNumber(Object value) {
-        if (toNumberNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toNumberNode = insert(JSToNumberNode.create());
-        }
-        return toNumberNode.executeNumber(value);
+    protected JSToNumberNode createEmptyToNumber() {
+        return null;
     }
 }

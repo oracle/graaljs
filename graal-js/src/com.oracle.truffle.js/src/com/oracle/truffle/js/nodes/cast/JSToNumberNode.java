@@ -63,9 +63,6 @@ import com.oracle.truffle.js.runtime.Symbol;
  */
 public abstract class JSToNumberNode extends JavaScriptBaseNode {
 
-    @Child private JSToNumberNode toNumberNode;
-    @Child private JSStringToNumberNode stringToNumberNode;
-
     public abstract Object execute(Object value);
 
     public final Number executeNumber(Object value) {
@@ -109,15 +106,17 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected Number doString(TruffleString value) {
-        double doubleValue = stringToNumber(value);
+    protected Number doString(TruffleString value,
+                              @Cached JSStringToNumberNode stringToNumberNode) {
+        double doubleValue = stringToNumberNode.executeString(value);
         return JSRuntime.doubleToNarrowestNumber(doubleValue);
     }
 
     @Specialization(guards = "isJSObject(value)")
     protected Number doJSObject(DynamicObject value,
-                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
-        return toNumber(toPrimitiveNode.execute(value));
+                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Cached JSToNumberNode toNumberNode) {
+        return toNumberNode.executeNumber(toPrimitiveNode.execute(value));
     }
 
     @Specialization
@@ -132,29 +131,14 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isForeignObject(value)")
     protected Number doForeignObject(Object value,
-                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
-        return toNumber(toPrimitiveNode.execute(value));
+                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Cached JSToNumberNode toNumberNode) {
+        return toNumberNode.executeNumber(toPrimitiveNode.execute(value));
     }
 
     @Specialization(guards = "isJavaNumber(value)")
     protected static double doJavaObject(Object value) {
         return JSRuntime.doubleValue((Number) value);
-    }
-
-    private Number toNumber(Object value) {
-        if (toNumberNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toNumberNode = insert(JSToNumberNode.create());
-        }
-        return toNumberNode.executeNumber(value);
-    }
-
-    private double stringToNumber(TruffleString value) {
-        if (stringToNumberNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            stringToNumberNode = insert(JSStringToNumberNode.create());
-        }
-        return stringToNumberNode.executeString(value);
     }
 
     public abstract static class JSToNumberUnaryNode extends JSUnaryNode {

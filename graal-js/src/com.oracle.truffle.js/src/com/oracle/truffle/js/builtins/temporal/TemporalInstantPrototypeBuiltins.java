@@ -351,7 +351,8 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected TruffleString toString(Object thisObj, Object optionsParam,
-                        @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
+                        @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone,
+                        @Cached JSToStringNode toStringNode) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
             DynamicObject options = getOptionsObject(optionsParam);
             Object timeZoneRaw = JSObject.get(options, TIME_ZONE);
@@ -359,7 +360,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             if (timeZoneRaw != Undefined.instance) {
                 timeZone = toTemporalTimeZone.executeDynamicObject(timeZoneRaw);
             }
-            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, getOptionNode());
+            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getOptionNode());
             RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC);
             BigInt ns = instant.getNanoseconds();
             BigInteger roundedNs = TemporalUtil.roundTemporalInstant(ns, (long) precision.getIncrement(), precision.getUnit(), roundingMode);

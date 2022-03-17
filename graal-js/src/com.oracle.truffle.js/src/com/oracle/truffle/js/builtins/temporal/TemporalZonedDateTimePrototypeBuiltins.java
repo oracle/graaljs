@@ -446,10 +446,11 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        protected TruffleString toString(Object thisObj, Object optionsParam) {
+        protected TruffleString toString(Object thisObj, Object optionsParam,
+                                         @Cached JSToStringNode toStringNode) {
             DynamicObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
             DynamicObject options = getOptionsObject(optionsParam);
-            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, getOptionNode());
+            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getOptionNode());
             RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
             ShowCalendar showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode());
             TruffleString showTimeZone = TemporalUtil.toShowTimeZoneNameOption(options, getOptionNode());

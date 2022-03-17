@@ -67,9 +67,12 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public abstract class JSToStringNode extends JavaScriptBaseNode {
     protected static final int MAX_CLASSES = 3;
 
-    final boolean undefinedToEmpty;
-    final boolean symbolToString;
-    @Child private JSToStringNode toStringNode;
+    private final boolean undefinedToEmpty;
+    private final boolean symbolToString;
+
+    protected JSToStringNode() {
+        this(false, false);
+    }
 
     protected JSToStringNode(boolean undefinedToEmpty, boolean symbolToString) {
         this.undefinedToEmpty = undefinedToEmpty;
@@ -140,8 +143,9 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isJSDynamicObject(value)", replaces = "doUndefined")
     protected TruffleString doJSObject(DynamicObject value,
-                    @Cached("createHintString()") JSToPrimitiveNode toPrimitiveHintStringNode) {
-        return (undefinedToEmpty && (value == Undefined.instance)) ? Strings.EMPTY_STRING : getToStringNode().executeString(toPrimitiveHintStringNode.execute(value));
+                    @Cached("createHintString()") JSToPrimitiveNode toPrimitiveHintStringNode,
+                    @Cached JSToStringNode toStringNode) {
+        return (undefinedToEmpty && (value == Undefined.instance)) ? Strings.EMPTY_STRING : toStringNode.executeString(toPrimitiveHintStringNode.execute(value));
     }
 
     @TruffleBoundary
@@ -156,16 +160,9 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isForeignObject(object)"})
     protected TruffleString doTruffleObject(Object object,
-                    @Cached("createHintString()") JSToPrimitiveNode toPrimitiveNode) {
-        return getToStringNode().executeString(toPrimitiveNode.execute(object));
-    }
-
-    protected JSToStringNode getToStringNode() {
-        if (toStringNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toStringNode = insert(JSToStringNode.create());
-        }
-        return toStringNode;
+                    @Cached("createHintString()") JSToPrimitiveNode toPrimitiveNode,
+                    @Cached JSToStringNode toStringNode) {
+        return toStringNode.executeString(toPrimitiveNode.execute(object));
     }
 
     public abstract static class JSToStringWrapperNode extends JSUnaryNode {

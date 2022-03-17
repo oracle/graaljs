@@ -118,7 +118,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -127,8 +126,6 @@ import com.oracle.truffle.js.nodes.temporal.GetTemporalCalendarWithISODefaultNod
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalDateTimeNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalZonedDateTimeNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -370,83 +367,6 @@ public final class TemporalUtil {
         NEVER
     }
 
-    /**
-     * Note there also is {@link TemporalGetOptionNode}.
-     */
-    public static Object getOption(DynamicObject options, TruffleString property, OptionType types, List<?> values, Object fallback, JSToBooleanNode toBoolean, JSToNumberNode toNumber,
-                                   JSToStringNode toStringNode) {
-        assert JSRuntime.isObject(options);
-        Object value = JSObject.get(options, property);
-        if (value == Undefined.instance) {
-            return fallback;
-        }
-        OptionType type;
-        if (value instanceof Boolean && types.allowsBoolean()) {
-            type = OptionType.BOOLEAN;
-        } else if (Strings.isTString(value) && types.allowsString()) {
-            type = OptionType.STRING;
-        } else if (JSRuntime.isNumber(value) && types.allowsNumber()) {
-            type = OptionType.NUMBER;
-        } else {
-            type = types.getLast();
-        }
-
-        if (type.allowsBoolean()) {
-            value = toBoolean.executeBoolean(value);
-        } else if (type.allowsNumber()) {
-            value = toNumber.executeNumber(value);
-            if (Double.isNaN(JSRuntime.doubleValue((Number) value))) {
-                throw TemporalErrors.createRangeErrorNumberIsNaN();
-            }
-        } else {
-            assert type.allowsString();
-            value = toStringNode.executeString(value);
-        }
-        if (!Boundaries.listContainsUnchecked(values, value)) {
-            throw TemporalErrors.createRangeErrorOptionsNotContained(values, value);
-        }
-        return value;
-    }
-
-    /**
-     * Note there also is {@link TemporalGetOptionNode}, and there is an override that accept
-     * conversion Nodes.
-     */
-    @TruffleBoundary
-    public static Object getOption(DynamicObject options, TruffleString property, OptionType types, List<TruffleString> values, Object fallback) {
-        assert JSRuntime.isObject(options);
-        Object value = JSObject.get(options, property);
-        if (value == Undefined.instance) {
-            return fallback;
-        }
-        OptionType type;
-        if (value instanceof Boolean && types.allowsBoolean()) {
-            type = OptionType.BOOLEAN;
-        } else if (Strings.isTString(value) && types.allowsString()) {
-            type = OptionType.STRING;
-        } else if (JSRuntime.isNumber(value) && types.allowsNumber()) {
-            type = OptionType.NUMBER;
-        } else {
-            type = types.getLast();
-        }
-
-        if (type.allowsBoolean()) {
-            value = JSRuntime.toBoolean(value);
-        } else if (type.allowsNumber()) {
-            value = JSRuntime.toNumber(value);
-            if (Double.isNaN(((Number) value).doubleValue())) {
-                throw TemporalErrors.createRangeErrorNumberIsNaN();
-            }
-        } else {
-            assert type.allowsString();
-            value = JSRuntime.toString(value);
-        }
-        if (values != null && !values.contains(value)) {
-            throw TemporalErrors.createRangeErrorOptionsNotContained(values, value);
-        }
-        return value;
-    }
-
     // 13.3
     public static double defaultNumberOptions(Object value, double minimum, double maximum, double fallback,
                     JSToNumberNode toNumber) {
@@ -470,28 +390,22 @@ public final class TemporalUtil {
     }
 
     // 13.5
-    @TruffleBoundary
     public static Object getStringOrNumberOption(DynamicObject options, TruffleString property, List<TruffleString> stringValues,
-                    double minimum, double maximum, Object fallback) {
+                    double minimum, double maximum, Object fallback, JSToStringNode toStringNode, TemporalGetOptionNode getOptionNode) {
         assert JSRuntime.isObject(options);
-        Object value = getOption(options, property, OptionType.NUMBER_AND_STRING, null, fallback);
+        Object value = getOptionNode.execute(options, property, OptionType.NUMBER_AND_STRING, null, fallback);
         if (value instanceof Number) {
-            double numberValue = ((Number) value).doubleValue();
+            double numberValue = JSRuntime.doubleValue((Number) value);
             if (Double.isNaN(numberValue) || numberValue < minimum || numberValue > maximum) {
                 throw Errors.createRangeError("Numeric value out of range.");
             }
             return Math.floor(numberValue);
         }
-        value = JSRuntime.toString(value);
-        if (stringValues != null && !stringValues.contains(value)) {
+        value = toStringNode.executeString(value);
+        if (stringValues != null && !Boundaries.listContainsUnchecked(stringValues, value)) {
             throw Errors.createRangeError("Given string value is not in string values");
         }
         return value;
-    }
-
-    // 13.8
-    public static Overflow toTemporalOverflow(DynamicObject options, JSToBooleanNode toBoolean, JSToNumberNode toNumberNode, JSToStringNode toStringNode) {
-        return toOverflow((TruffleString) getOption(options, OVERFLOW, OptionType.STRING, listConstrainReject, CONSTRAIN, toBoolean, toNumberNode, toStringNode));
     }
 
     // 13.17
@@ -520,7 +434,7 @@ public final class TemporalUtil {
         return increment;
     }
 
-    public static JSTemporalPrecisionRecord toSecondsStringPrecision(DynamicObject options, TemporalGetOptionNode getOptionNode) {
+    public static JSTemporalPrecisionRecord toSecondsStringPrecision(DynamicObject options, JSToStringNode toStringNode, TemporalGetOptionNode getOptionNode) {
         Unit smallestUnit = toSmallestTemporalUnit(options, listYMWDH, null, getOptionNode);
 
         if (Unit.MINUTE == smallestUnit) {
@@ -537,7 +451,7 @@ public final class TemporalUtil {
 
         assert smallestUnit == Unit.EMPTY;
 
-        Object digits = getStringOrNumberOption(options, FRACTIONAL_SECOND_DIGITS, listAuto, 0, 9, AUTO);
+        Object digits = getStringOrNumberOption(options, FRACTIONAL_SECOND_DIGITS, listAuto, 0, 9, AUTO, toStringNode, getOptionNode);
         if (Boundaries.equals(digits, AUTO)) {
             return JSTemporalPrecisionRecord.create(AUTO, Unit.NANOSECOND, 1);
         }
@@ -605,7 +519,7 @@ public final class TemporalUtil {
 
             DynamicObject dateOptions = JSOrdinary.createWithNullPrototype(ctx);
             JSObjectUtil.putDataProperty(ctx, dateOptions, OVERFLOW, CONSTRAIN);
-            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, dateOptions, null);
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, dateOptions, TemporalGetOptionNode.getUncached());
             offset = JSObject.get(valueObj, OFFSET);
             timeZone = JSObject.get(valueObj, TIME_ZONE);
             if (timeZone != Undefined.instance) {
@@ -1405,11 +1319,6 @@ public final class TemporalUtil {
         return toOverflow(result);
     }
 
-    public static Overflow toTemporalOverflow(DynamicObject options) {
-        TruffleString result = (TruffleString) getOption(options, OVERFLOW, OptionType.STRING, listConstrainReject, CONSTRAIN);
-        return toOverflow(result);
-    }
-
     @TruffleBoundary
     public static Overflow toOverflow(TruffleString result) {
         if (CONSTRAIN.equals(result)) {
@@ -1424,7 +1333,7 @@ public final class TemporalUtil {
     public static JSTemporalDateTimeRecord interpretTemporalDateTimeFields(DynamicObject calendar, DynamicObject fields, DynamicObject options, TemporalGetOptionNode getOptionNode) {
         JSTemporalDateTimeRecord timeResult = toTemporalTimeRecord(fields);
         JSTemporalPlainDateObject date = dateFromFields(calendar, fields, options);
-        Overflow overflow = getOptionNode == null ? toTemporalOverflow(options) : toTemporalOverflow(options, getOptionNode);
+        Overflow overflow = toTemporalOverflow(options, getOptionNode);
         JSTemporalDurationRecord timeResult2 = TemporalUtil.regulateTime(
                         timeResult.getHour(), timeResult.getMinute(), timeResult.getSecond(), timeResult.getMillisecond(), timeResult.getMicrosecond(), timeResult.getNanosecond(),
                         overflow);
@@ -1618,7 +1527,7 @@ public final class TemporalUtil {
             DynamicObject fields = prepareTemporalFields(ctx, item, fieldNames, listEmpty);
             return dateFromFields(calendar, fields, options);
         }
-        Overflow overflows = toTemporalOverflow(options);
+        Overflow overflows = toTemporalOverflow(options, TemporalGetOptionNode.getUncached());
         JSTemporalDateTimeRecord result = parseTemporalDateString(JSRuntime.toString(itemParam));
         if (!validateISODate(result.getYear(), result.getMonth(), result.getDay())) {
             throw TemporalErrors.createRangeErrorDateOutsideRange();
@@ -1627,47 +1536,6 @@ public final class TemporalUtil {
         result = regulateISODate(result.getYear(), result.getMonth(), result.getDay(), overflows);
 
         return (JSTemporalPlainDateObject) JSTemporalPlainDate.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
-    }
-
-    /**
-     * Note there also is {@link ToTemporalTimeNode}.
-     */
-    public static JSTemporalPlainTimeObject toTemporalTime(Object item, Overflow overflowParam, JSContext ctx, JSRealm realm, IsObjectNode isObject, JSToStringNode toStringNode) {
-        Overflow overflow = overflowParam == null ? Overflow.CONSTRAIN : overflowParam;
-        assert overflow == Overflow.CONSTRAIN || overflow == Overflow.REJECT;
-        JSTemporalDurationRecord result2 = null;
-        if (isObject.executeBoolean(item)) {
-            if (JSTemporalPlainTime.isJSTemporalPlainTime(item)) {
-                return (JSTemporalPlainTimeObject) item;
-            } else if (TemporalUtil.isTemporalZonedDateTime(item)) {
-                JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
-                JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, zdt.getNanoseconds());
-                JSTemporalPlainDateTimeObject plainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, zdt.getTimeZone(), instant, zdt.getCalendar());
-                return TemporalUtil.createTemporalTime(ctx, plainDateTime.getHour(), plainDateTime.getMinute(),
-                                plainDateTime.getSecond(), plainDateTime.getMillisecond(), plainDateTime.getMicrosecond(), plainDateTime.getNanosecond());
-            } else if (JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
-                JSTemporalPlainDateTimeObject dt = (JSTemporalPlainDateTimeObject) item;
-                return TemporalUtil.createTemporalTime(ctx, dt.getHour(), dt.getMinute(), dt.getSecond(), dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond());
-            }
-            DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(ctx, realm, item);
-            if (!JSRuntime.toString(calendar).equals(TemporalConstants.ISO8601)) {
-                throw TemporalErrors.createRangeErrorTemporalISO8601Expected();
-            }
-            JSTemporalDateTimeRecord result = TemporalUtil.toTemporalTimeRecord((DynamicObject) item);
-            result2 = TemporalUtil.regulateTime(
-                            result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), overflow);
-        } else {
-            TruffleString string = toStringNode.executeString(item);
-            JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalTimeString(string);
-            assert TemporalUtil.isValidTime(
-                            result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
-            if (result.hasCalendar() && !JSRuntime.toString(result.getCalendar()).equals(TemporalConstants.ISO8601)) {
-                throw TemporalErrors.createRangeErrorTemporalISO8601Expected();
-            }
-            result2 = JSTemporalDurationRecord.create(result);
-        }
-        return (JSTemporalPlainTimeObject) JSTemporalPlainTime.create(ctx, dtoi(result2.getHours()), dtoi(result2.getMinutes()), dtoi(result2.getSeconds()), dtoi(result2.getMilliseconds()),
-                        dtoi(result2.getMicroseconds()), dtoi(result2.getNanoseconds()));
     }
 
     public static boolean validateISODate(int year, int month, int day) {
@@ -4197,10 +4065,9 @@ public final class TemporalUtil {
 
     // 12.1.39
     public static JSTemporalDateTimeRecord isoDateFromFields(DynamicObject fields, DynamicObject options, JSContext ctx, IsObjectNode isObject,
-                    JSToBooleanNode toBoolean, JSToNumberNode toNumber, JSToStringNode toStringNode, JSToIntegerOrInfinityNode toIntOrInfinityNode,
-                    JSIdenticalNode identicalNode) {
+                    TemporalGetOptionNode getOptionNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
-        Overflow overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toNumber, toStringNode);
+        Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
         DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(ctx, fields, TemporalUtil.listDMMCY, TemporalUtil.listEmpty);
         Object year = JSObject.get(preparedFields, YEAR);
         if (year == Undefined.instance) {
@@ -4217,10 +4084,9 @@ public final class TemporalUtil {
 
     // 12.1.40
     public static JSTemporalYearMonthDayRecord isoYearMonthFromFields(DynamicObject fields, DynamicObject options, JSContext ctx, IsObjectNode isObject,
-                    JSToBooleanNode toBoolean, JSToNumberNode toNumber, JSToStringNode toStringNode, JSToIntegerOrInfinityNode toIntOrInfinityNode,
-                    JSIdenticalNode identicalNode) {
+                    TemporalGetOptionNode getOptionNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
-        Overflow overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toNumber, toStringNode);
+        Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
         DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(ctx, fields, TemporalUtil.listMMCY, TemporalUtil.listEmpty);
         Object year = JSObject.get(preparedFields, YEAR);
         if (year == Undefined.instance) {
@@ -4234,9 +4100,9 @@ public final class TemporalUtil {
     }
 
     public static JSTemporalYearMonthDayRecord isoMonthDayFromFields(DynamicObject fields, DynamicObject options, JSContext ctx, IsObjectNode isObject,
-                    JSToBooleanNode toBoolean, JSToNumberNode toNumber, JSToStringNode toStringNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
+                    TemporalGetOptionNode getOptionNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
-        Overflow overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toNumber, toStringNode);
+        Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
         DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(ctx, fields, TemporalUtil.listDMMCY, TemporalUtil.listEmpty);
         Object month = JSObject.get(preparedFields, MONTH);
         Object monthCode = JSObject.get(preparedFields, MONTH_CODE);

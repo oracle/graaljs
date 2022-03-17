@@ -547,10 +547,11 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected TruffleString toString(Object duration, Object opt,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached JSNumberToBigIntNode toBigIntNode) {
+                        @Cached JSNumberToBigIntNode toBigIntNode,
+                        @Cached JSToStringNode toStringNode) {
             JSTemporalDurationObject dur = requireTemporalDuration(duration);
             DynamicObject options = getOptionsObject(opt);
-            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, getOptionNode());
+            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getOptionNode());
             if (precision.getUnit() == Unit.MINUTE) {
                 errorBranch.enter();
                 throw Errors.createRangeError("unexpected precision minute");
