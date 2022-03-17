@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,7 +101,7 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected Object from(Object item, Object optParam,
-                              @Cached TemporalGetOptionNode getOptionNode) {
+                        @Cached TemporalGetOptionNode getOptionNode) {
             DynamicObject options = getOptionsObject(optParam);
             if (isObject(item) && JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(item)) {
                 JSTemporalPlainYearMonthObject pmd = (JSTemporalPlainYearMonthObject) item;
@@ -121,7 +121,7 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected int compare(Object one, Object two,
-                              @Cached TemporalGetOptionNode getOptionNode) {
+                        @Cached TemporalGetOptionNode getOptionNode) {
             JSRealm realm = JSRealm.get(this);
             JSTemporalPlainYearMonthObject oneYM = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), realm, one, Undefined.instance, getOptionNode);
             JSTemporalPlainYearMonthObject twoYM = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), realm, two, Undefined.instance, getOptionNode);

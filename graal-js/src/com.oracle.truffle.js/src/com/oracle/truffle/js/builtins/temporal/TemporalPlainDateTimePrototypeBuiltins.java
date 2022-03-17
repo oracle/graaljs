@@ -527,7 +527,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected TruffleString toString(Object thisObj, Object optionsParam,
-                                         @Cached JSToStringNode toStringNode) {
+                        @Cached JSToStringNode toStringNode) {
             JSTemporalPlainDateTimeObject dt = requireTemporalDateTime(thisObj);
             DynamicObject options = getOptionsObject(optionsParam);
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getOptionNode());

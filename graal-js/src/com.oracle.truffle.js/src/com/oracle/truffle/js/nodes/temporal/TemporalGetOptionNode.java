@@ -83,11 +83,11 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
 
     @Specialization
     protected Object getOption(DynamicObject options, TruffleString property, TemporalUtil.OptionType types, List<?> values, Object fallback,
-                               @Cached BranchProfile errorBranch,
-                               @Cached("createBinaryProfile()") ConditionProfile isFallbackProfile,
-                               @Cached JSToBooleanNode toBooleanNode,
-                               @Cached(value = "create()", uncached = "createEmptyToString()") JSToStringNode toStringNode,
-                               @Cached(value = "create()", uncached = "createEmptyToNumber()") JSToNumberNode toNumberNode) {
+                    @Cached BranchProfile errorBranch,
+                    @Cached("createBinaryProfile()") ConditionProfile isFallbackProfile,
+                    @Cached JSToBooleanNode toBooleanNode,
+                    @Cached(value = "create()", uncached = "createEmptyToString()") JSToStringNode toStringNode,
+                    @Cached(value = "create()", uncached = "createEmptyToNumber()") JSToNumberNode toNumberNode) {
         assert JSRuntime.isObject(options);
         Object value = JSObject.get(options, property);
         if (isFallbackProfile.profile(value == Undefined.instance)) {
@@ -108,7 +108,7 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
         } else if (type.allowsNumber()) {
             // workaround as long as JSToStringNode cannot have an uncached version
             value = toNumberNode == null ? JSRuntime.toNumber(value) : toNumberNode.executeNumber(value);
-            if (Double.isNaN(((Number) value).doubleValue())) {
+            if (Double.isNaN(JSRuntime.doubleValue((Number) value))) {
                 throw TemporalErrors.createRangeErrorNumberIsNaN();
             }
         } else if (type.allowsString()) {

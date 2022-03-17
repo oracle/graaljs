@@ -311,7 +311,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected boolean equals(Object thisObj, Object otherParam,
-                                 @Cached JSToStringNode toStringNode) {
+                        @Cached JSToStringNode toStringNode) {
             JSTemporalPlainMonthDayObject md = requireTemporalMonthDay(thisObj);
             JSTemporalPlainMonthDayObject other = (JSTemporalPlainMonthDayObject) JSTemporalPlainMonthDay.toTemporalMonthDay(otherParam, Undefined.instance, getContext(), getRealm());
             if (md.getMonth() != other.getMonth()) {

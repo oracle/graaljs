@@ -676,7 +676,7 @@ public final class TemporalUtil {
         throw Errors.createRangeError("cannot parse the ISO date time string");
     }
 
-      public static void validateTemporalUnitRange(Unit largestUnit, Unit smallestUnit) {
+    public static void validateTemporalUnitRange(Unit largestUnit, Unit smallestUnit) {
         boolean error = false;
         if (smallestUnit == Unit.YEAR) {
             if (!(largestUnit == Unit.YEAR)) {

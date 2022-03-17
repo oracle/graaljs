@@ -323,8 +323,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
 
         @Specialization
         protected boolean equals(Object thisObj, Object otherParam,
-                                 @Cached JSToStringNode toStringNode,
-                                 @Cached TemporalGetOptionNode getOptionNode) {
+                        @Cached JSToStringNode toStringNode,
+                        @Cached TemporalGetOptionNode getOptionNode) {
             JSTemporalPlainYearMonthObject md = requireTemporalYearMonth(thisObj);
             JSTemporalPlainYearMonthObject other = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), getRealm(), otherParam, Undefined.instance, getOptionNode);
             if (md.getMonth() != other.getMonth()) {
