@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,10 +43,8 @@ package com.oracle.truffle.js.nodes.function;
 import java.util.Arrays;
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInterface;
@@ -130,8 +128,14 @@ public abstract class JSBuiltinNode extends AbstractBodyNode {
         return true;
     }
 
+    private static final boolean VERIFY_ARGUMENT_COUNT = false;
+
     public static JSBuiltinNode createBuiltin(JSContext ctx, JSBuiltin builtin, boolean construct, boolean newTarget) {
-        return new LazyBuiltinNode(ctx, builtin, construct, newTarget);
+        JSBuiltinNode builtinNode = builtin.createNode(ctx, construct, newTarget);
+        if (VERIFY_ARGUMENT_COUNT) {
+            verifyArgumentCount(builtinNode);
+        }
+        return builtinNode;
     }
 
     @Override
@@ -139,77 +143,26 @@ public abstract class JSBuiltinNode extends AbstractBodyNode {
         return createBuiltin(context, builtin, construct, newTarget);
     }
 
-    static final class LazyBuiltinNode extends JSBuiltinNode {
-        private static final boolean VERIFY_ARGUMENT_COUNT = false;
-
-        LazyBuiltinNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget) {
-            super(context, builtin, construct, newTarget);
-            assert builtin != null;
-
-            if (VERIFY_ARGUMENT_COUNT) {
-                verifyArgumentCount();
-            }
+    private static void verifyArgumentCount(JSBuiltinNode builtinNode) {
+        assert !JSConfig.SubstrateVM;
+        int argumentNodeCount = 0;
+        Class<? extends JSBuiltinNode> nodeclass = builtinNode.getClass();
+        for (Class<?> superclass = nodeclass; superclass != null; superclass = superclass.getSuperclass()) {
+            argumentNodeCount += Arrays.stream(superclass.getDeclaredFields()).filter(f -> f.getAnnotation(Child.class) != null && f.getName().startsWith(ARGUMENTS)).count();
         }
-
-        private void verifyArgumentCount() {
-            assert !JSConfig.SubstrateVM;
-            JSBuiltinNode builtinNode = createBuiltinNode();
-            int argumentNodeCount = 0;
-            Class<? extends JSBuiltinNode> nodeclass = builtinNode.getClass();
-            for (Class<?> superclass = nodeclass; superclass != null; superclass = superclass.getSuperclass()) {
-                argumentNodeCount += Arrays.stream(superclass.getDeclaredFields()).filter(f -> f.getAnnotation(Child.class) != null && f.getName().startsWith(ARGUMENTS)).count();
-            }
-            int providedArgumentNodeCount = 0;
-            for (Class<?> superclass = nodeclass; superclass != null; superclass = superclass.getSuperclass()) {
-                providedArgumentNodeCount += Arrays.stream(superclass.getDeclaredFields()).filter(
-                                f -> f.getAnnotation(Child.class) != null && f.getName().startsWith(ARGUMENTS)).filter(f -> {
-                                    try {
-                                        f.setAccessible(true);
-                                        return f.get(builtinNode) != null;
-                                    } catch (IllegalAccessException e) {
-                                        throw new AssertionError(e);
-                                    }
-                                }).count();
-            }
-            assert providedArgumentNodeCount == argumentNodeCount : nodeclass + " provided=" + providedArgumentNodeCount + " required=" + argumentNodeCount;
+        int providedArgumentNodeCount = 0;
+        for (Class<?> superclass = nodeclass; superclass != null; superclass = superclass.getSuperclass()) {
+            providedArgumentNodeCount += Arrays.stream(superclass.getDeclaredFields()).filter(
+                            f -> f.getAnnotation(Child.class) != null && f.getName().startsWith(ARGUMENTS)).filter(f -> {
+                                try {
+                                    f.setAccessible(true);
+                                    return f.get(builtinNode) != null;
+                                } catch (IllegalAccessException e) {
+                                    throw new AssertionError(e);
+                                }
+                            }).count();
         }
-
-        @Override
-        public JavaScriptNode[] getArguments() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            JSBuiltinNode resolved = materialize();
-            return resolved.execute(frame);
-        }
-
-        private JSBuiltinNode materialize() {
-            CompilerAsserts.neverPartOfCompilation();
-            JSBuiltinNode builtinNode = createBuiltinNode();
-            return replace(builtinNode, "lazy builtin");
-        }
-
-        private JSBuiltinNode createBuiltinNode() {
-            return getBuiltin().createNode(getContext(), construct, newTarget);
-        }
-
-        @Override
-        public boolean isInlineable() {
-            return materialize().isInlineable();
-        }
-
-        @Override
-        public Inlined tryCreateInlined() {
-            return materialize().tryCreateInlined();
-        }
-
-        @Override
-        public boolean isCallerSensitive() {
-            return materialize().isCallerSensitive();
-        }
+        assert providedArgumentNodeCount == argumentNodeCount : nodeclass + " provided=" + providedArgumentNodeCount + " required=" + argumentNodeCount;
     }
 
     /**
