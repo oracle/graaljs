@@ -113,7 +113,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
      * {@code com.oracle.truffle.js.nodes.access.PropertyGetNode.LazyRegexResultIndexPropertyGetNode}
      * .
      */
-    public static class LazyRegexResultIndexProxyProperty implements PropertyProxy {
+    public static final class LazyRegexResultIndexProxyProperty extends PropertyProxy {
 
         @Override
         public Object get(DynamicObject object) {
@@ -128,7 +128,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         }
     }
 
-    public static class LazyNamedCaptureGroupProperty implements PropertyProxy {
+    public static final class LazyNamedCaptureGroupProperty extends PropertyProxy {
 
         private final JSContext context;
         private final TruffleString groupName;

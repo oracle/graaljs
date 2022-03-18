@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,12 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.util.AssumptionUtil;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
 
 /**
@@ -52,7 +54,17 @@ import com.oracle.truffle.js.runtime.util.DebugCounter;
 public final class JSSharedData {
     private final JSContext context;
     private final JSDynamicObject proto;
-    private Assumption prototypeAssumption;
+    private volatile Assumption prototypeAssumption;
+
+    private static final VarHandle PROTOTYPE_ASSUMPTION_VAR_HANDLE;
+    static {
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        try {
+            PROTOTYPE_ASSUMPTION_VAR_HANDLE = lookup.findVarHandle(JSSharedData.class, "prototypeAssumption", Assumption.class);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw Errors.shouldNotReachHere(e);
+        }
+    }
 
     private static final DebugCounter prototypeAssumptionsCreated = DebugCounter.create("Prototype assumptions created");
     private static final DebugCounter prototypeAssumptionsRemoved = DebugCounter.create("Prototype assumptions removed");
@@ -70,21 +82,29 @@ public final class JSSharedData {
         return proto;
     }
 
-    synchronized Assumption getPrototypeAssumption() {
+    Assumption getPrototypeAssumption() {
         Assumption assumption = prototypeAssumption;
-        if (assumption == null) {
-            assumption = Truffle.getRuntime().createAssumption("stable prototype");
-            prototypeAssumption = assumption;
+        if (assumption != null) {
+            return assumption;
+        }
+        assumption = Assumption.create("stable prototype");
+        if (!PROTOTYPE_ASSUMPTION_VAR_HANDLE.compareAndSet(this, (Assumption) null, assumption)) {
+            assumption = prototypeAssumption;
+        } else {
             prototypeAssumptionsCreated.inc();
         }
         return assumption;
     }
 
-    synchronized void invalidatePrototypeAssumption() {
+    void invalidatePrototypeAssumption() {
         Assumption assumption = prototypeAssumption;
-        if (assumption != null) {
-            assumption.invalidate();
-            prototypeAssumption = AssumptionUtil.neverValidAssumption();
+        if (assumption == null || assumption == Assumption.NEVER_VALID) {
+            return;
+        }
+        assumption.invalidate();
+        if (!PROTOTYPE_ASSUMPTION_VAR_HANDLE.compareAndSet(this, assumption, Assumption.NEVER_VALID)) {
+            assert prototypeAssumption == Assumption.NEVER_VALID;
+        } else {
             prototypeAssumptionsRemoved.inc();
         }
     }

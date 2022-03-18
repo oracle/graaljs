@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -124,7 +124,7 @@ public final class JSFunction extends JSNonProxy {
 
     public static final PropertyProxy PROTOTYPE_PROXY = new ClassPrototypeProxyProperty();
 
-    public static class FunctionLengthPropertyProxy implements PropertyProxy {
+    public static final class FunctionLengthPropertyProxy extends PropertyProxy {
         @Override
         public Object get(DynamicObject store) {
             assert JSFunction.isJSFunction(store);
@@ -134,7 +134,7 @@ public final class JSFunction extends JSNonProxy {
             return JSFunction.getLength(store);
         }
 
-        public int getProfiled(DynamicObject store, BranchProfile isBoundBranch) {
+        public static int getProfiled(DynamicObject store, BranchProfile isBoundBranch) {
             assert JSFunction.isJSFunction(store);
             if (JSFunction.isBoundFunction(store)) {
                 isBoundBranch.enter();
@@ -147,7 +147,7 @@ public final class JSFunction extends JSNonProxy {
 
     public static final PropertyProxy LENGTH_PROXY = new FunctionLengthPropertyProxy();
 
-    public static class FunctionNamePropertyProxy implements PropertyProxy {
+    public static final class FunctionNamePropertyProxy extends PropertyProxy {
         @Override
         public TruffleString get(DynamicObject store) {
             assert JSFunction.isJSFunction(store);
@@ -157,7 +157,7 @@ public final class JSFunction extends JSNonProxy {
             return JSFunction.getName(store);
         }
 
-        public Object getProfiled(DynamicObject store, BranchProfile isBoundBranch) {
+        public static Object getProfiled(DynamicObject store, BranchProfile isBoundBranch) {
             assert JSFunction.isJSFunction(store);
             if (JSFunction.isBoundFunction(store)) {
                 isBoundBranch.enter();
@@ -320,7 +320,8 @@ public final class JSFunction extends JSNonProxy {
         assert JSFunction.isJSFunction(thisFnObj);
         JSContext context = realm.getContext();
         DynamicObject proto = JSObject.getPrototype(thisFnObj);
-        DynamicObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto, null, null, null);
+        DynamicObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto,
+                        ConditionProfile.getUncached(), ConditionProfile.getUncached(), ConditionProfile.getUncached(), null);
 
         long length = 0;
         boolean targetHasLength = JSObject.hasOwnProperty(thisFnObj, JSFunction.LENGTH);
@@ -347,32 +348,22 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static DynamicObject boundFunctionCreate(JSContext context, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments, DynamicObject proto,
-                    ConditionProfile isAsyncProfile, ConditionProfile setProtoProfile, Node node) {
+                    ConditionProfile isConstructorProfile, ConditionProfile isAsyncProfile, ConditionProfile setProtoProfile, Node node) {
         assert JSFunction.isJSFunction(boundTargetFunction);
         CompilerAsserts.partialEvaluationConstant(context);
 
-        boolean constructor = JSFunction.isConstructor(boundTargetFunction);
-        JSFunctionData functionData = context.getBoundFunctionData(constructor);
-        boolean isAsync = JSFunction.getFunctionData(boundTargetFunction).isAsync();
-        if ((isAsyncProfile == null ? isAsync : isAsyncProfile.profile(isAsync))) {
-            int length = Math.max(0, JSFunction.getLength(boundTargetFunction) - boundArguments.length);
-            functionData = makeBoundFunctionData(context, length, constructor, isAsync, functionData.getName());
-        }
+        JSFunctionData targetFunctionData = JSFunction.getFunctionData(boundTargetFunction);
+        boolean constructor = isConstructorProfile.profile(targetFunctionData.isConstructor());
+        boolean isAsync = isAsyncProfile.profile(targetFunctionData.isAsync());
+        JSFunctionData boundFunctionData = context.getBoundFunctionData(constructor, isAsync);
         JSRealm realm = getRealm(boundTargetFunction, context, node);
-        DynamicObject boundFunction = JSFunction.createBound(context, realm, functionData, boundTargetFunction, boundThis, boundArguments);
+        DynamicObject boundFunction = JSFunction.createBound(context, realm, boundFunctionData, boundTargetFunction, boundThis, boundArguments);
         boolean needSetProto = proto != realm.getFunctionPrototype();
-        if ((setProtoProfile == null ? needSetProto : setProtoProfile.profile(needSetProto))) {
+        if (setProtoProfile.profile(needSetProto)) {
             JSObject.setPrototype(boundFunction, proto);
         }
         assert JSObject.getPrototype(boundFunction) == proto;
         return boundFunction;
-    }
-
-    @TruffleBoundary
-    private static JSFunctionData makeBoundFunctionData(JSContext context, int length, boolean constructor, boolean isAsync, TruffleString name) {
-        return JSFunctionData.create(context,
-                        context.getBoundFunctionCallTarget(), context.getBoundFunctionConstructTarget(), context.getBoundFunctionConstructNewTarget(),
-                        length, name, constructor, false, true, false, false, false, isAsync, false, true, false, true);
     }
 
     @TruffleBoundary
@@ -496,7 +487,7 @@ public final class JSFunction extends JSNonProxy {
         setClassPrototypeField(thisObj, value);
     }
 
-    public static final class ClassPrototypeProxyProperty implements PropertyProxy {
+    public static final class ClassPrototypeProxyProperty extends PropertyProxy {
         private ClassPrototypeProxyProperty() {
         }
 
@@ -885,7 +876,7 @@ public final class JSFunction extends JSNonProxy {
                         function == realm.getReflectConstructFunctionObject();
     }
 
-    public static class ArgumentsProxyProperty implements PropertyProxy {
+    public static final class ArgumentsProxyProperty extends PropertyProxy {
 
         private final JSContext context;
 
@@ -924,7 +915,7 @@ public final class JSFunction extends JSNonProxy {
 
     }
 
-    public static class CallerProxyProperty implements PropertyProxy {
+    public static final class CallerProxyProperty extends PropertyProxy {
 
         private final JSContext context;
 
@@ -996,5 +987,16 @@ public final class JSFunction extends JSNonProxy {
         JSFunctionData functionData = JSFunction.getFunctionData(function);
         PropertyDescriptor desc = JSObject.getOwnProperty(realm.getArrayPrototype(), functionData.getName());
         return desc != null && desc.isDataDescriptor() && desc.getValue() == function;
+    }
+
+    public static Source getCallerSource() {
+        RootNode callerRootNode = Truffle.getRuntime().iterateFrames(JSFunction::getFrameRootNode, 1);
+        if (callerRootNode != null) {
+            SourceSection callerSourceSection = callerRootNode.getSourceSection();
+            if (callerSourceSection != null && callerSourceSection.isAvailable()) {
+                return callerSourceSection.getSource();
+            }
+        }
+        return null;
     }
 }

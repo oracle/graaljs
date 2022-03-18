@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,13 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 
 /**
@@ -51,31 +54,53 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
  */
 public final class JSPrototypeData {
     private static final Shape[] EMPTY_SHAPE_ARRAY = new Shape[0];
-    private volatile Shape[] protoChildTrees;
 
-    public JSPrototypeData() {
-        this.protoChildTrees = EMPTY_SHAPE_ARRAY;
+    /** Copy-on-write array. Not volatile to prevent SpotBugs warning. */
+    @SuppressWarnings("unused") private Shape[] protoChildTrees = EMPTY_SHAPE_ARRAY;
+
+    private static final VarHandle PROTO_CHILD_TREES_VAR_HANDLE;
+    static {
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        try {
+            PROTO_CHILD_TREES_VAR_HANDLE = lookup.findVarHandle(JSPrototypeData.class, "protoChildTrees", Shape[].class);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw Errors.shouldNotReachHere(e);
+        }
     }
 
-    public Shape getProtoChildTree(JSClass jsclass) {
-        for (Shape childTree : protoChildTrees) {
-            if (JSShape.getJSClassNoCast(childTree) == jsclass) {
-                return childTree;
+    public JSPrototypeData() {
+    }
+
+    private static Shape lookupShapeByType(Shape[] shapes, JSClass jsclass) {
+        for (Shape shape : shapes) {
+            if (JSShape.getJSClassNoCast(shape) == jsclass) {
+                return shape;
             }
         }
         return null;
     }
 
-    public synchronized Shape getOrAddProtoChildTree(JSClass jsclass, Shape newRootShape) {
+    public Shape getProtoChildTree(JSClass jsclass) {
+        return lookupShapeByType(getProtoChildTrees(), jsclass);
+    }
+
+    public Shape getOrAddProtoChildTree(JSClass jsclass, Shape newRootShape) {
         CompilerAsserts.neverPartOfCompilation();
-        Shape existingRootShape = getProtoChildTree(jsclass);
-        if (existingRootShape == null) {
-            Shape[] oldArray = protoChildTrees;
+        while (true) {
+            Shape[] oldArray = getProtoChildTrees();
+            Shape existingRootShape = lookupShapeByType(oldArray, jsclass);
+            if (existingRootShape != null) {
+                return existingRootShape;
+            }
             Shape[] newArray = Arrays.copyOf(oldArray, oldArray.length + 1);
             newArray[oldArray.length] = newRootShape;
-            protoChildTrees = newArray;
-            return newRootShape;
+            if (PROTO_CHILD_TREES_VAR_HANDLE.compareAndSet(this, oldArray, newArray)) {
+                return newRootShape;
+            }
         }
-        return existingRootShape;
+    }
+
+    private Shape[] getProtoChildTrees() {
+        return (Shape[]) PROTO_CHILD_TREES_VAR_HANDLE.getVolatile(this);
     }
 }

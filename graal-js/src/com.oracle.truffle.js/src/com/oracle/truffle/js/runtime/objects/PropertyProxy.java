@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,11 +42,11 @@ package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.truffle.api.object.DynamicObject;
 
-public interface PropertyProxy {
+public abstract class PropertyProxy {
 
-    Object get(DynamicObject store);
+    public abstract Object get(DynamicObject store);
 
-    default boolean set(@SuppressWarnings("unused") DynamicObject store, @SuppressWarnings("unused") Object value) {
+    public boolean set(@SuppressWarnings("unused") DynamicObject store, @SuppressWarnings("unused") Object value) {
         return true;
     }
 }

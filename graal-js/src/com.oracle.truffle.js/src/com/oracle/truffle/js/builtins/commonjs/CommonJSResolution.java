@@ -48,14 +48,10 @@ import java.util.Objects;
 import java.util.stream.IntStream;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -133,21 +129,9 @@ final class CommonJSResolution {
     }
 
     static String getCurrentFileNameFromStack() {
-        FrameInstance callerFrame = Truffle.getRuntime().getCallerFrame();
-        if (callerFrame != null) {
-            SourceSection encapsulatingSourceSection = null;
-            if (callerFrame.getCallNode() != null) {
-                encapsulatingSourceSection = callerFrame.getCallNode().getEncapsulatingSourceSection();
-            } else {
-                RootNode frameRootNode = JSFunction.getFrameRootNode(callerFrame);
-                if (frameRootNode != null) {
-                    encapsulatingSourceSection = frameRootNode.getEncapsulatingSourceSection();
-                }
-            }
-            if (encapsulatingSourceSection != null && encapsulatingSourceSection.getSource() != null) {
-                Source source = encapsulatingSourceSection.getSource();
-                return source.getPath();
-            }
+        Source callerSource = JSFunction.getCallerSource();
+        if (callerSource != null) {
+            return callerSource.getPath();
         }
         return null;
     }

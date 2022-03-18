@@ -286,6 +286,7 @@ public class WriteElementNode extends JSTargetableNode {
             try {
                 index = indexNode.executeInt(frame);
             } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 indexState = INDEX_OBJECT;
                 requireObjectCoercible(target, e.getResult());
                 return executeWithTargetAndIndex(frame, target, toArrayIndex(e.getResult()), receiver);
@@ -318,6 +319,7 @@ public class WriteElementNode extends JSTargetableNode {
             try {
                 index = indexNode.executeInt(frame);
             } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 indexState = INDEX_OBJECT;
                 requireObjectCoercible(target, e.getResult());
                 return executeWithTargetAndIndexInt(frame, target, toArrayIndex(e.getResult()), receiver);
@@ -350,6 +352,7 @@ public class WriteElementNode extends JSTargetableNode {
             try {
                 index = indexNode.executeInt(frame);
             } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 indexState = INDEX_OBJECT;
                 requireObjectCoercible(target, e.getResult());
                 return executeWithTargetAndIndexDouble(frame, target, toArrayIndex(e.getResult()), receiver);
@@ -382,6 +385,7 @@ public class WriteElementNode extends JSTargetableNode {
             executeWithTargetAndIndexAndValue(target, index, value, receiver);
             return value;
         } catch (UnexpectedResultException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             executeWithTargetAndIndexAndValue(target, index, e.getResult(), receiver);
             throw e;
         }
@@ -393,6 +397,7 @@ public class WriteElementNode extends JSTargetableNode {
             executeWithTargetAndIndexAndValue(target, index, (Object) value, receiver);
             return value;
         } catch (UnexpectedResultException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             executeWithTargetAndIndexAndValue(target, index, e.getResult(), receiver);
             throw e;
         }
@@ -404,6 +409,7 @@ public class WriteElementNode extends JSTargetableNode {
             executeWithTargetAndIndexAndValue(target, index, value, receiver);
             return value;
         } catch (UnexpectedResultException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             executeWithTargetAndIndexAndValue(target, index, e.getResult(), receiver);
             throw e;
         }
@@ -415,6 +421,7 @@ public class WriteElementNode extends JSTargetableNode {
             executeWithTargetAndIndexAndValue(target, index, (Object) value, receiver);
             return value;
         } catch (UnexpectedResultException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             executeWithTargetAndIndexAndValue(target, index, e.getResult(), receiver);
             throw e;
         }

@@ -1500,7 +1500,7 @@ public class JSRealm {
     }
 
     @TruffleBoundary
-    private synchronized void createTemplateRegistry() {
+    private void createTemplateRegistry() {
         if (templateRegistry == null) {
             templateRegistry = new WeakHashMap<>();
         }
@@ -2745,7 +2745,7 @@ public class JSRealm {
         return null;
     }
 
-    private static class RealmSharedPropertyProxy implements PropertyProxy {
+    private static final class RealmSharedPropertyProxy extends PropertyProxy {
         @Override
         public Object get(DynamicObject store) {
             return topLevelRealm().v8RealmShared;

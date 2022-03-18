@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.frame.Frame;
@@ -127,6 +128,7 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         if (o instanceof Integer) {
             return (int) o;
         } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new UnexpectedResultException(o);
         }
     }
@@ -146,6 +148,7 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         if (o instanceof Double) {
             return (double) o;
         } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new UnexpectedResultException(o);
         }
     }
@@ -165,6 +168,7 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         if (o instanceof Boolean) {
             return (boolean) o;
         } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new UnexpectedResultException(o);
         }
     }

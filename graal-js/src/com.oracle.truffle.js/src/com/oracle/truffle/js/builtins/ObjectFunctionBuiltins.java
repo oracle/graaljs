@@ -1355,7 +1355,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return prefix + Character.toUpperCase(beanProperty.charAt(0)) + beanProperty.substring(1);
         }
 
-        static class BoundProperty implements PropertyProxy {
+        static final class BoundProperty extends PropertyProxy {
             private final DynamicObject source;
             private final Object key;
             private final JSClass sourceClass;
@@ -1378,7 +1378,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         }
 
-        static class ForeignBoundProperty implements PropertyProxy {
+        static final class ForeignBoundProperty extends PropertyProxy {
             private final Object source;
             private final String key;
 
@@ -1413,7 +1413,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        static class ForeignBoundBeanProperty implements PropertyProxy {
+        static final class ForeignBoundBeanProperty extends PropertyProxy {
             private final Object source;
             private final String getKey;
             private final String setKey;
