@@ -68,10 +68,8 @@ public abstract class JSBuiltinNode extends AbstractBodyNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == StandardTags.RootBodyTag.class) {
-            return true;
-        } else if (tag == JSTags.BuiltinRootTag.class) {
-            return true;
+        if (tag == JSTags.BuiltinRootTag.class) {
+            return super.hasTag(StandardTags.RootBodyTag.class);
         }
         return super.hasTag(tag);
     }
@@ -132,6 +130,8 @@ public abstract class JSBuiltinNode extends AbstractBodyNode {
 
     public static JSBuiltinNode createBuiltin(JSContext ctx, JSBuiltin builtin, boolean construct, boolean newTarget) {
         JSBuiltinNode builtinNode = builtin.createNode(ctx, construct, newTarget);
+        // If builtinNode has any JSBuiltinNode child, only this node should have the RootBodyTag.
+        builtinNode.addRootBodyTag();
         if (VERIFY_ARGUMENT_COUNT) {
             verifyArgumentCount(builtinNode);
         }
