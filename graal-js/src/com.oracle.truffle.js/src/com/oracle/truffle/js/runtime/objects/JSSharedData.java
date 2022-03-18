@@ -57,6 +57,14 @@ public final class JSSharedData {
     private volatile Assumption prototypeAssumption;
 
     private static final VarHandle PROTOTYPE_ASSUMPTION_VAR_HANDLE;
+    static {
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        try {
+            PROTOTYPE_ASSUMPTION_VAR_HANDLE = lookup.findVarHandle(JSSharedData.class, "prototypeAssumption", Assumption.class);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw Errors.shouldNotReachHere(e);
+        }
+    }
 
     private static final DebugCounter prototypeAssumptionsCreated = DebugCounter.create("Prototype assumptions created");
     private static final DebugCounter prototypeAssumptionsRemoved = DebugCounter.create("Prototype assumptions removed");
@@ -75,36 +83,29 @@ public final class JSSharedData {
     }
 
     Assumption getPrototypeAssumption() {
-        Assumption assumption;
-        do {
+        Assumption assumption = prototypeAssumption;
+        if (assumption != null) {
+            return assumption;
+        }
+        assumption = Assumption.create("stable prototype");
+        if (!PROTOTYPE_ASSUMPTION_VAR_HANDLE.compareAndSet(this, (Assumption) null, assumption)) {
             assumption = prototypeAssumption;
-            if (assumption != null) {
-                return assumption;
-            }
-            assumption = Assumption.create("stable prototype");
-        } while (!PROTOTYPE_ASSUMPTION_VAR_HANDLE.compareAndSet(this, (Assumption) null, assumption));
-        prototypeAssumptionsCreated.inc();
+        } else {
+            prototypeAssumptionsCreated.inc();
+        }
         return assumption;
     }
 
     void invalidatePrototypeAssumption() {
-        Assumption assumption;
-        do {
-            assumption = prototypeAssumption;
-            if (assumption == null || assumption == Assumption.NEVER_VALID) {
-                return;
-            }
-            assumption.invalidate();
-        } while (!PROTOTYPE_ASSUMPTION_VAR_HANDLE.compareAndSet(this, assumption, Assumption.NEVER_VALID));
-        prototypeAssumptionsRemoved.inc();
-    }
-
-    static {
-        MethodHandles.Lookup lookup = MethodHandles.lookup();
-        try {
-            PROTOTYPE_ASSUMPTION_VAR_HANDLE = lookup.findVarHandle(JSSharedData.class, "prototypeAssumption", Assumption.class);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw Errors.shouldNotReachHere(e);
+        Assumption assumption = prototypeAssumption;
+        if (assumption == null || assumption == Assumption.NEVER_VALID) {
+            return;
+        }
+        assumption.invalidate();
+        if (!PROTOTYPE_ASSUMPTION_VAR_HANDLE.compareAndSet(this, assumption, Assumption.NEVER_VALID)) {
+            assert prototypeAssumption == Assumption.NEVER_VALID;
+        } else {
+            prototypeAssumptionsRemoved.inc();
         }
     }
 }
