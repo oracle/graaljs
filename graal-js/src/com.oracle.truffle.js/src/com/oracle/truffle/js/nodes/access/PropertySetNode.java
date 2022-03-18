@@ -1033,6 +1033,13 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         Shape cacheShape = thisObj.getShape();
         AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, thisObj, depth, false, false);
 
+        // isOwnProperty() means CreateDataProperty, i.e., we must redefine
+        // the property when the current flags do not match data property and
+        // when it is possible to do so (i.e. when it is configurable)
+        if (isOwnProperty() && JSAttributes.isConfigurable(property.getFlags()) && JSAttributes.configurableEnumerableWritable() != property.getFlags()) {
+            return new DataPropertyPutWithFlagsNode(key, shapeCheck);
+        }
+
         if (JSProperty.isData(property)) {
             return createCachedDataPropertyNodeJSObject(thisObj, depth, value, shapeCheck, property);
         } else {
