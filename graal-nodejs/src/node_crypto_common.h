@@ -9,7 +9,6 @@
 #include <openssl/x509v3.h>
 
 #include <string>
-#include <unordered_map>
 
 namespace node {
 namespace crypto {
@@ -61,11 +60,6 @@ bool SetTLSSession(
 SSLSessionPointer GetTLSSession(v8::Local<v8::Value> val);
 
 SSLSessionPointer GetTLSSession(const unsigned char* buf, size_t length);
-
-std::unordered_multimap<std::string, std::string>
-GetCertificateAltNames(X509* cert);
-
-std::string GetCertificateCN(X509* cert);
 
 long VerifyPeerCertificate(  // NOLINT(runtime/int)
     const SSLPointer& ssl,
@@ -128,7 +122,8 @@ v8::MaybeLocal<v8::Object> ECPointToBuffer(
 
 v8::MaybeLocal<v8::Object> X509ToObject(
     Environment* env,
-    X509* cert);
+    X509* cert,
+    bool names_as_string = false);
 
 }  // namespace crypto
 }  // namespace node

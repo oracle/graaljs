@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2015-2022 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the OpenSSL license (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <openssl/aes.h>
 #include <openssl/bio.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
@@ -19,6 +20,7 @@
 #include <openssl/pem.h>
 #include <openssl/kdf.h>
 #include <openssl/dh.h>
+#include <openssl/engine.h>
 #include "testutil.h"
 #include "internal/nelem.h"
 #include "crypto/evp.h"
@@ -1758,10 +1760,249 @@ static int test_EVP_PKEY_set1_DH(void)
 
     return ret;
 }
-#endif
+#endif /* OPENSSL_NO_DH */
+
+typedef struct {
+        int data;
+} custom_dgst_ctx;
+
+static int custom_md_init_called = 0;
+static int custom_md_cleanup_called = 0;
+
+static int custom_md_init(EVP_MD_CTX *ctx)
+{
+    custom_dgst_ctx *p = EVP_MD_CTX_md_data(ctx);
+
+    if (p == NULL)
+        return 0;
+
+    custom_md_init_called++;
+    return 1;
+}
+
+static int custom_md_cleanup(EVP_MD_CTX *ctx)
+{
+    custom_dgst_ctx *p = EVP_MD_CTX_md_data(ctx);
+
+    if (p == NULL)
+        /* Nothing to do */
+        return 1;
+
+    custom_md_cleanup_called++;
+    return 1;
+}
+
+static int test_custom_md_meth(void)
+{
+    EVP_MD_CTX *mdctx = NULL;
+    EVP_MD *tmp = NULL;
+    char mess[] = "Test Message\n";
+    unsigned char md_value[EVP_MAX_MD_SIZE];
+    unsigned int md_len;
+    int testresult = 0;
+    int nid;
+
+    custom_md_init_called = custom_md_cleanup_called = 0;
+
+    nid = OBJ_create("1.3.6.1.4.1.16604.998866.1", "custom-md", "custom-md");
+    if (!TEST_int_ne(nid, NID_undef))
+        goto err;
+    tmp = EVP_MD_meth_new(nid, NID_undef);
+    if (!TEST_ptr(tmp))
+        goto err;
+
+    if (!TEST_true(EVP_MD_meth_set_init(tmp, custom_md_init))
+            || !TEST_true(EVP_MD_meth_set_cleanup(tmp, custom_md_cleanup))
+            || !TEST_true(EVP_MD_meth_set_app_datasize(tmp,
+                                                       sizeof(custom_dgst_ctx))))
+        goto err;
+
+    mdctx = EVP_MD_CTX_new();
+    if (!TEST_ptr(mdctx)
+               /*
+                * Initing our custom md and then initing another md should
+                * result in the init and cleanup functions of the custom md
+                * from being called.
+                */
+            || !TEST_true(EVP_DigestInit_ex(mdctx, tmp, NULL))
+            || !TEST_true(EVP_DigestInit_ex(mdctx, EVP_sha256(), NULL))
+            || !TEST_true(EVP_DigestUpdate(mdctx, mess, strlen(mess)))
+            || !TEST_true(EVP_DigestFinal_ex(mdctx, md_value, &md_len))
+            || !TEST_int_eq(custom_md_init_called, 1)
+            || !TEST_int_eq(custom_md_cleanup_called, 1))
+        goto err;
+
+    testresult = 1;
+ err:
+    EVP_MD_CTX_free(mdctx);
+    EVP_MD_meth_free(tmp);
+    return testresult;
+}
+
+#if !defined(OPENSSL_NO_ENGINE) && !defined(OPENSSL_NO_DYNAMIC_ENGINE)
+/* Test we can create a signature keys with an associated ENGINE */
+static int test_signatures_with_engine(int tst)
+{
+    ENGINE *e;
+    const char *engine_id = "dasync";
+    EVP_PKEY *pkey = NULL;
+    const unsigned char badcmackey[] = { 0x00, 0x01 };
+    const unsigned char cmackey[] = {
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
+        0x0c, 0x0d, 0x0e, 0x0f
+    };
+    const unsigned char ed25519key[] = {
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
+        0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+        0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f
+    };
+    const unsigned char msg[] = { 0x00, 0x01, 0x02, 0x03 };
+    int testresult = 0;
+    EVP_MD_CTX *ctx = NULL;
+    unsigned char *mac = NULL;
+    size_t maclen = 0;
+    int ret;
+
+#  ifdef OPENSSL_NO_CMAC
+    /* Skip CMAC tests in a no-cmac build */
+    if (tst <= 1)
+        return 1;
+#  endif
+
+    if (!TEST_ptr(e = ENGINE_by_id(engine_id)))
+        return 0;
+
+    if (!TEST_true(ENGINE_init(e))) {
+        ENGINE_free(e);
+        return 0;
+    }
+
+    switch (tst) {
+    case 0:
+        pkey = EVP_PKEY_new_CMAC_key(e, cmackey, sizeof(cmackey),
+                                     EVP_aes_128_cbc());
+        break;
+    case 1:
+        pkey = EVP_PKEY_new_CMAC_key(e, badcmackey, sizeof(badcmackey),
+                                     EVP_aes_128_cbc());
+        break;
+    case 2:
+        pkey = EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519, e, ed25519key,
+                                            sizeof(ed25519key));
+        break;
+    default:
+        TEST_error("Invalid test case");
+        goto err;
+    }
+    if (tst == 1) {
+        /*
+         * In 1.1.1 CMAC keys will fail to during EVP_PKEY_new_CMAC_key() if the
+         * key is bad. In later versions this isn't detected until later.
+         */
+        if (!TEST_ptr_null(pkey))
+            goto err;
+    } else {
+        if (!TEST_ptr(pkey))
+            goto err;
+    }
+
+    if (tst == 0 || tst == 1) {
+        /*
+         * We stop the test here for tests 0 and 1. The dasync engine doesn't
+         * actually support CMAC in 1.1.1.
+         */
+        testresult = 1;
+        goto err;
+    }
+
+    if (!TEST_ptr(ctx = EVP_MD_CTX_new()))
+        goto err;
+
+    ret = EVP_DigestSignInit(ctx, NULL, tst == 2 ? NULL : EVP_sha256(), NULL,
+                             pkey);
+    if (tst == 0) {
+        if (!TEST_true(ret))
+            goto err;
+
+        if (!TEST_true(EVP_DigestSignUpdate(ctx, msg, sizeof(msg)))
+                || !TEST_true(EVP_DigestSignFinal(ctx, NULL, &maclen)))
+            goto err;
+
+        if (!TEST_ptr(mac = OPENSSL_malloc(maclen)))
+            goto err;
+
+        if (!TEST_true(EVP_DigestSignFinal(ctx, mac, &maclen)))
+            goto err;
+    } else {
+        /* We used a bad key. We expect a failure here */
+        if (!TEST_false(ret))
+            goto err;
+    }
+
+    testresult = 1;
+ err:
+    EVP_MD_CTX_free(ctx);
+    OPENSSL_free(mac);
+    EVP_PKEY_free(pkey);
+    ENGINE_finish(e);
+    ENGINE_free(e);
+
+    return testresult;
+}
+
+static int test_cipher_with_engine(void)
+{
+    ENGINE *e;
+    const char *engine_id = "dasync";
+    const unsigned char keyiv[] = {
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
+        0x0c, 0x0d, 0x0e, 0x0f
+    };
+    const unsigned char msg[] = { 0x00, 0x01, 0x02, 0x03 };
+    int testresult = 0;
+    EVP_CIPHER_CTX *ctx = NULL, *ctx2 = NULL;
+    unsigned char buf[AES_BLOCK_SIZE];
+    int len = 0;
+
+    if (!TEST_ptr(e = ENGINE_by_id(engine_id)))
+        return 0;
+
+    if (!TEST_true(ENGINE_init(e))) {
+        ENGINE_free(e);
+        return 0;
+    }
+
+    if (!TEST_ptr(ctx = EVP_CIPHER_CTX_new())
+            || !TEST_ptr(ctx2 = EVP_CIPHER_CTX_new()))
+        goto err;
+
+    if (!TEST_true(EVP_EncryptInit_ex(ctx, EVP_aes_128_cbc(), e, keyiv, keyiv)))
+        goto err;
+
+    /* Copy the ctx, and complete the operation with the new ctx */
+    if (!TEST_true(EVP_CIPHER_CTX_copy(ctx2, ctx)))
+        goto err;
+
+    if (!TEST_true(EVP_EncryptUpdate(ctx2, buf, &len, msg, sizeof(msg)))
+            || !TEST_true(EVP_EncryptFinal_ex(ctx2, buf + len, &len)))
+        goto err;
+
+    testresult = 1;
+ err:
+    EVP_CIPHER_CTX_free(ctx);
+    EVP_CIPHER_CTX_free(ctx2);
+    ENGINE_finish(e);
+    ENGINE_free(e);
+
+    return testresult;
+}
+#endif /* !defined(OPENSSL_NO_ENGINE) && !defined(OPENSSL_NO_DYNAMIC_ENGINE) */
 
 int setup_tests(void)
 {
+#if !defined(OPENSSL_NO_ENGINE) && !defined(OPENSSL_NO_DYNAMIC_ENGINE)
+    ENGINE_load_builtin_engines();
+#endif
     ADD_TEST(test_EVP_DigestSignInit);
     ADD_TEST(test_EVP_DigestVerifyInit);
     ADD_TEST(test_EVP_Enveloped);
@@ -1800,6 +2041,16 @@ int setup_tests(void)
     ADD_ALL_TESTS(test_evp_reset, OSSL_NELEM(evp_reset_tests));
     ADD_ALL_TESTS(test_gcm_reinit, OSSL_NELEM(gcm_reinit_tests));
     ADD_ALL_TESTS(test_evp_updated_iv, OSSL_NELEM(evp_updated_iv_tests));
+
+    ADD_TEST(test_custom_md_meth);
+#if !defined(OPENSSL_NO_ENGINE) && !defined(OPENSSL_NO_DYNAMIC_ENGINE)
+# ifndef OPENSSL_NO_EC
+    ADD_ALL_TESTS(test_signatures_with_engine, 3);
+# else
+    ADD_ALL_TESTS(test_signatures_with_engine, 2);
+# endif
+    ADD_TEST(test_cipher_with_engine);
+#endif
 
     return 1;
 }

@@ -114,6 +114,7 @@ platforms. This is true regardless of entries in the table below.
 | Windows          | x64, x86         | Windows Server 2012 (not R2)    | Experimental |                                   |
 | Windows          | arm64            | >= Windows 10                   | Tier 2 (compiling) / Experimental (running) |    |
 | macOS            | x64              | >= 10.11                        | Tier 1       |                                   |
+| macOS            | arm64            | >= 11                           | Experimental |                                   |
 | SmartOS          | x64              | >= 18                           | Tier 2       |                                   |
 | AIX              | ppc64be >=power7 | >= 7.2 TL02                     | Tier 2       |                                   |
 | FreeBSD          | x64              | >= 11                           | Experimental | Downgraded as of Node.js 12  <sup>[7](#fn7)</sup>     |
@@ -238,7 +239,7 @@ test with Python 3.
 * GNU Make 3.81 or newer
 * Python (see note above)
   * Python 2.7
-  * Python 3.5, 3.6, 3.7, or 3.8
+  * Python 3.5, 3.6, 3.7, 3.8, 3.9 or 3.10 (see note above)
 
 Installation via Linux package manager can be achieved with:
 
@@ -255,7 +256,7 @@ FreeBSD and OpenBSD users may also need to install `libexecinfo`.
 * Xcode Command Line Tools >= 10 for macOS
 * Python (see note above)
   * Python 2.7
-  * Python 3.5, 3.6, 3.7, or 3.8
+  * Python 3.6, 3.7, 3.8, 3.9, or 3.10 (see note above)
 
 macOS users can install the `Xcode Command Line Tools` by running
 `xcode-select --install`. Alternatively, if you already have the full Xcode

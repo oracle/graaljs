@@ -876,6 +876,14 @@ An unknown cipher was specified.
 An unknown Diffie-Hellman group name was given. See
 [`crypto.getDiffieHellman()`][] for a list of valid group names.
 
+<a id="ERR_DLOPEN_DISABLED"></a>
+### `ERR_DLOPEN_DISABLED`
+<!-- YAML
+added: v14.19.0
+-->
+
+Loading native addons has been disabled using [`--no-addons`][].
+
 <a id="ERR_DLOPEN_FAILED"></a>
 ### `ERR_DLOPEN_FAILED`
 <!-- YAML
@@ -1975,6 +1983,14 @@ An unspecified or non-specific system error has occurred within the Node.js
 process. The error object will have an `err.info` object property with
 additional details.
 
+<a id="ERR_TLS_CERT_ALTNAME_FORMAT"></a>
+### `ERR_TLS_CERT_ALTNAME_FORMAT`
+
+This error is thrown by `checkServerIdentity` if a user-supplied
+`subjectaltname` property violates encoding rules. Certificate objects produced
+by Node.js itself always comply with encoding rules and will never cause
+this error.
+
 <a id="ERR_TLS_CERT_ALTNAME_INVALID"></a>
 ### `ERR_TLS_CERT_ALTNAME_INVALID`
 
@@ -2591,6 +2607,7 @@ closed.
 [`'uncaughtException'`]: process.md#process_event_uncaughtexception
 [`--disable-proto=throw`]: cli.md#cli_disable_proto_mode
 [`--force-fips`]: cli.md#cli_force_fips
+[`--no-addons`]: cli.md#cli_no_addons
 [`Class: assert.AssertionError`]: assert.md#assert_class_assert_assertionerror
 [`ERR_INVALID_ARG_TYPE`]: #ERR_INVALID_ARG_TYPE
 [`EventEmitter`]: events.md#events_class_eventemitter

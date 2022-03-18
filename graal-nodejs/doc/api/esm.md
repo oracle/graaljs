@@ -548,14 +548,16 @@ would provide the exports interface for the instantiation of `module.wasm`.
 
 ## Top-level `await`
 
+<!-- YAML
+added: v14.8.0
+-->
+
 > Stability: 1 - Experimental
 
-The `await` keyword may be used in the top level (outside of async functions)
-within modules as per the [ECMAScript Top-Level `await` proposal][].
+The `await` keyword may be used in the top level body of an ECMAScript module.
 
 Assuming an `a.mjs` with
 
-<!-- eslint-skip -->
 ```js
 export const five = await Promise.resolve(5);
 ```
@@ -570,6 +572,23 @@ console.log(five); // Logs `5`
 
 ```bash
 node b.mjs # works
+```
+
+If a top level `await` expression never resolves, the `node` process will exit
+with a `13` [status code][].
+
+```js
+import { spawn } from 'child_process';
+import { execPath } from 'process';
+
+spawn(execPath, [
+  '--input-type=module',
+  '--eval',
+  // Never-resolving Promise:
+  'await new Promise(() => {})',
+]).once('exit', (code) => {
+  console.log(code); // Logs `13`
+});
 ```
 
 <i id="esm_experimental_loaders"></i>
@@ -1169,25 +1188,36 @@ The resolver can throw the following errors:
 **PACKAGE_IMPORTS_EXPORTS_RESOLVE**(_matchKey_, _matchObj_, _packageURL_,
 _isImports_, _conditions_)
 
-> 1. If _matchKey_ is a key of _matchObj_, and does not end in _"*"_, then
+> 1. If _matchKey_ is a key of _matchObj_ and does not end in _"/"_ or contain
+>    _"*"_, then
 >    1. Let _target_ be the value of _matchObj_\[_matchKey_\].
 >    1. Let _resolved_ be the result of **PACKAGE_TARGET_RESOLVE**(
 >       _packageURL_, _target_, _""_, **false**, _isImports_, _conditions_).
 >    1. Return the object _{ resolved, exact: **true** }_.
-> 1. Let _expansionKeys_ be the list of keys of _matchObj_ ending in _"/"_
->    or _"*"_, sorted by length descending.
+> 1. Let _expansionKeys_ be the list of keys of _matchObj_ either ending in
+>    _"/"_ or containing only a single _"*"_, sorted by the sorting function
+>    **PATTERN_KEY_COMPARE** which orders in descending order of specificity.
 > 1. For each key _expansionKey_ in _expansionKeys_, do
->    1. If _expansionKey_ ends in _"*"_ and _matchKey_ starts with but is
->       not equal to the substring of _expansionKey_ excluding the last _"*"_
->       character, then
->       1. Let _target_ be the value of _matchObj_\[_expansionKey_\].
->       1. Let _subpath_ be the substring of _matchKey_ starting at the
->          index of the length of _expansionKey_ minus one.
->       1. Let _resolved_ be the result of **PACKAGE_TARGET_RESOLVE**(
->          _packageURL_, _target_, _subpath_, **true**, _isImports_,
->          _conditions_).
->       1. Return the object _{ resolved, exact: **true** }_.
->    1. If _matchKey_ starts with _expansionKey_, then
+>    1. Let _patternBase_ be **null**.
+>    1. If _expansionKey_ contains _"*"_, set _patternBase_ to the substring of
+>       _expansionKey_ up to but excluding the first _"*"_ character.
+>    1. If _patternBase_ is not **null** and _matchKey_ starts with but is not
+>       equal to _patternBase_, then
+>       1. Let _patternTrailer_ be the substring of _expansionKey_ from the
+>          index after the first _"*"_ character.
+>       1. If _patternTrailer_ has zero length, or if _matchKey_ ends with
+>          _patternTrailer_ and the length of _matchKey_ is greater than or
+>          equal to the length of _expansionKey_, then
+>          1. Let _target_ be the value of _matchObj_\[_expansionKey_\].
+>          1. Let _subpath_ be the substring of _matchKey_ starting at the
+>             index of the length of _patternBase_ up to the length of
+>             _matchKey_ minus the length of _patternTrailer_.
+>          1. Let _resolved_ be the result of **PACKAGE_TARGET_RESOLVE**(
+>             _packageURL_, _target_, _subpath_, **true**, _isImports_,
+>             _conditions_).
+>          1. Return the object _{ resolved, exact: **true** }_.
+>    1. Otherwise if _patternBase_ is **null** and _matchKey_ starts with
+>       _expansionKey_, then
 >       1. Let _target_ be the value of _matchObj_\[_expansionKey_\].
 >       1. Let _subpath_ be the substring of _matchKey_ starting at the
 >          index of the length of _expansionKey_.
@@ -1196,6 +1226,22 @@ _isImports_, _conditions_)
 >          _conditions_).
 >       1. Return the object _{ resolved, exact: **false** }_.
 > 1. Return the object _{ resolved: **null**, exact: **true** }_.
+
+**PATTERN_KEY_COMPARE**(_keyA_, _keyB_)
+
+> 1. Assert: _keyA_ ends with _"/"_ or contains only a single _"*"_.
+> 1. Assert: _keyB_ ends with _"/"_ or contains only a single _"*"_.
+> 1. Let _baseLengthA_ be the index of _"*"_ in _keyA_ plus one, if _keyA_
+>    contains _"*"_, or the length of _keyA_ otherwise.
+> 1. Let _baseLengthB_ be the index of _"*"_ in _keyB_ plus one, if _keyB_
+>    contains _"*"_, or the length of _keyB_ otherwise.
+> 1. If _baseLengthA_ is greater than _baseLengthB_, return -1.
+> 1. If _baseLengthB_ is greater than _baseLengthA_, return 1.
+> 1. If _keyA_ does not contain _"*"_, return 1.
+> 1. If _keyB_ does not contain _"*"_, return -1.
+> 1. If the length of _keyA_ is greater than the length of _keyB_, return -1.
+> 1. If the length of _keyB_ is greater than the length of _keyA_, return 1.
+> 1. Return 0.
 
 **PACKAGE_TARGET_RESOLVE**(_packageURL_, _target_, _subpath_, _pattern_,
 _internal_, _conditions_)
@@ -1317,7 +1363,6 @@ success!
 [Conditional exports]: packages.md#packages_conditional_exports
 [Core modules]: modules.md#modules_core_modules
 [Dynamic `import()`]: https://wiki.developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import#Dynamic_Imports
-[ECMAScript Top-Level `await` proposal]: https://github.com/tc39/proposal-top-level-await/
 [ES Module Integration Proposal for Web Assembly]: https://github.com/webassembly/esm-integration
 [Node.js Module Resolution Algorithm]: #esm_resolver_algorithm_specification
 [Terminology]: #esm_terminology
@@ -1345,6 +1390,7 @@ success!
 [cjs-module-lexer]: https://github.com/guybedford/cjs-module-lexer/tree/1.2.2
 [custom https loader]: #esm_https_loader
 [special scheme]: https://url.spec.whatwg.org/#special-scheme
+[status code]: process.md#process_exit_codes
 [the official standard format]: https://tc39.github.io/ecma262/#sec-modules
 [transpiler loader example]: #esm_transpiler_loader
 [url.pathToFileURL]: url.md#url_url_pathtofileurl_path

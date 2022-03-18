@@ -15,12 +15,13 @@ const {
   SafeSet,
   String,
   StringPrototypeEndsWith,
+  StringPrototypeIncludes,
   StringPrototypeIndexOf,
+  StringPrototypeLastIndexOf,
   StringPrototypeReplace,
   StringPrototypeSlice,
   StringPrototypeSplit,
   StringPrototypeStartsWith,
-  StringPrototypeSubstr,
 } = primordials;
 const internalFS = require('internal/fs/utils');
 const { NativeModule } = require('internal/bootstrap/loaders');
@@ -56,7 +57,16 @@ const { Module: CJSModule } = require('internal/modules/cjs/loader');
 
 const packageJsonReader = require('internal/modules/package_json_reader');
 const userConditions = getOptionValue('--conditions');
-const DEFAULT_CONDITIONS = ObjectFreeze(['node', 'import', ...userConditions]);
+const noAddons = getOptionValue('--no-addons');
+const addonConditions = noAddons ? [] : ['node-addons'];
+
+const DEFAULT_CONDITIONS = ObjectFreeze([
+  'node',
+  'import',
+  ...addonConditions,
+  ...userConditions,
+]);
+
 const DEFAULT_CONDITIONS_SET = new SafeSet(DEFAULT_CONDITIONS);
 
 const pendingDeprecation = getOptionValue('--pending-deprecation');
@@ -277,7 +287,7 @@ function resolveDirectoryEntry(search) {
   return resolveExtensions(new URL('index', search));
 }
 
-const encodedSepRegEx = /%2F|%2C/i;
+const encodedSepRegEx = /%2F|%5C/i;
 function finalizeResolution(resolved, base) {
   if (RegExpPrototypeTest(encodedSepRegEx, resolved.pathname))
     throw new ERR_INVALID_MODULE_SPECIFIER(
@@ -502,7 +512,9 @@ function packageExportsResolve(
   if (isConditionalExportsMainSugar(exports, packageJSONUrl, base))
     exports = { '.': exports };
 
-  if (ObjectPrototypeHasOwnProperty(exports, packageSubpath)) {
+  if (ObjectPrototypeHasOwnProperty(exports, packageSubpath) &&
+      !StringPrototypeIncludes(packageSubpath, '*') &&
+      !StringPrototypeEndsWith(packageSubpath, '/')) {
     const target = exports[packageSubpath];
     const resolved = resolvePackageTarget(
       packageJSONUrl, target, '', packageSubpath, base, false, false, conditions
@@ -513,36 +525,58 @@ function packageExportsResolve(
   }
 
   let bestMatch = '';
+  let bestMatchSubpath;
   const keys = ObjectGetOwnPropertyNames(exports);
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];
-    if (key[key.length - 1] === '*' &&
+    const patternIndex = StringPrototypeIndexOf(key, '*');
+    if (patternIndex !== -1 &&
         StringPrototypeStartsWith(packageSubpath,
-                                  StringPrototypeSlice(key, 0, -1)) &&
-        packageSubpath.length >= key.length &&
-        key.length > bestMatch.length) {
-      bestMatch = key;
+                                  StringPrototypeSlice(key, 0, patternIndex))) {
+      const patternTrailer = StringPrototypeSlice(key, patternIndex + 1);
+      if (packageSubpath.length >= key.length &&
+          StringPrototypeEndsWith(packageSubpath, patternTrailer) &&
+          patternKeyCompare(bestMatch, key) === 1 &&
+          StringPrototypeLastIndexOf(key, '*') === patternIndex) {
+        bestMatch = key;
+        bestMatchSubpath = StringPrototypeSlice(
+          packageSubpath, patternIndex,
+          packageSubpath.length - patternTrailer.length);
+      }
     } else if (key[key.length - 1] === '/' &&
       StringPrototypeStartsWith(packageSubpath, key) &&
-      key.length > bestMatch.length) {
+      patternKeyCompare(bestMatch, key) === 1) {
       bestMatch = key;
+      bestMatchSubpath = StringPrototypeSlice(packageSubpath, key.length);
     }
   }
 
   if (bestMatch) {
     const target = exports[bestMatch];
-    const pattern = bestMatch[bestMatch.length - 1] === '*';
-    const subpath = StringPrototypeSubstr(packageSubpath, bestMatch.length -
-      (pattern ? 1 : 0));
-    const resolved = resolvePackageTarget(packageJSONUrl, target, subpath,
-                                          bestMatch, base, pattern, false,
-                                          conditions);
+    const pattern = StringPrototypeIncludes(bestMatch, '*');
+    const resolved = resolvePackageTarget(packageJSONUrl, target,
+                                          bestMatchSubpath, bestMatch, base,
+                                          pattern, false, conditions);
     if (resolved === null || resolved === undefined)
       throwExportsNotFound(packageSubpath, packageJSONUrl, base);
     return { resolved, exact: pattern };
   }
 
   throwExportsNotFound(packageSubpath, packageJSONUrl, base);
+}
+
+function patternKeyCompare(a, b) {
+  const aPatternIndex = StringPrototypeIndexOf(a, '*');
+  const bPatternIndex = StringPrototypeIndexOf(b, '*');
+  const baseLenA = aPatternIndex === -1 ? a.length : aPatternIndex + 1;
+  const baseLenB = bPatternIndex === -1 ? b.length : bPatternIndex + 1;
+  if (baseLenA > baseLenB) return -1;
+  if (baseLenB > baseLenA) return 1;
+  if (aPatternIndex === -1) return 1;
+  if (bPatternIndex === -1) return -1;
+  if (a.length > b.length) return -1;
+  if (b.length > a.length) return 1;
+  return 0;
 }
 
 function packageImportsResolve(name, base, conditions) {
@@ -556,7 +590,9 @@ function packageImportsResolve(name, base, conditions) {
     packageJSONUrl = pathToFileURL(packageConfig.pjsonPath);
     const imports = packageConfig.imports;
     if (imports) {
-      if (ObjectPrototypeHasOwnProperty(imports, name)) {
+      if (ObjectPrototypeHasOwnProperty(imports, name) &&
+          !StringPrototypeIncludes(name, '*') &&
+          !StringPrototypeEndsWith(name, '/')) {
         const resolved = resolvePackageTarget(
           packageJSONUrl, imports[name], '', name, base, false, true, conditions
         );
@@ -564,30 +600,39 @@ function packageImportsResolve(name, base, conditions) {
           return { resolved, exact: true };
       } else {
         let bestMatch = '';
+        let bestMatchSubpath;
         const keys = ObjectGetOwnPropertyNames(imports);
         for (let i = 0; i < keys.length; i++) {
           const key = keys[i];
-          if (key[key.length - 1] === '*' &&
+          const patternIndex = StringPrototypeIndexOf(key, '*');
+          if (patternIndex !== -1 &&
               StringPrototypeStartsWith(name,
-                                        StringPrototypeSlice(key, 0, -1)) &&
-              name.length >= key.length &&
-              key.length > bestMatch.length) {
-            bestMatch = key;
+                                        StringPrototypeSlice(key, 0,
+                                                             patternIndex))) {
+            const patternTrailer = StringPrototypeSlice(key, patternIndex + 1);
+            if (name.length >= key.length &&
+                StringPrototypeEndsWith(name, patternTrailer) &&
+                patternKeyCompare(bestMatch, key) === 1 &&
+                StringPrototypeLastIndexOf(key, '*') === patternIndex) {
+              bestMatch = key;
+              bestMatchSubpath = StringPrototypeSlice(
+                name, patternIndex, name.length - patternTrailer.length);
+            }
           } else if (key[key.length - 1] === '/' &&
             StringPrototypeStartsWith(name, key) &&
-            key.length > bestMatch.length) {
+            patternKeyCompare(bestMatch, key) === 1) {
             bestMatch = key;
+            bestMatchSubpath = StringPrototypeSlice(name, key.length);
           }
         }
 
         if (bestMatch) {
           const target = imports[bestMatch];
-          const pattern = bestMatch[bestMatch.length - 1] === '*';
-          const subpath = StringPrototypeSubstr(name, bestMatch.length -
-            (pattern ? 1 : 0));
-          const resolved = resolvePackageTarget(
-            packageJSONUrl, target, subpath, bestMatch, base, pattern, true,
-            conditions);
+          const pattern = StringPrototypeIncludes(bestMatch, '*');
+          const resolved = resolvePackageTarget(packageJSONUrl, target,
+                                                bestMatchSubpath, bestMatch,
+                                                base, pattern, true,
+                                                conditions);
           if (resolved !== null)
             return { resolved, exact: pattern };
         }
