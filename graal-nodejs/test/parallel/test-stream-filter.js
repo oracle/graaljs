@@ -52,7 +52,7 @@ const { setTimeout } = require('timers/promises');
   let calls = 0;
   const stream = Readable.from([1, 2, 3, 4]).filter(async (_, { signal }) => {
     calls++;
-    await setTimeout(100, { signal });
+    await setTimeout(2000, { signal });
   }, { signal: ac.signal, concurrency: 2 });
   // pump
   assert.rejects(async () => {
