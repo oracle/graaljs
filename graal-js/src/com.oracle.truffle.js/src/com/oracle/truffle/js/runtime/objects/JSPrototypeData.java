@@ -55,8 +55,8 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 public final class JSPrototypeData {
     private static final Shape[] EMPTY_SHAPE_ARRAY = new Shape[0];
 
-    /** Copy-on-write array. */
-    private volatile Shape[] protoChildTrees;
+    /** Copy-on-write array. Not volatile to prevent SpotBugs warning. */
+    @SuppressWarnings("unused") private Shape[] protoChildTrees = EMPTY_SHAPE_ARRAY;
 
     private static final VarHandle PROTO_CHILD_TREES_VAR_HANDLE;
     static {
@@ -101,6 +101,6 @@ public final class JSPrototypeData {
     }
 
     private Shape[] getProtoChildTrees() {
-        return protoChildTrees;
+        return (Shape[]) PROTO_CHILD_TREES_VAR_HANDLE.getVolatile(this);
     }
 }
