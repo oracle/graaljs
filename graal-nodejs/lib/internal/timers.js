@@ -446,6 +446,8 @@ function getTimerCallbacks(runNextTicks) {
         continue;
       }
 
+      // TODO(RaisinTen): Destroy and unref the Immediate after _onImmediate()
+      // gets executed, just like how Timeouts work.
       immediate._destroyed = true;
 
       immediateInfo[kCount]--;
@@ -488,7 +490,7 @@ function getTimerCallbacks(runNextTicks) {
 
     let list;
     let ranAtLeastOneList = false;
-    while (list = timerListQueue.peek()) {
+    while ((list = timerListQueue.peek()) != null) {
       if (list.expiry > now) {
         nextExpiry = list.expiry;
         return refCount > 0 ? nextExpiry : -nextExpiry;
@@ -509,7 +511,7 @@ function getTimerCallbacks(runNextTicks) {
 
     let ranAtLeastOneTimer = false;
     let timer;
-    while (timer = L.peek(list)) {
+    while ((timer = L.peek(list)) != null) {
       const diff = now - timer._idleStart;
 
       // Check if this loop iteration is too early for the next timer.
@@ -636,6 +638,13 @@ class Immediate {
   }
 }
 
+function getTimerCounts() {
+  return {
+    timeoutCount: refCount,
+    immediateCount: immediateInfo[kRefCount],
+  };
+}
+
 module.exports = {
   TIMEOUT_MAX,
   kTimeout: Symbol('timeout'), // For hiding Timeouts on other internals.
@@ -661,5 +670,6 @@ module.exports = {
   timerListMap,
   timerListQueue,
   decRefCount,
-  incRefCount
+  incRefCount,
+  getTimerCounts,
 };

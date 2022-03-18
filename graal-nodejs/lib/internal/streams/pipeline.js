@@ -33,6 +33,7 @@ const {
   isIterable,
   isReadableNodeStream,
   isNodeStream,
+  isReadableFinished,
 } = require('internal/streams/utils');
 const { AbortController } = require('internal/abort_controller');
 
@@ -108,7 +109,7 @@ async function* fromReadable(val) {
   yield* Readable.prototype[SymbolAsyncIterator].call(val);
 }
 
-async function pump(iterable, writable, finish) {
+async function pump(iterable, writable, finish, opts) {
   let error;
   let onresolve = null;
 
@@ -152,7 +153,9 @@ async function pump(iterable, writable, finish) {
       }
     }
 
-    writable.end();
+    if (opts?.end !== false) {
+      writable.end();
+    }
 
     await wait();
 
@@ -226,10 +229,22 @@ function pipelineImpl(streams, callback, opts) {
     const stream = streams[i];
     const reading = i < streams.length - 1;
     const writing = i > 0;
+    const end = reading || opts?.end !== false;
 
     if (isNodeStream(stream)) {
-      finishCount++;
-      destroys.push(destroyer(stream, reading, writing, finish));
+      if (end) {
+        finishCount++;
+        destroys.push(destroyer(stream, reading, writing, (err) => {
+          if (!err && !reading && isReadableFinished(stream, false)) {
+            stream.read(0);
+            destroyer(stream, true, writing, finish);
+          } else {
+            finish(err);
+          }
+        }));
+      } else {
+        stream.on('error', finish);
+      }
     }
 
     if (i === 0) {
@@ -274,14 +289,17 @@ function pipelineImpl(streams, callback, opts) {
           then.call(ret,
                     (val) => {
                       value = val;
-                      pt.end(val);
+                      pt.write(val);
+                      if (end) {
+                        pt.end();
+                      }
                     }, (err) => {
                       pt.destroy(err);
                     },
           );
         } else if (isIterable(ret, true)) {
           finishCount++;
-          pump(ret, pt, finish);
+          pump(ret, pt, finish, { end });
         } else {
           throw new ERR_INVALID_RETURN_VALUE(
             'AsyncIterable or Promise', 'destination', ret);
@@ -294,7 +312,7 @@ function pipelineImpl(streams, callback, opts) {
       }
     } else if (isNodeStream(stream)) {
       if (isReadableNodeStream(ret)) {
-        ret.pipe(stream);
+        ret.pipe(stream, { end });
 
         // Compat. Before node v10.12.0 stdio used to throw an error so
         // pipe() did/does not end() stdio destinations.
@@ -306,7 +324,7 @@ function pipelineImpl(streams, callback, opts) {
         ret = makeAsyncIterable(ret);
 
         finishCount++;
-        pump(ret, stream, finish);
+        pump(ret, stream, finish, { end });
       }
       ret = stream;
     } else {

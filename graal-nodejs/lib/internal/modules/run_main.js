@@ -1,12 +1,16 @@
 'use strict';
 
 const {
+  ObjectCreate,
   StringPrototypeEndsWith,
 } = primordials;
 const CJSLoader = require('internal/modules/cjs/loader');
 const { Module, toRealPath, readPackageScope } = CJSLoader;
 const { getOptionValue } = require('internal/options');
 const path = require('path');
+const {
+  handleProcessExit,
+} = require('internal/modules/esm/handle_process_exit');
 
 function resolveMainPath(main) {
   // Note extension resolution for the main entry point can be deprecated in a
@@ -46,25 +50,17 @@ function runMainESM(mainPath) {
 
   handleMainPromise(loadESM((esmLoader) => {
     const main = path.isAbsolute(mainPath) ?
-      pathToFileURL(mainPath).href :
-      mainPath;
-    return esmLoader.import(main);
+      pathToFileURL(mainPath).href : mainPath;
+    return esmLoader.import(main, undefined, ObjectCreate(null));
   }));
 }
 
 async function handleMainPromise(promise) {
-  // Handle a Promise from running code that potentially does Top-Level Await.
-  // In that case, it makes sense to set the exit code to a specific non-zero
-  // value if the main code never finishes running.
-  function handler() {
-    if (process.exitCode === undefined)
-      process.exitCode = 13;
-  }
-  process.on('exit', handler);
+  process.on('exit', handleProcessExit);
   try {
     return await promise;
   } finally {
-    process.off('exit', handler);
+    process.off('exit', handleProcessExit);
   }
 }
 

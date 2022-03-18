@@ -2,7 +2,7 @@ const { dirname } = require('path')
 const { cmdList } = require('./cmd-list')
 const localeCompare = require('@isaacs/string-locale-compare')('en')
 
-module.exports = (npm) => {
+module.exports = async (npm) => {
   const usesBrowser = npm.config.get('viewer') === 'browser'
     ? ' (in a browser)' : ''
   return `npm <command>
@@ -19,7 +19,7 @@ npm help <term>    search for help on <term>${usesBrowser}
 npm help npm       more involved overview${usesBrowser}
 
 All commands:
-${allCommands(npm)}
+${await allCommands(npm)}
 
 Specify configs in the ini-formatted file:
     ${npm.config.get('userconfig')}
@@ -31,9 +31,10 @@ Configuration fields: npm help 7 config
 npm@${npm.version} ${dirname(dirname(__dirname))}`
 }
 
-const allCommands = (npm) => {
-  if (npm.config.get('long'))
+const allCommands = async (npm) => {
+  if (npm.config.get('long')) {
     return usages(npm)
+  }
   return ('\n    ' + wrap(cmdList))
 }
 
@@ -45,9 +46,9 @@ const wrap = (arr) => {
 
   let l = 0
   for (const c of arr.sort((a, b) => a < b ? -1 : 1)) {
-    if (out[l].length + c.length + 2 < line)
+    if (out[l].length + c.length + 2 < line) {
       out[l] += ', ' + c
-    else {
+    } else {
       out[l++] += ','
       out[l] = c
     }
@@ -55,15 +56,16 @@ const wrap = (arr) => {
   return out.join('\n    ').substr(2)
 }
 
-const usages = (npm) => {
+const usages = async (npm) => {
   // return a string of <command>: <usage>
   let maxLen = 0
-  return cmdList.reduce((set, c) => {
-    set.push([c, npm.commands[c].usage])
+  const set = []
+  for (const c of cmdList) {
+    const cmd = await npm.cmd(c)
+    set.push([c, cmd.usage])
     maxLen = Math.max(maxLen, c.length)
-    return set
-  }, [])
-    .sort(([a], [b]) => localeCompare(a, b))
+  }
+  return set.sort(([a], [b]) => localeCompare(a, b))
     .map(([c, usage]) => `\n    ${c}${' '.repeat(maxLen - c.length + 1)}${
       (usage.split('\n').join('\n' + ' '.repeat(maxLen + 5)))}`)
     .join('\n')

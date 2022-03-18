@@ -82,16 +82,7 @@ function patchProcessObject(expandArgv1) {
   const binding = internalBinding('process_methods');
   binding.patchProcessObject(process);
 
-  // TODO(joyeecheung): snapshot fast APIs (which need to work with
-  // array buffers, whose connection with C++ needs to be rebuilt after
-  // deserialization).
-  const {
-    hrtime,
-    hrtimeBigInt
-  } = require('internal/process/per_thread').getFastAPIs(binding);
-
-  process.hrtime = hrtime;
-  process.hrtime.bigint = hrtimeBigInt;
+  require('internal/process/per_thread').refreshHrtimeBuffer();
 
   ObjectDefineProperty(process, 'argv0', {
     enumerable: true,
@@ -106,7 +97,9 @@ function patchProcessObject(expandArgv1) {
     const path = require('path');
     try {
       process.argv[1] = path.resolve(process.argv[1]);
-    } catch {}
+    } catch {
+      // Continue regardless of error.
+    }
   }
 
   // TODO(joyeecheung): most of these should be deprecated and removed,

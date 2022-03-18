@@ -57,6 +57,7 @@ const {
   triggerHeapSnapshot
 } = internalBinding('heap_utils');
 const { HeapSnapshotStream } = require('internal/heap_utils');
+const promiseHooks = require('internal/promise_hooks');
 
 /**
  * Generates a snapshot of the current V8 heap
@@ -268,7 +269,7 @@ class DefaultSerializer extends Serializer {
   /**
    * Used to write some kind of host object, i.e. an
    * object that is created by native C++ bindings.
-   * @param {Object} abView
+   * @param {object} abView
    * @returns {void}
    */
   _writeHostObject(abView) {
@@ -361,4 +362,5 @@ module.exports = {
   stopCoverage: profiler.stopCoverage,
   serialize,
   writeHeapSnapshot,
+  promiseHooks,
 };

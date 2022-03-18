@@ -567,8 +567,10 @@ assertNotDeepOrStrict(
 
 // Handle sparse arrays.
 {
+  /* eslint-disable no-sparse-arrays */
   assertDeepAndStrictEqual([1, , , 3], [1, , , 3]);
   assertNotDeepOrStrict([1, , , 3], [1, , , 3, , , ]);
+  /* eslint-enable no-sparse-arrays */
   const a = new Array(3);
   const b = new Array(3);
   a[2] = true;
@@ -856,11 +858,13 @@ assert.throws(
 }
 
 assert.throws(
+  // eslint-disable-next-line no-restricted-syntax
   () => assert.deepStrictEqual(4, '4'),
   { message: `${defaultMsgStart}\n4 !== '4'\n` }
 );
 
 assert.throws(
+  // eslint-disable-next-line no-restricted-syntax
   () => assert.deepStrictEqual(true, 1),
   { message: `${defaultMsgStart}\ntrue !== 1\n` }
 );
@@ -1121,7 +1125,7 @@ assert.throws(
     {
       code: 'ERR_ASSERTION',
       name: 'AssertionError',
-      message: /a: \[Getter: 5]\n-   a: \[Getter: 6]\n  /
+      message: /a: \[Getter: 5]\n- {3}a: \[Getter: 6]\n {2}/
     }
   );
 

@@ -389,8 +389,7 @@ function onSessionHeaders(handle, id, cat, flags, headers, sensitiveHeaders) {
       }
     } else if (cat === NGHTTP2_HCAT_PUSH_RESPONSE) {
       event = 'push';
-      // cat === NGHTTP2_HCAT_HEADERS:
-    } else if (!endOfStream && status !== undefined && status >= 200) {
+    } else if (status !== undefined && status >= 200) {
       event = 'response';
     } else {
       event = endOfStream ? 'trailers' : 'headers';
@@ -862,7 +861,7 @@ const proxySocketHandler = {
       case 'setKeepAlive':
       case 'setNoDelay':
         throw new ERR_HTTP2_NO_SOCKET_MANIPULATION();
-      default:
+      default: {
         const socket = session[kSocket];
         if (socket === undefined)
           throw new ERR_HTTP2_SOCKET_UNBOUND();
@@ -870,6 +869,7 @@ const proxySocketHandler = {
         return typeof value === 'function' ?
           FunctionPrototypeBind(value, socket) :
           value;
+      }
     }
   },
   getPrototypeOf(session) {
@@ -896,12 +896,13 @@ const proxySocketHandler = {
       case 'setKeepAlive':
       case 'setNoDelay':
         throw new ERR_HTTP2_NO_SOCKET_MANIPULATION();
-      default:
+      default: {
         const socket = session[kSocket];
         if (socket === undefined)
           throw new ERR_HTTP2_SOCKET_UNBOUND();
         socket[prop] = value;
         return true;
+      }
     }
   }
 };
@@ -1257,6 +1258,21 @@ class Http2Session extends EventEmitter {
     this.on('newListener', sessionListenerAdded);
     this.on('removeListener', sessionListenerRemoved);
 
+    // Process data on the next tick - a remoteSettings handler may be attached.
+    // https://github.com/nodejs/node/issues/35981
+    process.nextTick(() => {
+      // Socket already has some buffered data - emulate receiving it
+      // https://github.com/nodejs/node/issues/35475
+      // https://github.com/nodejs/node/issues/34532
+      if (socket.readableLength) {
+        let buf;
+        while ((buf = socket.read()) !== null) {
+          debugSession(type, `${buf.length} bytes already in buffer`);
+          this[kHandle].receive(buf);
+        }
+      }
+    });
+
     debugSession(type, 'created');
   }
 
@@ -1538,10 +1554,11 @@ class Http2Session extends EventEmitter {
 
   [EventEmitter.captureRejectionSymbol](err, event, ...args) {
     switch (event) {
-      case 'stream':
+      case 'stream': {
         const stream = args[0];
         stream.destroy(err);
         break;
+      }
       default:
         this.destroy(err);
     }
@@ -3161,7 +3178,7 @@ Http2Server.prototype[EventEmitter.captureRejectionSymbol] = function(
   err, event, ...args) {
 
   switch (event) {
-    case 'stream':
+    case 'stream': {
       // TODO(mcollina): we might want to match this with what we do on
       // the compat side.
       const { 0: stream } = args;
@@ -3172,7 +3189,8 @@ Http2Server.prototype[EventEmitter.captureRejectionSymbol] = function(
         stream.end();
       }
       break;
-    case 'request':
+    }
+    case 'request': {
       const { 1: res } = args;
       if (!res.headersSent && !res.finished) {
         // Don't leak headers.
@@ -3185,6 +3203,7 @@ Http2Server.prototype[EventEmitter.captureRejectionSymbol] = function(
         res.destroy();
       }
       break;
+    }
     default:
       ArrayPrototypeUnshift(args, err, event);
       ReflectApply(net.Server.prototype[EventEmitter.captureRejectionSymbol],
@@ -3267,21 +3286,6 @@ function connect(authority, options, listener) {
 
   if (typeof listener === 'function')
     session.once('connect', listener);
-
-  // Process data on the next tick - a remoteSettings handler may be attached.
-  // https://github.com/nodejs/node/issues/35981
-  process.nextTick(() => {
-    debug('Http2Session connect', options.createConnection);
-    // Socket already has some buffered data - emulate receiving it
-    // https://github.com/nodejs/node/issues/35475
-    if (socket && socket.readableLength) {
-      let buf;
-      while ((buf = socket.read()) !== null) {
-        debug(`Http2Session connect: ${buf.length} bytes already in buffer`);
-        session[kHandle].receive(buf);
-      }
-    }
-  });
 
   return session;
 }

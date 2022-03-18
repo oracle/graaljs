@@ -647,7 +647,7 @@ const {
 } = require('perf_hooks');
 
 const obs = new PerformanceObserver((list, observer) => {
-  // Called three times synchronously. `list` contains one item.
+  // Called once asynchronously. `list` contains three items.
 });
 obs.observe({ type: 'mark' });
 
@@ -815,10 +815,11 @@ added: v15.9.0
 -->
 
 * `options` {Object}
-  * `min` {number|bigint} The minimum recordable value. Must be an integer
+  * `lowest` {number|bigint} The lowest discernible value. Must be an integer
     value greater than 0. **Default:** `1`.
-  * `max` {number|bigint} The maximum recordable value. Must be an integer
-    value greater than `min`. **Default:** `Number.MAX_SAFE_INTEGER`.
+  * `highest` {number|bigint} The highest recordable value. Must be an integer
+    value that is equal to or greater than two times `min`.
+    **Default:** `Number.MAX_SAFE_INTEGER`.
   * `figures` {number} The number of accuracy digits. Must be a number between
     `1` and `5`. **Default:** `3`.
 * Returns {RecordableHistogram}
@@ -868,6 +869,26 @@ console.log(h.percentile(99));
 added: v11.10.0
 -->
 
+### `histogram.count`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+* {number}
+
+The number of samples recorded by the histogram.
+
+### `histogram.countBigInt`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+* {bigint}
+
+The number of samples recorded by the histogram.
+
 ### `histogram.exceeds`
 
 <!-- YAML
@@ -879,6 +900,17 @@ added: v11.10.0
 The number of times the event loop delay exceeded the maximum 1 hour event
 loop delay threshold.
 
+### `histogram.exceedsBigInt`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+* {bigint}
+
+The number of times the event loop delay exceeded the maximum 1 hour event
+loop delay threshold.
+
 ### `histogram.max`
 
 <!-- YAML
@@ -886,6 +918,16 @@ added: v11.10.0
 -->
 
 * {number}
+
+The maximum recorded event loop delay.
+
+### `histogram.maxBigInt`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+* {bigint}
 
 The maximum recorded event loop delay.
 
@@ -909,6 +951,16 @@ added: v11.10.0
 
 The minimum recorded event loop delay.
 
+### `histogram.minBigInt`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+* {bigint}
+
+The minimum recorded event loop delay.
+
 ### `histogram.percentile(percentile)`
 
 <!-- YAML
@@ -920,10 +972,31 @@ added: v11.10.0
 
 Returns the value at the given percentile.
 
+### `histogram.percentileBigInt(percentile)`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+* `percentile` {number} A percentile value in the range (0, 100).
+* Returns: {bigint}
+
+Returns the value at the given percentile.
+
 ### `histogram.percentiles`
 
 <!-- YAML
 added: v11.10.0
+-->
+
+* {Map}
+
+Returns a `Map` object detailing the accumulated percentile distribution.
+
+### `histogram.percentilesBigInt`
+
+<!-- YAML
+added: v16.14.0
 -->
 
 * {Map}
@@ -985,6 +1058,16 @@ implement the `enable()` and `disable()` methods.
 <!-- YAML
 added: v15.9.0
 -->
+
+### `histogram.add(other)`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+* `other` {RecordableHistogram}
+
+Adds the values from `other` to this histogram.
 
 ### `histogram.record(val)`
 

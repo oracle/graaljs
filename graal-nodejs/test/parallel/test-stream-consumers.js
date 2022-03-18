@@ -13,6 +13,7 @@ const {
 } = require('stream/consumers');
 
 const {
+  Readable,
   PassThrough
 } = require('stream');
 
@@ -66,7 +67,7 @@ const kArrayBuffer =
 
   text(passthrough).then(common.mustCall(async (str) => {
     assert.strictEqual(str.length, 10);
-    assert.deepStrictEqual(str, 'hellothere');
+    assert.strictEqual(str, 'hellothere');
   }));
 
   passthrough.write('hello');
@@ -74,11 +75,24 @@ const kArrayBuffer =
 }
 
 {
+  const readable = new Readable({
+    read() {}
+  });
+
+  text(readable).then((data) => {
+    assert.strictEqual(data, 'foo\ufffd\ufffd\ufffd');
+  });
+
+  readable.push(new Uint8Array([0x66, 0x6f, 0x6f, 0xed, 0xa0, 0x80]));
+  readable.push(null);
+}
+
+{
   const passthrough = new PassThrough();
 
   json(passthrough).then(common.mustCall(async (str) => {
     assert.strictEqual(str.length, 10);
-    assert.deepStrictEqual(str, 'hellothere');
+    assert.strictEqual(str, 'hellothere');
   }));
 
   passthrough.write('"hello');
@@ -126,7 +140,7 @@ const kArrayBuffer =
 
   text(readable).then(common.mustCall(async (str) => {
     assert.strictEqual(str.length, 10);
-    assert.deepStrictEqual(str, 'hellothere');
+    assert.strictEqual(str, 'hellothere');
   }));
 
   const writer = writable.getWriter();
@@ -144,7 +158,7 @@ const kArrayBuffer =
 
   json(readable).then(common.mustCall(async (str) => {
     assert.strictEqual(str.length, 10);
-    assert.deepStrictEqual(str, 'hellothere');
+    assert.strictEqual(str, 'hellothere');
   }));
 
   const writer = writable.getWriter();

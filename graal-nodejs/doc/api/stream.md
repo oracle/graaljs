@@ -1000,7 +1000,7 @@ readable.on('readable', function() {
   // There is some data to read now.
   let data;
 
-  while (data = this.read()) {
+  while ((data = this.read()) !== null) {
     console.log(data);
   }
 });
@@ -1211,9 +1211,9 @@ added: v0.9.4
 * `size` {number} Optional argument to specify how much data to read.
 * Returns: {string|Buffer|null|any}
 
-The `readable.read()` method pulls some data out of the internal buffer and
-returns it. If no data available to be read, `null` is returned. By default,
-the data will be returned as a `Buffer` object unless an encoding has been
+The `readable.read()` method reads data out of the internal buffer and
+returns it. If no data is available to be read, `null` is returned. By default,
+the data is returned as a `Buffer` object unless an encoding has been
 specified using the `readable.setEncoding()` method or the stream is operating
 in object mode.
 
@@ -1682,6 +1682,99 @@ async function showBoth() {
 showBoth();
 ```
 
+### `readable.map(fn[, options])`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+> Stability: 1 - Experimental
+
+* `fn` {Function|AsyncFunction} a function to map over every item in the stream.
+  * `data` {any} a chunk of data from the stream.
+  * `options` {Object}
+    * `signal` {AbortSignal} aborted if the stream is destroyed allowing to
+      abort the `fn` call early.
+* `options` {Object}
+  * `concurrency` {number} the maximal concurrent invocation of `fn` to call
+    on the stream at once. **Default:** `1`.
+  * `signal` {AbortSignal} allows destroying the stream if the signal is
+    aborted.
+* Returns: {Readable} a stream mapped with the function `fn`.
+
+This method allows mapping over the stream. The `fn` function will be called
+for every item in the stream. If the `fn` function returns a promise - that
+promise will be `await`ed before being passed to the result stream.
+
+```mjs
+import { Readable } from 'stream';
+import { Resolver } from 'dns/promises';
+
+// With a synchronous mapper.
+for await (const item of Readable.from([1, 2, 3, 4]).map((x) => x * 2)) {
+  console.log(item); // 2, 4, 6, 8
+}
+// With an asynchronous mapper, making at most 2 queries at a time.
+const resolver = new Resolver();
+const dnsResults = Readable.from([
+  'nodejs.org',
+  'openjsf.org',
+  'www.linuxfoundation.org',
+]).map((domain) => resolver.resolve4(domain), { concurrency: 2 });
+for await (const result of dnsResults) {
+  console.log(result); // Logs the DNS result of resolver.resolve4.
+}
+```
+
+### `readable.filter(fn[, options])`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+> Stability: 1 - Experimental
+
+* `fn` {Function|AsyncFunction} a function to filter items from stream.
+  * `data` {any} a chunk of data from the stream.
+  * `options` {Object}
+    * `signal` {AbortSignal} aborted if the stream is destroyed allowing to
+      abort the `fn` call early.
+* `options` {Object}
+  * `concurrency` {number} the maximal concurrent invocation of `fn` to call
+    on the stream at once. **Default:** `1`.
+  * `signal` {AbortSignal} allows destroying the stream if the signal is
+    aborted.
+* Returns: {Readable} a stream filtered with the predicate `fn`.
+
+This method allows filtering the stream. For each item in the stream the `fn`
+function will be called and if it returns a truthy value, the item will be
+passed to the result stream. If the `fn` function returns a promise - that
+promise will be `await`ed.
+
+```mjs
+import { Readable } from 'stream';
+import { Resolver } from 'dns/promises';
+
+// With a synchronous predicate.
+for await (const item of Readable.from([1, 2, 3, 4]).filter((x) => x > 2)) {
+  console.log(item); // 3, 4
+}
+// With an asynchronous predicate, making at most 2 queries at a time.
+const resolver = new Resolver();
+const dnsResults = Readable.from([
+  'nodejs.org',
+  'openjsf.org',
+  'www.linuxfoundation.org',
+]).filter(async (domain) => {
+  const { address } = await resolver.resolve4(domain, { ttl: true });
+  return address.ttl > 60;
+}, { concurrency: 2 });
+for await (const result of dnsResults) {
+  // Logs domains with more than 60 seconds on the resolved dns record.
+  console.log(result);
+}
+```
+
 ### Duplex and transform streams
 
 #### Class: `stream.Duplex`
@@ -2014,6 +2107,28 @@ run().catch(console.error);
 after the `callback` has been invoked. In the case of reuse of streams after
 failure, this can cause event listener leaks and swallowed errors.
 
+`stream.pipeline()` closes all the streams when an error is raised.
+The `IncomingRequest` usage with `pipeline` could lead to an unexpected behavior
+once it would destroy the socket without sending the expected response.
+See the example below:
+
+```js
+const fs = require('fs');
+const http = require('http');
+const { pipeline } = require('stream');
+
+const server = http.createServer((req, res) => {
+  const fileStream = fs.createReadStream('./fileNotExist.txt');
+  pipeline(fileStream, res, (err) => {
+    if (err) {
+      console.log(err); // No such file
+      // this message can't be sent once `pipeline` already destroyed the socket
+      return res.end('error!!!');
+    }
+  });
+});
+```
+
 ### `stream.compose(...streams)`
 
 <!-- YAML
@@ -2153,6 +2268,70 @@ added: v16.8.0
 * Returns: `boolean`
 
 Returns whether the stream has been read from or cancelled.
+
+### `stream.isErrored(stream)`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+> Stability: 1 - Experimental
+
+* `stream` {Readable|Writable|Duplex|WritableStream|ReadableStream}
+* Returns: {boolean}
+
+Returns whether the stream has encountered an error.
+
+### `stream.isReadable(stream)`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+> Stability: 1 - Experimental
+
+* `stream` {Readable|Duplex|ReadableStream}
+* Returns: {boolean}
+
+Returns whether the stream is readable.
+
+### `stream.Readable.toWeb(streamReadable)`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+> Stability: 1 - Experimental
+
+* `streamReadable` {stream.Readable}
+* Returns: {ReadableStream}
+
+### `stream.Writable.fromWeb(writableStream[, options])`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+> Stability: 1 - Experimental
+
+* `writableStream` {WritableStream}
+* `options` {Object}
+  * `decodeStrings` {boolean}
+  * `highWaterMark` {number}
+  * `objectMode` {boolean}
+  * `signal` {AbortSignal}
+* Returns: {stream.Writable}
+
+### `stream.Writable.toWeb(streamWritable)`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+> Stability: 1 - Experimental
+
+* `streamWritable` {stream.Writable}
+* Returns: {WritableStream}
 
 ### `stream.Duplex.from(src)`
 
@@ -2470,6 +2649,7 @@ class WriteStream extends Writable {
   constructor(filename) {
     super();
     this.filename = filename;
+    this.fd = null;
   }
   _construct(callback) {
     fs.open(this.filename, (err, fd) => {
@@ -2587,6 +2767,8 @@ added: v8.0.0
 
 The `_destroy()` method is called by [`writable.destroy()`][writable-destroy].
 It can be overridden by child classes but it **must not** be called directly.
+Furthermore, the `callback` should not be mixed with async/await
+once it is executed when a promise is resolved.
 
 #### `writable._final(callback)`
 
@@ -3142,6 +3324,7 @@ pipeline(
         // Make sure is valid json.
         JSON.parse(this.data);
         this.push(this.data);
+        callback();
       } catch (err) {
         callback(err);
       }

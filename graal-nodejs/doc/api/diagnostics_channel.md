@@ -264,9 +264,14 @@ channel.subscribe((message, name) => {
 added:
  - v15.1.0
  - v14.17.0
+changes:
+  - version: v16.14.0
+    pr-url: https://github.com/nodejs/node/pull/40433
+    description: Added return value. Added to channels without subscribers.
 -->
 
 * `onMessage` {Function} The previous subscribed handler to remove
+* Returns: {boolean} `true` if the handler was found, `false` otherwise.
 
 Remove a message handler previously registered to this channel with
 [`channel.subscribe(onMessage)`][].

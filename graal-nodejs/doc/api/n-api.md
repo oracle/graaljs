@@ -1009,8 +1009,8 @@ The content of the `napi_extended_error_info` returned is only valid up until
 a Node-API function is called on the same `env`. This includes a call to
 `napi_is_exception_pending` so it may often be necessary to make a copy
 of the information so that it can be used later. The pointer returned
-in error_message points to a statically defined string so it is safe to use
-that pointer if you have copied it out of the error_message field (which will
+in `error_message` points to a statically-defined string so it is safe to use
+that pointer if you have copied it out of the `error_message` field (which will
 be overwritten) before another Node-API function was called.
 
 Do not rely on the content or format of any of the extended information as it
@@ -1065,12 +1065,11 @@ JavaScript value to be thrown.
 The following utility functions are also available in case native code
 needs to throw an exception or determine if a `napi_value` is an instance
 of a JavaScript `Error` object: [`napi_throw_error`][],
-[`napi_throw_type_error`][], [`napi_throw_range_error`][] and
-[`napi_is_error`][].
+[`napi_throw_type_error`][], [`napi_throw_range_error`][], [`node_api_throw_syntax_error`][] and [`napi_is_error`][].
 
 The following utility functions are also available in case native
 code needs to create an `Error` object: [`napi_create_error`][],
-[`napi_create_type_error`][], and [`napi_create_range_error`][],
+[`napi_create_type_error`][], [`napi_create_range_error`][] and [`node_api_create_syntax_error`][],
 where result is the `napi_value` that refers to the newly created
 JavaScript `Error` object.
 
@@ -1180,6 +1179,25 @@ Returns `napi_ok` if the API succeeded.
 
 This API throws a JavaScript `RangeError` with the text provided.
 
+#### `node_api_throw_syntax_error`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+````c
+NAPI_EXTERN napi_status node_api_throw_syntax_error(napi_env env,
+                                                    const char* code,
+                                                    const char* msg);
+
+* `[in] env`: The environment that the API is invoked under.
+* `[in] code`: Optional error code to be set on the error.
+* `[in] msg`: C string representing the text to be associated with the error.
+
+Returns `napi_ok` if the API succeeded.
+
+This API throws a JavaScript `SyntaxError` with the text provided.
+
 #### `napi_is_error`
 
 <!-- YAML
@@ -1191,7 +1209,7 @@ napiVersion: 1
 NAPI_EXTERN napi_status napi_is_error(napi_env env,
                                       napi_value value,
                                       bool* result);
-```
+````
 
 * `[in] env`: The environment that the API is invoked under.
 * `[in] value`: The `napi_value` to be checked.
@@ -1276,6 +1294,30 @@ NAPI_EXTERN napi_status napi_create_range_error(napi_env env,
 Returns `napi_ok` if the API succeeded.
 
 This API returns a JavaScript `RangeError` with the text provided.
+
+#### `node_api_create_syntax_error`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+```c
+NAPI_EXTERN napi_status node_api_create_syntax_error(napi_env env,
+                                                     napi_value code,
+                                                     napi_value msg,
+                                                     napi_value* result);
+```
+
+* `[in] env`: The environment that the API is invoked under.
+* `[in] code`: Optional `napi_value` with the string for the error code to be
+  associated with the error.
+* `[in] msg`: `napi_value` that references a JavaScript `string` to be used as
+  the message for the `Error`.
+* `[out] result`: `napi_value` representing the error created.
+
+Returns `napi_ok` if the API succeeded.
+
+This API returns a JavaScript `SyntaxError` with the text provided.
 
 #### `napi_get_and_clear_last_exception`
 
@@ -2174,6 +2216,7 @@ napi_status napi_create_arraybuffer(napi_env env,
 * `[in] env`: The environment that the API is invoked under.
 * `[in] length`: The length in bytes of the array buffer to create.
 * `[out] data`: Pointer to the underlying byte buffer of the `ArrayBuffer`.
+  `data` can optionally be ignored by passing `NULL`.
 * `[out] result`: A `napi_value` representing a JavaScript `ArrayBuffer`.
 
 Returns `napi_ok` if the API succeeded.
@@ -2208,6 +2251,7 @@ napi_status napi_create_buffer(napi_env env,
 * `[in] env`: The environment that the API is invoked under.
 * `[in] size`: Size in bytes of the underlying buffer.
 * `[out] data`: Raw pointer to the underlying buffer.
+  `data` can optionally be ignored by passing `NULL`.
 * `[out] result`: A `napi_value` representing a `node::Buffer`.
 
 Returns `napi_ok` if the API succeeded.
@@ -2235,6 +2279,7 @@ napi_status napi_create_buffer_copy(napi_env env,
   of the new buffer).
 * `[in] data`: Raw pointer to the underlying buffer to copy from.
 * `[out] result_data`: Pointer to the new `Buffer`'s underlying data buffer.
+  `result_data` can optionally be ignored by passing `NULL`.
 * `[out] result`: A `napi_value` representing a `node::Buffer`.
 
 Returns `napi_ok` if the API succeeded.
@@ -4497,6 +4542,7 @@ snippet:
 function AddTwo(num) {
   return num + 2;
 }
+global.AddTwo = AddTwo;
 ```
 
 Then, the above function can be invoked from a native add-on using the
@@ -4546,8 +4592,8 @@ napi_status napi_create_function(napi_env env,
 ```
 
 * `[in] env`: The environment that the API is invoked under.
-* `[in] utf8Name`: The name of the function encoded as UTF8. This is visible
-  within JavaScript as the new function object's `name` property.
+* `[in] utf8Name`: Optional name of the function encoded as UTF8. This is
+  visible within JavaScript as the new function object's `name` property.
 * `[in] length`: The length of the `utf8name` in bytes, or `NAPI_AUTO_LENGTH` if
   it is null-terminated.
 * `[in] cb`: The native function which should be called when this function
@@ -4630,14 +4676,18 @@ napi_status napi_get_cb_info(napi_env env,
 * `[in] env`: The environment that the API is invoked under.
 * `[in] cbinfo`: The callback info passed into the callback function.
 * `[in-out] argc`: Specifies the length of the provided `argv` array and
-  receives the actual count of arguments.
-* `[out] argv`: Buffer to which the `napi_value` representing the arguments are
+  receives the actual count of arguments. `argc` can
+  optionally be ignored by passing `NULL`.
+* `[out] argv`: C array of `napi_value`s to which the arguments will be
   copied. If there are more arguments than the provided count, only the
   requested number of arguments are copied. If there are fewer arguments
   provided than claimed, the rest of `argv` is filled with `napi_value` values
-  that represent `undefined`.
-* `[out] this`: Receives the JavaScript `this` argument for the call.
-* `[out] data`: Receives the data pointer for the callback.
+  that represent `undefined`. `argv` can optionally be ignored by
+  passing `NULL`.
+* `[out] this`: Receives the JavaScript `this` argument for the call. `this`
+  can optionally be ignored by passing `NULL`.
+* `[out] data`: Receives the data pointer for the callback. `data` can
+  optionally be ignored by passing `NULL`.
 
 Returns `napi_ok` if the API succeeded.
 
@@ -4686,7 +4736,8 @@ napi_status napi_new_instance(napi_env env,
   as a constructor.
 * `[in] argc`: The count of elements in the `argv` array.
 * `[in] argv`: Array of JavaScript values as `napi_value` representing the
-  arguments to the constructor.
+  arguments to the constructor. If `argc` is zero this parameter may be
+  omitted by passing in `NULL`.
 * `[out] result`: `napi_value` representing the JavaScript object returned,
   which in this case is the constructed object.
 
@@ -5463,7 +5514,8 @@ NAPI_EXTERN napi_status napi_make_callback(napi_env env,
 * `[in] func`: `napi_value` representing the JavaScript function to be invoked.
 * `[in] argc`: The count of elements in the `argv` array.
 * `[in] argv`: Array of JavaScript values as `napi_value` representing the
-  arguments to the function.
+  arguments to the function. If `argc` is zero this parameter may be
+  omitted by passing in `NULL`.
 * `[out] result`: `napi_value` representing the JavaScript object returned.
 
 Returns `napi_ok` if the API succeeded.
@@ -6295,6 +6347,8 @@ the add-on's file name during loading.
 [`napi_wrap`]: #napi_wrap
 [`node-addon-api`]: https://github.com/nodejs/node-addon-api
 [`node_api.h`]: https://github.com/nodejs/node/blob/HEAD/src/node_api.h
+[`node_api_create_syntax_error`]: #node_api_create_syntax_error
+[`node_api_throw_syntax_error`]: #node_api_throw_syntax_error
 [`process.release`]: process.md#processrelease
 [`uv_ref`]: https://docs.libuv.org/en/v1.x/handle.html#c.uv_ref
 [`uv_unref`]: https://docs.libuv.org/en/v1.x/handle.html#c.uv_unref

@@ -6,6 +6,8 @@ const {
   SymbolIterator,
 } = primordials;
 
+const kIsErrored = Symbol('kIsErrored');
+const kIsReadable = Symbol('kIsReadable');
 const kIsDisturbed = Symbol('kIsDisturbed');
 
 function isReadableNodeStream(obj) {
@@ -109,26 +111,21 @@ function isReadableFinished(stream, strict) {
   );
 }
 
-function isDisturbed(stream) {
-  return !!(stream && (
-    stream.readableDidRead ||
-    stream.readableAborted ||
-    stream[kIsDisturbed]
-  ));
-}
-
 function isReadable(stream) {
-  const r = isReadableNodeStream(stream);
-  if (r === null || typeof stream?.readable !== 'boolean') return null;
+  if (stream && stream[kIsReadable] != null) return stream[kIsReadable];
+  if (typeof stream?.readable !== 'boolean') return null;
   if (isDestroyed(stream)) return false;
-  return r && stream.readable && !isReadableFinished(stream);
+  return isReadableNodeStream(stream) &&
+    stream.readable &&
+    !isReadableFinished(stream);
 }
 
 function isWritable(stream) {
-  const r = isWritableNodeStream(stream);
-  if (r === null || typeof stream?.writable !== 'boolean') return null;
+  if (typeof stream?.writable !== 'boolean') return null;
   if (isDestroyed(stream)) return false;
-  return r && stream.writable && !isWritableEnded(stream);
+  return isWritableNodeStream(stream) &&
+    stream.writable &&
+    !isWritableEnded(stream);
 }
 
 function isFinished(stream, opts) {
@@ -212,16 +209,37 @@ function willEmitClose(stream) {
   );
 }
 
+function isDisturbed(stream) {
+  return !!(stream && (
+    stream[kIsDisturbed] ??
+    (stream.readableDidRead || stream.readableAborted)
+  ));
+}
+
+function isErrored(stream) {
+  return !!(stream && (
+    stream[kIsErrored] ??
+    stream.readableErrored ??
+    stream.writableErrored ??
+    stream._readableState?.errorEmitted ??
+    stream._writableState?.errorEmitted ??
+    stream._readableState?.errored ??
+    stream._writableState?.errored
+  ));
+}
 
 module.exports = {
   isDisturbed,
   kIsDisturbed,
+  isErrored,
+  kIsErrored,
+  isReadable,
+  kIsReadable,
   isClosed,
   isDestroyed,
   isDuplexNodeStream,
   isFinished,
   isIterable,
-  isReadable,
   isReadableNodeStream,
   isReadableEnded,
   isReadableFinished,

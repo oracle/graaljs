@@ -60,6 +60,7 @@ struct napi_env__ {
       : isolate(context->GetIsolate()),
         context_persistent(isolate, context) {
     CHECK_EQ(isolate, context->GetIsolate());
+    napi_clear_last_error(this);
   }
   virtual ~napi_env__() {
     // First we must finalize those references that have `napi_finalizer`
@@ -163,6 +164,7 @@ static inline napi_status napi_clear_last_error(napi_env env) {
   // TODO(boingoing): Should this be a callback?
   env->last_error.engine_error_code = 0;
   env->last_error.engine_reserved = nullptr;
+  env->last_error.error_message = nullptr;
   return napi_ok;
 }
 

@@ -125,7 +125,7 @@ const { Console } = require('console');
 const CJSModule = require('internal/modules/cjs/loader').Module;
 let _builtinLibs = ArrayPrototypeFilter(
   CJSModule.builtinModules,
-  (e) => !StringPrototypeStartsWith(e, '_') && !StringPrototypeIncludes(e, '/')
+  (e) => !StringPrototypeStartsWith(e, '_'),
 );
 const nodeSchemeBuiltinLibs = ArrayPrototypeMap(
   _builtinLibs, (lib) => `node:${lib}`);
@@ -381,7 +381,7 @@ function REPLServer(prompt,
     paused = false;
     let entry;
     const tmpCompletionEnabled = self.isCompletionEnabled;
-    while (entry = ArrayPrototypeShift(pausedBuffer)) {
+    while ((entry = ArrayPrototypeShift(pausedBuffer)) !== undefined) {
       const { 0: type, 1: payload, 2: isCompletionEnabled } = entry;
       switch (type) {
         case 'key': {
@@ -445,6 +445,7 @@ function REPLServer(prompt,
             // to the parent of `process.cwd()`.
             parentURL = pathToFileURL(path.join(process.cwd(), 'repl')).href;
           } catch {
+            // Continue regardless of error.
           }
 
           // Remove all "await"s and attempt running the script
@@ -454,8 +455,9 @@ function REPLServer(prompt,
             vm.createScript(fallbackCode, {
               filename: file,
               displayErrors: true,
-              importModuleDynamically: async (specifier) => {
-                return asyncESM.esmLoader.import(specifier, parentURL);
+              importModuleDynamically: (specifier, _, importAssertions) => {
+                return asyncESM.esmLoader.import(specifier, parentURL,
+                                                 importAssertions);
               }
             });
           } catch (fallbackError) {
@@ -484,6 +486,7 @@ function REPLServer(prompt,
         // to the parent of `process.cwd()`.
         parentURL = pathToFileURL(path.join(process.cwd(), 'repl')).href;
       } catch {
+        // Continue regardless of error.
       }
       while (true) {
         try {
@@ -496,8 +499,9 @@ function REPLServer(prompt,
           script = vm.createScript(code, {
             filename: file,
             displayErrors: true,
-            importModuleDynamically: async (specifier) => {
-              return asyncESM.esmLoader.import(specifier, parentURL);
+            importModuleDynamically: (specifier, _, importAssertions) => {
+              return asyncESM.esmLoader.import(specifier, parentURL,
+                                               importAssertions);
             }
           });
         } catch (e) {
@@ -1238,7 +1242,9 @@ REPLServer.prototype.complete = function() {
 function gracefulReaddir(...args) {
   try {
     return ReflectApply(fs.readdirSync, null, args);
-  } catch {}
+  } catch {
+    // Continue regardless of error.
+  }
 }
 
 function completeFSFunctions(line) {
@@ -1289,135 +1295,133 @@ function complete(line, callback) {
     if (completeOn.length) {
       filter = completeOn;
     }
-  } else if (RegExpPrototypeTest(requireRE, line) &&
-             this.allowBlockingCompletions) {
+  } else if (RegExpPrototypeTest(requireRE, line)) {
     // require('...<Tab>')
-    const extensions = ObjectKeys(this.context.require.extensions);
-    const indexes = ArrayPrototypeMap(extensions,
-                                      (extension) => `index${extension}`);
-    ArrayPrototypePush(indexes, 'package.json', 'index');
-
     const match = StringPrototypeMatch(line, requireRE);
     completeOn = match[1];
-    const subdir = match[2] || '';
     filter = completeOn;
-    group = [];
-    let paths = [];
+    if (this.allowBlockingCompletions) {
+      const subdir = match[2] || '';
+      const extensions = ObjectKeys(this.context.require.extensions);
+      const indexes = ArrayPrototypeMap(extensions,
+                                        (extension) => `index${extension}`);
+      ArrayPrototypePush(indexes, 'package.json', 'index');
 
-    if (completeOn === '.') {
-      group = ['./', '../'];
-    } else if (completeOn === '..') {
-      group = ['../'];
-    } else if (RegExpPrototypeTest(/^\.\.?\//, completeOn)) {
-      paths = [process.cwd()];
-    } else {
-      paths = ArrayPrototypeConcat(module.paths, CJSModule.globalPaths);
-    }
+      group = [];
+      let paths = [];
 
-    ArrayPrototypeForEach(paths, (dir) => {
-      dir = path.resolve(dir, subdir);
-      const dirents = gracefulReaddir(dir, { withFileTypes: true }) || [];
-      ArrayPrototypeForEach(dirents, (dirent) => {
-        if (RegExpPrototypeTest(versionedFileNamesRe, dirent.name) ||
-            dirent.name === '.npm') {
-          // Exclude versioned names that 'npm' installs.
-          return;
-        }
-        const extension = path.extname(dirent.name);
-        const base = StringPrototypeSlice(dirent.name, 0, -extension.length);
-        if (!dirent.isDirectory()) {
-          if (StringPrototypeIncludes(extensions, extension) &&
-              (!subdir || base !== 'index')) {
-            ArrayPrototypePush(group, `${subdir}${base}`);
+      if (completeOn === '.') {
+        group = ['./', '../'];
+      } else if (completeOn === '..') {
+        group = ['../'];
+      } else if (RegExpPrototypeTest(/^\.\.?\//, completeOn)) {
+        paths = [process.cwd()];
+      } else {
+        paths = ArrayPrototypeConcat(module.paths, CJSModule.globalPaths);
+      }
+
+      ArrayPrototypeForEach(paths, (dir) => {
+        dir = path.resolve(dir, subdir);
+        const dirents = gracefulReaddir(dir, { withFileTypes: true }) || [];
+        ArrayPrototypeForEach(dirents, (dirent) => {
+          if (RegExpPrototypeTest(versionedFileNamesRe, dirent.name) ||
+              dirent.name === '.npm') {
+            // Exclude versioned names that 'npm' installs.
+            return;
           }
-          return;
-        }
-        ArrayPrototypePush(group, `${subdir}${dirent.name}/`);
-        const absolute = path.resolve(dir, dirent.name);
-        if (ArrayPrototypeSome(
-          gracefulReaddir(absolute) || [],
-          (subfile) => ArrayPrototypeIncludes(indexes, subfile)
-        )) {
-          ArrayPrototypePush(group, `${subdir}${dirent.name}`);
-        }
+          const extension = path.extname(dirent.name);
+          const base = StringPrototypeSlice(dirent.name, 0, -extension.length);
+          if (!dirent.isDirectory()) {
+            if (StringPrototypeIncludes(extensions, extension) &&
+                (!subdir || base !== 'index')) {
+              ArrayPrototypePush(group, `${subdir}${base}`);
+            }
+            return;
+          }
+          ArrayPrototypePush(group, `${subdir}${dirent.name}/`);
+          const absolute = path.resolve(dir, dirent.name);
+          if (ArrayPrototypeSome(
+            gracefulReaddir(absolute) || [],
+            (subfile) => ArrayPrototypeIncludes(indexes, subfile)
+          )) {
+            ArrayPrototypePush(group, `${subdir}${dirent.name}`);
+          }
+        });
       });
-    });
-    if (group.length) {
-      ArrayPrototypePush(completionGroups, group);
+      if (group.length) {
+        ArrayPrototypePush(completionGroups, group);
+      }
     }
 
-    if (!subdir) {
-      ArrayPrototypePush(completionGroups, _builtinLibs, nodeSchemeBuiltinLibs);
-    }
-  } else if (RegExpPrototypeTest(importRE, line) &&
-             this.allowBlockingCompletions) {
+    ArrayPrototypePush(completionGroups, _builtinLibs, nodeSchemeBuiltinLibs);
+  } else if (RegExpPrototypeTest(importRE, line)) {
     // import('...<Tab>')
-    // File extensions that can be imported:
-    const extensions = ObjectKeys(
-      getOptionValue('--experimental-specifier-resolution') === 'node' ?
-        legacyExtensionFormatMap :
-        extensionFormatMap);
-
-    // Only used when loading bare module specifiers from `node_modules`:
-    const indexes = ArrayPrototypeMap(extensions, (ext) => `index${ext}`);
-    ArrayPrototypePush(indexes, 'package.json');
-
     const match = StringPrototypeMatch(line, importRE);
     completeOn = match[1];
-    const subdir = match[2] || '';
     filter = completeOn;
-    group = [];
-    let paths = [];
-    if (completeOn === '.') {
-      group = ['./', '../'];
-    } else if (completeOn === '..') {
-      group = ['../'];
-    } else if (RegExpPrototypeTest(/^\.\.?\//, completeOn)) {
-      paths = [process.cwd()];
-    } else {
-      paths = ArrayPrototypeSlice(module.paths);
-    }
+    if (this.allowBlockingCompletions) {
+      const subdir = match[2] || '';
+      // File extensions that can be imported:
+      const extensions = ObjectKeys(
+        getOptionValue('--experimental-specifier-resolution') === 'node' ?
+          legacyExtensionFormatMap :
+          extensionFormatMap);
 
-    ArrayPrototypeForEach(paths, (dir) => {
-      dir = path.resolve(dir, subdir);
-      const isInNodeModules = path.basename(dir) === 'node_modules';
-      const dirents = gracefulReaddir(dir, { withFileTypes: true }) || [];
-      ArrayPrototypeForEach(dirents, (dirent) => {
-        const { name } = dirent;
-        if (RegExpPrototypeTest(versionedFileNamesRe, name) ||
-            name === '.npm') {
-          // Exclude versioned names that 'npm' installs.
-          return;
-        }
+      // Only used when loading bare module specifiers from `node_modules`:
+      const indexes = ArrayPrototypeMap(extensions, (ext) => `index${ext}`);
+      ArrayPrototypePush(indexes, 'package.json');
 
-        if (!dirent.isDirectory()) {
-          const extension = path.extname(name);
-          if (StringPrototypeIncludes(extensions, extension)) {
-            ArrayPrototypePush(group, `${subdir}${name}`);
+      group = [];
+      let paths = [];
+      if (completeOn === '.') {
+        group = ['./', '../'];
+      } else if (completeOn === '..') {
+        group = ['../'];
+      } else if (RegExpPrototypeTest(/^\.\.?\//, completeOn)) {
+        paths = [process.cwd()];
+      } else {
+        paths = ArrayPrototypeSlice(module.paths);
+      }
+
+      ArrayPrototypeForEach(paths, (dir) => {
+        dir = path.resolve(dir, subdir);
+        const isInNodeModules = path.basename(dir) === 'node_modules';
+        const dirents = gracefulReaddir(dir, { withFileTypes: true }) || [];
+        ArrayPrototypeForEach(dirents, (dirent) => {
+          const { name } = dirent;
+          if (RegExpPrototypeTest(versionedFileNamesRe, name) ||
+              name === '.npm') {
+            // Exclude versioned names that 'npm' installs.
+            return;
           }
-          return;
-        }
 
-        ArrayPrototypePush(group, `${subdir}${name}/`);
-        if (!subdir && isInNodeModules) {
-          const absolute = path.resolve(dir, name);
-          const subfiles = gracefulReaddir(absolute) || [];
-          if (ArrayPrototypeSome(subfiles, (subfile) => {
-            return ArrayPrototypeIncludes(indexes, subfile);
-          })) {
-            ArrayPrototypePush(group, `${subdir}${name}`);
+          if (!dirent.isDirectory()) {
+            const extension = path.extname(name);
+            if (StringPrototypeIncludes(extensions, extension)) {
+              ArrayPrototypePush(group, `${subdir}${name}`);
+            }
+            return;
           }
-        }
+
+          ArrayPrototypePush(group, `${subdir}${name}/`);
+          if (!subdir && isInNodeModules) {
+            const absolute = path.resolve(dir, name);
+            const subfiles = gracefulReaddir(absolute) || [];
+            if (ArrayPrototypeSome(subfiles, (subfile) => {
+              return ArrayPrototypeIncludes(indexes, subfile);
+            })) {
+              ArrayPrototypePush(group, `${subdir}${name}`);
+            }
+          }
+        });
       });
-    });
 
-    if (group.length) {
-      ArrayPrototypePush(completionGroups, group);
+      if (group.length) {
+        ArrayPrototypePush(completionGroups, group);
+      }
     }
 
-    if (!subdir) {
-      ArrayPrototypePush(completionGroups, _builtinLibs, nodeSchemeBuiltinLibs);
-    }
+    ArrayPrototypePush(completionGroups, _builtinLibs, nodeSchemeBuiltinLibs);
   } else if (RegExpPrototypeTest(fsAutoCompleteRE, line) &&
              this.allowBlockingCompletions) {
     ({ 0: completionGroups, 1: completeOn } = completeFSFunctions(line));
@@ -1454,7 +1458,7 @@ function complete(line, callback) {
       ArrayPrototypePush(completionGroups,
                          getGlobalLexicalScopeNames(this[kContextId]));
       let contextProto = this.context;
-      while (contextProto = ObjectGetPrototypeOf(contextProto)) {
+      while ((contextProto = ObjectGetPrototypeOf(contextProto)) !== null) {
         ArrayPrototypePush(completionGroups,
                            filteredOwnPropertyNames(contextProto));
       }

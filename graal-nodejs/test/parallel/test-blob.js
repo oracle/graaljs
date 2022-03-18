@@ -88,6 +88,15 @@ assert.throws(() => new Blob({}), {
 }
 
 {
+  const b = new Blob(['hello', new Uint8Array([0xed, 0xa0, 0x88])]);
+  assert.strictEqual(b.size, 8);
+  b.text().then(common.mustCall((text) => {
+    assert.strictEqual(text, 'hello\ufffd\ufffd\ufffd');
+    assert.strictEqual(text.length, 8);
+  }));
+}
+
+{
   const b = new Blob(
     [
       'h',
@@ -220,3 +229,18 @@ assert.throws(() => new Blob({}), {
     });
   });
 }
+
+(async () => {
+  const blob = new Blob([
+    new Uint8Array([0x50, 0x41, 0x53, 0x53]),
+    new Int8Array([0x50, 0x41, 0x53, 0x53]),
+    new Uint16Array([0x4150, 0x5353]),
+    new Int16Array([0x4150, 0x5353]),
+    new Uint32Array([0x53534150]),
+    new Int32Array([0x53534150]),
+    new Float32Array([0xD341500000]),
+  ]);
+
+  assert.strictEqual(blob.size, 28);
+  assert.strictEqual(blob.type, '');
+})().then(common.mustCall());

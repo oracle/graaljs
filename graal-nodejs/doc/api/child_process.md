@@ -189,7 +189,7 @@ changes:
 Spawns a shell then executes the `command` within that shell, buffering any
 generated output. The `command` string passed to the exec function is processed
 directly by the shell and special characters (vary based on
-[shell](https://en.wikipedia.org/wiki/List\_of\_command-line\_interpreters))
+[shell](https://en.wikipedia.org/wiki/List_of_command-line_interpreters))
 need to be dealt with accordingly:
 
 ```js
@@ -385,7 +385,14 @@ controller.abort();
 <!-- YAML
 added: v0.5.0
 changes:
-  - version: v16.4.0
+  - version:
+      - v16.14.0
+    pr-url: https://github.com/nodejs/node/pull/41225
+    description: The `modulePath` parameter can be a WHATWG `URL` object using
+                 `file:` protocol.
+  - version:
+      - v16.4.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/38862
     description: The `cwd` option can be a WHATWG `URL` object using
                  `file:` protocol.
@@ -411,7 +418,7 @@ changes:
     description: The `stdio` option is supported now.
 -->
 
-* `modulePath` {string} The module to run in the child.
+* `modulePath` {string|URL} The module to run in the child.
 * `args` {string\[]} List of string arguments.
 * `options` {Object}
   * `cwd` {string|URL} Current working directory of the child process.

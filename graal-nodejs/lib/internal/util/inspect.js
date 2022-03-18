@@ -26,7 +26,9 @@ const {
   MathMin,
   MathRound,
   MathSqrt,
+  MathTrunc,
   Number,
+  NumberIsFinite,
   NumberIsNaN,
   NumberParseFloat,
   NumberParseInt,
@@ -168,7 +170,8 @@ const inspectDefaultOptions = ObjectSeal({
   breakLength: 80,
   compact: 3,
   sorted: false,
-  getters: false
+  getters: false,
+  numericSeparator: false,
 });
 
 const kObjectType = 0;
@@ -176,16 +179,16 @@ const kArrayType = 1;
 const kArrayExtrasType = 2;
 
 /* eslint-disable no-control-regex */
-const strEscapeSequencesRegExp = /[\x00-\x1f\x27\x5c\x7f-\x9f]/;
-const strEscapeSequencesReplacer = /[\x00-\x1f\x27\x5c\x7f-\x9f]/g;
-const strEscapeSequencesRegExpSingle = /[\x00-\x1f\x5c\x7f-\x9f]/;
-const strEscapeSequencesReplacerSingle = /[\x00-\x1f\x5c\x7f-\x9f]/g;
+const strEscapeSequencesRegExp = /[\x00-\x1f\x27\x5c\x7f-\x9f]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+const strEscapeSequencesReplacer = /[\x00-\x1f\x27\x5c\x7f-\x9f]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g;
+const strEscapeSequencesRegExpSingle = /[\x00-\x1f\x5c\x7f-\x9f]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+const strEscapeSequencesReplacerSingle = /[\x00-\x1f\x5c\x7f-\x9f]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g;
 /* eslint-enable no-control-regex */
 
 const keyStrRegExp = /^[a-zA-Z_][a-zA-Z_0-9]*$/;
 const numberRegExp = /^(0|[1-9][0-9]*)$/;
 
-const coreModuleRegExp = /^    at (?:[^/\\(]+ \(|)node:(.+):\d+:\d+\)?$/;
+const coreModuleRegExp = /^ {4}at (?:[^/\\(]+ \(|)node:(.+):\d+:\d+\)?$/;
 const nodeModulesRegExp = /[/\\]node_modules[/\\](.+?)(?=[/\\])/g;
 
 const classRegExp = /^(\s+[^(]*?)\s*{/;
@@ -244,6 +247,7 @@ function getUserOptions(ctx, isCrossContext) {
     compact: ctx.compact,
     sorted: ctx.sorted,
     getters: ctx.getters,
+    numericSeparator: ctx.numericSeparator,
     ...ctx.userOptions
   };
 
@@ -264,7 +268,9 @@ function getUserOptions(ctx, isCrossContext) {
       let stylized;
       try {
         stylized = `${ctx.stylize(value, flavour)}`;
-      } catch {}
+      } catch {
+        // Continue regardless of error.
+      }
 
       if (typeof stylized !== 'string') return value;
       // `stylized` is a string as it should be, which is safe to pass along.
@@ -280,7 +286,7 @@ function getUserOptions(ctx, isCrossContext) {
  * in the best way possible given the different types.
  *
  * @param {any} value The value to print out.
- * @param {Object} opts Optional options object that alters the output.
+ * @param {object} opts Optional options object that alters the output.
  */
 /* Legacy: value, showHidden, depth, colors */
 function inspect(value, opts) {
@@ -301,7 +307,8 @@ function inspect(value, opts) {
     breakLength: inspectDefaultOptions.breakLength,
     compact: inspectDefaultOptions.compact,
     sorted: inspectDefaultOptions.sorted,
-    getters: inspectDefaultOptions.getters
+    getters: inspectDefaultOptions.getters,
+    numericSeparator: inspectDefaultOptions.numericSeparator,
   };
   if (arguments.length > 1) {
     // Legacy...
@@ -458,7 +465,10 @@ function addQuotes(str, quotes) {
   return `'${str}'`;
 }
 
-const escapeFn = (str) => meta[StringPrototypeCharCodeAt(str)];
+function escapeFn(str) {
+  const charCode = StringPrototypeCharCodeAt(str);
+  return meta.length > charCode ? meta[charCode] : `\\u${charCode.toString(16)}`;
+}
 
 // Escape control characters, single quotes and the backslash.
 // This is similar to JSON stringify escaping.
@@ -496,8 +506,7 @@ function strEscape(str) {
 
   let result = '';
   let last = 0;
-  const lastIndex = str.length;
-  for (let i = 0; i < lastIndex; i++) {
+  for (let i = 0; i < str.length; i++) {
     const point = StringPrototypeCharCodeAt(str, i);
     if (point === singleQuote ||
         point === 92 ||
@@ -509,10 +518,20 @@ function strEscape(str) {
         result += `${StringPrototypeSlice(str, last, i)}${meta[point]}`;
       }
       last = i + 1;
+    } else if (point >= 0xd800 && point <= 0xdfff) {
+      if (point <= 0xdbff && i + 1 < str.length) {
+        const point = StringPrototypeCharCodeAt(str, i + 1);
+        if (point >= 0xdc00 && point <= 0xdfff) {
+          i++;
+          continue;
+        }
+      }
+      result += `${StringPrototypeSlice(str, last, i)}${`\\u${point.toString(16)}`}`;
+      last = i + 1;
     }
   }
 
-  if (last !== lastIndex) {
+  if (last !== str.length) {
     result += StringPrototypeSlice(str, last);
   }
   return addQuotes(result, singleQuote);
@@ -761,7 +780,12 @@ function formatValue(ctx, value, recurseTimes, typedArray) {
       const isCrossContext =
         proxy !== undefined || !(context instanceof Object);
       const ret = FunctionPrototypeCall(
-        maybeCustom, context, depth, getUserOptions(ctx, isCrossContext));
+        maybeCustom,
+        context,
+        depth,
+        getUserOptions(ctx, isCrossContext),
+        inspect
+      );
       // If the custom inspection method returned `this`, don't go into
       // infinite recursion.
       if (ret !== context) {
@@ -949,7 +973,7 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
         formatter = formatArrayBuffer;
       } else if (keys.length === 0 && protoProps === undefined) {
         return prefix +
-              `{ byteLength: ${formatNumber(ctx.stylize, value.byteLength)} }`;
+              `{ byteLength: ${formatNumber(ctx.stylize, value.byteLength, false)} }`;
       }
       braces[0] = `${prefix}{`;
       ArrayPrototypeUnshift(keys, 'byteLength');
@@ -1126,7 +1150,7 @@ function getClassBase(value, constructor, tag) {
 
 function getFunctionBase(value, constructor, tag) {
   const stringified = FunctionPrototypeToString(value);
-  if (stringified.slice(0, 5) === 'class' && stringified.endsWith('}')) {
+  if (stringified.startsWith('class') && stringified.endsWith('}')) {
     const slice = stringified.slice(5, -1);
     const bracketIndex = slice.indexOf('{');
     if (bracketIndex !== -1 &&
@@ -1162,25 +1186,58 @@ function getFunctionBase(value, constructor, tag) {
   return base;
 }
 
-function formatError(err, constructor, tag, ctx, keys) {
-  const name = err.name != null ? String(err.name) : 'Error';
-  let len = name.length;
-  let stack = err.stack ? String(err.stack) : ErrorPrototypeToString(err);
-
-  // Do not "duplicate" error properties that are already included in the output
-  // otherwise.
-  if (!ctx.showHidden && keys.length !== 0) {
-    for (const name of ['name', 'message', 'stack']) {
-      const index = keys.indexOf(name);
-      // Only hide the property in case it's part of the original stack
-      if (index !== -1 && stack.includes(err[name])) {
-        keys.splice(index, 1);
+function identicalSequenceRange(a, b) {
+  for (let i = 0; i < a.length - 3; i++) {
+    // Find the first entry of b that matches the current entry of a.
+    const pos = b.indexOf(a[i]);
+    if (pos !== -1) {
+      const rest = b.length - pos;
+      if (rest > 3) {
+        let len = 1;
+        const maxLen = MathMin(a.length - i, rest);
+        // Count the number of consecutive entries.
+        while (maxLen > len && a[i + len] === b[pos + len]) {
+          len++;
+        }
+        if (len > 3) {
+          return { len, offset: i };
+        }
       }
     }
   }
 
+  return { len: 0, offset: 0 };
+}
+
+function getStackString(error) {
+  return error.stack ? String(error.stack) : ErrorPrototypeToString(error);
+}
+
+function getStackFrames(ctx, err, stack) {
+  const frames = stack.split('\n');
+
+  // Remove stack frames identical to frames in cause.
+  if (err.cause && isError(err.cause)) {
+    const causeStack = getStackString(err.cause);
+    const causeStackStart = causeStack.indexOf('\n    at');
+    if (causeStackStart !== -1) {
+      const causeFrames = causeStack.slice(causeStackStart + 1).split('\n');
+      const { len, offset } = identicalSequenceRange(frames, causeFrames);
+      if (len > 0) {
+        const skipped = len - 2;
+        const msg = `    ... ${skipped} lines matching cause stack trace ...`;
+        frames.splice(offset + 1, skipped, ctx.stylize(msg, 'undefined'));
+      }
+    }
+  }
+  return frames;
+}
+
+function improveStack(stack, constructor, name, tag) {
   // A stack trace may contain arbitrary data. Only manipulate the output
   // for "regular errors" (errors that "look normal") for now.
+  let len = name.length;
+
   if (constructor === null ||
       (name.endsWith('Error') &&
       stack.startsWith(name) &&
@@ -1206,6 +1263,34 @@ function formatError(err, constructor, tag, ctx, keys) {
       }
     }
   }
+  return stack;
+}
+
+function removeDuplicateErrorKeys(ctx, keys, err, stack) {
+  if (!ctx.showHidden && keys.length !== 0) {
+    for (const name of ['name', 'message', 'stack']) {
+      const index = keys.indexOf(name);
+      // Only hide the property in case it's part of the original stack
+      if (index !== -1 && stack.includes(err[name])) {
+        keys.splice(index, 1);
+      }
+    }
+  }
+}
+
+function formatError(err, constructor, tag, ctx, keys) {
+  const name = err.name != null ? String(err.name) : 'Error';
+  let stack = getStackString(err);
+
+  removeDuplicateErrorKeys(ctx, keys, err, stack);
+
+  if ('cause' in err &&
+      (keys.length === 0 || !keys.includes('cause'))) {
+    keys.push('cause');
+  }
+
+  stack = improveStack(stack, constructor, name, tag);
+
   // Ignore the error message if it's contained in the stack.
   let pos = (err.message && stack.indexOf(err.message)) || -1;
   if (pos !== -1)
@@ -1214,27 +1299,31 @@ function formatError(err, constructor, tag, ctx, keys) {
   const stackStart = stack.indexOf('\n    at', pos);
   if (stackStart === -1) {
     stack = `[${stack}]`;
-  } else if (ctx.colors) {
-    // Highlight userland code and node modules.
+  } else {
     let newStack = stack.slice(0, stackStart);
-    const lines = stack.slice(stackStart + 1).split('\n');
-    for (const line of lines) {
-      const core = line.match(coreModuleRegExp);
-      if (core !== null && NativeModule.exists(core[1])) {
-        newStack += `\n${ctx.stylize(line, 'undefined')}`;
-      } else {
-        // This adds underscores to all node_modules to quickly identify them.
-        let nodeModule;
-        newStack += '\n';
-        let pos = 0;
-        while (nodeModule = nodeModulesRegExp.exec(line)) {
-          // '/node_modules/'.length === 14
-          newStack += line.slice(pos, nodeModule.index + 14);
-          newStack += ctx.stylize(nodeModule[1], 'module');
-          pos = nodeModule.index + nodeModule[0].length;
+    const lines = getStackFrames(ctx, err, stack.slice(stackStart + 1));
+    if (ctx.colors) {
+      // Highlight userland code and node modules.
+      for (const line of lines) {
+        const core = line.match(coreModuleRegExp);
+        if (core !== null && NativeModule.exists(core[1])) {
+          newStack += `\n${ctx.stylize(line, 'undefined')}`;
+        } else {
+          // This adds underscores to all node_modules to quickly identify them.
+          let nodeModule;
+          newStack += '\n';
+          let pos = 0;
+          while ((nodeModule = nodeModulesRegExp.exec(line)) !== null) {
+            // '/node_modules/'.length === 14
+            newStack += line.slice(pos, nodeModule.index + 14);
+            newStack += ctx.stylize(nodeModule[1], 'module');
+            pos = nodeModule.index + nodeModule[0].length;
+          }
+          newStack += pos === 0 ? line : line.slice(pos);
         }
-        newStack += pos === 0 ? line : line.slice(pos);
       }
+    } else {
+      newStack += `\n${lines.join('\n')}`;
     }
     stack = newStack;
   }
@@ -1370,13 +1459,61 @@ function handleMaxCallStackSize(ctx, err, constructorName, indentationLvl) {
   assert.fail(err.stack);
 }
 
-function formatNumber(fn, value) {
-  // Format -0 as '-0'. Checking `value === -0` won't distinguish 0 from -0.
-  return fn(ObjectIs(value, -0) ? '-0' : `${value}`, 'number');
+function addNumericSeparator(integerString) {
+  let result = '';
+  let i = integerString.length;
+  const start = integerString.startsWith('-') ? 1 : 0;
+  for (; i >= start + 4; i -= 3) {
+    result = `_${integerString.slice(i - 3, i)}${result}`;
+  }
+  return i === integerString.length ?
+    integerString :
+    `${integerString.slice(0, i)}${result}`;
 }
 
-function formatBigInt(fn, value) {
-  return fn(`${value}n`, 'bigint');
+function addNumericSeparatorEnd(integerString) {
+  let result = '';
+  let i = 0;
+  for (; i < integerString.length - 3; i += 3) {
+    result += `${integerString.slice(i, i + 3)}_`;
+  }
+  return i === 0 ?
+    integerString :
+    `${result}${integerString.slice(i)}`;
+}
+
+function formatNumber(fn, number, numericSeparator) {
+  if (!numericSeparator) {
+    // Format -0 as '-0'. Checking `number === -0` won't distinguish 0 from -0.
+    if (ObjectIs(number, -0)) {
+      return fn('-0', 'number');
+    }
+    return fn(`${number}`, 'number');
+  }
+  const integer = MathTrunc(number);
+  const string = String(integer);
+  if (integer === number) {
+    if (!NumberIsFinite(number) || string.includes('e')) {
+      return fn(string, 'number');
+    }
+    return fn(`${addNumericSeparator(string)}`, 'number');
+  }
+  if (NumberIsNaN(number)) {
+    return fn(string, 'number');
+  }
+  return fn(`${
+    addNumericSeparator(string)
+  }.${
+    addNumericSeparatorEnd(String(number).slice(string.length + 1))
+  }`, 'number');
+}
+
+function formatBigInt(fn, bigint, numericSeparator) {
+  const string = String(bigint);
+  if (!numericSeparator) {
+    return fn(`${string}n`, 'bigint');
+  }
+  return fn(`${addNumericSeparator(string)}n`, 'bigint');
 }
 
 function formatPrimitive(fn, value, ctx) {
@@ -1400,9 +1537,9 @@ function formatPrimitive(fn, value, ctx) {
     return fn(strEscape(value), 'string') + trailer;
   }
   if (typeof value === 'number')
-    return formatNumber(fn, value);
+    return formatNumber(fn, value, ctx.numericSeparator);
   if (typeof value === 'bigint')
-    return formatBigInt(fn, value);
+    return formatBigInt(fn, value, ctx.numericSeparator);
   if (typeof value === 'boolean')
     return fn(`${value}`, 'boolean');
   if (typeof value === 'undefined')
@@ -1519,8 +1656,9 @@ function formatTypedArray(value, length, ctx, ignored, recurseTimes) {
   const elementFormatter = value.length > 0 && typeof value[0] === 'number' ?
     formatNumber :
     formatBigInt;
-  for (let i = 0; i < maxLength; ++i)
-    output[i] = elementFormatter(ctx.stylize, value[i]);
+  for (let i = 0; i < maxLength; ++i) {
+    output[i] = elementFormatter(ctx.stylize, value[i], ctx.numericSeparator);
+  }
   if (remaining > 0) {
     output[maxLength] = `... ${remaining} more item${remaining > 1 ? 's' : ''}`;
   }
@@ -1795,8 +1933,11 @@ function reduceToSingleString(
         const start = output.length + ctx.indentationLvl +
                       braces[0].length + base.length + 10;
         if (isBelowBreakLength(ctx, output, start, base)) {
-          return `${base ? `${base} ` : ''}${braces[0]} ${join(output, ', ')}` +
-            ` ${braces[1]}`;
+          const joinedOutput = join(output, ', ');
+          if (!joinedOutput.includes('\n')) {
+            return `${base ? `${base} ` : ''}${braces[0]} ${joinedOutput}` +
+              ` ${braces[1]}`;
+          }
         }
       }
     }
@@ -1864,8 +2005,8 @@ function tryStringify(arg) {
     if (!CIRCULAR_ERROR_MESSAGE) {
       try {
         const a = {}; a.a = a; JSONStringify(a);
-      } catch (err) {
-        CIRCULAR_ERROR_MESSAGE = firstErrorLine(err);
+      } catch (circularError) {
+        CIRCULAR_ERROR_MESSAGE = firstErrorLine(circularError);
       }
     }
     if (err.name === 'TypeError' &&
@@ -1888,6 +2029,22 @@ function formatWithOptions(inspectOptions, ...args) {
   return formatWithOptionsInternal(inspectOptions, args);
 }
 
+function formatNumberNoColor(number, options) {
+  return formatNumber(
+    stylizeNoColor,
+    number,
+    options?.numericSeparator ?? inspectDefaultOptions.numericSeparator
+  );
+}
+
+function formatBigIntNoColor(bigint, options) {
+  return formatBigInt(
+    stylizeNoColor,
+    bigint,
+    options?.numericSeparator ?? inspectDefaultOptions.numericSeparator
+  );
+}
+
 function formatWithOptionsInternal(inspectOptions, args) {
   const first = args[0];
   let a = 0;
@@ -1906,12 +2063,12 @@ function formatWithOptionsInternal(inspectOptions, args) {
         const nextChar = StringPrototypeCharCodeAt(first, ++i);
         if (a + 1 !== args.length) {
           switch (nextChar) {
-            case 115: // 's'
+            case 115: { // 's'
               const tempArg = args[++a];
               if (typeof tempArg === 'number') {
-                tempStr = formatNumber(stylizeNoColor, tempArg);
+                tempStr = formatNumberNoColor(tempArg, inspectOptions);
               } else if (typeof tempArg === 'bigint') {
-                tempStr = `${tempArg}n`;
+                tempStr = formatBigIntNoColor(tempArg, inspectOptions);
               } else if (typeof tempArg !== 'object' ||
                          tempArg === null ||
                          !hasBuiltInToString(tempArg)) {
@@ -1925,19 +2082,21 @@ function formatWithOptionsInternal(inspectOptions, args) {
                 });
               }
               break;
+            }
             case 106: // 'j'
               tempStr = tryStringify(args[++a]);
               break;
-            case 100: // 'd'
+            case 100: { // 'd'
               const tempNum = args[++a];
               if (typeof tempNum === 'bigint') {
-                tempStr = `${tempNum}n`;
+                tempStr = formatBigIntNoColor(tempNum, inspectOptions);
               } else if (typeof tempNum === 'symbol') {
                 tempStr = 'NaN';
               } else {
-                tempStr = formatNumber(stylizeNoColor, Number(tempNum));
+                tempStr = formatNumberNoColor(Number(tempNum), inspectOptions);
               }
               break;
+            }
             case 79: // 'O'
               tempStr = inspect(args[++a], inspectOptions);
               break;
@@ -1949,26 +2108,28 @@ function formatWithOptionsInternal(inspectOptions, args) {
                 depth: 4
               });
               break;
-            case 105: // 'i'
+            case 105: { // 'i'
               const tempInteger = args[++a];
               if (typeof tempInteger === 'bigint') {
-                tempStr = `${tempInteger}n`;
+                tempStr = formatBigIntNoColor(tempInteger, inspectOptions);
               } else if (typeof tempInteger === 'symbol') {
                 tempStr = 'NaN';
               } else {
-                tempStr = formatNumber(stylizeNoColor,
-                                       NumberParseInt(tempInteger));
+                tempStr = formatNumberNoColor(
+                  NumberParseInt(tempInteger), inspectOptions);
               }
               break;
-            case 102: // 'f'
+            }
+            case 102: { // 'f'
               const tempFloat = args[++a];
               if (typeof tempFloat === 'symbol') {
                 tempStr = 'NaN';
               } else {
-                tempStr = formatNumber(stylizeNoColor,
-                                       NumberParseFloat(tempFloat));
+                tempStr = formatNumberNoColor(
+                  NumberParseFloat(tempFloat), inspectOptions);
               }
               break;
+            }
             case 99: // 'c'
               a += 1;
               tempStr = '';

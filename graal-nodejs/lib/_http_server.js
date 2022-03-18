@@ -413,7 +413,7 @@ Server.prototype.setTimeout = function setTimeout(msecs, callback) {
 
 Server.prototype[EE.captureRejectionSymbol] = function(err, event, ...args) {
   switch (event) {
-    case 'request':
+    case 'request': {
       const { 1: res } = args;
       if (!res.headersSent && !res.writableEnded) {
         // Don't leak headers.
@@ -427,6 +427,7 @@ Server.prototype[EE.captureRejectionSymbol] = function(err, event, ...args) {
         res.destroy();
       }
       break;
+    }
     default:
       net.Server.prototype[SymbolFor('nodejs.rejection')]
         .apply(this, arguments);
@@ -692,7 +693,6 @@ function onParserExecuteCommon(server, socket, parser, state, ret, d) {
 
   if (ret instanceof Error) {
     prepareError(ret, parser, d);
-    ret.rawPacket = d || parser.getCurrentBuffer();
     debug('parse error', ret);
     socketOnError.call(socket, ret);
   } else if (parser.incoming && parser.incoming.upgrade) {

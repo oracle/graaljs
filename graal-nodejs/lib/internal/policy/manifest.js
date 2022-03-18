@@ -130,7 +130,9 @@ class DependencyMapperInstance {
       this.#patternDependencies = undefined;
     } else {
       const patterns = [];
-      for (const { 0: key } of ObjectEntries(dependencies)) {
+      const keys = ObjectKeys(dependencies);
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
         if (StringPrototypeEndsWith(key, '*')) {
           const target = RegExpPrototypeExec(/^([^*]*)\*([^*]*)$/);
           if (!target) {
@@ -246,6 +248,7 @@ const kNoDependencies = new DependencyMapperInstance(
  * @param {string} href
  * @param {JSONDependencyMap} dependencies
  * @param {boolean} cascade
+ * @param {boolean} allowSameHREFScope
  * @param {Map<string | null | undefined, DependencyMapperInstance>} store
  */
 const insertDependencyMap = (
@@ -427,12 +430,11 @@ class Manifest {
 
     if (objectButNotArray(obj) && 'onerror' in obj) {
       const behavior = obj.onerror;
-      if (behavior === 'throw') {
-      } else if (behavior === 'exit') {
+      if (behavior === 'exit') {
         reaction = REACTION_EXIT;
       } else if (behavior === 'log') {
         reaction = REACTION_LOG;
-      } else {
+      } else if (behavior !== 'throw') {
         throw new ERR_MANIFEST_UNKNOWN_ONERROR(behavior);
       }
     }
@@ -576,8 +578,7 @@ class Manifest {
         const entry = this.#scopeIntegrities.get(scope);
         if (entry === true) {
           return true;
-        } else if (entry === kCascade) {
-        } else {
+        } else if (entry !== kCascade) {
           break;
         }
       }
@@ -636,7 +637,9 @@ function canonicalizeSpecifier(specifier, base) {
       return resolve(specifier, base).href;
     }
     return resolve(specifier).href;
-  } catch {}
+  } catch {
+    // Continue regardless of error.
+  }
   return specifier;
 }
 

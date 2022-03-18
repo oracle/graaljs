@@ -10,6 +10,7 @@ const {
   ArrayPrototypePush,
   FunctionPrototypeBind,
   FunctionPrototypeCall,
+  ObjectAssign,
   ObjectCreate,
   ObjectSetPrototypeOf,
   PromiseAll,
@@ -18,6 +19,7 @@ const {
   SafeWeakMap,
   globalThis,
 } = primordials;
+const { MessageChannel } = require('internal/worker/io');
 
 const {
   ERR_INVALID_ARG_TYPE,
@@ -27,7 +29,7 @@ const {
   ERR_INVALID_RETURN_VALUE,
   ERR_UNKNOWN_MODULE_FORMAT
 } = require('internal/errors').codes;
-const { pathToFileURL, isURLInstance } = require('internal/url');
+const { pathToFileURL, isURLInstance, URL } = require('internal/url');
 const {
   isAnyArrayBuffer,
   isArrayBufferView,
@@ -39,6 +41,9 @@ const {
   defaultResolve,
   DEFAULT_CONDITIONS,
 } = require('internal/modules/esm/resolve');
+const {
+  initializeImportMeta
+} = require('internal/modules/esm/initialize_import_meta');
 const { defaultLoad } = require('internal/modules/esm/load');
 const { translators } = require(
   'internal/modules/esm/translators');
@@ -53,7 +58,7 @@ class ESMLoader {
   /**
    * Prior to ESM loading. These are called once before any modules are started.
    * @private
-   * @property {function[]} globalPreloaders First-in-first-out list of
+   * @property {Function[]} globalPreloaders First-in-first-out list of
    * preload hooks.
    */
   #globalPreloaders = [];
@@ -61,7 +66,7 @@ class ESMLoader {
   /**
    * Phase 2 of 2 in ESM loading.
    * @private
-   * @property {function[]} loaders First-in-first-out list of loader hooks.
+   * @property {Function[]} loaders First-in-first-out list of loader hooks.
    */
   #loaders = [
     defaultLoad,
@@ -70,11 +75,13 @@ class ESMLoader {
   /**
    * Phase 1 of 2 in ESM loading.
    * @private
-   * @property {function[]} resolvers First-in-first-out list of resolver hooks
+   * @property {Function[]} resolvers First-in-first-out list of resolver hooks
    */
   #resolvers = [
     defaultResolve,
   ];
+
+  #importMetaInitializer = initializeImportMeta;
 
   /**
    * Map of already-loaded CJS modules to use
@@ -202,15 +209,16 @@ class ESMLoader {
       const { ModuleWrap, callbackMap } = internalBinding('module_wrap');
       const module = new ModuleWrap(url, undefined, source, 0, 0);
       callbackMap.set(module, {
-        importModuleDynamically: (specifier, { url }) => {
-          return this.import(specifier, url);
+        importModuleDynamically: (specifier, { url }, importAssertions) => {
+          return this.import(specifier, url, importAssertions);
         }
       });
 
       return module;
     };
-    const job = new ModuleJob(this, url, evalInstance, false, false);
-    this.moduleMap.set(url, job);
+    const job = new ModuleJob(
+      this, url, undefined, evalInstance, false, false);
+    this.moduleMap.set(url, undefined, job);
     const { module } = await job.run();
 
     return {
@@ -218,20 +226,65 @@ class ESMLoader {
     };
   }
 
-  async getModuleJob(specifier, parentURL) {
-    const { format, url } = await this.resolve(specifier, parentURL);
-    let job = this.moduleMap.get(url);
+  /**
+   * Get a (possibly still pending) module job from the cache,
+   * or create one and return its Promise.
+   * @param {string} specifier The string after `from` in an `import` statement,
+   *                           or the first parameter of an `import()`
+   *                           expression
+   * @param {string | undefined} parentURL The URL of the module importing this
+   *                                     one, unless this is the Node.js entry
+   *                                     point.
+   * @param {Record<string, string>} importAssertions Validations for the
+   *                                                  module import.
+   * @returns {Promise<ModuleJob>} The (possibly pending) module job
+   */
+  async getModuleJob(specifier, parentURL, importAssertions) {
+    let importAssertionsForResolve;
+    if (this.#loaders.length !== 1) {
+      // We can skip cloning if there are no user provided loaders because
+      // the Node.js default resolve hook does not use import assertions.
+      importAssertionsForResolve =
+        ObjectAssign(ObjectCreate(null), importAssertions);
+    }
+    const { format, url } =
+      await this.resolve(specifier, parentURL, importAssertionsForResolve);
+
+    let job = this.moduleMap.get(url, importAssertions.type);
+
     // CommonJS will set functions for lazy job evaluation.
-    if (typeof job === 'function') this.moduleMap.set(url, job = job());
+    if (typeof job === 'function') {
+      this.moduleMap.set(url, undefined, job = job());
+    }
 
-    if (job !== undefined) return job;
+    if (job === undefined) {
+      job = this.#createModuleJob(url, importAssertions, parentURL, format);
+    }
 
+    return job;
+  }
+
+  /**
+   * Create and cache an object representing a loaded module.
+   * @param {string} url The absolute URL that was resolved for this module
+   * @param {Record<string, string>} importAssertions Validations for the
+   *                                                  module import.
+   * @param {string} [parentURL] The absolute URL of the module importing this
+   *                             one, unless this is the Node.js entry point
+   * @param {string} [format] The format hint possibly returned by the
+   *                          `resolve` hook
+   * @returns {Promise<ModuleJob>} The (possibly pending) module job
+   */
+  #createModuleJob(url, importAssertions, parentURL, format) {
     const moduleProvider = async (url, isMain) => {
-      const { format: finalFormat, source } = await this.load(url, { format });
+      const { format: finalFormat, source } = await this.load(
+        url, { format, importAssertions });
 
       const translator = translators.get(finalFormat);
 
-      if (!translator) throw new ERR_UNKNOWN_MODULE_FORMAT(finalFormat);
+      if (!translator) {
+        throw new ERR_UNKNOWN_MODULE_FORMAT(finalFormat);
+      }
 
       return FunctionPrototypeCall(translator, this, url, source, isMain);
     };
@@ -241,15 +294,16 @@ class ESMLoader {
       getOptionValue('--inspect-brk')
     );
 
-    job = new ModuleJob(
+    const job = new ModuleJob(
       this,
       url,
+      importAssertions,
       moduleProvider,
       parentURL === undefined,
       inspectBrk
     );
 
-    this.moduleMap.set(url, job);
+    this.moduleMap.set(url, importAssertions.type, job);
 
     return job;
   }
@@ -261,11 +315,13 @@ class ESMLoader {
    * This method must NOT be renamed: it functions as a dynamic import on a
    * loader module.
    *
-   * @param {string | string[]} specifiers Path(s) to the module
-   * @param {string} [parentURL] Path of the parent importing the module
-   * @returns {object | object[]} A list of module export(s)
+   * @param {string | string[]} specifiers Path(s) to the module.
+   * @param {string} parentURL Path of the parent importing the module.
+   * @param {Record<string, string>} importAssertions Validations for the
+   *                                                  module import.
+   * @returns {Promise<object | object[]>} A list of module export(s).
    */
-  async import(specifiers, parentURL) {
+  async import(specifiers, parentURL, importAssertions) {
     const wasArr = ArrayIsArray(specifiers);
     if (!wasArr) specifiers = [specifiers];
 
@@ -273,7 +329,7 @@ class ESMLoader {
     const jobs = new Array(count);
 
     for (let i = 0; i < count; i++) {
-      jobs[i] = this.getModuleJob(specifiers[i], parentURL)
+      jobs[i] = this.getModuleJob(specifiers[i], parentURL, importAssertions)
         .then((job) => job.run())
         .then(({ module }) => module.getNamespace());
     }
@@ -291,8 +347,8 @@ class ESMLoader {
    * The internals of this WILL change when chaining is implemented,
    * depending on the resolution/consensus from #36954
    * @param {string} url The URL/path of the module to be loaded
-   * @param {Object} context Metadata about the module
-   * @returns {Object}
+   * @param {object} context Metadata about the module
+   * @returns {object}
    */
   async load(url, context = {}) {
     const defaultLoader = this.#loaders[0];
@@ -359,7 +415,18 @@ class ESMLoader {
     if (!count) return;
 
     for (let i = 0; i < count; i++) {
-      const preload = this.#globalPreloaders[i]();
+      const channel = new MessageChannel();
+      const {
+        port1: insidePreload,
+        port2: insideLoader,
+      } = channel;
+
+      insidePreload.unref();
+      insideLoader.unref();
+
+      const preload = this.#globalPreloaders[i]({
+        port: insideLoader
+      });
 
       if (preload == null) return;
 
@@ -373,33 +440,74 @@ class ESMLoader {
       const { compileFunction } = require('vm');
       const preloadInit = compileFunction(
         preload,
-        ['getBuiltin'],
+        ['getBuiltin', 'port', 'setImportMetaCallback'],
         {
           filename: '<preload>',
         }
       );
       const { NativeModule } = require('internal/bootstrap/loaders');
-
-      FunctionPrototypeCall(preloadInit, globalThis, (builtinName) => {
-        if (NativeModule.canBeRequiredByUsers(builtinName)) {
-          return require(builtinName);
+      // We only allow replacing the importMetaInitializer during preload,
+      // after preload is finished, we disable the ability to replace it
+      //
+      // This exposes accidentally setting the initializer too late by
+      // throwing an error.
+      let finished = false;
+      let replacedImportMetaInitializer = false;
+      let next = this.#importMetaInitializer;
+      try {
+        // Calls the compiled preload source text gotten from the hook
+        // Since the parameters are named we use positional parameters
+        // see compileFunction above to cross reference the names
+        FunctionPrototypeCall(
+          preloadInit,
+          globalThis,
+          // Param getBuiltin
+          (builtinName) => {
+            if (NativeModule.canBeRequiredByUsers(builtinName)) {
+              return require(builtinName);
+            }
+            throw new ERR_INVALID_ARG_VALUE('builtinName', builtinName);
+          },
+          // Param port
+          insidePreload,
+          // Param setImportMetaCallback
+          (fn) => {
+            if (finished || typeof fn !== 'function') {
+              throw new ERR_INVALID_ARG_TYPE('fn', fn);
+            }
+            replacedImportMetaInitializer = true;
+            const parent = next;
+            next = (meta, context) => {
+              return fn(meta, context, parent);
+            };
+          });
+      } finally {
+        finished = true;
+        if (replacedImportMetaInitializer) {
+          this.#importMetaInitializer = next;
         }
-        throw new ERR_INVALID_ARG_VALUE('builtinName', builtinName);
-      });
+      }
     }
+  }
+
+  importMetaInitialize(meta, context) {
+    this.#importMetaInitializer(meta, context);
   }
 
   /**
    * Resolve the location of the module.
    *
    * The internals of this WILL change when chaining is implemented,
-   * depending on the resolution/consensus from #36954
+   * depending on the resolution/consensus from #36954.
    * @param {string} originalSpecifier The specified URL path of the module to
-   * be resolved
-   * @param {String} parentURL The URL path of the module's parent
-   * @returns {{ url: String }}
+   *                                   be resolved.
+   * @param {string} [parentURL] The URL path of the module's parent.
+   * @param {ImportAssertions} [importAssertions] Assertions from the import
+   *                                              statement or expression.
+   * @returns {{ url: string }}
    */
-  async resolve(originalSpecifier, parentURL) {
+  async resolve(originalSpecifier, parentURL,
+                importAssertions = ObjectCreate(null)) {
     const isMain = parentURL === undefined;
 
     if (
@@ -423,6 +531,7 @@ class ESMLoader {
       originalSpecifier,
       {
         conditions,
+        importAssertions,
         parentURL,
       },
       defaultResolver,
@@ -449,7 +558,8 @@ class ESMLoader {
         format,
       );
     }
-    if (typeof url !== 'string') {
+
+    if (typeof url !== 'string') { // non-strings can be coerced to a url string
       throw new ERR_INVALID_RETURN_PROPERTY_VALUE(
         'string',
         'loader resolve',
@@ -457,6 +567,8 @@ class ESMLoader {
         url,
       );
     }
+
+    new URL(url); // Intentionally trigger error if `url` is invalid
 
     return {
       format,

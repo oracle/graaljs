@@ -335,9 +335,11 @@ changes:
 * `err` {Error} The uncaught exception.
 * `origin` {string} Indicates if the exception originates from an unhandled
   rejection or from an synchronous error. Can either be `'uncaughtException'` or
-  `'unhandledRejection'`. The latter is only used in conjunction with the
-  [`--unhandled-rejections`][] flag set to `strict` or `throw` and
-  an unhandled rejection.
+  `'unhandledRejection'`. The latter is used when in an exception happens in a
+  `Promise` based async context (or if a `Promise` is rejected) and
+  [`--unhandled-rejections`][] flag set to `strict` or `throw` (which is the
+  default) and the rejection is not handled, or when a rejection happens during
+  the command line entry point's ES module static loading phase.
 
 The `'uncaughtException'` event is emitted when an uncaught JavaScript
 exception bubbles all the way back to the event loop. By default, Node.js
@@ -431,9 +433,11 @@ added:
 * `err` {Error} The uncaught exception.
 * `origin` {string} Indicates if the exception originates from an unhandled
   rejection or from synchronous errors. Can either be `'uncaughtException'` or
-  `'unhandledRejection'`. The latter is only used in conjunction with the
-  [`--unhandled-rejections`][] flag set to `strict` or `throw` and
-  an unhandled rejection.
+  `'unhandledRejection'`. The latter is used when in an exception happens in a
+  `Promise` based async context (or if a `Promise` is rejected) and
+  [`--unhandled-rejections`][] flag set to `strict` or `throw` (which is the
+  default) and the rejection is not handled, or when a rejection happens during
+  the command line entry point's ES module static loading phase.
 
 The `'uncaughtExceptionMonitor'` event is emitted before an
 `'uncaughtException'` event is emitted or a hook installed via
@@ -869,7 +873,7 @@ console.log(`This processor architecture is ${arch}`);
 ```cjs
 const { arch } = require('process');
 
-console.log(`This processor architecture is ${process.arch}`);
+console.log(`This processor architecture is ${arch}`);
 ```
 
 ## `process.argv`
@@ -1815,6 +1819,44 @@ a code.
 Specifying a code to [`process.exit(code)`][`process.exit()`] will override any
 previous setting of `process.exitCode`.
 
+## `process.getActiveResourcesInfo()`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+> Stability: 1 - Experimental
+
+* Returns: {string\[]}
+
+The `process.getActiveResourcesInfo()` method returns an array of strings
+containing the types of the active resources that are currently keeping the
+event loop alive.
+
+```mjs
+import { getActiveResourcesInfo } from 'process';
+import { setTimeout } from 'timers';
+
+console.log('Before:', getActiveResourcesInfo());
+setTimeout(() => {}, 1000);
+console.log('After:', getActiveResourcesInfo());
+// Prints:
+//   Before: [ 'CloseReq', 'TTYWrap', 'TTYWrap', 'TTYWrap' ]
+//   After: [ 'CloseReq', 'TTYWrap', 'TTYWrap', 'TTYWrap', 'Timeout' ]
+```
+
+```cjs
+const { getActiveResourcesInfo } = require('process');
+const { setTimeout } = require('timers');
+
+console.log('Before:', getActiveResourcesInfo());
+setTimeout(() => {}, 1000);
+console.log('After:', getActiveResourcesInfo());
+// Prints:
+//   Before: [ 'TTYWrap', 'TTYWrap', 'TTYWrap' ]
+//   After: [ 'TTYWrap', 'TTYWrap', 'TTYWrap', 'Timeout' ]
+```
+
 ## `process.getegid()`
 
 <!-- YAML
@@ -2567,7 +2609,7 @@ added: v0.1.16
 * {string}
 
 The `process.platform` property returns a string identifying the operating
-system platform on which the Node.js process is running.
+system platform for which the Node.js binary was compiled.
 
 Currently possible values are:
 
@@ -2657,7 +2699,7 @@ tarball.
   that are no longer supported).
   * `'Dubnium'` for the 10.x LTS line beginning with 10.13.0.
   * `'Erbium'` for the 12.x LTS line beginning with 12.13.0.
-    For other LTS Release code names, see [Node.js Changelog Archive](https://github.com/nodejs/node/blob/HEAD/doc/changelogs/CHANGELOG\_ARCHIVE.md)
+    For other LTS Release code names, see [Node.js Changelog Archive](https://github.com/nodejs/node/blob/HEAD/doc/changelogs/CHANGELOG_ARCHIVE.md)
 
 <!-- eslint-skip -->
 

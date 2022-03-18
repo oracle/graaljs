@@ -5,6 +5,7 @@ const {
   JSONParse,
   JSONStringify,
   ObjectDefineProperties,
+  ObjectGetOwnPropertyDescriptor,
   SafeSet,
   SymbolToStringTag,
   StringPrototypeRepeat,
@@ -427,7 +428,7 @@ async function importGenericSecretKey(
 
       break;
     }
-    case 'raw':
+    case 'raw': {
       if (hasAnyNotIn(usagesSet, ['deriveKey', 'deriveBits'])) {
         throw lazyDOMException(
           `Unsupported key usage for a ${name} key`,
@@ -449,6 +450,7 @@ async function importGenericSecretKey(
 
       const keyObject = createSecretKey(keyData);
       return new InternalCryptoKey(keyObject, { name }, keyUsages, false);
+    }
   }
 
   throw lazyDOMException(
@@ -686,7 +688,11 @@ async function decrypt(algorithm, key, data) {
 class SubtleCrypto {}
 const subtle = new SubtleCrypto();
 
-class Crypto {}
+class Crypto {
+  get subtle() {
+    return subtle;
+  }
+}
 const crypto = new Crypto();
 
 ObjectDefineProperties(
@@ -698,9 +704,8 @@ ObjectDefineProperties(
       value: 'Crypto',
     },
     subtle: {
+      ...ObjectGetOwnPropertyDescriptor(Crypto.prototype, 'subtle'),
       enumerable: true,
-      configurable: false,
-      value: subtle,
     },
     getRandomValues: {
       enumerable: true,

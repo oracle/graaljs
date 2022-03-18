@@ -344,7 +344,10 @@ The location information will be one of:
 * `plain-filename.js:line:column`, if the frame represents a call internal
   to Node.js.
 * `/absolute/path/to/file.js:line:column`, if the frame represents a call in
-  a user program, or its dependencies.
+  a user program (using CommonJS module system), or its dependencies.
+* `<transport-protocol>:///url/to/module/file.mjs:line:column`, if the frame
+  represents a call in a user program (using ES module system), or
+  its dependencies.
 
 The string representing the stack trace is lazily generated when the
 `error.stack` property is **accessed**.
@@ -1679,6 +1682,36 @@ is set for the `Http2Stream`.
 
 An attempt was made to construct an object using a non-public constructor.
 
+<a id="ERR_IMPORT_ASSERTION_TYPE_FAILED"></a>
+
+### `ERR_IMPORT_ASSERTION_TYPE_FAILED`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+An import assertion has failed, preventing the specified module to be imported.
+
+<a id="ERR_IMPORT_ASSERTION_TYPE_MISSING"></a>
+
+### `ERR_IMPORT_ASSERTION_TYPE_MISSING`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+An import assertion is missing, preventing the specified module to be imported.
+
+<a id="ERR_IMPORT_ASSERTION_TYPE_UNSUPPORTED"></a>
+
+### `ERR_IMPORT_ASSERTION_TYPE_UNSUPPORTED`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+An import assertion is not supported by this version of Node.js.
+
 <a id="ERR_INCOMPATIBLE_OPTION_PAIR"></a>
 
 ### `ERR_INCOMPATIBLE_OPTION_PAIR`
@@ -2180,9 +2213,8 @@ transferable object types has been expanded to cover more types than
 
 ### `ERR_MODULE_NOT_FOUND`
 
-> Stability: 1 - Experimental
-
-An [ES Module][] could not be resolved.
+A module file could not be resolved by the ECMAScript modules loader while
+attempting an `import` operation or when loading the program entry point.
 
 <a id="ERR_MULTIPLE_CALLBACK"></a>
 
@@ -2913,8 +2945,8 @@ changes:
     description: Added `requireStack` property.
 -->
 
-A module file could not be resolved while attempting a [`require()`][] or
-`import` operation.
+A module file could not be resolved by the CommonJS modules loader while
+attempting a [`require()`][] operation or when loading the program entry point.
 
 ## Legacy Node.js error codes
 

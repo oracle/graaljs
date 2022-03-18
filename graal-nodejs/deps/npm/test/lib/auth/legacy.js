@@ -6,15 +6,16 @@ const token = '24528a24f240'
 const profile = {}
 const read = {}
 const legacy = t.mock('../../../lib/auth/legacy.js', {
-  npmlog: {
+  'proc-log': {
     info: (...msgs) => {
       log += msgs.join(' ')
     },
   },
   'npm-profile': profile,
   '../../../lib/utils/open-url.js': (npm, url, msg) => {
-    if (!url)
+    if (!url) {
       throw Object.assign(new Error('failed open url'), { code: 'ERROR' })
+    }
   },
   '../../../lib/utils/read-user-info.js': read,
 })

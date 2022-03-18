@@ -163,6 +163,8 @@ def files(action):
 
   if 'true' == variables.get('node_install_npm'):
     npm_files(action)
+
+  if 'true' == variables.get('node_install_corepack'):
     corepack_files(action)
 
   headers(action)
@@ -182,6 +184,12 @@ def headers(action):
       'deps/v8/include/v8config.h',
     ]
     files_arg = [name for name in files_arg if name in v8_headers]
+    action(files_arg, dest)
+
+  def wanted_zoslib_headers(files_arg, dest):
+    import glob
+    zoslib_headers = glob.glob(zoslibinc + '/*.h')
+    files_arg = [name for name in files_arg if name in zoslib_headers]
     action(files_arg, dest)
 
   action([
@@ -217,6 +225,14 @@ def headers(action):
       'deps/zlib/zconf.h',
       'deps/zlib/zlib.h',
     ], 'include/node/')
+
+  if sys.platform == 'zos':
+    zoslibinc = os.environ.get('ZOSLIB_INCLUDES')
+    if not zoslibinc:
+      raise RuntimeError('Environment variable ZOSLIB_INCLUDES is not set\n')
+    if not os.path.isfile(zoslibinc + '/zos-base.h'):
+      raise RuntimeError('ZOSLIB_INCLUDES is not set to a valid location\n')
+    subdir_files(zoslibinc, 'include/node/zoslib/', wanted_zoslib_headers)
 
 def run(args):
   global node_prefix, install_path, target_defaults, variables

@@ -830,8 +830,7 @@ function pipeOnDrain(src, dest) {
 
     if ((!state.awaitDrainWriters || state.awaitDrainWriters.size === 0) &&
       EE.listenerCount(src, 'data')) {
-      state.flowing = true;
-      flow(src);
+      src.resume();
     }
   };
 }
@@ -1190,8 +1189,11 @@ ObjectDefineProperties(Readable.prototype, {
   readableAborted: {
     enumerable: false,
     get: function() {
-      return !!(this._readableState.destroyed || this._readableState.errored) &&
-        !this._readableState.endEmitted;
+      return !!(
+        this._readableState.readable !== false &&
+        (this._readableState.destroyed || this._readableState.errored) &&
+        !this._readableState.endEmitted
+      );
     }
   },
 

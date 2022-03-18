@@ -217,7 +217,7 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
 
     this.emit('close');
     return this[kClosePromise];
-  }
+  };
 
   /**
    * @typedef {import('./streams').ReadStream
@@ -468,8 +468,8 @@ async function read(handle, bufferOrOptions, offset, length, position) {
       buffer = Buffer.alloc(16384);
     }
     offset = bufferOrOptions.offset || 0;
-    length = buffer.byteLength;
-    position = bufferOrOptions.position || null;
+    length = bufferOrOptions.length ?? buffer.byteLength;
+    position = bufferOrOptions.position ?? null;
   }
 
   if (offset == null) {

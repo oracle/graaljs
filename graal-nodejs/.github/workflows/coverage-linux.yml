@@ -8,6 +8,8 @@ on:
       - 'benchmark/**'
       - 'deps/**'
       - 'doc/**'
+      - .github/**
+      - '!.github/workflows/coverage-linux.yml'
   push:
     branches:
       - master
@@ -17,6 +19,8 @@ on:
       - 'benchmark/**'
       - 'deps/**'
       - 'doc/**'
+      - .github/**
+      - '!.github/workflows/coverage-linux.yml'
 
 env:
   PYTHON_VERSION: '3.10'
@@ -28,6 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          persist-credentials: false
       - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v2
         with:

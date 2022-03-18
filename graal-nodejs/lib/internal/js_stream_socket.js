@@ -22,44 +22,15 @@ const kCurrentWriteRequest = Symbol('kCurrentWriteRequest');
 const kCurrentShutdownRequest = Symbol('kCurrentShutdownRequest');
 const kPendingShutdownRequest = Symbol('kPendingShutdownRequest');
 
-function checkReusedHandle(self) {
-  let socket = self[owner_symbol];
+function isClosing() { return this[owner_symbol].isClosing(); }
 
-  if (socket.constructor.name === 'ReusedHandle')
-    socket = socket.handle;
+function onreadstart() { return this[owner_symbol].readStart(); }
 
-  return socket;
-}
+function onreadstop() { return this[owner_symbol].readStop(); }
 
-function isClosing() {
-  const socket = checkReusedHandle(this);
+function onshutdown(req) { return this[owner_symbol].doShutdown(req); }
 
-  return socket.isClosing();
-}
-
-function onreadstart() {
-  const socket = checkReusedHandle(this);
-
-  return socket.readStart();
-}
-
-function onreadstop() {
-  const socket = checkReusedHandle(this);
-
-  return socket.readStop();
-}
-
-function onshutdown(req) {
-  const socket = checkReusedHandle(this);
-
-  return socket.doShutdown(req);
-}
-
-function onwrite(req, bufs) {
-  const socket = checkReusedHandle(this);
-
-  return socket.doWrite(req, bufs);
-}
+function onwrite(req, bufs) { return this[owner_symbol].doWrite(req, bufs); }
 
 /* This class serves as a wrapper for when the C++ side of Node wants access
  * to a standard JS stream. For example, TLS or HTTP do not operate on network

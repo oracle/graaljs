@@ -87,6 +87,14 @@ function isEvent(value) {
 }
 
 class Event {
+  /**
+   * @param {string} type
+   * @param {{
+   *   bubbles?: boolean,
+   *   cancelable?: boolean,
+   *   composed?: boolean,
+   * }} [options]
+   */
   constructor(type, options = null) {
     if (arguments.length === 0)
       throw new ERR_MISSING_ARGS('type');
@@ -146,42 +154,63 @@ class Event {
     this[kDefaultPrevented] = true;
   }
 
+  /**
+   * @type {EventTarget}
+   */
   get target() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
     return this[kTarget];
   }
 
+  /**
+   * @type {EventTarget}
+   */
   get currentTarget() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
     return this[kTarget];
   }
 
+  /**
+   * @type {EventTarget}
+   */
   get srcElement() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
     return this[kTarget];
   }
 
+  /**
+   * @type {string}
+   */
   get type() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
     return this[kType];
   }
 
+  /**
+   * @type {boolean}
+   */
   get cancelable() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
     return this[kCancelable];
   }
 
+  /**
+   * @type {boolean}
+   */
   get defaultPrevented() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
     return this[kCancelable] && this[kDefaultPrevented];
   }
 
+  /**
+   * @type {number}
+   */
   get timeStamp() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
@@ -192,43 +221,63 @@ class Event {
   // The following are non-op and unused properties/methods from Web API Event.
   // These are not supported in Node.js and are provided purely for
   // API completeness.
-
+  /**
+   * @returns {EventTarget[]}
+   */
   composedPath() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
     return this[kIsBeingDispatched] ? [this[kTarget]] : [];
   }
 
+  /**
+   * @type {boolean}
+   */
   get returnValue() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
     return !this.defaultPrevented;
   }
 
+  /**
+   * @type {boolean}
+   */
   get bubbles() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
     return this[kBubbles];
   }
 
+  /**
+   * @type {boolean}
+   */
   get composed() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
     return this[kComposed];
   }
 
+  /**
+   * @type {number}
+   */
   get eventPhase() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
     return this[kIsBeingDispatched] ? Event.AT_TARGET : Event.NONE;
   }
 
+  /**
+   * @type {boolean}
+   */
   get cancelBubble() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
     return this[kPropagationStopped];
   }
 
+  /**
+   * @type {boolean}
+   */
   set cancelBubble(value) {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
@@ -371,7 +420,7 @@ class EventTarget {
     initEventTarget(this);
   }
 
-  [kNewListener](size, type, listener, once, capture, passive) {
+  [kNewListener](size, type, listener, once, capture, passive, weak) {
     if (this[kMaxEventTargetListeners] > 0 &&
         size > this[kMaxEventTargetListeners] &&
         !this[kMaxEventTargetListenersWarned]) {
@@ -391,6 +440,25 @@ class EventTarget {
   }
   [kRemoveListener](size, type, listener, capture) {}
 
+  /**
+   * @callback EventTargetCallback
+   * @param {Event} event
+   */
+
+  /**
+   * @typedef {{ handleEvent: EventTargetCallback }} EventListener
+   */
+
+  /**
+   * @param {string} type
+   * @param {EventTargetCallback|EventListener} listener
+   * @param {{
+   *   capture?: boolean,
+   *   once?: boolean,
+   *   passive?: boolean,
+   *   signal?: AbortSignal
+   * }} [options]
+   */
   addEventListener(type, listener, options = {}) {
     if (!isEventTarget(this))
       throw new ERR_INVALID_THIS('EventTarget');
@@ -440,7 +508,14 @@ class EventTarget {
       // This is the first handler in our linked list.
       new Listener(root, listener, once, capture, passive,
                    isNodeStyleListener, weak);
-      this[kNewListener](root.size, type, listener, once, capture, passive);
+      this[kNewListener](
+        root.size,
+        type,
+        listener,
+        once,
+        capture,
+        passive,
+        weak);
       this[kEvents].set(type, root);
       return;
     }
@@ -461,9 +536,16 @@ class EventTarget {
     new Listener(previous, listener, once, capture, passive,
                  isNodeStyleListener, weak);
     root.size++;
-    this[kNewListener](root.size, type, listener, once, capture, passive);
+    this[kNewListener](root.size, type, listener, once, capture, passive, weak);
   }
 
+  /**
+   * @param {string} type
+   * @param {EventTargetCallback|EventListener} listener
+   * @param {{
+   *   capture?: boolean,
+   * }} [options]
+   */
   removeEventListener(type, listener, options = {}) {
     if (!isEventTarget(this))
       throw new ERR_INVALID_THIS('EventTarget');
@@ -491,6 +573,9 @@ class EventTarget {
     }
   }
 
+  /**
+   * @param {Event} event
+   */
   dispatchEvent(event) {
     if (!isEventTarget(this))
       throw new ERR_INVALID_THIS('EventTarget');
@@ -620,24 +705,37 @@ class NodeEventTarget extends EventTarget {
     initNodeEventTarget(this);
   }
 
+  /**
+   * @param {number} n
+   */
   setMaxListeners(n) {
     if (!isNodeEventTarget(this))
       throw new ERR_INVALID_THIS('NodeEventTarget');
     EventEmitter.setMaxListeners(n, this);
   }
 
+  /**
+   * @returns {number}
+   */
   getMaxListeners() {
     if (!isNodeEventTarget(this))
       throw new ERR_INVALID_THIS('NodeEventTarget');
     return this[kMaxEventTargetListeners];
   }
 
+  /**
+   * @returns {string[]}
+   */
   eventNames() {
     if (!isNodeEventTarget(this))
       throw new ERR_INVALID_THIS('NodeEventTarget');
     return ArrayFrom(this[kEvents].keys());
   }
 
+  /**
+   * @param {string} [type]
+   * @returns {number}
+   */
   listenerCount(type) {
     if (!isNodeEventTarget(this))
       throw new ERR_INVALID_THIS('NodeEventTarget');
@@ -645,6 +743,14 @@ class NodeEventTarget extends EventTarget {
     return root !== undefined ? root.size : 0;
   }
 
+  /**
+   * @param {string} type
+   * @param {EventTargetCallback|EventListener} listener
+   * @param {{
+   *   capture?: boolean,
+   * }} [options]
+   * @returns {NodeEventTarget}
+   */
   off(type, listener, options) {
     if (!isNodeEventTarget(this))
       throw new ERR_INVALID_THIS('NodeEventTarget');
@@ -652,6 +758,14 @@ class NodeEventTarget extends EventTarget {
     return this;
   }
 
+  /**
+   * @param {string} type
+   * @param {EventTargetCallback|EventListener} listener
+   * @param {{
+   *   capture?: boolean,
+   * }} [options]
+   * @returns {NodeEventTarget}
+   */
   removeListener(type, listener, options) {
     if (!isNodeEventTarget(this))
       throw new ERR_INVALID_THIS('NodeEventTarget');
@@ -659,6 +773,11 @@ class NodeEventTarget extends EventTarget {
     return this;
   }
 
+  /**
+   * @param {string} type
+   * @param {EventTargetCallback|EventListener} listener
+   * @returns {NodeEventTarget}
+   */
   on(type, listener) {
     if (!isNodeEventTarget(this))
       throw new ERR_INVALID_THIS('NodeEventTarget');
@@ -666,12 +785,23 @@ class NodeEventTarget extends EventTarget {
     return this;
   }
 
+  /**
+   * @param {string} type
+   * @param {EventTargetCallback|EventListener} listener
+   * @returns {NodeEventTarget}
+   */
   addListener(type, listener) {
     if (!isNodeEventTarget(this))
       throw new ERR_INVALID_THIS('NodeEventTarget');
     this.addEventListener(type, listener, { [kIsNodeStyleListener]: true });
     return this;
   }
+
+  /**
+   * @param {string} type
+   * @param {any} arg
+   * @returns {boolean}
+   */
   emit(type, arg) {
     if (!isNodeEventTarget(this))
       throw new ERR_INVALID_THIS('NodeEventTarget');
@@ -681,6 +811,11 @@ class NodeEventTarget extends EventTarget {
     return hadListeners;
   }
 
+  /**
+   * @param {string} type
+   * @param {EventTargetCallback|EventListener} listener
+   * @returns {NodeEventTarget}
+   */
   once(type, listener) {
     if (!isNodeEventTarget(this))
       throw new ERR_INVALID_THIS('NodeEventTarget');
@@ -689,6 +824,10 @@ class NodeEventTarget extends EventTarget {
     return this;
   }
 
+  /**
+   * @param {string} type
+   * @returns {NodeEventTarget}
+   */
   removeAllListeners(type) {
     if (!isNodeEventTarget(this))
       throw new ERR_INVALID_THIS('NodeEventTarget');
@@ -811,7 +950,7 @@ function defineEventHandler(emitter, name) {
         if (typeof wrappedHandler.handler === 'function') {
           this[kEvents].get(name).size++;
           const size = this[kEvents].get(name).size;
-          this[kNewListener](size, name, value, false, false, false);
+          this[kNewListener](size, name, value, false, false, false, false);
         }
       } else {
         wrappedHandler = makeEventHandler(value);

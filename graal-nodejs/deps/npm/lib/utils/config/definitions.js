@@ -16,8 +16,9 @@ const maybeReadFile = file => {
   try {
     return fs.readFileSync(file, 'utf8')
   } catch (er) {
-    if (er.code !== 'ENOENT')
+    if (er.code !== 'ENOENT') {
       throw er
+    }
     return null
   }
 }
@@ -27,27 +28,32 @@ const buildOmitList = obj => {
   const omit = obj.omit || []
 
   const only = obj.only
-  if (/^prod(uction)?$/.test(only) || obj.production)
+  if (/^prod(uction)?$/.test(only) || obj.production) {
     omit.push('dev')
-  else if (obj.production === false)
+  } else if (obj.production === false) {
     include.push('dev')
+  }
 
-  if (/^dev/.test(obj.also))
+  if (/^dev/.test(obj.also)) {
     include.push('dev')
+  }
 
-  if (obj.dev)
+  if (obj.dev) {
     include.push('dev')
+  }
 
-  if (obj.optional === false)
+  if (obj.optional === false) {
     omit.push('optional')
-  else if (obj.optional === true)
+  } else if (obj.optional === true) {
     include.push('optional')
+  }
 
   obj.omit = [...new Set(omit)].filter(type => !include.includes(type))
   obj.include = [...new Set(include)]
 
-  if (obj.omit.includes('dev'))
+  if (obj.omit.includes('dev')) {
     process.env.NODE_ENV = 'production'
+  }
 
   return obj.omit
 }
@@ -98,8 +104,9 @@ const {
 
 const define = (key, def) => {
   /* istanbul ignore if - this should never happen, prevents mistakes below */
-  if (definitions[key])
+  if (definitions[key]) {
     throw new Error(`defining key more than once: ${key}`)
+  }
   definitions[key] = new Definition(key, def)
 }
 
@@ -342,8 +349,9 @@ define('cache-max', {
     This option has been deprecated in favor of \`--prefer-online\`
   `,
   flatten (key, obj, flatOptions) {
-    if (obj[key] <= 0)
+    if (obj[key] <= 0) {
       flatOptions.preferOnline = true
+    }
   },
 })
 
@@ -357,8 +365,9 @@ define('cache-min', {
     This option has been deprecated in favor of \`--prefer-offline\`.
   `,
   flatten (key, obj, flatOptions) {
-    if (obj[key] >= 9999)
+    if (obj[key] >= 9999) {
       flatOptions.preferOffline = true
+    }
   },
 })
 
@@ -372,12 +381,14 @@ define('cafile', {
   `,
   flatten (key, obj, flatOptions) {
     // always set to null in defaults
-    if (!obj.cafile)
+    if (!obj.cafile) {
       return
+    }
 
     const raw = maybeReadFile(obj.cafile)
-    if (!raw)
+    if (!raw) {
       return
+    }
 
     const delim = '-----END CERTIFICATE-----'
     flatOptions.ca = raw.replace(/\r\n/g, '\n').split(delim)
@@ -461,7 +472,10 @@ define('color', {
   flatten (key, obj, flatOptions) {
     flatOptions.color = !obj.color ? false
       : obj.color === 'always' ? true
-      : process.stdout.isTTY
+      : !!process.stdout.isTTY
+    flatOptions.logColor = !obj.color ? false
+      : obj.color === 'always' ? true
+      : !!process.stderr.isTTY
   },
 })
 
@@ -806,8 +820,9 @@ define('global', {
   `,
   flatten: (key, obj, flatOptions) => {
     flatten(key, obj, flatOptions)
-    if (flatOptions.global)
+    if (flatOptions.global) {
       flatOptions.location = 'global'
+    }
   },
 })
 
@@ -1150,8 +1165,9 @@ define('location', {
   `,
   flatten: (key, obj, flatOptions) => {
     flatten(key, obj, flatOptions)
-    if (flatOptions.global)
+    if (flatOptions.global) {
       flatOptions.location = 'global'
+    }
   },
 })
 
@@ -1198,8 +1214,8 @@ define('loglevel', {
     'silly',
   ],
   description: `
-    What level of logs to report.  On failure, *all* logs are written to
-    \`npm-debug.log\` in the current working directory.
+    What level of logs to report.  All logs are written to a debug log,
+    with the path to that file printed if the execution of a command fails.
 
     Any logs of a higher level than the setting are shown. The default is
     "notice".
@@ -1281,10 +1297,11 @@ define('noproxy', {
     Also accepts a comma-delimited string.
   `,
   flatten (key, obj, flatOptions) {
-    if (Array.isArray(obj[key]))
+    if (Array.isArray(obj[key])) {
       flatOptions.noProxy = obj[key].join(',')
-    else
+    } else {
       flatOptions.noProxy = obj[key]
+    }
   },
 })
 
@@ -1400,11 +1417,14 @@ define('package-lock', {
     When package package-locks are disabled, automatic pruning of extraneous
     modules will also be disabled.  To remove extraneous modules with
     package-locks disabled use \`npm prune\`.
+
+    This configuration does not affect \`npm ci\`.
   `,
   flatten: (key, obj, flatOptions) => {
     flatten(key, obj, flatOptions)
-    if (flatOptions.packageLockOnly)
+    if (flatOptions.packageLockOnly) {
       flatOptions.packageLock = true
+    }
   },
 })
 
@@ -1423,8 +1443,9 @@ define('package-lock-only', {
   `,
   flatten: (key, obj, flatOptions) => {
     flatten(key, obj, flatOptions)
-    if (flatOptions.packageLockOnly)
+    if (flatOptions.packageLockOnly) {
       flatOptions.packageLock = true
+    }
   },
 })
 
@@ -1434,6 +1455,7 @@ define('pack-destination', {
   description: `
     Directory in which \`npm pack\` will save tarballs.
   `,
+  flatten,
 })
 
 define('parseable', {
@@ -1517,6 +1539,10 @@ define('progress', {
 
     Set to \`false\` to suppress the progress bar.
   `,
+  flatten (key, obj, flatOptions) {
+    flatOptions.progress = !obj.progress ? false
+      : !!process.stderr.isTTY && process.env.TERM !== 'dumb'
+  },
 })
 
 define('proxy', {
@@ -1560,14 +1586,18 @@ define('registry', {
 
 define('save', {
   default: true,
-  usage: '-S|--save|--no-save|--save-prod|--save-dev|--save-optional|--save-peer',
+  defaultDescription: `\`true\` unless when using \`npm update\` or
+  \`npm dedupe\` where it defaults to \`false\``,
+  usage: '-S|--save|--no-save|--save-prod|--save-dev|--save-optional|--save-peer|--save-bundle',
   type: Boolean,
   short: 'S',
   description: `
-    Save installed packages to a package.json file as dependencies.
+    Save installed packages to a \`package.json\` file as dependencies.
 
     When used with the \`npm rm\` command, removes the dependency from
-    package.json.
+    \`package.json\`.
+
+    Will also prevent writing to \`package-lock.json\` if set to \`false\`.
   `,
   flatten,
 })
@@ -1581,7 +1611,7 @@ define('save-bundle', {
     \`--save-dev\`, or \`--save-optional\`, then also put it in the
     \`bundleDependencies\` list.
 
-    Ignore if \`--save-peer\` is set, since peerDependencies cannot be bundled.
+    Ignored if \`--save-peer\` is set, since peerDependencies cannot be bundled.
   `,
   flatten (key, obj, flatOptions) {
     // XXX update arborist to just ignore it if resulting saveType is peer
@@ -1607,8 +1637,9 @@ define('save-dev', {
   `,
   flatten (key, obj, flatOptions) {
     if (!obj[key]) {
-      if (flatOptions.saveType === 'dev')
+      if (flatOptions.saveType === 'dev') {
         delete flatOptions.saveType
+      }
       return
     }
 
@@ -1640,20 +1671,23 @@ define('save-optional', {
   `,
   flatten (key, obj, flatOptions) {
     if (!obj[key]) {
-      if (flatOptions.saveType === 'optional')
+      if (flatOptions.saveType === 'optional') {
         delete flatOptions.saveType
-      else if (flatOptions.saveType === 'peerOptional')
+      } else if (flatOptions.saveType === 'peerOptional') {
         flatOptions.saveType = 'peer'
+      }
       return
     }
 
-    if (flatOptions.saveType === 'peerOptional')
+    if (flatOptions.saveType === 'peerOptional') {
       return
+    }
 
-    if (flatOptions.saveType === 'peer')
+    if (flatOptions.saveType === 'peer') {
       flatOptions.saveType = 'peerOptional'
-    else
+    } else {
       flatOptions.saveType = 'optional'
+    }
   },
 })
 
@@ -1661,24 +1695,27 @@ define('save-peer', {
   default: false,
   type: Boolean,
   description: `
-    Save installed packages. to a package.json file as \`peerDependencies\`
+    Save installed packages to a package.json file as \`peerDependencies\`
   `,
   flatten (key, obj, flatOptions) {
     if (!obj[key]) {
-      if (flatOptions.saveType === 'peer')
+      if (flatOptions.saveType === 'peer') {
         delete flatOptions.saveType
-      else if (flatOptions.saveType === 'peerOptional')
+      } else if (flatOptions.saveType === 'peerOptional') {
         flatOptions.saveType = 'optional'
+      }
       return
     }
 
-    if (flatOptions.saveType === 'peerOptional')
+    if (flatOptions.saveType === 'peerOptional') {
       return
+    }
 
-    if (flatOptions.saveType === 'optional')
+    if (flatOptions.saveType === 'optional') {
       flatOptions.saveType = 'peerOptional'
-    else
+    } else {
       flatOptions.saveType = 'peer'
+    }
   },
 })
 
@@ -1715,8 +1752,9 @@ define('save-prod', {
   `,
   flatten (key, obj, flatOptions) {
     if (!obj[key]) {
-      if (flatOptions.saveType === 'prod')
+      if (flatOptions.saveType === 'prod') {
         delete flatOptions.saveType
+      }
       return
     }
 
@@ -1758,7 +1796,10 @@ define('scope', {
   `,
   flatten (key, obj, flatOptions) {
     const value = obj[key]
-    flatOptions.projectScope = value && !/^@/.test(value) ? `@${value}` : value
+    const scope = value && !/^@/.test(value) ? `@${value}` : value
+    flatOptions.scope = scope
+    // projectScope is kept for compatibility with npm-registry-fetch
+    flatOptions.projectScope = scope
   },
 })
 
@@ -2085,8 +2126,9 @@ define('user-agent', {
     const value = obj[key]
     const ciName = obj['ci-name']
     let inWorkspaces = false
-    if (obj.workspaces || obj.workspace && obj.workspace.length)
+    if (obj.workspaces || obj.workspace && obj.workspace.length) {
       inWorkspaces = true
+    }
     flatOptions.userAgent =
       value.replace(/\{node-version\}/gi, obj['node-version'])
         .replace(/\{npm-version\}/gi, obj['npm-version'])

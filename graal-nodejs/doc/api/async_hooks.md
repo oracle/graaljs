@@ -329,6 +329,8 @@ The `type` is a string identifying the type of resource that caused
 `init` to be called. Generally, it will correspond to the name of the
 resource's constructor.
 
+Valid values are:
+
 ```text
 FSEVENTWRAP, FSREQCALLBACK, GETADDRINFOREQWRAP, GETNAMEINFOREQWRAP, HTTPINCOMINGMESSAGE,
 HTTPCLIENTREQUEST, JSSTREAM, PIPECONNECTWRAP, PIPEWRAP, PROCESSWRAP, QUERYWRAP,
@@ -336,6 +338,9 @@ SHUTDOWNWRAP, SIGNALWRAP, STATWATCHER, TCPCONNECTWRAP, TCPSERVERWRAP, TCPWRAP,
 TTYWRAP, UDPSENDWRAP, UDPWRAP, WRITEWRAP, ZLIB, SSLCONNECTION, PBKDF2REQUEST,
 RANDOMBYTESREQUEST, TLSWRAP, Microtask, Timeout, Immediate, TickObject
 ```
+
+These values can change in any Node.js release. Furthermore users of [`AsyncResource`][]
+likely provide other values.
 
 There is also the `PROMISE` resource type, which is used to track `Promise`
 instances and asynchronous work scheduled by them.
@@ -428,6 +433,9 @@ callback to `listen()` will look like. The output formatting is slightly more
 elaborate to make calling context easier to see.
 
 ```js
+const async_hooks = require('async_hooks');
+const fs = require('fs');
+const net = require('net');
 const { fd } = process.stdout;
 
 let indent = 0;
@@ -758,6 +766,18 @@ const server = net.createServer((conn) => {
 Promise contexts may not get valid `triggerAsyncId`s by default. See
 the section on [promise execution tracking][].
 
+### `async_hooks.asyncWrapProviders`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+* Returns: A map of provider types to the corresponding numeric id.
+  This map contains all the event types that might be emitted by the `async_hooks.init()` event.
+
+This feature suppresses the deprecated usage of `process.binding('async_wrap').Providers`.
+See: [DEP0111][]
+
 ## Promise execution tracking
 
 By default, promise executions are not assigned `asyncId`s due to the relatively
@@ -804,7 +824,7 @@ Promise.resolve(1729).then(() => {
 ```
 
 ```cjs
-const { createHook, exectionAsyncId, triggerAsyncId } = require('async_hooks');
+const { createHook, executionAsyncId, triggerAsyncId } = require('async_hooks');
 
 createHook({ init() {} }).enable(); // forces PromiseHooks to be enabled.
 Promise.resolve(1729).then(() => {
@@ -841,6 +861,7 @@ The documentation for this class has moved [`AsyncResource`][].
 
 The documentation for this class has moved [`AsyncLocalStorage`][].
 
+[DEP0111]: deprecations.md#dep0111-processbinding
 [Hook Callbacks]: #hook-callbacks
 [PromiseHooks]: https://docs.google.com/document/d/1rda3yKGHimKIhg5YeoAmCOtyURgsbTH_qaYR79FELlk/edit
 [`AsyncLocalStorage`]: async_context.md#class-asynclocalstorage
