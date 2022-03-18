@@ -631,6 +631,16 @@ namespace v8 {
         return GraalObject::New(isolate);
     }
 
+    Local<Object> Object::New(Isolate* isolate, Local<Value> prototype_or_null, Local<Name>* names, Local<Value>* values, size_t length) {
+        Local<Object> v8_object = Object::New(isolate);
+        GraalObject* graal_object = reinterpret_cast<GraalObject*> (*v8_object);
+        graal_object->SetPrototype(prototype_or_null);
+        for (int i = 0; i < length; i++) {
+            graal_object->Set(names[i], values[i]);
+        }
+        return v8_object;
+    }
+
     Maybe<bool> Object::SetAccessor(
             Local<Context> context,
             Local<Name> name,
