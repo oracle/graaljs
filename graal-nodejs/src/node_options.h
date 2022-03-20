@@ -122,6 +122,7 @@ class EnvironmentOptions : public Options {
   uint64_t max_http_header_size = 16 * 1024;
   bool deprecation = true;
   bool force_async_hooks_checks = true;
+  bool allow_native_addons = true;
   bool warnings = true;
   bool force_context_aware = false;
   bool pending_deprecation = false;
@@ -245,10 +246,8 @@ class PerProcessOptions : public Options {
 #endif
   bool use_openssl_ca = false;
   bool use_bundled_ca = false;
-#if NODE_FIPS_MODE
   bool enable_fips_crypto = false;
   bool force_fips_crypto = false;
-#endif
 #endif
 
   // Per-process because reports can be triggered outside a known V8 context.

@@ -296,6 +296,7 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
             join('internal', 'modules', 'esm', 'loader.js'),     # await
             join('internal', 'modules', 'esm', 'module_job.js'), # await
             join('internal', 'modules', 'esm', 'translators.js'),# await
+            join('internal', 'modules', 'run_main.js'),          # await
             join('internal', 'process', 'esm_loader.js'),        # await
             join('internal', 'process', 'execution.js'),         # await
             join('internal', 'readline', 'utils.js'),            # yield

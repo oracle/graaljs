@@ -201,8 +201,8 @@ priority than `--dns-result-order`.
 added: v6.0.0
 -->
 
-Enable FIPS-compliant crypto at startup. (Requires Node.js to be built with
-`./configure --openssl-fips`.)
+Enable FIPS-compliant crypto at startup. (Requires Node.js to be built
+against FIPS-compatible OpenSSL.)
 
 ### `--enable-source-maps`
 <!-- YAML
@@ -587,6 +587,15 @@ added: v7.10.0
 
 This option is a no-op. It is kept for compatibility.
 
+### `--no-addons`
+<!-- YAML
+added: v14.19.0
+-->
+
+Disable the `node-addons` exports condition as well as disable loading
+native addons. When `--no-addons` is specified, calling `process.dlopen` or
+requiring a native C++ addon will fail and throw an exception.
+
 ### `--no-deprecation`
 <!-- YAML
 added: v0.8.0
@@ -623,8 +632,8 @@ added: v6.9.0
 -->
 
 Load an OpenSSL configuration file on startup. Among other uses, this can be
-used to enable FIPS-compliant crypto if Node.js is built with
-`./configure --openssl-fips`.
+used to enable FIPS-compliant crypto if Node.js is built
+against FIPS-enabled OpenSSL.
 
 ### `--pending-deprecation`
 <!-- YAML
@@ -1359,6 +1368,7 @@ Node.js options that are allowed are:
 * `--max-http-header-size`
 * `--napi-modules`
 * `--native`
+* `--no-addons`
 * `--no-deprecation`
 * `--no-force-async-hooks-checks`
 * `--no-warnings`

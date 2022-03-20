@@ -41,6 +41,9 @@ test-buffer-backing-arraybuffer: FAIL
 # We print a different help message.
 test-cli-node-print-help: FAIL
 
+# Test of yarn, does not work with npm_config_registry (= in CI)
+test-corepack-yarn-install: SKIP
+
 # Suspicious test - executes a memory intensive section and then
 # looks for a memory leak by checking whether rss was increased
 # It fails because JVM increases its heap size and does not decrease
@@ -69,6 +72,7 @@ test-https-agent-unref-socket: SKIP
 
 # Worker resource limits are not supported
 test-worker-resource-limits: FAIL
+test-worker-nearheaplimit-deadlock: SKIP
 
 # Custom v8::ArrayBuffer::Allocator is not supported
 test-worker-sharedarraybuffer-from-worker-thread: SKIP
@@ -142,7 +146,6 @@ test-assert: FAIL
 test-async-hooks-async-await: FAIL
 test-async-local-storage-contexts: FAIL
 test-common-gc: FAIL
-test-crypto-fips: FAIL
 test-crypto-op-during-process-exit: SKIP
 test-crypto-sign-verify: FAIL
 test-domain-async-id-map-leak: FAIL

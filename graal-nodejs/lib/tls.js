@@ -24,15 +24,22 @@
 const {
   Array,
   ArrayIsArray,
+  ArrayPrototypePush,
+  JSONParse,
   ObjectDefineProperty,
   ObjectFreeze,
+  RegExpPrototypeExec,
   StringFromCharCode,
   StringPrototypeCharCodeAt,
+  StringPrototypeIncludes,
+  StringPrototypeIndexOf,
   StringPrototypeReplace,
   StringPrototypeSplit,
+  StringPrototypeSubstring,
 } = primordials;
 
 const {
+  ERR_TLS_CERT_ALTNAME_FORMAT,
   ERR_TLS_CERT_ALTNAME_INVALID,
   ERR_OUT_OF_RANGE
 } = require('internal/errors').codes;
@@ -217,6 +224,45 @@ function check(hostParts, pattern, wildcards) {
   return true;
 }
 
+// This pattern is used to determine the length of escaped sequences within
+// the subject alt names string. It allows any valid JSON string literal.
+// This MUST match the JSON specification (ECMA-404 / RFC8259) exactly.
+const jsonStringPattern =
+  // eslint-disable-next-line no-control-regex
+  /^"(?:[^"\\\u0000-\u001f]|\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}))*"/;
+
+function splitEscapedAltNames(altNames) {
+  const result = [];
+  let currentToken = '';
+  let offset = 0;
+  while (offset !== altNames.length) {
+    const nextSep = StringPrototypeIndexOf(altNames, ', ', offset);
+    const nextQuote = StringPrototypeIndexOf(altNames, '"', offset);
+    if (nextQuote !== -1 && (nextSep === -1 || nextQuote < nextSep)) {
+      // There is a quote character and there is no separator before the quote.
+      currentToken += StringPrototypeSubstring(altNames, offset, nextQuote);
+      const match = RegExpPrototypeExec(
+        jsonStringPattern, StringPrototypeSubstring(altNames, nextQuote));
+      if (!match) {
+        throw new ERR_TLS_CERT_ALTNAME_FORMAT();
+      }
+      currentToken += JSONParse(match[0]);
+      offset = nextQuote + match[0].length;
+    } else if (nextSep !== -1) {
+      // There is a separator and no quote before it.
+      currentToken += StringPrototypeSubstring(altNames, offset, nextSep);
+      ArrayPrototypePush(result, currentToken);
+      currentToken = '';
+      offset = nextSep + 2;
+    } else {
+      currentToken += StringPrototypeSubstring(altNames, offset);
+      offset = altNames.length;
+    }
+  }
+  ArrayPrototypePush(result, currentToken);
+  return result;
+}
+
 let urlWarningEmitted = false;
 exports.checkServerIdentity = function checkServerIdentity(hostname, cert) {
   const subject = cert.subject;
@@ -228,10 +274,13 @@ exports.checkServerIdentity = function checkServerIdentity(hostname, cert) {
   hostname = '' + hostname;
 
   if (altNames) {
-    for (const name of altNames.split(', ')) {
+    const splitAltNames = StringPrototypeIncludes(altNames, '"') ?
+      splitEscapedAltNames(altNames) :
+      StringPrototypeSplit(altNames, ', ');
+    for (const name of splitAltNames) {
       if (name.startsWith('DNS:')) {
         dnsNames.push(name.slice(4));
-      } else if (name.startsWith('URI:')) {
+      } else if (process.REVERT_CVE_2021_44531 && name.startsWith('URI:')) {
         let uri;
         try {
           uri = new URL(name.slice(4));
@@ -246,7 +295,6 @@ exports.checkServerIdentity = function checkServerIdentity(hostname, cert) {
               'DeprecationWarning', 'DEP0109');
           }
         }
-
         uriNames.push(uri.hostname);  // TODO(bnoordhuis) Also use scheme.
       } else if (name.startsWith('IP Address:')) {
         ips.push(canonicalizeIP(name.slice(11)));
@@ -267,11 +315,13 @@ exports.checkServerIdentity = function checkServerIdentity(hostname, cert) {
     if (!valid)
       reason = `IP: ${hostname} is not in the cert's list: ${ips.join(', ')}`;
     // TODO(bnoordhuis) Also check URI SANs that are IP addresses.
-  } else if (hasAltNames || subject) {
+  } else if ((process.REVERT_CVE_2021_44531 && (hasAltNames || subject)) ||
+         (dnsNames.length > 0 || (subject && subject.CN))) {
     const hostParts = splitHost(hostname);
     const wildcard = (pattern) => check(hostParts, pattern, true);
 
-    if (hasAltNames) {
+    if ((process.REVERT_CVE_2021_44531 && hasAltNames) ||
+           (dnsNames.length > 0)) {
       const noWildcard = (pattern) => check(hostParts, pattern, false);
       valid = dnsNames.some(wildcard) || uriNames.some(noWildcard);
       if (!valid)
@@ -290,7 +340,7 @@ exports.checkServerIdentity = function checkServerIdentity(hostname, cert) {
         reason = `Host: ${hostname}. is not cert's CN: ${cn}`;
     }
   } else {
-    reason = 'Cert is empty';
+    reason = 'Cert does not contain a DNS name';
   }
 
   if (!valid) {
