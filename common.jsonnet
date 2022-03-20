@@ -88,19 +88,19 @@ local common_json = (import "common.json");
     capabilities: ['windows', 'amd64'],
   },
 
-  windows_jdk17: self.windows + common_json.devkits["windows-jdk17"] + {
+  windows_jdk17: common_json.devkits["windows-jdk17"] + self.windows + {
     setup+: [
       ['set-export', 'DEVKIT_VERSION', '2019'],
     ],
   },
 
- windows_jdk11: self.windows + common_json.devkits["windows-jdk11"] + {
+ windows_jdk11: common_json.devkits["windows-jdk11"] + self.windows + {
     setup+: [
       ['set-export', 'DEVKIT_VERSION', '2017'],
     ],
   },
 
-  windows_jdk8: self.windows + common_json.devkits["windows-oraclejdk8"] + {
+  windows_jdk8: common_json.devkits["windows-oraclejdk8"] + self.windows + {
     setup+: [
       ['set-export', 'DEVKIT_VERSION', '2017'],
     ],
