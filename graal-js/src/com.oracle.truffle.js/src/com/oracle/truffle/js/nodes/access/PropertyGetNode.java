@@ -67,7 +67,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.IntLocation;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LongLocation;
-import com.oracle.truffle.api.object.ObjectLocation;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -1964,7 +1963,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         } else if (property.getLocation() instanceof LongLocation) {
             return new FinalLongPropertyGetNode(property, finalShapeCheckNode, ((LongLocation) property.getLocation()).getLong(store, false), constObjOrNull);
         } else {
-            assert property.getLocation() instanceof ObjectLocation;
             return new FinalObjectPropertyGetNode(property, finalShapeCheckNode, property.get(store, false), constObjOrNull);
         }
     }
