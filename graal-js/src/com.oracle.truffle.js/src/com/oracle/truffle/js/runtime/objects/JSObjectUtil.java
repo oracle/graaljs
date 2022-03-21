@@ -330,7 +330,7 @@ public final class JSObjectUtil {
         Shape shape = obj.getShape();
         for (Property prop : shape.getPropertyListInternal(false)) {
             if (!(prop.getLocation().isValue()) && !ret.containsKey(prop.getKey())) {
-                ret.put(prop.getKey(), prop.get(obj, false));
+                ret.put(prop.getKey(), JSDynamicObject.getOrNull(obj, prop.getKey()));
             }
         }
         return ret;
