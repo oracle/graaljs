@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,8 +64,6 @@ import javax.script.ScriptException;
 import javax.script.SimpleScriptContext;
 
 import org.junit.Test;
-
-import com.oracle.truffle.js.scriptengine.GraalJSEngineFactory;
 
 /**
  * Tests for JSR-223 script engine from the Nashorn test suite.
@@ -144,60 +142,58 @@ public class TestEngineNashorn {
         invertedAssertEquals(fac.getProgram("print('hello')", "print('world')"), "print('hello');print('world');");
         invertedAssertEquals(fac.getParameter(ScriptEngine.NAME), "javascript");
 
-        if (GraalJSEngineFactory.RegisterAsNashornScriptEngineFactory) {
-            boolean seenJS = false;
-            for (String ext : fac.getExtensions()) {
-                if (ext.equals("js")) {
-                    seenJS = true;
-                }
+        boolean seenJS = false;
+        for (String ext : fac.getExtensions()) {
+            if (ext.equals("js")) {
+                seenJS = true;
             }
-
-            invertedAssertEquals(seenJS, true);
-
-            String str = fac.getMethodCallSyntax("obj", "foo", "x");
-            invertedAssertEquals(str, "obj.foo(x)");
-            boolean seenJavaScript = false;
-            boolean seenECMAScript = false;
-            for (String name : fac.getNames()) {
-                switch (name) {
-                    case "javascript":
-                        seenJavaScript = true;
-                        break;
-                    case "ECMAScript":
-                        seenECMAScript = true;
-                        break;
-                }
-            }
-
-            assertTrue(seenJavaScript);
-            assertTrue(seenECMAScript);
-
-            boolean seenAppJS = false;
-            boolean seenAppECMA = false;
-            boolean seenTextJS = false;
-            boolean seenTextECMA = false;
-            for (String mime : fac.getMimeTypes()) {
-                switch (mime) {
-                    case "application/javascript":
-                        seenAppJS = true;
-                        break;
-                    case "application/ecmascript":
-                        seenAppECMA = true;
-                        break;
-                    case "text/javascript":
-                        seenTextJS = true;
-                        break;
-                    case "text/ecmascript":
-                        seenTextECMA = true;
-                        break;
-                }
-            }
-
-            assertTrue(seenAppJS);
-            assertTrue(seenAppECMA);
-            assertTrue(seenTextJS);
-            assertTrue(seenTextECMA);
         }
+
+        invertedAssertEquals(seenJS, true);
+
+        String str = fac.getMethodCallSyntax("obj", "foo", "x");
+        invertedAssertEquals(str, "obj.foo(x)");
+        boolean seenJavaScript = false;
+        boolean seenECMAScript = false;
+        for (String name : fac.getNames()) {
+            switch (name) {
+                case "javascript":
+                    seenJavaScript = true;
+                    break;
+                case "ECMAScript":
+                    seenECMAScript = true;
+                    break;
+            }
+        }
+
+        assertTrue(seenJavaScript);
+        assertTrue(seenECMAScript);
+
+        boolean seenAppJS = false;
+        boolean seenAppECMA = false;
+        boolean seenTextJS = false;
+        boolean seenTextECMA = false;
+        for (String mime : fac.getMimeTypes()) {
+            switch (mime) {
+                case "application/javascript":
+                    seenAppJS = true;
+                    break;
+                case "application/ecmascript":
+                    seenAppECMA = true;
+                    break;
+                case "text/javascript":
+                    seenTextJS = true;
+                    break;
+                case "text/ecmascript":
+                    seenTextECMA = true;
+                    break;
+            }
+        }
+
+        assertTrue(seenAppJS);
+        assertTrue(seenAppECMA);
+        assertTrue(seenTextJS);
+        assertTrue(seenTextECMA);
     }
 
     @Test
