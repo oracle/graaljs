@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -126,22 +125,6 @@ public final class JSObjectUtil {
 
     public static boolean isValidPrototype(Object proto) {
         return proto == Null.instance || JSRuntime.isObject(proto);
-    }
-
-    private static LocationFactory declaredLocationFactory() {
-        return (shape, val) -> shape.allocator().declaredLocation(val);
-    }
-
-    public static Shape shapeDefineDataProperty(JSContext context, Shape shape, Object key, Object value, int flags) {
-        CompilerAsserts.neverPartOfCompilation();
-        return shape.defineProperty(checkForNoSuchPropertyOrMethod(context, key), value, flags);
-    }
-
-    @SuppressWarnings("deprecation")
-    public static Shape shapeDefineDeclaredDataProperty(JSContext context, Shape shape, Object key, Object value, int flags) {
-        CompilerAsserts.neverPartOfCompilation();
-        checkForNoSuchPropertyOrMethod(context, key);
-        return shape.defineProperty(key, value, flags, declaredLocationFactory());
     }
 
     @TruffleBoundary
