@@ -86,6 +86,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.UnitPlural;
 
 public final class JSTemporalDuration extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
                 PrototypeSupplier {
@@ -346,8 +347,8 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         double millis = 0;
         double micros = 0;
         double nanos = 0;
-        for (TruffleString property : TemporalUtil.DURATION_PROPERTIES) {
-            Object val = JSObject.get(temporalDurationLike, property);
+        for (UnitPlural unit : TemporalUtil.DURATION_PROPERTIES) {
+            Object val = JSObject.get(temporalDurationLike, unit.toTruffleString());
 
             double lVal = 0;
             if (val == Undefined.instance) {
@@ -356,28 +357,38 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 any = true;
                 lVal = TemporalUtil.toIntegerWithoutRounding(val);
             }
-            if (YEARS.equals(property)) {
-                year = lVal;
-            } else if (MONTHS.equals(property)) {
-                month = lVal;
-            } else if (WEEKS.equals(property)) {
-                week = lVal;
-            } else if (DAYS.equals(property)) {
-                day = lVal;
-            } else if (HOURS.equals(property)) {
-                hour = lVal;
-            } else if (MINUTES.equals(property)) {
-                minute = lVal;
-            } else if (SECONDS.equals(property)) {
-                second = lVal;
-            } else if (MILLISECONDS.equals(property)) {
-                millis = lVal;
-            } else if (MICROSECONDS.equals(property)) {
-                micros = lVal;
-            } else if (NANOSECONDS.equals(property)) {
-                nanos = lVal;
-            } else {
-                throw Errors.unsupported("wrong type");
+            switch (unit) {
+                case YEARS:
+                    year = lVal;
+                    break;
+                case MONTHS:
+                    month = lVal;
+                    break;
+                case WEEKS:
+                    week = lVal;
+                    break;
+                case DAYS:
+                    day = lVal;
+                    break;
+                case HOURS:
+                    hour = lVal;
+                    break;
+                case MINUTES:
+                    minute = lVal;
+                    break;
+                case SECONDS:
+                    second = lVal;
+                    break;
+                case MILLISECONDS:
+                    millis = lVal;
+                    break;
+                case MICROSECONDS:
+                    micros = lVal;
+                    break;
+                case NANOSECONDS:
+                    nanos = lVal;
+                    break;
+                default: throw Errors.unsupported("wrong type");
             }
         }
         if (!any) {

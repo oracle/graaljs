@@ -228,7 +228,7 @@ public final class TemporalUtil {
     public static final List<TruffleString> listDisambiguation = List.of(COMPATIBLE, EARLIER, LATER, REJECT);
 
     public static final TruffleString[] TIME_LIKE_PROPERTIES = new TruffleString[]{HOUR, MICROSECOND, MILLISECOND, MINUTE, NANOSECOND, SECOND};
-    public static final TruffleString[] DURATION_PROPERTIES = new TruffleString[]{DAYS, HOURS, MICROSECONDS, MILLISECONDS, MINUTES, MONTHS, NANOSECONDS, SECONDS, WEEKS, YEARS};
+    public static final UnitPlural[] DURATION_PROPERTIES = new UnitPlural[]{UnitPlural.DAYS, UnitPlural.HOURS, UnitPlural.MICROSECONDS, UnitPlural.MILLISECONDS, UnitPlural.MINUTES, UnitPlural.MONTHS, UnitPlural.NANOSECONDS, UnitPlural.SECONDS, UnitPlural.WEEKS, UnitPlural.YEARS};
 
     private static final BigInt upperEpochNSLimit = new BigInt(BigInteger.valueOf(86400).multiply(BigInteger.valueOf(10).pow(17)));
     private static final BigInt lowerEpochNSLimit = upperEpochNSLimit.negate();
@@ -315,7 +315,7 @@ public final class TemporalUtil {
     }
 
     public enum Unit {
-        EMPTY(Strings.fromJavaString("")),
+        EMPTY(Strings.EMPTY_STRING),
         AUTO(TemporalConstants.AUTO),
         YEAR(TemporalConstants.YEAR),
         MONTH(TemporalConstants.MONTH),
@@ -331,6 +331,29 @@ public final class TemporalUtil {
         private final TruffleString name;
 
         Unit(TruffleString name) {
+            this.name = name;
+        }
+
+        public TruffleString toTruffleString() {
+            return name;
+        }
+    }
+
+    public enum UnitPlural {
+        YEARS(TemporalConstants.YEARS),
+        MONTHS(TemporalConstants.MONTHS),
+        WEEKS(TemporalConstants.WEEKS),
+        DAYS(TemporalConstants.DAYS),
+        HOURS(TemporalConstants.HOURS),
+        MINUTES(TemporalConstants.MINUTES),
+        SECONDS(TemporalConstants.SECONDS),
+        MILLISECONDS(TemporalConstants.MILLISECONDS),
+        MICROSECONDS(TemporalConstants.MICROSECONDS),
+        NANOSECONDS(TemporalConstants.NANOSECONDS);
+
+        private final TruffleString name;
+
+        UnitPlural(TruffleString name) {
             this.name = name;
         }
 
@@ -678,42 +701,52 @@ public final class TemporalUtil {
 
     public static void validateTemporalUnitRange(Unit largestUnit, Unit smallestUnit) {
         boolean error = false;
-        if (smallestUnit == Unit.YEAR) {
-            if (!(largestUnit == Unit.YEAR)) {
-                error = true;
-            }
-        } else if (smallestUnit == Unit.MONTH) {
-            if (!(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH)) {
-                error = true;
-            }
-        } else if (smallestUnit == Unit.WEEK) {
-            if (!(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK)) {
-                error = true;
-            }
-        } else if (smallestUnit == Unit.DAY) {
-            if (!(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY)) {
-                error = true;
-            }
-        } else if (smallestUnit == Unit.HOUR) {
-            if (!(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY || largestUnit == Unit.HOUR)) {
-                error = true;
-            }
-        } else if (smallestUnit == Unit.MINUTE) {
-            if (largestUnit == Unit.SECOND || largestUnit == Unit.MILLISECOND || largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND) {
-                error = true;
-            }
-        } else if (smallestUnit == Unit.SECOND) {
-            if (largestUnit == Unit.MILLISECOND || largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND) {
-                error = true;
-            }
-        } else if (smallestUnit == Unit.MILLISECOND) {
-            if (largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND) {
-                error = true;
-            }
-        } else if (smallestUnit == Unit.MICROSECOND) {
-            if (largestUnit == Unit.NANOSECOND) {
-                error = true;
-            }
+        switch (smallestUnit) {
+            case YEAR:
+                if (!(largestUnit == Unit.YEAR)) {
+                    error = true;
+                }
+                break;
+            case MONTH:
+                if (!(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH)) {
+                    error = true;
+                }
+                break;
+            case WEEK:
+                if (!(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK)) {
+                    error = true;
+                }
+                break;
+            case DAY:
+                if (!(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY)) {
+                    error = true;
+                }
+                break;
+            case HOUR:
+                if (!(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY || largestUnit == Unit.HOUR)) {
+                    error = true;
+                }
+             break;
+            case MINUTE:
+                if (largestUnit == Unit.SECOND || largestUnit == Unit.MILLISECOND || largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND) {
+                    error = true;
+                }
+            break;
+            case SECOND:
+                if (largestUnit == Unit.MILLISECOND || largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND) {
+                    error = true;
+                }
+             break;
+            case MILLISECOND:
+                if (largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND) {
+                    error = true;
+                }
+                break;
+            case MICROSECOND:
+                if (largestUnit == Unit.NANOSECOND) {
+                    error = true;
+                }
+                break;
         }
         if (error) {
             throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
@@ -1791,28 +1824,28 @@ public final class TemporalUtil {
         return magnitude;
     }
 
-    @TruffleBoundary
-    public static double getPropertyFromRecord(JSTemporalDurationRecord d, TruffleString property) {
-        if (YEARS.equals(property)) {
-            return d.getYears();
-        } else if (MONTHS.equals(property)) {
-            return d.getMonths();
-        } else if (WEEKS.equals(property)) {
-            return d.getWeeks();
-        } else if (DAYS.equals(property)) {
-            return d.getDays();
-        } else if (HOURS.equals(property)) {
-            return d.getHours();
-        } else if (MINUTES.equals(property)) {
-            return d.getMinutes();
-        } else if (SECONDS.equals(property)) {
-            return d.getSeconds();
-        } else if (MILLISECONDS.equals(property)) {
-            return d.getMilliseconds();
-        } else if (MICROSECONDS.equals(property)) {
-            return d.getMicroseconds();
-        } else if (NANOSECONDS.equals(property)) {
-            return d.getNanoseconds();
+    public static double getPropertyFromRecord(JSTemporalDurationRecord d, UnitPlural unit) {
+        switch (unit) {
+            case YEARS:
+                return d.getYears();
+            case MONTHS:
+                return d.getMonths();
+            case WEEKS:
+                return d.getWeeks();
+            case DAYS:
+                return d.getDays();
+            case HOURS:
+                return d.getHours();
+            case MINUTES:
+                return d.getMinutes();
+            case SECONDS:
+                return d.getSeconds();
+            case MILLISECONDS:
+                return d.getMilliseconds();
+            case MICROSECONDS:
+                return d.getMicroseconds();
+            case NANOSECONDS:
+                return d.getNanoseconds();
         }
         CompilerDirectives.transferToInterpreter();
         throw Errors.createTypeError("unknown property");
@@ -1967,7 +2000,7 @@ public final class TemporalUtil {
         UnmodifiableArrayList<?> keys = namesNode.execute(options);
         for (Object nextKey : keys) {
             if (nextKey instanceof TruffleString) {
-                TruffleString key = (TruffleString)nextKey;
+                TruffleString key = (TruffleString) nextKey;
                 Object propValue = JSObject.get(options, key);
                 createDataPropertyOrThrow(ctx, merged, key, propValue);
             }
@@ -2633,11 +2666,11 @@ public final class TemporalUtil {
         JSRealm realm = JSRealm.get(null);
         DynamicObject result = JSOrdinary.create(ctx, realm);
         boolean any = false;
-        for (TruffleString property : DURATION_PROPERTIES) {
-            Object value = JSObject.get(temporalDurationLike, property);
+        for (UnitPlural unit : DURATION_PROPERTIES) {
+            Object value = JSObject.get(temporalDurationLike, unit.toTruffleString());
             if (value != Undefined.instance) {
                 any = true;
-                JSObjectUtil.putDataProperty(ctx, result, property, toInt.executeDouble(value));
+                JSObjectUtil.putDataProperty(ctx, result, unit.toTruffleString(), toInt.executeDouble(value));
             }
         }
         if (!any) {
@@ -3228,10 +3261,10 @@ public final class TemporalUtil {
             throw Errors.createRangeError("Given duration outside range.");
         }
 
-        for (TruffleString property : TemporalUtil.DURATION_PROPERTIES) {
-            double value = TemporalUtil.getPropertyFromRecord(d, property);
-            if (value > 0 && disallowedFields.contains(property)) {
-                throw TemporalErrors.createRangeErrorDisallowedField(property);
+        for (UnitPlural unit : TemporalUtil.DURATION_PROPERTIES) {
+            double value = TemporalUtil.getPropertyFromRecord(d, unit);
+            if (value > 0 && disallowedFields.contains(unit.toTruffleString())) {
+                throw TemporalErrors.createRangeErrorDisallowedField(unit.toTruffleString());
             }
         }
         return d;
