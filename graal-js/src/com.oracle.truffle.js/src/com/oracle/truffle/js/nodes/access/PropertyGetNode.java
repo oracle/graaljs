@@ -1963,7 +1963,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         } else if (property.getLocation() instanceof LongLocation) {
             return new FinalLongPropertyGetNode(property, finalShapeCheckNode, ((LongLocation) property.getLocation()).getLong(store, false), constObjOrNull);
         } else {
-            return new FinalObjectPropertyGetNode(property, finalShapeCheckNode, property.get(store, false), constObjOrNull);
+            return new FinalObjectPropertyGetNode(property, finalShapeCheckNode, property.getLocation().get(store, false), constObjOrNull);
         }
     }
 
@@ -1971,7 +1971,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         AbstractShapeCheckNode finalShapeCheckNode = createShapeCheckNode(cacheShape, thisObj, depth, isConstantObjectFinal, false);
         finalShapeCheckNode.adoptChildren();
         DynamicObject store = finalShapeCheckNode.getStore(thisObj);
-        Accessor accessor = (Accessor) property.get(store, null);
+        Accessor accessor = (Accessor) property.getLocation().get(store, null);
         JSDynamicObject constObjOrNull = isConstantObjectFinal ? thisObj : null;
         return new FinalAccessorPropertyGetNode(property, finalShapeCheckNode, accessor, constObjOrNull);
     }

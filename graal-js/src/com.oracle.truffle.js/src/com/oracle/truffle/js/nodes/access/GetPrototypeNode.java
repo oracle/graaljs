@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -107,7 +107,7 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
                     @Cached("obj.getShape()") Shape shape,
                     @Cached("getPrototypeProperty(shape)") Property prototypeProperty) {
         assert !JSGuards.isJSProxy(obj);
-        return (DynamicObject) prototypeProperty.get(obj, shape);
+        return (DynamicObject) prototypeProperty.getLocation().get(obj, shape);
     }
 
     @Specialization(guards = "!isJSProxy(obj)", replaces = "doCachedShape")
