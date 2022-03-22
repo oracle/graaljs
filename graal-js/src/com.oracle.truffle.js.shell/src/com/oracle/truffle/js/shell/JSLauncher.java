@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,23 +95,6 @@ public class JSLauncher extends AbstractLanguageLauncher {
     @Override
     protected String getLanguageId() {
         return "js";
-    }
-
-    private void loadSourcesFromImage(Set<Source> imageSources) {
-        for (UnparsedSource unparsedSource : unparsedSources) {
-            for (Source source : imageSources) {
-                String path;
-                try {
-                    path = new File(unparsedSource.src).getAbsoluteFile().getCanonicalPath();
-                    if (source.getPath() != null && source.getPath().equals(path)) {
-                        unparsedSource.parsedSource = source;
-                        break;
-                    }
-                } catch (IOException e) {
-                    throw abort(e);
-                }
-            }
-        }
     }
 
     protected void preEval(@SuppressWarnings("unused") Context context) {
@@ -339,7 +322,6 @@ public class JSLauncher extends AbstractLanguageLauncher {
             runVersionAction(versionAction, context.getEngine());
             preEval(context);
             if (hasSources()) {
-                loadSourcesFromImage(context.getEngine().getCachedSources());
                 // Every engine runs different Source objects.
                 Source[] sources = parseSources();
                 status = -1;
