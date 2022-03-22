@@ -1966,10 +1966,11 @@ public final class TemporalUtil {
         DynamicObject merged = JSOrdinary.create(ctx, realm);
         UnmodifiableArrayList<?> keys = namesNode.execute(options);
         for (Object nextKey : keys) {
-            // TODO: is JSRuntime.toString correct here?
-            TruffleString key = JSRuntime.toString(nextKey);
-            Object propValue = JSObject.get(options, key);
-            createDataPropertyOrThrow(ctx, merged, key, propValue);
+            if (nextKey instanceof TruffleString) {
+                TruffleString key = (TruffleString)nextKey;
+                Object propValue = JSObject.get(options, key);
+                createDataPropertyOrThrow(ctx, merged, key, propValue);
+            }
         }
         createDataPropertyOrThrow(ctx, merged, LARGEST_UNIT, largestUnit.toTruffleString());
         return merged;
