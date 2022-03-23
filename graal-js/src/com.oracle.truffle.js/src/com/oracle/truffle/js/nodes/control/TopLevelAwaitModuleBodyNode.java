@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -180,7 +180,7 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
     @Override
     public Object execute(VirtualFrame frame) {
         JSModuleRecord moduleRecord = (JSModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
-        MaterializedFrame moduleFrame = moduleRecord.getEnvironment() != null ? moduleRecord.getEnvironment() : frame.materialize();
+        MaterializedFrame moduleFrame = moduleRecord.getEnvironment() != null ? JSFrameUtil.castMaterializedFrame(moduleRecord.getEnvironment()) : frame.materialize();
         PromiseCapabilityRecord promiseCapability = (PromiseCapabilityRecord) JSArguments.getUserArgument(frame.getArguments(), 1);
         ensureAsyncCallTargetInitialized();
         if (promiseCapability != null) {
