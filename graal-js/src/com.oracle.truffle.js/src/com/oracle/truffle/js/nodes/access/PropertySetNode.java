@@ -412,7 +412,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            if (location.canSet(value)) {
+            if (location.canStore(value)) {
                 DynamicObject store = receiverCheck.getStore(thisObj);
                 try {
                     location.set(store, value, receiverCheck.getShape());
@@ -427,7 +427,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean acceptsValue(Object value) {
-            return location.canSet(value);
+            return location.canStore(value);
         }
     }
 
@@ -1064,7 +1064,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return new PropertyProxySetNode(property, shapeCheck, isStrict());
         } else {
             assert JSProperty.isWritable(property) && depth == 0 && !JSProperty.isProxy(property);
-            if (property.getLocation().isConstant() || !property.getLocation().canSet(value)) {
+            if (property.getLocation().isConstant() || !property.getLocation().canStore(value)) {
                 return createRedefinePropertyNode(key, shapeCheck, shapeCheck.getShape(), property);
             }
 
@@ -1202,7 +1202,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         assert shapesHaveCommonLayoutForKey(parentShape, cacheShape);
         if (JSDynamicObject.isJSDynamicObject(thisObj) && JSProperty.isData(property)) {
             if (JSProperty.isWritable(property) && depth == 0 && !superProperty && !JSProperty.isProxy(property)) {
-                return !property.getLocation().isValue() && property.getLocation().canSet(value);
+                return !property.getLocation().isValue() && property.getLocation().canStore(value);
             }
         }
         return false;
