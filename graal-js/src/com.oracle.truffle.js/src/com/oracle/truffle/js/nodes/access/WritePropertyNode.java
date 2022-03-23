@@ -311,18 +311,16 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     @Override
     public final Object evaluateTarget(VirtualFrame frame) {
         Object target = targetNode.execute(frame);
-        verifyPropertyResolvable(target);
-        return target;
+        return (verifyHasProperty && isUnresolvableReference(target)) ? null : target;
     }
 
     /**
      * GetIdentifierReference: env.HasBinding(name) / PutValue: If IsUnresolvableReference(V) and
      * V.[[Strict]], throw ReferenceError.
      */
-    private void verifyPropertyResolvable(Object target) {
-        if (verifyHasProperty) {
-            verifyBindingExists(target);
-        }
+    private boolean isUnresolvableReference(Object target) {
+        assert verifyHasProperty;
+        return !bindingExists(target);
     }
 
     /**
@@ -330,30 +328,29 @@ public class WritePropertyNode extends JSTargetableWriteNode {
      * a ReferenceError in strict mode.
      */
     private void verifyBindingStillExists(Object target) {
-        if (verifyHasProperty) {
-            verifyBindingExists(target);
+        // target == null corresponds to IsUnresolvableReference() branch in PutValue()
+        if (verifyHasProperty && (target == null || !bindingExists(target))) {
+            unresolvablePropertyInStrictMode(target);
         }
     }
 
-    private void verifyBindingExists(Object target) {
+    private boolean bindingExists(Object target) {
         assert verifyHasProperty;
         // We may omit the check in non-strict mode if HasProperty is side effect free.
         if (!cache.isStrict() && cache.isGlobal() && cache.getContext().getGlobalObjectPristineAssumption().isValid()) {
-            return;
+            return true;
         }
         if (hasProperty == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             hasProperty = insert(HasPropertyCacheNode.create(cache.getKey(), cache.getContext()));
         }
         // HasProperty is required even in non-strict mode due to potential observable side effects
-        if (!hasProperty.hasProperty(target) && cache.isStrict()) {
-            unresolvablePropertyInStrictMode(target);
-        }
+        return hasProperty.hasProperty(target) || !cache.isStrict();
     }
 
     private void unresolvablePropertyInStrictMode(Object thisObj) {
         referenceErrorBranch.enter();
-        assert !cache.isGlobal() || (JSDynamicObject.isJSDynamicObject(thisObj) && thisObj == getRealm().getGlobalObject());
+        assert !cache.isGlobal() || (thisObj == null) || (JSDynamicObject.isJSDynamicObject(thisObj) && thisObj == getRealm().getGlobalObject());
         throw Errors.createReferenceErrorNotDefined(cache.getContext(), getKey(), this);
     }
 
