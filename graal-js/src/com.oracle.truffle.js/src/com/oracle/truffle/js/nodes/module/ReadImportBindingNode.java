@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.module;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -77,7 +78,8 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
     }
 
     @Specialization(guards = {"frameDescriptor == resolution.getModule().getFrameDescriptor()", "bindingName.equals(resolution.getBindingName())"}, limit = "1")
-    static Object doCached(ExportResolution resolution,
+    static Object doCached(@SuppressWarnings("unused") ExportResolution resolutionParam,
+                    @Bind("resolutionParam.asResolved()") ExportResolution resolution,
                     @Cached("resolution.getModule().getFrameDescriptor()") @SuppressWarnings("unused") FrameDescriptor frameDescriptor,
                     @Cached("resolution.getBindingName()") @SuppressWarnings("unused") TruffleString bindingName,
                     @Cached("create(frameDescriptor, findImportedSlotIndex(bindingName, resolution.getModule()))") JSReadFrameSlotNode readFrameSlot) {
@@ -91,7 +93,8 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
 
     @TruffleBoundary
     @Specialization(replaces = {"doCached"})
-    final Object doUncached(ExportResolution resolution) {
+    final Object doUncached(@SuppressWarnings("unused") ExportResolution resolutionParam,
+                    @Bind("resolutionParam.asResolved()") ExportResolution resolution) {
         JSModuleRecord module = resolution.getModule();
         assert module.getStatus().compareTo(Status.Linked) >= 0 : module.getStatus();
         TruffleString bindingName = resolution.getBindingName();

@@ -71,6 +71,10 @@ public abstract class ExportResolution {
         return false;
     }
 
+    public boolean isResolved() {
+        return false;
+    }
+
     @TruffleBoundary
     public JSModuleRecord getModule() {
         throw new UnsupportedOperationException();
@@ -79,6 +83,11 @@ public abstract class ExportResolution {
     @TruffleBoundary
     public TruffleString getBindingName() {
         throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("cast")
+    public final ExportResolution asResolved() {
+        return (Resolved) this;
     }
 
     public static ExportResolution resolved(JSModuleRecord module, TruffleString bindingName) {
@@ -96,7 +105,7 @@ public abstract class ExportResolution {
         return AMBIGUOUS;
     }
 
-    private static class Resolved extends ExportResolution {
+    private static final class Resolved extends ExportResolution {
         private final JSModuleRecord module;
         private final TruffleString bindingName;
 
@@ -118,6 +127,11 @@ public abstract class ExportResolution {
         @Override
         public boolean isNamespace() {
             return bindingName.equals(Module.NAMESPACE_EXPORT_BINDING_NAME);
+        }
+
+        @Override
+        public boolean isResolved() {
+            return true;
         }
 
         @Override
@@ -145,14 +159,14 @@ public abstract class ExportResolution {
         }
     }
 
-    private static class Null extends ExportResolution {
+    private static final class Null extends ExportResolution {
         @Override
         public boolean isNull() {
             return true;
         }
     }
 
-    private static class Ambiguous extends ExportResolution {
+    private static final class Ambiguous extends ExportResolution {
         @Override
         public boolean isAmbiguous() {
             return true;
