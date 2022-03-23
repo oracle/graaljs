@@ -186,10 +186,11 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        protected TruffleString toString(Object thisObj, Object optParam) {
+        protected TruffleString toString(Object thisObj, Object optParam,
+                        @Cached TruffleString.EqualNode equalNode) {
             JSTemporalPlainMonthDayObject md = requireTemporalMonthDay(thisObj);
             DynamicObject options = getOptionsObject(optParam);
-            ShowCalendar showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode());
+            ShowCalendar showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode(), equalNode);
             return JSTemporalPlainMonthDay.temporalMonthDayToString(md, showCalendar);
         }
     }

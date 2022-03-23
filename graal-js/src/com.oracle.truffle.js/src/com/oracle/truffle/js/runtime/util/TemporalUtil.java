@@ -228,7 +228,8 @@ public final class TemporalUtil {
     public static final List<TruffleString> listDisambiguation = List.of(COMPATIBLE, EARLIER, LATER, REJECT);
 
     public static final TruffleString[] TIME_LIKE_PROPERTIES = new TruffleString[]{HOUR, MICROSECOND, MILLISECOND, MINUTE, NANOSECOND, SECOND};
-    public static final UnitPlural[] DURATION_PROPERTIES = new UnitPlural[]{UnitPlural.DAYS, UnitPlural.HOURS, UnitPlural.MICROSECONDS, UnitPlural.MILLISECONDS, UnitPlural.MINUTES, UnitPlural.MONTHS, UnitPlural.NANOSECONDS, UnitPlural.SECONDS, UnitPlural.WEEKS, UnitPlural.YEARS};
+    public static final UnitPlural[] DURATION_PROPERTIES = new UnitPlural[]{UnitPlural.DAYS, UnitPlural.HOURS, UnitPlural.MICROSECONDS, UnitPlural.MILLISECONDS,
+                    UnitPlural.MINUTES, UnitPlural.MONTHS, UnitPlural.NANOSECONDS, UnitPlural.SECONDS, UnitPlural.WEEKS, UnitPlural.YEARS};
 
     private static final BigInt upperEpochNSLimit = new BigInt(BigInteger.valueOf(86400).multiply(BigInteger.valueOf(10).pow(17)));
     private static final BigInt lowerEpochNSLimit = upperEpochNSLimit.negate();
@@ -457,8 +458,8 @@ public final class TemporalUtil {
         return increment;
     }
 
-    public static JSTemporalPrecisionRecord toSecondsStringPrecision(DynamicObject options, JSToStringNode toStringNode, TemporalGetOptionNode getOptionNode) {
-        Unit smallestUnit = toSmallestTemporalUnit(options, listYMWDH, null, getOptionNode);
+    public static JSTemporalPrecisionRecord toSecondsStringPrecision(DynamicObject options, JSToStringNode toStringNode, TemporalGetOptionNode getOptionNode, TruffleString.EqualNode equalNode) {
+        Unit smallestUnit = toSmallestTemporalUnit(options, listYMWDH, null, getOptionNode, equalNode);
 
         if (Unit.MINUTE == smallestUnit) {
             return JSTemporalPrecisionRecord.create(MINUTE, Unit.MINUTE, 1);
@@ -502,8 +503,8 @@ public final class TemporalUtil {
         return JSRuntime.toNumber(digits).longValue();
     }
 
-    // 13.22
-    public static Unit toSmallestTemporalUnit(DynamicObject normalizedOptions, List<TruffleString> disallowedUnits, TruffleString fallback, TemporalGetOptionNode getOptionNode) {
+    public static Unit toSmallestTemporalUnit(DynamicObject normalizedOptions, List<TruffleString> disallowedUnits, TruffleString fallback, TemporalGetOptionNode getOptionNode,
+                    TruffleString.EqualNode equalNode) {
         TruffleString smallestUnit = (TruffleString) getOptionNode.execute(normalizedOptions, SMALLEST_UNIT, OptionType.STRING, listAllDateTime, fallback);
         if (smallestUnit != null && Boundaries.setContains(pluralUnits, smallestUnit)) {
             smallestUnit = Boundaries.mapGet(pluralToSingular, smallestUnit);
@@ -511,10 +512,9 @@ public final class TemporalUtil {
         if (smallestUnit != null && Boundaries.listContains(disallowedUnits, smallestUnit)) {
             throw Errors.createRangeError("Smallest unit not allowed.");
         }
-        return TemporalUtil.toUnit(smallestUnit);
+        return TemporalUtil.toUnit(smallestUnit, equalNode);
     }
 
-    // 13.26
     @TruffleBoundary
     public static DynamicObject toRelativeTemporalObject(JSContext ctx, JSRealm realm, DynamicObject options) {
         Object value = JSObject.get(options, RELATIVE_TO);
@@ -726,17 +726,17 @@ public final class TemporalUtil {
                 if (!(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY || largestUnit == Unit.HOUR)) {
                     error = true;
                 }
-             break;
+                break;
             case MINUTE:
                 if (largestUnit == Unit.SECOND || largestUnit == Unit.MILLISECOND || largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND) {
                     error = true;
                 }
-            break;
+                break;
             case SECOND:
                 if (largestUnit == Unit.MILLISECOND || largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND) {
                     error = true;
                 }
-             break;
+                break;
             case MILLISECOND:
                 if (largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND) {
                     error = true;
@@ -1703,8 +1703,8 @@ public final class TemporalUtil {
         return JSTemporalZonedDateTime.isJSTemporalZonedDateTime(obj);
     }
 
-    public static ShowCalendar toShowCalendarOption(DynamicObject options, TemporalGetOptionNode getOptionNode) {
-        return toShowCalendar((TruffleString) getOptionNode.execute(options, CALENDAR_NAME, OptionType.STRING, listAutoAlwaysNever, AUTO));
+    public static ShowCalendar toShowCalendarOption(DynamicObject options, TemporalGetOptionNode getOptionNode, TruffleString.EqualNode equalNode) {
+        return toShowCalendar((TruffleString) getOptionNode.execute(options, CALENDAR_NAME, OptionType.STRING, listAutoAlwaysNever, AUTO), equalNode);
     }
 
     @TruffleBoundary
@@ -3537,16 +3537,16 @@ public final class TemporalUtil {
         return JSTemporalTimeZoneRecord.create(false, offsetString, name);
     }
 
-    public static Disambiguation toTemporalDisambiguation(DynamicObject options, TemporalGetOptionNode getOptionNode) {
-        return toDisambiguation((TruffleString) getOptionNode.execute(options, DISAMBIGUATION, OptionType.STRING, listDisambiguation, COMPATIBLE));
+    public static Disambiguation toTemporalDisambiguation(DynamicObject options, TemporalGetOptionNode getOptionNode, TruffleString.EqualNode equalNode) {
+        return toDisambiguation((TruffleString) getOptionNode.execute(options, DISAMBIGUATION, OptionType.STRING, listDisambiguation, COMPATIBLE), equalNode);
     }
 
     /**
      * Note there also is {@link ToTemporalZonedDateTimeNode}.
      */
 
-    public static OffsetOption toTemporalOffset(DynamicObject options, TruffleString fallback, TemporalGetOptionNode getOptionNode) {
-        return toOffsetOption((TruffleString) getOptionNode.execute(options, OFFSET, OptionType.STRING, listOffset, fallback));
+    public static OffsetOption toTemporalOffset(DynamicObject options, TruffleString fallback, TemporalGetOptionNode getOptionNode, TruffleString.EqualNode equalNode) {
+        return toOffsetOption((TruffleString) getOptionNode.execute(options, OFFSET, OptionType.STRING, listOffset, fallback), equalNode);
     }
 
     public static TruffleString toShowTimeZoneNameOption(DynamicObject options, TemporalGetOptionNode getOptionNode) {
@@ -4254,87 +4254,86 @@ public final class TemporalUtil {
         return d.copyNegated();
     }
 
-    @TruffleBoundary
-    public static Unit toUnit(TruffleString unit) {
+    public static Unit toUnit(TruffleString unit, TruffleString.EqualNode equalNode) {
         if (isNullish(unit)) {
             return Unit.EMPTY;
-        } else if (unit.equals(YEAR)) {
+        } else if (equalNode.execute(unit, YEAR, TruffleString.Encoding.UTF_16)) {
             return Unit.YEAR;
-        } else if (unit.equals(MONTH)) {
+        } else if (equalNode.execute(unit, MONTH, TruffleString.Encoding.UTF_16)) {
             return Unit.MONTH;
-        } else if (unit.equals(WEEK)) {
+        } else if (equalNode.execute(unit, WEEK, TruffleString.Encoding.UTF_16)) {
             return Unit.WEEK;
-        } else if (unit.equals(DAY)) {
+        } else if (equalNode.execute(unit, DAY, TruffleString.Encoding.UTF_16)) {
             return Unit.DAY;
-        } else if (unit.equals(HOUR)) {
+        } else if (equalNode.execute(unit, HOUR, TruffleString.Encoding.UTF_16)) {
             return Unit.HOUR;
-        } else if (unit.equals(MINUTE)) {
+        } else if (equalNode.execute(unit, MINUTE, TruffleString.Encoding.UTF_16)) {
             return Unit.MINUTE;
-        } else if (unit.equals(SECOND)) {
+        } else if (equalNode.execute(unit, SECOND, TruffleString.Encoding.UTF_16)) {
             return Unit.SECOND;
-        } else if (unit.equals(MILLISECOND)) {
+        } else if (equalNode.execute(unit, MILLISECOND, TruffleString.Encoding.UTF_16)) {
             return Unit.MILLISECOND;
-        } else if (unit.equals(MICROSECOND)) {
+        } else if (equalNode.execute(unit, MICROSECOND, TruffleString.Encoding.UTF_16)) {
             return Unit.MICROSECOND;
-        } else if (unit.equals(NANOSECOND)) {
+        } else if (equalNode.execute(unit, NANOSECOND, TruffleString.Encoding.UTF_16)) {
             return Unit.NANOSECOND;
-        } else if (unit.equals(AUTO)) {
+        } else if (equalNode.execute(unit, AUTO, TruffleString.Encoding.UTF_16)) {
             return Unit.AUTO;
         }
         throw Errors.createTypeError("unexpected unit");
     }
 
     @TruffleBoundary
-    public static RoundingMode toRoundingMode(TruffleString mode) {
+    public static RoundingMode toRoundingMode(TruffleString mode, TruffleString.EqualNode equalNode) {
         if (isNullish(mode)) {
             return RoundingMode.EMPTY;
-        } else if (mode.equals(FLOOR)) {
+        } else if (equalNode.execute(mode, FLOOR, TruffleString.Encoding.UTF_16)) {
             return RoundingMode.FLOOR;
-        } else if (mode.equals(CEIL)) {
+        } else if (equalNode.execute(mode, CEIL, TruffleString.Encoding.UTF_16)) {
             return RoundingMode.CEIL;
-        } else if (mode.equals(HALF_EXPAND)) {
+        } else if (equalNode.execute(mode, HALF_EXPAND, TruffleString.Encoding.UTF_16)) {
             return RoundingMode.HALF_EXPAND;
-        } else if (mode.equals(TRUNC)) {
+        } else if (equalNode.execute(mode, TRUNC, TruffleString.Encoding.UTF_16)) {
             return RoundingMode.TRUNC;
         }
         throw Errors.createTypeError("unexpected roundingMode");
     }
 
     @TruffleBoundary
-    public static Disambiguation toDisambiguation(TruffleString disambiguation) {
-        if (disambiguation.equals(EARLIER)) {
+    public static Disambiguation toDisambiguation(TruffleString disambiguation, TruffleString.EqualNode equalNode) {
+        if (equalNode.execute(disambiguation, EARLIER, TruffleString.Encoding.UTF_16)) {
             return Disambiguation.EARLIER;
-        } else if (disambiguation.equals(LATER)) {
+        } else if (equalNode.execute(disambiguation, LATER, TruffleString.Encoding.UTF_16)) {
             return Disambiguation.LATER;
-        } else if (disambiguation.equals(COMPATIBLE)) {
+        } else if (equalNode.execute(disambiguation, COMPATIBLE, TruffleString.Encoding.UTF_16)) {
             return Disambiguation.COMPATIBLE;
-        } else if (disambiguation.equals(REJECT)) {
+        } else if (equalNode.execute(disambiguation, REJECT, TruffleString.Encoding.UTF_16)) {
             return Disambiguation.REJECT;
         }
         throw Errors.createTypeError("unexpected disambiguation");
     }
 
     @TruffleBoundary
-    public static OffsetOption toOffsetOption(TruffleString offsetOption) {
-        if (offsetOption.equals(USE)) {
+    public static OffsetOption toOffsetOption(TruffleString offsetOption, TruffleString.EqualNode equalNode) {
+        if (equalNode.execute(offsetOption, USE, TruffleString.Encoding.UTF_16)) {
             return OffsetOption.USE;
-        } else if (offsetOption.equals(IGNORE)) {
+        } else if (equalNode.execute(offsetOption, IGNORE, TruffleString.Encoding.UTF_16)) {
             return OffsetOption.IGNORE;
-        } else if (offsetOption.equals(PREFER)) {
+        } else if (equalNode.execute(offsetOption, PREFER, TruffleString.Encoding.UTF_16)) {
             return OffsetOption.PREFER;
-        } else if (offsetOption.equals(REJECT)) {
+        } else if (equalNode.execute(offsetOption, REJECT, TruffleString.Encoding.UTF_16)) {
             return OffsetOption.REJECT;
         }
         throw Errors.createTypeError("unexpected offsetOption");
     }
 
     @TruffleBoundary
-    public static ShowCalendar toShowCalendar(TruffleString showCalendar) {
-        if (showCalendar.equals(AUTO)) {
+    public static ShowCalendar toShowCalendar(TruffleString showCalendar, TruffleString.EqualNode equalNode) {
+        if (equalNode.execute(showCalendar, AUTO, TruffleString.Encoding.UTF_16)) {
             return ShowCalendar.AUTO;
-        } else if (showCalendar.equals(NEVER)) {
+        } else if (equalNode.execute(showCalendar, NEVER, TruffleString.Encoding.UTF_16)) {
             return ShowCalendar.NEVER;
-        } else if (showCalendar.equals(ALWAYS)) {
+        } else if (equalNode.execute(showCalendar, ALWAYS, TruffleString.Encoding.UTF_16)) {
             return ShowCalendar.ALWAYS;
         }
         throw Errors.createTypeError("unexpected showCalendar");

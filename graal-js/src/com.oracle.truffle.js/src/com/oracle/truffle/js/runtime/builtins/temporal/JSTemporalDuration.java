@@ -388,7 +388,8 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 case NANOSECONDS:
                     nanos = lVal;
                     break;
-                default: throw Errors.unsupported("wrong type");
+                default:
+                    throw Errors.unsupported("wrong type");
             }
         }
         if (!any) {
