@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,8 +48,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.DeclareTagProvider;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -58,6 +58,7 @@ import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -96,6 +97,13 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
     public static JSFunctionExpressionNode createEmpty(JSContext context, int length, String sourceName) {
         return new AutonomousFunctionExpressionNode(JSFunctionData.create(context, context.getEmptyFunctionCallTarget(), length, Strings.fromJavaString(sourceName)), null);
     }
+
+    @Override
+    public final Object execute(VirtualFrame frame) {
+        return executeWithRealm(frame, getRealm());
+    }
+
+    public abstract Object executeWithRealm(VirtualFrame frame, JSRealm realm);
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
@@ -161,7 +169,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         }
 
         @Override
-        public Object execute(VirtualFrame frame) {
+        public Object executeWithRealm(VirtualFrame frame, JSRealm realm) {
             MaterializedFrame closureFrame;
             if (blockScopeSlot >= 0) {
                 Object blockScope = frame.getObject(blockScopeSlot);
@@ -169,7 +177,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
             } else {
                 closureFrame = frame.materialize();
             }
-            return JSFunction.create(getRealm(), functionData, closureFrame);
+            return JSFunction.create(realm, functionData, closureFrame);
         }
 
         @Override
@@ -187,8 +195,8 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         }
 
         @Override
-        public Object execute(VirtualFrame frame) {
-            return JSFunction.create(getRealm(), functionData);
+        public Object executeWithRealm(VirtualFrame frame, JSRealm realm) {
+            return JSFunction.create(realm, functionData);
         }
 
         @Override
@@ -208,7 +216,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         }
 
         @Override
-        public Object execute(VirtualFrame frame) {
+        public Object executeWithRealm(VirtualFrame frame, JSRealm realm) {
             MaterializedFrame closureFrame;
             if (blockScopeSlot >= 0) {
                 Object blockScope = frame.getObject(blockScopeSlot);
@@ -216,7 +224,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
             } else {
                 closureFrame = frame.materialize();
             }
-            return JSFunction.createLexicalThis(getRealm(), functionData, closureFrame, thisNode.execute(frame));
+            return JSFunction.createLexicalThis(realm, functionData, closureFrame, thisNode.execute(frame));
         }
 
         @Override
@@ -234,8 +242,8 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         }
 
         @Override
-        public Object execute(VirtualFrame frame) {
-            return JSFunction.createLexicalThis(getRealm(), functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, thisNode.execute(frame));
+        public Object executeWithRealm(VirtualFrame frame, JSRealm realm) {
+            return JSFunction.createLexicalThis(realm, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, thisNode.execute(frame));
         }
 
         @Override
