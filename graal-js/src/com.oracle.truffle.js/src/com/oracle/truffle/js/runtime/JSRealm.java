@@ -441,6 +441,7 @@ public class JSRealm {
 
     private final JSConsoleUtil consoleUtil;
     private JSModuleLoader moduleLoader;
+    private long lastAsyncEvaluationOrder;
 
     /**
      * ECMA2017 8.7 Agent object.
@@ -2753,6 +2754,10 @@ public class JSRealm {
                 innerContext.close();
             }
         }
+    }
+
+    public long nextAsyncEvaluationOrder() {
+        return ++lastAsyncEvaluationOrder;
     }
 
 }
