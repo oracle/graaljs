@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,6 +88,10 @@ public class InitializeFrameSlotsNode extends JavaScriptNode {
         return new InitializeFrameSlotsNode(scopeFrameNode, slots);
     }
 
+    public static JavaScriptNode createRange(ScopeFrameNode scopeFrameNode, int start, int end) {
+        return new InitializeFrameSlotRangeNode(scopeFrameNode, start, end);
+    }
+
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return create(scopeFrameNode, slots);
@@ -114,5 +118,33 @@ class InitializeFrameSlotNode extends JavaScriptNode {
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return new InitializeFrameSlotNode(scopeFrameNode, slot);
+    }
+}
+
+class InitializeFrameSlotRangeNode extends JavaScriptNode {
+
+    private final int start;
+    private final int end;
+    @Child private ScopeFrameNode scopeFrameNode;
+
+    protected InitializeFrameSlotRangeNode(ScopeFrameNode scopeFrameNode, int start, int end) {
+        this.start = start;
+        this.end = end;
+        this.scopeFrameNode = Objects.requireNonNull(scopeFrameNode);
+    }
+
+    @ExplodeLoop
+    @Override
+    public Object execute(VirtualFrame frame) {
+        Frame scopeFrame = scopeFrameNode.executeFrame(frame);
+        for (int slot = start; slot < end; slot++) {
+            InitializeFrameSlotsNode.initializeSlot(scopeFrame, slot);
+        }
+        return Undefined.instance;
+    }
+
+    @Override
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new InitializeFrameSlotRangeNode(scopeFrameNode, start, end);
     }
 }

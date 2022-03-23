@@ -1326,7 +1326,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 for (int i = 0; i < slots.length; i++) {
                     slots[i] = slotsWithTDZ.get(i).getFrameSlot().getIndex();
                 }
-                blockWithInit.add(factory.createInitializeFrameSlots(scope, slots));
+                blockWithInit.add(factory.createInitializeFrameSlots(scope, slots, 0, slots.length));
             } else {
                 // we have slots in separate frames
                 int[] slots = new int[slotsWithTDZ.size()];
@@ -1342,7 +1342,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         }
                         slots[to++] = next.getFrameSlot().getIndex();
                     }
-                    blockWithInit.add(factory.createInitializeFrameSlots(scope, Arrays.copyOfRange(slots, from, to)));
+                    blockWithInit.add(factory.createInitializeFrameSlots(scope, slots, from, to));
                     from = to;
                 }
             }

@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
@@ -646,6 +647,26 @@ public class NodeFactory {
 
     public JavaScriptNode createInitializeFrameSlots(ScopeFrameNode scope, int[] slots) {
         return InitializeFrameSlotsNode.create(scope, slots);
+    }
+
+    public JavaScriptNode createInitializeFrameSlotRange(ScopeFrameNode scope, int start, int end) {
+        return InitializeFrameSlotsNode.createRange(scope, start, end);
+    }
+
+    public final JavaScriptNode createInitializeFrameSlots(ScopeFrameNode scope, int[] slots, int from, int to) {
+        if (to - from >= 2) {
+            boolean isRange = true;
+            for (int i = from + 1; i < to; i++) {
+                if (slots[i - 1] != slots[i] - 1) {
+                    isRange = false;
+                    break;
+                }
+            }
+            if (isRange) {
+                return createInitializeFrameSlotRange(scope, slots[from], slots[to - 1] + 1);
+            }
+        }
+        return createInitializeFrameSlots(scope, (from == 0 && to == slots.length) ? slots : Arrays.copyOfRange(slots, from, to));
     }
 
     public JavaScriptNode createThrow(JSContext context, JavaScriptNode expression) {
