@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -1954,16 +1956,25 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         DynamicObject store = finalShapeCheckNode.getStore(thisObj);
 
         JSDynamicObject constObjOrNull = isConstantObjectFinal ? thisObj : null;
-        if (property.getLocation() instanceof IntLocation) {
-            return new FinalIntPropertyGetNode(property, finalShapeCheckNode, ((IntLocation) property.getLocation()).getInt(store, false), constObjOrNull);
-        } else if (property.getLocation() instanceof DoubleLocation) {
-            return new FinalDoublePropertyGetNode(property, finalShapeCheckNode, ((DoubleLocation) property.getLocation()).getDouble(store, false), constObjOrNull);
-        } else if (property.getLocation() instanceof BooleanLocation) {
-            return new FinalBooleanPropertyGetNode(property, finalShapeCheckNode, ((BooleanLocation) property.getLocation()).getBoolean(store, false), constObjOrNull);
-        } else if (property.getLocation() instanceof LongLocation) {
-            return new FinalLongPropertyGetNode(property, finalShapeCheckNode, ((LongLocation) property.getLocation()).getLong(store, false), constObjOrNull);
-        } else {
-            return new FinalObjectPropertyGetNode(property, finalShapeCheckNode, property.getLocation().get(store, false), constObjOrNull);
+        try {
+            if (property.getLocation() instanceof IntLocation) {
+                int intValue = DynamicObjectLibrary.getUncached().getIntOrDefault(store, key, null);
+                return new FinalIntPropertyGetNode(property, finalShapeCheckNode, intValue, constObjOrNull);
+            } else if (property.getLocation() instanceof DoubleLocation) {
+                double doubleValue = DynamicObjectLibrary.getUncached().getDoubleOrDefault(store, key, null);
+                return new FinalDoublePropertyGetNode(property, finalShapeCheckNode, doubleValue, constObjOrNull);
+            } else if (property.getLocation() instanceof BooleanLocation) {
+                boolean boolValue = (boolean) DynamicObjectLibrary.getUncached().getOrDefault(store, key, null);
+                return new FinalBooleanPropertyGetNode(property, finalShapeCheckNode, boolValue, constObjOrNull);
+            } else if (property.getLocation() instanceof LongLocation) {
+                long longValue = DynamicObjectLibrary.getUncached().getLongOrDefault(store, key, null);
+                return new FinalLongPropertyGetNode(property, finalShapeCheckNode, longValue, constObjOrNull);
+            } else {
+                Object value = Objects.requireNonNull(DynamicObjectLibrary.getUncached().getOrDefault(store, key, null));
+                return new FinalObjectPropertyGetNode(property, finalShapeCheckNode, value, constObjOrNull);
+            }
+        } catch (UnexpectedResultException ex) {
+            throw Errors.shouldNotReachHere(ex);
         }
     }
 
