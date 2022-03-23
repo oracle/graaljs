@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.module;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -77,7 +78,8 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
     }
 
     @Specialization(guards = {"frameDescriptor == resolution.getModule().getFrameDescriptor()", "bindingName.equals(resolution.getBindingName())"}, limit = "1")
-    static Object doCached(ExportResolution resolution,
+    static Object doCached(@SuppressWarnings("unused") ExportResolution resolutionParam,
+                    @Bind("resolutionParam.asResolved()") ExportResolution resolution,
                     @Cached("resolution.getModule().getFrameDescriptor()") @SuppressWarnings("unused") FrameDescriptor frameDescriptor,
                     @Cached("resolution.getBindingName()") @SuppressWarnings("unused") String bindingName,
                     @Cached("create(frameDescriptor.findFrameSlot(bindingName))") JSReadFrameSlotNode readFrameSlot) {
@@ -91,7 +93,8 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
 
     @TruffleBoundary
     @Specialization(replaces = {"doCached"})
-    final Object doUncached(ExportResolution resolution) {
+    final Object doUncached(@SuppressWarnings("unused") ExportResolution resolutionParam,
+                    @Bind("resolutionParam.asResolved()") ExportResolution resolution) {
         JSModuleRecord module = resolution.getModule();
         assert module.getStatus().compareTo(Status.Linked) >= 0 : module.getStatus();
         String bindingName = resolution.getBindingName();
