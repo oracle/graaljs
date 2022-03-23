@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,6 +57,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNodeFactory.CreateObjectWithCachedPrototypeNodeGen;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDictionary;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
@@ -92,7 +93,11 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         return new CreateDictionaryObjectNode(context);
     }
 
-    public abstract DynamicObject execute(VirtualFrame frame);
+    public DynamicObject execute(VirtualFrame frame) {
+        return executeWithRealm(frame, getRealm());
+    }
+
+    public abstract DynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm);
 
     protected abstract CreateObjectNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);
 
@@ -106,7 +111,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public DynamicObject execute(VirtualFrame frame) {
+        public DynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
             return JSOrdinary.create(context, getRealm());
         }
 
@@ -129,6 +134,11 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         public final DynamicObject execute(DynamicObject prototype) {
             assert prototypeExpression == null;
             return execute(null, prototype);
+        }
+
+        @Override
+        public final DynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
+            return execute(frame);
         }
 
         @Override
@@ -206,7 +216,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public DynamicObject execute(VirtualFrame frame) {
+        public DynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
             return JSDictionary.create(context, getRealm());
         }
 
