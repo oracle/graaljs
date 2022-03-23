@@ -112,6 +112,7 @@ public abstract class ExportResolution {
         Resolved(JSModuleRecord module, TruffleString bindingName) {
             this.module = module;
             this.bindingName = bindingName;
+            assert bindingName == Module.NAMESPACE_EXPORT_BINDING_NAME || !bindingName.equals(Module.NAMESPACE_EXPORT_BINDING_NAME);
         }
 
         @Override
@@ -126,7 +127,7 @@ public abstract class ExportResolution {
 
         @Override
         public boolean isNamespace() {
-            return bindingName.equals(Module.NAMESPACE_EXPORT_BINDING_NAME);
+            return bindingName == Module.NAMESPACE_EXPORT_BINDING_NAME;
         }
 
         @Override
