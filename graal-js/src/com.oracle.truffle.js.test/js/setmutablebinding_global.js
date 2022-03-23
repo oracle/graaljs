@@ -72,6 +72,7 @@ globalThis.__proto__ = new Proxy({}, logHandler);
 
 checkOutput(`
 has u false
+set u 5 true
 ReferenceError
 --
 set x 1 true
@@ -101,7 +102,7 @@ set x 3 true
 })();
 
 checkOutput(`
-has u false
+has u true
 set u 5 true
 has u true
 set u 5 true
