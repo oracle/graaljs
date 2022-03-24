@@ -110,6 +110,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -6871,7 +6872,7 @@ public class Parser extends AbstractParser {
      * </pre>
      */
     private Map<TruffleString, TruffleString> assertEntries() {
-        Map<TruffleString, TruffleString> assertions = new HashMap<>();
+        Map<TruffleString, TruffleString> assertions = new LinkedHashMap<>();
 
         while (type != RBRACE) {
             final long errorToken = token;
