@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -55,6 +56,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -95,19 +97,23 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
         return new GetPrototypeOfNode();
     }
 
-    static Property getPrototypeProperty(Shape shape) {
+    static Location getPrototypeLocation(Shape shape) {
         if (JSShape.getJSClass(shape) == JSProxy.INSTANCE) {
             return null;
         }
-        return JSShape.getPrototypeProperty(shape);
+        Property prototypeProperty = JSShape.getPrototypeProperty(shape);
+        if (prototypeProperty != null) {
+            return prototypeProperty.getLocation();
+        }
+        return null;
     }
 
-    @Specialization(guards = {"obj.getShape() == shape", "prototypeProperty != null"}, limit = "MAX_SHAPE_COUNT")
+    @Specialization(guards = {"obj.getShape() == shape", "prototypeLocation != null"}, limit = "MAX_SHAPE_COUNT")
     static DynamicObject doCachedShape(DynamicObject obj,
                     @Cached("obj.getShape()") Shape shape,
-                    @Cached("getPrototypeProperty(shape)") Property prototypeProperty) {
+                    @Cached("getPrototypeLocation(shape)") Location prototypeLocation) {
         assert !JSGuards.isJSProxy(obj);
-        return (DynamicObject) prototypeProperty.getLocation().get(obj, shape);
+        return (JSDynamicObject) prototypeLocation.get(obj, shape);
     }
 
     @Specialization(guards = "!isJSProxy(obj)", replaces = "doCachedShape")
