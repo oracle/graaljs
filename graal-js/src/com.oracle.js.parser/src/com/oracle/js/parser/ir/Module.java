@@ -41,7 +41,6 @@
 
 package com.oracle.js.parser.ir;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -186,11 +185,11 @@ public final class Module {
         }
 
         public static ModuleRequest create(TruffleString specifier) {
-            return new ModuleRequest(specifier, Collections.emptyMap());
+            return new ModuleRequest(specifier, Map.of());
         }
 
         public static ModuleRequest create(TruffleString specifier, Map<TruffleString, TruffleString> assertions) {
-            return new ModuleRequest(specifier, assertions);
+            return new ModuleRequest(specifier, Map.copyOf(assertions));
         }
 
         public TruffleString getSpecifier() {

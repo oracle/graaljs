@@ -41,12 +41,11 @@
 
 package com.oracle.js.parser.ir;
 
+import java.util.Map;
+
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 import com.oracle.truffle.api.strings.TruffleString;
-
-import java.util.Collections;
-import java.util.Map;
 
 public class ExportNode extends Node {
 
@@ -73,11 +72,11 @@ public class ExportNode extends Node {
     }
 
     public ExportNode(final long token, final int start, final int finish, final IdentNode ident, final Expression expression, final boolean isDefault) {
-        this(token, start, finish, null, null, ident, null, expression, isDefault, Collections.emptyMap());
+        this(token, start, finish, null, null, ident, null, expression, isDefault, Map.of());
     }
 
     public ExportNode(final long token, final int start, final int finish, final IdentNode ident, final VarNode var) {
-        this(token, start, finish, null, null, ident, var, null, false, Collections.emptyMap());
+        this(token, start, finish, null, null, ident, var, null, false, Map.of());
     }
 
     private ExportNode(final long token, final int start, final int finish, final NamedExportsNode namedExports,
@@ -89,7 +88,7 @@ public class ExportNode extends Node {
         this.var = var;
         this.expression = expression;
         this.isDefault = isDefault;
-        this.assertions = assertions;
+        this.assertions = Map.copyOf(assertions);
         assert (namedExports == null) || (exportIdent == null);
         assert !isDefault || (namedExports == null && from == null);
         assert (var == null && expression == null) || isDefault || (exportIdent != null && exportIdent == getIdent(var, expression));
@@ -105,7 +104,7 @@ public class ExportNode extends Node {
         this.exportIdent = exportIdent;
         this.var = var;
         this.expression = expression;
-        this.assertions = assertions;
+        this.assertions = Map.copyOf(assertions);
     }
 
     public NamedExportsNode getNamedExports() {

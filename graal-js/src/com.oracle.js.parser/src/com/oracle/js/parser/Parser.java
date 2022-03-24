@@ -107,7 +107,6 @@ import static com.oracle.js.parser.TokenType.YIELD;
 import static com.oracle.js.parser.TokenType.YIELD_STAR;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -6781,7 +6780,7 @@ public class Parser extends AbstractParser {
             long specifierToken = token;
             next();
             LiteralNode<TruffleString> specifier = LiteralNode.newInstance(specifierToken, moduleSpecifier);
-            Map<TruffleString, TruffleString> assertions = Collections.emptyMap();
+            Map<TruffleString, TruffleString> assertions = Map.of();
             if (env.importAssertions && type == ASSERT && last != EOL) {
                 assertions = assertClause();
             }
@@ -6828,7 +6827,7 @@ public class Parser extends AbstractParser {
             }
 
             FromNode fromNode = fromClause();
-            Map<TruffleString, TruffleString> assertions = Collections.emptyMap();
+            Map<TruffleString, TruffleString> assertions = Map.of();
             if (env.importAssertions && type == ASSERT && last != EOL) {
                 assertions = assertClause();
             }
@@ -7016,7 +7015,7 @@ public class Parser extends AbstractParser {
      */
     private void exportDeclaration(ParserContextModuleNode module) {
         final long exportToken = token;
-        Map<TruffleString, TruffleString> assertions = Collections.emptyMap();
+        Map<TruffleString, TruffleString> assertions = Map.of();
         expect(EXPORT);
         final boolean yield = false;
         final boolean await = isTopLevelAwait();
