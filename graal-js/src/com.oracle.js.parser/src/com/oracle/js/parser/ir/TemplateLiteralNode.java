@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 
 package com.oracle.js.parser.ir;
 
-import java.util.Collections;
 import java.util.List;
 
 import com.oracle.js.parser.Token;
@@ -80,16 +79,16 @@ public abstract class TemplateLiteralNode extends Expression {
 
         protected TaggedTemplateLiteralNode(long token, int finish, List<Expression> rawStrings, List<Expression> cookedStrings) {
             super(token, finish);
-            this.rawStrings = rawStrings;
-            this.cookedStrings = cookedStrings;
+            this.rawStrings = List.copyOf(rawStrings);
+            this.cookedStrings = List.copyOf(cookedStrings);
         }
 
         public List<Expression> getRawStrings() {
-            return Collections.unmodifiableList(rawStrings);
+            return rawStrings;
         }
 
         public List<Expression> getCookedStrings() {
-            return Collections.unmodifiableList(cookedStrings);
+            return cookedStrings;
         }
 
         @Override
@@ -126,7 +125,7 @@ public abstract class TemplateLiteralNode extends Expression {
         protected UntaggedTemplateLiteralNode(long token, int finish, List<Expression> expressions) {
             super(token, finish);
             assert verifyStringLiterals(expressions);
-            this.expressions = expressions;
+            this.expressions = List.copyOf(expressions);
         }
 
         public UntaggedTemplateLiteralNode(UntaggedTemplateLiteralNode literalNode, List<Expression> expressions) {
@@ -135,7 +134,7 @@ public abstract class TemplateLiteralNode extends Expression {
         }
 
         public List<Expression> getExpressions() {
-            return Collections.unmodifiableList(expressions);
+            return expressions;
         }
 
         @Override

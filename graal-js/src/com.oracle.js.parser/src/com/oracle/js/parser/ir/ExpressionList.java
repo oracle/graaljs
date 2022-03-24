@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 
 package com.oracle.js.parser.ir;
 
-import java.util.Collections;
 import java.util.List;
 
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
@@ -62,14 +61,14 @@ public class ExpressionList extends Expression {
      */
     public ExpressionList(final long token, final int finish, final List<? extends Expression> expressions) {
         super(token, finish);
-        this.expressions = expressions;
+        this.expressions = List.copyOf(expressions);
     }
 
     /**
      * Get the list of expressions.
      */
     public List<? extends Expression> getExpressions() {
-        return Collections.unmodifiableList(expressions);
+        return expressions;
     }
 
     @Override

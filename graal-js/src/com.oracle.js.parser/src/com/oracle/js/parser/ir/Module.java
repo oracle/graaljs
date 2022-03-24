@@ -41,12 +41,12 @@
 
 package com.oracle.js.parser.ir;
 
-import com.oracle.js.parser.ParserStrings;
-import com.oracle.truffle.api.strings.TruffleString;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
+import com.oracle.js.parser.ParserStrings;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Module information.
@@ -216,13 +216,13 @@ public final class Module {
 
     public Module(List<ModuleRequest> requestedModules, List<ImportEntry> importEntries, List<ExportEntry> localExportEntries, List<ExportEntry> indirectExportEntries,
                     List<ExportEntry> starExportEntries, List<ImportNode> imports, List<ExportNode> exports) {
-        this.requestedModules = requestedModules;
-        this.importEntries = importEntries;
-        this.localExportEntries = localExportEntries;
-        this.indirectExportEntries = indirectExportEntries;
-        this.starExportEntries = starExportEntries;
-        this.imports = imports;
-        this.exports = exports;
+        this.requestedModules = List.copyOf(requestedModules);
+        this.importEntries = List.copyOf(importEntries);
+        this.localExportEntries = List.copyOf(localExportEntries);
+        this.indirectExportEntries = List.copyOf(indirectExportEntries);
+        this.starExportEntries = List.copyOf(starExportEntries);
+        this.imports = imports == null ? null : List.copyOf(imports);
+        this.exports = exports == null ? null : List.copyOf(exports);
     }
 
     public List<ModuleRequest> getRequestedModules() {
