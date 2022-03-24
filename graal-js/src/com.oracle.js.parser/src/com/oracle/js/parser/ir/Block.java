@@ -254,7 +254,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
      *         statements.
      */
     public int getFirstStatementLineNumber() {
-        if (statements == null || statements.isEmpty()) {
+        if (statements.isEmpty()) {
             return -1;
         }
         return statements.get(0).getLineNumber();
