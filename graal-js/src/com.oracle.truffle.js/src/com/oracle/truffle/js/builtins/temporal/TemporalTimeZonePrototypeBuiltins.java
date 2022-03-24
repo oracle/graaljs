@@ -232,7 +232,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected long getOffsetNanosecondsFor(Object thisObj, Object instantParam) {
             JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
             JSTemporalInstantObject instant = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(getContext(), instantParam);
-            if (!TemporalUtil.isNullish(timeZone.getNanoseconds())) {
+            if (timeZone.getNanoseconds() != null) {
                 return timeZone.getNanoseconds().bigIntegerValue().longValue();
             }
             return TemporalUtil.getIANATimeZoneOffsetNanoseconds(instant.getNanoseconds(), timeZone.getIdentifier());
@@ -299,7 +299,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime) {
             JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
             JSTemporalPlainDateTimeObject dateTime = (JSTemporalPlainDateTimeObject) toTemporalDateTime.executeDynamicObject(dateTimeParam, Undefined.instance);
-            if (!TemporalUtil.isNullish(timeZone.getNanoseconds())) {
+            if (timeZone.getNanoseconds() != null) {
                 BigInteger epochNanoseconds = TemporalUtil.getEpochFromISOParts(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(),
                                 dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
                 Object instant = JSTemporalInstant.create(getContext(), new BigInt(epochNanoseconds.subtract(timeZone.getNanoseconds().bigIntegerValue())));
@@ -331,7 +331,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected DynamicObject getTransition(Object thisObj, Object startingPointParam) {
             JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
             JSTemporalInstantObject startingPoint = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(getContext(), startingPointParam);
-            if (!TemporalUtil.isNullish(timeZone.getNanoseconds())) {
+            if (timeZone.getNanoseconds() != null) {
                 return Null.instance;
             }
             OptionalLong transition;

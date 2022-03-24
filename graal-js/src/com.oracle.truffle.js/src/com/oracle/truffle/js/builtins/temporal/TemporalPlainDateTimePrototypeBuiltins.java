@@ -640,7 +640,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime,
                         @Shared("toString") @Cached JSToStringNode toStringNode) {
             JSTemporalPlainDateTimeObject one = requireTemporalDateTime(thisObj);
-            JSTemporalPlainDateTimeObject two = (JSTemporalPlainDateTimeObject) toTemporalDateTime.executeDynamicObject(other, null);
+            JSTemporalPlainDateTimeObject two = (JSTemporalPlainDateTimeObject) toTemporalDateTime.executeDynamicObject(other, Undefined.instance);
             return equalsIntl(one, two, toStringNode);
         }
 

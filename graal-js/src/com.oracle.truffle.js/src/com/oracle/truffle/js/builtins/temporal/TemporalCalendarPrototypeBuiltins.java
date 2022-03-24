@@ -579,7 +579,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             DynamicObject tdl = Undefined.instance;
             if (!JSTemporalPlainDate.isJSTemporalPlainDate(temporalDateLike) && !JSTemporalPlainDateTime.isJSTemporalPlainDateTime(temporalDateLike) &&
                             !JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(temporalDateLike)) {
-                tdl = toTemporalDate.executeDynamicObject(temporalDateLike, null);
+                tdl = toTemporalDate.executeDynamicObject(temporalDateLike, Undefined.instance);
             } else {
                 tdl = (DynamicObject) temporalDateLike;
             }
@@ -664,7 +664,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             assert calendar.getId().equals(ISO8601);
             Object dateLike = temporalDateLike;
             if (!isObject(dateLike) || (!JSTemporalPlainDate.isJSTemporalPlainDate(dateLike) && !JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(temporalDateLike))) {
-                dateLike = toTemporalDate(dateLike, null);
+                dateLike = toTemporalDate(dateLike, Undefined.instance);
             }
             return TemporalUtil.isoDaysInMonth(
                             ((TemporalYear) dateLike).getYear(),

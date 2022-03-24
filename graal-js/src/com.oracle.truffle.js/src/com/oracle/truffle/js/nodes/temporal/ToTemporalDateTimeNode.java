@@ -60,6 +60,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -91,7 +92,8 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
                     @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
                     @Cached TemporalGetOptionNode getOptionNode) {
         DynamicObject options = optParam;
-        if (TemporalUtil.isNullish(optParam)) {
+        assert optParam != null;
+        if (optParam == Undefined.instance) {
             options = JSOrdinary.createWithNullPrototype(ctx);
         }
         JSTemporalDateTimeRecord result = null;

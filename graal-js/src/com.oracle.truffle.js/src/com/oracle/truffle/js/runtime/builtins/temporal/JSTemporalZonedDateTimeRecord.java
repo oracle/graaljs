@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public final class JSTemporalZonedDateTimeRecord extends JSTemporalDateTimeRecord {
     private final TruffleString timeZoneOffsetString;
@@ -59,7 +58,7 @@ public final class JSTemporalZonedDateTimeRecord extends JSTemporalDateTimeRecor
     public static JSTemporalZonedDateTimeRecord create(int year, int month, int day, int hour, int minute, int second,
                     int millisecond, int microsecond, int nanosecond, TruffleString calendar, boolean timeZoneZ, TruffleString timeZoneOffsetString, TruffleString timeZoneName) {
         return new JSTemporalZonedDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond,
-                        calendar, !TemporalUtil.isNullish(calendar), timeZoneZ, timeZoneOffsetString, timeZoneName);
+                        calendar, calendar != null, timeZoneZ, timeZoneOffsetString, timeZoneName);
     }
 
     public TruffleString getTimeZoneOffsetString() {
