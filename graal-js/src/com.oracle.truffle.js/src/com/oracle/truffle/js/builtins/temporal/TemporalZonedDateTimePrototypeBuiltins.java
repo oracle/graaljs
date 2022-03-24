@@ -92,6 +92,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalDurationAddNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
@@ -675,7 +676,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime,
                         @Cached JSToStringNode toStringNode,
-                        @Cached TruffleString.EqualNode equalNode) {
+                        @Cached TruffleString.EqualNode equalNode,
+                        @Cached("create(getContext())") TemporalDurationAddNode durationAddNode) {
             JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
             JSTemporalZonedDateTimeObject other = (JSTemporalZonedDateTimeObject) toTemporalZonedDateTime.executeDynamicObject(otherParam, Undefined.instance);
             if (!TemporalUtil.calendarEquals(zonedDateTime.getCalendar(), other.getCalendar(), toStringNode)) {
@@ -707,7 +709,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             difference.getDays(),
                             difference.getHours(), difference.getMinutes(), difference.getSeconds(), difference.getMilliseconds(), difference.getMicroseconds(), difference.getNanoseconds(),
                             (long) roundingIncrement, smallestUnit, roundingMode, zonedDateTime);
-            JSTemporalDurationRecord result = TemporalUtil.adjustRoundedDurationDays(getContext(), namesNode, roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(),
+            JSTemporalDurationRecord result = TemporalUtil.adjustRoundedDurationDays(getContext(), namesNode, durationAddNode, roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(),
                             roundResult.getDays(), roundResult.getHours(), roundResult.getMinutes(), roundResult.getSeconds(), roundResult.getMilliseconds(), roundResult.getMicroseconds(),
                             roundResult.getNanoseconds(), (long) roundingIncrement, smallestUnit, roundingMode, zonedDateTime);
             return JSTemporalDuration.createTemporalDuration(getContext(), result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), result.getHours(), result.getMinutes(),
@@ -727,7 +729,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime,
                         @Cached JSToStringNode toStringNode,
-                        @Cached TruffleString.EqualNode equalNode) {
+                        @Cached TruffleString.EqualNode equalNode,
+                        @Cached("create(getContext())") TemporalDurationAddNode durationAddNode) {
             JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
             JSTemporalZonedDateTimeObject other = (JSTemporalZonedDateTimeObject) toTemporalZonedDateTime.executeDynamicObject(otherParam, Undefined.instance);
             if (!TemporalUtil.calendarEquals(zonedDateTime.getCalendar(), other.getCalendar(), toStringNode)) {
@@ -760,7 +763,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             difference.getDays(),
                             difference.getHours(), difference.getMinutes(), difference.getSeconds(), difference.getMilliseconds(), difference.getMicroseconds(), difference.getNanoseconds(),
                             (long) roundingIncrement, smallestUnit, roundingMode, zonedDateTime);
-            JSTemporalDurationRecord result = TemporalUtil.adjustRoundedDurationDays(getContext(), namesNode, roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(),
+            JSTemporalDurationRecord result = TemporalUtil.adjustRoundedDurationDays(getContext(), namesNode, durationAddNode, roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(),
                             roundResult.getDays(), roundResult.getHours(), roundResult.getMinutes(), roundResult.getSeconds(), roundResult.getMilliseconds(), roundResult.getMicroseconds(),
                             roundResult.getNanoseconds(), (long) roundingIncrement, smallestUnit, roundingMode, zonedDateTime);
             return JSTemporalDuration.createTemporalDuration(getContext(), -result.getYears(), -result.getMonths(), -result.getWeeks(), -result.getDays(), -result.getHours(), -result.getMinutes(),

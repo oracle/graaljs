@@ -201,6 +201,11 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorDurationOutsideRange() {
+        throw Errors.createRangeError("Given duration outside range.");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorTemporalInstantExpected() {
         return Errors.createTypeError("Temporal.Instant expected");
     }

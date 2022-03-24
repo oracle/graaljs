@@ -102,9 +102,9 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
 
     public static JSTemporalDurationObject createTemporalDuration(JSContext context, double years, double months, double weeks, double days, double hours,
                     double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
-        if (!TemporalUtil.validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
+        if (!TemporalUtil.isValidDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
                         nanoseconds)) {
-            throw Errors.createRangeError("Given duration outside range.");
+            throw TemporalErrors.createTypeErrorDurationOutsideRange();
         }
         JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalDurationFactory();
@@ -395,7 +395,10 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         if (!any) {
             throw Errors.createTypeError("Given duration like object has no duration properties.");
         }
-        return JSTemporalDurationRecord.createWeeks(year, month, week, day, hour, minute, second, millis, micros, nanos);
+        if (!TemporalUtil.isValidDuration(year, month, week, day, hour, minute, second, millis, micros, nanos)) {
+            throw TemporalErrors.createTypeErrorDurationOutsideRange();
+        }
+        return TemporalUtil.createDurationRecord(year, month, week, day, hour, minute, second, millis, micros, nanos);
     }
 
     @TruffleBoundary
