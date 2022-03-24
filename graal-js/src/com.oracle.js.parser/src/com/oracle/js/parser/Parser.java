@@ -1200,7 +1200,7 @@ public class Parser extends AbstractParser {
         if (argumentNames == null) {
             return List.of();
         }
-        ArrayList<IdentNode> list = new ArrayList<>();
+        List<IdentNode> list = new ArrayList<>();
         for (TruffleString argumentName : argumentNames) {
             // Create an artificial IdentNode that is not in the source.
             list.add(new IdentNode(0, 0, argumentName));
@@ -1701,7 +1701,7 @@ public class Parser extends AbstractParser {
             classNode.setScope(classScope);
 
             PropertyNode constructor = null;
-            ArrayList<PropertyNode> classElements = new ArrayList<>();
+            List<PropertyNode> classElements = new ArrayList<>();
             Map<TruffleString, Integer> privateNameToAccessorIndexMap = new HashMap<>();
             int instanceFieldCount = 0;
             int staticElementCount = 0;
@@ -4732,7 +4732,7 @@ public class Parser extends AbstractParser {
         final Expression constructor = memberExpression(yield, await);
 
         // Get arguments.
-        ArrayList<Expression> arguments;
+        List<Expression> arguments;
 
         // Allow for missing arguments.
         if (type == LPAREN) {
@@ -4954,7 +4954,7 @@ public class Parser extends AbstractParser {
             }
         } else if (type == LPAREN) {
             next();
-            ArrayList<Expression> arguments = new ArrayList<>();
+            List<Expression> arguments = new ArrayList<>();
             arguments.add(assignmentExpression(true, yield, await));
             if (env.importAssertions && type == COMMARIGHT) {
                 next();
@@ -6342,7 +6342,7 @@ public class Parser extends AbstractParser {
         if (paramListExpr instanceof IdentNode || paramListExpr.isTokenType(ASSIGN) || isDestructuringLhs(paramListExpr) || paramListExpr.isTokenType(SPREAD_ARGUMENT)) {
             convertArrowParameter(paramListExpr, 0, functionLine, function);
         } else if (paramListExpr instanceof BinaryNode && Token.descType(paramListExpr.getToken()) == COMMARIGHT) {
-            ArrayList<Expression> params = new ArrayList<>();
+            List<Expression> params = new ArrayList<>();
             Expression car = paramListExpr;
             do {
                 Expression cdr = ((BinaryNode) car).getRhs();
@@ -6944,7 +6944,7 @@ public class Parser extends AbstractParser {
         final long startToken = token;
         assert type == LBRACE;
         next();
-        ArrayList<ImportSpecifierNode> importSpecifiers = new ArrayList<>();
+        List<ImportSpecifierNode> importSpecifiers = new ArrayList<>();
         while (type != RBRACE) {
             boolean bindingIdentifier = isBindingIdentifier();
             long nameToken = token;
@@ -7158,7 +7158,7 @@ public class Parser extends AbstractParser {
         final long startToken = token;
         assert type == LBRACE;
         next();
-        ArrayList<ExportSpecifierNode> exports = new ArrayList<>();
+        List<ExportSpecifierNode> exports = new ArrayList<>();
         long reservedWordToken = 0L;
         while (type != RBRACE) {
             long nameToken = token;
