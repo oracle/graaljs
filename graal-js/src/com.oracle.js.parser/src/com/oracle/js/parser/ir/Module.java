@@ -193,8 +193,8 @@ public final class Module {
             return new ModuleRequest(specifier, Map.copyOf(assertions));
         }
 
-        public static ModuleRequest createTrusted(TruffleString specifier, Map<TruffleString, TruffleString> assertions) {
-            return new ModuleRequest(specifier, assertions);
+        public static ModuleRequest create(TruffleString specifier, Map.Entry<TruffleString, TruffleString>[] assertions) {
+            return new ModuleRequest(specifier, Map.ofEntries(assertions));
         }
 
         public TruffleString getSpecifier() {

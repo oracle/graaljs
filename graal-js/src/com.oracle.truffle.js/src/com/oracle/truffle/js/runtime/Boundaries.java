@@ -97,11 +97,6 @@ public final class Boundaries {
         return map.entrySet();
     }
 
-    @TruffleBoundary
-    public static <K, V> Map<K, V> mapOfEntries(Map.Entry<K, V>[] entries) {
-        return Map.ofEntries(entries);
-    }
-
     @TruffleBoundary(allowInlining = true)
     public static <K, V> Map.Entry<K, V> mapEntry(K key, V value) {
         return Map.entry(key, value);

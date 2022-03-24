@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
@@ -172,7 +171,7 @@ public class ImportCallNode extends JavaScriptNode {
                 throw ex;
             }
         }
-        Map<TruffleString, TruffleString> assertions = Collections.emptyMap();
+        Map.Entry<TruffleString, TruffleString>[] assertions = null;
         if (options != Undefined.instance) {
             if (!JSRuntime.isObject(options)) {
                 return rejectPromise(promiseCapability, "The second argument to import() must be an object");
@@ -202,7 +201,7 @@ public class ImportCallNode extends JavaScriptNode {
                         throw ex;
                     }
                 }
-                Map.Entry<TruffleString, TruffleString>[] assertionEntries = (Map.Entry<TruffleString, TruffleString>[]) new Map.Entry<?, ?>[keys.size()];
+                assertions = (Map.Entry<TruffleString, TruffleString>[]) new Map.Entry<?, ?>[keys.size()];
                 for (int i = 0; i < keys.size(); i++) {
                     TruffleString key = (TruffleString) keys.get(i);
                     Object value;
@@ -218,12 +217,17 @@ public class ImportCallNode extends JavaScriptNode {
                     if (!Strings.isTString(value)) {
                         return rejectPromise(promiseCapability, "Import assertion value must be a string");
                     }
-                    assertionEntries[i] = Boundaries.mapEntry(key, JSRuntime.toStringIsString(value));
+                    assertions[i] = Boundaries.mapEntry(key, JSRuntime.toStringIsString(value));
                 }
-                assertions = Boundaries.mapOfEntries(assertionEntries);
             }
         }
-        return hostImportModuleDynamically(referencingScriptOrModule, ModuleRequest.createTrusted(specifierString, assertions), promiseCapability);
+        ModuleRequest moduleRequest = assertions == null ? ModuleRequest.create(specifierString) : createModuleRequestWithAssertions(specifierString, assertions);
+        return hostImportModuleDynamically(referencingScriptOrModule, moduleRequest, promiseCapability);
+    }
+
+    @TruffleBoundary
+    private static ModuleRequest createModuleRequestWithAssertions(TruffleString specifierString, Map.Entry<TruffleString, TruffleString>[] assertions) {
+        return ModuleRequest.create(specifierString, assertions);
     }
 
     private Object rejectPromise(PromiseCapabilityRecord promiseCapability, String errorMessage) {
