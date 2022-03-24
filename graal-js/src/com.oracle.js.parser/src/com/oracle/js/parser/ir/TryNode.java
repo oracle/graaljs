@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@
 package com.oracle.js.parser.ir;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
@@ -77,14 +76,14 @@ public final class TryNode extends Statement {
     public TryNode(final int lineNumber, final long token, final int finish, final Block body, final List<Block> catchBlocks, final Block finallyBody) {
         super(lineNumber, token, finish);
         this.body = body;
-        this.catchBlocks = catchBlocks;
+        this.catchBlocks = List.copyOf(catchBlocks);
         this.finallyBody = finallyBody;
     }
 
     private TryNode(final TryNode tryNode, final Block body, final List<Block> catchBlocks, final Block finallyBody) {
         super(tryNode);
         this.body = body;
-        this.catchBlocks = catchBlocks;
+        this.catchBlocks = List.copyOf(catchBlocks);
         this.finallyBody = finallyBody;
         this.exception = tryNode.exception;
     }
@@ -166,7 +165,7 @@ public final class TryNode extends Statement {
         for (final Block catchBlock : catchBlocks) {
             catches.add(getCatchNodeFromBlock(catchBlock));
         }
-        return Collections.unmodifiableList(catches);
+        return List.copyOf(catches);
     }
 
     private static CatchNode getCatchNodeFromBlock(final Block catchBlock) {
@@ -179,7 +178,7 @@ public final class TryNode extends Statement {
      * @return a list of blocks
      */
     public List<Block> getCatchBlocks() {
-        return Collections.unmodifiableList(catchBlocks);
+        return catchBlocks;
     }
 
     /**

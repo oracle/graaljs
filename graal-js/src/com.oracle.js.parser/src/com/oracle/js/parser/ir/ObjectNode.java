@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 
 package com.oracle.js.parser.ir;
 
-import java.util.Collections;
 import java.util.List;
 
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
@@ -66,13 +65,13 @@ public final class ObjectNode extends Expression {
      */
     public ObjectNode(final long token, final int finish, final List<PropertyNode> elements, final boolean hasCoverInitializedName) {
         super(token, finish);
-        this.elements = elements;
+        this.elements = List.copyOf(elements);
         this.hasCoverInitializedName = hasCoverInitializedName;
     }
 
     private ObjectNode(final ObjectNode objectNode, final List<PropertyNode> elements, final boolean hasCoverInitializedName) {
         super(objectNode);
-        this.elements = elements;
+        this.elements = List.copyOf(elements);
         this.hasCoverInitializedName = hasCoverInitializedName;
     }
 
@@ -118,7 +117,7 @@ public final class ObjectNode extends Expression {
      * @return a list of elements
      */
     public List<PropertyNode> getElements() {
-        return Collections.unmodifiableList(elements);
+        return elements;
     }
 
     private ObjectNode setElements(final List<PropertyNode> elements) {

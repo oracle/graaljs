@@ -41,8 +41,6 @@
 
 package com.oracle.js.parser.ir;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
@@ -115,27 +113,15 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
      * @param flags The flags of the block
      * @param statements All statements in the block
      */
-    public Block(final long token, final int finish, final int flags, final Scope scope, final Statement... statements) {
+    public Block(final long token, final int finish, final int flags, final Scope scope, final List<Statement> statements) {
         super(token, finish);
         assert start <= finish;
 
-        this.statements = statements.length == 0 ? Collections.emptyList() : Arrays.asList(statements);
+        this.statements = List.copyOf(statements);
         this.scope = scope;
-        final int len = statements.length;
-        final int terminalFlags = len > 0 && statements[len - 1].hasTerminalFlags() ? IS_TERMINAL : 0;
+        final int len = statements.size();
+        final int terminalFlags = len > 0 && statements.get(len - 1).hasTerminalFlags() ? IS_TERMINAL : 0;
         this.flags = terminalFlags | flags;
-    }
-
-    /**
-     * Constructor
-     *
-     * @param token The first token of the block
-     * @param finish The index of the last character
-     * @param flags The flags of the block
-     * @param statements All statements in the block
-     */
-    public Block(final long token, final int finish, final int flags, final Scope scope, final List<Statement> statements) {
-        this(token, finish, flags, scope, statements.toArray(new Statement[statements.size()]));
     }
 
     private Block(final Block block, final int finish, final List<Statement> statements, final int flags) {
@@ -249,7 +235,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
      * @return a list of statements
      */
     public List<Statement> getStatements() {
-        return Collections.unmodifiableList(statements);
+        return statements;
     }
 
     /**
@@ -268,7 +254,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
      *         statements.
      */
     public int getFirstStatementLineNumber() {
-        if (statements == null || statements.isEmpty()) {
+        if (statements.isEmpty()) {
             return -1;
         }
         return statements.get(0).getLineNumber();

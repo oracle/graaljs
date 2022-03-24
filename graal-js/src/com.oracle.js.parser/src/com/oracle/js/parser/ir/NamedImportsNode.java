@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,10 @@
 
 package com.oracle.js.parser.ir;
 
+import java.util.List;
+
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
-import java.util.Collections;
-import java.util.List;
 
 public class NamedImportsNode extends Node {
 
@@ -52,16 +52,16 @@ public class NamedImportsNode extends Node {
 
     public NamedImportsNode(final long token, final int start, final int finish, final List<ImportSpecifierNode> importSpecifiers) {
         super(token, start, finish);
-        this.importSpecifiers = importSpecifiers;
+        this.importSpecifiers = List.copyOf(importSpecifiers);
     }
 
     private NamedImportsNode(final NamedImportsNode node, final List<ImportSpecifierNode> importSpecifiers) {
         super(node);
-        this.importSpecifiers = importSpecifiers;
+        this.importSpecifiers = List.copyOf(importSpecifiers);
     }
 
     public List<ImportSpecifierNode> getImportSpecifiers() {
-        return Collections.unmodifiableList(importSpecifiers);
+        return importSpecifiers;
     }
 
     public NamedImportsNode setImportSpecifiers(List<ImportSpecifierNode> importSpecifiers) {

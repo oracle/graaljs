@@ -415,6 +415,7 @@ public abstract class LiteralNode<T> extends Expression {
          */
         @Override
         public List<Expression> getElementExpressions() {
+            // Note: cannot use List.of() because of null values
             return Collections.unmodifiableList(Arrays.asList(value));
         }
 

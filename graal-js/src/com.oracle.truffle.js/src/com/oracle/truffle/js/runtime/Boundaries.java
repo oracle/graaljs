@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -98,9 +97,9 @@ public final class Boundaries {
         return map.entrySet();
     }
 
-    @TruffleBoundary
-    public static <K, V> HashMap<K, V> hashMapCreate() {
-        return new HashMap<>();
+    @TruffleBoundary(allowInlining = true)
+    public static <K, V> Map.Entry<K, V> mapEntry(K key, V value) {
+        return Map.entry(key, value);
     }
 
     @TruffleBoundary

@@ -42,7 +42,6 @@ package com.oracle.js.parser;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -250,7 +249,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      */
     public List<IdentNode> getParameters() {
         if (parameters == null) {
-            return Collections.emptyList();
+            return List.of();
         }
         return parameters;
     }
@@ -460,7 +459,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
                 addParameterInit(paramIdent, i);
             }
         }
-        parameters = Collections.emptyList();
+        parameters = List.of();
     }
 
     public ParserContextBlockNode createParameterBlock() {
@@ -497,7 +496,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
                 assert !parent.hasSymbol(Parser.ARGUMENTS_NAME);
                 parent.putSymbol(new Symbol(Parser.ARGUMENTS_NAME, Symbol.IS_LET | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
             }
-            parameters = Collections.emptyList();
+            parameters = List.of();
         } else {
             parent = parentScope;
         }

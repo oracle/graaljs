@@ -41,7 +41,6 @@
 
 package com.oracle.js.parser.ir;
 
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -285,7 +284,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         this.name = Objects.requireNonNull(name);
         this.length = length;
         this.numOfParams = numOfParams;
-        this.parameters = parameters;
+        this.parameters = List.copyOf(parameters);
         this.firstToken = firstToken;
         this.lastToken = lastToken;
         this.flags = flags;
@@ -632,7 +631,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      * @return a list of IdentNodes which represent the function parameters, in order
      */
     public List<IdentNode> getParameters() {
-        return Collections.unmodifiableList(parameters);
+        return parameters;
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,7 +71,7 @@ public final class CaseNode extends Node implements Terminal {
         super(token, finish);
 
         this.test = test;
-        this.statements = statements;
+        this.statements = List.copyOf(statements);
         this.terminal = isTerminal(statements);
     }
 
@@ -79,7 +79,7 @@ public final class CaseNode extends Node implements Terminal {
         super(caseNode, finish);
 
         this.test = test;
-        this.statements = statements;
+        this.statements = List.copyOf(statements);
         this.terminal = isTerminal(statements);
     }
 

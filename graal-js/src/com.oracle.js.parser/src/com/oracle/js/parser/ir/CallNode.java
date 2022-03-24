@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 
 package com.oracle.js.parser.ir;
 
-import java.util.Collections;
 import java.util.List;
 
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
@@ -125,7 +124,7 @@ public final class CallNode extends OptionalExpression {
         super(token, start, finish);
 
         this.function = function;
-        this.args = args;
+        this.args = List.copyOf(args);
         this.flags = flags;
         this.lineNumber = lineNumber;
     }
@@ -134,7 +133,7 @@ public final class CallNode extends OptionalExpression {
         super(callNode);
         this.lineNumber = callNode.lineNumber;
         this.function = function;
-        this.args = args;
+        this.args = List.copyOf(args);
         this.flags = flags;
     }
 
@@ -205,7 +204,7 @@ public final class CallNode extends OptionalExpression {
      * @return a list of arguments
      */
     public List<Expression> getArgs() {
-        return Collections.unmodifiableList(args);
+        return args;
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 
 package com.oracle.js.parser.ir;
 
-import java.util.Collections;
 import java.util.List;
 
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
@@ -77,7 +76,7 @@ public final class SwitchNode extends BreakableStatement {
     public SwitchNode(final int lineNumber, final long token, final int finish, final Expression expression, final List<CaseNode> cases, final int defaultCaseIndex) {
         super(lineNumber, token, finish);
         this.expression = expression;
-        this.cases = cases;
+        this.cases = List.copyOf(cases);
         this.defaultCaseIndex = defaultCaseIndex;
         assert defaultCaseIndex == -1 || cases.get(defaultCaseIndex).getTest() == null;
     }
@@ -85,7 +84,7 @@ public final class SwitchNode extends BreakableStatement {
     private SwitchNode(final SwitchNode switchNode, final Expression expression, final List<CaseNode> cases, final int defaultCaseIndex) {
         super(switchNode);
         this.expression = expression;
-        this.cases = cases;
+        this.cases = List.copyOf(cases);
         this.defaultCaseIndex = defaultCaseIndex;
         this.tag = switchNode.getTag(); // TODO are symbols inherited as references?
     }
@@ -145,7 +144,7 @@ public final class SwitchNode extends BreakableStatement {
      * @return a list of case nodes
      */
     public List<CaseNode> getCases() {
-        return Collections.unmodifiableList(cases);
+        return cases;
     }
 
     private SwitchNode setCases(final LexicalContext lc, final List<CaseNode> cases, final int defaultCaseIndex) {

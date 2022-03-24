@@ -41,7 +41,6 @@
 
 package com.oracle.js.parser.ir;
 
-import java.util.Collections;
 import java.util.List;
 
 import com.oracle.js.parser.ParserStrings;
@@ -77,7 +76,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.ident = ident;
         this.classHeritage = classHeritage;
         this.constructor = constructor;
-        this.classElements = classElements;
+        this.classElements = List.copyOf(classElements);
         this.scope = scope;
         this.instanceFieldCount = instanceFieldCount;
         this.staticElementCount = staticElementCount;
@@ -92,7 +91,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.ident = ident;
         this.classHeritage = classHeritage;
         this.constructor = constructor;
-        this.classElements = classElements;
+        this.classElements = List.copyOf(classElements);
         this.scope = classNode.scope;
         this.instanceFieldCount = elementCount(classElements, false);
         this.staticElementCount = elementCount(classElements, true);
@@ -156,7 +155,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
      * Get method definitions except the constructor.
      */
     public List<PropertyNode> getClassElements() {
-        return Collections.unmodifiableList(classElements);
+        return classElements;
     }
 
     public ClassNode setClassElements(final List<PropertyNode> classElements) {
