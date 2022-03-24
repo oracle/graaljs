@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
@@ -151,6 +152,7 @@ public class ImportCallNode extends JavaScriptNode {
         return hostImportModuleDynamically(referencingScriptOrModule, ModuleRequest.create(specifierString), newPromiseCapability());
     }
 
+    @SuppressWarnings("unchecked")
     private Object executeAssertions(VirtualFrame frame, Object referencingScriptOrModule, Object specifier) {
         assert optionsRefNode != null;
         if (enumerableOwnPropertyNamesNode == null || getAssertionsNode == null) {
@@ -170,7 +172,7 @@ public class ImportCallNode extends JavaScriptNode {
                 throw ex;
             }
         }
-        Map<TruffleString, TruffleString> assertions = Boundaries.hashMapCreate();
+        Map<TruffleString, TruffleString> assertions = Collections.emptyMap();
         if (options != Undefined.instance) {
             if (!JSRuntime.isObject(options)) {
                 return rejectPromise(promiseCapability, "The second argument to import() must be an object");
@@ -200,6 +202,7 @@ public class ImportCallNode extends JavaScriptNode {
                         throw ex;
                     }
                 }
+                Map.Entry<TruffleString, TruffleString>[] assertionEntries = (Map.Entry<TruffleString, TruffleString>[]) new Map.Entry<?, ?>[keys.size()];
                 for (int i = 0; i < keys.size(); i++) {
                     TruffleString key = (TruffleString) keys.get(i);
                     Object value;
@@ -215,11 +218,12 @@ public class ImportCallNode extends JavaScriptNode {
                     if (!Strings.isTString(value)) {
                         return rejectPromise(promiseCapability, "Import assertion value must be a string");
                     }
-                    Boundaries.mapPut(assertions, key, JSRuntime.toStringIsString(value));
+                    assertionEntries[i] = Boundaries.mapEntry(key, JSRuntime.toStringIsString(value));
                 }
+                assertions = Boundaries.mapOfEntries(assertionEntries);
             }
         }
-        return hostImportModuleDynamically(referencingScriptOrModule, ModuleRequest.create(specifierString, assertions), promiseCapability);
+        return hostImportModuleDynamically(referencingScriptOrModule, ModuleRequest.createTrusted(specifierString, assertions), promiseCapability);
     }
 
     private Object rejectPromise(PromiseCapabilityRecord promiseCapability, String errorMessage) {
