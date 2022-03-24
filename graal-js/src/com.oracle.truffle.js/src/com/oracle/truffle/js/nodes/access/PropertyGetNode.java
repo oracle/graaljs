@@ -594,7 +594,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         protected AbstractFinalPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck, JSDynamicObject expectedObj) {
             super(shapeCheck, IS_FINAL | (expectedObj != null ? IS_FINAL_CONSTANT_OBJECT : 0));
-            this.finalAssumption = property.getLocation().isFinal() ? null : property.getLocation().getFinalAssumption();
+            this.finalAssumption = property.getLocation().getFinalAssumption();
             this.expectedObjRef = expectedObj == null ? null : new TruffleWeakReference<>(expectedObj);
         }
 
@@ -1823,7 +1823,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         Shape cacheShape = thisJSObj.getShape();
 
         if ((JSProperty.isData(property) && !JSProperty.isProxy(property) || JSProperty.isAccessor(property)) &&
-                        (property.getLocation().isFinal() || property.getLocation().isAssumedFinal())) {
+                        property.getLocation().isAssumedFinal()) {
             /**
              * if property is final and: <br>
              * (1) shape not in cache: specialize on final property with constant object [prototype
@@ -2132,7 +2132,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         assert shapesHaveCommonLayoutForKey(parentShape, cacheShape);
         if (JSDynamicObject.isJSDynamicObject(thisObj) && JSProperty.isData(property)) {
             if (!JSProperty.isAccessor(property) && !JSProperty.isProxy(property)) {
-                return !property.getLocation().isFinal() && !property.getLocation().isAssumedFinal();
+                return !property.getLocation().isAssumedFinal();
             }
         }
         return false;
