@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -184,11 +184,6 @@ public abstract class JSClassObject extends JSObject {
     @Override
     public boolean testIntegrityLevel(boolean frozen) {
         return getJSClass().testIntegrityLevel(this, frozen);
-    }
-
-    @Override
-    public String toString() {
-        return getJSClass().toString(this);
     }
 
 }
