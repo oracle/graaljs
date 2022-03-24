@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -212,9 +212,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // !==
         ops.add(createBinaryOperator(context, "!==", TypeDescriptor.BOOLEAN, ANY, ANY));
         // in
-        ops.add(createBinaryOperator(context, "in", TypeDescriptor.BOOLEAN,
-                        ANY,
-                        TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.ARRAY, TypeDescriptor.EXECUTABLE_ANY)));
+        ops.add(createBinaryOperator(context, "in", TypeDescriptor.BOOLEAN, ANY, ANY, JavaScriptVerifier.inOperatorVerifier(null)));
         // instanceof
         ops.add(createBinaryOperator(context, "instanceof", TypeDescriptor.BOOLEAN, ANY, TypeDescriptor.META_OBJECT));
 
@@ -543,6 +541,32 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         }
                     }
                     super.accept(snippetRun);
+                }
+            };
+        }
+
+        /**
+         * Creates a {@link ResultVerifier} for {@code in} operator. This operator throws when there
+         * is a primitive type on the right side. Unfortunately, TCK does not allow to specify
+         * {@code TypeDescriptor} excluding specific traits (subtract does not work for objects with
+         * the combination of allowed and subtracted traits).
+         * 
+         * @param next the next {@link ResultVerifier} to be called, null for last one
+         * @return the {@link ResultVerifier}
+         */
+        static ResultVerifier inOperatorVerifier(ResultVerifier next) {
+            return new JavaScriptVerifier(next) {
+                @Override
+                public void accept(SnippetRun snippetRun) throws PolyglotException {
+                    Value haystack = snippetRun.getParameters().get(1);
+                    boolean shouldThrow = (haystack.isNull() || haystack.isBoolean() || haystack.isNumber() || haystack.isString());
+                    if (shouldThrow) {
+                        if (snippetRun.getException() == null) {
+                            throw new AssertionError("TypeError expected but no error has been thrown.");
+                        } // else exception expected => ignore
+                    } else {
+                        super.accept(snippetRun); // no exception expected
+                    }
                 }
             };
         }
