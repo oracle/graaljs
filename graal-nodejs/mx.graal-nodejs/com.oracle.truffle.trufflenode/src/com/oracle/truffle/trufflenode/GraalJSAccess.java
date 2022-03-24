@@ -3871,7 +3871,7 @@ public final class GraalJSAccess {
             localExportEntries.add(Module.ExportEntry.exportSpecifier((TruffleString) exportName));
         }
         FrameDescriptor frameDescriptor = frameDescBuilder.toFrameDescriptor();
-        Module moduleNode = new Module(Collections.emptyList(), Collections.emptyList(), localExportEntries, Collections.emptyList(), Collections.emptyList(), null, null);
+        Module moduleNode = new Module(List.of(), List.of(), localExportEntries, List.of(), List.of(), null, null);
         Source source = Source.newBuilder(JavaScriptLanguage.ID, "<unavailable>", Strings.toJavaString((TruffleString) moduleName)).build();
 
         EngineCacheData engineCacheData = getContextEngineCacheData(mainJSContext);
