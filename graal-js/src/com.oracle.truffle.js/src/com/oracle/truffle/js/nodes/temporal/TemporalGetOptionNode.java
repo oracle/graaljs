@@ -59,7 +59,6 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.OptionType;
 
 /**
@@ -79,15 +78,15 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
         return TemporalGetOptionNodeGen.getUncached();
     }
 
-    public abstract Object execute(DynamicObject options, TruffleString property, TemporalUtil.OptionType types, List<?> values, Object fallback);
+    public abstract Object execute(DynamicObject options, TruffleString property, OptionType types, List<?> values, Object fallback);
 
     @Specialization
-    protected Object getOption(DynamicObject options, TruffleString property, TemporalUtil.OptionType types, List<?> values, Object fallback,
+    protected Object getOption(DynamicObject options, TruffleString property, OptionType types, List<?> values, Object fallback,
                     @Cached BranchProfile errorBranch,
                     @Cached("createBinaryProfile()") ConditionProfile isFallbackProfile,
                     @Cached JSToBooleanNode toBooleanNode,
-                    @Cached(value = "create()", uncached = "createEmptyToString()") JSToStringNode toStringNode,
-                    @Cached(value = "create()", uncached = "createEmptyToNumber()") JSToNumberNode toNumberNode) {
+                    @Cached(uncached = "createEmptyToString()") JSToStringNode toStringNode,
+                    @Cached(uncached = "createEmptyToNumber()") JSToNumberNode toNumberNode) {
         assert JSRuntime.isObject(options);
         Object value = JSObject.get(options, property);
         if (isFallbackProfile.profile(value == Undefined.instance)) {
@@ -95,9 +94,9 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
         }
         OptionType type;
         if (value instanceof Boolean && types.allowsBoolean()) {
-            type = TemporalUtil.OptionType.BOOLEAN;
+            type = OptionType.BOOLEAN;
         } else if (Strings.isTString(value) && types.allowsString()) {
-            type = TemporalUtil.OptionType.STRING;
+            type = OptionType.STRING;
         } else if (JSRuntime.isNumber(value) && types.allowsNumber()) {
             type = OptionType.NUMBER;
         } else {
@@ -108,7 +107,7 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
         } else if (type.allowsNumber()) {
             // workaround as long as JSToStringNode cannot have an uncached version
             value = toNumberNode == null ? JSRuntime.toNumber(value) : toNumberNode.executeNumber(value);
-            if (Double.isNaN(JSRuntime.doubleValue((Number) value))) {
+            if (JSRuntime.isNaN(value)) {
                 throw TemporalErrors.createRangeErrorNumberIsNaN();
             }
         } else if (type.allowsString()) {
