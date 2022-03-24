@@ -1816,7 +1816,6 @@ public class Parser extends AbstractParser {
             long lastToken = token;
             expect(RBRACE);
 
-            classElements.trimToSize();
             int classFinish = Token.descPosition(lastToken) + Token.descLength(lastToken);
 
             if (constructor == null) {
