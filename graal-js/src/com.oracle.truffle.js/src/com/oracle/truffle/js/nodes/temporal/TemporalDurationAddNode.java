@@ -70,7 +70,7 @@ import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Implementation of the Temporal.Duration.prototype.add operation.
+ * Implementation of the Temporal addDuration operation.
  */
 public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
 
