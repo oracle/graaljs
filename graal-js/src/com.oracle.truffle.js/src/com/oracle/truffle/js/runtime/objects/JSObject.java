@@ -319,11 +319,11 @@ public abstract class JSObject extends JSDynamicObject {
     }
 
     @TruffleBoundary
-    public static DynamicObject getPrototype(DynamicObject obj) {
+    public static JSDynamicObject getPrototype(DynamicObject obj) {
         return JSObject.getJSClass(obj).getPrototypeOf(obj);
     }
 
-    public static DynamicObject getPrototype(DynamicObject obj, JSClassProfile jsclassProfile) {
+    public static JSDynamicObject getPrototype(DynamicObject obj, JSClassProfile jsclassProfile) {
         return jsclassProfile.getJSClass(obj).getPrototypeOf(obj);
     }
 

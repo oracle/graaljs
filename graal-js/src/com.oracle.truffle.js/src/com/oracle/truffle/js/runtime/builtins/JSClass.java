@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
@@ -70,8 +69,7 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
  *
  * Parameter order: JSDynamicObject receiver[, the rest...].
  */
-public abstract class JSClass extends ObjectType {
-    protected static final String[] EMPTY_STRING_ARRAY = new String[0];
+public abstract class JSClass {
 
     protected JSClass() {
     }
@@ -80,7 +78,7 @@ public abstract class JSClass extends ObjectType {
      * 9.1.1 [[GetPrototypeOf]] ().
      */
     @TruffleBoundary
-    public abstract DynamicObject getPrototypeOf(DynamicObject thisObj);
+    public abstract JSDynamicObject getPrototypeOf(DynamicObject thisObj);
 
     /**
      * 9.1.2 [[SetPrototypeOf]] (V).

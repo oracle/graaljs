@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -100,12 +99,6 @@ public final class Null {
         @Override
         public TruffleString defaultToString(DynamicObject thisObj) {
             return thisObj == Undefined.instance ? Undefined.NAME : Null.NAME;
-        }
-
-        @Override
-        @TruffleBoundary
-        public String toString(DynamicObject object) {
-            return "DynamicObject<" + defaultToString(object) + ">@" + Integer.toHexString(hashCode(object));
         }
     }
 }

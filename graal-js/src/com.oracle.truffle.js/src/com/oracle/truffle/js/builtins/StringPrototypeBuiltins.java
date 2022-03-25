@@ -2829,7 +2829,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.setGlobalNode = PropertySetNode.createSetHidden(JSString.REGEXP_ITERATOR_GLOBAL_ID, context);
             this.setUnicodeNode = PropertySetNode.createSetHidden(JSString.REGEXP_ITERATOR_UNICODE_ID, context);
             this.setDoneNode = PropertySetNode.createSetHidden(JSString.REGEXP_ITERATOR_DONE_ID, context);
-            adoptChildren();
         }
 
         public DynamicObject createIterator(VirtualFrame frame, Object regex, Object string, Boolean global, Boolean fullUnicode) {

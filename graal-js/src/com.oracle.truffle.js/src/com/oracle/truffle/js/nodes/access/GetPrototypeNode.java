@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -55,6 +56,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -68,9 +70,9 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
     GetPrototypeNode() {
     }
 
-    public abstract DynamicObject execute(DynamicObject obj);
+    public abstract JSDynamicObject execute(DynamicObject obj);
 
-    public abstract DynamicObject execute(Object obj);
+    public abstract JSDynamicObject execute(Object obj);
 
     public static GetPrototypeNode create() {
         return GetPrototypeNodeGen.create();
@@ -83,7 +85,7 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
             @Child private GetPrototypeNode getPrototypeNode = GetPrototypeNode.create();
 
             @Override
-            public DynamicObject execute(VirtualFrame frame) {
+            public Object execute(VirtualFrame frame) {
                 return getPrototypeNode.execute(objectNode.execute(frame));
             }
 
@@ -95,34 +97,38 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
         return new GetPrototypeOfNode();
     }
 
-    static Property getPrototypeProperty(Shape shape) {
+    static Location getPrototypeLocation(Shape shape) {
         if (JSShape.getJSClass(shape) == JSProxy.INSTANCE) {
             return null;
         }
-        return JSShape.getPrototypeProperty(shape);
+        Property prototypeProperty = JSShape.getPrototypeProperty(shape);
+        if (prototypeProperty != null) {
+            return prototypeProperty.getLocation();
+        }
+        return null;
     }
 
-    @Specialization(guards = {"obj.getShape() == shape", "prototypeProperty != null"}, limit = "MAX_SHAPE_COUNT")
-    static DynamicObject doCachedShape(DynamicObject obj,
+    @Specialization(guards = {"obj.getShape() == shape", "prototypeLocation != null"}, limit = "MAX_SHAPE_COUNT")
+    static JSDynamicObject doCachedShape(DynamicObject obj,
                     @Cached("obj.getShape()") Shape shape,
-                    @Cached("getPrototypeProperty(shape)") Property prototypeProperty) {
+                    @Cached("getPrototypeLocation(shape)") Location prototypeLocation) {
         assert !JSGuards.isJSProxy(obj);
-        return (DynamicObject) prototypeProperty.get(obj, shape);
+        return (JSDynamicObject) prototypeLocation.get(obj, shape);
     }
 
     @Specialization(guards = "!isJSProxy(obj)", replaces = "doCachedShape")
-    static DynamicObject doGeneric(DynamicObject obj) {
+    static JSDynamicObject doGeneric(DynamicObject obj) {
         return JSObjectUtil.getPrototype(obj);
     }
 
     @Specialization(guards = "isJSProxy(obj)")
-    static DynamicObject doProxy(DynamicObject obj,
+    static JSDynamicObject doProxy(DynamicObject obj,
                     @Cached("create()") JSClassProfile jsclassProfile) {
         return JSObject.getPrototype(obj, jsclassProfile);
     }
 
     @Specialization(guards = "!isDynamicObject(obj)")
-    static DynamicObject doNotObject(@SuppressWarnings("unused") Object obj) {
+    static JSDynamicObject doNotObject(@SuppressWarnings("unused") Object obj) {
         return Null.instance;
     }
 }

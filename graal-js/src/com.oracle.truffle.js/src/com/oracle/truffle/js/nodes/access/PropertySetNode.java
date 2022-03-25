@@ -61,6 +61,7 @@ import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.IntLocation;
+import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -401,20 +402,20 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     }
 
     public static final class ObjectPropertySetNode extends LinkedPropertySetNode {
-        private final Property property;
+        private final Location location;
 
         public ObjectPropertySetNode(Property property, ReceiverCheckNode shapeCheck) {
             super(shapeCheck);
-            this.property = property;
-            assert JSProperty.isData(property) && JSProperty.isWritable(property) && !JSProperty.isProxy(property) && !property.getLocation().isFinal();
+            this.location = property.getLocation();
+            assert JSProperty.isData(property) && JSProperty.isWritable(property) && !JSProperty.isProxy(property) : property;
         }
 
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            if (property.getLocation().canSet(value)) {
+            if (location.canStore(value)) {
                 DynamicObject store = receiverCheck.getStore(thisObj);
                 try {
-                    property.set(store, value, receiverCheck.getShape());
+                    location.set(store, value, receiverCheck.getShape());
                 } catch (IncompatibleLocationException | FinalLocationException e) {
                     throw Errors.shouldNotReachHere(e);
                 }
@@ -426,29 +427,29 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean acceptsValue(Object value) {
-            return property.getLocation().canSet(value);
+            return location.canStore(value);
         }
     }
 
     public static final class PropertyProxySetNode extends LinkedPropertySetNode {
-        private final Property property;
         private final boolean isStrict;
+        private final Location location;
         private final BranchProfile errorBranch = BranchProfile.create();
 
         public PropertyProxySetNode(Property property, AbstractShapeCheckNode shapeCheck, boolean isStrict) {
             super(shapeCheck);
-            this.property = property;
             this.isStrict = isStrict;
-            assert JSProperty.isData(property) && JSProperty.isWritable(property) && JSProperty.isProxy(property) && !property.getLocation().isFinal();
+            this.location = property.getLocation();
+            assert JSProperty.isData(property) && JSProperty.isWritable(property) && JSProperty.isProxy(property) : property;
         }
 
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             DynamicObject store = receiverCheck.getStore(thisObj);
-            boolean ret = ((PropertyProxy) property.getLocation().get(store, guard)).set(store, value);
+            boolean ret = ((PropertyProxy) location.get(store, guard)).set(store, value);
             if (!ret && isStrict) {
                 errorBranch.enter();
-                throw Errors.createTypeErrorNotWritableProperty(property.getKey(), thisObj);
+                throw Errors.createTypeErrorNotWritableProperty(root.getKey(), thisObj);
             }
             return true;
         }
@@ -456,23 +457,22 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     public static final class IntPropertySetNode extends LinkedPropertySetNode {
 
-        private final Property property;
         private final IntLocation location;
 
         public IntPropertySetNode(Property property, ReceiverCheckNode shapeCheck) {
             super(shapeCheck);
-            this.property = property;
             this.location = (IntLocation) property.getLocation();
-            assert JSProperty.isData(property) && JSProperty.isWritable(property) && !property.getLocation().isFinal();
+            assert JSProperty.isData(property) && JSProperty.isWritable(property) : property;
         }
 
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             if (value instanceof Integer) {
+                int intValue = (int) value;
                 DynamicObject store = receiverCheck.getStore(thisObj);
                 try {
-                    property.set(store, value, receiverCheck.getShape());
-                } catch (IncompatibleLocationException | FinalLocationException e) {
+                    location.setInt(store, intValue, receiverCheck.getShape());
+                } catch (FinalLocationException e) {
                     throw Errors.shouldNotReachHere(e);
                 }
                 return true;
@@ -509,7 +509,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         public DoublePropertySetNode(Property property, ReceiverCheckNode shapeCheck) {
             super(shapeCheck);
             this.location = (DoubleLocation) property.getLocation();
-            assert JSProperty.isData(property) && JSProperty.isWritable(property) && !property.getLocation().isFinal();
+            assert JSProperty.isData(property) && JSProperty.isWritable(property) : property;
         }
 
         @Override
@@ -573,15 +573,12 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     public static final class BooleanPropertySetNode extends LinkedPropertySetNode {
 
-        private final Property property;
         private final BooleanLocation location;
 
         public BooleanPropertySetNode(Property property, ReceiverCheckNode shapeCheck) {
             super(shapeCheck);
-            this.property = property;
             this.location = (BooleanLocation) property.getLocation();
-            assert JSProperty.isData(property);
-            assert JSProperty.isWritable(property);
+            assert JSProperty.isData(property) && JSProperty.isWritable(property) : property;
         }
 
         @Override
@@ -589,8 +586,8 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             if (value instanceof Boolean) {
                 DynamicObject store = receiverCheck.getStore(thisObj);
                 try {
-                    property.set(store, value, receiverCheck.getShape());
-                } catch (IncompatibleLocationException | FinalLocationException e) {
+                    location.setBoolean(store, (boolean) value, receiverCheck.getShape());
+                } catch (FinalLocationException e) {
                     throw Errors.shouldNotReachHere(e);
                 }
                 return true;
@@ -617,23 +614,23 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     }
 
     public static final class AccessorPropertySetNode extends LinkedPropertySetNode {
-        private final Property property;
         private final boolean isStrict;
+        private final Location location;
         @Child private JSFunctionCallNode callNode;
         private final BranchProfile undefinedSetterBranch = BranchProfile.create();
 
         public AccessorPropertySetNode(Property property, ReceiverCheckNode receiverCheck, boolean isStrict) {
             super(receiverCheck);
             assert JSProperty.isAccessor(property);
-            this.property = property;
             this.isStrict = isStrict;
+            this.location = property.getLocation();
             this.callNode = JSFunctionCallNode.createCall();
         }
 
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             DynamicObject store = receiverCheck.getStore(thisObj);
-            Accessor accessor = (Accessor) property.getLocation().get(store, guard);
+            Accessor accessor = (Accessor) location.get(store, guard);
 
             DynamicObject setter = accessor.getSetter();
             if (setter != Undefined.instance) {
@@ -1067,7 +1064,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return new PropertyProxySetNode(property, shapeCheck, isStrict());
         } else {
             assert JSProperty.isWritable(property) && depth == 0 && !JSProperty.isProxy(property);
-            if (property.getLocation().isConstant() || !property.getLocation().canSet(value)) {
+            if (property.getLocation().isConstant() || !property.getLocation().canStore(value)) {
                 return createRedefinePropertyNode(key, shapeCheck, shapeCheck.getShape(), property);
             }
 
@@ -1205,7 +1202,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         assert shapesHaveCommonLayoutForKey(parentShape, cacheShape);
         if (JSDynamicObject.isJSDynamicObject(thisObj) && JSProperty.isData(property)) {
             if (JSProperty.isWritable(property) && depth == 0 && !superProperty && !JSProperty.isProxy(property)) {
-                return !property.getLocation().isValue() && property.getLocation().canSet(value);
+                return !property.getLocation().isValue() && property.getLocation().canStore(value);
             }
         }
         return false;
