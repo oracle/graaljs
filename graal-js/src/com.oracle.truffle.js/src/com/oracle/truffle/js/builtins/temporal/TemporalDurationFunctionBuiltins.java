@@ -47,6 +47,7 @@ import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.temporal.ToRelativeTemporalObjectNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
@@ -118,11 +119,12 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected int compare(Object oneParam, Object twoParam, Object optionsParam,
-                        @Cached("create()") JSToStringNode toString) {
+                        @Cached("create()") JSToStringNode toString,
+                        @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode) {
             JSTemporalDurationObject one = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(oneParam, getContext(), isObjectNode, toString);
             JSTemporalDurationObject two = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObjectNode, toString);
             DynamicObject options = getOptionsObject(optionsParam);
-            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), getRealm(), options);
+            DynamicObject relativeTo = toRelativeTemporalObjectNode.execute(options);
             double shift1 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
                             one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),
                             one.getHours(), one.getMinutes(), one.getSeconds(),

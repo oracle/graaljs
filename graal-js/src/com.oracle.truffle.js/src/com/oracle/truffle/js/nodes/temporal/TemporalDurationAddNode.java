@@ -144,7 +144,8 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
             JSTemporalDurationObject dateDifference = calendarDateUntil(calendar, date, end, differenceOptions, Undefined.instance);
             JSTemporalDurationRecord result = TemporalUtil.balanceDuration(ctx, namesNode, TemporalUtil.dtol(dateDifference.getDays()),
                             h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2, ns1 + ns2, largestUnit);
-            return TemporalUtil.createDurationRecord(dateDifference.getYears(), dateDifference.getMonths(), dateDifference.getWeeks(), result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
+            return TemporalUtil.createDurationRecord(dateDifference.getYears(), dateDifference.getMonths(), dateDifference.getWeeks(), result.getDays(),
+                    result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
         } else {
             relativeToZonedDateTimeBranch.enter();
             assert TemporalUtil.isTemporalZonedDateTime(relativeTo);
@@ -159,7 +160,7 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
                             TemporalUtil.Unit.YEAR != largestUnit && TemporalUtil.Unit.MONTH != largestUnit && TemporalUtil.Unit.WEEK != largestUnit && TemporalUtil.Unit.DAY != largestUnit)) {
                 long diffNs = TemporalUtil.bitol(TemporalUtil.differenceInstant(zdt.getNanoseconds(), endNs, 1d, TemporalUtil.Unit.NANOSECOND, TemporalUtil.RoundingMode.HALF_EXPAND));
                 JSTemporalDurationRecord result = TemporalUtil.balanceDuration(ctx, namesNode, 0, 0, 0, 0, 0, 0, diffNs, largestUnit);
-                return TemporalUtil.createDurationRecord(0,0,0,0, result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
+                return TemporalUtil.createDurationRecord(0, 0, 0, 0, result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
             } else {
                 return TemporalUtil.differenceZonedDateTime(ctx, namesNode, zdt.getNanoseconds(), endNs, timeZone, calendar, largestUnit);
             }
