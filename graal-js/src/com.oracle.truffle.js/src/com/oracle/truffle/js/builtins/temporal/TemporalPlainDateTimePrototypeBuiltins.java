@@ -346,7 +346,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached("create()") JSToStringNode toString) {
             JSTemporalPlainDateTimeObject dateTime = requireTemporalDateTime(thisObj);
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike,
-                            TemporalUtil.listEmpty, isObjectNode, toString);
+                            TemporalUtil.listEmpty, isObjectNode, toString, errorBranch);
             TemporalUtil.rejectDurationSign(
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(),
@@ -501,7 +501,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached("create()") JSToStringNode toString) {
             JSTemporalPlainDateTimeObject dateTime = requireTemporalDateTime(thisObj);
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike,
-                            TemporalUtil.listEmpty, isObjectNode, toString);
+                            TemporalUtil.listEmpty, isObjectNode, toString, errorBranch);
             TemporalUtil.rejectDurationSign(
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(),

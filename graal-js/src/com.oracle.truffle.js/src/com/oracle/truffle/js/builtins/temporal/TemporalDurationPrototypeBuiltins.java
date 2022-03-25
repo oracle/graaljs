@@ -336,7 +336,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create(getContext())") TemporalDurationAddNode durationAddNode,
                         @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
-            JSTemporalDurationRecord otherDuration = TemporalUtil.toLimitedTemporalDuration(other, TemporalUtil.listEmpty, isObjectNode, toString);
+            JSTemporalDurationRecord otherDuration = TemporalUtil.toLimitedTemporalDuration(other, TemporalUtil.listEmpty, isObjectNode, toString, errorBranch);
             DynamicObject normalizedOptions = getOptionsObject(options);
             DynamicObject relativeTo = toRelativeTemporalObjectNode.execute(normalizedOptions);
             JSTemporalDurationRecord result = durationAddNode.execute(duration.getYears(), duration.getMonths(),
@@ -366,7 +366,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create(getContext())") TemporalDurationAddNode durationAddNode,
                         @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
-            JSTemporalDurationRecord otherDuration = TemporalUtil.toLimitedTemporalDuration(other, TemporalUtil.listEmpty, isObjectNode, toString);
+            JSTemporalDurationRecord otherDuration = TemporalUtil.toLimitedTemporalDuration(other, TemporalUtil.listEmpty, isObjectNode, toString, errorBranch);
             DynamicObject normalizedOptions = getOptionsObject(options);
             DynamicObject relativeTo = toRelativeTemporalObjectNode.execute(normalizedOptions);
             JSTemporalDurationRecord result = durationAddNode.execute(duration.getYears(), duration.getMonths(),

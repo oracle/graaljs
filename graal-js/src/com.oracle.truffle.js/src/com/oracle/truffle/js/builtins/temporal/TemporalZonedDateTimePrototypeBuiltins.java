@@ -632,7 +632,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached JSToStringNode toString,
                         @Cached JSNumberToBigIntNode toBigInt) {
             JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
-            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listEmpty, isObjectNode, toString);
+            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listEmpty, isObjectNode, toString, errorBranch);
             DynamicObject options = getOptionsObject(optionsParam);
             DynamicObject timeZone = zonedDateTime.getTimeZone();
             DynamicObject calendar = zonedDateTime.getCalendar();
@@ -654,7 +654,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached JSToStringNode toString,
                         @Cached JSNumberToBigIntNode toBigInt) {
             JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
-            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listEmpty, isObjectNode, toString);
+            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listEmpty, isObjectNode, toString, errorBranch);
             DynamicObject options = getOptionsObject(optionsParam);
             DynamicObject timeZone = zonedDateTime.getTimeZone();
             DynamicObject calendar = zonedDateTime.getCalendar();

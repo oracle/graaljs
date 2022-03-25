@@ -2339,7 +2339,7 @@ public final class TemporalUtil {
         return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
     }
 
-    private static boolean doubleIsInteger(double l) {
+    public static boolean doubleIsInteger(double l) {
         return Math.rint(l) == l;
     }
 
@@ -2569,9 +2569,10 @@ public final class TemporalUtil {
     }
 
     // TODO doing some long arithmetics here. Might need double/BigInteger
-    public static JSTemporalDurationRecord adjustRoundedDurationDays(JSContext ctx, EnumerableOwnPropertyNamesNode namesNode, TemporalDurationAddNode durationAddNode, double years, double months, double weeks, double days, double hours,
-                                                                     double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds, double increment, Unit unit, RoundingMode roundingMode,
-                                                                     DynamicObject relativeToParam) {
+    public static JSTemporalDurationRecord adjustRoundedDurationDays(JSContext ctx, EnumerableOwnPropertyNamesNode namesNode, TemporalDurationAddNode durationAddNode, double years, double months,
+                    double weeks, double days, double hours,
+                    double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds, double increment, Unit unit, RoundingMode roundingMode,
+                    DynamicObject relativeToParam) {
         if (!(TemporalUtil.isTemporalZonedDateTime(relativeToParam)) || unit == Unit.YEAR || unit == Unit.MONTH || unit == Unit.WEEK || unit == Unit.DAY ||
                         (unit == Unit.NANOSECOND && increment == 1)) {
             return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
@@ -2872,8 +2873,8 @@ public final class TemporalUtil {
         return true;
     }
 
-    public static JSTemporalDurationRecord toLimitedTemporalDuration(Object temporalDurationLike,
-                    List<TruffleString> disallowedFields, IsObjectNode isObject, JSToStringNode toStringNode) {
+    public static JSTemporalDurationRecord toLimitedTemporalDuration(Object temporalDurationLike, List<TruffleString> disallowedFields,
+                    IsObjectNode isObject, JSToStringNode toStringNode, BranchProfile errorBranch) {
         JSTemporalDurationRecord d;
         if (!isObject.executeBoolean(temporalDurationLike)) {
             TruffleString str = toStringNode.executeString(temporalDurationLike);
@@ -2885,6 +2886,7 @@ public final class TemporalUtil {
         for (UnitPlural unit : TemporalUtil.DURATION_PROPERTIES) {
             double value = TemporalUtil.getPropertyFromRecord(d, unit);
             if (value > 0 && Boundaries.listContains(disallowedFields, unit.toTruffleString())) {
+                errorBranch.enter();
                 throw TemporalErrors.createRangeErrorDisallowedField(unit.toTruffleString());
             }
         }
@@ -3787,7 +3789,8 @@ public final class TemporalUtil {
         return day.getDay();
     }
 
-    public static JSTemporalDurationRecord createDurationRecord(double years, double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
+    public static JSTemporalDurationRecord createDurationRecord(double years, double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds,
+                    double microseconds, double nanoseconds) {
         if (!TemporalUtil.isValidDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
             throw TemporalErrors.createTypeErrorDurationOutsideRange();
         }

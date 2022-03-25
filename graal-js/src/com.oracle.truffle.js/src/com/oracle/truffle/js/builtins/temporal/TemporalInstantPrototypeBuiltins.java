@@ -224,7 +224,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         public DynamicObject add(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") JSToStringNode toString) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
-            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listPluralYMWD, isObjectNode, toString);
+            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listPluralYMWD, isObjectNode, toString, errorBranch);
             BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
             return JSTemporalInstant.create(getContext(), ns);
@@ -241,7 +241,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         public DynamicObject subtract(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") JSToStringNode toString) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
-            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listPluralYMWD, isObjectNode, toString);
+            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listPluralYMWD, isObjectNode, toString, errorBranch);
             BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(),
                             -duration.getMilliseconds(), -duration.getMicroseconds(), -duration.getNanoseconds());
             return JSTemporalInstant.create(getContext(), ns);

@@ -254,7 +254,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create()") JSToStringNode toString) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike,
-                            TemporalUtil.listEmpty, isObjectNode, toString);
+                            TemporalUtil.listEmpty, isObjectNode, toString, errorBranch);
             TemporalUtil.rejectDurationSign(
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(),
@@ -286,7 +286,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create()") JSToStringNode toString) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike,
-                            TemporalUtil.listEmpty, isObjectNode, toString);
+                            TemporalUtil.listEmpty, isObjectNode, toString, errorBranch);
             TemporalUtil.rejectDurationSign(
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(),

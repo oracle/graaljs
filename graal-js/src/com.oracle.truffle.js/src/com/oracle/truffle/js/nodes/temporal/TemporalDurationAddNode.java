@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.LARGEST_UNIT;
+import static com.oracle.truffle.js.runtime.util.TemporalUtil.doubleIsInteger;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -103,14 +104,10 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
                     @Cached("createBinaryProfile()") ConditionProfile largetUnitYMWDProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isFallbackProfile,
                     @Cached("createKeys(ctx)") EnumerableOwnPropertyNamesNode namesNode) {
-        // assert doubleIsInteger(y1) && doubleIsInteger(mon1) && doubleIsInteger(w1) &&
-        // doubleIsInteger(d1);
-        // assert doubleIsInteger(h1) && doubleIsInteger(min1) && doubleIsInteger(s1) &&
-        // doubleIsInteger(ms1) && doubleIsInteger(mus1) && doubleIsInteger(ns1);
-        // assert doubleIsInteger(y2) && doubleIsInteger(mon2) && doubleIsInteger(w2) &&
-        // doubleIsInteger(d2);
-        // assert doubleIsInteger(h2) && doubleIsInteger(min2) && doubleIsInteger(s2) &&
-        // doubleIsInteger(ms2) && doubleIsInteger(mus2) && doubleIsInteger(ns2);
+        assert doubleIsInteger(y1) && doubleIsInteger(mon1) && doubleIsInteger(w1) && doubleIsInteger(d1);
+        assert doubleIsInteger(h1) && doubleIsInteger(min1) && doubleIsInteger(s1) && doubleIsInteger(ms1) && doubleIsInteger(mus1) && doubleIsInteger(ns1);
+        assert doubleIsInteger(y2) && doubleIsInteger(mon2) && doubleIsInteger(w2) && doubleIsInteger(d2);
+        assert doubleIsInteger(h2) && doubleIsInteger(min2) && doubleIsInteger(s2) && doubleIsInteger(ms2) && doubleIsInteger(mus2) && doubleIsInteger(ns2);
 
         TemporalUtil.Unit largestUnit1 = TemporalUtil.defaultTemporalLargestUnit(y1, mon1, w1, d1, h1, min1, s1, ms1, mus1);
         TemporalUtil.Unit largestUnit2 = TemporalUtil.defaultTemporalLargestUnit(y2, mon2, w2, d2, h2, min2, s2, ms2, mus2);
@@ -122,7 +119,8 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
                 throw Errors.createRangeError("Largest unit allowed with no relative is 'days'.");
             }
             JSTemporalDurationRecord result = TemporalUtil.balanceDuration(ctx, namesNode, d1 + d2, h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2, ns1 + ns2, largestUnit);
-            return TemporalUtil.createDurationRecord(0, 0, 0, result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
+            return TemporalUtil.createDurationRecord(0, 0, 0, result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(),
+                            result.getNanoseconds());
         } else if (JSTemporalPlainDate.isJSTemporalPlainDate(relativeTo)) {
             relativeToPlainDateBranch.enter();
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) relativeTo;
@@ -145,7 +143,7 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
             JSTemporalDurationRecord result = TemporalUtil.balanceDuration(ctx, namesNode, TemporalUtil.dtol(dateDifference.getDays()),
                             h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2, ns1 + ns2, largestUnit);
             return TemporalUtil.createDurationRecord(dateDifference.getYears(), dateDifference.getMonths(), dateDifference.getWeeks(), result.getDays(),
-                    result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
+                            result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
         } else {
             relativeToZonedDateTimeBranch.enter();
             assert TemporalUtil.isTemporalZonedDateTime(relativeTo);
@@ -160,7 +158,8 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
                             TemporalUtil.Unit.YEAR != largestUnit && TemporalUtil.Unit.MONTH != largestUnit && TemporalUtil.Unit.WEEK != largestUnit && TemporalUtil.Unit.DAY != largestUnit)) {
                 long diffNs = TemporalUtil.bitol(TemporalUtil.differenceInstant(zdt.getNanoseconds(), endNs, 1d, TemporalUtil.Unit.NANOSECOND, TemporalUtil.RoundingMode.HALF_EXPAND));
                 JSTemporalDurationRecord result = TemporalUtil.balanceDuration(ctx, namesNode, 0, 0, 0, 0, 0, 0, diffNs, largestUnit);
-                return TemporalUtil.createDurationRecord(0, 0, 0, 0, result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
+                return TemporalUtil.createDurationRecord(0, 0, 0, 0, result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(),
+                                result.getNanoseconds());
             } else {
                 return TemporalUtil.differenceZonedDateTime(ctx, namesNode, zdt.getNanoseconds(), endNs, timeZone, calendar, largestUnit);
             }

@@ -60,6 +60,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateAddNodeGen;
@@ -292,6 +293,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
      */
     public abstract static class JSTemporalBuiltinOperation extends JSBuiltinNode {
         protected final BranchProfile errorBranch = BranchProfile.create();
+        protected final ConditionProfile optionUndefined = ConditionProfile.createBinaryProfile();
         @Child protected IsObjectNode isObjectNode = IsObjectNode.create();
         @Child private TemporalGetOptionNode getOptionNode;
 
@@ -380,7 +382,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         protected DynamicObject getOptionsObject(Object options) {
-            if (options == Undefined.instance) {
+            if (optionUndefined.profile(options == Undefined.instance)) {
                 return JSOrdinary.createWithNullPrototype(getContext());
             }
             if (isObject(options)) {
@@ -466,7 +468,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalPlainDateObject date = requireTemporalDate(thisObj);
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike,
-                            TemporalUtil.listEmpty, isObjectNode, toString);
+                            TemporalUtil.listEmpty, isObjectNode, toString, errorBranch);
             DynamicObject options = getOptionsObject(optParam);
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode,
                             duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
@@ -489,7 +491,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalPlainDateObject date = requireTemporalDate(thisObj);
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike,
-                            TemporalUtil.listEmpty, isObjectNode, toString);
+                            TemporalUtil.listEmpty, isObjectNode, toString, errorBranch);
             DynamicObject options = getOptionsObject(optParam);
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode,
                             duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
