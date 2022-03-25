@@ -52,7 +52,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtoiConstrain;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -62,6 +61,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarDateAddNodeGen;
@@ -447,6 +447,8 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     // 12.4.7
     public abstract static class JSTemporalCalendarDateAdd extends JSTemporalCalendarOperation {
 
+        protected final ConditionProfile needConstrain = ConditionProfile.createBinaryProfile();
+
         protected JSTemporalCalendarDateAdd(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -467,6 +469,16 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalDateTimeRecord result = TemporalUtil.addISODate(date.getYear(), date.getMonth(), date.getDay(),
                             dtoiConstrain(duration.getYears()), dtoiConstrain(duration.getMonths()), dtoiConstrain(duration.getWeeks()), dtoiConstrain(balanceResult.getDays()), overflow);
             return JSTemporalPlainDate.create(getContext(), result.getYear(), result.getMonth(), result.getDay(), calendar);
+        }
+
+        // in contrast to `dtoi`, set to Integer.MAX_VALUE/MIN_VALUE if outside range.
+        // later operations either CONSTRAIN or REJECT anyway!
+        protected int dtoiConstrain(double d) {
+            if (needConstrain.profile(!JSRuntime.doubleIsRepresentableAsInt(d))) {
+                return d > 0 ? Integer.MAX_VALUE : Integer.MIN_VALUE;
+            } else {
+                return (int) d;
+            }
         }
     }
 

@@ -3822,16 +3822,6 @@ public final class TemporalUtil {
         return (long) d;
     }
 
-    // in contrast to `dtoi`, set to Integer.MAX_VALUE/MIN_VALUE if outside range.
-    // later operations either CONSTRAIN or REJECT anyway!
-    @TruffleBoundary
-    public static int dtoiConstrain(double d) {
-        if (!JSRuntime.doubleIsRepresentableAsInt(d)) {
-            return d > 0 ? Integer.MAX_VALUE : Integer.MIN_VALUE;
-        }
-        return (int) d;
-    }
-
     // always fails if long does not fit into int
     @TruffleBoundary
     public static int ltoi(long l) {
