@@ -247,4 +247,15 @@ public final class Nullish extends JSDynamicObject {
         throw typeError();
     }
 
+    @TruffleBoundary
+    @Override
+    public String toString() {
+        if (this == Undefined.instance) {
+            return "JSUndefined";
+        } else if (this == Null.instance) {
+            return "JSNull";
+        }
+        return super.toString();
+    }
+
 }

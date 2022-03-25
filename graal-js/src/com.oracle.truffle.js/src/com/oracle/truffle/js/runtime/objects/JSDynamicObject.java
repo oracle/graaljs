@@ -240,12 +240,6 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
     @TruffleBoundary
     public abstract TruffleString getClassName();
 
-    @Override
-    @TruffleBoundary
-    public String toString() {
-        return "JSDynamicObject<" + getClassName() + ">@" + Integer.toHexString(hashCode());
-    }
-
     boolean isObject() {
         return true;
     }
