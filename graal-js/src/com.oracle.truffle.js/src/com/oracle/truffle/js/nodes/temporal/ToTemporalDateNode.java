@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -89,8 +90,10 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
     public DynamicObject toTemporalDate(Object itemParam, DynamicObject optionsParam,
                     @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToStringNode toStringNode,
-                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode) {
-        DynamicObject options = TemporalUtil.isNullish(optionsParam) ? JSOrdinary.createWithNullPrototype(ctx) : optionsParam;
+                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
+                    @Cached TemporalGetOptionNode getOptionNode) {
+        assert optionsParam != null;
+        DynamicObject options = (optionsParam == Undefined.instance) ? JSOrdinary.createWithNullPrototype(ctx) : optionsParam;
         if (isObjectProfile.profile(isObjectNode.executeBoolean(itemParam))) {
             DynamicObject item = (DynamicObject) itemParam;
             if (isPlainDateProfile.profile(JSTemporalPlainDate.isJSTemporalPlainDate(item))) {
@@ -110,7 +113,7 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }
         JSRealm realm = JSRealm.get(this);
-        TemporalUtil.toTemporalOverflow(options);
+        TemporalUtil.toTemporalOverflow(options, getOptionNode);
         JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalDateString(toStringNode.executeString(itemParam));
         assert TemporalUtil.isValidISODate(result.getYear(), result.getMonth(), result.getDay());
         DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, realm, result.getCalendar());

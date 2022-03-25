@@ -42,18 +42,12 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.COMPATIBLE;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_EXPAND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.OFFSET;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.PREFER;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEK;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtoi;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
 
@@ -98,6 +92,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
@@ -127,9 +122,14 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Disambiguation;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.MatchBehaviour;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetBehaviour;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.TemporalOverflowEnum;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetOption;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalZonedDateTimePrototypeBuiltins.TemporalZonedDateTimePrototype> {
 
@@ -371,11 +371,11 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             int month = temporalDateTime.getMonth();
             int day = temporalDateTime.getDay();
             JSTemporalPlainDateTimeObject today = TemporalUtil.createTemporalDateTime(getContext(), year, month, day, 0, 0, 0, 0, 0, 0, isoCalendar);
-            JSTemporalDateTimeRecord tomorrowFields = TemporalUtil.addISODate(year, month, day, 0, 0, 0, 1, TemporalOverflowEnum.REJECT);
+            JSTemporalDateTimeRecord tomorrowFields = TemporalUtil.addISODate(year, month, day, 0, 0, 0, 1, Overflow.REJECT);
             JSTemporalPlainDateTimeObject tomorrow = TemporalUtil.createTemporalDateTime(getContext(), tomorrowFields.getYear(), tomorrowFields.getMonth(), tomorrowFields.getDay(), 0, 0, 0, 0, 0, 0,
                             isoCalendar);
-            JSTemporalInstantObject todayInstant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, today, COMPATIBLE);
-            JSTemporalInstantObject tomorrowInstant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, tomorrow, COMPATIBLE);
+            JSTemporalInstantObject todayInstant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, today, Disambiguation.COMPATIBLE);
+            JSTemporalInstantObject tomorrowInstant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, tomorrow, Disambiguation.COMPATIBLE);
             BigInt diffNs = tomorrowInstant.getNanoseconds().subtract(todayInstant.getNanoseconds());
             return diffNs.divide(BigInt.valueOf(36_000_000_000_000L));
         }
@@ -446,12 +446,14 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        protected TruffleString toString(Object thisObj, Object optionsParam) {
+        protected TruffleString toString(Object thisObj, Object optionsParam,
+                        @Cached JSToStringNode toStringNode,
+                        @Cached TruffleString.EqualNode equalNode) {
             DynamicObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
             DynamicObject options = getOptionsObject(optionsParam);
-            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, getOptionNode());
-            TruffleString roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
-            TruffleString showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode());
+            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getOptionNode(), equalNode);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode);
+            ShowCalendar showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode(), equalNode);
             TruffleString showTimeZone = TemporalUtil.toShowTimeZoneNameOption(options, getOptionNode());
             TruffleString showOffset = TemporalUtil.toShowOffsetOption(options, getOptionNode());
             return TemporalUtil.temporalZonedDateTimeToString(getContext(), getRealm(), zonedDateTime, precision.getPrecision(), showCalendar, showTimeZone, showOffset, precision.getIncrement(),
@@ -468,7 +470,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         public TruffleString toLocaleString(Object thisObj) {
             DynamicObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
-            return TemporalUtil.temporalZonedDateTimeToString(getContext(), getRealm(), zonedDateTime, AUTO, AUTO, AUTO, AUTO);
+            return TemporalUtil.temporalZonedDateTimeToString(getContext(), getRealm(), zonedDateTime, AUTO, ShowCalendar.AUTO, AUTO, AUTO);
         }
     }
 
@@ -492,7 +494,9 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         public Object with(Object thisObj, Object temporalZonedDateTimeLike, Object optionsParam,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
+                        @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached TruffleString.EqualNode equalNode) {
             JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
             if (!isObject(temporalZonedDateTimeLike)) {
                 errorBranch.enter();
@@ -515,15 +519,15 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             Boundaries.listAdd(fieldNames, OFFSET);
             DynamicObject partialZonedDateTime = TemporalUtil.preparePartialTemporalFields(getContext(), temporalZDTLike, fieldNames);
             DynamicObject options = getOptionsObject(optionsParam);
-            TruffleString disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode());
-            TruffleString offset = TemporalUtil.toTemporalOffset(options, PREFER, getOptionNode());
+            Disambiguation disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode(), equalNode);
+            OffsetOption offset = TemporalUtil.toTemporalOffset(options, PREFER, getOptionNode(), equalNode);
             DynamicObject timeZone = zonedDateTime.getTimeZone();
             Boundaries.listAdd(fieldNames, TIME_ZONE);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), zonedDateTime, fieldNames, TemporalUtil.listTimeZoneOffset);
             fields = TemporalUtil.calendarMergeFields(getContext(), namesNode, calendar, fields, partialZonedDateTime);
             fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.listTimeZone);
             Object offsetString = JSObject.get(fields, OFFSET);
-            JSTemporalDateTimeRecord dateTimeResult = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options);
+            JSTemporalDateTimeRecord dateTimeResult = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options, getOptionNode);
             long offsetNanoseconds = TemporalUtil.parseTimeZoneOffsetString((TruffleString) offsetString);
             BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(getContext(), getRealm(), dateTimeResult.getYear(), dateTimeResult.getMonth(), dateTimeResult.getDay(),
                             dateTimeResult.getHour(), dateTimeResult.getMinute(), dateTimeResult.getSecond(),
@@ -555,7 +559,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalPlainDateTimeObject plainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), timeZone, instant, calendar);
             JSTemporalPlainDateTimeObject resultPlainDateTime = TemporalUtil.createTemporalDateTime(getContext(), plainDateTime.getYear(), plainDateTime.getMonth(), plainDateTime.getDay(),
                             plainTime.getHour(), plainTime.getMinute(), plainTime.getSecond(), plainTime.getMillisecond(), plainTime.getMicrosecond(), plainTime.getNanosecond(), calendar);
-            instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, resultPlainDateTime, COMPATIBLE);
+            instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, resultPlainDateTime, Disambiguation.COMPATIBLE);
             return TemporalUtil.createTemporalZonedDateTime(getContext(), instant.getNanoseconds(), timeZone, calendar);
         }
     }
@@ -568,18 +572,19 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         public Object withPlainDate(Object thisObj, Object plainDateLike,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
+                        @Cached JSToStringNode toStringNode) {
             JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
             JSTemporalPlainDateObject plainDate = (JSTemporalPlainDateObject) toTemporalDate.executeDynamicObject(plainDateLike, Undefined.instance);
             DynamicObject timeZone = zonedDateTime.getTimeZone();
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), zonedDateTime.getNanoseconds());
             JSTemporalPlainDateTimeObject plainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), timeZone, instant, zonedDateTime.getCalendar());
-            DynamicObject calendar = TemporalUtil.consolidateCalendars(zonedDateTime.getCalendar(), plainDate.getCalendar());
+            DynamicObject calendar = TemporalUtil.consolidateCalendars(zonedDateTime.getCalendar(), plainDate.getCalendar(), toStringNode);
             JSTemporalPlainDateTimeObject resultPlainDateTime = TemporalUtil.createTemporalDateTime(getContext(), plainDate.getYear(), plainDate.getMonth(), plainDate.getDay(),
                             plainDateTime.getHour(),
                             plainDateTime.getMinute(), plainDateTime.getSecond(), plainDateTime.getMillisecond(), plainDateTime.getMicrosecond(), plainDateTime.getNanosecond(),
                             calendar);
-            instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, resultPlainDateTime, COMPATIBLE);
+            instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, resultPlainDateTime, Disambiguation.COMPATIBLE);
             return TemporalUtil.createTemporalZonedDateTime(getContext(), instant.getNanoseconds(), timeZone, calendar);
         }
     }
@@ -668,28 +673,30 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         public Object until(Object thisObj, Object otherParam, Object optionsParam,
                         @Cached("create()") JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime) {
+                        @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime,
+                        @Cached JSToStringNode toStringNode,
+                        @Cached TruffleString.EqualNode equalNode) {
             JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
             JSTemporalZonedDateTimeObject other = (JSTemporalZonedDateTimeObject) toTemporalZonedDateTime.executeDynamicObject(otherParam, Undefined.instance);
-            if (!TemporalUtil.calendarEquals(zonedDateTime.getCalendar(), other.getCalendar())) {
+            if (!TemporalUtil.calendarEquals(zonedDateTime.getCalendar(), other.getCalendar(), toStringNode)) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
             DynamicObject options = getOptionsObject(optionsParam);
-            TruffleString smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listEmpty, NANOSECOND);
-            TruffleString defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(HOUR, smallestUnit);
-            TruffleString largestUnit = toLargestTemporalUnit(options, TemporalUtil.listEmpty, AUTO, defaultLargestUnit);
+            Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listEmpty, NANOSECOND, equalNode);
+            Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.HOUR, smallestUnit);
+            Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listEmpty, AUTO, defaultLargestUnit, equalNode);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            TruffleString roundingMode = toTemporalRoundingMode(options, TRUNC);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
-            if (!(YEAR.equals(largestUnit) || MONTH.equals(largestUnit) || WEEK.equals(largestUnit) || DAY.equals(largestUnit))) {
+            if (!(Unit.YEAR == largestUnit || Unit.MONTH == largestUnit || Unit.WEEK == largestUnit || Unit.DAY == largestUnit)) {
                 long differenceNs = TemporalUtil.bitol(TemporalUtil.differenceInstant(zonedDateTime.getNanoseconds(), other.getNanoseconds(), roundingIncrement, smallestUnit, roundingMode));
                 JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, 0, 0, 0, 0, 0, 0, differenceNs, largestUnit);
                 return JSTemporalDuration.createTemporalDuration(getContext(), 0, 0, 0, 0, balanceResult.getHours(), balanceResult.getMinutes(), balanceResult.getSeconds(),
                                 balanceResult.getMilliseconds(), balanceResult.getMicroseconds(), balanceResult.getNanoseconds());
             }
-            if (!TemporalUtil.timeZoneEquals(zonedDateTime.getTimeZone(), other.getTimeZone())) {
+            if (!TemporalUtil.timeZoneEquals(zonedDateTime.getTimeZone(), other.getTimeZone(), toStringNode)) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorIdenticalTimeZoneExpected();
             }
@@ -718,29 +725,31 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         public Object since(Object thisObj, Object otherParam, Object optionsParam,
                         @Cached("create()") JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime) {
+                        @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime,
+                        @Cached JSToStringNode toStringNode,
+                        @Cached TruffleString.EqualNode equalNode) {
             JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
             JSTemporalZonedDateTimeObject other = (JSTemporalZonedDateTimeObject) toTemporalZonedDateTime.executeDynamicObject(otherParam, Undefined.instance);
-            if (!TemporalUtil.calendarEquals(zonedDateTime.getCalendar(), other.getCalendar())) {
+            if (!TemporalUtil.calendarEquals(zonedDateTime.getCalendar(), other.getCalendar(), toStringNode)) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
             DynamicObject options = getOptionsObject(optionsParam);
-            TruffleString smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listEmpty, NANOSECOND);
-            TruffleString defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(HOUR, smallestUnit);
-            TruffleString largestUnit = toLargestTemporalUnit(options, TemporalUtil.listEmpty, AUTO, defaultLargestUnit);
+            Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listEmpty, NANOSECOND, equalNode);
+            Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.HOUR, smallestUnit);
+            Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listEmpty, AUTO, defaultLargestUnit, equalNode);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            TruffleString roundingMode = toTemporalRoundingMode(options, TRUNC);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode);
             roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
-            if (!(YEAR.equals(largestUnit) || MONTH.equals(largestUnit) || WEEK.equals(largestUnit) || DAY.equals(largestUnit))) {
+            if (!(Unit.YEAR == largestUnit || Unit.MONTH == largestUnit || Unit.WEEK == largestUnit || Unit.DAY == largestUnit)) {
                 BigInteger differenceNs = TemporalUtil.differenceInstant(zonedDateTime.getNanoseconds(), other.getNanoseconds(), roundingIncrement, smallestUnit, roundingMode);
                 JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, 0, 0, 0, 0, 0, 0, differenceNs, largestUnit, Undefined.instance);
                 return JSTemporalDuration.createTemporalDuration(getContext(), 0, 0, 0, 0, -balanceResult.getHours(), -balanceResult.getMinutes(), -balanceResult.getSeconds(),
                                 -balanceResult.getMilliseconds(), -balanceResult.getMicroseconds(), -balanceResult.getNanoseconds());
             }
-            if (!TemporalUtil.timeZoneEquals(zonedDateTime.getTimeZone(), other.getTimeZone())) {
+            if (!TemporalUtil.timeZoneEquals(zonedDateTime.getTimeZone(), other.getTimeZone(), toStringNode)) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorIdenticalTimeZoneExpected();
             }
@@ -767,7 +776,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         public Object round(Object thisObj, Object roundToParam,
-                        @Cached("create()") JSToNumberNode toNumber) {
+                        @Cached("create()") JSToNumberNode toNumber,
+                        @Cached TruffleString.EqualNode equalNode) {
             JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
             if (roundToParam == Undefined.instance) {
                 errorBranch.enter();
@@ -780,12 +790,12 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             } else {
                 roundTo = getOptionsObject(roundToParam);
             }
-            TruffleString smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMW, null);
-            if (TemporalUtil.isNullish(smallestUnit)) {
+            Unit smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMW, null, equalNode);
+            if (smallestUnit == Unit.EMPTY) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorSmallestUnitExpected();
             }
-            TruffleString roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
+            RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode);
             double roundingIncrement = TemporalUtil.toTemporalDateTimeRoundingIncrement(roundTo, smallestUnit, isObjectNode, toNumber);
             DynamicObject timeZone = zonedDateTime.getTimeZone();
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), zonedDateTime.getNanoseconds());
@@ -793,7 +803,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalPlainDateTimeObject tdt = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), timeZone, instant, calendar);
             DynamicObject isoCalendar = TemporalUtil.getISO8601Calendar(getContext(), getRealm());
             JSTemporalPlainDateTimeObject dtStart = TemporalUtil.createTemporalDateTime(getContext(), tdt.getYear(), tdt.getMonth(), tdt.getDay(), 0, 0, 0, 0, 0, 0, isoCalendar);
-            JSTemporalInstantObject instantStart = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, dtStart, COMPATIBLE);
+            JSTemporalInstantObject instantStart = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, dtStart, Disambiguation.COMPATIBLE);
             BigInt startNs = instantStart.getNanoseconds();
             BigInt endNs = TemporalUtil.addZonedDateTime(getContext(), startNs, timeZone, zonedDateTime.getCalendar(), 0, 0, 0, 1, 0, 0, 0, 0, 0, 0);
             BigInt dayLengthNs = endNs.subtract(startNs);
@@ -806,7 +816,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             long offsetNanoseconds = TemporalUtil.getOffsetNanosecondsFor(timeZone, instant);
             BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(getContext(), getRealm(), dtoi(roundResult.getYears()), dtoi(roundResult.getMonths()), dtoi(roundResult.getDays()),
                             dtoi(roundResult.getHours()), dtoi(roundResult.getMinutes()), dtoi(roundResult.getSeconds()), dtoi(roundResult.getMilliseconds()), dtoi(roundResult.getMicroseconds()),
-                            dtoi(roundResult.getNanoseconds()), OffsetBehaviour.OPTION, offsetNanoseconds, timeZone, COMPATIBLE, PREFER, MatchBehaviour.MATCH_EXACTLY);
+                            dtoi(roundResult.getNanoseconds()), OffsetBehaviour.OPTION, offsetNanoseconds, timeZone, Disambiguation.COMPATIBLE, OffsetOption.PREFER, MatchBehaviour.MATCH_EXACTLY);
             return TemporalUtil.createTemporalZonedDateTime(getContext(), epochNanoseconds, timeZone, calendar);
         }
     }
@@ -819,16 +829,17 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         public Object equals(Object thisObj, Object otherParam,
-                        @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime) {
+                        @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime,
+                        @Cached JSToStringNode toStringNode) {
             JSTemporalZonedDateTimeObject zdt = requireTemporalZonedDateTime(thisObj);
             JSTemporalZonedDateTimeObject other = (JSTemporalZonedDateTimeObject) toTemporalZonedDateTime.executeDynamicObject(otherParam, Undefined.instance);
             if (!zdt.getNanoseconds().equals(other.getNanoseconds())) {
                 return false;
             }
-            if (!TemporalUtil.timeZoneEquals(zdt.getTimeZone(), other.getTimeZone())) {
+            if (!TemporalUtil.timeZoneEquals(zdt.getTimeZone(), other.getTimeZone(), toStringNode)) {
                 return false;
             }
-            return TemporalUtil.calendarEquals(zdt.getCalendar(), other.getCalendar());
+            return TemporalUtil.calendarEquals(zdt.getCalendar(), other.getCalendar(), toStringNode);
         }
     }
 
@@ -846,7 +857,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), zdt.getNanoseconds());
             JSTemporalPlainDateTimeObject dt = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), timeZone, instant, calendar);
             JSTemporalPlainDateTimeObject startDateTime = TemporalUtil.createTemporalDateTime(getContext(), dt.getYear(), dt.getMonth(), dt.getDay(), 0, 0, 0, 0, 0, 0, calendar);
-            JSTemporalInstantObject startInstant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, startDateTime, COMPATIBLE);
+            JSTemporalInstantObject startInstant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, startDateTime, Disambiguation.COMPATIBLE);
             return TemporalUtil.createTemporalZonedDateTime(getContext(), startInstant.getNanoseconds(), timeZone, calendar);
         }
     }

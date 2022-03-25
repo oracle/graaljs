@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins.temporal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimeFunctionBuiltinsFactory.JSTemporalZonedDateTimeCompareNodeGen;
@@ -101,13 +102,14 @@ public class TemporalZonedDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
 
         @Specialization
         protected DynamicObject from(Object item, Object optionsParam,
-                        @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime) {
+                        @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime,
+                        @Cached TruffleString.EqualNode equalNode) {
             DynamicObject options = getOptionsObject(optionsParam);
             if (JSTemporalZonedDateTime.isJSTemporalZonedDateTime(item)) {
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
                 TemporalUtil.toTemporalOverflow(options, getOptionNode());
-                TemporalUtil.toTemporalDisambiguation(options, getOptionNode());
-                TemporalUtil.toTemporalOffset(options, TemporalConstants.REJECT, getOptionNode());
+                TemporalUtil.toTemporalDisambiguation(options, getOptionNode(), equalNode);
+                TemporalUtil.toTemporalOffset(options, TemporalConstants.REJECT, getOptionNode(), equalNode);
                 return TemporalUtil.createTemporalZonedDateTime(getContext(), zdt.getNanoseconds(), zdt.getTimeZone(), zdt.getCalendar());
             }
             return toTemporalZonedDateTime.executeDynamicObject(item, options);

@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
-
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -55,6 +53,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalDurationFunctionBuiltins.TemporalDurationFunction> {
 
@@ -139,10 +138,10 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                             one.getWeeks() != 0 || two.getWeeks() != 0) {
                 JSTemporalDurationRecord balanceResult1 = TemporalUtil.unbalanceDurationRelative(
                                 getContext(), getRealm(), one.getYears(), one.getMonths(), one.getWeeks(),
-                                one.getDays(), DAYS, relativeTo);
+                                one.getDays(), Unit.DAY, relativeTo);
                 JSTemporalDurationRecord balanceResult2 = TemporalUtil.unbalanceDurationRelative(
                                 getContext(), getRealm(), two.getYears(), two.getMonths(), two.getWeeks(),
-                                two.getDays(), DAYS, relativeTo);
+                                two.getDays(), Unit.DAY, relativeTo);
                 days1 = balanceResult1.getDays();
                 days2 = balanceResult2.getDays();
             } else {

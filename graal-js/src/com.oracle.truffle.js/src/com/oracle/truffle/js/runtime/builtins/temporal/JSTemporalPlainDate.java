@@ -51,7 +51,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.IN_LEAP_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS_IN_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEK;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEK_OF_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 
@@ -75,7 +74,9 @@ import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.TemporalOverflowEnum;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public final class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
                 PrototypeSupplier {
@@ -157,9 +158,9 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     }
 
     // 3.5.5
-    public static JSTemporalDurationRecord differenceISODate(int y1, int m1, int d1, int y2, int m2, int d2, TruffleString largestUnit) {
-        assert largestUnit.equals(YEAR) || largestUnit.equals(MONTH) || largestUnit.equals(WEEK) || largestUnit.equals(DAY);
-        if (largestUnit.equals(YEAR) || largestUnit.equals(MONTH)) {
+    public static JSTemporalDurationRecord differenceISODate(int y1, int m1, int d1, int y2, int m2, int d2, Unit largestUnit) {
+        assert largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY;
+        if (largestUnit == Unit.YEAR || largestUnit == Unit.MONTH) {
             int sign = -TemporalUtil.compareISODate(y1, m1, d1, y2, m2, d2);
             if (sign == 0) {
                 return toRecordWeeksPlural(0, 0, 0, 0);
@@ -167,10 +168,10 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             JSTemporalDateTimeRecord start = toRecord(y1, m1, d1);
             JSTemporalDateTimeRecord end = toRecord(y2, m2, d2);
             int years = end.getYear() - start.getYear();
-            JSTemporalDateTimeRecord mid = TemporalUtil.addISODate(y1, m1, d1, years, 0, 0, 0, TemporalOverflowEnum.CONSTRAIN);
+            JSTemporalDateTimeRecord mid = TemporalUtil.addISODate(y1, m1, d1, years, 0, 0, 0, Overflow.CONSTRAIN);
             int midSign = -TemporalUtil.compareISODate(mid.getYear(), mid.getMonth(), mid.getDay(), y2, m2, d2);
             if (midSign == 0) {
-                if (largestUnit.equals(YEAR)) {
+                if (largestUnit == Unit.YEAR) {
                     return toRecordWeeksPlural(years, 0, 0, 0);
                 } else {
                     return toRecordWeeksPlural(0, years * 12, 0, 0); // sic!
@@ -181,10 +182,10 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
                 years = years - sign;
                 months = months + (sign * 12);
             }
-            mid = TemporalUtil.addISODate(y1, m1, d1, years, months, 0, 0, TemporalOverflowEnum.CONSTRAIN);
+            mid = TemporalUtil.addISODate(y1, m1, d1, years, months, 0, 0, Overflow.CONSTRAIN);
             midSign = -TemporalUtil.compareISODate(mid.getYear(), mid.getMonth(), mid.getDay(), y2, m2, d2);
             if (midSign == 0) {
-                if (largestUnit.equals(YEAR)) {
+                if (largestUnit == Unit.YEAR) {
                     return toRecordPlural(years, months, 0);
                 } else {
                     return toRecordWeeksPlural(0, months + (years * 12), 0, 0); // sic!
@@ -196,7 +197,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
                     years = years - sign;
                     months = 11 * sign;
                 }
-                mid = TemporalUtil.addISODate(y1, m1, d1, years, months, 0, 0, TemporalOverflowEnum.CONSTRAIN);
+                mid = TemporalUtil.addISODate(y1, m1, d1, years, months, 0, 0, Overflow.CONSTRAIN);
                 midSign = -TemporalUtil.compareISODate(mid.getYear(), mid.getMonth(), mid.getDay(), y2, m2, d2);
             }
             int days = 0;
@@ -207,13 +208,13 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             } else {
                 days = end.getDay() + (TemporalUtil.isoDaysInMonth(mid.getYear(), mid.getMonth()) - mid.getDay());
             }
-            if (largestUnit.equals(MONTH)) {
+            if (largestUnit == Unit.MONTH) {
                 months = months + (years * 12);
                 years = 0;
             }
             return toRecordWeeksPlural(years, months, 0, days);
         }
-        if (largestUnit.equals(DAY) || largestUnit.equals(WEEK)) {
+        if (largestUnit == Unit.DAY || largestUnit == Unit.WEEK) {
             JSTemporalDateTimeRecord smaller;
             JSTemporalDateTimeRecord greater;
             int sign;
@@ -234,7 +235,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
                 years = years - 1;
             }
             int weeks = 0;
-            if (largestUnit.equals(WEEK)) {
+            if (largestUnit == Unit.WEEK) {
                 weeks = Math.floorDiv(days, 7);
                 days = days % 7;
             }
@@ -257,7 +258,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     }
 
     @TruffleBoundary
-    public static TruffleString temporalDateToString(JSTemporalPlainDateObject date, TruffleString showCalendar) {
+    public static TruffleString temporalDateToString(JSTemporalPlainDateObject date, ShowCalendar showCalendar) {
         TruffleString yearString = TemporalUtil.padISOYear(date.getYear());
         TruffleString monthString = Strings.format("%1$02d", date.getMonth());
         TruffleString dayString = Strings.format("%1$02d", date.getDay());

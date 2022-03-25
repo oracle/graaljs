@@ -62,15 +62,15 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.MatchBehaviour;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetBehaviour;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetOption;
 
 /**
  * Implementation of ToTemporalZonedDateTime() operation.
- *
- * Note there also is {@link TemporalUtil#toTemporalZonedDateTime}.
  */
 public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
 
@@ -95,9 +95,11 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                     @Cached("create()") JSToStringNode toStringNode,
                     @Cached("create()") TemporalGetOptionNode getOptionNode,
                     @Cached("create(ctx)") ToTemporalTimeZoneNode toTemporalTimeZone,
-                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode) {
+                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
+                    @Cached TruffleString.EqualNode equalNode) {
         DynamicObject options = optionsParam;
-        if (TemporalUtil.isNullish(options)) {
+        assert options != null;
+        if (options == Undefined.instance) {
             options = JSOrdinary.createWithNullPrototype(ctx);
         }
         JSTemporalDateTimeRecord result;
@@ -120,19 +122,19 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             Object timeZoneObj = JSObject.get(fields, TIME_ZONE);
             timeZone = toTemporalTimeZone.executeDynamicObject(timeZoneObj);
             Object offsetStringObj = JSObject.get(fields, OFFSET);
-            if (TemporalUtil.isNullish(offsetStringObj)) {
+            if (offsetStringObj == Undefined.instance) {
                 offsetBehaviour = OffsetBehaviour.WALL;
             } else {
                 offsetString = toStringNode.executeString(offsetStringObj);
             }
-            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options);
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options, getOptionNode);
         } else {
             TemporalUtil.toTemporalOverflow(options, getOptionNode);
             TruffleString string = toStringNode.executeString(item);
             JSTemporalZonedDateTimeRecord resultZDT = TemporalUtil.parseTemporalZonedDateTimeString(string);
             result = resultZDT;
             TruffleString timeZoneName = resultZDT.getTimeZoneName();
-            assert !TemporalUtil.isNullish(timeZoneName);
+            assert timeZoneName != null;
             if (!TemporalUtil.canParseAsTimeZoneNumericUTCOffset(timeZoneName)) {
                 if (!TemporalUtil.isValidTimeZoneName(timeZoneName)) {
                     throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
@@ -153,8 +155,8 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
         if (offsetBehaviour == OffsetBehaviour.OPTION) {
             offsetNanoseconds = TemporalUtil.parseTimeZoneOffsetString(offsetString);
         }
-        TruffleString disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode);
-        TruffleString offset = TemporalUtil.toTemporalOffset(options, REJECT, getOptionNode);
+        TemporalUtil.Disambiguation disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode, equalNode);
+        OffsetOption offset = TemporalUtil.toTemporalOffset(options, REJECT, getOptionNode, equalNode);
         BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(),
                         result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNanoseconds, timeZone, disambiguation, offset,
                         matchBehaviour);

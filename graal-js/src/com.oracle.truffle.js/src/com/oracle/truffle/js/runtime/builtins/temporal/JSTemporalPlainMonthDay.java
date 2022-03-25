@@ -55,6 +55,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltins;
+import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -70,6 +71,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 
 public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
                 PrototypeSupplier {
@@ -160,7 +162,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
                 calendarAbsent = false;
             } else {
                 Object calendarObj = JSObject.get(itemObj, CALENDAR);
-                calendarAbsent = TemporalUtil.isNullish(calendarObj);
+                calendarAbsent = (calendarObj == Undefined.instance);
                 calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, realm, calendarObj);
             }
             List<TruffleString> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.listDMMCY);
@@ -174,7 +176,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
             }
             return TemporalUtil.monthDayFromFields(calendar, fields, options);
         }
-        TemporalUtil.toTemporalOverflow(options);
+        TemporalUtil.toTemporalOverflow(options, TemporalGetOptionNode.getUncached());
         TruffleString string = JSRuntime.toString(item);
         JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalMonthDayString(string);
         DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, realm, result.getCalendar());
@@ -187,7 +189,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
     }
 
     @TruffleBoundary
-    public static TruffleString temporalMonthDayToString(JSTemporalPlainMonthDayObject md, TruffleString showCalendar) {
+    public static TruffleString temporalMonthDayToString(JSTemporalPlainMonthDayObject md, ShowCalendar showCalendar) {
         TruffleString monthString = Strings.format("%1$02d", md.getMonth());
         TruffleString dayString = Strings.format("%1$02d", md.getDay());
 

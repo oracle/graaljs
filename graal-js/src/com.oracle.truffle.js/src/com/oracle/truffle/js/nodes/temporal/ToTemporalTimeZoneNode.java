@@ -103,11 +103,10 @@ public abstract class ToTemporalTimeZoneNode extends JavaScriptBaseNode {
         }
         TruffleString identifier = toStringNode.executeString(temporalTimeZoneLike);
         JSTemporalTimeZoneRecord parseResult = TemporalUtil.parseTemporalTimeZoneString(identifier);
-        if (!TemporalUtil.isNullish(parseResult.getName())) {
+        if (parseResult.getName() != null) {
             boolean canParse = TemporalUtil.canParseAsTimeZoneNumericUTCOffset(parseResult.getName());
             if (canParse) {
-                if (!TemporalUtil.isNullish(parseResult.getOffsetString()) &&
-                                TemporalUtil.parseTimeZoneOffsetString(parseResult.getOffsetString()) != TemporalUtil.parseTimeZoneOffsetString(parseResult.getName())) {
+                if (parseResult.getOffsetString() != null && TemporalUtil.parseTimeZoneOffsetString(parseResult.getOffsetString()) != TemporalUtil.parseTimeZoneOffsetString(parseResult.getName())) {
                     errorBranch.enter();
                     throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
                 }
