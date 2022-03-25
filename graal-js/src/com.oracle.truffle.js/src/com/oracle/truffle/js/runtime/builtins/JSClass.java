@@ -70,7 +70,6 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
  * Parameter order: JSDynamicObject receiver[, the rest...].
  */
 public abstract class JSClass {
-    protected static final String[] EMPTY_STRING_ARRAY = new String[0];
 
     protected JSClass() {
     }
