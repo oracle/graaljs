@@ -70,9 +70,9 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
     GetPrototypeNode() {
     }
 
-    public abstract DynamicObject execute(DynamicObject obj);
+    public abstract JSDynamicObject execute(DynamicObject obj);
 
-    public abstract DynamicObject execute(Object obj);
+    public abstract JSDynamicObject execute(Object obj);
 
     public static GetPrototypeNode create() {
         return GetPrototypeNodeGen.create();
@@ -85,7 +85,7 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
             @Child private GetPrototypeNode getPrototypeNode = GetPrototypeNode.create();
 
             @Override
-            public DynamicObject execute(VirtualFrame frame) {
+            public Object execute(VirtualFrame frame) {
                 return getPrototypeNode.execute(objectNode.execute(frame));
             }
 
@@ -109,7 +109,7 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"obj.getShape() == shape", "prototypeLocation != null"}, limit = "MAX_SHAPE_COUNT")
-    static DynamicObject doCachedShape(DynamicObject obj,
+    static JSDynamicObject doCachedShape(DynamicObject obj,
                     @Cached("obj.getShape()") Shape shape,
                     @Cached("getPrototypeLocation(shape)") Location prototypeLocation) {
         assert !JSGuards.isJSProxy(obj);
@@ -117,18 +117,18 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "!isJSProxy(obj)", replaces = "doCachedShape")
-    static DynamicObject doGeneric(DynamicObject obj) {
+    static JSDynamicObject doGeneric(DynamicObject obj) {
         return JSObjectUtil.getPrototype(obj);
     }
 
     @Specialization(guards = "isJSProxy(obj)")
-    static DynamicObject doProxy(DynamicObject obj,
+    static JSDynamicObject doProxy(DynamicObject obj,
                     @Cached("create()") JSClassProfile jsclassProfile) {
         return JSObject.getPrototype(obj, jsclassProfile);
     }
 
     @Specialization(guards = "!isDynamicObject(obj)")
-    static DynamicObject doNotObject(@SuppressWarnings("unused") Object obj) {
+    static JSDynamicObject doNotObject(@SuppressWarnings("unused") Object obj) {
         return Null.instance;
     }
 }

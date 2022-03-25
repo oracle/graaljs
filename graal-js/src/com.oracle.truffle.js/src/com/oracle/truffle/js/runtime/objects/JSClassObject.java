@@ -63,7 +63,7 @@ public abstract class JSClassObject extends JSObject {
 
     @Override
     public JSDynamicObject getPrototypeOf() {
-        return (JSDynamicObject) getJSClass().getPrototypeOf(this);
+        return getJSClass().getPrototypeOf(this);
     }
 
     @Override

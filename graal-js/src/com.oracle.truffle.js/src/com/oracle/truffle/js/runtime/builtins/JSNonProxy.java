@@ -50,8 +50,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -596,7 +596,7 @@ public abstract class JSNonProxy extends JSClass {
 
     @TruffleBoundary
     @Override
-    public final DynamicObject getPrototypeOf(DynamicObject thisObj) {
+    public final JSDynamicObject getPrototypeOf(DynamicObject thisObj) {
         return JSObjectUtil.getPrototype(thisObj);
     }
 

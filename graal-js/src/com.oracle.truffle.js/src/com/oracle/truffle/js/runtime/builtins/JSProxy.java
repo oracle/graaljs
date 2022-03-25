@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -612,7 +612,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
     @TruffleBoundary
     @Override
-    public DynamicObject getPrototypeOf(DynamicObject thisObj) {
+    public JSDynamicObject getPrototypeOf(DynamicObject thisObj) {
         DynamicObject handler = getHandlerChecked(thisObj);
         Object target = getTarget(thisObj);
         Object getPrototypeOfFn = getTrapFromObject(handler, GET_PROTOTYPE_OF);
@@ -628,7 +628,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         if (!JSDynamicObject.isJSDynamicObject(handlerProto) || handlerProto == Undefined.instance) {
             throw Errors.createTypeError("object or null expected");
         }
-        DynamicObject handlerProtoObj = (DynamicObject) handlerProto;
+        JSDynamicObject handlerProtoObj = (JSDynamicObject) handlerProto;
         if (!JSDynamicObject.isJSDynamicObject(target)) {
             return handlerProtoObj;
         }

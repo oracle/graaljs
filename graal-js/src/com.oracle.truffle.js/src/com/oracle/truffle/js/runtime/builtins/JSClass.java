@@ -79,7 +79,7 @@ public abstract class JSClass {
      * 9.1.1 [[GetPrototypeOf]] ().
      */
     @TruffleBoundary
-    public abstract DynamicObject getPrototypeOf(DynamicObject thisObj);
+    public abstract JSDynamicObject getPrototypeOf(DynamicObject thisObj);
 
     /**
      * 9.1.2 [[SetPrototypeOf]] (V).
