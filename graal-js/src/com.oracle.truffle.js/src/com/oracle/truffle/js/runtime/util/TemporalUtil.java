@@ -3307,7 +3307,6 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-
     public static BigInteger differenceInstant(BigInt ns1, BigInt ns2, double roundingIncrement, Unit smallestUnit, RoundingMode roundingMode) {
         return roundTemporalInstant(ns2.subtract(ns1), roundingIncrement, smallestUnit, roundingMode);
     }

@@ -152,8 +152,7 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
             DynamicObject timeZone = zdt.getTimeZone();
             DynamicObject calendar = zdt.getCalendar();
             BigInt intermediateNs = TemporalUtil.addZonedDateTime(ctx, zdt.getNanoseconds(), timeZone, calendar, dtol(y1), dtol(mon1), dtol(w1), dtol(d1), dtol(h1), dtol(min1), dtol(s1), dtol(ms1),
-                            dtol(mus1),
-                            dtol(ns1));
+                            dtol(mus1), dtol(ns1));
             BigInt endNs = TemporalUtil.addZonedDateTime(ctx, intermediateNs, timeZone, calendar, dtol(y2), dtol(mon2), dtol(w2), dtol(d2), dtol(h2), dtol(min2), dtol(s2), dtol(ms2), dtol(mus2),
                             dtol(ns2));
             if (largetUnitYMWDProfile.profile(

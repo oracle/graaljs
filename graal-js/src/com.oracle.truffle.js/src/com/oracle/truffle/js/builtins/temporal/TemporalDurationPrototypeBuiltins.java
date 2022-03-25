@@ -62,6 +62,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAbsNodeGen;
@@ -390,13 +392,15 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached JSNumberToBigIntNode toBigInt,
                         @Cached TruffleString.EqualNode equalNode,
-                        @Cached("create(getContext())") TemporalDurationAddNode durationAddNode) {
+                        @Cached("create(getContext())") TemporalDurationAddNode durationAddNode,
+                        @Cached("createBinaryProfile()") ConditionProfile roundToIsTString,
+                        @Cached("createBinaryProfile()") ConditionProfile realtiveToIsZonedDateTime) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             if (roundToParam == Undefined.instance) {
                 throw TemporalErrors.createTypeErrorOptionsUndefined();
             }
             DynamicObject roundTo;
-            if (Strings.isTString(roundToParam)) {
+            if (roundToIsTString.profile(Strings.isTString(roundToParam))) {
                 roundTo = JSOrdinary.createWithNullPrototype(getContext());
                 JSRuntime.createDataPropertyOrThrow(roundTo, TemporalConstants.SMALLEST_UNIT, JSRuntime.toStringIsString(roundToParam));
             } else {
@@ -422,6 +426,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 largestUnit = defaultLargestUnit;
             }
             if (!smallestUnitPresent && !largestUnitPresent) {
+                errorBranch.enter();
                 throw Errors.createRangeError("unit expected");
             }
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
@@ -444,7 +449,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDurationRelative(
                             getContext(), getRealm(), adjustResult.getYears(), adjustResult.getMonths(), adjustResult.getWeeks(),
                             adjustResult.getDays(), largestUnit, relativeTo);
-            if (TemporalUtil.isTemporalZonedDateTime(relativeTo)) {
+            if (realtiveToIsZonedDateTime.profile(TemporalUtil.isTemporalZonedDateTime(relativeTo))) {
                 relativeTo = TemporalUtil.moveRelativeZonedDateTime(getContext(), relativeTo, dtol(balanceResult.getYears()), dtol(balanceResult.getMonths()), dtol(balanceResult.getWeeks()), 0);
             }
             JSTemporalDurationRecord result = TemporalUtil.balanceDuration(getContext(), namesNode,
