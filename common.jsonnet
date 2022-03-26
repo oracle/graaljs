@@ -84,7 +84,7 @@ local common_json = (import "common.json");
   darwin: common + {
     os:: 'darwin',
     arch:: 'amd64',
-    packages+: common_json.sulong.deps.darwin.packages,
+    packages+: common_json.sulong.deps.darwin_amd64.packages,
     environment+: {
       // for compatibility with macOS El Capitan
       MACOSX_DEPLOYMENT_TARGET: '10.11',
