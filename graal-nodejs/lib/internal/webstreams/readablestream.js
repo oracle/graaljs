@@ -7,7 +7,7 @@ const {
   ArrayBufferPrototypeSlice,
   ArrayPrototypePush,
   ArrayPrototypeShift,
-  DataViewCtor,
+  DataView,
   FunctionPrototypeBind,
   FunctionPrototypeCall,
   MathMin,
@@ -82,6 +82,8 @@ const {
 
 const {
   kIsDisturbed,
+  kIsErrored,
+  kIsReadable,
 } = require('internal/streams/utils');
 
 const {
@@ -139,37 +141,53 @@ const kPull = Symbol('kPull');
  * @typedef {import('./queuingstrategies').QueuingStrategySize
  * } QueuingStrategySize
  * @typedef {import('./writablestream').WritableStream} WritableStream
- *
+ */
+
+/**
  * @typedef {ReadableStreamDefaultController | ReadableByteStreamController
  * } ReadableStreamController
- *
+ */
+
+/**
  * @typedef {ReadableStreamDefaultReader | ReadableStreamBYOBReader
  * } ReadableStreamReader
- *
+ */
+
+/**
  * @callback UnderlyingSourceStartCallback
  * @param {ReadableStreamController} controller
  * @returns { any | Promise<void> }
- *
+ */
+
+/**
  * @callback UnderlyingSourcePullCallback
  * @param {ReadableStreamController} controller
  * @returns { Promise<void> }
- *
+ */
+
+/**
  * @callback UnderlyingSourceCancelCallback
  * @param {any} reason
  * @returns { Promise<void> }
- *
+ */
+
+/**
  * @typedef {{
  *   readable: ReadableStream,
  *   writable: WritableStream,
  * }} ReadableWritablePair
- *
+ */
+
+/**
  * @typedef {{
  *   preventClose? : boolean,
  *   preventAbort? : boolean,
  *   preventCancel? : boolean,
  *   signal? : AbortSignal,
  * }} StreamPipeOptions
- *
+ */
+
+/**
  * @typedef {{
  *   start? : UnderlyingSourceStartCallback,
  *   pull? : UnderlyingSourcePullCallback,
@@ -177,7 +195,6 @@ const kPull = Symbol('kPull');
  *   type? : "bytes",
  *   autoAllocateChunkSize? : number
  * }} UnderlyingSource
- *
  */
 
 class ReadableStream {
@@ -239,6 +256,14 @@ class ReadableStream {
 
   get [kIsDisturbed]() {
     return this[kState].disturbed;
+  }
+
+  get [kIsErrored]() {
+    return this[kState].state === 'errored';
+  }
+
+  get [kIsReadable]() {
+    return this[kState].state === 'readable';
   }
 
   /**
@@ -508,6 +533,8 @@ class ReadableStream {
     return customInspect(depth, options, this[kType], {
       locked: this.locked,
       state: this[kState].state,
+      supportsBYOB:
+        this[kState].controller instanceof ReadableByteStreamController,
     });
   }
 
@@ -1305,7 +1332,7 @@ function readableStreamPipeTo(
 
   function watchClosed(stream, promise, action) {
     if (stream[kState].state === 'closed')
-      action(stream[kState].storedError);
+      action();
     else
       PromisePrototypeThen(promise, action, () => {});
   }
@@ -1331,7 +1358,7 @@ function readableStreamPipeTo(
 
   async function run() {
     // Run until step resolves as true
-    while (!await step()) {}
+    while (!await step());
   }
 
   if (signal !== undefined) {
@@ -1424,13 +1451,18 @@ function readableStreamTee(stream, cloneForBranch2) {
         });
       },
       [kClose]() {
-        reading = false;
-        if (!canceled1)
-          readableStreamDefaultControllerClose(branch1[kState].controller);
-        if (!canceled2)
-          readableStreamDefaultControllerClose(branch2[kState].controller);
-        if (!canceled1 || !canceled2)
-          cancelPromise.resolve();
+        // The `process.nextTick()` is not part of the spec.
+        // This approach was needed to avoid a race condition working with esm
+        // Further information, see: https://github.com/nodejs/node/issues/39758
+        process.nextTick(() => {
+          reading = false;
+          if (!canceled1)
+            readableStreamDefaultControllerClose(branch1[kState].controller);
+          if (!canceled2)
+            readableStreamDefaultControllerClose(branch2[kState].controller);
+          if (!canceled1 || !canceled2)
+            cancelPromise.resolve();
+        });
       },
       [kError]() {
         reading = false;
@@ -1745,7 +1777,7 @@ function setupReadableStreamBYOBReader(reader, stream) {
     controller,
   } = stream[kState];
   if (!isReadableByteStreamController(controller))
-    throw new ERR_INVALID_ARG_VALUE('reader', reader, 'must be a byte stream');
+    throw new ERR_INVALID_ARG_VALUE('stream', stream, 'must be a byte stream');
   readableStreamReaderGenericInitialize(reader, stream);
   reader[kState].readIntoRequests = [];
 }
@@ -2100,7 +2132,7 @@ function readableByteStreamControllerPullInto(
     pendingPullIntos,
   } = controller[kState];
   let elementSize = 1;
-  let ctor = DataViewCtor;
+  let ctor = DataView;
   if (isArrayBufferView(view) && !isDataView(view)) {
     elementSize = view.constructor.BYTES_PER_ELEMENT;
     ctor = view.constructor;

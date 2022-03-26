@@ -1021,9 +1021,10 @@ function wrapSafe(filename, content, cjsModuleInstance) {
       filename,
       lineOffset: 0,
       displayErrors: true,
-      importModuleDynamically: async (specifier) => {
+      importModuleDynamically: async (specifier, _, importAssertions) => {
         const loader = asyncESM.esmLoader;
-        return loader.import(specifier, normalizeReferrerURL(filename));
+        return loader.import(specifier, normalizeReferrerURL(filename),
+                             importAssertions);
       },
     });
   }
@@ -1036,9 +1037,10 @@ function wrapSafe(filename, content, cjsModuleInstance) {
       '__dirname',
     ], {
       filename,
-      importModuleDynamically(specifier) {
+      importModuleDynamically(specifier, _, importAssertions) {
         const loader = asyncESM.esmLoader;
-        return loader.import(specifier, normalizeReferrerURL(filename));
+        return loader.import(specifier, normalizeReferrerURL(filename),
+                             importAssertions);
       },
     });
   } catch (err) {
@@ -1132,7 +1134,9 @@ Module._extensions['.js'] = function(module, filename) {
         let parentSource;
         try {
           parentSource = fs.readFileSync(parentPath, 'utf8');
-        } catch {}
+        } catch {
+          // Continue regardless of error.
+        }
         if (parentSource) {
           const errLine = StringPrototypeSplit(
             StringPrototypeSlice(err.stack, StringPrototypeIndexOf(

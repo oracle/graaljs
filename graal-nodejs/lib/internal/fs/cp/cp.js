@@ -41,7 +41,7 @@ const {
   copyFile,
   lstat,
   mkdir,
-  readdir,
+  opendir,
   readlink,
   stat,
   symlink,
@@ -82,6 +82,7 @@ async function checkPaths(src, dest, opts) {
         path: dest,
         syscall: 'cp',
         errno: EINVAL,
+        code: 'EINVAL',
       });
     }
     if (srcStat.isDirectory() && !destStat.isDirectory()) {
@@ -91,6 +92,7 @@ async function checkPaths(src, dest, opts) {
         path: dest,
         syscall: 'cp',
         errno: EISDIR,
+        code: 'EISDIR',
       });
     }
     if (!srcStat.isDirectory() && destStat.isDirectory()) {
@@ -100,6 +102,7 @@ async function checkPaths(src, dest, opts) {
         path: dest,
         syscall: 'cp',
         errno: ENOTDIR,
+        code: 'ENOTDIR',
       });
     }
   }
@@ -110,6 +113,7 @@ async function checkPaths(src, dest, opts) {
       path: dest,
       syscall: 'cp',
       errno: EINVAL,
+      code: 'EINVAL',
     });
   }
   return { srcStat, destStat };
@@ -171,6 +175,7 @@ async function checkParentPaths(src, srcStat, dest) {
       path: dest,
       syscall: 'cp',
       errno: EINVAL,
+      code: 'EINVAL',
     });
   }
   return checkParentPaths(src, srcStat, destParent);
@@ -209,7 +214,8 @@ async function getStatsForCopy(destStat, src, dest, opts) {
       message: `${src} is a directory (not copied)`,
       path: src,
       syscall: 'cp',
-      errno: EINVAL,
+      errno: EISDIR,
+      code: 'EISDIR',
     });
   } else if (srcStat.isFile() ||
             srcStat.isCharacterDevice() ||
@@ -223,6 +229,7 @@ async function getStatsForCopy(destStat, src, dest, opts) {
       path: dest,
       syscall: 'cp',
       errno: EINVAL,
+      code: 'EINVAL',
     });
   } else if (srcStat.isFIFO()) {
     throw new ERR_FS_CP_FIFO_PIPE({
@@ -230,6 +237,7 @@ async function getStatsForCopy(destStat, src, dest, opts) {
       path: dest,
       syscall: 'cp',
       errno: EINVAL,
+      code: 'EINVAL',
     });
   }
   throw new ERR_FS_CP_UNKNOWN({
@@ -237,6 +245,7 @@ async function getStatsForCopy(destStat, src, dest, opts) {
     path: dest,
     syscall: 'cp',
     errno: EINVAL,
+    code: 'EINVAL',
   });
 }
 
@@ -255,6 +264,7 @@ async function mayCopyFile(srcStat, src, dest, opts) {
       path: dest,
       syscall: 'cp',
       errno: EEXIST,
+      code: 'EEXIST',
     });
   }
 }
@@ -315,11 +325,11 @@ async function mkDirAndCopy(srcMode, src, dest, opts) {
 }
 
 async function copyDir(src, dest, opts) {
-  const dir = await readdir(src);
-  for (let i = 0; i < dir.length; i++) {
-    const item = dir[i];
-    const srcItem = join(src, item);
-    const destItem = join(dest, item);
+  const dir = await opendir(src);
+
+  for await (const { name } of dir) {
+    const srcItem = join(src, name);
+    const destItem = join(dest, name);
     const { destStat } = await checkPaths(srcItem, destItem, opts);
     await startCopy(destStat, srcItem, destItem, opts);
   }
@@ -355,6 +365,7 @@ async function onLink(destStat, src, dest) {
       path: dest,
       syscall: 'cp',
       errno: EINVAL,
+      code: 'EINVAL',
     });
   }
   // Do not copy if src is a subdir of dest since unlinking
@@ -367,6 +378,7 @@ async function onLink(destStat, src, dest) {
       path: dest,
       syscall: 'cp',
       errno: EINVAL,
+      code: 'EINVAL',
     });
   }
   return copyLink(resolvedSrc, dest);

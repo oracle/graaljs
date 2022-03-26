@@ -67,7 +67,7 @@ const callbackFunction = util.callbackify(fn);
 callbackFunction((err, ret) => {
   // When the Promise was rejected with `null` it is wrapped with an Error and
   // the original value is stored in `reason`.
-  err && err.hasOwnProperty('reason') && err.reason === null;  // true
+  err && Object.hasOwn(err, 'reason') && err.reason === null;  // true
 });
 ```
 
@@ -483,6 +483,9 @@ stream.write('With ES6');
 <!-- YAML
 added: v0.3.0
 changes:
+  - version: v16.14.0
+    pr-url: https://github.com/nodejs/node/pull/41003
+    description: The `numericSeparator` option is supported now.
   - version:
     - v14.6.0
     - v12.19.0
@@ -574,7 +577,7 @@ changes:
     codes. Colors are customizable. See [Customizing `util.inspect` colors][].
     **Default:** `false`.
   * `customInspect` {boolean} If `false`,
-    `[util.inspect.custom](depth, opts)` functions are not invoked.
+    `[util.inspect.custom](depth, opts, inspect)` functions are not invoked.
     **Default:** `true`.
   * `showProxy` {boolean} If `true`, `Proxy` inspection includes
     the [`target` and `handler`][] objects. **Default:** `false`.
@@ -603,6 +606,9 @@ changes:
     to `'get'`, only getters without a corresponding setter are inspected. If
     set to `'set'`, only getters with a corresponding setter are inspected.
     This might cause side effects depending on the getter function.
+    **Default:** `false`.
+  * `numericSeparator` {boolean} If set to `true`, an underscore is used to
+    separate every three digits in all bigints and numbers.
     **Default:** `false`.
 * Returns: {string} The representation of `object`.
 
@@ -752,6 +758,21 @@ assert.strict.equal(
 );
 ```
 
+The `numericSeparator` option adds an underscore every three digits to all
+numbers.
+
+```js
+const { inspect } = require('util');
+
+const thousand = 1_000;
+const million = 1_000_000;
+const bigNumber = 123_456_789n;
+const bigDecimal = 1_234.123_45;
+
+console.log(thousand, million, bigNumber, bigDecimal);
+// 1_000 1_000_000 123_456_789n 1_234.123_45
+```
+
 `util.inspect()` is a synchronous method intended for debugging. Its maximum
 output length is approximately 128 MB. Inputs that result in longer output will
 be truncated.
@@ -851,10 +872,18 @@ ignored, if not supported.
 
 <!-- type=misc -->
 
+<!-- YAML
+added: v0.1.97
+changes:
+  - version: v16.14.0
+    pr-url: https://github.com/nodejs/node/pull/41019
+    description: The inspect argument is added for more interoperability.
+-->
+
 Objects may also define their own
-[`[util.inspect.custom](depth, opts)`][util.inspect.custom] function,
+[`[util.inspect.custom](depth, opts, inspect)`][util.inspect.custom] function,
 which `util.inspect()` will invoke and use the result of when inspecting
-the object:
+the object.
 
 ```js
 const util = require('util');
@@ -864,7 +893,7 @@ class Box {
     this.value = value;
   }
 
-  [util.inspect.custom](depth, options) {
+  [util.inspect.custom](depth, options, inspect) {
     if (depth < 0) {
       return options.stylize('[Box]', 'special');
     }
@@ -875,8 +904,8 @@ class Box {
 
     // Five space padding because that's the size of "Box< ".
     const padding = ' '.repeat(5);
-    const inner = util.inspect(this.value, newOptions)
-                      .replace(/\n/g, `\n${padding}`);
+    const inner = inspect(this.value, newOptions)
+                  .replace(/\n/g, `\n${padding}`);
     return `${options.stylize('Box', 'special')}< ${inner} >`;
   }
 }
@@ -887,9 +916,9 @@ util.inspect(box);
 // Returns: "Box< true >"
 ```
 
-Custom `[util.inspect.custom](depth, opts)` functions typically return a string
-but may return a value of any type that will be formatted accordingly by
-`util.inspect()`.
+Custom `[util.inspect.custom](depth, opts, inspect)` functions typically return
+a string but may return a value of any type that will be formatted accordingly
+by `util.inspect()`.
 
 ```js
 const util = require('util');
@@ -919,8 +948,13 @@ In addition to being accessible through `util.inspect.custom`, this
 symbol is [registered globally][global symbol registry] and can be
 accessed in any environment as `Symbol.for('nodejs.util.inspect.custom')`.
 
+Using this allows code to be written in a portable fashion, so that the custom
+inspect function is used in an Node.js environment and ignored in the browser.
+The `util.inspect()` function itself is passed as third argument to the custom
+inspect function to allow further portability.
+
 ```js
-const inspect = Symbol.for('nodejs.util.inspect.custom');
+const customInspectSymbol = Symbol.for('nodejs.util.inspect.custom');
 
 class Password {
   constructor(value) {
@@ -931,7 +965,7 @@ class Password {
     return 'xxxxxxxx';
   }
 
-  [inspect]() {
+  [customInspectSymbol](depth, inspectOptions, inspect) {
     return `Password <${this.toString()}>`;
   }
 }
@@ -1151,13 +1185,9 @@ added: v8.3.0
 An implementation of the [WHATWG Encoding Standard][] `TextDecoder` API.
 
 ```js
-const decoder = new TextDecoder('shift_jis');
-let string = '';
-let buffer;
-while (buffer = getNextChunkSomehow()) {
-  string += decoder.decode(buffer, { stream: true });
-}
-string += decoder.decode(); // end-of-stream
+const decoder = new TextDecoder();
+const u8arr = new Uint8Array([72, 101, 108, 108, 111]);
+console.log(decoder.decode(u8arr)); // Hello
 ```
 
 ### WHATWG supported encodings

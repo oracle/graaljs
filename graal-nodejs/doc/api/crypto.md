@@ -543,13 +543,16 @@ once will result in an error being thrown.
 added: v1.0.0
 -->
 
-* Returns: {Buffer} When using an authenticated encryption mode (`GCM`, `CCM`
+* Returns: {Buffer} When using an authenticated encryption mode (`GCM`, `CCM`,
   and `OCB` are currently supported), the `cipher.getAuthTag()` method returns a
   [`Buffer`][] containing the _authentication tag_ that has been computed from
   the given data.
 
 The `cipher.getAuthTag()` method should only be called after encryption has
 been completed using the [`cipher.final()`][] method.
+
+If the `authTagLength` option was set during the `cipher` instance's creation,
+this function will return exactly `authTagLength` bytes.
 
 ### `cipher.setAAD(buffer[, options])`
 
@@ -563,7 +566,7 @@ added: v1.0.0
   * `encoding` {string} The string encoding to use when `buffer` is a string.
 * Returns: {Cipher} for method chaining.
 
-When using an authenticated encryption mode (`GCM`, `CCM` and `OCB` are
+When using an authenticated encryption mode (`GCM`, `CCM`, and `OCB` are
 currently supported), the `cipher.setAAD()` method sets the value used for the
 _additional authenticated data_ (AAD) input parameter.
 
@@ -860,7 +863,7 @@ changes:
   * `encoding` {string} String encoding to use when `buffer` is a string.
 * Returns: {Decipher} for method chaining.
 
-When using an authenticated encryption mode (`GCM`, `CCM` and `OCB` are
+When using an authenticated encryption mode (`GCM`, `CCM`, and `OCB` are
 currently supported), the `decipher.setAAD()` method sets the value used for the
 _additional authenticated data_ (AAD) input parameter.
 
@@ -894,7 +897,7 @@ changes:
 * `encoding` {string} String encoding to use when `buffer` is a string.
 * Returns: {Decipher} for method chaining.
 
-When using an authenticated encryption mode (`GCM`, `CCM` and `OCB` are
+When using an authenticated encryption mode (`GCM`, `CCM`, and `OCB` are
 currently supported), the `decipher.setAuthTag()` method is used to pass in the
 received _authentication tag_. If no tag is provided, or if the cipher text
 has been tampered with, [`decipher.final()`][] will throw, indicating that the
@@ -2461,22 +2464,24 @@ added: v15.6.0
 added: v15.6.0
 -->
 
-* Type: {boolean} Will be `true` if this is a Certificate Authority (ca)
+* Type: {boolean} Will be `true` if this is a Certificate Authority (CA)
   certificate.
 
 ### `x509.checkEmail(email[, options])`
 
 <!-- YAML
 added: v15.6.0
+changes:
+  - version: v16.14.1
+    pr-url: https://github.com/nodejs/node/pull/41599
+    description: The `wildcards`, `partialWildcards`, `multiLabelWildcards`, and
+                 `singleLabelSubdomains` options have been removed since they
+                 had no effect.
 -->
 
 * `email` {string}
 * `options` {Object}
   * `subject` {string} `'always'` or `'never'`. **Default:** `'always'`.
-  * `wildcards` {boolean} **Default:** `true`.
-  * `partialWildcards` {boolean} **Default:** `true`.
-  * `multiLabelWildcards` {boolean} **Default:** `false`.
-  * `singleLabelSubdomains` {boolean} **Default:** `false`.
 * Returns: {string|undefined} Returns `email` if the certificate matches,
   `undefined` if it does not.
 
@@ -2495,28 +2500,36 @@ added: v15.6.0
   * `partialWildcards` {boolean} **Default:** `true`.
   * `multiLabelWildcards` {boolean} **Default:** `false`.
   * `singleLabelSubdomains` {boolean} **Default:** `false`.
-* Returns: {string|undefined} Returns `name` if the certificate matches,
-  `undefined` if it does not.
+* Returns: {string|undefined} Returns a subject name that matches `name`,
+  or `undefined` if no subject name matches `name`.
 
 Checks whether the certificate matches the given host name.
 
-### `x509.checkIP(ip[, options])`
+If the certificate matches the given host name, the matching subject name is
+returned. The returned name might be an exact match (e.g., `foo.example.com`)
+or it might contain wildcards (e.g., `*.example.com`). Because host name
+comparisons are case-insensitive, the returned subject name might also differ
+from the given `name` in capitalization.
+
+### `x509.checkIP(ip)`
 
 <!-- YAML
 added: v15.6.0
+changes:
+  - version: v16.14.1
+    pr-url: https://github.com/nodejs/node/pull/41571
+    description: The `options` argument has been removed since it had no effect.
 -->
 
 * `ip` {string}
-* `options` {Object}
-  * `subject` {string} `'always'` or `'never'`. **Default:** `'always'`.
-  * `wildcards` {boolean} **Default:** `true`.
-  * `partialWildcards` {boolean} **Default:** `true`.
-  * `multiLabelWildcards` {boolean} **Default:** `false`.
-  * `singleLabelSubdomains` {boolean} **Default:** `false`.
 * Returns: {string|undefined} Returns `ip` if the certificate matches,
   `undefined` if it does not.
 
 Checks whether the certificate matches the given IP address (IPv4 or IPv6).
+
+Only [RFC 5280][] `iPAddress` subject alternative names are considered, and they
+must match the given `ip` address exactly. Other subject alternative names as
+well as the subject field of the certificate are ignored.
 
 ### `x509.checkIssued(otherCert)`
 
@@ -2560,6 +2573,16 @@ added: v15.6.0
 * Type: {string}
 
 The SHA-256 fingerprint of this certificate.
+
+### `x509.fingerprint512`
+
+<!-- YAML
+added: v16.14.0
+-->
+
+* Type: {string}
+
+The SHA-512 fingerprint of this certificate.
 
 ### `x509.infoAccess`
 
@@ -5236,7 +5259,8 @@ comparing HMAC digests or secret values like authentication cookies or
 [capability urls](https://www.w3.org/TR/capability-urls/).
 
 `a` and `b` must both be `Buffer`s, `TypedArray`s, or `DataView`s, and they
-must have the same byte length.
+must have the same byte length. An error is thrown if `a` and `b` have
+different byte lengths.
 
 If at least one of `a` and `b` is a `TypedArray` with more than one byte per
 entry, such as `Uint16Array`, the result will be computed using the platform
@@ -5374,21 +5398,6 @@ API (e.g. `update()`, `final()`, or `digest()`). Also, many methods accepted
 and returned `'latin1'` encoded strings by default rather than `Buffer`s. This
 default was changed after Node.js v0.8 to use [`Buffer`][] objects by default
 instead.
-
-### Recent ECDH changes
-
-Usage of `ECDH` with non-dynamically generated key pairs has been simplified.
-Now, [`ecdh.setPrivateKey()`][] can be called with a preselected private key
-and the associated public point (key) will be computed and stored in the object.
-This allows code to only store and provide the private part of the EC key pair.
-[`ecdh.setPrivateKey()`][] now also validates that the private key is valid for
-the selected curve.
-
-The [`ecdh.setPublicKey()`][] method is now deprecated as its inclusion in the
-API is not useful. Either a previously stored private key should be set, which
-automatically generates the associated public key, or [`ecdh.generateKeys()`][]
-should be called. The main drawback of using [`ecdh.setPublicKey()`][] is that
-it can be used to put the ECDH key pair into an inconsistent state.
 
 ### Support for weak or compromised algorithms
 
@@ -5683,8 +5692,8 @@ See the [list of SSL OP Flags][] for details.
   </tr>
   <tr>
     <td><code>SSL_OP_PRIORITIZE_CHACHA</code></td>
-    <td>Instructs OpenSSL server to prioritize ChaCha20Poly1305
-    when client does.
+    <td>Instructs OpenSSL server to prioritize ChaCha20-Poly1305
+    when the client does.
     This option has no effect if
     <code>SSL_OP_CIPHER_SERVER_PREFERENCE</code>
     is not enabled.</td>
@@ -5892,6 +5901,7 @@ See the [list of SSL OP Flags][] for details.
 [RFC 4055]: https://www.rfc-editor.org/rfc/rfc4055.txt
 [RFC 4122]: https://www.rfc-editor.org/rfc/rfc4122.txt
 [RFC 5208]: https://www.rfc-editor.org/rfc/rfc5208.txt
+[RFC 5280]: https://www.rfc-editor.org/rfc/rfc5280.txt
 [Web Crypto API documentation]: webcrypto.md
 [`BN_is_prime_ex`]: https://www.openssl.org/docs/man1.1.1/man3/BN_is_prime_ex.html
 [`Buffer`]: buffer.md
@@ -5931,7 +5941,6 @@ See the [list of SSL OP Flags][] for details.
 [`diffieHellman.setPublicKey()`]: #diffiehellmansetpublickeypublickey-encoding
 [`ecdh.generateKeys()`]: #ecdhgeneratekeysencoding-format
 [`ecdh.setPrivateKey()`]: #ecdhsetprivatekeyprivatekey-encoding
-[`ecdh.setPublicKey()`]: #ecdhsetpublickeypublickey-encoding
 [`hash.digest()`]: #hashdigestencoding
 [`hash.update()`]: #hashupdatedata-inputencoding
 [`hmac.digest()`]: #hmacdigestencoding

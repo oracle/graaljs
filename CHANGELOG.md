@@ -6,7 +6,7 @@ Changelog may include unreleased versions.
 See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) for release dates.
 
 ## Version 22.1.0
-* Updated Node.js to version 16.13.2.
+* Updated Node.js to version 16.14.2.
 * Graal.js now requires Java 11+ and no longer supports Java 8.
 * Implemented the [Intl.NumberFormat v3](https://github.com/tc39/proposal-intl-numberformat-v3) proposal.
 * Implemented the [Array Grouping v3](https://github.com/tc39/proposal-array-grouping) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).

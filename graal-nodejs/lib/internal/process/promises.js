@@ -5,6 +5,7 @@ const {
   ArrayPrototypeShift,
   Error,
   ObjectDefineProperty,
+  ObjectPrototypeHasOwnProperty,
   SafeWeakMap,
 } = primordials;
 
@@ -27,8 +28,11 @@ const {
 const {
   pushAsyncContext,
   popAsyncContext,
+  symbols: {
+    async_id_symbol: kAsyncIdSymbol,
+    trigger_async_id_symbol: kTriggerAsyncIdSymbol
+  }
 } = require('internal/async_hooks');
-const async_hooks = require('async_hooks');
 const { isErrorStackTraceLimitWritable } = require('internal/errors');
 
 // *Must* match Environment::TickInfo::Fields in src/env.h.
@@ -74,6 +78,12 @@ function setHasRejectionToWarn(value) {
 
 function hasRejectionToWarn() {
   return tickInfo[kHasRejectionToWarn] === 1;
+}
+
+function isErrorLike(o) {
+  return typeof o === 'object' &&
+         o !== null &&
+         ObjectPrototypeHasOwnProperty(o, 'stack');
 }
 
 function getUnhandledRejectionsMode() {
@@ -123,20 +133,11 @@ function resolveError(type, promise, reason) {
 }
 
 function unhandledRejection(promise, reason) {
-  const asyncId = async_hooks.executionAsyncId();
-  const triggerAsyncId = async_hooks.triggerAsyncId();
-  const resource = promise;
-
   const emit = (reason, promise, promiseInfo) => {
-    try {
-      pushAsyncContext(asyncId, triggerAsyncId, resource);
-      if (promiseInfo.domain) {
-        return promiseInfo.domain.emit('error', reason);
-      }
-      return process.emit('unhandledRejection', reason, promise);
-    } finally {
-      popAsyncContext(asyncId);
+    if (promiseInfo.domain) {
+      return promiseInfo.domain.emit('error', reason);
     }
+    return process.emit('unhandledRejection', reason, promise);
   };
 
   maybeUnhandledPromises.set(promise, {
@@ -185,14 +186,21 @@ function emitUnhandledRejectionWarning(uid, reason) {
       `(rejection id: ${uid})`
   );
   try {
-    if (reason instanceof Error) {
+    if (isErrorLike(reason)) {
       warning.stack = reason.stack;
       process.emitWarning(reason.stack, unhandledRejectionErrName);
     } else {
       process.emitWarning(
         noSideEffectsToString(reason), unhandledRejectionErrName);
     }
-  } catch {}
+  } catch {
+    try {
+      process.emitWarning(
+        noSideEffectsToString(reason), unhandledRejectionErrName);
+    } catch {
+      // Ignore.
+    }
+  }
 
   process.emitWarning(warning);
 }
@@ -220,40 +228,73 @@ function processPromiseRejections() {
     promiseInfo.warned = true;
     const { reason, uid, emit } = promiseInfo;
 
-    switch (unhandledRejectionsMode) {
-      case kStrictUnhandledRejections: {
-        const err = reason instanceof Error ?
-          reason : generateUnhandledRejectionError(reason);
-        triggerUncaughtException(err, true /* fromPromise */);
-        const handled = emit(reason, promise, promiseInfo);
-        if (!handled) emitUnhandledRejectionWarning(uid, reason);
-        break;
-      }
-      case kIgnoreUnhandledRejections: {
-        emit(reason, promise, promiseInfo);
-        break;
-      }
-      case kAlwaysWarnUnhandledRejections: {
-        emit(reason, promise, promiseInfo);
-        emitUnhandledRejectionWarning(uid, reason);
-        break;
-      }
-      case kThrowUnhandledRejections: {
-        const handled = emit(reason, promise, promiseInfo);
-        if (!handled) {
-          const err = reason instanceof Error ?
+    let needPop = true;
+    const {
+      [kAsyncIdSymbol]: promiseAsyncId,
+      [kTriggerAsyncIdSymbol]: promiseTriggerAsyncId,
+    } = promise;
+    // We need to check if async_hooks are enabled
+    // don't use enabledHooksExist as a Promise could
+    // come from a vm.* context and not have an async id
+    if (typeof promiseAsyncId !== 'undefined') {
+      pushAsyncContext(
+        promiseAsyncId,
+        promiseTriggerAsyncId,
+        promise
+      );
+    }
+    try {
+      switch (unhandledRejectionsMode) {
+        case kStrictUnhandledRejections: {
+          const err = isErrorLike(reason) ?
             reason : generateUnhandledRejectionError(reason);
+          // This destroys the async stack, don't clear it after
           triggerUncaughtException(err, true /* fromPromise */);
+          if (typeof promiseAsyncId !== 'undefined') {
+            pushAsyncContext(
+              promise[kAsyncIdSymbol],
+              promise[kTriggerAsyncIdSymbol],
+              promise
+            );
+          }
+          const handled = emit(reason, promise, promiseInfo);
+          if (!handled) emitUnhandledRejectionWarning(uid, reason);
+          break;
         }
-        break;
-      }
-      case kWarnWithErrorCodeUnhandledRejections: {
-        const handled = emit(reason, promise, promiseInfo);
-        if (!handled) {
+        case kIgnoreUnhandledRejections: {
+          emit(reason, promise, promiseInfo);
+          break;
+        }
+        case kAlwaysWarnUnhandledRejections: {
+          emit(reason, promise, promiseInfo);
           emitUnhandledRejectionWarning(uid, reason);
-          process.exitCode = 1;
+          break;
         }
-        break;
+        case kThrowUnhandledRejections: {
+          const handled = emit(reason, promise, promiseInfo);
+          if (!handled) {
+            const err = isErrorLike(reason) ?
+              reason : generateUnhandledRejectionError(reason);
+              // This destroys the async stack, don't clear it after
+            triggerUncaughtException(err, true /* fromPromise */);
+            needPop = false;
+          }
+          break;
+        }
+        case kWarnWithErrorCodeUnhandledRejections: {
+          const handled = emit(reason, promise, promiseInfo);
+          if (!handled) {
+            emitUnhandledRejectionWarning(uid, reason);
+            process.exitCode = 1;
+          }
+          break;
+        }
+      }
+    } finally {
+      if (needPop) {
+        if (typeof promiseAsyncId !== 'undefined') {
+          popAsyncContext(promiseAsyncId);
+        }
       }
     }
     maybeScheduledTicksOrMicrotasks = true;

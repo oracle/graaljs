@@ -1,4 +1,4 @@
-# Command-line options
+# Command-line API
 
 <!--introduced_in=v5.9.1-->
 
@@ -11,15 +11,42 @@ To view this documentation as a manual page in a terminal, run `man node`.
 
 ## Synopsis
 
-`node [options] [V8 options] [script.js | -e "script" | -] [--] [arguments]`
+`node [options] [V8 options] [<program-entry-point> | -e "script" | -] [--] [arguments]`
 
-`node inspect [script.js | -e "script" | <host>:<port>] …`
+`node inspect [<program-entry-point> | -e "script" | <host>:<port>] …`
 
 `node --v8-options`
 
 Execute without arguments to start the [REPL][].
 
 For more info about `node inspect`, see the [debugger][] documentation.
+
+## Program entry point
+
+The program entry point is a specifier-like string. If the string is not an
+absolute path, it's resolved as a relative path from the current working
+directory. That path is then resolved by [CommonJS][] module loader. If no
+corresponding file is found, an error is thrown.
+
+If a file is found, its path will be passed to the [ECMAScript module loader][]
+under any of the following conditions:
+
+* The program was started with a command-line flag that forces the entry
+  point to be loaded with ECMAScript module loader.
+* The file has an `.mjs` extension.
+* The file does not have a `.cjs` extension, and the nearest parent
+  `package.json` file contains a top-level [`"type"`][] field with a value of
+  `"module"`.
+
+Otherwise, the file is loaded using the CommonJS module loader. See
+[Modules loaders][] for more details.
+
+### ECMAScript modules loader entry point caveat
+
+When loading [ECMAScript module loader][] loads the program entry point, the `node`
+command will only accept as input only files with `.js`, `.mjs`, or `.cjs`
+extensions; and with `.wasm` extensions when
+[`--experimental-wasm-modules`][] is enabled.
 
 ## Options
 
@@ -245,19 +272,6 @@ effort to report stack traces relative to the original source file.
 Overriding `Error.prepareStackTrace` prevents `--enable-source-maps` from
 modifying the stack trace.
 
-### `--experimental-abortcontroller`
-
-<!-- YAML
-added: v15.0.0
-changes:
-  - version: v15.0.0
-    pr-url: https://github.com/nodejs/node/pull/33527
-    description: --experimental-abortcontroller is no longer required.
--->
-
-`AbortController` and `AbortSignal` support is enabled by default.
-Use of this command-line flag is no longer required.
-
 ### `--experimental-import-meta-resolve`
 
 <!-- YAML
@@ -282,8 +296,8 @@ Enable experimental JSON support for the ES Module loader.
 added: v9.0.0
 -->
 
-Specify the `module` of a custom experimental [ECMAScript Module loader][].
-`module` may be either a path to a file, or an ECMAScript Module name.
+Specify the `module` of a custom experimental [ECMAScript module loader][].
+`module` may be any string accepted as an [`import` specifier][].
 
 ### `--experimental-policy`
 
@@ -376,12 +390,11 @@ added: v11.12.0
 
 Enable experimental frozen intrinsics like `Array` and `Object`.
 
-Support is currently only provided for the root context and no guarantees are
-currently provided that `global.Array` is indeed the default intrinsic
-reference. Code may break under this flag.
+Only the root context is supported. There is no guarantee that
+`globalThis.Array` is indeed the default intrinsic reference. Code may break
+under this flag.
 
-`--require` runs prior to freezing intrinsics in order to allow polyfills to
-be added.
+To allow polyfills to be added, `--require` runs before freezing intrinsics.
 
 ### `--heapsnapshot-near-heap-limit=max_count`
 
@@ -1238,12 +1251,16 @@ occurs. One of the following modes can be chosen:
 
 * `throw`: Emit [`unhandledRejection`][]. If this hook is not set, raise the
   unhandled rejection as an uncaught exception. This is the default.
-* `strict`: Raise the unhandled rejection as an uncaught exception.
+* `strict`: Raise the unhandled rejection as an uncaught exception. If the
+  exception is handled, [`unhandledRejection`][] is emitted.
 * `warn`: Always trigger a warning, no matter if the [`unhandledRejection`][]
   hook is set or not but do not print the deprecation warning.
 * `warn-with-error-code`: Emit [`unhandledRejection`][]. If this hook is not
   set, trigger a warning, and set the process exit code to 1.
 * `none`: Silence all warnings.
+
+If a rejection happens during the command line entry point's ES module static
+loading phase, it will always raise it as an uncaught exception.
 
 ### `--use-bundled-ca`, `--use-openssl-ca`
 
@@ -1912,14 +1929,18 @@ $ node --max-old-space-size=1536 index.js
 ```
 
 [Chrome DevTools Protocol]: https://chromedevtools.github.io/devtools-protocol/
-[ECMAScript Module loader]: esm.md#loaders
+[CommonJS]: modules.md
+[ECMAScript module loader]: esm.md#loaders
+[Modules loaders]: packages.md#modules-loaders
 [REPL]: repl.md
 [ScriptCoverage]: https://chromedevtools.github.io/devtools-protocol/tot/Profiler#type-ScriptCoverage
 [Source Map]: https://sourcemaps.info/spec.html
 [Subresource Integrity]: https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
 [V8 JavaScript code coverage]: https://v8project.blogspot.com/2017/12/javascript-code-coverage.html
+[`"type"`]: packages.md#type
 [`--cpu-prof-dir`]: #--cpu-prof-dir
 [`--diagnostic-dir`]: #--diagnostic-dirdirectory
+[`--experimental-wasm-modules`]: #--experimental-wasm-modules
 [`--heap-prof-dir`]: #--heap-prof-dir
 [`--openssl-config`]: #--openssl-configfile
 [`--redirect-warnings`]: #--redirect-warningsfile
@@ -1932,6 +1953,7 @@ $ node --max-old-space-size=1536 index.js
 [`dns.lookup()`]: dns.md#dnslookuphostname-options-callback
 [`dns.setDefaultResultOrder()`]: dns.md#dnssetdefaultresultorderorder
 [`dnsPromises.lookup()`]: dns.md#dnspromiseslookuphostname-options
+[`import` specifier]: esm.md#import-specifiers
 [`process.setUncaughtExceptionCaptureCallback()`]: process.md#processsetuncaughtexceptioncapturecallbackfn
 [`tls.DEFAULT_MAX_VERSION`]: tls.md#tlsdefault_max_version
 [`tls.DEFAULT_MIN_VERSION`]: tls.md#tlsdefault_min_version

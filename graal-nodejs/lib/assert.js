@@ -129,7 +129,6 @@ function innerFail(obj) {
  * @param {string | Error} [message]
  * @param {string} [operator]
  * @param {Function} [stackStartFn]
- * @returns {never}
  */
 function fail(actual, expected, message, operator, stackStartFn) {
   const argsLen = arguments.length;
@@ -832,7 +831,7 @@ function expectsError(stackStartFn, actual, error, message) {
       details += ` (${error.name})`;
     }
     details += message ? `: ${message}` : '.';
-    const fnType = stackStartFn.name === 'rejects' ? 'rejection' : 'exception';
+    const fnType = stackStartFn === assert.rejects ? 'rejection' : 'exception';
     innerFail({
       actual: undefined,
       expected: error,
@@ -879,7 +878,7 @@ function expectsNoError(stackStartFn, actual, error, message) {
 
   if (!error || hasMatchingError(actual, error)) {
     const details = message ? `: ${message}` : '.';
-    const fnType = stackStartFn.name === 'doesNotReject' ?
+    const fnType = stackStartFn === assert.doesNotReject ?
       'rejection' : 'exception';
     innerFail({
       actual,
@@ -966,21 +965,27 @@ assert.ifError = function ifError(err) {
       // This will remove any duplicated frames from the error frames taken
       // from within `ifError` and add the original error frames to the newly
       // created ones.
-      const tmp2 = StringPrototypeSplit(origStack, '\n');
-      ArrayPrototypeShift(tmp2);
-      // Filter all frames existing in err.stack.
-      let tmp1 = StringPrototypeSplit(newErr.stack, '\n');
-      for (const errFrame of tmp2) {
-        // Find the first occurrence of the frame.
-        const pos = ArrayPrototypeIndexOf(tmp1, errFrame);
-        if (pos !== -1) {
-          // Only keep new frames.
-          tmp1 = ArrayPrototypeSlice(tmp1, 0, pos);
-          break;
+      const origStackStart = origStack.indexOf('\n    at');
+      if (origStackStart !== -1) {
+        const originalFrames = StringPrototypeSplit(
+          origStack.slice(origStackStart + 1),
+          '\n'
+        );
+        // Filter all frames existing in err.stack.
+        let newFrames = StringPrototypeSplit(newErr.stack, '\n');
+        for (const errFrame of originalFrames) {
+          // Find the first occurrence of the frame.
+          const pos = ArrayPrototypeIndexOf(newFrames, errFrame);
+          if (pos !== -1) {
+            // Only keep new frames.
+            newFrames = ArrayPrototypeSlice(newFrames, 0, pos);
+            break;
+          }
         }
+        const stackStart = ArrayPrototypeJoin(newFrames, '\n');
+        const stackEnd = ArrayPrototypeJoin(originalFrames, '\n');
+        newErr.stack = `${stackStart}\n${stackEnd}`;
       }
-      newErr.stack =
-        `${ArrayPrototypeJoin(tmp1, '\n')}\n${ArrayPrototypeJoin(tmp2, '\n')}`;
     }
 
     throw newErr;
@@ -993,7 +998,7 @@ function internalMatch(string, regexp, message, fn) {
       'regexp', 'RegExp', regexp
     );
   }
-  const match = fn.name === 'match';
+  const match = fn === assert.match;
   if (typeof string !== 'string' ||
       RegExpPrototypeTest(regexp, string) !== match) {
     if (message instanceof Error) {

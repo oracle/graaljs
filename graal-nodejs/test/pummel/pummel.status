@@ -7,8 +7,8 @@ prefix pummel
 [true] # This section applies to all platforms
 
 [$system==win32]
-# https://github.com/nodejs/node/issues/40694
-test-policy-integrity: PASS,FLAKY
+# https://github.com/nodejs/node/issues/40728
+test-fs-watch-non-recursive: PASS,FLAKY
 
 [$system==linux]
 # https://github.com/nodejs/node/issues/38226
@@ -25,3 +25,5 @@ test-crypto-timing-safe-equal-benchmarks: PASS,FLAKY
 [$system==aix]
 
 [$system==ibmi]
+# https://github.com/nodejs/node/issues/39683
+test-regress-GH-892: PASS, FLAKY

@@ -8,6 +8,8 @@ const {
   Symbol,
 } = primordials;
 
+const promiseHooks = require('internal/promise_hooks');
+
 const async_wrap = internalBinding('async_wrap');
 const { setCallbackTrampoline } = async_wrap;
 /* async_hook_fields is a Uint32Array wrapping the uint32_t array of
@@ -51,8 +53,6 @@ const {
   executionAsyncResource: executionAsyncResource_,
   clearAsyncIdStack,
 } = async_wrap;
-// For performance reasons, only track Promises when a hook is enabled.
-const { setPromiseHooks } = async_wrap;
 // Properties in active_hooks are used to keep track of the set of hooks being
 // executed in case another hook is enabled/disabled. The new set of hooks is
 // then restored once the active set of hooks is finished executing.
@@ -81,7 +81,7 @@ const active_hooks = {
 
 const { registerDestroyHook } = async_wrap;
 const { enqueueMicrotask } = internalBinding('task_queue');
-const { owner_symbol } = internalBinding('symbols');
+const { resource_symbol, owner_symbol } = internalBinding('symbols');
 
 // Each constant tracks how many callbacks there are for any given step of
 // async execution. These are tracked so if the user didn't include callbacks
@@ -137,8 +137,6 @@ function callbackTrampoline(asyncId, resource, cb, ...args) {
   return result;
 }
 
-setCallbackTrampoline(callbackTrampoline);
-
 const topLevelResource = {};
 
 function executionAsyncResource() {
@@ -178,13 +176,11 @@ function fatalError(e) {
 
 function lookupPublicResource(resource) {
   if (typeof resource !== 'object' || resource === null) return resource;
-
-  const publicResource = resource[owner_symbol];
-
-  if (publicResource != null) {
+  // TODO(addaleax): Merge this with owner_symbol and use it across all
+  // AsyncWrap instances.
+  const publicResource = resource[resource_symbol];
+  if (publicResource !== undefined)
     return publicResource;
-  }
-
   return resource;
 }
 
@@ -372,8 +368,11 @@ function promiseResolveHook(promise) {
 let wantPromiseHook = false;
 function enableHooks() {
   async_hook_fields[kCheck] += 1;
+
+  setCallbackTrampoline(callbackTrampoline);
 }
 
+let stopPromiseHook;
 function updatePromiseHookMode() {
   wantPromiseHook = true;
   let initHook;
@@ -383,12 +382,13 @@ function updatePromiseHookMode() {
   } else if (destroyHooksExist()) {
     initHook = destroyTracking;
   }
-  setPromiseHooks(
-    initHook,
-    promiseBeforeHook,
-    promiseAfterHook,
-    promiseResolveHooksExist() ? promiseResolveHook : undefined,
-  );
+  if (stopPromiseHook) stopPromiseHook();
+  stopPromiseHook = promiseHooks.createHook({
+    init: initHook,
+    before: promiseBeforeHook,
+    after: promiseAfterHook,
+    settled: promiseResolveHooksExist() ? promiseResolveHook : undefined
+  });
 }
 
 function disableHooks() {
@@ -396,14 +396,16 @@ function disableHooks() {
 
   wantPromiseHook = false;
 
+  setCallbackTrampoline();
+
   // Delay the call to `disablePromiseHook()` because we might currently be
   // between the `before` and `after` calls of a Promise.
   enqueueMicrotask(disablePromiseHookIfNecessary);
 }
 
 function disablePromiseHookIfNecessary() {
-  if (!wantPromiseHook) {
-    setPromiseHooks(undefined, undefined, undefined, undefined);
+  if (!wantPromiseHook && stopPromiseHook) {
+    stopPromiseHook();
   }
 }
 
@@ -441,7 +443,16 @@ function clearDefaultTriggerAsyncId() {
   async_id_fields[kDefaultTriggerAsyncId] = -1;
 }
 
-
+/**
+ * Sets a default top level trigger ID to be used
+ *
+ * @template {Array<unknown>} T
+ * @template {unknown} R
+ * @param {number} triggerAsyncId
+ * @param { (...T: args) => R } block
+ * @param  {T} args
+ * @returns {R}
+ */
 function defaultTriggerAsyncIdScope(triggerAsyncId, block, ...args) {
   if (triggerAsyncId === undefined)
     return block.apply(null, args);
@@ -610,5 +621,8 @@ module.exports = {
     after: emitAfterNative,
     destroy: emitDestroyNative,
     promise_resolve: emitPromiseResolveNative
+  },
+  asyncWrap: {
+    Providers: async_wrap.Providers,
   }
 };

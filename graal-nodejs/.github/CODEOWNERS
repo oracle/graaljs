@@ -5,23 +5,15 @@
 # 3. PRs touching any code with a codeowner must be signed off by at least one
 #    person on the code owner team.
 
-# tsc & commcomm
+# tsc
 
 /.github/CODEOWNERS @nodejs/tsc
 /GOVERNANCE.md @nodejs/tsc
 /onboarding.md @nodejs/tsc
-/CODE_OF_CONDUCT.md @nodejs/tsc @nodejs/community-committee
-/CONTRIBUTING.md @nodejs/tsc @nodejs/community-committee
-/LICENSE @nodejs/tsc @nodejs/community-committee
-/doc/guides/contributing/code-of-conduct.md @nodejs/tsc @nodejs/community-committee
-# TODO(mmarchini): the bot doens't have a notion of precedence, that might
-# change when move the codeowners code to an Action, at which point we can
-# uncomment the line below
-# /doc/guides/contributing/*.md @nodejs/tsc
-/doc/guides/contributing/issues.md @nodejs/tsc
-/doc/guides/contributing/pull-requests.md @nodejs/tsc
-/doc/guides/collaborator-guide.md @nodejs/tsc
-/doc/guides/offboarding.md @nodejs/tsc
+/CODE_OF_CONDUCT.md @nodejs/tsc
+/CONTRIBUTING.md @nodejs/tsc
+/LICENSE @nodejs/tsc
+/doc/contributing/*.md @nodejs/tsc
 
 # streams
 
@@ -90,12 +82,12 @@
 /lib/internal/bootstrap/loaders.js @nodejs/modules
 /src/module_wrap* @nodejs/modules @nodejs/vm
 
-# N-API
+# Node-API
 
-/src/node_api* @nodejs/n-api
-/src/js_native_api* @nodejs/n-api
-/doc/guides/adding-new-napi-api.md @nodejs/n-api
-/doc/api/n-api.md @nodejs/n-api
+/src/node_api* @nodejs/node-api
+/src/js_native_api* @nodejs/node-api
+/doc/contributing/adding-new-napi-api.md @nodejs/node-api
+/doc/api/n-api.md @nodejs/node-api
 
 # gyp
 

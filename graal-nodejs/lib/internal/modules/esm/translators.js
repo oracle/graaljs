@@ -8,8 +8,6 @@ const {
   ObjectGetPrototypeOf,
   ObjectPrototypeHasOwnProperty,
   ObjectKeys,
-  PromisePrototypeThen,
-  PromiseReject,
   SafeArrayIterator,
   SafeMap,
   SafeSet,
@@ -52,9 +50,6 @@ const {
 const { maybeCacheSourceMap } = require('internal/source_map/source_map_cache');
 const moduleWrap = internalBinding('module_wrap');
 const { ModuleWrap } = moduleWrap;
-const { getOptionValue } = require('internal/options');
-const experimentalImportMetaResolve =
-    getOptionValue('--experimental-import-meta-resolve');
 const asyncESM = require('internal/process/esm_loader');
 const { emitWarningSync } = require('internal/process/warning');
 const { TextDecoder } = require('internal/encoding');
@@ -107,27 +102,8 @@ function errPath(url) {
   return url;
 }
 
-async function importModuleDynamically(specifier, { url }) {
-  return asyncESM.esmLoader.import(specifier, url);
-}
-
-function createImportMetaResolve(defaultParentUrl) {
-  return async function resolve(specifier, parentUrl = defaultParentUrl) {
-    return PromisePrototypeThen(
-      asyncESM.esmLoader.resolve(specifier, parentUrl),
-      ({ url }) => url,
-      (error) => (
-        error.code === 'ERR_UNSUPPORTED_DIR_IMPORT' ?
-          error.url : PromiseReject(error))
-    );
-  };
-}
-
-function initializeImportMeta(meta, { url }) {
-  // Alphabetical
-  if (experimentalImportMetaResolve)
-    meta.resolve = createImportMetaResolve(url);
-  meta.url = url;
+async function importModuleDynamically(specifier, { url }, assertions) {
+  return asyncESM.esmLoader.import(specifier, url, assertions);
 }
 
 // Strategy for loading a standard JavaScript module.
@@ -138,7 +114,9 @@ translators.set('module', async function moduleStrategy(url, source, isMain) {
   debug(`Translating StandardModule ${url}`);
   const module = new ModuleWrap(url, undefined, source, 0, 0);
   moduleWrap.callbackMap.set(module, {
-    initializeImportMeta,
+    initializeImportMeta: (meta, wrap) => this.importMetaInitialize(meta, {
+      url: wrap.url
+    }),
     importModuleDynamically,
   });
   return module;
@@ -202,7 +180,9 @@ translators.set('commonjs', async function commonjsStrategy(url, source,
       let value;
       try {
         value = exports[exportName];
-      } catch {}
+      } catch {
+        // Continue regardless of error.
+      }
       this.setExport(exportName, value);
     }
     this.setExport('default', exports);
@@ -227,7 +207,9 @@ function cjsPreparseModuleExports(filename) {
   let source;
   try {
     source = readFileSync(filename, 'utf8');
-  } catch {}
+  } catch {
+    // Continue regardless of error.
+  }
 
   let exports, reexports;
   try {
@@ -337,7 +319,7 @@ translators.set('json', async function jsonStrategy(url, source) {
 
 // Strategy for loading a wasm module
 translators.set('wasm', async function(url, source) {
-  emitExperimentalWarning('Importing Web Assembly modules');
+  emitExperimentalWarning('Importing WebAssembly modules');
 
   assertBufferSource(source, false, 'load');
 

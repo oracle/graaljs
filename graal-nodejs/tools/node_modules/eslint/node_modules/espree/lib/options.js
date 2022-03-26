@@ -73,6 +73,11 @@ function normalizeSourceType(sourceType = "script") {
     if (sourceType === "script" || sourceType === "module") {
         return sourceType;
     }
+
+    if (sourceType === "commonjs") {
+        return "script";
+    }
+
     throw new Error("Invalid sourceType.");
 }
 
@@ -87,16 +92,30 @@ export function normalizeOptions(options) {
     const sourceType = normalizeSourceType(options.sourceType);
     const ranges = options.range === true;
     const locations = options.loc === true;
-    const allowReserved = ecmaVersion === 3 ? "never" : false;
+
+    if (ecmaVersion !== 3 && options.allowReserved) {
+
+        // a value of `false` is intentionally allowed here, so a shared config can overwrite it when needed
+        throw new Error("`allowReserved` is only supported when ecmaVersion is 3");
+    }
+    if (typeof options.allowReserved !== "undefined" && typeof options.allowReserved !== "boolean") {
+        throw new Error("`allowReserved`, when present, must be `true` or `false`");
+    }
+    const allowReserved = ecmaVersion === 3 ? (options.allowReserved || "never") : false;
+    const ecmaFeatures = options.ecmaFeatures || {};
+    const allowReturnOutsideFunction = options.sourceType === "commonjs" ||
+        Boolean(ecmaFeatures.globalReturn);
 
     if (sourceType === "module" && ecmaVersion < 6) {
         throw new Error("sourceType 'module' is not supported when ecmaVersion < 2015. Consider adding `{ ecmaVersion: 2015 }` to the parser options.");
     }
+
     return Object.assign({}, options, {
         ecmaVersion,
         sourceType,
         ranges,
         locations,
-        allowReserved
+        allowReserved,
+        allowReturnOutsideFunction
     });
 }

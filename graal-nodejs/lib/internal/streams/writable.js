@@ -698,15 +698,19 @@ function callFinal(stream, state) {
         then.call(
           result,
           function() {
-            process.nextTick(onFinish, null);
+            if (!called) {
+              process.nextTick(onFinish, null);
+            }
           },
           function(err) {
-            process.nextTick(onFinish, err);
+            if (!called) {
+              process.nextTick(onFinish, err);
+            }
           });
       }
     }
   } catch (err) {
-    onFinish(stream, state, err);
+    onFinish(err);
   }
 
   state.sync = false;

@@ -48,7 +48,9 @@ function TryGetAllProperties(object, target = object) {
     if (getter && key !== '__proto__') {
       try {
         descriptor.value = FunctionPrototypeCall(getter, target);
-      } catch {}
+      } catch {
+        // Continue regardless of error.
+      }
     }
     if ('value' in descriptor && typeof descriptor.value !== 'function') {
       delete descriptor.get;
@@ -107,11 +109,15 @@ function serializeError(error) {
         }
       }
     }
-  } catch {}
+  } catch {
+    // Continue regardless of error.
+  }
   try {
     const serialized = serialize(error);
     return Buffer.concat([Buffer.from([kSerializedObject]), serialized]);
-  } catch {}
+  } catch {
+    // Continue regardless of error.
+  }
   return Buffer.concat([Buffer.from([kInspectedError]),
                         Buffer.from(inspect(error), 'utf8')]);
 }
@@ -120,7 +126,7 @@ let deserialize;
 function deserializeError(error) {
   if (!deserialize) deserialize = require('v8').deserialize;
   switch (error[0]) {
-    case kSerializedError:
+    case kSerializedError: {
       const { constructor, properties } = deserialize(error.subarray(1));
       const ctor = errors[constructor];
       ObjectDefineProperty(properties, SymbolToStringTag, {
@@ -128,13 +134,15 @@ function deserializeError(error) {
         enumerable: true
       });
       return ObjectCreate(ctor.prototype, properties);
+    }
     case kSerializedObject:
       return deserialize(error.subarray(1));
-    case kInspectedError:
+    case kInspectedError: {
       const buf = Buffer.from(error.buffer,
                               error.byteOffset + 1,
                               error.byteLength - 1);
       return buf.toString('utf8');
+    }
   }
   require('assert').fail('This should not happen');
 }

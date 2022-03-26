@@ -131,9 +131,9 @@ return `true`.
 
 * `input` {string} The absolute or relative input URL to parse. If `input`
   is relative, then `base` is required. If `input` is absolute, the `base`
-  is ignored.
-* `base` {string|URL} The base URL to resolve against if the `input` is not
-  absolute.
+  is ignored. If `input` is not a string, it is [converted to a string][] first.
+* `base` {string} The base URL to resolve against if the `input` is not
+  absolute. If `base` is not a string, it is [converted to a string][] first.
 
 Creates a new `URL` object by parsing the `input` relative to the `base`. If
 `base` is passed as a string, it will be parsed equivalent to `new URL(base)`.
@@ -1233,7 +1233,7 @@ import { urlToHttpOptions } from 'url';
 const myURL = new URL('https://a:b@測試?abc#foo');
 
 console.log(urlToHttpOptions(myURL));
-/**
+/*
 {
   protocol: 'https:',
   hostname: 'xn--g6w251d',
@@ -1252,7 +1252,7 @@ const { urlToHttpOptions } = require('url');
 const myURL = new URL('https://a:b@測試?abc#foo');
 
 console.log(urlToHttpOptions(myUrl));
-/**
+/*
 {
   protocol: 'https:',
   hostname: 'xn--g6w251d',
@@ -1568,11 +1568,11 @@ changes:
 
 > Stability: 3 - Legacy: Use the WHATWG URL API instead.
 
-* `from` {string} The Base URL being resolved against.
-* `to` {string} The HREF URL being resolved.
+* `from` {string} The base URL to use if `to` is a relative URL.
+* `to` {string} The target URL to resolve.
 
 The `url.resolve()` method resolves a target URL relative to a base URL in a
-manner similar to that of a Web browser resolving an anchor tag HREF.
+manner similar to that of a web browser resolving an anchor tag.
 
 ```js
 const url = require('url');
@@ -1581,7 +1581,7 @@ url.resolve('http://example.com/', '/one');    // 'http://example.com/one'
 url.resolve('http://example.com/one', '/two'); // 'http://example.com/two'
 ```
 
-You can achieve the same result using the WHATWG URL API:
+To achieve the same result using the WHATWG URL API:
 
 ```js
 function resolve(from, to) {
@@ -1684,6 +1684,7 @@ console.log(myURL.origin);
 [`url.toString()`]: #urltostring
 [`urlSearchParams.entries()`]: #urlsearchparamsentries
 [`urlSearchParams@@iterator()`]: #urlsearchparamssymboliterator
+[converted to a string]: https://tc39.es/ecma262/#sec-tostring
 [examples of parsed URLs]: https://url.spec.whatwg.org/#example-url-parsing
 [host name spoofing]: https://hackerone.com/reports/678487
 [legacy `urlObject`]: #legacy-urlobject

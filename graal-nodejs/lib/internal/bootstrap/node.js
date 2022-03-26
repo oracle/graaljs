@@ -39,6 +39,9 @@
 setupPrepareStackTrace();
 
 const {
+  Array,
+  ArrayPrototypeConcat,
+  ArrayPrototypeFill,
   FunctionPrototypeCall,
   JSONParse,
   ObjectDefineProperty,
@@ -52,6 +55,7 @@ const {
   globalThis,
 } = primordials;
 const config = internalBinding('config');
+const internalTimers = require('internal/timers');
 const { deprecate } = require('internal/util');
 
 setupProcessObject();
@@ -156,6 +160,15 @@ const rawMethods = internalBinding('process_methods');
   process._getActiveRequests = rawMethods._getActiveRequests;
   process._getActiveHandles = rawMethods._getActiveHandles;
 
+  process.getActiveResourcesInfo = function() {
+    const timerCounts = internalTimers.getTimerCounts();
+    return ArrayPrototypeConcat(
+      rawMethods._getActiveRequestsInfo(),
+      rawMethods._getActiveHandlesInfo(),
+      ArrayPrototypeFill(new Array(timerCounts.timeoutCount), 'Timeout'),
+      ArrayPrototypeFill(new Array(timerCounts.immediateCount), 'Immediate'));
+  };
+
   // TODO(joyeecheung): remove these
   process.reallyExit = rawMethods.reallyExit;
   process._kill = rawMethods._kill;
@@ -167,6 +180,9 @@ const rawMethods = internalBinding('process_methods');
   process.memoryUsage = wrapped.memoryUsage;
   process.kill = wrapped.kill;
   process.exit = wrapped.exit;
+
+  process.hrtime = perThreadSetup.hrtime;
+  process.hrtime.bigint = perThreadSetup.hrtimeBigInt;
 
   process.openStdin = function() {
     process.stdin.resume();
@@ -352,9 +368,11 @@ process.emitWarning = emitWarning;
   // TODO(joyeecheung): either remove it or make it public
   process._tickCallback = runNextTicks;
 
-  const { getTimerCallbacks } = require('internal/timers');
   const { setupTimers } = internalBinding('timers');
-  const { processImmediate, processTimers } = getTimerCallbacks(runNextTicks);
+  const {
+    processImmediate,
+    processTimers,
+  } = internalTimers.getTimerCallbacks(runNextTicks);
   // Sets two per-Environment callbacks that will be run from libuv:
   // - processImmediate will be run in the callback of the per-Environment
   //   check handle.

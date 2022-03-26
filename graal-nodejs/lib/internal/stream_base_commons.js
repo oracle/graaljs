@@ -80,11 +80,7 @@ function handleWriteReq(req, data, encoding) {
 function onWriteComplete(status) {
   debug('onWriteComplete', status, this.error);
 
-  let stream = this.handle[owner_symbol];
-
-  if (stream.constructor.name === 'ReusedHandle') {
-    stream = stream.handle;
-  }
+  const stream = this.handle[owner_symbol];
 
   if (stream.destroyed) {
     if (typeof this.callback === 'function')
@@ -172,12 +168,7 @@ function onStreamRead(arrayBuffer) {
   const nread = streamBaseState[kReadBytesOrError];
 
   const handle = this;
-
-  let stream = this[owner_symbol];
-
-  if (stream.constructor.name === 'ReusedHandle') {
-    stream = stream.handle;
-  }
+  const stream = this[owner_symbol];
 
   stream[kUpdateTimer]();
 
@@ -214,6 +205,12 @@ function onStreamRead(arrayBuffer) {
     return;
   }
 
+  // After seeing EOF, most streams will be closed permanently,
+  // and will not deliver any more read events after this point.
+  // (equivalently, it should have called readStop on itself already).
+  // Some streams may be reset and explicitly started again with a call
+  // to readStart, such as TTY.
+
   if (nread !== UV_EOF) {
     // CallJSOnreadMethod expects the return value to be a buffer.
     // Ref: https://github.com/nodejs/node/pull/34375
@@ -228,20 +225,6 @@ function onStreamRead(arrayBuffer) {
   } else {
     if (stream[kMaybeDestroy])
       stream.on('end', stream[kMaybeDestroy]);
-
-    // TODO(ronag): Without this `readStop`, `onStreamRead`
-    // will be called once more (i.e. after Readable.ended)
-    // on Windows causing a ECONNRESET, failing the
-    // test-https-truncate test.
-    if (handle.readStop) {
-      const err = handle.readStop();
-      if (err) {
-        // CallJSOnreadMethod expects the return value to be a buffer.
-        // Ref: https://github.com/nodejs/node/pull/34375
-        stream.destroy(errnoException(err, 'read'));
-        return;
-      }
-    }
 
     // Push a null to signal the end of data.
     // Do it before `maybeDestroy` for correct order of events:

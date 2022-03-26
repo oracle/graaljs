@@ -5,6 +5,8 @@ const tmpdir = require('../common/tmpdir');
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
+
 const { validateRmOptionsSync } = require('internal/fs/utils');
 
 tmpdir.refresh();
@@ -95,6 +97,11 @@ function removeAsync(dir) {
   makeNonEmptyDirectory(2, 10, 2, dir, false);
   removeAsync(dir);
 
+  // Same test using URL instead of a path
+  dir = nextDirPath();
+  makeNonEmptyDirectory(2, 10, 2, dir, false);
+  removeAsync(pathToFileURL(dir));
+
   // Create a flat folder including symlinks
   dir = nextDirPath();
   makeNonEmptyDirectory(1, 10, 2, dir, true);
@@ -154,6 +161,16 @@ function removeAsync(dir) {
     fs.rmSync(filePath, { force: true });
   }
 
+  // Should accept URL
+  const fileURL = pathToFileURL(path.join(tmpdir.path, 'rm-file.txt'));
+  fs.writeFileSync(fileURL, '');
+
+  try {
+    fs.rmSync(fileURL, { recursive: true });
+  } finally {
+    fs.rmSync(fileURL, { force: true });
+  }
+
   // Recursive removal should succeed.
   fs.rmSync(dir, { recursive: true });
 
@@ -167,8 +184,8 @@ function removeAsync(dir) {
   makeNonEmptyDirectory(4, 10, 2, dir, true);
 
   // Removal should fail without the recursive option set to true.
-  assert.rejects(fs.promises.rm(dir), { syscall: 'rm' });
-  assert.rejects(fs.promises.rm(dir, { recursive: false }), {
+  await assert.rejects(fs.promises.rm(dir), { syscall: 'rm' });
+  await assert.rejects(fs.promises.rm(dir, { recursive: false }), {
     syscall: 'rm'
   });
 
@@ -176,10 +193,10 @@ function removeAsync(dir) {
   await fs.promises.rm(dir, { recursive: true });
 
   // Attempted removal should fail now because the directory is gone.
-  assert.rejects(fs.promises.rm(dir), { syscall: 'stat' });
+  await assert.rejects(fs.promises.rm(dir), { syscall: 'stat' });
 
   // Should fail if target does not exist
-  assert.rejects(fs.promises.rm(
+  await assert.rejects(fs.promises.rm(
     path.join(tmpdir.path, 'noexist.txt'),
     { recursive: true }
   ), {
@@ -189,7 +206,7 @@ function removeAsync(dir) {
   });
 
   // Should not fail if target does not exist and force option is true
-  fs.promises.rm(path.join(tmpdir.path, 'noexist.txt'), { force: true });
+  await fs.promises.rm(path.join(tmpdir.path, 'noexist.txt'), { force: true });
 
   // Should delete file
   const filePath = path.join(tmpdir.path, 'rm-promises-file.txt');
@@ -199,6 +216,16 @@ function removeAsync(dir) {
     await fs.promises.rm(filePath, { recursive: true });
   } finally {
     fs.rmSync(filePath, { force: true });
+  }
+
+  // Should accept URL
+  const fileURL = pathToFileURL(path.join(tmpdir.path, 'rm-promises-file.txt'));
+  fs.writeFileSync(fileURL, '');
+
+  try {
+    await fs.promises.rm(fileURL, { recursive: true });
+  } finally {
+    fs.rmSync(fileURL, { force: true });
   }
 })().then(common.mustCall());
 

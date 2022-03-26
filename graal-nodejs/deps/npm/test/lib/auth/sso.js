@@ -11,7 +11,7 @@ const SSO_URL = 'https://registry.npmjs.org/{SSO_URL}'
 const profile = {}
 const npmFetch = {}
 const sso = t.mock('../../../lib/auth/sso.js', {
-  npmlog: {
+  'proc-log': {
     info: (...msgs) => {
       log += msgs.join(' ') + '\n'
     },
@@ -30,9 +30,9 @@ const sso = t.mock('../../../lib/auth/sso.js', {
     }
   },
   '../../../lib/utils/otplease.js': (opts, fn) => {
-    if (opts)
+    if (opts) {
       return fn({ ...opts, otp: '1234' })
-    else {
+    } else {
       throw Object.assign(
         new Error('failed retrieving otp'),
         { code: 'ERROR' }

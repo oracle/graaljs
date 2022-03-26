@@ -27,6 +27,7 @@ const {
   ArrayPrototypeShift,
   ArrayPrototypeSlice,
   ArrayPrototypeSplice,
+  ArrayPrototypeUnshift,
   Boolean,
   Error,
   ErrorCaptureStackTrace,
@@ -42,6 +43,7 @@ const {
   Promise,
   PromiseReject,
   PromiseResolve,
+  ReflectApply,
   ReflectOwnKeys,
   String,
   StringPrototypeSplit,
@@ -59,6 +61,7 @@ const {
   kEnhanceStackBeforeInspector,
   codes: {
     ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_THIS,
     ERR_OUT_OF_RANGE,
     ERR_UNHANDLED_ERROR
   },
@@ -68,6 +71,7 @@ const {
   validateAbortSignal,
   validateBoolean,
   validateFunction,
+  validateString,
 } = require('internal/validators');
 
 const kCapture = Symbol('kCapture');
@@ -76,10 +80,129 @@ const kMaxEventTargetListeners = Symbol('events.maxEventTargetListeners');
 const kMaxEventTargetListenersWarned =
   Symbol('events.maxEventTargetListenersWarned');
 
+let EventEmitterAsyncResource;
+// The EventEmitterAsyncResource has to be initialized lazily because event.js
+// is loaded so early in the bootstrap process, before async_hooks is available.
+//
+// This implementation was adapted straight from addaleax's
+// eventemitter-asyncresource MIT-licensed userland module.
+// https://github.com/addaleax/eventemitter-asyncresource
+function lazyEventEmitterAsyncResource() {
+  if (EventEmitterAsyncResource === undefined) {
+    const {
+      AsyncResource
+    } = require('async_hooks');
+
+    const kEventEmitter = Symbol('kEventEmitter');
+    const kAsyncResource = Symbol('kAsyncResource');
+    class EventEmitterReferencingAsyncResource extends AsyncResource {
+      /**
+       * @param {EventEmitter} ee
+       * @param {string} [type]
+       * @param {{
+       *   triggerAsyncId?: number,
+       *   requireManualDestroy?: boolean,
+       * }} [options]
+       */
+      constructor(ee, type, options) {
+        super(type, options);
+        this[kEventEmitter] = ee;
+      }
+
+      /**
+       * @type {EventEmitter}
+       */
+      get eventEmitter() {
+        if (this[kEventEmitter] === undefined)
+          throw new ERR_INVALID_THIS('EventEmitterReferencingAsyncResource');
+        return this[kEventEmitter];
+      }
+    }
+
+    EventEmitterAsyncResource =
+      class EventEmitterAsyncResource extends EventEmitter {
+        /**
+         * @param {{
+         *   name?: string,
+         *   triggerAsyncId?: number,
+         *   requireManualDestroy?: boolean,
+         * }} [options]
+         */
+        constructor(options = undefined) {
+          let name;
+          if (typeof options === 'string') {
+            name = options;
+            options = undefined;
+          } else {
+            if (new.target === EventEmitterAsyncResource) {
+              validateString(options?.name, 'options.name');
+            }
+            name = options?.name || new.target.name;
+          }
+          super(options);
+
+          this[kAsyncResource] =
+            new EventEmitterReferencingAsyncResource(this, name, options);
+        }
+
+        /**
+         * @param {symbol,string} event
+         * @param  {...any} args
+         * @returns {boolean}
+         */
+        emit(event, ...args) {
+          if (this[kAsyncResource] === undefined)
+            throw new ERR_INVALID_THIS('EventEmitterAsyncResource');
+          const { asyncResource } = this;
+          ArrayPrototypeUnshift(args, super.emit, this, event);
+          return ReflectApply(asyncResource.runInAsyncScope, asyncResource,
+                              args);
+        }
+
+        /**
+         * @returns {void}
+         */
+        emitDestroy() {
+          if (this[kAsyncResource] === undefined)
+            throw new ERR_INVALID_THIS('EventEmitterAsyncResource');
+          this.asyncResource.emitDestroy();
+        }
+
+        /**
+         * @type {number}
+         */
+        get asyncId() {
+          if (this[kAsyncResource] === undefined)
+            throw new ERR_INVALID_THIS('EventEmitterAsyncResource');
+          return this.asyncResource.asyncId();
+        }
+
+        /**
+         * @type {number}
+         */
+        get triggerAsyncId() {
+          if (this[kAsyncResource] === undefined)
+            throw new ERR_INVALID_THIS('EventEmitterAsyncResource');
+          return this.asyncResource.triggerAsyncId();
+        }
+
+        /**
+         * @type {EventEmitterReferencingAsyncResource}
+         */
+        get asyncResource() {
+          if (this[kAsyncResource] === undefined)
+            throw new ERR_INVALID_THIS('EventEmitterAsyncResource');
+          return this[kAsyncResource];
+        }
+      };
+  }
+  return EventEmitterAsyncResource;
+}
+
 /**
  * Creates a new `EventEmitter` instance.
  * @param {{ captureRejections?: boolean; }} [opts]
- * @returns {EventEmitter}
+ * @constructs {EventEmitter}
  */
 function EventEmitter(opts) {
   EventEmitter.init.call(this, opts);
@@ -104,6 +227,13 @@ ObjectDefineProperty(EventEmitter, 'captureRejections', {
     EventEmitter.prototype[kCapture] = value;
   },
   enumerable: true
+});
+
+ObjectDefineProperty(EventEmitter, 'EventEmitterAsyncResource', {
+  enumerable: true,
+  get: lazyEventEmitterAsyncResource,
+  set: undefined,
+  configurable: true,
 });
 
 EventEmitter.errorMonitor = kErrorMonitor;
@@ -191,6 +321,8 @@ EventEmitter.setMaxListeners =
     }
   };
 
+// If you're updating this function definition, please also update any
+// re-definitions, such as the one in the Domain module (lib/domain.js).
 EventEmitter.init = function(opts) {
 
   if (this._events === undefined ||
@@ -242,7 +374,7 @@ function emitUnhandledRejectionOrErr(ee, err, type, args) {
     // we might end up in an infinite loop.
     const prev = ee[kCapture];
 
-    // If the error handler throws, it is not catcheable and it
+    // If the error handler throws, it is not catchable and it
     // will end up in 'uncaughtException'. We restore the previous
     // value of kCapture in case the uncaughtException is present
     // and the exception is handled.
@@ -313,7 +445,9 @@ function enhanceStackTrace(err, own) {
     const { name } = this.constructor;
     if (name !== 'EventEmitter')
       ctorInfo = ` on ${name} instance`;
-  } catch {}
+  } catch {
+    // Continue regardless of error.
+  }
   const sep = `\nEmitted 'error' event${ctorInfo} at:\n`;
 
   const errStack = ArrayPrototypeSlice(
@@ -361,7 +495,9 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
           value: FunctionPrototypeBind(enhanceStackTrace, this, er, capture),
           configurable: true
         });
-      } catch {}
+      } catch {
+        // Continue regardless of error.
+      }
 
       // Note: The comments on the `throw` lines are intentional, they show
       // up in Node's output if this results in an unhandled exception.

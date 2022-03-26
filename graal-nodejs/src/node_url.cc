@@ -331,7 +331,7 @@ bool ToASCII(const std::string& input, std::string* output) {
   output->assign(*buf, buf.length());
   return true;
 }
-#else
+#else  // !defined(NODE_HAVE_I18N_SUPPORT)
 // Intentional non-ops if ICU is not present.
 bool ToUnicode(const std::string& input, std::string* output) {
   *output = input;
@@ -342,7 +342,7 @@ bool ToASCII(const std::string& input, std::string* output) {
   *output = input;
   return true;
 }
-#endif
+#endif  // !defined(NODE_HAVE_I18N_SUPPORT)
 
 #define NS_IN6ADDRSZ 16
 
@@ -582,9 +582,7 @@ std::string URLHost::ToString() const {
       dest.reserve(15);
       uint32_t value = value_.ipv4;
       for (int n = 0; n < 4; n++) {
-        char buf[4];
-        snprintf(buf, sizeof(buf), "%d", value % 256);
-        dest.insert(0, buf);
+        dest.insert(0, std::to_string(value % 256));
         if (n < 3)
           dest.insert(0, 1, '.');
         value /= 256;
