@@ -63,6 +63,7 @@ import java.util.regex.Pattern;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationFunctionBuiltins;
@@ -101,11 +102,25 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     public static JSTemporalDurationObject createTemporalDuration(JSContext context, double years, double months, double weeks, double days, double hours,
-                    double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
+                    double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds, BranchProfile errorBranch) {
         if (!TemporalUtil.isValidDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
                         nanoseconds)) {
+            errorBranch.enter();
             throw TemporalErrors.createTypeErrorDurationOutsideRange();
         }
+        return createIntl(context, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+    }
+
+    public static JSTemporalDurationObject createTemporalDuration(JSContext context, double years, double months, double weeks, double days, double hours,
+                                                                  double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
+        if (!TemporalUtil.isValidDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
+                nanoseconds)) {
+            throw TemporalErrors.createTypeErrorDurationOutsideRange();
+        }
+        return createIntl(context, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+    }
+
+    private static JSTemporalDurationObject createIntl(JSContext context, double years, double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
         JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalDurationFactory();
         JSTemporalDurationObject obj = factory.initProto(new JSTemporalDurationObject(factory.getShape(realm),
@@ -173,8 +188,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     // region Abstract methods
-    // 7.2.1
-    public static DynamicObject toTemporalDuration(Object item, JSContext ctx, IsObjectNode isObject, JSToStringNode toString) {
+    public static DynamicObject toTemporalDuration(Object item, JSContext ctx, IsObjectNode isObject, JSToStringNode toString, BranchProfile errorBranch) {
         JSTemporalDurationRecord result;
         if (isObject.executeBoolean(item)) {
             if (isJSTemporalDuration(item)) {
@@ -186,7 +200,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             result = parseTemporalDurationString(string);
         }
         return createTemporalDuration(ctx, result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(),
-                        result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
+                        result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), errorBranch);
     }
 
     @TruffleBoundary

@@ -271,7 +271,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create()") JSToIntegerWithoutRoundingNode toInt) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             DynamicObject durationLike = TemporalUtil.toPartialDuration(temporalDurationLike,
-                            getContext(), isObjectNode, toInt);
+                            getContext(), isObjectNode, toInt, errorBranch);
 
             double years = getDouble(durationLike, YEARS, duration.getYears());
             double months = getDouble(durationLike, MONTHS, duration.getMonths());
@@ -284,7 +284,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             double microseconds = getDouble(durationLike, MICROSECONDS, duration.getMicroseconds());
             double nanoseconds = getDouble(durationLike, NANOSECONDS, duration.getNanoseconds());
             return JSTemporalDuration.createTemporalDuration(getContext(), years, months, weeks, days,
-                            hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+                            hours, minutes, seconds, milliseconds, microseconds, nanoseconds, errorBranch);
         }
     }
 
@@ -301,7 +301,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             return JSTemporalDuration.createTemporalDuration(getContext(),
                             -duration.getYears(), -duration.getMonths(), -duration.getWeeks(), -duration.getDays(),
                             -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(), -duration.getMilliseconds(),
-                            -duration.getMicroseconds(), -duration.getNanoseconds());
+                            -duration.getMicroseconds(), -duration.getNanoseconds(), errorBranch);
         }
     }
 
@@ -319,7 +319,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             Math.abs(duration.getYears()), Math.abs(duration.getMonths()), Math.abs(duration.getWeeks()),
                             Math.abs(duration.getDays()), Math.abs(duration.getHours()), Math.abs(duration.getMinutes()),
                             Math.abs(duration.getSeconds()), Math.abs(duration.getMilliseconds()),
-                            Math.abs(duration.getMicroseconds()), Math.abs(duration.getNanoseconds()));
+                            Math.abs(duration.getMicroseconds()), Math.abs(duration.getNanoseconds()), errorBranch);
         }
     }
 
@@ -349,7 +349,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             relativeTo);
             return JSTemporalDuration.createTemporalDuration(getContext(),
                             result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(),
-                            result.getMicroseconds(), result.getNanoseconds());
+                            result.getMicroseconds(), result.getNanoseconds(), errorBranch);
         }
     }
 
@@ -379,7 +379,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             relativeTo);
             return JSTemporalDuration.createTemporalDuration(getContext(),
                             result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(),
-                            result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
+                            result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), errorBranch);
         }
     }
 
@@ -463,7 +463,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             return JSTemporalDuration.createTemporalDuration(getContext(),
                             balanceResult.getYears(), balanceResult.getMonths(), balanceResult.getWeeks(),
                             result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(),
-                            result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
+                            result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), errorBranch);
         }
     }
 

@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeRecord;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -124,7 +125,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             }
             if (valueIsPlainDateTime.profile(valueObj instanceof JSTemporalPlainDateTimeObject)) {
                 JSTemporalPlainDateTimeObject pd = (JSTemporalPlainDateTimeObject) valueObj;
-                return JSTemporalPlainDate.create(ctx, pd.getYear(), pd.getMonth(), pd.getDay(), pd.getCalendar());
+                return JSTemporalPlainDate.create(ctx, pd.getYear(), pd.getMonth(), pd.getDay(), pd.getCalendar(), errorBranch);
             }
             calendar = getTemporalCalendarWithISODefault(valueObj);
             List<TruffleString> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.listDHMMMMMNSY);
@@ -180,9 +181,9 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                             result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
                             result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNs, timeZoneObj, TemporalUtil.Disambiguation.COMPATIBLE, TemporalUtil.OffsetOption.REJECT,
                             matchBehaviour);
-            return TemporalUtil.createTemporalZonedDateTime(ctx, epochNanoseconds, timeZoneObj, calendar);
+            return JSTemporalZonedDateTime.create(ctx, epochNanoseconds, timeZoneObj, calendar);
         }
-        return JSTemporalPlainDate.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
+        return JSTemporalPlainDate.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar, errorBranch);
     }
 
     private DynamicObject getTemporalCalendarWithISODefault(DynamicObject timeZoneLike) {

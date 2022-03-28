@@ -107,7 +107,7 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
                 return JSTemporalPlainDateTime.create(getContext(),
                                 dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(),
                                 dtItem.getHour(), dtItem.getMinute(), dtItem.getSecond(), dtItem.getMillisecond(),
-                                dtItem.getMicrosecond(), dtItem.getNanosecond(), dtItem.getCalendar());
+                                dtItem.getMicrosecond(), dtItem.getNanosecond(), dtItem.getCalendar(), errorBranch);
             }
             return toTemporalDateTime.executeDynamicObject(item, options);
         }

@@ -50,7 +50,6 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -67,8 +66,6 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil.OptionType;
  */
 @GenerateUncached
 public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
-
-    @Child protected PropertyGetNode getPropertyNode;
 
     protected TemporalGetOptionNode() {
     }

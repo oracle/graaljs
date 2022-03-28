@@ -54,6 +54,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.UNIT;
 
 import java.util.EnumSet;
 import java.util.List;
+import java.util.concurrent.locks.Condition;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
@@ -109,6 +110,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayOb
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalTime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -474,7 +476,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), Unit.DAY);
             DynamicObject balancedDuration = JSTemporalDuration.createTemporalDuration(getContext(), duration.getYears(), duration.getMonths(), duration.getWeeks(),
-                            balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
+                            balanceResult.getDays(), 0, 0, 0, 0, 0, 0, errorBranch);
             return TemporalUtil.calendarDateAdd(date.getCalendar(), date, balancedDuration, options, Undefined.instance);
         }
     }
@@ -497,7 +499,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), Unit.DAY);
             DynamicObject balancedDuration = JSTemporalDuration.createTemporalDuration(getContext(), -duration.getYears(), -duration.getMonths(), -duration.getWeeks(),
-                            -balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
+                            -balanceResult.getDays(), 0, 0, 0, 0, 0, 0, errorBranch);
             return TemporalUtil.calendarDateAdd(date.getCalendar(), date, balancedDuration, options);
         }
     }
@@ -549,7 +551,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create(getContext())") ToTemporalCalendarNode toTemporalCalendar) {
             JSTemporalPlainDateObject td = requireTemporalDate(thisObj);
             DynamicObject calendar = toTemporalCalendar.executeDynamicObject(calendarParam);
-            return TemporalUtil.createTemporalDate(getContext(), td.getYear(), td.getMonth(), td.getDay(), calendar);
+            return JSTemporalPlainDate.create(getContext(), td.getYear(), td.getMonth(), td.getDay(), calendar, errorBranch);
         }
     }
 
@@ -587,12 +589,12 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             JSTemporalDurationObject result = TemporalUtil.calendarDateUntil(temporalDate.getCalendar(), temporalDate, other, untilOptions, Undefined.instance);
 
             if (smallestUnit == Unit.DAY && (roundingIncrement == 1)) {
-                return JSTemporalDuration.createTemporalDuration(getContext(), -result.getYears(), -result.getMonths(), -result.getWeeks(), -result.getDays(), 0, 0, 0, 0, 0, 0);
+                return JSTemporalDuration.createTemporalDuration(getContext(), -result.getYears(), -result.getMonths(), -result.getWeeks(), -result.getDays(), 0, 0, 0, 0, 0, 0, errorBranch);
             }
             JSTemporalDurationRecord result2 = roundDurationNode.execute(result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), 0, 0, 0, 0,
                             0, 0, (long) roundingIncrement, smallestUnit, roundingMode, temporalDate);
 
-            return JSTemporalDuration.createTemporalDuration(getContext(), -result2.getYears(), -result2.getMonths(), -result2.getWeeks(), -result2.getDays(), 0, 0, 0, 0, 0, 0);
+            return JSTemporalDuration.createTemporalDuration(getContext(), -result2.getYears(), -result2.getMonths(), -result2.getWeeks(), -result2.getDays(), 0, 0, 0, 0, 0, 0, errorBranch);
         }
     }
 
@@ -630,10 +632,9 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             if ((Unit.DAY != smallestUnit) || (roundingIncrement != 1)) {
                 JSTemporalDurationRecord result2 = roundDurationNode.execute(result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), 0, 0, 0,
                                 0, 0, 0, (long) roundingIncrement, smallestUnit, roundingMode, temporalDate);
-                return JSTemporalDuration.createTemporalDuration(getContext(), result2.getYears(), result2.getMonths(), result2.getWeeks(), result2.getDays(), 0, 0, 0, 0, 0, 0);
+                return JSTemporalDuration.createTemporalDuration(getContext(), result2.getYears(), result2.getMonths(), result2.getWeeks(), result2.getDays(), 0, 0, 0, 0, 0, 0, errorBranch);
             }
-
-            return JSTemporalDuration.createTemporalDuration(getContext(), result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), 0, 0, 0, 0, 0, 0);
+            return JSTemporalDuration.createTemporalDuration(getContext(), result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), 0, 0, 0, 0, 0, 0, errorBranch);
         }
     }
 
@@ -707,12 +708,12 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime) {
             JSTemporalPlainDateObject date = requireTemporalDate(thisObj);
             if (temporalTimeObj == Undefined.instance) {
-                return JSTemporalPlainDateTime.create(getContext(), date.getYear(), date.getMonth(), date.getDay(), 0, 0, 0, 0, 0, 0, date.getCalendar());
+                return JSTemporalPlainDateTime.create(getContext(), date.getYear(), date.getMonth(), date.getDay(), 0, 0, 0, 0, 0, 0, date.getCalendar(), errorBranch);
             }
             TemporalTime time = (TemporalTime) toTemporalTime.executeDynamicObject(temporalTimeObj, null);
-            return TemporalUtil.createTemporalDateTime(getContext(), date.getYear(), date.getMonth(), date.getDay(),
+            return JSTemporalPlainDateTime.create(getContext(), date.getYear(), date.getMonth(), date.getDay(),
                             time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(),
-                            time.getNanosecond(), date.getCalendar());
+                            time.getNanosecond(), date.getCalendar(), errorBranch);
         }
     }
 
@@ -781,6 +782,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         public DynamicObject toZonedDateTime(Object thisObj, Object item,
+                        @Cached("createBinaryProfile()") ConditionProfile timeZoneIsUndefined,
+                        @Cached("createBinaryProfile()") ConditionProfile timeIsUndefined,
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
             JSTemporalPlainDateObject td = requireTemporalDate(thisObj);
@@ -790,7 +793,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             if (isObject(item)) {
                 DynamicObject itemObj = (DynamicObject) item;
                 Object timeZoneLike = JSObject.get(itemObj, TIME_ZONE);
-                if (timeZoneLike == Undefined.instance) {
+                if (timeZoneIsUndefined.profile(timeZoneLike == Undefined.instance)) {
                     timeZone = (JSTemporalTimeZoneObject) toTemporalTimeZone.executeDynamicObject(item);
                     temporalTime = Undefined.instance;
                 } else {
@@ -801,17 +804,17 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 timeZone = (JSTemporalTimeZoneObject) toTemporalTimeZone.executeDynamicObject(item);
                 temporalTime = Undefined.instance;
             }
-            if (temporalTime == Undefined.instance) {
-                temporalDateTime = TemporalUtil.createTemporalDateTime(getContext(), td.getYear(), td.getMonth(), td.getDay(), 0, 0, 0, 0, 0, 0,
-                                td.getCalendar());
+            if (timeIsUndefined.profile(temporalTime == Undefined.instance)) {
+                temporalDateTime = JSTemporalPlainDateTime.create(getContext(), td.getYear(), td.getMonth(), td.getDay(), 0, 0, 0, 0, 0, 0,
+                                td.getCalendar(), errorBranch);
             } else {
                 JSTemporalPlainTimeObject tt = (JSTemporalPlainTimeObject) toTemporalTime.executeDynamicObject(temporalTime, null);
-                temporalDateTime = TemporalUtil.createTemporalDateTime(getContext(), td.getYear(), td.getMonth(), td.getDay(),
+                temporalDateTime = JSTemporalPlainDateTime.create(getContext(), td.getYear(), td.getMonth(), td.getDay(),
                                 tt.getHour(), tt.getMinute(), tt.getSecond(), tt.getMillisecond(), tt.getMicrosecond(),
-                                tt.getNanosecond(), td.getCalendar());
+                                tt.getNanosecond(), td.getCalendar(), errorBranch);
             }
             JSTemporalInstantObject instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, temporalDateTime, Disambiguation.COMPATIBLE);
-            return TemporalUtil.createTemporalZonedDateTime(getContext(), instant.getNanoseconds(), timeZone, td.getCalendar());
+            return JSTemporalZonedDateTime.create(getContext(), instant.getNanoseconds(), timeZone, td.getCalendar());
         }
     }
 

@@ -45,6 +45,7 @@ import java.util.List;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -87,6 +88,7 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
 
     @Specialization
     public DynamicObject toTemporalDateTime(Object item, DynamicObject optParam,
+                    @Cached BranchProfile errorBranch,
                     @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToStringNode toStringNode,
                     @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
@@ -108,7 +110,7 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
                 return TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, zdt.getTimeZone(), instant, zdt.getCalendar());
             } else if (isPlainDateProfile.profile(itemObj instanceof JSTemporalPlainDateObject)) {
                 JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) itemObj;
-                return JSTemporalPlainDateTime.create(ctx, date.getYear(), date.getMonth(), date.getDay(), 0, 0, 0, 0, 0, 0, date.getCalendar());
+                return JSTemporalPlainDateTime.create(ctx, date.getYear(), date.getMonth(), date.getDay(), 0, 0, 0, 0, 0, 0, date.getCalendar(), errorBranch);
             }
             calendar = getTemporalCalendarNode.executeDynamicObject(itemObj);
             List<TruffleString> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.listDHMMMMMNSY);
@@ -125,6 +127,6 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
         }
         return JSTemporalPlainDateTime.create(ctx,
                         result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
-                        result.getMicrosecond(), result.getNanosecond(), calendar);
+                        result.getMicrosecond(), result.getNanosecond(), calendar, errorBranch);
     }
 }

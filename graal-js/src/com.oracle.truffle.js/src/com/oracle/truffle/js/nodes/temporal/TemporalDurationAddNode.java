@@ -125,8 +125,8 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
             relativeToPlainDateBranch.enter();
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) relativeTo;
             DynamicObject calendar = date.getCalendar();
-            DynamicObject dateDuration1 = JSTemporalDuration.createTemporalDuration(ctx, y1, mon1, w1, d1, 0, 0, 0, 0, 0, 0);
-            DynamicObject dateDuration2 = JSTemporalDuration.createTemporalDuration(ctx, y2, mon2, w2, d2, 0, 0, 0, 0, 0, 0);
+            DynamicObject dateDuration1 = JSTemporalDuration.createTemporalDuration(ctx, y1, mon1, w1, d1, 0, 0, 0, 0, 0, 0, errorBranch);
+            DynamicObject dateDuration2 = JSTemporalDuration.createTemporalDuration(ctx, y2, mon2, w2, d2, 0, 0, 0, 0, 0, 0, errorBranch);
 
             Object dateAdd = getMethodDateAddNode.executeWithTarget(calendar);
             DynamicObject firstAddOptions = JSOrdinary.createWithNullPrototype(ctx);

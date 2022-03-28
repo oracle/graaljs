@@ -105,9 +105,9 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                 return JSTemporalDuration.createTemporalDuration(getContext(), duration.getYears(),
                                 duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
                                 duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
-                                duration.getMicroseconds(), duration.getNanoseconds());
+                                duration.getMicroseconds(), duration.getNanoseconds(), errorBranch);
             }
-            return JSTemporalDuration.toTemporalDuration(item, getContext(), isObjectNode, toString);
+            return JSTemporalDuration.toTemporalDuration(item, getContext(), isObjectNode, toString, errorBranch);
         }
     }
 
@@ -121,8 +121,8 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
         protected int compare(Object oneParam, Object twoParam, Object optionsParam,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode) {
-            JSTemporalDurationObject one = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(oneParam, getContext(), isObjectNode, toString);
-            JSTemporalDurationObject two = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObjectNode, toString);
+            JSTemporalDurationObject one = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(oneParam, getContext(), isObjectNode, toString, errorBranch);
+            JSTemporalDurationObject two = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObjectNode, toString, errorBranch);
             DynamicObject options = getOptionsObject(optionsParam);
             DynamicObject relativeTo = toRelativeTemporalObjectNode.execute(options);
             double shift1 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
