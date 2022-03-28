@@ -162,4 +162,8 @@ public final class JSConfig {
     /** Traces all array writes with their access mode. */
     public static final boolean TraceArrayWrites = false;
     public static final boolean TraceDictionaryObject = false;
+
+    // Symbol singletons: always return the same Symbol instance if Symbols with the same name are
+    // globally unique.
+    public static final boolean UseSingletonSymbols = true;
 }

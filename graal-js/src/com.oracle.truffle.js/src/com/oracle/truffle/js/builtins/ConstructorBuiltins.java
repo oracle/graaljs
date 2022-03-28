@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import java.util.EnumSet;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -2812,7 +2813,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     }
 
-    public abstract static class CallSymbolNode extends JSBuiltinNode {
+    @ImportStatic(Symbol.class)
+    public abstract static class CallSymbolNode extends JSBuiltinNode implements JSBuiltinNode.Inlineable {
+
         public CallSymbolNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -2826,6 +2829,67 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected Symbol callSymbolGeneric(Object value,
                         @Cached JSToStringNode toStringNode) {
             return Symbol.create(value == Undefined.instance ? null : toStringNode.executeString(value));
+        }
+
+        @Override
+        public Inlined createInlined() {
+            return CallSymbolNodeGen.InlinedNodeGen.create(getContext(), getBuiltin(), new JavaScriptNode[0]);
+        }
+
+        @SuppressWarnings("unused")
+        public abstract static class Inlined extends CallSymbolNode implements JSBuiltinNode.Inlined {
+
+            public Inlined(JSContext context, JSBuiltin builtin) {
+                super(context, builtin);
+            }
+
+            protected abstract Object executeWithArguments(Object arg0);
+
+            @Specialization(guards = {"acceptCache(equalNode, value, cachedValue, symbolUsageMarker)"})
+            protected Symbol callSymbolSingleton(TruffleString value,
+                            @Cached("value") TruffleString cachedValue,
+                            @Cached TruffleString.EqualNode equalNode,
+                            @Cached("createSymbolUsageMarker()") AtomicReference<Object> symbolUsageMarker,
+                            @Cached("createCachedSingletonSymbol(value)") Symbol cachedSymbol) {
+                return cachedSymbol;
+            }
+
+            @Override
+            @Specialization
+            protected Symbol callSymbolString(TruffleString value) {
+                throw rewriteToCall();
+            }
+
+            @Specialization
+            protected TruffleString callInlinedSymbolGeneric(Object value) {
+                throw rewriteToCall();
+            }
+
+            @Override
+            public Object callInlined(Object[] arguments) {
+                if (JSArguments.getUserArgumentCount(arguments) < 1) {
+                    throw rewriteToCall();
+                }
+                return executeWithArguments(JSArguments.getUserArgument(arguments, 0));
+            }
+
+            @TruffleBoundary
+            protected boolean acceptCache(TruffleString.EqualNode equalNode, TruffleString value, TruffleString cachedValue, AtomicReference<Object> symbolUsageMarker) {
+                if (getContext().isMultiContext() && JSConfig.UseSingletonSymbols && Strings.equals(equalNode, value, cachedValue)) {
+                    Object currentMarker = getContext().getSymbolUsageMarker();
+                    Object oldMarker = symbolUsageMarker.getAndSet(currentMarker);
+                    return currentMarker != oldMarker;
+                }
+                return false;
+            }
+
+            protected AtomicReference<Object> createSymbolUsageMarker() {
+                return new AtomicReference<>();
+            }
+
+            protected Symbol createCachedSingletonSymbol(TruffleString value) {
+                return Symbol.create(value);
+            }
         }
     }
 

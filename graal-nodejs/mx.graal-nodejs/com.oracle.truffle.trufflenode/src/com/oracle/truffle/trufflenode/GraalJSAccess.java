@@ -434,6 +434,7 @@ public final class GraalJSAccess {
         envForInstruments = mainJSRealm.getEnv();
         // Disallow importing dynamically unless ESM Loader (--experimental-modules) is enabled.
         isolateEnableImportModuleDynamically(false);
+        initializeContextEmbedderData(mainJSContext);
     }
 
     private static String[] prepareArguments(String[] args) {
@@ -1638,6 +1639,9 @@ public final class GraalJSAccess {
     }
 
     public Object symbolNew(Object name) {
+        if (isAuxEngineCacheMode()) {
+            return getContextEngineCacheData(mainJSContext).createOrUseCachedSingleton((TruffleString) name);
+        }
         return Symbol.create((TruffleString) name);
     }
 
@@ -2839,20 +2843,6 @@ public final class GraalJSAccess {
         } else {
             realm = mainJSRealm;
             context = mainJSContext;
-            if (isAuxEngineCacheMode()) {
-                // When aux engine cache is enabled, the context-specific embedder data is loaded
-                // from the aux image cache.
-                Object persistedContextData = context.getEmbedderData();
-                if (persistedContextData == null) {
-                    // the aux image does not have persisted data. The new embedder data will be
-                    // persisted.
-                    context.setEmbedderData(new ContextData(context));
-                } else if (!(persistedContextData instanceof ContextData)) {
-                    throw Errors.shouldNotReachHere("Failed to load core runtime data from Aux engine cache.");
-                }
-            } else {
-                context.setEmbedderData(new ContextData(context));
-            }
             createChildContext = true;
         }
         RealmData realmData = new RealmData(this);
@@ -2876,6 +2866,23 @@ public final class GraalJSAccess {
         }
         realmData.setSecurityToken(global);
         return realm;
+    }
+
+    private void initializeContextEmbedderData(JSContext context) {
+        if (isAuxEngineCacheMode()) {
+            // When aux engine cache is enabled, the context-specific embedder data is loaded
+            // from the aux image cache.
+            Object persistedContextData = context.getEmbedderData();
+            if (persistedContextData == null) {
+                // the aux image does not have persisted data. The new embedder data will be
+                // persisted.
+                context.setEmbedderData(new ContextData(context));
+            } else if (!(persistedContextData instanceof ContextData)) {
+                throw Errors.shouldNotReachHere("Failed to load core runtime data from Aux engine cache.");
+            }
+        } else {
+            context.setEmbedderData(new ContextData(context));
+        }
     }
 
     public static RealmData getRealmEmbedderData(Object realm) {
