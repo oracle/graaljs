@@ -3,10 +3,10 @@
 This directory contains code and data used to test the Node.js implementation.
 
 For a detailed guide on how to write tests in this
-directory, see [the guide on writing tests](../doc/guides/writing-tests.md).
+directory, see [the guide on writing tests](../doc/contributing/writing-tests.md).
 
 On how to run tests in this directory, see
-[the contributing guide](../doc/guides/contributing/pull-requests.md#step-6-test).
+[the contributing guide](../doc/contributing/pull-requests.md#step-6-test).
 
 For the tests to run on Windows, be sure to clone Node.js source code with the
 `autocrlf` git config flag set to true.
@@ -17,7 +17,7 @@ For the tests to run on Windows, be sure to clone Node.js source code with the
 | ---------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `abort`          | Yes        | Tests that use `--abort-on-uncaught-exception` and other situations where we want to test something but avoid generating a core file.                                                                                                                                                                |
 | `addons`         | Yes        | Tests for [addon](https://nodejs.org/api/addons.html) functionality along with some tests that require an addon.                                                                                                                                                                                     |
-| `async-hooks`    | Yes        | Tests for [async\_hooks](https://nodejs.org/api/async\_hooks.html) functionality.                                                                                                                                                                                                                    |
+| `async-hooks`    | Yes        | Tests for [async\_hooks](https://nodejs.org/api/async_hooks.html) functionality.                                                                                                                                                                                                                     |
 | `benchmark`      | Yes        | Test minimal functionality of benchmarks.                                                                                                                                                                                                                                                            |
 | `cctest`         | Yes        | C++ tests that are run as part of the build process.                                                                                                                                                                                                                                                 |
 | `code-cache`     | No         | Tests for a Node.js binary compiled with V8 code cache.                                                                                                                                                                                                                                              |

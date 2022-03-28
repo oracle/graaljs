@@ -1,7 +1,9 @@
 const t = require('tap')
+const log = require('../../../lib/utils/log-shim')
 
-const log = require('npmlog')
-log.level = 'warn'
+const _level = log.level
+t.beforeEach(() => log.level = 'warn')
+t.teardown(() => log.level = _level)
 
 t.cleanSnapshot = str => str.replace(/in [0-9]+m?s/g, 'in {TIME}')
 
@@ -97,8 +99,9 @@ t.test('no message when funding config is false', (t) => {
   })
   settings.fund = false
   npm.output = out => {
-    if (out.endsWith('looking for funding'))
+    if (out.endsWith('looking for funding')) {
       t.fail('should not print funding info', { actual: out })
+    }
   }
 
   reifyOutput(npm, {
@@ -236,7 +239,6 @@ t.test('showing and not showing audit report', async t => {
     npm.output = out => {
       t.fail('should not get output when silent', { actual: out })
     }
-    t.teardown(() => log.level = 'warn')
     log.level = 'silent'
     reifyOutput(npm, {
       actualTree: { inventory: { size: 999 }, children: [] },
@@ -283,8 +285,9 @@ t.test('showing and not showing audit report', async t => {
           delete npm.flatOptions.auditLevel
           npm.command = command
           // only set exitCode back if we're passing tests
-          if (t.passing())
+          if (t.passing()) {
             process.exitCode = exitCode
+          }
         })
 
         process.exitCode = 0
@@ -312,8 +315,9 @@ t.test('showing and not showing audit report', async t => {
           delete npm.flatOptions.auditLevel
           npm.command = command
           // only set exitCode back if we're passing tests
-          if (t.passing())
+          if (t.passing()) {
             process.exitCode = exitCode
+          }
         })
 
         process.exitCode = 0
@@ -368,11 +372,13 @@ t.test('packages changed message', t => {
         ],
       },
     }
-    for (let i = 0; i < added; i++)
+    for (let i = 0; i < added; i++) {
       mock.diff.children.push({ action: 'ADD', ideal: { location: 'loc' } })
+    }
 
-    for (let i = 0; i < removed; i++)
+    for (let i = 0; i < removed; i++) {
       mock.diff.children.push({ action: 'REMOVE', actual: { location: 'loc' } })
+    }
 
     for (let i = 0; i < changed; i++) {
       const actual = { location: 'loc' }
@@ -395,8 +401,9 @@ t.test('packages changed message', t => {
     for (const removed of [0, 1, 2]) {
       for (const changed of [0, 1, 2]) {
         for (const audited of [0, 1, 2]) {
-          for (const json of [true, false])
+          for (const json of [true, false]) {
             cases.push([added, removed, changed, audited, json, 'install'])
+          }
         }
       }
     }
@@ -407,8 +414,9 @@ t.test('packages changed message', t => {
   cases.push([0, 0, 0, 2, false, 'audit'])
 
   t.plan(cases.length)
-  for (const [added, removed, changed, audited, json, command] of cases)
+  for (const [added, removed, changed, audited, json, command] of cases) {
     testCase(t, added, removed, changed, audited, json, command)
+  }
 
   t.end()
 })

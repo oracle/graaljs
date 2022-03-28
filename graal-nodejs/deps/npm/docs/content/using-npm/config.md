@@ -1014,8 +1014,8 @@ Ideal if all users are on npm version 7 and higher.
 * Type: "silent", "error", "warn", "notice", "http", "timing", "info",
   "verbose", or "silly"
 
-What level of logs to report. On failure, *all* logs are written to
-`npm-debug.log` in the current working directory.
+What level of logs to report. All logs are written to a debug log, with the
+path to that file printed if the execution of a command fails.
 
 Any logs of a higher level than the setting are shown. The default is
 "notice".
@@ -1190,6 +1190,8 @@ When package package-locks are disabled, automatic pruning of extraneous
 modules will also be disabled. To remove extraneous modules with
 package-locks disabled use `npm prune`.
 
+This configuration does not affect `npm ci`.
+
 <!-- automatically generated, do not edit manually -->
 <!-- see lib/utils/config/definitions.js -->
 
@@ -1326,13 +1328,16 @@ The base URL of the npm registry.
 
 #### `save`
 
-* Default: true
+* Default: `true` unless when using `npm update` or `npm dedupe` where it
+  defaults to `false`
 * Type: Boolean
 
-Save installed packages to a package.json file as dependencies.
+Save installed packages to a `package.json` file as dependencies.
 
 When used with the `npm rm` command, removes the dependency from
-package.json.
+`package.json`.
+
+Will also prevent writing to `package-lock.json` if set to `false`.
 
 <!-- automatically generated, do not edit manually -->
 <!-- see lib/utils/config/definitions.js -->
@@ -1346,7 +1351,7 @@ If a package would be saved at install time by the use of `--save`,
 `--save-dev`, or `--save-optional`, then also put it in the
 `bundleDependencies` list.
 
-Ignore if `--save-peer` is set, since peerDependencies cannot be bundled.
+Ignored if `--save-peer` is set, since peerDependencies cannot be bundled.
 
 <!-- automatically generated, do not edit manually -->
 <!-- see lib/utils/config/definitions.js -->
@@ -1387,7 +1392,7 @@ Save installed packages to a package.json file as `optionalDependencies`.
 * Default: false
 * Type: Boolean
 
-Save installed packages. to a package.json file as `peerDependencies`
+Save installed packages to a package.json file as `peerDependencies`
 
 <!-- automatically generated, do not edit manually -->
 <!-- see lib/utils/config/definitions.js -->

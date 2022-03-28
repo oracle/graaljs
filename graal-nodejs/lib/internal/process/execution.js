@@ -20,7 +20,8 @@ const {
   clearAsyncIdStack,
   hasAsyncIdStack,
   afterHooksExist,
-  emitAfter
+  emitAfter,
+  popAsyncContext,
 } = require('internal/async_hooks');
 
 // shouldAbortOnUncaughtToggle is a typed array for faster
@@ -76,9 +77,9 @@ function evalScript(name, body, breakFirstLine, print) {
       filename: name,
       displayErrors: true,
       [kVmBreakFirstLineSymbol]: !!breakFirstLine,
-      async importModuleDynamically(specifier) {
-        const loader = await asyncESM.esmLoader;
-        return loader.import(specifier, baseUrl);
+      importModuleDynamically(specifier, _, importAssertions) {
+        const loader = asyncESM.esmLoader;
+        return loader.import(specifier, baseUrl, importAssertions);
       }
     }));
   if (print) {
@@ -154,7 +155,9 @@ function createOnGlobalUncaughtException() {
             null,
             er ?? {});
         }
-      } catch {}  // Ignore the exception. Diagnostic reporting is unavailable.
+      } catch {
+        // Ignore the exception. Diagnostic reporting is unavailable.
+      }
     }
 
     const type = fromPromise ? 'unhandledRejection' : 'uncaughtException';
@@ -183,7 +186,11 @@ function createOnGlobalUncaughtException() {
     // Emit the after() hooks now that the exception has been handled.
     if (afterHooksExist()) {
       do {
-        emitAfter(executionAsyncId());
+        const asyncId = executionAsyncId();
+        if (asyncId === 0)
+          popAsyncContext(0);
+        else
+          emitAfter(asyncId);
       } while (hasAsyncIdStack());
     }
     // And completely empty the id stack, including anything that may be

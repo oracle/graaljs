@@ -340,6 +340,11 @@ Local<ArrayBuffer> ByteSource::ToArrayBuffer(Environment* env) {
   return ArrayBuffer::New(env->isolate(), std::move(store));
 }
 
+MaybeLocal<Uint8Array> ByteSource::ToBuffer(Environment* env) {
+  Local<ArrayBuffer> ab = ToArrayBuffer(env);
+  return Buffer::New(env, ab, 0, ab->ByteLength());
+}
+
 const char* ByteSource::get() const {
   return data_;
 }
@@ -592,9 +597,8 @@ EnginePointer LoadEngineById(const char* id, CryptoErrorStore* errors) {
   }
 
   if (!engine && errors != nullptr) {
-    if (ERR_get_error() != 0) {
-      errors->Capture();
-    } else {
+    errors->Capture();
+    if (errors->Empty()) {
       errors->Insert(NodeCryptoError::ENGINE_NOT_FOUND, id);
     }
   }

@@ -48,55 +48,58 @@ const {
 } = require('internal/validators');
 const constants = internalBinding('constants').os.signals;
 
+const {
+  handleProcessExit,
+} = require('internal/modules/esm/handle_process_exit');
+
 const kInternal = Symbol('internal properties');
 
 function assert(x, msg) {
   if (!x) throw new ERR_ASSERTION(msg || 'assertion error');
 }
 
-function getFastAPIs(binding) {
-  const {
-    hrtime: _hrtime
-  } = binding.getFastAPIs();
+const binding = internalBinding('process_methods');
 
+let hrValues;
+let hrBigintValues;
+
+function refreshHrtimeBuffer() {
   // The 3 entries filled in by the original process.hrtime contains
   // the upper/lower 32 bits of the second part of the value,
   // and the remaining nanoseconds of the value.
-  const hrValues = new Uint32Array(_hrtime.buffer);
-
-  function hrtime(time) {
-    _hrtime.hrtime();
-
-    if (time !== undefined) {
-      validateArray(time, 'time');
-      if (time.length !== 2) {
-        throw new ERR_OUT_OF_RANGE('time', 2, time.length);
-      }
-
-      const sec = (hrValues[0] * 0x100000000 + hrValues[1]) - time[0];
-      const nsec = hrValues[2] - time[1];
-      const needsBorrow = nsec < 0;
-      return [needsBorrow ? sec - 1 : sec, needsBorrow ? nsec + 1e9 : nsec];
-    }
-
-    return [
-      hrValues[0] * 0x100000000 + hrValues[1],
-      hrValues[2],
-    ];
-  }
-
+  hrValues = new Uint32Array(binding.hrtimeBuffer);
   // Use a BigUint64Array in the closure because this is actually a bit
   // faster than simply returning a BigInt from C++ in V8 7.1.
-  const hrBigintValues = new BigUint64Array(_hrtime.buffer, 0, 1);
-  function hrtimeBigInt() {
-    _hrtime.hrtimeBigInt();
-    return hrBigintValues[0];
+  hrBigintValues = new BigUint64Array(binding.hrtimeBuffer, 0, 1);
+}
+
+// Create the buffers.
+refreshHrtimeBuffer();
+
+function hrtime(time) {
+  binding.hrtime();
+
+  if (time !== undefined) {
+    validateArray(time, 'time');
+    if (time.length !== 2) {
+      throw new ERR_OUT_OF_RANGE('time', 2, time.length);
+    }
+
+    const sec = (hrValues[0] * 0x100000000 + hrValues[1]) - time[0];
+    const nsec = hrValues[2] - time[1];
+    const needsBorrow = nsec < 0;
+    return [needsBorrow ? sec - 1 : sec, needsBorrow ? nsec + 1e9 : nsec];
   }
 
-  return {
-    hrtime,
-    hrtimeBigInt,
-  };
+  return [
+    hrValues[0] * 0x100000000 + hrValues[1],
+    hrValues[2],
+  ];
+}
+
+function hrtimeBigInt() {
+  binding.hrtimeBigInt();
+  return hrBigintValues[0];
 }
 
 // The execution of this function itself should not cause any side effects.
@@ -176,6 +179,8 @@ function wrapProcessMethods(binding) {
   memoryUsage.rss = rss;
 
   function exit(code) {
+    process.off('exit', handleProcessExit);
+
     if (code || code === 0)
       process.exitCode = code;
 
@@ -396,8 +401,10 @@ function toggleTraceCategoryState(asyncHooksEnabled) {
 
 module.exports = {
   toggleTraceCategoryState,
-  getFastAPIs,
   assert,
   buildAllowedFlags,
-  wrapProcessMethods
+  wrapProcessMethods,
+  hrtime,
+  hrtimeBigInt,
+  refreshHrtimeBuffer,
 };

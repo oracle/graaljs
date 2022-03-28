@@ -5,6 +5,8 @@ prefix parallel
 # sample-test                        : PASS,FLAKY
 
 [true] # This section applies to all platforms
+# https://github.com/nodejs/node/issues/41123
+test-repl-sigint-nested-eval: PASS, FLAKY
 
 ### Graal.js-specific ###
 
@@ -68,9 +70,6 @@ test-v8-getheapsnapshot-twice: SKIP
 
 # https://example.com does not work in CI
 test-https-agent-unref-socket: SKIP
-
-# uses an expired certificate, see https://github.com/nodejs/node/pull/42342
-test-https-selfsigned-no-keycertsign-no-crash: FAIL
 
 # Worker resource limits are not supported
 test-worker-resource-limits: FAIL
@@ -146,10 +145,10 @@ test-trace-events-worker-metadata: SKIP
 # Unclassified
 test-assert: FAIL
 test-async-hooks-async-await: FAIL
+test-async-hooks-http-parser-destroy: SKIP
 test-async-local-storage-contexts: FAIL
 test-crypto-op-during-process-exit: SKIP
 test-crypto-sign-verify: FAIL
-test-domain-async-id-map-leak: FAIL
 test-domain-no-error-handler-abort-on-uncaught-0: FAIL
 test-domain-no-error-handler-abort-on-uncaught-1: FAIL
 test-domain-no-error-handler-abort-on-uncaught-2: FAIL
@@ -163,11 +162,15 @@ test-domain-no-error-handler-abort-on-uncaught-9: FAIL
 test-domain-throw-error-then-throw-from-uncaught-exception-handler: FAIL
 test-eventtarget: FAIL
 test-fs-promises-file-handle-close: FAIL
+test-gc-http-client-connaborted: SKIP
 test-gc-http-client-timeout: SKIP
+test-gc-net-timeout: SKIP
 test-gc-tls-external-memory: SKIP
 test-http-server-keepalive-req-gc: SKIP
 test-http2-response-splitting: SKIP
 test-net-connect-memleak: FAIL
+test-promise-hook-exceptions: FAIL
+test-promise-hook-on-resolve: FAIL
 test-repl: FAIL
 test-string-decoder: FAIL
 test-tls-connect-memleak: FAIL
@@ -204,8 +207,10 @@ test-tls-passphrase: FAIL
 [$system==win32]
 # https://github.com/nodejs/node/issues/24497
 test-timers-immediate-queue: PASS,FLAKY
-# https://github.com/nodejs/node/issues/23277
-test-worker-memory: PASS,FLAKY
+# https://github.com/nodejs/node/issues/41206
+test-crypto-keygen: PASS,FLAKY
+# https://github.com/nodejs/node/issues/41201
+test-fs-rmdir-recursive: PASS, FLAKY
 
 [$system==linux]
 # https://github.com/nodejs/node/issues/39368
@@ -256,3 +261,11 @@ test-tls-env-extra-ca: SKIP
 test-dgram-error-message-address: SKIP
 # https://github.com/nodejs/node/issues/36929
 test-crypto-secure-heap: SKIP
+# https://github.com/nodejs/node/issues/39683
+test-dgram-connect: PASS, FLAKY
+test-http-client-parse-error: PASS, FLAKY
+test-http-multi-line-headers: PASS, FLAKY
+test-http-server-unconsume: PASS, FLAKY
+test-http-upgrade-advertise: PASS, FLAKY
+test-http-client-mindhsize: PASS, FLAKY
+test-http-tls-write-error: PASS, FLAKY

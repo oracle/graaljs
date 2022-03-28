@@ -133,6 +133,7 @@ class X509Certificate extends JSTransferable {
       validTo: this.validTo,
       fingerprint: this.fingerprint,
       fingerprint256: this.fingerprint256,
+      fingerprint512: this.fingerprint512,
       keyUsage: this.keyUsage,
       serialNumber: this.serialNumber,
     }, opts)}`;
@@ -233,6 +234,15 @@ class X509Certificate extends JSTransferable {
     return value;
   }
 
+  get fingerprint512() {
+    let value = this[kInternalState].get('fingerprint512');
+    if (value === undefined) {
+      value = this[kHandle].fingerprint512();
+      this[kInternalState].set('fingerprint512', value);
+    }
+    return value;
+  }
+
   get keyUsage() {
     let value = this[kInternalState].get('keyUsage');
     if (value === undefined) {
@@ -303,6 +313,11 @@ class X509Certificate extends JSTransferable {
 
   checkIP(ip, options) {
     validateString(ip, 'ip');
+    // The options argument is currently undocumented since none of the options
+    // have any effect on the behavior of this function. However, we still parse
+    // the options argument in case OpenSSL adds flags in the future that do
+    // affect the behavior of X509_check_ip. This ensures that no invalid values
+    // are passed as the second argument in the meantime.
     return this[kHandle].checkIP(ip, getFlags(options));
   }
 

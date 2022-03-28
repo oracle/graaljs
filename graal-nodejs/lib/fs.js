@@ -239,7 +239,7 @@ function access(path, mode, callback) {
  * directory specified by `path`.
  * @param {string | Buffer | URL} path
  * @param {number} [mode]
- * @returns {void | never}
+ * @returns {void}
  */
 function accessSync(path, mode) {
   path = getValidatedPath(path);
@@ -784,7 +784,7 @@ function readvSync(fd, buffers, position) {
 /**
  * Writes `buffer` to the specified `fd` (file descriptor).
  * @param {number} fd
- * @param {Buffer | TypedArray | DataView | string | Object} buffer
+ * @param {Buffer | TypedArray | DataView | string | object} buffer
  * @param {number} [offset]
  * @param {number} [length]
  * @param {number} [position]
@@ -849,7 +849,7 @@ ObjectDefineProperty(write, internalUtil.customPromisifyArgs,
  * Synchronously writes `buffer` to the
  * specified `fd` (file descriptor).
  * @param {number} fd
- * @param {Buffer | TypedArray | DataView | string | Object} buffer
+ * @param {Buffer | TypedArray | DataView | string | object} buffer
  * @param {number} [offset]
  * @param {number} [length]
  * @param {number} [position]
@@ -1185,6 +1185,7 @@ function rm(path, options, callback) {
     callback = options;
     options = undefined;
   }
+  path = getValidatedPath(path);
 
   validateRmOptions(path, options, false, (err, options) => {
     if (err) {
@@ -1208,6 +1209,7 @@ function rm(path, options, callback) {
  * @returns {void}
  */
 function rmSync(path, options) {
+  path = getValidatedPath(path);
   options = validateRmOptionsSync(path, options, false);
 
   lazyLoadRimraf();
@@ -1598,7 +1600,9 @@ function symlink(target, path, type_, callback_) {
       // errors consistent between platforms if invalid path is
       // provided.
       absoluteTarget = pathModule.resolve(path, '..', target);
-    } catch { }
+    } catch {
+      // Continue regardless of error.
+    }
     if (absoluteTarget !== undefined) {
       stat(absoluteTarget, (err, stat) => {
         const resolvedType = !err && stat.isDirectory() ? 'dir' : 'file';
@@ -2087,7 +2091,7 @@ function writeAll(fd, isUserFd, buffer, offset, length, signal, callback) {
 /**
  * Asynchronously writes data to the file.
  * @param {string | Buffer | URL | number} path
- * @param {string | Buffer | TypedArray | DataView | Object} data
+ * @param {string | Buffer | TypedArray | DataView | object} data
  * @param {{
  *   encoding?: string | null;
  *   mode?: number;
@@ -2131,7 +2135,7 @@ function writeFile(path, data, options, callback) {
 /**
  * Synchronously writes data to the file.
  * @param {string | Buffer | URL | number} path
- * @param {string | Buffer | TypedArray | DataView | Object} data
+ * @param {string | Buffer | TypedArray | DataView | object} data
  * @param {{
  *   encoding?: string | null;
  *   mode?: number;
@@ -2538,7 +2542,7 @@ function realpathSync(p, options) {
 
 /**
  * Returns the resolved pathname.
- * @param {string | Buffer | URL} p
+ * @param {string | Buffer | URL} path
  * @param {string | { encoding?: string; }} [options]
  * @returns {string | Buffer}
  */
@@ -2692,7 +2696,7 @@ function realpath(p, options, callback) {
 /**
  * Asynchronously computes the canonical pathname by
  * resolving `.`, `..` and symbolic links.
- * @param {string | Buffer | URL} p
+ * @param {string | Buffer | URL} path
  * @param {string | { encoding?: string; }} [options]
  * @param {(
  *   err?: Error,
@@ -2805,7 +2809,7 @@ function copyFileSync(src, dest, mode) {
  * symlink. The contents of directories will be copied recursively.
  * @param {string | URL} src
  * @param {string | URL} dest
- * @param {Object} [options]
+ * @param {object} [options]
  * @param {() => any} callback
  * @returns {void}
  */
@@ -2827,7 +2831,7 @@ function cp(src, dest, options, callback) {
  * symlink. The contents of directories will be copied recursively.
  * @param {string | URL} src
  * @param {string | URL} dest
- * @param {Object} [options]
+ * @param {object} [options]
  * @returns {void}
  */
 function cpSync(src, dest, options) {

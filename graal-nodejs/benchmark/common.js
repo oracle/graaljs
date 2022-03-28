@@ -38,7 +38,7 @@ class Benchmark {
     this.config = this.queue[0];
 
     process.nextTick(() => {
-      if (process.env.hasOwnProperty('NODE_RUN_BENCHMARK_FN')) {
+      if (Object.hasOwn(process.env, 'NODE_RUN_BENCHMARK_FN')) {
         fn(this.config);
       } else {
         // _run will use fork() to create a new process for each configuration
@@ -91,7 +91,7 @@ class Benchmark {
         process.exit(1);
       }
       const [, key, value] = match;
-      if (Object.prototype.hasOwnProperty.call(configs, key)) {
+      if (Object.hasOwn(configs, key)) {
         if (!cliOptions[key])
           cliOptions[key] = [];
         cliOptions[key].push(

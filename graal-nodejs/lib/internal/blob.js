@@ -75,7 +75,6 @@ const disallowedTypeCharacters = /[^\u{0020}-\u{007E}]/u;
 
 let ReadableStream;
 let URL;
-let EOL;
 
 const enc = new TextEncoder();
 
@@ -94,13 +93,7 @@ function lazyReadableStream(options) {
   return new ReadableStream(options);
 }
 
-// TODO(@jasnell): This is annoying but this has to be lazy because
-// requiring the 'os' module too early causes building Node.js to
-// fail with an unknown reference failure.
-function lazyEOL() {
-  EOL ??= require('os').EOL;
-  return EOL;
-}
+const { EOL } = require('internal/constants');
 
 function isBlob(object) {
   return object?.[kHandle] !== undefined;
@@ -115,28 +108,30 @@ function getSource(source, endings) {
   } else if (!isArrayBufferView(source)) {
     source = `${source}`;
     if (endings === 'native')
-      source = RegExpPrototypeSymbolReplace(/\n|\r\n/g, source, lazyEOL());
+      source = RegExpPrototypeSymbolReplace(/\n|\r\n/g, source, EOL);
     source = enc.encode(source);
   }
 
   // We copy into a new Uint8Array because the underlying
   // BackingStores are going to be detached and owned by
-  // the Blob. We also don't want to have to worry about
-  // byte offsets.
-  source = new Uint8Array(source);
-  return [source.byteLength, source];
+  // the Blob.
+  const { buffer, byteOffset, byteLength } = source;
+  const slice = buffer.slice(byteOffset, byteOffset + byteLength);
+  return [byteLength, new Uint8Array(slice)];
 }
 
 class Blob {
   /**
    * @typedef {string|ArrayBuffer|ArrayBufferView|Blob} SourcePart
-   *
+   */
+
+  /**
    * @param {SourcePart[]} [sources]
    * @param {{
    *   endings? : string,
    *   type? : string,
    * }} [options]
-   * @returns
+   * @constructs {Blob}
    */
   constructor(sources = [], options = {}) {
     emitExperimentalWarning('buffer.Blob');

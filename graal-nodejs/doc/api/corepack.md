@@ -4,6 +4,12 @@
 
 <!-- type=misc -->
 
+<!-- YAML
+added:
+  - v16.9.0
+  - v14.19.0
+-->
+
 > Stability: 1 - Experimental
 
 _[Corepack][]_ is an experimental tool to help with
@@ -101,7 +107,7 @@ install. To avoid this problem, consider one of the following options:
   binaries anyway and will ensure that the requested versions are always
   available, so installing the package managers explicitly isn't needed anymore.
 
-* Add the `--force` to `npm install`; this will tell npm that it's fine to
+* Add the `--force` flag to `npm install`; this will tell npm that it's fine to
   override binaries, but you'll erase the Corepack ones in the process (should
   that happen, run [`corepack enable`][] again to add them back).
 
