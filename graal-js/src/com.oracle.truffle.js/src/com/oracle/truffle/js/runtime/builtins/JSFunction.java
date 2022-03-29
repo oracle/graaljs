@@ -603,10 +603,10 @@ public final class JSFunction extends JSNonProxy {
         }
     }
 
-    public static JSDynamicObject createFunctionPrototype(JSRealm realm, JSDynamicObject objectPrototype) {
+    public static JSFunctionObject createFunctionPrototype(JSRealm realm, JSDynamicObject objectPrototype) {
         JSContext context = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(context, INSTANCE, objectPrototype);
-        JSDynamicObject proto = JSFunctionObject.create(protoShape, createEmptyFunctionData(context), JSFrameUtil.NULL_MATERIALIZED_FRAME, realm, CLASS_PROTOTYPE_PLACEHOLDER);
+        JSFunctionObject proto = JSFunctionObject.create(protoShape, createEmptyFunctionData(context), JSFrameUtil.NULL_MATERIALIZED_FRAME, realm, CLASS_PROTOTYPE_PLACEHOLDER);
         JSObjectUtil.setOrVerifyPrototype(context, proto, objectPrototype);
         JSObjectUtil.putDataProperty(context, proto, LENGTH, 0, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(context, proto, NAME, Strings.EMPTY_STRING, JSAttributes.configurableNotEnumerableNotWritable());

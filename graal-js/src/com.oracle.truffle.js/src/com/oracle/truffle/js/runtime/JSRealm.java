@@ -123,6 +123,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
@@ -140,6 +141,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSON;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
+import com.oracle.truffle.js.runtime.builtins.JSObjectPrototypeObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -231,12 +233,12 @@ public class JSRealm {
     @CompilationFinal private JSDynamicObject globalObject;
 
     private final JSFunctionObject objectConstructor;
-    private final JSDynamicObject objectPrototype;
+    private final JSObjectPrototypeObject objectPrototype;
     private final JSFunctionObject functionConstructor;
-    private final JSDynamicObject functionPrototype;
+    private final JSFunctionObject functionPrototype;
 
     private final JSFunctionObject arrayConstructor;
-    private final JSDynamicObject arrayPrototype;
+    private final JSArrayObject arrayPrototype;
     private final JSFunctionObject booleanConstructor;
     private final JSDynamicObject booleanPrototype;
     private final JSFunctionObject numberConstructor;
@@ -594,7 +596,7 @@ public class JSRealm {
         JSConstructor ctor;
         ctor = JSArray.createConstructor(this);
         this.arrayConstructor = ctor.getFunctionObject();
-        this.arrayPrototype = ctor.getPrototype();
+        this.arrayPrototype = (JSArrayObject) ctor.getPrototype();
         ctor = JSBoolean.createConstructor(this);
         this.booleanConstructor = ctor.getFunctionObject();
         this.booleanPrototype = ctor.getPrototype();
