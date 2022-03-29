@@ -108,6 +108,7 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
             // workaround as long as JSToStringNode cannot have an uncached version
             value = toNumberNode == null ? JSRuntime.toNumber(value) : toNumberNode.executeNumber(value);
             if (JSRuntime.isNaN(value)) {
+                errorBranch.enter();
                 throw TemporalErrors.createRangeErrorNumberIsNaN();
             }
         } else if (type.allowsString()) {

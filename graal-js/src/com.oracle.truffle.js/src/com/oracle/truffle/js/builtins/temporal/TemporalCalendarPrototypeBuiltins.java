@@ -99,6 +99,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -455,13 +456,12 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public Object dateAdd(Object thisObj, Object dateObj, Object durationObj, Object optionsParam,
-                        @Cached("create()") JSToStringNode toString,
+                        @Cached("create(getContext())") ToTemporalDurationNode toTemporalDurationNode,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) toTemporalDate(dateObj, Undefined.instance);
-            JSTemporalDurationObject duration = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(
-                            durationObj, getContext(), isObjectNode, toString, errorBranch);
+            JSTemporalDurationObject duration = (JSTemporalDurationObject) toTemporalDurationNode.executeDynamicObject(durationObj);
             DynamicObject options = getOptionsObject(optionsParam);
             Overflow overflow = toTemporalOverflow(options);
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),

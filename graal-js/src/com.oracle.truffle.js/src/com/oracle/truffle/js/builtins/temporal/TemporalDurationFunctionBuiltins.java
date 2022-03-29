@@ -45,10 +45,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.temporal.TemporalUnbalanceDurationRelativeNode;
 import com.oracle.truffle.js.nodes.temporal.ToRelativeTemporalObjectNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
@@ -99,8 +99,8 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        protected Object from(Object item,
-                        @Cached("create()") JSToStringNode toString) {
+        protected DynamicObject from(Object item,
+                        @Cached("create(getContext())") ToTemporalDurationNode toTemporalDurationNode) {
             if (isObject(item) && JSTemporalDuration.isJSTemporalDuration(item)) {
                 JSTemporalDurationObject duration = (JSTemporalDurationObject) item;
                 return JSTemporalDuration.createTemporalDuration(getContext(), duration.getYears(),
@@ -108,7 +108,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                                 duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                                 duration.getMicroseconds(), duration.getNanoseconds(), errorBranch);
             }
-            return JSTemporalDuration.toTemporalDuration(item, getContext(), isObjectNode, toString, errorBranch);
+            return toTemporalDurationNode.executeDynamicObject(item);
         }
     }
 
@@ -120,11 +120,11 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected int compare(Object oneParam, Object twoParam, Object optionsParam,
-                        @Cached("create()") JSToStringNode toString,
                         @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
-                        @Cached("create(getContext())") TemporalUnbalanceDurationRelativeNode unbalanceDurationRelativeNode) {
-            JSTemporalDurationObject one = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(oneParam, getContext(), isObjectNode, toString, errorBranch);
-            JSTemporalDurationObject two = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObjectNode, toString, errorBranch);
+                        @Cached("create(getContext())") TemporalUnbalanceDurationRelativeNode unbalanceDurationRelativeNode,
+                        @Cached("create(getContext())") ToTemporalDurationNode toTemporalDurationNode) {
+            JSTemporalDurationObject one = (JSTemporalDurationObject) toTemporalDurationNode.executeDynamicObject(oneParam);
+            JSTemporalDurationObject two = (JSTemporalDurationObject) toTemporalDurationNode.executeDynamicObject(twoParam);
             DynamicObject options = getOptionsObject(optionsParam);
             DynamicObject relativeTo = toRelativeTemporalObjectNode.execute(options);
             double shift1 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,

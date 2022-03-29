@@ -125,7 +125,6 @@ import com.oracle.truffle.js.nodes.temporal.GetTemporalCalendarWithISODefaultNod
 import com.oracle.truffle.js.nodes.temporal.TemporalDurationAddNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalZonedDateTimeNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -1456,41 +1455,6 @@ public final class TemporalUtil {
         return roundNumberToIncrement(ns, incrementNs, roundingMode);
     }
 
-    /**
-     * Note there also is {@link ToTemporalDateNode}.
-     */
-    public static JSTemporalPlainDateObject toTemporalDate(JSContext ctx, JSRealm realm, Object itemParam, DynamicObject optionsParam) {
-        assert optionsParam != null;
-        DynamicObject options = (optionsParam == Undefined.instance) ? JSOrdinary.createWithNullPrototype(ctx) : optionsParam;
-        if (JSRuntime.isObject(itemParam)) {
-            DynamicObject item = (DynamicObject) itemParam;
-            if (JSTemporalPlainDate.isJSTemporalPlainDate(item)) {
-                return (JSTemporalPlainDateObject) item;
-            } else if (JSTemporalZonedDateTime.isJSTemporalZonedDateTime(item)) {
-                JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
-                JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, zdt.getNanoseconds());
-                JSTemporalPlainDateTimeObject plainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, zdt.getTimeZone(), instant, zdt.getCalendar());
-                return JSTemporalPlainDate.create(ctx, plainDateTime.getYear(), plainDateTime.getMonth(), plainDateTime.getDay(), plainDateTime.getCalendar());
-            } else if (JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
-                JSTemporalPlainDateTimeObject dt = (JSTemporalPlainDateTimeObject) item;
-                return JSTemporalPlainDate.create(ctx, dt.getYear(), dt.getMonth(), dt.getDay(), dt.getCalendar());
-            }
-            DynamicObject calendar = getTemporalCalendarWithISODefault(ctx, realm, item);
-            List<TruffleString> fieldNames = calendarFields(ctx, calendar, listDMMCY);
-            DynamicObject fields = prepareTemporalFields(ctx, item, fieldNames, listEmpty);
-            return dateFromFields(calendar, fields, options);
-        }
-        Overflow overflows = toTemporalOverflow(options, TemporalGetOptionNode.getUncached());
-        JSTemporalDateTimeRecord result = parseTemporalDateString(JSRuntime.toString(itemParam));
-        if (!validateISODate(result.getYear(), result.getMonth(), result.getDay())) {
-            throw TemporalErrors.createRangeErrorDateOutsideRange();
-        }
-        DynamicObject calendar = toTemporalCalendarWithISODefault(ctx, realm, result.getCalendar());
-        result = regulateISODate(result.getYear(), result.getMonth(), result.getDay(), overflows);
-
-        return JSTemporalPlainDate.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
-    }
-
     public static boolean validateISODate(int year, int month, int day) {
         if (month < 1 || month > 12) {
             return false;
@@ -2676,26 +2640,6 @@ public final class TemporalUtil {
             return false;
         }
         return true;
-    }
-
-    public static JSTemporalDurationRecord toLimitedTemporalDuration(Object temporalDurationLike, List<TruffleString> disallowedFields,
-                    IsObjectNode isObject, JSToStringNode toStringNode, BranchProfile errorBranch) {
-        JSTemporalDurationRecord d;
-        if (!isObject.executeBoolean(temporalDurationLike)) {
-            TruffleString str = toStringNode.executeString(temporalDurationLike);
-            d = JSTemporalDuration.parseTemporalDurationString(str);
-        } else {
-            d = JSTemporalDuration.toTemporalDurationRecord((DynamicObject) temporalDurationLike);
-        }
-
-        for (UnitPlural unit : TemporalUtil.DURATION_PROPERTIES) {
-            double value = TemporalUtil.getPropertyFromRecord(d, unit);
-            if (value > 0 && Boundaries.listContains(disallowedFields, unit.toTruffleString())) {
-                errorBranch.enter();
-                throw TemporalErrors.createRangeErrorDisallowedField(unit.toTruffleString());
-            }
-        }
-        return d;
     }
 
     public static JSTemporalPlainDateTimeObject systemDateTime(Object temporalTimeZoneLike, Object calendarLike, JSContext ctx) {

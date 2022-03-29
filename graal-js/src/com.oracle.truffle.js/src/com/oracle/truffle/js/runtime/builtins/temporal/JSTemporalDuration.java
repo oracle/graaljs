@@ -68,9 +68,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltins;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -188,21 +186,6 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     // region Abstract methods
-    public static DynamicObject toTemporalDuration(Object item, JSContext ctx, IsObjectNode isObject, JSToStringNode toString, BranchProfile errorBranch) {
-        JSTemporalDurationRecord result;
-        if (isObject.executeBoolean(item)) {
-            if (isJSTemporalDuration(item)) {
-                return (DynamicObject) item;
-            }
-            result = toTemporalDurationRecord((DynamicObject) item);
-        } else {
-            TruffleString string = toString.executeString(item);
-            result = parseTemporalDurationString(string);
-        }
-        return createTemporalDuration(ctx, result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(),
-                        result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), errorBranch);
-    }
-
     @TruffleBoundary
     public static JSTemporalDurationRecord parseTemporalDurationString(TruffleString string) {
         long yearsMV = 0;

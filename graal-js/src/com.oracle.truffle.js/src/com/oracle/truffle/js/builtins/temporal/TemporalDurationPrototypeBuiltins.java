@@ -88,6 +88,7 @@ import com.oracle.truffle.js.nodes.temporal.TemporalBalanceDurationRelativeNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalDurationAddNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalUnbalanceDurationRelativeNode;
+import com.oracle.truffle.js.nodes.temporal.ToLimitedTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToRelativeTemporalObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -334,11 +335,11 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected DynamicObject add(Object thisObj, Object other, Object options,
-                        @Cached("create()") JSToStringNode toString,
                         @Cached("create(getContext())") TemporalDurationAddNode durationAddNode,
-                        @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode) {
+                        @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
+                        @Cached("create(getContext())") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
-            JSTemporalDurationRecord otherDuration = TemporalUtil.toLimitedTemporalDuration(other, TemporalUtil.listEmpty, isObjectNode, toString, errorBranch);
+            JSTemporalDurationRecord otherDuration = toLimitedTemporalDurationNode.executeDynamicObject(other, TemporalUtil.listEmpty);
             DynamicObject normalizedOptions = getOptionsObject(options);
             DynamicObject relativeTo = toRelativeTemporalObjectNode.execute(normalizedOptions);
             JSTemporalDurationRecord result = durationAddNode.execute(duration.getYears(), duration.getMonths(),
@@ -364,11 +365,11 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected DynamicObject subtract(Object thisObj, Object other, Object options,
-                        @Cached("create()") JSToStringNode toString,
                         @Cached("create(getContext())") TemporalDurationAddNode durationAddNode,
-                        @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode) {
+                        @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
+                        @Cached("create(getContext())") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
-            JSTemporalDurationRecord otherDuration = TemporalUtil.toLimitedTemporalDuration(other, TemporalUtil.listEmpty, isObjectNode, toString, errorBranch);
+            JSTemporalDurationRecord otherDuration = toLimitedTemporalDurationNode.executeDynamicObject(other, TemporalUtil.listEmpty);
             DynamicObject normalizedOptions = getOptionsObject(options);
             DynamicObject relativeTo = toRelativeTemporalObjectNode.execute(normalizedOptions);
             JSTemporalDurationRecord result = durationAddNode.execute(duration.getYears(), duration.getMonths(),
@@ -563,7 +564,6 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected TruffleString toString(Object duration, Object opt,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached JSNumberToBigIntNode toBigIntNode,
                         @Cached JSToStringNode toStringNode,
                         @Cached TruffleString.EqualNode equalNode,
