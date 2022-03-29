@@ -47,6 +47,7 @@ import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.temporal.TemporalUnbalanceDurationRelativeNode;
 import com.oracle.truffle.js.nodes.temporal.ToRelativeTemporalObjectNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -120,7 +121,8 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
         @Specialization
         protected int compare(Object oneParam, Object twoParam, Object optionsParam,
                         @Cached("create()") JSToStringNode toString,
-                        @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode) {
+                        @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
+                        @Cached("create(getContext())") TemporalUnbalanceDurationRelativeNode unbalanceDurationRelativeNode) {
             JSTemporalDurationObject one = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(oneParam, getContext(), isObjectNode, toString, errorBranch);
             JSTemporalDurationObject two = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObjectNode, toString, errorBranch);
             DynamicObject options = getOptionsObject(optionsParam);
@@ -138,12 +140,8 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             if (one.getYears() != 0 || two.getYears() != 0 ||
                             one.getMonths() != 0 || two.getMonths() != 0 ||
                             one.getWeeks() != 0 || two.getWeeks() != 0) {
-                JSTemporalDurationRecord balanceResult1 = TemporalUtil.unbalanceDurationRelative(
-                                getContext(), getRealm(), one.getYears(), one.getMonths(), one.getWeeks(),
-                                one.getDays(), Unit.DAY, relativeTo);
-                JSTemporalDurationRecord balanceResult2 = TemporalUtil.unbalanceDurationRelative(
-                                getContext(), getRealm(), two.getYears(), two.getMonths(), two.getWeeks(),
-                                two.getDays(), Unit.DAY, relativeTo);
+                JSTemporalDurationRecord balanceResult1 = unbalanceDurationRelativeNode.execute(one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(), Unit.DAY, relativeTo);
+                JSTemporalDurationRecord balanceResult2 = unbalanceDurationRelativeNode.execute(two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(), Unit.DAY, relativeTo);
                 days1 = balanceResult1.getDays();
                 days2 = balanceResult2.getDays();
             } else {
