@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 @ImportStatic(JSGuards.class)
 public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode {
 
+    private final BranchProfile errorBranch = BranchProfile.create();
     private final BranchProfile isIntProfile = BranchProfile.create();
     private final BranchProfile isLongProfile = BranchProfile.create();
     private final BranchProfile isDoubleProfile = BranchProfile.create();
@@ -82,6 +83,7 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
             isLongProfile.enter();
             long l = n.longValue();
             if (l < Integer.MIN_VALUE || Integer.MAX_VALUE < l) {
+                errorBranch.enter();
                 throw Errors.createRangeError("value out of range");
             }
             return (int) l;
@@ -89,6 +91,7 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
             isDoubleProfile.enter();
             double d = n.doubleValue();
             if (d < Integer.MIN_VALUE || Integer.MAX_VALUE < d) {
+                errorBranch.enter();
                 throw Errors.createRangeError("value out of range");
             }
             return (int) d;
@@ -124,11 +127,12 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
     }
 
     @Specialization
-    protected static long doDoubleInfinite(double value) {
+    protected long doDoubleInfinite(double value) {
         if (Double.isNaN(value) || value == 0d) {
             return 0;
         }
         if (Double.isInfinite(value)) {
+            errorBranch.enter();
             throw Errors.createRangeError("infinity not allowed");
         }
         return (long) value;
