@@ -183,6 +183,7 @@ import com.oracle.truffle.js.nodes.intl.InitializePluralRulesNode;
 import com.oracle.truffle.js.nodes.intl.InitializeRelativeTimeFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeSegmenterNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarWithISODefaultNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.wasm.ExportByteSourceNode;
@@ -1102,11 +1103,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected DynamicObject constructTemporalPlainDate(DynamicObject newTarget, Object isoYear, Object isoMonth,
                         Object isoDay, Object calendarLike,
                         @Cached("create()") JSToIntegerThrowOnInfinityNode toIntegerNode,
+                        @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
                         @Cached("create()") BranchProfile errorBranch) {
             final int y = toIntegerNode.executeIntOrThrow(isoYear);
             final int m = toIntegerNode.executeIntOrThrow(isoMonth);
             final int d = toIntegerNode.executeIntOrThrow(isoDay);
-            DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(getContext(), getRealm(), calendarLike);
+            DynamicObject calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(calendarLike);
             return swapPrototype(JSTemporalPlainDate.create(getContext(), y, m, d, calendar, errorBranch), newTarget);
         }
 
@@ -1154,6 +1156,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         Object secondObj, Object millisecondObject,
                         Object microsecondObject, Object nanosecondObject, Object calendarLike,
                         @Cached("create()") JSToIntegerThrowOnInfinityNode toIntegerNode,
+                        @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
                         @Cached BranchProfile errorBranch) {
             final int year = toIntegerNode.executeIntOrThrow(yearObj);
             final int month = toIntegerNode.executeIntOrThrow(monthObj);
@@ -1165,7 +1168,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final int millisecond = toIntegerNode.executeIntOrThrow(millisecondObject);
             final int microsecond = toIntegerNode.executeIntOrThrow(microsecondObject);
             final int nanosecond = toIntegerNode.executeIntOrThrow(nanosecondObject);
-            DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(getContext(), getRealm(), calendarLike);
+            DynamicObject calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(calendarLike);
             return swapPrototype(JSTemporalPlainDateTime.create(getContext(),
                             year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar, errorBranch), newTarget);
         }
@@ -1235,9 +1238,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructTemporalPlainYearMonth(DynamicObject newTarget, Object isoYear,
-                        Object isoMonth, Object calendarLike,
-                        Object refISODay,
-                        @Cached("create()") JSToIntegerThrowOnInfinityNode toInteger) {
+                        Object isoMonth, Object calendarLike, Object refISODay,
+                        @Cached("create()") JSToIntegerThrowOnInfinityNode toInteger,
+                        @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode) {
 
             Object referenceISODay = refISODay;
             if (referenceISODay == Undefined.instance || referenceISODay == null) {
@@ -1245,7 +1248,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             int y = toInteger.executeIntOrThrow(isoYear);
             int m = toInteger.executeIntOrThrow(isoMonth);
-            DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(getContext(), getRealm(), calendarLike);
+            DynamicObject calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(calendarLike);
             int ref = toInteger.executeIntOrThrow(referenceISODay);
             return swapPrototype(JSTemporalPlainYearMonth.create(getContext(), y, m, calendar, ref), newTarget);
         }
@@ -1265,14 +1268,15 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected DynamicObject constructTemporalPlainMonthDay(DynamicObject newTarget, Object isoMonth,
                         Object isoDay, Object calendarLike, Object refISOYear,
-                        @Cached("create()") JSToIntegerThrowOnInfinityNode toInt) {
+                        @Cached("create()") JSToIntegerThrowOnInfinityNode toInt,
+                        @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode) {
             Object referenceISOYear = refISOYear;
             if (referenceISOYear == Undefined.instance || referenceISOYear == null) {
                 referenceISOYear = 1972;
             }
             int m = toInt.executeIntOrThrow(isoMonth);
             int d = toInt.executeIntOrThrow(isoDay);
-            DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(getContext(), getRealm(), calendarLike);
+            DynamicObject calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(calendarLike);
             int ref = toInt.executeIntOrThrow(referenceISOYear); // non-spec
             return swapPrototype(JSTemporalPlainMonthDay.create(getContext(), m, d, calendar, ref), newTarget);
         }
@@ -1343,6 +1347,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected DynamicObject constructTemporalZonedDateTime(DynamicObject newTarget, Object epochNanoseconds, Object timeZoneLike, Object calendarLike,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone,
+                        @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
                         @Cached BranchProfile errorBranch) {
             BigInt ns = JSRuntime.toBigInt(epochNanoseconds);
             if (!TemporalUtil.isValidEpochNanoseconds(ns)) {
@@ -1350,7 +1355,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }
             DynamicObject timeZone = toTemporalTimeZone.executeDynamicObject(timeZoneLike);
-            DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(getContext(), getRealm(), calendarLike);
+            DynamicObject calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(calendarLike);
 
             return swapPrototype(JSTemporalZonedDateTime.create(getContext(), ns, timeZone, calendar), newTarget);
         }

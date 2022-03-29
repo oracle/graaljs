@@ -107,7 +107,8 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                     @Cached("createBinaryProfile()") ConditionProfile valueIsPlainDate,
                     @Cached("createBinaryProfile()") ConditionProfile valueIsPlainDateTime,
                     @Cached("createBinaryProfile()") ConditionProfile timeZoneAvailable,
-                    @Cached JSToStringNode toStringNode) {
+                    @Cached JSToStringNode toStringNode,
+                    @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode) {
         Object value = getRelativeToNode.getValue(options);
         if (valueIsUndefined.profile(value == Undefined.instance)) {
             return Undefined.instance;
@@ -146,7 +147,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             TruffleString string = toStringNode.executeString(value);
             JSTemporalZonedDateTimeRecord resultZDT = TemporalUtil.parseTemporalRelativeToString(string);
             result = resultZDT;
-            calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, getRealm(), result.getCalendar());
+            calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(result.getCalendar());
 
             offset = resultZDT.getTimeZoneOffsetString();
             TruffleString timeZoneName = resultZDT.getTimeZoneName();

@@ -97,6 +97,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                     @Cached("create()") TemporalGetOptionNode getOptionNode,
                     @Cached("create(ctx)") ToTemporalTimeZoneNode toTemporalTimeZone,
                     @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
+                    @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
                     @Cached TruffleString.EqualNode equalNode) {
         DynamicObject options = optionsParam;
         assert options != null;
@@ -149,7 +150,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                 offsetBehaviour = OffsetBehaviour.WALL;
             }
             timeZone = TemporalUtil.createTemporalTimeZone(ctx, timeZoneName);
-            calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, realm, result.getCalendar());
+            calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(result.getCalendar());
             matchBehaviour = MatchBehaviour.MATCH_MINUTES;
         }
         long offsetNanoseconds = 0;
