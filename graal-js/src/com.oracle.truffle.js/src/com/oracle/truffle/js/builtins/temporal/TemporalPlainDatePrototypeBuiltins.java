@@ -54,7 +54,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.UNIT;
 
 import java.util.EnumSet;
 import java.util.List;
-import java.util.concurrent.locks.Condition;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;

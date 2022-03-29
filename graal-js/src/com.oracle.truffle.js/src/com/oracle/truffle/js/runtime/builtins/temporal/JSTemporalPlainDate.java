@@ -170,8 +170,8 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalPlainDateFactory();
         DynamicObject object = factory.initProto(new JSTemporalPlainDateObject(factory.getShape(realm),
-                year, month, day, calendar), realm);
-        return (JSTemporalPlainDateObject)context.trackAllocation(object);
+                        year, month, day, calendar), realm);
+        return (JSTemporalPlainDateObject) context.trackAllocation(object);
     }
 
     // 3.5.5
