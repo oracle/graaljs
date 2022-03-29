@@ -654,9 +654,9 @@ public final class JSFunction extends JSNonProxy {
         return initialShape;
     }
 
-    public static JSDynamicObject createFunctionConstructor(JSRealm realm) {
+    public static JSFunctionObject createFunctionConstructor(JSRealm realm) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject functionConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, CLASS_NAME);
+        JSFunctionObject functionConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, CLASS_NAME);
         JSObjectUtil.putDataProperty(ctx, functionConstructor, JSObject.PROTOTYPE, realm.getFunctionPrototype(), JSAttributes.notConfigurableNotEnumerableNotWritable());
         return functionConstructor;
     }
