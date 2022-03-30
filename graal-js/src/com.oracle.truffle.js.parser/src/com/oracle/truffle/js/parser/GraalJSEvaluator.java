@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -666,7 +666,10 @@ public final class GraalJSEvaluator implements JSParser {
 
         // Initialize the environment by executing the module function.
         // It will automatically yield when the module is instantiated.
-        moduleExecution(realm, moduleRecord, null);
+        DynamicObject moduleFunction = JSFunction.create(realm, moduleRecord.getFunctionData());
+        Object[] arguments = JSArguments.create(Undefined.instance, moduleFunction, moduleRecord);
+        // The [[Construct]] target of a module is used to initialize the environment.
+        JSFunction.getConstructTarget(moduleFunction).call(arguments);
     }
 
     @TruffleBoundary

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,8 @@ import java.util.List;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -172,6 +174,7 @@ import com.oracle.truffle.js.nodes.control.IfNode;
 import com.oracle.truffle.js.nodes.control.IteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.LabelNode;
 import com.oracle.truffle.js.nodes.control.ModuleBodyNode;
+import com.oracle.truffle.js.nodes.control.ModuleInitializeEnvironmentNode;
 import com.oracle.truffle.js.nodes.control.ModuleYieldNode;
 import com.oracle.truffle.js.nodes.control.ReturnNode;
 import com.oracle.truffle.js.nodes.control.ReturnTargetNode;
@@ -748,6 +751,24 @@ public class NodeFactory {
         return functionRoot;
     }
 
+    public FunctionRootNode createModuleRootNode(AbstractBodyNode linkBody, AbstractBodyNode evalBody, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection,
+                    String internalFunctionName) {
+        FunctionRootNode linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection, internalFunctionName);
+        FunctionRootNode evalRoot = linkBody == evalBody ? linkRoot : FunctionRootNode.create(evalBody, null, functionData, sourceSection, internalFunctionName);
+
+        RootCallTarget linkCallTarget = Truffle.getRuntime().createCallTarget(linkRoot);
+        RootCallTarget evalCallTarget = Truffle.getRuntime().createCallTarget(evalRoot);
+        // Module function data is always eagerly initialized.
+        // The [[Construct]] target is used to represent InitializeEnvironment().
+        // The [[Call]] target is used to represent ExecuteModule().
+        functionData.setRootTarget(evalCallTarget);
+        functionData.setCallTarget(evalCallTarget);
+        functionData.setConstructTarget(linkCallTarget);
+        functionData.setConstructNewTarget(linkCallTarget); // unused
+
+        return linkRoot;
+    }
+
     public ConstructorRootNode createConstructorRootNode(JSFunctionData functionData, CallTarget callTarget, boolean newTarget) {
         return ConstructorRootNode.create(functionData, callTarget, newTarget);
     }
@@ -1090,6 +1111,10 @@ public class NodeFactory {
 
     public JavaScriptNode createModuleBody(JavaScriptNode moduleBody) {
         return ModuleBodyNode.create(moduleBody);
+    }
+
+    public JavaScriptNode createModuleInitializeEnvironment(JavaScriptNode moduleBody) {
+        return ModuleInitializeEnvironmentNode.create(moduleBody);
     }
 
     public JavaScriptNode createModuleYield() {

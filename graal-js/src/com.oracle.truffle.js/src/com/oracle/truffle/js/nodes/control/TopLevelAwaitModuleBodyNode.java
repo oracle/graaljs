@@ -180,9 +180,10 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        JSModuleRecord moduleRecord = (JSModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
+        Object[] arguments = frame.getArguments();
+        JSModuleRecord moduleRecord = (JSModuleRecord) JSArguments.getUserArgument(arguments, 0);
         MaterializedFrame moduleFrame = moduleRecord.getEnvironment() != null ? JSFrameUtil.castMaterializedFrame(moduleRecord.getEnvironment()) : frame.materialize();
-        PromiseCapabilityRecord promiseCapability = (PromiseCapabilityRecord) JSArguments.getUserArgument(frame.getArguments(), 1);
+        PromiseCapabilityRecord promiseCapability = (JSArguments.getUserArgumentCount(arguments) >= 2 ? (PromiseCapabilityRecord) JSArguments.getUserArgument(arguments, 1) : null);
         ensureAsyncCallTargetInitialized();
         if (promiseCapability != null) {
             writeAsyncContextNode.executeWrite(moduleFrame, AsyncRootNode.createAsyncContext(resumptionTarget, promiseCapability, moduleFrame));
