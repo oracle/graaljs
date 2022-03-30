@@ -429,7 +429,7 @@ public final class GraalJSEvaluator implements JSParser {
             }
         };
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), callTarget, 0, "");
+        JSFunctionData functionData = JSFunctionData.create(realm.getContext(), callTarget, callTarget, 0, "", false, false, true, true);
         final JSModuleData parseModule = new JSModuleData(moduleNode, source, functionData, frameDescriptor);
         return new JSModuleRecord(parseModule, realm.getModuleLoader(), hostDefined);
     }
