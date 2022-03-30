@@ -1328,7 +1328,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @TruffleBoundary
-        private DynamicObject constructTemporalTimeZoneIntl(DynamicObject newTarget, TruffleString id) {
+        private DynamicObject constructTemporalTimeZoneIntl(DynamicObject newTarget, TruffleString idParam) {
+            TruffleString id = idParam;
             boolean canParse = TemporalUtil.canParseAsTimeZoneNumericUTCOffset(id);
             if (!canParse) {
                 if (!TemporalUtil.isValidTimeZoneName(id)) {

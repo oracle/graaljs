@@ -121,8 +121,8 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
         @Specialization
         protected int compare(Object one, Object two,
                         @Cached("create(getContext())") ToTemporalYearMonthNode toTemporalYearMonthNode) {
-            JSTemporalPlainYearMonthObject oneYM = (JSTemporalPlainYearMonthObject) toTemporalYearMonthNode.executeDynamicObject(one, Undefined.instance);
-            JSTemporalPlainYearMonthObject twoYM = (JSTemporalPlainYearMonthObject) toTemporalYearMonthNode.executeDynamicObject(two, Undefined.instance);
+            JSTemporalPlainYearMonthObject oneYM = toTemporalYearMonthNode.executeDynamicObject(one, Undefined.instance);
+            JSTemporalPlainYearMonthObject twoYM = toTemporalYearMonthNode.executeDynamicObject(two, Undefined.instance);
             return TemporalUtil.compareISODate(oneYM.getYear(), oneYM.getMonth(), oneYM.getDay(), twoYM.getYear(), twoYM.getMonth(), twoYM.getDay());
         }
 

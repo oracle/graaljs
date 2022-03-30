@@ -94,7 +94,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
                     TemporalUtil.Unit unit, TemporalUtil.RoundingMode roundingMode, DynamicObject relTo);
 
     @Specialization
-    protected JSTemporalDurationRecord add(double y, double m, double w, double d, double h, double min,
+    protected JSTemporalDurationRecord add(double years, double months, double weeks, double d, double h, double min,
                     double sec, double milsec, double micsec, double nsec, double increment,
                     TemporalUtil.Unit unit, TemporalUtil.RoundingMode roundingMode, DynamicObject relTo,
                     @Cached("createBinaryProfile()") ConditionProfile hasRelativeTo,
@@ -102,9 +102,6 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
                     @Cached("createIdentityProfile()") ValueProfile unitValueProfile,
                     @Cached("createKeys(ctx)") EnumerableOwnPropertyNamesNode namesNode,
                     @Cached("create(ctx)") ToTemporalDateNode toTemporalDateNode) {
-        double years = y;
-        double months = m;
-        double weeks = w;
         double days = d;
         double hours = h;
         double minutes = min;
@@ -174,7 +171,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         throw Errors.shouldNotReachHere();
     }
 
-    private JSTemporalDurationRecord getUnitNanosecond(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double months, final double weeks, final double days,
+    private static JSTemporalDurationRecord getUnitNanosecond(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double months, final double weeks, final double days,
                     final double hours, final double minutes, final double seconds, final double microseconds, final double milliseconds, final double nanosecondsP) {
         double nanoseconds = nanosecondsP;
         double remainder = nanoseconds;
@@ -183,7 +180,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         return JSTemporalDurationRecord.createWeeksRemainder(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, remainder);
     }
 
-    private JSTemporalDurationRecord getUnitMicrosecond(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double months, final double weeks, final double days,
+    private static JSTemporalDurationRecord getUnitMicrosecond(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double months, final double weeks, final double days,
                     final double hours, final double minutes, final double seconds, final double microsecondsP, final double milliseconds, final double nanoseconds) {
         double microseconds = microsecondsP;
         double fractionalMicroseconds = (nanoseconds * 0.001) + microseconds;
@@ -192,7 +189,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         return JSTemporalDurationRecord.createWeeksRemainder(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, 0, remainder);
     }
 
-    private JSTemporalDurationRecord getUnitMillisecond(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double months, final double weeks, final double days,
+    private static JSTemporalDurationRecord getUnitMillisecond(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double months, final double weeks, final double days,
                     final double hours, final double minutes, final double seconds, final double microseconds, final double millisecondsP, final double nanoseconds) {
         double milliseconds = millisecondsP;
         double fractionalMilliseconds = (nanoseconds * 0.000_001) + (microseconds * 0.001) + milliseconds;
@@ -201,7 +198,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         return JSTemporalDurationRecord.createWeeksRemainder(years, months, weeks, days, hours, minutes, seconds, milliseconds, 0, 0, remainder);
     }
 
-    private JSTemporalDurationRecord getUnitMinute(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double months, final double weeks, final double days,
+    private static JSTemporalDurationRecord getUnitMinute(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double months, final double weeks, final double days,
                     final double hours, final double minutesP, BigDecimal fractionalSeconds) {
         double minutes = minutesP;
         double secondsPart = TemporalUtil.roundDurationFractionalDecondsDiv60(fractionalSeconds);
@@ -211,7 +208,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         return JSTemporalDurationRecord.createWeeksRemainder(years, months, weeks, days, hours, minutes, 0, 0, 0, 0, remainder);
     }
 
-    private JSTemporalDurationRecord getUnitHour(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double months, final double weeks, final double days,
+    private static JSTemporalDurationRecord getUnitHour(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double months, final double weeks, final double days,
                     final double hoursP, final double minutes, BigDecimal fractionalSeconds) {
         double hours = hoursP;
         double secondsPart = TemporalUtil.roundDurationFractionalDecondsDiv60(fractionalSeconds);
@@ -221,7 +218,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         return JSTemporalDurationRecord.createWeeksRemainder(years, months, weeks, days, hours, 0, 0, 0, 0, 0, remainder);
     }
 
-    private JSTemporalDurationRecord getUnitDay(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double months, final double weeks, final double daysP,
+    private static JSTemporalDurationRecord getUnitDay(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double months, final double weeks, final double daysP,
                     final double hours, final double minutes, final double seconds, final double microseconds, final double milliseconds, final double nanoseconds) {
         double fractionalDays = daysP;
         double days = TemporalUtil.roundNumberToIncrement(daysP, increment, roundingMode);
@@ -230,10 +227,11 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
     }
 
     private JSTemporalDurationRecord getUnitWeek(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double months, final double weeksP, final double daysP,
-                    final double hours, final double minutes, final double seconds, final double microseconds, final double milliseconds, final double nanoseconds, DynamicObject relativeTo,
+                    final double hours, final double minutes, final double seconds, final double microseconds, final double milliseconds, final double nanoseconds, DynamicObject relativeToP,
                     DynamicObject calendar) {
         double weeks = weeksP;
         double days = daysP;
+        DynamicObject relativeTo = relativeToP;
 
         double sign = (days >= 0) ? 1 : -1;
         DynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(ctx, 0, 0, sign, 0, 0, 0, 0, 0, 0, 0);
@@ -254,10 +252,11 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
     }
 
     private JSTemporalDurationRecord getUnitMonth(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double monthsP, final double weeks, final double daysP,
-                    final double hours, final double minutes, final double seconds, final double microseconds, final double milliseconds, final double nanoseconds, DynamicObject relativeTo,
+                    final double hours, final double minutes, final double seconds, final double microseconds, final double milliseconds, final double nanoseconds, DynamicObject relativeToP,
                     DynamicObject calendar) {
         double months = monthsP;
         double days = daysP;
+        DynamicObject relativeTo = relativeToP;
 
         DynamicObject yearsMonths = JSTemporalDuration.createTemporalDuration(ctx, years, months, 0, 0, 0, 0, 0, 0, 0, 0);
         Object dateAdd = JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);
@@ -288,7 +287,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private JSTemporalDurationRecord getUnitSecond(double increment, TemporalUtil.RoundingMode roundingMode, double years, double months, double weeks, double days, double hours, double minutes,
+    private static JSTemporalDurationRecord getUnitSecond(double increment, TemporalUtil.RoundingMode roundingMode, double years, double months, double weeks, double days, double hours, double minutes,
                     BigDecimal fractionalSeconds) {
         double seconds = TemporalUtil.bitod(TemporalUtil.roundNumberToIncrement(fractionalSeconds, new BigDecimal(increment), roundingMode));
         double remainder = TemporalUtil.roundDurationFractionalSecondsSubtract(seconds, fractionalSeconds);
@@ -296,10 +295,11 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
     }
 
     private JSTemporalDurationRecord getUnitYear(final double increment, TemporalUtil.RoundingMode roundingMode, final double yearsP, final double months, final double weeks, final double daysP,
-                    final double hours, final double minutes, final double seconds, final double microseconds, final double milliseconds, final double nanoseconds, DynamicObject relativeTo,
+                    final double hours, final double minutes, final double seconds, final double microseconds, final double milliseconds, final double nanoseconds, DynamicObject relativeToP,
                     DynamicObject calendar) {
         double years = yearsP;
         double days = daysP;
+        DynamicObject relativeTo = relativeToP;
 
         DynamicObject yearsDuration = JSTemporalDuration.createTemporalDuration(ctx, years, 0, 0, 0, 0, 0, 0, 0, 0, 0, errorBranch);
         Object dateAdd = JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);
@@ -340,7 +340,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private double calculateDays(double days, JSTemporalNanosecondsDaysRecord result) {
+    private static double calculateDays(double days, JSTemporalNanosecondsDaysRecord result) {
         return days + TemporalUtil.bitod(result.getDays().add(result.getNanoseconds().divide(result.getDayLength().abs())));
     }
 

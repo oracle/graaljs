@@ -102,7 +102,6 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
                     @Cached BranchProfile relativeToPlainDateBranch,
                     @Cached BranchProfile relativeToZonedDateTimeBranch,
                     @Cached("createBinaryProfile()") ConditionProfile largetUnitYMWDProfile,
-                    @Cached("createBinaryProfile()") ConditionProfile isFallbackProfile,
                     @Cached("createKeys(ctx)") EnumerableOwnPropertyNamesNode namesNode) {
         assert doubleIsInteger(y1) && doubleIsInteger(mon1) && doubleIsInteger(w1) && doubleIsInteger(d1);
         assert doubleIsInteger(h1) && doubleIsInteger(min1) && doubleIsInteger(s1) && doubleIsInteger(ms1) && doubleIsInteger(mus1) && doubleIsInteger(ns1);

@@ -129,8 +129,13 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
         }
     }
 
-    private JSTemporalDurationRecord unitIsDay(long years, long months, long weeks, long days, DynamicObject relativeTo, long sign, DynamicObject oneYear,
+    private JSTemporalDurationRecord unitIsDay(long yearsP, long monthsP, long weeksP, long daysP, DynamicObject relativeToP, long sign, DynamicObject oneYear,
                     DynamicObject oneMonth, DynamicObject oneWeek, DynamicObject calendar) {
+        long years = yearsP;
+        long months = monthsP;
+        long weeks = weeksP;
+        long days = daysP;
+        DynamicObject relativeTo = relativeToP;
         if (years != 0 || months != 0 || weeks != 0) {
             if (calendar == Undefined.instance) {
                 errorBranch.enter();
@@ -161,8 +166,12 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
         return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
     }
 
-    private JSTemporalDurationRecord unitIsWeek(long years, long months, long weeks, long days, DynamicObject relativeTo, long sign, DynamicObject oneYear,
+    private JSTemporalDurationRecord unitIsWeek(long yearsP, long monthsP, long weeks, long daysP, DynamicObject relativeToP, long sign, DynamicObject oneYear,
                     DynamicObject oneMonth, DynamicObject calendar) {
+        long years = yearsP;
+        long months = monthsP;
+        long days = daysP;
+        DynamicObject relativeTo = relativeToP;
         if (calendar == Undefined.instance) {
             errorBranch.enter();
             throw Errors.createRangeError("Calendar should not be undefined.");
@@ -184,8 +193,11 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
         return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
     }
 
-    private JSTemporalDurationRecord unitIsMonth(long years, long months, long weeks, long days, DynamicObject relativeTo, long sign, DynamicObject oneYear,
+    private JSTemporalDurationRecord unitIsMonth(long yearsP, long monthsP, long weeks, long days, DynamicObject relativeToP, long sign, DynamicObject oneYear,
                     DynamicObject calendar) {
+        long years = yearsP;
+        long months = monthsP;
+        DynamicObject relativeTo = relativeToP;
         if (calendar == Undefined.instance) {
             errorBranch.enter();
             throw Errors.createRangeError("No calendar provided.");

@@ -122,7 +122,11 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
         }
     }
 
-    private JSTemporalDurationRecord getUnitYear(long years, long months, long weeks, long days, long sign, DynamicObject oneYear, DynamicObject oneMonth, DynamicObject relativeTo, DynamicObject calendar) {
+    private JSTemporalDurationRecord getUnitYear(long yearsP, long monthsP, long weeks, long daysP, long sign, DynamicObject oneYear, DynamicObject oneMonth, DynamicObject relativeToP, DynamicObject calendar) {
+        long years = yearsP;
+        long months = monthsP;
+        long days = daysP;
+        DynamicObject relativeTo = relativeToP;
         JSTemporalRelativeDateRecord moveResult = moveRelativeDate(calendar, relativeTo, oneYear);
         relativeTo = moveResult.getRelativeTo();
         long oneYearDays = moveResult.getDays();
@@ -169,7 +173,10 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
         return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
     }
 
-    private JSTemporalDurationRecord getUnitMonth(long years, long months, long weeks, long days, long sign, DynamicObject oneMonth, DynamicObject relativeTo, DynamicObject calendar) {
+    private JSTemporalDurationRecord getUnitMonth(long years, long monthsP, long weeks, long daysP, long sign, DynamicObject oneMonth, DynamicObject relativeToP, DynamicObject calendar) {
+        long months = monthsP;
+        long days = daysP;
+        DynamicObject relativeTo = relativeToP;
         JSTemporalRelativeDateRecord moveResult = moveRelativeDate(calendar, relativeTo, oneMonth);
         relativeTo = moveResult.getRelativeTo();
         long oneMonthDays = moveResult.getDays();
@@ -183,7 +190,10 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
         return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
     }
 
-    private JSTemporalDurationRecord getUnitWeek(TemporalUtil.Unit largestUnit, long years, long months, long weeks, long days, long sign, DynamicObject oneWeek, DynamicObject relativeTo, DynamicObject calendar) {
+    private JSTemporalDurationRecord getUnitWeek(TemporalUtil.Unit largestUnit, long years, long months, long weeksP, long daysP, long sign, DynamicObject oneWeek, DynamicObject relativeToP, DynamicObject calendar) {
+        long weeks = weeksP;
+        long days = daysP;
+        DynamicObject relativeTo = relativeToP;
         assert largestUnit == TemporalUtil.Unit.WEEK;
         JSTemporalRelativeDateRecord moveResult = moveRelativeDate(calendar, relativeTo, oneWeek);
         relativeTo = moveResult.getRelativeTo();
