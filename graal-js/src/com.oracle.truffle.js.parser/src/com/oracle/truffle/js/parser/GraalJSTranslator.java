@@ -1409,22 +1409,23 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode transformStatements(List<Statement> blockStatements, boolean terminal, boolean expressionBlock, JavaScriptNode[] statements, int destPos) {
         int pos = destPos;
         int lastNonEmptyIndex = -1;
+        boolean returnsLastStatementResult = currentFunction().returnsLastStatementResult();
         for (int i = 0; i < blockStatements.size(); i++) {
             Statement statement = blockStatements.get(i);
             JavaScriptNode statementNode = transformStatementInBlock(statement);
-            if (currentFunction().returnsLastStatementResult()) {
-                if (!statement.isCompletionValueNeverEmpty()) {
+            if (returnsLastStatementResult) {
+                if (statement.isCompletionValueNeverEmpty()) {
+                    lastNonEmptyIndex = pos;
+                } else {
                     if (lastNonEmptyIndex >= 0) {
                         statements[lastNonEmptyIndex] = wrapSetCompletionValue(statements[lastNonEmptyIndex]);
                         lastNonEmptyIndex = -1;
                     }
-                } else {
-                    lastNonEmptyIndex = pos;
                 }
             }
             statements[pos++] = statementNode;
         }
-        if (currentFunction().returnsLastStatementResult() && lastNonEmptyIndex >= 0) {
+        if (returnsLastStatementResult && lastNonEmptyIndex >= 0) {
             statements[lastNonEmptyIndex] = wrapSetCompletionValue(statements[lastNonEmptyIndex]);
         }
 
