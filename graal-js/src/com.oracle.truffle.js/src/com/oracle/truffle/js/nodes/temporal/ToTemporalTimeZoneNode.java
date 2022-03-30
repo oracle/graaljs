@@ -65,6 +65,8 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class ToTemporalTimeZoneNode extends JavaScriptBaseNode {
 
+    private final ConditionProfile parseNameEmpty = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile parseIsZ = ConditionProfile.createBinaryProfile();
     private final ConditionProfile isObjectProfile = ConditionProfile.createBinaryProfile();
     private final ConditionProfile isTimeZoneProfile = ConditionProfile.createBinaryProfile();
     private final ConditionProfile hasProperty1Profile = ConditionProfile.createBinaryProfile();
@@ -103,7 +105,7 @@ public abstract class ToTemporalTimeZoneNode extends JavaScriptBaseNode {
         }
         TruffleString identifier = toStringNode.executeString(temporalTimeZoneLike);
         JSTemporalTimeZoneRecord parseResult = TemporalUtil.parseTemporalTimeZoneString(identifier);
-        if (parseResult.getName() != null) {
+        if (parseNameEmpty.profile(parseResult.getName() != null)) {
             boolean canParse = TemporalUtil.canParseAsTimeZoneNumericUTCOffset(parseResult.getName());
             if (canParse) {
                 if (parseResult.getOffsetString() != null && TemporalUtil.parseTimeZoneOffsetString(parseResult.getOffsetString()) != TemporalUtil.parseTimeZoneOffsetString(parseResult.getName())) {
@@ -118,7 +120,7 @@ public abstract class ToTemporalTimeZoneNode extends JavaScriptBaseNode {
             }
             return TemporalUtil.createTemporalTimeZone(ctx, TemporalUtil.canonicalizeTimeZoneName(parseResult.getName()));
         }
-        if (parseResult.isZ()) {
+        if (parseIsZ.profile(parseResult.isZ())) {
             return TemporalUtil.createTemporalTimeZone(ctx, UTC);
         }
         return TemporalUtil.createTemporalTimeZone(ctx, parseResult.getOffsetString());

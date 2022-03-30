@@ -69,15 +69,6 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Calendar.prototype");
     public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.Calendar");
 
-    public static final TruffleString DAY_OF_WEEK = Strings.constant("dayOfWeek");
-    public static final TruffleString DAY_OF_YEAR = Strings.constant("dayOfYear");
-    public static final TruffleString WEEK_OF_YEAR = Strings.constant("weekOfYear");
-    public static final TruffleString DAYS_IN_WEEK = Strings.constant("daysInWeek");
-    public static final TruffleString DAYS_IN_MONTH = Strings.constant("daysInMonth");
-    public static final TruffleString DAYS_IN_YEAR = Strings.constant("daysInYear");
-    public static final TruffleString MONTHS_IN_YEAR = Strings.constant("monthsInYear");
-    public static final TruffleString IN_LEAP_YEAR = Strings.constant("inLeapYear");
-
     private JSTemporalCalendar() {
     }
 
