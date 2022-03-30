@@ -1248,6 +1248,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 // Therefore, we need to create and tag the body block without the prolog.
                 blockNode = transformStatements(blockStatements, block.isTerminal(), block.isExpressionBlock() || block.isParameterBlock());
 
+                if (block.isModuleBody()) {
+                    blockNode = splitModuleBodyAtYield(blockNode, scopeInit);
+                }
+
                 FunctionNode function = lc.getCurrentFunction();
                 blockNode = handleFunctionReturn(function, blockNode);
                 if (currentFunction.isDerivedConstructor()) {
@@ -1370,6 +1374,32 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 declarations.add(factory.createResolveNamedImport(context, thisModule, moduleRequest, importEntry.getImportName(), writeLocalNode));
             }
         }
+    }
+
+    /**
+     * Moves all statements up to, and including, module yield to scopeInit and returns a new body.
+     * This ensures a flat block up to the yield, followed by a RootBody-tagged (block) node.
+     */
+    private JavaScriptNode splitModuleBodyAtYield(JavaScriptNode blockNode, List<JavaScriptNode> scopeInit) {
+        if (blockNode instanceof SequenceNode) {
+            JavaScriptNode[] statements = ((SequenceNode) blockNode).getStatements();
+            for (int i = 0; i < statements.length; i++) {
+                JavaScriptNode statement = statements[i];
+                if (isModuleYieldStatement(statement)) {
+                    scopeInit.addAll(Arrays.asList(statements).subList(0, i + 1));
+                    return factory.createExprBlock(Arrays.copyOfRange(statements, i + 1, statements.length));
+                }
+            }
+        } else if (isModuleYieldStatement(blockNode)) {
+            scopeInit.add(blockNode);
+            return factory.createEmpty();
+        }
+        // If yield has not been found (unexpected), keep everything as it is.
+        return blockNode;
+    }
+
+    private static boolean isModuleYieldStatement(JavaScriptNode statement) {
+        return statement instanceof ModuleYieldNode || (statement instanceof JSWriteFrameSlotNode && ((JSWriteFrameSlotNode) statement).getRhs() instanceof ModuleYieldNode);
     }
 
     /**
