@@ -94,6 +94,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarFieldsNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalDurationAddNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalMonthDayFromFieldsNode;
@@ -306,13 +307,13 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
     public abstract static class JSTemporalZonedDateTimeGetterNode extends JSBuiltinNode {
 
         public final TemporalZonedDateTimePrototype property;
+        @Child private TemporalCalendarGetterNode calendarGetterNode;
 
         public JSTemporalZonedDateTimeGetterNode(JSContext context, JSBuiltin builtin, TemporalZonedDateTimePrototype property) {
             super(context, builtin);
             this.property = property;
         }
 
-        @TruffleBoundary
         @Specialization(guards = "isJSTemporalZonedDateTime(thisObj)")
         protected Object zonedDateTimeGetter(Object thisObj) {
             JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) thisObj;
@@ -342,8 +343,23 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                     return getterCalendarDetails(zdt);
 
                 case hoursInDay:
-                    return getterHoursInDay(zdt);
+                case epochSeconds:
+                case epochMilliseconds:
+                case epochMicroseconds:
+                case epochNanoseconds:
+                case offsetNanoseconds:
+                case offset:
+                    return zonedDateTimeGetterIntl(zdt);
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw Errors.shouldNotReachHere();
+        }
 
+        @TruffleBoundary
+        protected Object zonedDateTimeGetterIntl(JSTemporalZonedDateTimeObject zdt) {
+            switch (property) {
+                case hoursInDay:
+                    return getterHoursInDay(zdt);
                 case epochSeconds:
                     return getterEpoch(zdt, BigInt.valueOf(1_000_000_000L)).bigIntegerValue().longValue();
                 case epochMilliseconds:
@@ -356,7 +372,6 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                     return getterOffsetNanoseconds(zdt);
                 case offset:
                     return getterOffset(zdt);
-
             }
             CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
@@ -398,18 +413,22 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         private Object getterCalendarDetails(JSTemporalZonedDateTimeObject zdt) {
             DynamicObject timeZone = zdt.getTimeZone();
-            JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), zdt.getNanoseconds());
+            JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), getRealm(), zdt.getNanoseconds());
             DynamicObject calendar = zdt.getCalendar();
             JSTemporalPlainDateTimeObject tdt = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), timeZone, instant, calendar);
+            if (calendarGetterNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                calendarGetterNode = insert(TemporalCalendarGetterNode.create(getContext()));
+            }
             switch (property) {
                 case year:
-                    return TemporalUtil.calendarYear(calendar, tdt);
+                    return TemporalUtil.calendarYear(calendarGetterNode, calendar, tdt);
                 case month:
-                    return TemporalUtil.calendarMonth(calendar, tdt);
+                    return TemporalUtil.calendarMonth(calendarGetterNode, calendar, tdt);
                 case monthCode:
-                    return TemporalUtil.calendarMonthCode(calendar, tdt);
+                    return TemporalUtil.calendarMonthCode(calendarGetterNode, calendar, tdt);
                 case day:
-                    return TemporalUtil.calendarDay(calendar, tdt);
+                    return TemporalUtil.calendarDay(calendarGetterNode, calendar, tdt);
                 case hour:
                     return tdt.getHour();
                 case minute:
@@ -423,21 +442,21 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case nanosecond:
                     return tdt.getNanosecond();
                 case dayOfWeek:
-                    return TemporalUtil.calendarDayOfWeek(calendar, tdt);
+                    return TemporalUtil.calendarDayOfWeek(calendarGetterNode, calendar, tdt);
                 case dayOfYear:
-                    return TemporalUtil.calendarDayOfYear(calendar, tdt);
+                    return TemporalUtil.calendarDayOfYear(calendarGetterNode, calendar, tdt);
                 case weekOfYear:
-                    return TemporalUtil.calendarWeekOfYear(calendar, tdt);
+                    return TemporalUtil.calendarWeekOfYear(calendarGetterNode, calendar, tdt);
                 case daysInWeek:
-                    return TemporalUtil.calendarWeekOfYear(calendar, tdt);
+                    return TemporalUtil.calendarWeekOfYear(calendarGetterNode, calendar, tdt);
                 case daysInMonth:
-                    return TemporalUtil.calendarDaysInMonth(calendar, tdt);
+                    return TemporalUtil.calendarDaysInMonth(calendarGetterNode, calendar, tdt);
                 case daysInYear:
-                    return TemporalUtil.calendarDaysInYear(calendar, tdt);
+                    return TemporalUtil.calendarDaysInYear(calendarGetterNode, calendar, tdt);
                 case monthsInYear:
-                    return TemporalUtil.calendarMonthsInYear(calendar, tdt);
+                    return TemporalUtil.calendarMonthsInYear(calendarGetterNode, calendar, tdt);
                 case inLeapYear:
-                    return TemporalUtil.calendarInLeapYear(calendar, tdt);
+                    return TemporalUtil.calendarInLeapYear(calendarGetterNode, calendar, tdt);
             }
             CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();

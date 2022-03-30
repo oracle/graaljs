@@ -79,6 +79,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarFieldsNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalYearMonthFromFieldsNode;
@@ -204,25 +205,26 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         }
 
         @Specialization(guards = "isJSTemporalYearMonth(thisObj)")
-        protected Object dateGetter(Object thisObj) {
+        protected Object dateGetter(Object thisObj,
+                        @Cached("create(getContext())") TemporalCalendarGetterNode calendarGetterNode) {
             JSTemporalPlainYearMonthObject temporalYM = (JSTemporalPlainYearMonthObject) thisObj;
             switch (property) {
                 case calendar:
                     return temporalYM.getCalendar();
                 case year:
-                    return TemporalUtil.calendarYear(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarYear(calendarGetterNode, temporalYM.getCalendar(), temporalYM);
                 case month:
-                    return TemporalUtil.calendarMonth(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarMonth(calendarGetterNode, temporalYM.getCalendar(), temporalYM);
                 case monthCode:
-                    return TemporalUtil.calendarMonthCode(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarMonthCode(calendarGetterNode, temporalYM.getCalendar(), temporalYM);
                 case daysInYear:
-                    return TemporalUtil.calendarDaysInYear(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarDaysInYear(calendarGetterNode, temporalYM.getCalendar(), temporalYM);
                 case daysInMonth:
-                    return TemporalUtil.calendarDaysInMonth(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarDaysInMonth(calendarGetterNode, temporalYM.getCalendar(), temporalYM);
                 case monthsInYear:
-                    return TemporalUtil.calendarMonthsInYear(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarMonthsInYear(calendarGetterNode, temporalYM.getCalendar(), temporalYM);
                 case inLeapYear:
-                    return TemporalUtil.calendarInLeapYear(temporalYM.getCalendar(), temporalYM);
+                    return TemporalUtil.calendarInLeapYear(calendarGetterNode, temporalYM.getCalendar(), temporalYM);
             }
             CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
@@ -398,7 +400,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached("create(getContext())") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
                         @Cached("create(getContext())") TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
-                        @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode) {
+                        @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode,
+                        @Cached("create(getContext())") TemporalCalendarGetterNode calendarGetterNode) {
             JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
 
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
@@ -410,7 +413,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
             int day = 0;
             if (sign < 0) {
-                Object dayFromCalendar = TemporalUtil.calendarDaysInMonth(calendar, ym);
+                Object dayFromCalendar = TemporalUtil.calendarDaysInMonth(calendarGetterNode, calendar, ym);
                 day = TemporalUtil.toPositiveIntegerConstrainInt(dayFromCalendar);
             } else {
                 day = 1;
@@ -435,7 +438,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached("create(getContext())") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
                         @Cached("create(getContext())") TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
-                        @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode) {
+                        @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode,
+                        @Cached("create(getContext())") TemporalCalendarGetterNode calendarGetterNode) {
             JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
 
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
@@ -448,7 +452,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
             int day = 0;
             if (sign < 0) {
-                day = TemporalUtil.toPositiveIntegerConstrainInt(TemporalUtil.calendarDaysInMonth(calendar, ym));
+                day = TemporalUtil.toPositiveIntegerConstrainInt(TemporalUtil.calendarDaysInMonth(calendarGetterNode, calendar, ym));
             } else {
                 day = 1;
             }

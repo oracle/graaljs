@@ -121,6 +121,7 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalDurationAddNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarNode;
@@ -1606,14 +1607,6 @@ public final class TemporalUtil {
         return Boundaries.equals(toStringNode.executeString(one), toStringNode.executeString(two));
     }
 
-    public static Object dayOfWeek(DynamicObject calendar, DynamicObject dt) {
-        return calendarDayOfWeek(calendar, dt);
-    }
-
-    public static Object dayOfYear(DynamicObject calendar, DynamicObject dt) {
-        return calendarDayOfYear(calendar, dt);
-    }
-
     public static void rejectTemporalCalendarType(DynamicObject obj, BranchProfile errorBranch) {
         if (obj instanceof JSTemporalPlainDateObject || obj instanceof JSTemporalPlainDateTimeObject || obj instanceof JSTemporalPlainMonthDayObject ||
                         obj instanceof JSTemporalPlainTimeObject || obj instanceof JSTemporalPlainYearMonthObject || isTemporalZonedDateTime(obj)) {
@@ -2579,6 +2572,7 @@ public final class TemporalUtil {
         return builtinTimeZoneGetPlainDateTimeFor(ctx, timeZone, instant, calendar);
     }
 
+    @TruffleBoundary
     public static JSTemporalPlainDateTimeObject builtinTimeZoneGetPlainDateTimeFor(JSContext ctx, DynamicObject timeZone, DynamicObject instant, DynamicObject calendar) {
         long offsetNanoseconds = getOffsetNanosecondsFor(timeZone, instant);
         JSTemporalDateTimeRecord result = getISOPartsFromEpoch(((JSTemporalInstantObject) instant).getNanoseconds());
@@ -2836,10 +2830,6 @@ public final class TemporalUtil {
     public static Disambiguation toTemporalDisambiguation(DynamicObject options, TemporalGetOptionNode getOptionNode, TruffleString.EqualNode equalNode) {
         return toDisambiguation((TruffleString) getOptionNode.execute(options, DISAMBIGUATION, OptionType.STRING, listDisambiguation, COMPATIBLE), equalNode);
     }
-
-    /**
-     * Note there also is {@link ToTemporalZonedDateTimeNode}.
-     */
 
     public static OffsetOption toTemporalOffset(DynamicObject options, TruffleString fallback, TemporalGetOptionNode getOptionNode, TruffleString.EqualNode equalNode) {
         return toOffsetOption((TruffleString) getOptionNode.execute(options, OFFSET, OptionType.STRING, listOffset, fallback), equalNode);
@@ -3275,85 +3265,52 @@ public final class TemporalUtil {
         return true;
     }
 
-    private static Object executeFunction(DynamicObject obj, TruffleString fnName, Object... funcArgs) {
-        DynamicObject fn = (DynamicObject) JSObject.getMethod(obj, fnName);
-        return JSRuntime.call(fn, obj, funcArgs);
+    public static Number calendarYear(TemporalCalendarGetterNode getterNode, DynamicObject calendar, DynamicObject dateLike) {
+        return getterNode.executeInteger(calendar, dateLike, YEAR);
     }
 
-    // 12.1.9
-    public static Number calendarYear(DynamicObject calendar, DynamicObject dateLike) {
-        Object result = executeFunction(calendar, YEAR, dateLike);
-        if (result == Undefined.instance) {
-            throw Errors.createRangeError("expected year value.");
-        }
-        return TemporalUtil.toIntegerThrowOnInfinity(result);
+    public static Number calendarMonth(TemporalCalendarGetterNode getterNode, DynamicObject calendar, DynamicObject dateLike) {
+        return getterNode.executeInteger(calendar, dateLike, MONTH);
     }
 
-    // 12.1.10
-    public static Number calendarMonth(DynamicObject calendar, DynamicObject dateLike) {
-        Object result = executeFunction(calendar, MONTH, dateLike);
-        if (result == Undefined.instance) {
-            throw Errors.createRangeError("expected month value.");
-        }
-        return TemporalUtil.toIntegerThrowOnInfinity(result);
+    public static TruffleString calendarMonthCode(TemporalCalendarGetterNode getterNode, DynamicObject calendar, DynamicObject dateLike) {
+        return getterNode.executeString(calendar, dateLike, MONTH_CODE);
     }
 
-    // 12.1.11
-    public static TruffleString calendarMonthCode(DynamicObject calendar, DynamicObject dateLike) {
-        Object result = executeFunction(calendar, MONTH_CODE, dateLike);
-        if (result == Undefined.instance) {
-            throw Errors.createRangeError("expected monthCode value.");
-        }
-        return JSRuntime.toString(result);
+    public static Number calendarDay(TemporalCalendarGetterNode getterNode, DynamicObject calendar, DynamicObject dateLike) {
+        return getterNode.executeInteger(calendar, dateLike, DAY);
     }
 
-    // 12.1.12
-    public static Number calendarDay(DynamicObject calendar, DynamicObject dateLike) {
-        Object result = executeFunction(calendar, DAY, dateLike);
-        if (result == Undefined.instance) {
-            throw Errors.createRangeError("expected day value.");
-        }
-        return TemporalUtil.toIntegerThrowOnInfinity(result);
+    public static Object calendarDayOfWeek(TemporalCalendarGetterNode getterNode,DynamicObject calendar, DynamicObject dateLike) {
+        return getterNode.executeInteger(calendar, dateLike, TemporalConstants.DAY_OF_WEEK);
     }
 
-    // 12.1.13
-    public static Object calendarDayOfWeek(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, TemporalConstants.DAY_OF_WEEK, dateLike);
+    public static Object calendarDayOfYear(TemporalCalendarGetterNode getterNode,DynamicObject calendar, DynamicObject dateLike) {
+        return getterNode.executeInteger(calendar, dateLike, TemporalConstants.DAY_OF_YEAR);
     }
 
-    // 12.1.14
-    public static Object calendarDayOfYear(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, TemporalConstants.DAY_OF_YEAR, dateLike);
+    public static Object calendarWeekOfYear(TemporalCalendarGetterNode getterNode,DynamicObject calendar, DynamicObject dateLike) {
+        return getterNode.executeInteger(calendar, dateLike, TemporalConstants.WEEK_OF_YEAR);
     }
 
-    // 12.1.15
-    public static Object calendarWeekOfYear(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, TemporalConstants.WEEK_OF_YEAR, dateLike);
+    public static Object calendarDaysInWeek(TemporalCalendarGetterNode getterNode,DynamicObject calendar, DynamicObject dateLike) {
+        return getterNode.executeInteger(calendar, dateLike, TemporalConstants.DAYS_IN_WEEK);
     }
 
-    // 12.1.16
-    public static Object calendarDaysInWeek(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, TemporalConstants.DAYS_IN_WEEK, dateLike);
+    public static Object calendarDaysInMonth(TemporalCalendarGetterNode getterNode,DynamicObject calendar, DynamicObject dateLike) {
+        return getterNode.executeInteger(calendar, dateLike, TemporalConstants.DAYS_IN_MONTH);
     }
 
-    // 12.1.17
-    public static Object calendarDaysInMonth(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, TemporalConstants.DAYS_IN_MONTH, dateLike);
+    public static Object calendarDaysInYear(TemporalCalendarGetterNode getterNode, DynamicObject calendar, DynamicObject dateLike) {
+        return getterNode.execute(calendar, dateLike, TemporalConstants.DAYS_IN_YEAR);
     }
 
-    // 12.1.18
-    public static Object calendarDaysInYear(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, TemporalConstants.DAYS_IN_YEAR, dateLike);
+    public static Object calendarMonthsInYear(TemporalCalendarGetterNode getterNode, DynamicObject calendar, DynamicObject dateLike) {
+        return getterNode.execute(calendar, dateLike, TemporalConstants.MONTHS_IN_YEAR);
     }
 
-    // 12.1.19
-    public static Object calendarMonthsInYear(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, TemporalConstants.MONTHS_IN_YEAR, dateLike);
-    }
-
-    // 12.1.20
-    public static Object calendarInLeapYear(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, TemporalConstants.IN_LEAP_YEAR, dateLike);
+    public static Object calendarInLeapYear(TemporalCalendarGetterNode getterNode, DynamicObject calendar, DynamicObject dateLike) {
+        return getterNode.execute(calendar, dateLike, TemporalConstants.IN_LEAP_YEAR);
     }
 
     // 12.1.38

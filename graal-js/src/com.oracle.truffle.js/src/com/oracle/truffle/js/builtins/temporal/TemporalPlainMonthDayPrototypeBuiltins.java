@@ -68,6 +68,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarFieldsNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalMonthDayFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalMonthDayNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -161,13 +162,14 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization(guards = "isJSTemporalMonthDay(thisObj)")
-        protected Object monthDayGetter(Object thisObj) {
+        protected Object monthDayGetter(Object thisObj,
+                        @Cached("create(getContext())") TemporalCalendarGetterNode calendarGetterNode) {
             JSTemporalPlainMonthDayObject plainMD = (JSTemporalPlainMonthDayObject) thisObj;
             switch (property) {
                 case day:
-                    return TemporalUtil.calendarDay(plainMD.getCalendar(), plainMD);
+                    return TemporalUtil.calendarDay(calendarGetterNode, plainMD.getCalendar(), plainMD);
                 case monthCode:
-                    return TemporalUtil.calendarMonthCode(plainMD.getCalendar(), plainMD);
+                    return TemporalUtil.calendarMonthCode(calendarGetterNode, plainMD.getCalendar(), plainMD);
                 case calendar:
                     return plainMD.getCalendar();
             }

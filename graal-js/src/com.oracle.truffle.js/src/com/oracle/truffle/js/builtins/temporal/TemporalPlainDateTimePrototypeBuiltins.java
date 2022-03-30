@@ -86,6 +86,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarFieldsNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalMonthDayFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
@@ -288,7 +289,8 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization(guards = "isJSTemporalDateTime(thisObj)")
-        protected Object dateTimeGetter(Object thisObj) {
+        protected Object dateTimeGetter(Object thisObj,
+                        @Cached("create(getContext())") TemporalCalendarGetterNode calendarGetterNode) {
             JSTemporalPlainDateTimeObject temporalDT = (JSTemporalPlainDateTimeObject) thisObj;
             switch (property) {
                 case calendar:
@@ -306,29 +308,29 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case nanosecond:
                     return temporalDT.getNanosecond();
                 case year:
-                    return TemporalUtil.calendarYear(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarYear(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case month:
-                    return TemporalUtil.calendarMonth(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarMonth(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case day:
-                    return TemporalUtil.calendarDay(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarDay(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case dayOfWeek:
-                    return TemporalUtil.dayOfWeek(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarDayOfWeek(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case dayOfYear:
-                    return TemporalUtil.dayOfYear(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarDayOfYear(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case monthCode:
-                    return TemporalUtil.calendarMonthCode(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarMonthCode(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case weekOfYear:
-                    return TemporalUtil.calendarWeekOfYear(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarWeekOfYear(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case daysInWeek:
-                    return TemporalUtil.calendarDaysInWeek(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarDaysInWeek(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case daysInMonth:
-                    return TemporalUtil.calendarDaysInMonth(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarDaysInMonth(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case daysInYear:
-                    return TemporalUtil.calendarDaysInYear(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarDaysInYear(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case monthsInYear:
-                    return TemporalUtil.calendarMonthsInYear(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarMonthsInYear(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case inLeapYear:
-                    return TemporalUtil.calendarInLeapYear(temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.calendarInLeapYear(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
 
             }
             CompilerDirectives.transferToInterpreter();
