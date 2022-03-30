@@ -98,6 +98,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                     @Cached("create(ctx)") ToTemporalTimeZoneNode toTemporalTimeZone,
                     @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
                     @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
+                    @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode,
                     @Cached TruffleString.EqualNode equalNode) {
         DynamicObject options = optionsParam;
         assert options != null;
@@ -117,7 +118,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                 return itemObj;
             }
             calendar = getTemporalCalendarNode.executeDynamicObject(itemObj);
-            List<TruffleString> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.listDHMMMMMNSY);
+            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDHMMMMMNSY);
             Boundaries.listAdd(fieldNames, TIME_ZONE);
             Boundaries.listAdd(fieldNames, OFFSET);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.listTimeZone);

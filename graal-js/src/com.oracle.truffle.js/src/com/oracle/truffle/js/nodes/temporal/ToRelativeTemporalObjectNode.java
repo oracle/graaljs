@@ -56,6 +56,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -108,7 +109,9 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                     @Cached("createBinaryProfile()") ConditionProfile valueIsPlainDateTime,
                     @Cached("createBinaryProfile()") ConditionProfile timeZoneAvailable,
                     @Cached JSToStringNode toStringNode,
-                    @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode) {
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
+                    @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode) {
         Object value = getRelativeToNode.getValue(options);
         if (valueIsUndefined.profile(value == Undefined.instance)) {
             return Undefined.instance;
@@ -119,7 +122,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
         Object offset;
         TemporalUtil.OffsetBehaviour offsetBehaviour = TemporalUtil.OffsetBehaviour.OPTION;
         TemporalUtil.MatchBehaviour matchBehaviour = TemporalUtil.MatchBehaviour.MATCH_EXACTLY;
-        if (valueIsObject.profile(JSRuntime.isObject(value))) {
+        if (valueIsObject.profile(isObjectNode.executeBoolean(value))) {
             DynamicObject valueObj = (DynamicObject) value;
             if (valueIsPlainDate.profile(valueObj instanceof JSTemporalPlainDateObject || valueObj instanceof JSTemporalZonedDateTimeObject)) {
                 return valueObj;
@@ -129,7 +132,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                 return JSTemporalPlainDate.create(ctx, pd.getYear(), pd.getMonth(), pd.getDay(), pd.getCalendar(), errorBranch);
             }
             calendar = getTemporalCalendarWithISODefault(valueObj);
-            List<TruffleString> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.listDHMMMMMNSY);
+            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDHMMMMMNSY);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, valueObj, fieldNames, TemporalUtil.listEmpty);
 
             DynamicObject dateOptions = JSOrdinary.createWithNullPrototype(ctx);

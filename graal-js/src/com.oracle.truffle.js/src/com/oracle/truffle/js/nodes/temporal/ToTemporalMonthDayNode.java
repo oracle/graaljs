@@ -102,7 +102,8 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
                     @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToStringNode toStringNode,
                     @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
-                    @Cached("create(ctx)") TemporalMonthDayFromFieldsNode monthDayFromFieldsNode) {
+                    @Cached("create(ctx)") TemporalMonthDayFromFieldsNode monthDayFromFieldsNode,
+                    @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode) {
         DynamicObject options = optParam;
         if (optParam == Undefined.instance) {
             options = JSOrdinary.createWithNullPrototype(ctx);
@@ -126,7 +127,7 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
                 calendarAbsent = (calendarObj == Undefined.instance);
                 calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(calendarObj);
             }
-            List<TruffleString> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.listDMMCY);
+            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDMMCY);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.listEmpty);
 
             if (getMonthNode == null || getMonthCodeNode == null || getYearNode == null) {

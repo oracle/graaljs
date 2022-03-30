@@ -67,6 +67,7 @@ import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalCalendarFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalMonthDayFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalMonthDayNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -230,17 +231,17 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected Object toPlainDate(Object thisObj, Object item,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
+                        @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode) {
             JSTemporalPlainMonthDayObject monthDay = requireTemporalMonthDay(thisObj);
             if (!isObject(item)) {
                 errorBranch.enter();
                 throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
             }
-
             DynamicObject calendar = monthDay.getCalendar();
-            List<TruffleString> receiverFieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.listDMC);
+            List<TruffleString> receiverFieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDMC);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), monthDay, receiverFieldNames, TemporalUtil.listEmpty);
-            List<TruffleString> inputFieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.listY);
+            List<TruffleString> inputFieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listY);
             DynamicObject inputFields = TemporalUtil.prepareTemporalFields(getContext(), (DynamicObject) item, inputFieldNames, TemporalUtil.listEmpty);
             DynamicObject mergedFields = TemporalUtil.calendarMergeFields(getContext(), namesNode, calendar, fields, inputFields);
             List<TruffleString> mergedFieldNames = TemporalUtil.listJoinRemoveDuplicates(receiverFieldNames, inputFieldNames);
@@ -278,7 +279,8 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         protected DynamicObject with(Object thisObj, Object temporalMonthDayLike, Object optParam,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") TemporalMonthDayFromFieldsNode monthDayFromFieldsNode) {
+                        @Cached("create(getContext())") TemporalMonthDayFromFieldsNode monthDayFromFieldsNode,
+                        @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode) {
             JSTemporalPlainMonthDayObject md = requireTemporalMonthDay(thisObj);
             if (!isObject(temporalMonthDayLike)) {
                 errorBranch.enter();
@@ -297,7 +299,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
                 throw TemporalErrors.createTypeErrorUnexpectedTimeZone();
             }
             DynamicObject calendar = md.getCalendar();
-            List<TruffleString> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.listDMMCY);
+            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDMMCY);
             DynamicObject partialMonthDay = TemporalUtil.preparePartialTemporalFields(getContext(), mdLikeObj, fieldNames);
             DynamicObject options = getOptionsObject(optParam);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), md, fieldNames, TemporalUtil.listEmpty);

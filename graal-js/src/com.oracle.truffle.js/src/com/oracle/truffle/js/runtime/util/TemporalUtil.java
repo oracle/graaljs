@@ -1081,19 +1081,6 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static List<TruffleString> calendarFields(JSContext ctx, DynamicObject calendar, List<TruffleString> strings) {
-        Object fields = JSObject.getMethod(calendar, TemporalConstants.FIELDS);
-        if (fields == Undefined.instance) {
-            return strings;
-        } else {
-            JSRealm realm = JSRealm.get(null);
-            DynamicObject fieldsArray = JSArray.createConstant(ctx, realm, strings.toArray(new TruffleString[]{}));
-            fieldsArray = toDynamicObject(JSRuntime.call(fields, calendar, new Object[]{fieldsArray}));
-            return iterableToListOfTypeString(fieldsArray);
-        }
-    }
-
-    @TruffleBoundary
     public static List<TruffleString> iterableToListOfTypeString(DynamicObject items) {
         IteratorRecord iter = JSRuntime.getIterator(items /* , sync */);
         List<TruffleString> values = new ArrayList<>();
