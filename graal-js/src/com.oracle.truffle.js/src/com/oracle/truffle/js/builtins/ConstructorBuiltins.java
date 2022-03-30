@@ -1239,6 +1239,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected DynamicObject constructTemporalPlainYearMonth(DynamicObject newTarget, Object isoYear,
                         Object isoMonth, Object calendarLike, Object refISODay,
+                        @Cached("create()") BranchProfile errorBranch,
                         @Cached("create()") JSToIntegerThrowOnInfinityNode toInteger,
                         @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode) {
 
@@ -1250,7 +1251,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             int m = toInteger.executeIntOrThrow(isoMonth);
             DynamicObject calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(calendarLike);
             int ref = toInteger.executeIntOrThrow(referenceISODay);
-            return swapPrototype(JSTemporalPlainYearMonth.create(getContext(), y, m, calendar, ref), newTarget);
+            return swapPrototype(JSTemporalPlainYearMonth.create(getContext(), y, m, calendar, ref, errorBranch), newTarget);
         }
 
         @Override

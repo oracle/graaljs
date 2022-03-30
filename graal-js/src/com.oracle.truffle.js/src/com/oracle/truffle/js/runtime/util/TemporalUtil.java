@@ -155,7 +155,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeOb
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalRelativeDateRecord;
@@ -1576,13 +1575,6 @@ public final class TemporalUtil {
         return (JSTemporalPlainMonthDayObject) obj;
     }
 
-    public static JSTemporalPlainYearMonthObject requireTemporalYearMonth(Object obj) {
-        if (!(obj instanceof JSTemporalPlainYearMonthObject)) {
-            throw TemporalErrors.createTypeErrorTemporalPlainYearMonthExpected();
-        }
-        return (JSTemporalPlainYearMonthObject) obj;
-    }
-
     public static boolean isTemporalZonedDateTime(Object obj) {
         return JSTemporalZonedDateTime.isJSTemporalZonedDateTime(obj);
     }
@@ -1610,41 +1602,6 @@ public final class TemporalUtil {
         } else {
             return Strings.concatAll(BRACKET_U_CA_EQUALS, id, Strings.BRACKET_CLOSE);
         }
-    }
-
-    @TruffleBoundary
-    public static DynamicObject toTemporalYearMonth(JSContext ctx, JSRealm realm, Object item, DynamicObject optParam, TemporalGetOptionNode getOptionNode) {
-        DynamicObject options = optParam;
-        assert optParam != null;
-        if (optParam == Undefined.instance) {
-            options = JSOrdinary.createWithNullPrototype(ctx);
-        }
-        if (JSRuntime.isObject(item)) {
-            DynamicObject itemObj = (DynamicObject) item;
-            if (JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(itemObj)) {
-                return itemObj;
-            }
-            DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(ctx, realm, itemObj);
-
-            List<TruffleString> fieldNames = TemporalUtil.calendarFields(ctx, calendar, listMMCY);
-            DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, listEmpty);
-            return yearMonthFromFields(calendar, fields, options);
-        }
-        TemporalUtil.toTemporalOverflow(options, getOptionNode);
-
-        TruffleString string = JSRuntime.toString(item);
-        JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalYearMonthString(string);
-        DynamicObject calendar = toTemporalCalendarWithISODefault(ctx, realm, result.getCalendar());
-        DynamicObject result2 = JSTemporalPlainYearMonth.create(ctx, result.getYear(), result.getMonth(), calendar, result.getDay());
-        DynamicObject canonicalYearMonthOptions = JSOrdinary.createWithNullPrototype(ctx);
-        return yearMonthFromFields(calendar, result2, canonicalYearMonthOptions);
-    }
-
-    public static DynamicObject yearMonthFromFields(DynamicObject calendar, DynamicObject fields, DynamicObject options) {
-        assert options != null;
-        Object fn = JSObject.getMethod(calendar, YEAR_MONTH_FROM_FIELDS);
-        Object yearMonth = JSRuntime.call(fn, calendar, new Object[]{fields, options});
-        return requireTemporalYearMonth(yearMonth);
     }
 
     public static DynamicObject monthDayFromFields(DynamicObject calendar, DynamicObject fields, DynamicObject options) {

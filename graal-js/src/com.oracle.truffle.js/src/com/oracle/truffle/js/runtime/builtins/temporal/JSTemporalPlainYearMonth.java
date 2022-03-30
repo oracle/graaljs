@@ -53,6 +53,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltins;
@@ -82,19 +83,23 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
     private JSTemporalPlainYearMonth() {
     }
 
-    public static DynamicObject create(JSContext context, int isoYear, int isoMonth, DynamicObject calendar,
-                    int referenceISODay) {
+    public static DynamicObject create(JSContext context, int isoYear, int isoMonth, DynamicObject calendar, int referenceISODay, BranchProfile errorBranch) {
         if (!TemporalUtil.validateISODate(isoYear, isoMonth, referenceISODay)) {
+            errorBranch.enter();
             throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
         if (!TemporalUtil.isoYearMonthWithinLimits(isoYear, isoMonth)) {
+            errorBranch.enter();
             throw TemporalErrors.createRangeErrorYearMonthOutsideRange();
         }
+        return createIntl(context, isoYear, isoMonth, calendar, referenceISODay);
+    }
 
+    private static DynamicObject createIntl(JSContext context, int isoYear, int isoMonth, DynamicObject calendar, int referenceISODay) {
         JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalPlainYearMonthFactory();
         DynamicObject obj = factory.initProto(new JSTemporalPlainYearMonthObject(factory.getShape(realm), isoYear,
-                        isoMonth, referenceISODay, calendar), realm);
+                isoMonth, referenceISODay, calendar), realm);
         return context.trackAllocation(obj);
     }
 

@@ -40,42 +40,51 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
-
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.GetMethodNode;
+import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
-import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Implementation of ToTemporalCalendarWithISODefault() operation.
+ * Implementation of the Temporal yearMonthFromFields() operation.
  */
-public abstract class ToTemporalCalendarWithISODefaultNode extends JavaScriptBaseNode {
+public abstract class TemporalYearMonthFromFieldsNode extends JavaScriptBaseNode {
 
-    protected final JSContext ctx;
+    protected final BranchProfile errorBranch = BranchProfile.create();
+    @Child private GetMethodNode getMethodYearMonthFromFieldsNode;
+    @Child private JSFunctionCallNode callYearMonthFromFieldsNode;
 
-    protected ToTemporalCalendarWithISODefaultNode(JSContext ctx) {
-        this.ctx = ctx;
+    protected TemporalYearMonthFromFieldsNode(JSContext ctx) {
+        this.getMethodYearMonthFromFieldsNode = GetMethodNode.create(ctx, TemporalUtil.YEAR_MONTH_FROM_FIELDS);
+        this.callYearMonthFromFieldsNode = JSFunctionCallNode.createCall();
     }
 
-    public static ToTemporalCalendarWithISODefaultNode create(JSContext context) {
-        return ToTemporalCalendarWithISODefaultNodeGen.create(context);
+    public static TemporalYearMonthFromFieldsNode create(JSContext ctx) {
+        return TemporalYearMonthFromFieldsNodeGen.create(ctx);
     }
 
-    public abstract DynamicObject executeDynamicObject(Object calendar);
+    public abstract JSTemporalPlainYearMonthObject execute(DynamicObject calendar, DynamicObject fields, DynamicObject options);
 
     @Specialization
-    public DynamicObject toTemporalCalendarWithISODefault(Object calendar,
-                    @Cached("create(ctx)") ToTemporalCalendarNode toTemporalCalendarNode,
-                    @Cached("createBinaryProfile()") ConditionProfile calendarAvailable) {
-        if (calendarAvailable.profile(calendar == null || calendar == Undefined.instance)) {
-            return JSTemporalCalendar.create(ctx, getRealm(), ISO8601);
-        } else {
-            return toTemporalCalendarNode.executeDynamicObject(calendar);
+    protected JSTemporalPlainYearMonthObject yearMonthFromFields(DynamicObject calendar, DynamicObject fields, DynamicObject options) {
+        assert options != null;
+        Object fn = getMethodYearMonthFromFieldsNode.executeWithTarget(calendar);
+        Object yearMonth = callYearMonthFromFieldsNode.executeCall(JSArguments.create(calendar, fn, fields, options));
+        return requireTemporalYearMonth(yearMonth);
+    }
+
+    public JSTemporalPlainYearMonthObject requireTemporalYearMonth(Object obj) {
+        if (!(obj instanceof JSTemporalPlainYearMonthObject)) {
+            errorBranch.enter();
+            throw TemporalErrors.createTypeErrorTemporalPlainYearMonthExpected();
         }
+        return (JSTemporalPlainYearMonthObject) obj;
     }
 }
