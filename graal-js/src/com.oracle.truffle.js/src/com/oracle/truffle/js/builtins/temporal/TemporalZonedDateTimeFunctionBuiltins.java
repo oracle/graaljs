@@ -110,7 +110,7 @@ public class TemporalZonedDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
                 TemporalUtil.toTemporalOverflow(options, getOptionNode());
                 TemporalUtil.toTemporalDisambiguation(options, getOptionNode(), equalNode);
                 TemporalUtil.toTemporalOffset(options, TemporalConstants.REJECT, getOptionNode(), equalNode);
-                return JSTemporalZonedDateTime.create(getContext(), zdt.getNanoseconds(), zdt.getTimeZone(), zdt.getCalendar());
+                return JSTemporalZonedDateTime.create(getContext(), getRealm(), zdt.getNanoseconds(), zdt.getTimeZone(), zdt.getCalendar());
             }
             return toTemporalZonedDateTime.executeDynamicObject(item, options);
         }

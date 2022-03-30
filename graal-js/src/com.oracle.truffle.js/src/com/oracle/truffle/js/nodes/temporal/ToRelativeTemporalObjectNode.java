@@ -185,7 +185,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                             result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
                             result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNs, timeZoneObj, TemporalUtil.Disambiguation.COMPATIBLE, TemporalUtil.OffsetOption.REJECT,
                             matchBehaviour);
-            return JSTemporalZonedDateTime.create(ctx, epochNanoseconds, timeZoneObj, calendar);
+            return JSTemporalZonedDateTime.create(ctx, getRealm(), epochNanoseconds, timeZoneObj, calendar);
         }
         return JSTemporalPlainDate.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar, errorBranch);
     }

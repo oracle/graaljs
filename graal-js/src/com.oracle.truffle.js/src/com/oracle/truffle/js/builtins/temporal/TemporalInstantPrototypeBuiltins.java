@@ -429,7 +429,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 throw TemporalErrors.createTypeErrorTemporalTimeZoneExpected();
             }
             DynamicObject timeZone = toTemporalTimeZone.executeDynamicObject(timeZoneLike);
-            return JSTemporalZonedDateTime.create(getContext(), instant.getNanoseconds(), timeZone, calendar);
+            return JSTemporalZonedDateTime.create(getContext(), getRealm(), instant.getNanoseconds(), timeZone, calendar);
         }
     }
 
@@ -454,7 +454,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             }
             DynamicObject timeZone = toTemporalTimeZone.executeDynamicObject(item);
             DynamicObject calendar = TemporalUtil.getISO8601Calendar(getContext(), getRealm(), errorBranch);
-            return JSTemporalZonedDateTime.create(getContext(), instant.getNanoseconds(), timeZone, calendar);
+            return JSTemporalZonedDateTime.create(getContext(), getRealm(), instant.getNanoseconds(), timeZone, calendar);
         }
     }
 

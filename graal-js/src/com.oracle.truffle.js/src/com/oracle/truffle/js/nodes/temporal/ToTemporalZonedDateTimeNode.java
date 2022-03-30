@@ -163,6 +163,6 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
         BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(),
                         result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNanoseconds, timeZone, disambiguation, offset,
                         matchBehaviour);
-        return JSTemporalZonedDateTime.create(ctx, epochNanoseconds, timeZone, calendar);
+        return JSTemporalZonedDateTime.create(ctx, getRealm(), epochNanoseconds, timeZone, calendar);
     }
 }

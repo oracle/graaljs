@@ -1355,8 +1355,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected DynamicObject constructTemporalZonedDateTime(DynamicObject newTarget, Object epochNanoseconds, Object timeZoneLike, Object calendarLike,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone,
                         @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
+                        @Cached("create()") JSToBigIntNode toBigIntNode,
                         @Cached BranchProfile errorBranch) {
-            BigInt ns = JSRuntime.toBigInt(epochNanoseconds);
+            BigInt ns = toBigIntNode.executeBigInteger(epochNanoseconds);
             if (!TemporalUtil.isValidEpochNanoseconds(ns)) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
@@ -1364,7 +1365,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             DynamicObject timeZone = toTemporalTimeZone.executeDynamicObject(timeZoneLike);
             DynamicObject calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(calendarLike);
 
-            return swapPrototype(JSTemporalZonedDateTime.create(getContext(), ns, timeZone, calendar), newTarget);
+            return swapPrototype(JSTemporalZonedDateTime.create(getContext(), getRealm(), ns, timeZone, calendar), newTarget);
         }
 
         @Override
