@@ -46,6 +46,7 @@ import java.util.List;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -179,6 +180,7 @@ import com.oracle.truffle.js.nodes.control.IfNode;
 import com.oracle.truffle.js.nodes.control.IteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.LabelNode;
 import com.oracle.truffle.js.nodes.control.ModuleBodyNode;
+import com.oracle.truffle.js.nodes.control.ModuleInitializeEnvironmentNode;
 import com.oracle.truffle.js.nodes.control.ModuleYieldNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.control.ReturnNode;
@@ -826,6 +828,23 @@ public class NodeFactory {
         return functionRoot;
     }
 
+    public FunctionRootNode createModuleRootNode(AbstractBodyNode linkBody, AbstractBodyNode evalBody, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection,
+                    TruffleString internalFunctionName) {
+        FunctionRootNode linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection, internalFunctionName);
+        FunctionRootNode evalRoot = linkBody == evalBody ? linkRoot : FunctionRootNode.create(evalBody, null, functionData, sourceSection, internalFunctionName);
+
+        RootCallTarget linkCallTarget = linkRoot.getCallTarget();
+        RootCallTarget evalCallTarget = evalRoot.getCallTarget();
+        // Module function data is always eagerly initialized.
+        // The [[Construct]] target is used to represent InitializeEnvironment().
+        // The [[Call]] target is used to represent ExecuteModule().
+        functionData.setRootTarget(evalCallTarget);
+        functionData.setCallTarget(evalCallTarget);
+        functionData.setConstructTarget(linkCallTarget);
+        functionData.setConstructNewTarget(linkCallTarget);
+        return linkRoot;
+    }
+
     public ConstructorRootNode createConstructorRootNode(JSFunctionData functionData, CallTarget callTarget, boolean newTarget) {
         return ConstructorRootNode.create(functionData, callTarget, newTarget);
     }
@@ -1188,8 +1207,12 @@ public class NodeFactory {
         return ModuleBodyNode.create(moduleBody);
     }
 
-    public JavaScriptNode createModuleYield(JSFrameSlot stateSlot) {
-        return ModuleYieldNode.create(stateSlot.getIndex());
+    public JavaScriptNode createModuleInitializeEnvironment(JavaScriptNode moduleBody) {
+        return ModuleInitializeEnvironmentNode.create(moduleBody);
+    }
+
+    public JavaScriptNode createModuleYield() {
+        return ModuleYieldNode.create();
     }
 
     public JavaScriptNode createTopLevelAsyncModuleBody(JSContext context, JavaScriptNode moduleBody, JSWriteFrameSlotNode asyncResult, JSWriteFrameSlotNode writeAsyncContextNode) {

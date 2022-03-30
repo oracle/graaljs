@@ -142,6 +142,7 @@ import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.nodes.control.DiscardResultNode;
 import com.oracle.truffle.js.nodes.control.EmptyNode;
 import com.oracle.truffle.js.nodes.control.GeneratorWrapperNode;
+import com.oracle.truffle.js.nodes.control.ModuleYieldNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.control.ReturnNode;
 import com.oracle.truffle.js.nodes.control.ReturnTargetNode;
@@ -370,7 +371,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         FunctionRootNode functionRoot;
         JSFrameSlot blockScopeSlot;
         if (lazyTranslation) {
-            assert functionMode && !functionNode.isProgram();
+            assert functionMode && !functionNode.isProgram() && !functionNode.isModule();
 
             // function needs parent frame analysis has already been done
             boolean needsParentFrame = functionNode.usesAncestorScope();
@@ -417,12 +418,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
                 needsParentFrame = currentFunction.needsParentFrame();
                 blockScopeSlot = needsParentFrame && prevEnv != null ? prevEnv.getCurrentBlockScopeSlot() : null;
-                currentFunction.freeze();
 
                 functionData = factory.createFunctionData(context, functionNode.getLength(), functionName, isConstructor, isDerivedConstructor, isStrict, isBuiltin,
                                 needsParentFrame, isGeneratorFunction, isAsyncFunction, isClassConstructor, strictFunctionProperties, needsNewTarget);
 
-                functionRoot = createFunctionRoot(functionNode, functionData, currentFunction, body);
+                if (functionNode.isModule()) {
+                    functionRoot = createModuleRoot(functionNode, functionData, currentFunction, body);
+                } else {
+                    functionRoot = createFunctionRoot(functionNode, functionData, currentFunction, body);
+                }
+
+                // Freeze after root creation to allow registration of async/generator variables.
+                currentFunction.freeze();
 
                 if (isEval) {
                     // force eager call target init for Function() code to avoid deopt at call site
@@ -496,7 +503,46 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return functionRoot;
     }
 
-    private static void printAST(FunctionRootNode functionRoot) {
+    private FunctionRootNode createModuleRoot(FunctionNode functionNode, JSFunctionData functionData, FunctionEnvironment currentFunction, JavaScriptNode body) {
+        if (JSConfig.PrintAst) {
+            printAST(body);
+        }
+
+        SourceSection moduleSourceSection = createSourceSection(functionNode);
+        TruffleString internalFunctionName = currentFunction.getInternalFunctionName();
+        JavaScriptNode[] statements = null;
+        if (body instanceof SequenceNode) {
+            statements = ((SequenceNode) body).getStatements();
+        } else if (isModuleYieldStatement(body)) {
+            statements = new JavaScriptNode[]{body};
+        }
+        if (statements != null) {
+            for (int i = 0; i < statements.length; i++) {
+                JavaScriptNode statement = statements[i];
+                if (isModuleYieldStatement(statement)) {
+                    // Split the module into two call targets:
+                    // 1. InitializeEnvironment()
+                    // 2. ExecuteModule() / ExecuteAsyncModule()
+                    JavaScriptNode[] linkHalf = Arrays.copyOfRange(statements, 0, i);
+                    JavaScriptNode[] evalHalf = Arrays.copyOfRange(statements, i + 1, statements.length);
+                    JavaScriptNode linkBlock = factory.createModuleInitializeEnvironment(factory.createVoidBlock(linkHalf));
+                    JavaScriptNode evalBlock = handleModuleBody(factory.createExprBlock(evalHalf));
+                    FunctionBodyNode linkBody = factory.createFunctionBody(linkBlock);
+                    FunctionBodyNode evalBody = factory.createFunctionBody(evalBlock);
+                    return factory.createModuleRootNode(linkBody, evalBody, environment.getFunctionFrameDescriptor().toFrameDescriptor(), functionData,
+                                    moduleSourceSection, internalFunctionName);
+                }
+            }
+        }
+
+        // Fall back to single call target using generator yield logic.
+        currentFunction.addYield(); // yield has not been added yet.
+        FunctionBodyNode generatorBody = factory.createFunctionBody(handleModuleBody(body));
+        return factory.createModuleRootNode(generatorBody, generatorBody, environment.getFunctionFrameDescriptor().toFrameDescriptor(), functionData,
+                        moduleSourceSection, internalFunctionName);
+    }
+
+    private static void printAST(Node functionRoot) {
         NodeUtil.printCompactTree(System.out, functionRoot);
     }
 
@@ -534,6 +580,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode finishGeneratorBody(JavaScriptNode body) {
         // Note: parameter initialization must precede (i.e. wrap) the (async) generator body
         assert lc.getCurrentBlock().isFunctionBody();
+        assert !currentFunction().isModule();
         if (currentFunction().isAsyncGeneratorFunction()) {
             return handleAsyncGeneratorBody(body);
         } else {
@@ -542,11 +589,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode handleGeneratorBody(JavaScriptNode body) {
-        assert currentFunction().isGeneratorFunction() && !currentFunction().isAsyncGeneratorFunction();
+        assert currentFunction().isGeneratorFunction() && !currentFunction().isAsyncGeneratorFunction() && !currentFunction().isModule();
         JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
-        if (lc.getCurrentFunction().isModule()) {
-            return factory.createModuleBody(instrumentedBody);
-        }
         VarRef yieldVar = environment.findYieldValueVar();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
         JSReadFrameSlotNode readYieldResultNode = JSConfig.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
@@ -554,18 +598,30 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode handleAsyncGeneratorBody(JavaScriptNode body) {
-        assert currentFunction().isAsyncGeneratorFunction();
+        assert currentFunction().isAsyncGeneratorFunction() && !currentFunction().isModule();
         VarRef asyncContextVar = environment.findAsyncContextVar();
         JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
         VarRef yieldVar = environment.findAsyncResultVar();
         JSWriteFrameSlotNode writeAsyncContextNode = (JSWriteFrameSlotNode) asyncContextVar.createWriteNode(null);
         JSReadFrameSlotNode readAsyncContextNode = (JSReadFrameSlotNode) asyncContextVar.createReadNode();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
-        if (lc.getCurrentFunction().isModule()) {
-            return factory.createTopLevelAsyncModuleBody(context, instrumentedBody, writeYieldValueNode, writeAsyncContextNode);
-        }
         JSReadFrameSlotNode readYieldResultNode = JSConfig.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
         return factory.createAsyncGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode, writeAsyncContextNode, readAsyncContextNode);
+    }
+
+    private JavaScriptNode handleModuleBody(JavaScriptNode body) {
+        assert currentFunction().isModule();
+        if (currentFunction().isAsyncGeneratorFunction()) {
+            VarRef asyncContextVar = environment.findAsyncContextVar();
+            JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
+            VarRef yieldVar = environment.findAsyncResultVar();
+            JSWriteFrameSlotNode writeAsyncContextNode = (JSWriteFrameSlotNode) asyncContextVar.createWriteNode(null);
+            JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
+            return factory.createTopLevelAsyncModuleBody(context, instrumentedBody, writeYieldValueNode, writeAsyncContextNode);
+        } else {
+            JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
+            return factory.createModuleBody(instrumentedBody);
+        }
     }
 
     /**
@@ -1271,7 +1327,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         // Parameter initialization must precede (i.e. wrap) the (async) generator function body
         if (block.isFunctionBody()) {
-            if (currentFunction.isGeneratorFunction()) {
+            if (currentFunction.isGeneratorFunction() && !currentFunction.isModule()) {
                 result = finishGeneratorBody(result);
             }
         }
@@ -2250,9 +2306,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         assert currentFunction.isGeneratorFunction();
         JSFrameDescriptor functionFrameDesc = currentFunction.getFunctionFrameDescriptor();
         if (lc.getCurrentFunction().isModule()) {
-            currentFunction.addYield();
-            JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
-            return factory.createModuleYield(stateSlot);
+            return factory.createModuleYield();
         }
 
         boolean asyncGeneratorYield = currentFunction.isAsyncFunction();

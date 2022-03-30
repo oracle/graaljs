@@ -669,7 +669,10 @@ public final class GraalJSEvaluator implements JSParser {
 
         // Initialize the environment by executing the module function.
         // It will automatically yield when the module is instantiated.
-        moduleExecution(realm, moduleRecord, null);
+        var moduleFunction = JSFunction.create(realm, moduleRecord.getFunctionData());
+        Object[] arguments = JSArguments.create(Undefined.instance, moduleFunction, moduleRecord);
+        // The [[Construct]] target of a module is used to initialize the environment.
+        JSFunction.getConstructTarget(moduleFunction).call(arguments);
     }
 
     @TruffleBoundary
