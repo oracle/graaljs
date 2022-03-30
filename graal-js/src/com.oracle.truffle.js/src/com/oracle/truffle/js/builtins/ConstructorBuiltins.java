@@ -1320,13 +1320,16 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructTemporalTimeZone(DynamicObject newTarget, Object identifier,
-                        @Cached("create()") JSToStringNode toStringNode,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached("create()") JSToStringNode toStringNode) {
             TruffleString id = toStringNode.executeString(identifier);
+            return constructTemporalTimeZoneIntl(newTarget, id);
+        }
+
+        @TruffleBoundary
+        private DynamicObject constructTemporalTimeZoneIntl(DynamicObject newTarget, TruffleString id) {
             boolean canParse = TemporalUtil.canParseAsTimeZoneNumericUTCOffset(id);
             if (!canParse) {
                 if (!TemporalUtil.isValidTimeZoneName(id)) {
-                    errorBranch.enter();
                     throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
                 }
                 id = TemporalUtil.canonicalizeTimeZoneName(id);
