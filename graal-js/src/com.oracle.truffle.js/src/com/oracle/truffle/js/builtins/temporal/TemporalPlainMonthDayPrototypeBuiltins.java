@@ -67,6 +67,8 @@ import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalMonthDayFromFieldsNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalMonthDayNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -275,7 +277,8 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected DynamicObject with(Object thisObj, Object temporalMonthDayLike, Object optParam,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
+                        @Cached("create(getContext())") TemporalMonthDayFromFieldsNode monthDayFromFieldsNode) {
             JSTemporalPlainMonthDayObject md = requireTemporalMonthDay(thisObj);
             if (!isObject(temporalMonthDayLike)) {
                 errorBranch.enter();
@@ -300,7 +303,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
             DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), md, fieldNames, TemporalUtil.listEmpty);
             fields = TemporalUtil.calendarMergeFields(getContext(), namesNode, calendar, fields, partialMonthDay);
             fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.listEmpty);
-            return TemporalUtil.monthDayFromFields(calendar, fields, options);
+            return monthDayFromFieldsNode.execute(calendar, fields, options);
         }
     }
 
@@ -312,9 +315,10 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected boolean equals(Object thisObj, Object otherParam,
-                        @Cached JSToStringNode toStringNode) {
+                        @Cached JSToStringNode toStringNode,
+                        @Cached("create(getContext())") ToTemporalMonthDayNode toTemporalMonthDayNode) {
             JSTemporalPlainMonthDayObject md = requireTemporalMonthDay(thisObj);
-            JSTemporalPlainMonthDayObject other = (JSTemporalPlainMonthDayObject) JSTemporalPlainMonthDay.toTemporalMonthDay(otherParam, Undefined.instance, getContext(), getRealm());
+            JSTemporalPlainMonthDayObject other = toTemporalMonthDayNode.executeDynamicObject(otherParam, Undefined.instance);
             if (md.getMonth() != other.getMonth()) {
                 return false;
             }

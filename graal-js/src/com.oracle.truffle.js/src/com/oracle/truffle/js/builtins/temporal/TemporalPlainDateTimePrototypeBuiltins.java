@@ -86,6 +86,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalMonthDayFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalYearMonthFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.ToLimitedTemporalDurationNode;
@@ -770,12 +771,13 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        public DynamicObject toPlainMonthDay(Object thisObj) {
+        public DynamicObject toPlainMonthDay(Object thisObj,
+                        @Cached("create(getContext())") TemporalMonthDayFromFieldsNode monthDayFromFieldsNode) {
             JSTemporalPlainDateTimeObject dateTime = requireTemporalDateTime(thisObj);
             DynamicObject calendar = dateTime.getCalendar();
             List<TruffleString> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.listDMC);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), dateTime, fieldNames, TemporalUtil.listEmpty);
-            return TemporalUtil.monthDayFromFields(calendar, fields, Undefined.instance);
+            return monthDayFromFieldsNode.execute(calendar, fields, Undefined.instance);
         }
     }
 

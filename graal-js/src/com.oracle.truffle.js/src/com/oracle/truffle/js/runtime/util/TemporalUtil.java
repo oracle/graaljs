@@ -121,7 +121,6 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.nodes.temporal.GetTemporalCalendarWithISODefaultNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalDurationAddNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarNode;
@@ -1024,18 +1023,6 @@ public final class TemporalUtil {
         return JSTemporalDateTimeRecord.create(yearPrepared, monthPrepared, 0, 0, 0, 0, 0, 0, 0);
     }
 
-    /**
-     * Note there also is {@link GetTemporalCalendarWithISODefaultNode}.
-     */
-    public static DynamicObject getTemporalCalendarWithISODefault(JSContext ctx, JSRealm realm, Object item) {
-        if (item instanceof TemporalCalendar) {
-            return ((TemporalCalendar) item).getCalendar();
-        } else {
-            Object calendar = JSObject.get(toDynamicObject(item), TemporalConstants.CALENDAR);
-            return toTemporalCalendarWithISODefault(ctx, realm, calendar);
-        }
-    }
-
     // 12.1.2
     public static boolean isBuiltinCalendar(TruffleString id) {
         return id.equals(ISO8601) || id.equals(GREGORY) || id.equals(JAPANESE);
@@ -1602,12 +1589,6 @@ public final class TemporalUtil {
         } else {
             return Strings.concatAll(BRACKET_U_CA_EQUALS, id, Strings.BRACKET_CLOSE);
         }
-    }
-
-    public static DynamicObject monthDayFromFields(DynamicObject calendar, DynamicObject fields, DynamicObject options) {
-        Object fn = JSObject.getMethod(calendar, MONTH_DAY_FROM_FIELDS);
-        Object monthDay = JSRuntime.call(fn, calendar, new Object[]{fields, options});
-        return TemporalUtil.requireTemporalMonthDay(monthDay);
     }
 
     public static RoundingMode negateTemporalRoundingMode(RoundingMode roundingMode) {

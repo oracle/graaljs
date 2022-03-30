@@ -440,8 +440,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             DynamicObject options = getOptionsObject(optionsParam);
             JSTemporalYearMonthDayRecord result = TemporalUtil.isoMonthDayFromFields((DynamicObject) fields, options, getContext(),
                             isObjectNode, getOptionNode, toIntOrInfinityNode, identicalNode);
-
-            return JSTemporalPlainMonthDay.create(getContext(), result.getMonth(), result.getDay(), calendar, result.getYear());
+            return JSTemporalPlainMonthDay.create(getContext(), result.getMonth(), result.getDay(), calendar, result.getYear(), errorBranch);
         }
     }
 

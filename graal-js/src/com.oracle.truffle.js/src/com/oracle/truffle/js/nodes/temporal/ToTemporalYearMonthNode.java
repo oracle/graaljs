@@ -65,10 +65,6 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
 public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
 
     private final ConditionProfile isObjectProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isPlainDateTimeProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isZonedDateTimeProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isPlainDateProfile = ConditionProfile.createBinaryProfile();
-
     protected final JSContext ctx;
 
     protected ToTemporalYearMonthNode(JSContext context) {
@@ -86,7 +82,7 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
                     @Cached BranchProfile errorBranch,
                     @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToStringNode toStringNode,
-                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
+                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarWithISODefaultNode,
                     @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached("create(ctx)") TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode) {
@@ -100,7 +96,7 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
             if (JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(itemObj)) {
                 return (JSTemporalPlainYearMonthObject) itemObj;
             }
-            DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(ctx, getRealm(), itemObj);
+            DynamicObject calendar = getTemporalCalendarWithISODefaultNode.executeDynamicObject(itemObj);
 
             List<TruffleString> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.listMMCY);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.listEmpty);
