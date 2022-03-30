@@ -86,6 +86,7 @@ public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
 
     @Specialization
     public DynamicObject toTemporalCalendar(Object itemParam,
+                    @Cached BranchProfile errorBranch,
                     @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToStringNode toStringNode) {
         Object item = itemParam;
@@ -110,7 +111,7 @@ public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
                 throw TemporalErrors.createRangeErrorCalendarUnknown();
             }
         }
-        return JSTemporalCalendar.create(context, identifier);
+        return JSTemporalCalendar.create(context, getRealm(), identifier, errorBranch);
     }
 
     private Object getCalendarProperty(DynamicObject obj) {

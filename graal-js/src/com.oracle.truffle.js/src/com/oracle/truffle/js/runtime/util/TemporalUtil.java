@@ -1023,13 +1023,25 @@ public final class TemporalUtil {
         return JSTemporalDateTimeRecord.create(yearPrepared, monthPrepared, 0, 0, 0, 0, 0, 0, 0);
     }
 
-    // 12.1.2
+    @TruffleBoundary //one instead of three boundaries
     public static boolean isBuiltinCalendar(TruffleString id) {
         return id.equals(ISO8601) || id.equals(GREGORY) || id.equals(JAPANESE);
     }
 
-    public static DynamicObject getISO8601Calendar(JSContext ctx, JSRealm realm) {
+    public static DynamicObject getISO8601Calendar(JSContext ctx, JSRealm realm, BranchProfile errorBranch) {
+        return getBuiltinCalendar(ISO8601, ctx, realm, errorBranch);
+    }
+
+    public static DynamicObject getISO8601Calendar(JSContext ctx, JSRealm realm ) {
         return getBuiltinCalendar(ISO8601, ctx, realm);
+    }
+
+    public static JSTemporalCalendarObject getBuiltinCalendar(TruffleString id, JSContext ctx, JSRealm realm, BranchProfile errorBranch) {
+        if (!isBuiltinCalendar(id)) {
+            errorBranch.enter();
+            throw TemporalErrors.createRangeErrorCalendarNotSupported();
+        }
+        return (JSTemporalCalendarObject) JSTemporalCalendar.create(ctx, realm, id, errorBranch);
     }
 
     public static JSTemporalCalendarObject getBuiltinCalendar(TruffleString id, JSContext ctx, JSRealm realm) {
@@ -1065,7 +1077,7 @@ public final class TemporalUtil {
                 throw TemporalErrors.createRangeErrorCalendarUnknown();
             }
         }
-        return JSTemporalCalendar.create(ctx, identifier);
+        return JSTemporalCalendar.create(ctx, null, identifier);
     }
 
     @TruffleBoundary
@@ -1623,10 +1635,6 @@ public final class TemporalUtil {
         }
     }
 
-    public static JSTemporalPlainTimeObject createTemporalTime(JSContext ctx, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) {
-        return (JSTemporalPlainTimeObject) JSTemporalPlainTime.create(ctx, hour, minute, second, millisecond, microsecond, nanosecond);
-    }
-
     public static double remainder(double x, double y) {
         double magnitude = x % y;
         // assert Math.signum(y) == Math.signum(magnitude);
@@ -1731,14 +1739,6 @@ public final class TemporalUtil {
             }
         }
         return newList;
-    }
-
-    public static DynamicObject toTemporalCalendarWithISODefault(JSContext ctx, JSRealm realm, Object calendar) {
-        if (calendar == null || calendar == Undefined.instance) {
-            return getISO8601Calendar(ctx, realm);
-        } else {
-            return toTemporalCalendar(ctx, calendar);
-        }
     }
 
     public static Unit largerOfTwoTemporalUnits(Unit a, Unit b) {

@@ -45,6 +45,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -70,10 +71,11 @@ public abstract class ToTemporalCalendarWithISODefaultNode extends JavaScriptBas
 
     @Specialization
     public DynamicObject toTemporalCalendarWithISODefault(Object calendar,
+                    @Cached BranchProfile errorBranch,
                     @Cached("create(ctx)") ToTemporalCalendarNode toTemporalCalendarNode,
                     @Cached("createBinaryProfile()") ConditionProfile calendarAvailable) {
         if (calendarAvailable.profile(calendar == null || calendar == Undefined.instance)) {
-            return JSTemporalCalendar.create(ctx, getRealm(), ISO8601);
+            return JSTemporalCalendar.create(ctx, getRealm(), ISO8601, errorBranch);
         } else {
             return toTemporalCalendarNode.executeDynamicObject(calendar);
         }

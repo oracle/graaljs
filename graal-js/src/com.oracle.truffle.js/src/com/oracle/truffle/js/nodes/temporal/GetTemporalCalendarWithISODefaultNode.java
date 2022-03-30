@@ -41,8 +41,10 @@
 package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -75,14 +77,15 @@ public abstract class GetTemporalCalendarWithISODefaultNode extends JavaScriptBa
     public abstract DynamicObject executeDynamicObject(Object temporalTimeZoneLike);
 
     @Specialization
-    protected DynamicObject getTemporalCalendarWithISODefault(Object item) {
+    protected DynamicObject getTemporalCalendarWithISODefault(Object item,
+                    @Cached BranchProfile errorBranch) {
         if (isCalendarProfile.profile(item instanceof TemporalCalendar)) {
             return ((TemporalCalendar) item).getCalendar();
         } else {
             Object calendar = getCalendar((DynamicObject) item);
             assert calendar != null;
             if (isNullishProfile.profile(calendar == Undefined.instance)) {
-                return TemporalUtil.getISO8601Calendar(ctx, getRealm());
+                return TemporalUtil.getISO8601Calendar(ctx, getRealm(), errorBranch);
             } else {
                 return toTemporalCalendar(calendar);
             }

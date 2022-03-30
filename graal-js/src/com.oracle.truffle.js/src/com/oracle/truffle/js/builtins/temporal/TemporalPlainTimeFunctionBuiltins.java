@@ -106,7 +106,7 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
                 JSTemporalPlainTimeObject timeItem = (JSTemporalPlainTimeObject) item;
                 return JSTemporalPlainTime.create(getContext(),
                                 timeItem.getHour(), timeItem.getMinute(), timeItem.getSecond(), timeItem.getMillisecond(),
-                                timeItem.getMicrosecond(), timeItem.getNanosecond());
+                                timeItem.getMicrosecond(), timeItem.getNanosecond(), errorBranch);
             }
             return toTemporalTime.executeDynamicObject(item, overflow);
         }

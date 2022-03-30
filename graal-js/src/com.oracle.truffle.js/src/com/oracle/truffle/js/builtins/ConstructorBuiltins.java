@@ -1128,6 +1128,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected DynamicObject constructTemporalPlainTime(DynamicObject newTarget, Object hourObj, Object minuteObj,
                         Object secondObj, Object millisecondObject,
                         Object microsecondObject, Object nanosecondObject,
+                        @Cached BranchProfile errorBranch,
                         @Cached("create()") JSToIntegerThrowOnInfinityNode toIntegerNode) {
             final int hour = toIntegerNode.executeIntOrThrow(hourObj);
             final int minute = toIntegerNode.executeIntOrThrow(minuteObj);
@@ -1136,7 +1137,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final int microsecond = toIntegerNode.executeIntOrThrow(microsecondObject);
             final int nanosecond = toIntegerNode.executeIntOrThrow(nanosecondObject);
             return swapPrototype(JSTemporalPlainTime.create(getContext(),
-                            hour, minute, second, millisecond, microsecond, nanosecond), newTarget);
+                            hour, minute, second, millisecond, microsecond, nanosecond, errorBranch), newTarget);
         }
 
         @Override
@@ -1219,9 +1220,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructTemporalCalendar(DynamicObject newTarget, Object arg,
+                        @Cached BranchProfile errorBranch,
                         @Cached("create()") JSToStringNode toString) {
             final TruffleString id = toString.executeString(arg);
-            return swapPrototype(JSTemporalCalendar.create(getContext(), id), newTarget);
+            return swapPrototype(JSTemporalCalendar.create(getContext(), getRealm(), id, errorBranch), newTarget);
         }
 
         @Override

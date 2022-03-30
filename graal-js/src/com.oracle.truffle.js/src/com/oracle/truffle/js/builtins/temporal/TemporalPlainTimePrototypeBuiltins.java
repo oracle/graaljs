@@ -272,7 +272,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             Overflow.REJECT);
             return JSTemporalPlainTime.create(getContext(),
                             dtoi(result2.getHours()), dtoi(result2.getMinutes()), dtoi(result2.getSeconds()), dtoi(result2.getMilliseconds()), dtoi(result2.getMicroseconds()),
-                            dtoi(result2.getNanoseconds()));
+                            dtoi(result2.getNanoseconds()), errorBranch);
         }
     }
 
@@ -302,7 +302,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             Overflow.REJECT);
             return JSTemporalPlainTime.create(getContext(),
                             dtoi(result2.getHours()), dtoi(result2.getMinutes()), dtoi(result2.getSeconds()), dtoi(result2.getMilliseconds()), dtoi(result2.getMicroseconds()),
-                            dtoi(result2.getNanoseconds()));
+                            dtoi(result2.getNanoseconds()), errorBranch);
         }
     }
 
@@ -382,7 +382,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             JSTemporalDurationRecord result = TemporalUtil.regulateTime(hour, minute, second, millisecond, microsecond, nanosecond, overflow);
             return JSTemporalPlainTime.create(getContext(),
                             dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
-                            dtoi(result.getNanoseconds()));
+                            dtoi(result.getNanoseconds()), errorBranch);
         }
     }
 
@@ -506,7 +506,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             temporalTime.getNanosecond(), roundingIncrement, smallestUnit, roundingMode, null);
             return JSTemporalPlainTime.create(getContext(),
                             dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
-                            dtoi(result.getNanoseconds()));
+                            dtoi(result.getNanoseconds()), errorBranch);
         }
     }
 

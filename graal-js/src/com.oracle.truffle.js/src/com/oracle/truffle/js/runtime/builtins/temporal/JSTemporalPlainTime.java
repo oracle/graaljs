@@ -51,6 +51,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimeFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltins;
@@ -83,17 +84,18 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     private JSTemporalPlainTime() {
     }
 
-    public static DynamicObject create(JSContext context, int hours, int minutes, int seconds, int milliseconds,
-                    int microseconds, int nanoseconds) {
+    public static JSTemporalPlainTimeObject create(JSContext context, int hours, int minutes, int seconds, int milliseconds,
+                    int microseconds, int nanoseconds, BranchProfile errorBranch) {
         if (!TemporalUtil.isValidTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
+            errorBranch.enter();
             throw TemporalErrors.createRangeErrorTimeOutsideRange();
         }
         JSRealm realm = JSRealm.get(null);
-        DynamicObject calendar = TemporalUtil.getISO8601Calendar(context, realm);
+        DynamicObject calendar = TemporalUtil.getISO8601Calendar(context, realm, errorBranch);
         JSObjectFactory factory = context.getTemporalPlainTimeFactory();
         DynamicObject obj = factory.initProto(new JSTemporalPlainTimeObject(factory.getShape(realm),
                         hours, minutes, seconds, milliseconds, microseconds, nanoseconds, calendar), realm);
-        return context.trackAllocation(obj);
+        return (JSTemporalPlainTimeObject) context.trackAllocation(obj);
     }
 
     @Override
