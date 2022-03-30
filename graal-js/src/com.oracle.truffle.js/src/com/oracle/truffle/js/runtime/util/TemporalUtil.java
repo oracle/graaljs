@@ -235,6 +235,7 @@ public final class TemporalUtil {
     // 8.64* 10^21 + 8.64 * 10^13; roughly 273,000 years
     private static final BigInteger isoTimeUpperBound = new BigInteger("8640000086400000000000");
     private static final BigInteger isoTimeLowerBound = isoTimeUpperBound.negate();
+    private static final int isoTimeBoundYears = 270000;
 
     // 8.64 * 10^21
     private static final BigInteger temporalInstantUpperBound = new BigInteger("8640000000000000000000");
@@ -1226,8 +1227,17 @@ public final class TemporalUtil {
         return n.longValue();
     }
 
-    @TruffleBoundary
     public static boolean isoDateTimeWithinLimits(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) {
+        if (-isoTimeBoundYears <= year && year <= isoTimeBoundYears) {
+            //fastpath check
+            return true;
+        } else {
+            return isoDateTimeWithinLimitsIntl(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
+        }
+    }
+
+    @TruffleBoundary
+    private static boolean isoDateTimeWithinLimitsIntl(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) {
         BigInteger ns = getEpochFromISOParts(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
         return ns.compareTo(isoTimeLowerBound) > 0 && ns.compareTo(isoTimeUpperBound) < 0;
     }
