@@ -198,11 +198,11 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             switch (property) {
                 // roundTowardsZero is a no-op for BigIntegers
                 case epochSeconds:
-                    return ns.divide(BigInteger.valueOf(1_000_000_000L)).doubleValue();
+                    return ns.divide(TemporalUtil.bi_10_pow_9).doubleValue();
                 case epochMilliseconds:
-                    return ns.divide(BigInteger.valueOf(1_000_000L)).doubleValue();
+                    return ns.divide(TemporalUtil.bi_10_pow_6).doubleValue();
                 case epochMicroseconds:
-                    return new BigInt(ns.divide(BigInteger.valueOf(1_000L)));
+                    return new BigInt(ns.divide(TemporalUtil.bi_1000));
                 case epochNanoseconds:
                     return instant.getNanoseconds();
             }

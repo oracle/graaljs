@@ -90,7 +90,7 @@ public abstract class TemporalCalendarGetterNode extends JavaScriptBaseNode {
 
     public abstract Object execute(DynamicObject calendar, DynamicObject dateLike, TruffleString name);
 
-    public Number executeInteger(DynamicObject calendar, DynamicObject dateLike, TruffleString name) {
+    public final Number executeInteger(DynamicObject calendar, DynamicObject dateLike, TruffleString name) {
         if (toIntegerThrowOnInfinityNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toIntegerThrowOnInfinityNode = insert(JSToIntegerThrowOnInfinityNode.create());
@@ -98,7 +98,7 @@ public abstract class TemporalCalendarGetterNode extends JavaScriptBaseNode {
         return (Number) toIntegerThrowOnInfinityNode.execute(execute(calendar, dateLike, name));
     }
 
-    public TruffleString executeString(DynamicObject calendar, DynamicObject dateLike, TruffleString name) {
+    public final TruffleString executeString(DynamicObject calendar, DynamicObject dateLike, TruffleString name) {
         if (toStringNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toStringNode = insert(JSToStringNode.create());

@@ -243,6 +243,8 @@ public final class TemporalUtil {
     // 8.64 * 10^13
     private static final BigInteger bi_8_64_13 = new BigInteger("86400000000000");
 
+    public static final BigInteger bi_36_10_pow_11 = new BigInteger("3600000000000");
+    public static final BigInteger bi_6_10_pow_10 = new BigInteger("60000000000");
     public static final BigInteger bi_10_pow_9 = new BigInteger("1000000000"); // 10 ^ 9
     public static final BigInteger bi_10_pow_6 = new BigInteger("1000000"); // 10 ^ 6
     public static final BigInteger bi_1000 = new BigInteger("1000");  // 10 ^ 3
@@ -1240,8 +1242,8 @@ public final class TemporalUtil {
         double ms = JSDate.makeDate(date, time);
         assert isFinite(ms);
 
-        BigInteger bi = BigInteger.valueOf((long) ms).multiply(BigInteger.valueOf(1_000_000L));
-        BigInteger bims = BigInteger.valueOf(microsecond).multiply(BigInteger.valueOf(1000L));
+        BigInteger bi = BigInteger.valueOf((long) ms).multiply(TemporalUtil.bi_10_pow_6);
+        BigInteger bims = BigInteger.valueOf(microsecond).multiply(TemporalUtil.bi_1000);
         BigInteger biresult = bi.add(bims).add(BigInteger.valueOf(nanosecond));
 
         return biresult;
@@ -2704,11 +2706,11 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static BigInt addInstant(BigInt epochNanoseconds, long hours, long minutes, long seconds, long milliseconds, long microseconds, BigInteger nanoseconds) {
         BigInteger res = epochNanoseconds.bigIntegerValue().add(nanoseconds);
-        res = res.add(BigInteger.valueOf(microseconds).multiply(BigInteger.valueOf(1000)));
-        res = res.add(BigInteger.valueOf(milliseconds).multiply(BigInteger.valueOf(1_000_000)));
-        res = res.add(BigInteger.valueOf(seconds).multiply(BigInteger.valueOf(1_000_000_000L)));
-        res = res.add(BigInteger.valueOf(minutes).multiply(BigInteger.valueOf(60_000_000_000L)));
-        res = res.add(BigInteger.valueOf(hours).multiply(BigInteger.valueOf(3_600_000_000_000L)));
+        res = res.add(BigInteger.valueOf(microseconds).multiply(bi_1000));
+        res = res.add(BigInteger.valueOf(milliseconds).multiply(bi_10_pow_6));
+        res = res.add(BigInteger.valueOf(seconds).multiply(bi_10_pow_9));
+        res = res.add(BigInteger.valueOf(minutes).multiply(bi_6_10_pow_10));
+        res = res.add(BigInteger.valueOf(hours).multiply(bi_36_10_pow_11));
         BigInt result = new BigInt(res);
         if (!isValidEpochNanoseconds(result)) {
             throw TemporalErrors.createRangeErrorInvalidNanoseconds();
