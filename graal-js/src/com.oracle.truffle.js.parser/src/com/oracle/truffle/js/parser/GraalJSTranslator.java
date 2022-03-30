@@ -311,7 +311,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             throw new IllegalArgumentException("root function node is not a script");
         }
         JSFunctionExpressionNode functionExpression = (JSFunctionExpressionNode) transformFunction(functionNode);
-        return ScriptNode.fromFunctionRoot(context, functionExpression.getFunctionNode());
+        return ScriptNode.fromFunctionData(context, functionExpression.getFunctionData());
     }
 
     protected final JavaScriptNode transformFunction(FunctionNode functionNode) {
