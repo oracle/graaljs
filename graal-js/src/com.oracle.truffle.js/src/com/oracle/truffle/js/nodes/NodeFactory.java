@@ -853,12 +853,18 @@ public class NodeFactory {
         return FunctionBodyNode.create(body);
     }
 
+    /**
+     * @param functionNode used by snapshot recording.
+     */
     public JSFunctionExpressionNode createFunctionExpression(JSFunctionData function, FunctionRootNode functionNode, JSFrameSlot blockScopeSlot) {
-        return JSFunctionExpressionNode.create(function, functionNode, blockScopeSlot);
+        return JSFunctionExpressionNode.create(function, blockScopeSlot);
     }
 
+    /**
+     * @param functionNode used by snapshot recording.
+     */
     public JSFunctionExpressionNode createFunctionExpressionLexicalThis(JSFunctionData function, FunctionRootNode functionNode, JSFrameSlot blockScopeSlot, JavaScriptNode thisNode) {
-        return JSFunctionExpressionNode.createLexicalThis(function, functionNode, blockScopeSlot, thisNode);
+        return JSFunctionExpressionNode.createLexicalThis(function, blockScopeSlot, thisNode);
     }
 
     public JavaScriptNode createPrepareThisBinding(JSContext context, JavaScriptNode child) {

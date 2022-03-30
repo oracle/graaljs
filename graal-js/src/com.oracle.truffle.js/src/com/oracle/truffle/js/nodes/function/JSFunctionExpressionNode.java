@@ -66,36 +66,34 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 public abstract class JSFunctionExpressionNode extends JavaScriptNode implements FunctionNameHolder {
 
     protected final JSFunctionData functionData;
-    protected final FunctionRootNode functionNode;
 
-    protected JSFunctionExpressionNode(JSFunctionData functionData, FunctionRootNode functionNode) {
+    protected JSFunctionExpressionNode(JSFunctionData functionData) {
         this.functionData = functionData;
-        this.functionNode = functionNode;
     }
 
     public static JSFunctionExpressionNode create(JSFunctionData function) {
         assert !function.needsParentFrame();
-        return new AutonomousFunctionExpressionNode(function, null);
+        return new AutonomousFunctionExpressionNode(function);
     }
 
-    public static JSFunctionExpressionNode create(JSFunctionData function, FunctionRootNode functionNode, JSFrameSlot blockScopeSlot) {
+    public static JSFunctionExpressionNode create(JSFunctionData function, JSFrameSlot blockScopeSlot) {
         if (function.needsParentFrame()) {
-            return new ClosureFunctionExpressionNode(function, functionNode, blockScopeSlot != null ? blockScopeSlot.getIndex() : -1);
+            return new ClosureFunctionExpressionNode(function, blockScopeSlot != null ? blockScopeSlot.getIndex() : -1);
         } else {
-            return new AutonomousFunctionExpressionNode(function, functionNode);
+            return new AutonomousFunctionExpressionNode(function);
         }
     }
 
-    public static JSFunctionExpressionNode createLexicalThis(JSFunctionData function, FunctionRootNode functionNode, JSFrameSlot blockScopeSlot, JavaScriptNode thisNode) {
+    public static JSFunctionExpressionNode createLexicalThis(JSFunctionData function, JSFrameSlot blockScopeSlot, JavaScriptNode thisNode) {
         if (function.needsParentFrame()) {
-            return new LexicalThisClosureFunctionExpressionNode(function, functionNode, blockScopeSlot != null ? blockScopeSlot.getIndex() : -1, thisNode);
+            return new LexicalThisClosureFunctionExpressionNode(function, blockScopeSlot != null ? blockScopeSlot.getIndex() : -1, thisNode);
         } else {
-            return new LexicalThisAutonomousFunctionExpressionNode(function, functionNode, thisNode);
+            return new LexicalThisAutonomousFunctionExpressionNode(function, thisNode);
         }
     }
 
     public static JSFunctionExpressionNode createEmpty(JSContext context, int length, String sourceName) {
-        return new AutonomousFunctionExpressionNode(JSFunctionData.create(context, context.getEmptyFunctionCallTarget(), length, Strings.fromJavaString(sourceName)), null);
+        return new AutonomousFunctionExpressionNode(JSFunctionData.create(context, context.getEmptyFunctionCallTarget(), length, Strings.fromJavaString(sourceName)));
     }
 
     @Override
@@ -140,13 +138,8 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         return this;
     }
 
-    public JSFunctionData getFunctionData() {
+    public final JSFunctionData getFunctionData() {
         return functionData;
-    }
-
-    public FunctionRootNode getFunctionNode() {
-        CompilerAsserts.neverPartOfCompilation();
-        return functionNode;
     }
 
     @Override
@@ -163,8 +156,8 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
     private static final class ClosureFunctionExpressionNode extends JSFunctionExpressionNode {
         private final int blockScopeSlot;
 
-        protected ClosureFunctionExpressionNode(JSFunctionData functionData, FunctionRootNode functionNode, int blockScopeSlot) {
-            super(functionData, functionNode);
+        protected ClosureFunctionExpressionNode(JSFunctionData functionData, int blockScopeSlot) {
+            super(functionData);
             this.blockScopeSlot = blockScopeSlot;
         }
 
@@ -182,7 +175,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new ClosureFunctionExpressionNode(functionData, functionNode, blockScopeSlot);
+            return new ClosureFunctionExpressionNode(functionData, blockScopeSlot);
         }
     }
 
@@ -190,8 +183,8 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
      * Autonomous function expressions do not need access to the enclosing frame.
      */
     private static final class AutonomousFunctionExpressionNode extends JSFunctionExpressionNode {
-        protected AutonomousFunctionExpressionNode(JSFunctionData functionData, FunctionRootNode functionNode) {
-            super(functionData, functionNode);
+        protected AutonomousFunctionExpressionNode(JSFunctionData functionData) {
+            super(functionData);
         }
 
         @Override
@@ -201,7 +194,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new AutonomousFunctionExpressionNode(functionData, functionNode);
+            return new AutonomousFunctionExpressionNode(functionData);
         }
     }
 
@@ -209,8 +202,8 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         @Child private JavaScriptNode thisNode;
         private final int blockScopeSlot;
 
-        protected LexicalThisClosureFunctionExpressionNode(JSFunctionData functionData, FunctionRootNode functionNode, int blockScopeSlot, JavaScriptNode thisNode) {
-            super(functionData, functionNode);
+        protected LexicalThisClosureFunctionExpressionNode(JSFunctionData functionData, int blockScopeSlot, JavaScriptNode thisNode) {
+            super(functionData);
             this.blockScopeSlot = blockScopeSlot;
             this.thisNode = thisNode;
         }
@@ -229,15 +222,15 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new LexicalThisClosureFunctionExpressionNode(functionData, functionNode, blockScopeSlot, cloneUninitialized(thisNode, materializedTags));
+            return new LexicalThisClosureFunctionExpressionNode(functionData, blockScopeSlot, cloneUninitialized(thisNode, materializedTags));
         }
     }
 
     private static final class LexicalThisAutonomousFunctionExpressionNode extends JSFunctionExpressionNode {
         @Child private JavaScriptNode thisNode;
 
-        protected LexicalThisAutonomousFunctionExpressionNode(JSFunctionData functionData, FunctionRootNode functionNode, JavaScriptNode thisNode) {
-            super(functionData, functionNode);
+        protected LexicalThisAutonomousFunctionExpressionNode(JSFunctionData functionData, JavaScriptNode thisNode) {
+            super(functionData);
             this.thisNode = thisNode;
         }
 
@@ -248,7 +241,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new LexicalThisAutonomousFunctionExpressionNode(functionData, functionNode, cloneUninitialized(thisNode, materializedTags));
+            return new LexicalThisAutonomousFunctionExpressionNode(functionData, cloneUninitialized(thisNode, materializedTags));
         }
     }
 }
