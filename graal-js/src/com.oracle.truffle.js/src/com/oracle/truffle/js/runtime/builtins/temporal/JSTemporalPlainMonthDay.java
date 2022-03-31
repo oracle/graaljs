@@ -143,7 +143,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
 
         TruffleString calendarID = JSRuntime.toString(md.getCalendar());
         TruffleString result = Strings.format("%s-%s", monthString, dayString);
-        if (!ISO8601.equals(calendarID)) {
+        if (showCalendar == ShowCalendar.ALWAYS || !ISO8601.equals(calendarID)) {
             TruffleString year = TemporalUtil.padISOYear(md.getYear());
             result = Strings.format("%s-%s", year, result);
         }

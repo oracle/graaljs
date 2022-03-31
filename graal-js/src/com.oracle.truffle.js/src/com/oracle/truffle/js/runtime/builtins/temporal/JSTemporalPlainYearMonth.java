@@ -158,7 +158,7 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
         TruffleString month = Strings.format("%1$02d", ym.getMonth());
         TruffleString result = Strings.concatAll(year, Strings.DASH, month);
         TruffleString calendarID = JSRuntime.toString(ym.getCalendar());
-        if (!ISO8601.equals(calendarID)) {
+        if (showCalendar == ShowCalendar.ALWAYS || !ISO8601.equals(calendarID)) {
             TruffleString day = Strings.format("%1$02d", ym.getDay());
             result = Strings.concatAll(result, Strings.DASH, day);
         }
