@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -52,6 +51,7 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -84,7 +84,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unchecked")
-    public DynamicObject execute(DynamicObject promise, Object onFulfilled, Object onRejected, PromiseCapabilityRecord resultCapability) {
+    public JSDynamicObject execute(JSDynamicObject promise, Object onFulfilled, Object onRejected, PromiseCapabilityRecord resultCapability) {
         assert JSPromise.isJSPromise(promise);
         Object onFulfilledHandler = isCallableFulfillNode.executeBoolean(onFulfilled) ? onFulfilled : Undefined.instance;
         Object onRejectedHandler = isCallableRejectNode.executeBoolean(onRejected) ? onRejected : Undefined.instance;
@@ -98,7 +98,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
             ((SimpleArrayList<? super PromiseReactionRecord>) getPromiseRejectReactionsNode.getValue(promise)).add(rejectReaction, growProfile);
         } else if (fulfilledProf.profile(promiseState == JSPromise.FULFILLED)) {
             Object value = getPromiseResult(promise);
-            DynamicObject job = getPromiseReactionJob(fulfillReaction, value);
+            JSDynamicObject job = getPromiseReactionJob(fulfillReaction, value);
             context.promiseEnqueueJob(getRealm(), job);
         } else {
             assert promiseState == JSPromise.REJECTED;
@@ -106,7 +106,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
             if (unhandledProf.profile(!getPromiseIsHandled(promise))) {
                 context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_HANDLE, Undefined.instance);
             }
-            DynamicObject job = getPromiseReactionJob(rejectReaction, reason);
+            JSDynamicObject job = getPromiseReactionJob(rejectReaction, reason);
             context.promiseEnqueueJob(getRealm(), job);
         }
         setPromiseIsHandledNode.setValueBoolean(promise, true);
@@ -116,7 +116,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
         return resultCapability.getPromise();
     }
 
-    private DynamicObject getPromiseReactionJob(PromiseReactionRecord reaction, Object value) {
+    private JSDynamicObject getPromiseReactionJob(PromiseReactionRecord reaction, Object value) {
         if (promiseReactionJobNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             promiseReactionJobNode = insert(PromiseReactionJobNode.create(context));
@@ -124,7 +124,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
         return promiseReactionJobNode.execute(reaction, value);
     }
 
-    private Object getPromiseResult(DynamicObject promise) {
+    private Object getPromiseResult(JSDynamicObject promise) {
         if (getPromiseResultNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getPromiseResultNode = insert(PropertyGetNode.createGetHidden(JSPromise.PROMISE_RESULT, context));
@@ -132,7 +132,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
         return getPromiseResultNode.getValue(promise);
     }
 
-    private boolean getPromiseIsHandled(DynamicObject promise) {
+    private boolean getPromiseIsHandled(JSDynamicObject promise) {
         try {
             if (getPromiseIsHandledNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();

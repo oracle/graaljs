@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -51,6 +50,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalRelativeDateRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -71,17 +71,17 @@ public abstract class TemporalMoveRelativeDateNode extends JavaScriptBaseNode {
         return TemporalMoveRelativeDateNodeGen.create(ctx);
     }
 
-    public abstract JSTemporalRelativeDateRecord execute(DynamicObject calendar, DynamicObject relativeTo, DynamicObject duration);
+    public abstract JSTemporalRelativeDateRecord execute(JSDynamicObject calendar, JSDynamicObject relativeTo, JSDynamicObject duration);
 
     @Specialization
-    protected JSTemporalRelativeDateRecord add(DynamicObject calendar, DynamicObject relativeTo, DynamicObject duration) {
-        DynamicObject options = JSOrdinary.createWithNullPrototype(ctx);
+    protected JSTemporalRelativeDateRecord add(JSDynamicObject calendar, JSDynamicObject relativeTo, JSDynamicObject duration) {
+        JSDynamicObject options = JSOrdinary.createWithNullPrototype(ctx);
         JSTemporalPlainDateObject newDate = calendarDateAdd(calendar, relativeTo, duration, options);
         long days = TemporalUtil.daysUntil(relativeTo, newDate);
         return JSTemporalRelativeDateRecord.create(newDate, days);
     }
 
-    protected JSTemporalPlainDateObject calendarDateAdd(DynamicObject calendar, DynamicObject date, DynamicObject duration, DynamicObject options) {
+    protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options) {
         if (getMethodDateAddNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getMethodDateAddNode = insert(GetMethodNode.create(ctx, TemporalConstants.DATE_ADD));

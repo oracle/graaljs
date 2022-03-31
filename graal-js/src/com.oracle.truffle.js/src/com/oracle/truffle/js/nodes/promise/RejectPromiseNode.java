@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -51,6 +50,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class RejectPromiseNode extends JavaScriptBaseNode {
@@ -77,12 +77,12 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
         return new RejectPromiseNode(context);
     }
 
-    public Object execute(DynamicObject promise, Object reason) {
+    public Object execute(JSDynamicObject promise, Object reason) {
         assert JSPromise.isPending(promise);
 
         if (!JSConfig.EagerStackTrace && context.isOptionAsyncStackTraces() && JSError.isJSError(reason)) {
             // Materialize lazy stack trace before clearing promise reactions.
-            materializeLazyStackTrace((DynamicObject) reason);
+            materializeLazyStackTrace((JSDynamicObject) reason);
         }
 
         Object reactions = getPromiseRejectReactions.getValue(promise);
@@ -97,7 +97,7 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private static void materializeLazyStackTrace(DynamicObject error) {
+    private static void materializeLazyStackTrace(JSDynamicObject error) {
         assert JSError.isJSError(error);
         GraalJSException exception = JSError.getException(error);
         if (exception != null) {

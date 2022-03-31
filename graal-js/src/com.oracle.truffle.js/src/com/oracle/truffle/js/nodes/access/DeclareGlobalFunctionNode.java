@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -54,6 +53,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -80,7 +80,7 @@ public abstract class DeclareGlobalFunctionNode extends DeclareGlobalNode {
     public void verify(JSContext context, JSRealm realm) {
         super.verify(context, realm);
         // CanDeclareGlobalFunction
-        DynamicObject globalObject = realm.getGlobalObject();
+        JSDynamicObject globalObject = realm.getGlobalObject();
         PropertyDescriptor desc = getOwnPropertyNode.execute(globalObject, varName);
         if (desc == null) {
             if (!isExtensibleNode.executeBoolean(globalObject)) {
@@ -98,21 +98,21 @@ public abstract class DeclareGlobalFunctionNode extends DeclareGlobalNode {
     @Override
     public final void executeVoid(VirtualFrame frame, JSContext context, JSRealm realm) {
         Object value = valueNode == null ? Undefined.instance : valueNode.execute(frame);
-        DynamicObject globalObject = realm.getGlobalObject();
+        JSDynamicObject globalObject = realm.getGlobalObject();
         PropertyDescriptor desc = getOwnPropertyNode.execute(globalObject, varName);
         executeVoid(globalObject, value, desc, context);
     }
 
-    protected abstract void executeVoid(DynamicObject globalObject, Object value, PropertyDescriptor desc, JSContext context);
+    protected abstract void executeVoid(JSDynamicObject globalObject, Object value, PropertyDescriptor desc, JSContext context);
 
     @Specialization(guards = {"context.getPropertyCacheLimit() > 0", "isJSGlobalObject(globalObject)", "desc == null"})
-    protected void doCached(DynamicObject globalObject, Object value, @SuppressWarnings("unused") PropertyDescriptor desc, @SuppressWarnings("unused") JSContext context,
+    protected void doCached(JSDynamicObject globalObject, Object value, @SuppressWarnings("unused") PropertyDescriptor desc, @SuppressWarnings("unused") JSContext context,
                     @Cached("makeDefineOwnPropertyCache(context)") PropertySetNode cache) {
         cache.setValue(globalObject, value);
     }
 
     @Specialization(replaces = {"doCached"})
-    protected void doUncached(DynamicObject globalObject, Object value, PropertyDescriptor desc, JSContext context) {
+    protected void doUncached(JSDynamicObject globalObject, Object value, PropertyDescriptor desc, JSContext context) {
         if (valueNode == null && desc == null && JSGlobal.isJSGlobalObject(globalObject)) {
             JSObjectUtil.putDeclaredDataProperty(context, globalObject, varName, value, getAttributeFlags());
         } else {

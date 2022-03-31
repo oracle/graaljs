@@ -48,7 +48,6 @@ import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -58,6 +57,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode implements RepeatableNode, ReadNode {
@@ -94,7 +94,7 @@ public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode imp
     }
 
     @Specialization(guards = "!isArgumentsDisconnected(argumentsArray)")
-    public Object doObject(DynamicObject argumentsArray,
+    public Object doObject(JSDynamicObject argumentsArray,
                     @Cached("createBinaryProfile()") @Shared("unconnected") ConditionProfile unconnected) {
         assert JSArgumentsArray.isJSArgumentsObject(argumentsArray);
         if (unconnected.profile(argumentIndex >= JSArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
@@ -109,7 +109,7 @@ public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode imp
     }
 
     @Specialization(guards = "isArgumentsDisconnected(argumentsArray)")
-    public Object doObjectDisconnected(DynamicObject argumentsArray,
+    public Object doObjectDisconnected(JSDynamicObject argumentsArray,
                     @Cached("createBinaryProfile()") ConditionProfile wasDisconnected,
                     @Cached("createBinaryProfile()") @Shared("unconnected") ConditionProfile unconnected) {
         assert JSArgumentsArray.isJSArgumentsObject(argumentsArray);

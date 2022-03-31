@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -65,6 +64,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AsyncGeneratorYieldNode extends AbstractAwaitNode implements ResumableNode.WithIntState {
@@ -203,7 +203,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         } else {
             iteratorRecord = (IteratorRecord) frame.getObject(iteratorTempSlot);
         }
-        DynamicObject iterator = iteratorRecord.getIterator();
+        JSDynamicObject iterator = iteratorRecord.getIterator();
 
         Completion received = Completion.forNormal(Undefined.instance);
         for (;;) {
@@ -258,7 +258,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                 // received.[[Type]] is normal or throw
                 case normalOrThrowAwaitInnerResult: {
                     Object awaited = resumeAwait(frame);
-                    DynamicObject innerResult = checkcastIterResult(awaited);
+                    JSDynamicObject innerResult = checkcastIterResult(awaited);
                     boolean done = iteratorCompleteNode.execute(innerResult);
                     if (done) {
                         reset(frame);
@@ -271,7 +271,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                 // received.[[Type]] is return
                 case returnAwaitInnerReturnResult: {
                     Object awaited = resumeAwait(frame);
-                    DynamicObject innerReturnResult = checkcastIterResult(awaited);
+                    JSDynamicObject innerReturnResult = checkcastIterResult(awaited);
                     boolean done = iteratorCompleteNode.execute(innerReturnResult);
                     if (done) {
                         reset(frame);
@@ -348,19 +348,19 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         frame.setObject(iteratorTempSlot, Undefined.instance);
     }
 
-    private Object callThrowMethod(Object throwMethod, DynamicObject iterator, Object received) {
+    private Object callThrowMethod(Object throwMethod, JSDynamicObject iterator, Object received) {
         return callThrowNode.executeCall(JSArguments.createOneArg(iterator, throwMethod, received));
     }
 
-    private Object callReturnMethod(Object returnMethod, DynamicObject iterator, Object received) {
+    private Object callReturnMethod(Object returnMethod, JSDynamicObject iterator, Object received) {
         return callReturnNode.executeCall(JSArguments.createOneArg(iterator, returnMethod, received));
     }
 
-    private DynamicObject checkcastIterResult(Object iterResult) {
+    private JSDynamicObject checkcastIterResult(Object iterResult) {
         if (!JSRuntime.isObject(iterResult)) {
             throw Errors.createTypeErrorIterResultNotAnObject(iterResult, this);
         }
-        return (DynamicObject) iterResult;
+        return (JSDynamicObject) iterResult;
     }
 
     @Override

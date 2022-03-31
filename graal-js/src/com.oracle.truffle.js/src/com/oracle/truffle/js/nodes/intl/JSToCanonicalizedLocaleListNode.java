@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,19 +40,17 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
-import static com.oracle.truffle.api.dsl.Cached.Shared;
-
 import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -68,6 +66,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.intl.JSLocale;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -96,12 +95,12 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
     }
 
     @Specialization(guards = {"isUndefined(object)"})
-    protected String[] doUndefined(@SuppressWarnings("unused") DynamicObject object) {
+    protected String[] doUndefined(@SuppressWarnings("unused") JSDynamicObject object) {
         return new String[0];
     }
 
     @Specialization(guards = {"isJSLocale(object)"})
-    protected String[] doLocale(DynamicObject object) {
+    protected String[] doLocale(JSDynamicObject object) {
         return doJavaString(JSLocale.getInternalState(object).getLocale());
     }
 
@@ -115,7 +114,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                     @Cached @Shared("equalsNode") TruffleString.EqualNode equalsNode,
                     @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode) {
         List<String> result = new ArrayList<>();
-        DynamicObject localeObj = (DynamicObject) toObjectNode.execute(object);
+        JSDynamicObject localeObj = (JSDynamicObject) toObjectNode.execute(object);
         long len = getLengthNode.executeLong(localeObj);
         for (long k = 0; k < len; k++) {
             if (hasPropertyNode.executeBoolean(localeObj, k)) {
@@ -127,7 +126,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                 }
                 String lt;
                 if (JSLocale.isJSLocale(kValue)) {
-                    lt = JSLocale.getInternalState((DynamicObject) kValue).getLocale();
+                    lt = JSLocale.getInternalState((JSDynamicObject) kValue).getLocale();
                 } else {
                     lt = Strings.toJavaString(toJavaStringNode, toStringNode.executeString(kValue));
                 }

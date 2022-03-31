@@ -79,13 +79,13 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.truffle.js.runtime.Strings;
 import org.graalvm.polyglot.Engine;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSParserOptions;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public abstract class TestSuite {
@@ -535,8 +535,8 @@ public abstract class TestSuite {
         if (cause instanceof UserScriptException) {
             UserScriptException use = (UserScriptException) cause;
             Object exceptionObject = use.getErrorObject();
-            if (exceptionObject instanceof DynamicObject) {
-                return String.valueOf(JSObject.get((DynamicObject) exceptionObject, Strings.MESSAGE));
+            if (exceptionObject instanceof JSDynamicObject) {
+                return String.valueOf(JSObject.get((JSDynamicObject) exceptionObject, Strings.MESSAGE));
             }
         }
         return "";

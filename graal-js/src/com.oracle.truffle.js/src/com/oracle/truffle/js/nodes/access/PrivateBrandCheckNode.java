@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,11 +47,11 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Properties;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -77,7 +77,7 @@ public abstract class PrivateBrandCheckNode extends JSTargetableNode {
     }
 
     @Specialization(guards = {"isJSObject(target)"}, limit = "3")
-    Object doInstance(DynamicObject target, HiddenKey brandKey,
+    Object doInstance(JSDynamicObject target, HiddenKey brandKey,
                     @CachedLibrary("target") DynamicObjectLibrary access) {
         if (Properties.containsKey(access, target, brandKey)) {
             return target;
@@ -87,7 +87,7 @@ public abstract class PrivateBrandCheckNode extends JSTargetableNode {
     }
 
     @Specialization(guards = {"isJSObject(target)"})
-    Object doStatic(DynamicObject target, DynamicObject brand) {
+    Object doStatic(JSDynamicObject target, JSDynamicObject brand) {
         if (target == brand) {
             return target;
         } else {

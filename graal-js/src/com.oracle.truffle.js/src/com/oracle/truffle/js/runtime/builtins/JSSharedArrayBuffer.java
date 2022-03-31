@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putFunctionsFro
 
 import java.nio.ByteBuffer;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.SharedArrayBufferFunctionBuiltins;
@@ -54,6 +53,7 @@ import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
@@ -67,23 +67,23 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     private JSSharedArrayBuffer() {
     }
 
-    public static DynamicObject createSharedArrayBuffer(JSContext context, JSRealm realm, int length) {
+    public static JSDynamicObject createSharedArrayBuffer(JSContext context, JSRealm realm, int length) {
         return createSharedArrayBuffer(context, realm, DirectByteBufferHelper.allocateDirect(length));
     }
 
-    public static DynamicObject createSharedArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer) {
+    public static JSDynamicObject createSharedArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer) {
         assert buffer != null;
         JSObjectFactory factory = context.getSharedArrayBufferFactory();
-        DynamicObject obj = JSArrayBufferObject.createSharedArrayBuffer(factory.getShape(realm), buffer, new JSAgentWaiterList());
+        JSDynamicObject obj = JSArrayBufferObject.createSharedArrayBuffer(factory.getShape(realm), buffer, new JSAgentWaiterList());
         factory.initProto(obj, realm);
         assert isJSSharedArrayBuffer(obj);
         return context.trackAllocation(obj);
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject ctor) {
         JSContext context = realm.getContext();
-        DynamicObject arrayBufferPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSDynamicObject arrayBufferPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         putConstructorProperty(context, arrayBufferPrototype, ctor);
         putFunctionsFromContainer(realm, arrayBufferPrototype, SharedArrayBufferPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putBuiltinAccessorProperty(arrayBufferPrototype, BYTE_LENGTH, realm.lookupAccessor(SharedArrayBufferPrototypeBuiltins.BUILTINS, BYTE_LENGTH));
@@ -92,7 +92,7 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         return initialShape;
     }
@@ -107,7 +107,7 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
@@ -115,23 +115,23 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
         return obj instanceof JSArrayBufferObject.Shared;
     }
 
-    public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj) {
+    public static ByteBuffer getDirectByteBuffer(JSDynamicObject thisObj) {
         assert isJSSharedArrayBuffer(thisObj);
         return JSArrayBufferObject.getDirectByteBuffer(thisObj);
     }
 
-    public static JSAgentWaiterList getWaiterList(DynamicObject thisObj) {
+    public static JSAgentWaiterList getWaiterList(JSDynamicObject thisObj) {
         assert isJSSharedArrayBuffer(thisObj);
         return JSArrayBufferObject.getWaiterList(thisObj);
     }
 
-    public static void setWaiterList(DynamicObject thisObj, JSAgentWaiterList wl) {
+    public static void setWaiterList(JSDynamicObject thisObj, JSAgentWaiterList wl) {
         assert isJSSharedArrayBuffer(thisObj);
         JSArrayBufferObject.setWaiterList(thisObj, wl);
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getSharedArrayBufferPrototype();
     }
 }

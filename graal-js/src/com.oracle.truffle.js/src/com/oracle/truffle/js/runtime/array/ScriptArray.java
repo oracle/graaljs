@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCloneable;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
@@ -68,6 +67,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractConstantArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -75,13 +75,13 @@ public abstract class ScriptArray {
 
     public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
 
-    public abstract Object getElement(DynamicObject object, long index);
+    public abstract Object getElement(JSDynamicObject object, long index);
 
-    public abstract Object getElementInBounds(DynamicObject object, long index);
+    public abstract Object getElementInBounds(JSDynamicObject object, long index);
 
-    public abstract ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict);
+    public abstract ScriptArray setElementImpl(JSDynamicObject object, long index, Object value, boolean strict);
 
-    public final ScriptArray setElement(DynamicObject object, long index, Object value, boolean strict) {
+    public final ScriptArray setElement(JSDynamicObject object, long index, Object value, boolean strict) {
         if (isFrozen()) {
             if (strict) {
                 setElementFrozenStrict(index);
@@ -108,14 +108,14 @@ public abstract class ScriptArray {
         }
     }
 
-    public abstract ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict);
+    public abstract ScriptArray deleteElementImpl(JSDynamicObject object, long index, boolean strict);
 
-    public final ScriptArray deleteElement(DynamicObject object, long index, boolean strict) {
+    public final ScriptArray deleteElement(JSDynamicObject object, long index, boolean strict) {
         assert canDeleteElement(object, index, strict);
         return deleteElementImpl(object, index, strict);
     }
 
-    public final boolean canDeleteElement(DynamicObject object, long index, boolean strict) {
+    public final boolean canDeleteElement(JSDynamicObject object, long index, boolean strict) {
         if (isSealed()) {
             if (hasElement(object, index)) {
                 if (strict) {
@@ -130,11 +130,11 @@ public abstract class ScriptArray {
     /**
      * @return true if array has an element (not a hole) at this index.
      */
-    public abstract boolean hasElement(DynamicObject object, long index);
+    public abstract boolean hasElement(JSDynamicObject object, long index);
 
-    public abstract long length(DynamicObject object);
+    public abstract long length(JSDynamicObject object);
 
-    public abstract int lengthInt(DynamicObject object);
+    public abstract int lengthInt(JSDynamicObject object);
 
     protected interface ProfileAccess {
     }
@@ -180,9 +180,9 @@ public abstract class ScriptArray {
         return ProfileHolder.create(8, SetLengthProfileAccess.class);
     }
 
-    public abstract ScriptArray setLengthImpl(DynamicObject object, long len, ProfileHolder profile);
+    public abstract ScriptArray setLengthImpl(JSDynamicObject object, long len, ProfileHolder profile);
 
-    public final ScriptArray setLength(DynamicObject object, long len, boolean strict, ProfileHolder profile) {
+    public final ScriptArray setLength(JSDynamicObject object, long len, boolean strict, ProfileHolder profile) {
         if (isLengthNotWritable()) {
             if (strict) {
                 throw Errors.createTypeErrorLengthNotWritable();
@@ -194,19 +194,19 @@ public abstract class ScriptArray {
         return setLengthImpl(object, len, profile);
     }
 
-    public final ScriptArray setLength(DynamicObject object, long len, boolean strict) {
+    public final ScriptArray setLength(JSDynamicObject object, long len, boolean strict) {
         return setLength(object, len, strict, ProfileHolder.empty());
     }
 
     /**
      * First element index (inclusive).
      */
-    public abstract long firstElementIndex(DynamicObject object);
+    public abstract long firstElementIndex(JSDynamicObject object);
 
     /**
      * Last element index (inclusive).
      */
-    public abstract long lastElementIndex(DynamicObject object);
+    public abstract long lastElementIndex(JSDynamicObject object);
 
     /**
      * Returns the next index. The index is guaranteed either to exist, or be MAX_SAFE_INTEGER.
@@ -214,22 +214,22 @@ public abstract class ScriptArray {
      * the length() of this array would be wrong, if the inheriting array is longer, but has a hole
      * at length().
      */
-    public abstract long nextElementIndex(DynamicObject object, long index);
+    public abstract long nextElementIndex(JSDynamicObject object, long index);
 
     /**
      * Returns the previous index. The index is guaranteed either to exist, or be smaller than
      * firstElementIndex().
      */
-    public abstract long previousElementIndex(DynamicObject object, long index);
+    public abstract long previousElementIndex(JSDynamicObject object, long index);
 
     /**
      * Range check only, might be a hole depending on array type.
      */
-    public boolean isInBoundsFast(DynamicObject object, long index) {
+    public boolean isInBoundsFast(JSDynamicObject object, long index) {
         return firstElementIndex(object) <= index && index <= lastElementIndex(object);
     }
 
-    public Iterable<Object> asIterable(DynamicObject object) {
+    public Iterable<Object> asIterable(JSDynamicObject object) {
         return new Iterable<>() {
             @Override
             public Iterator<Object> iterator() {
@@ -240,9 +240,9 @@ public abstract class ScriptArray {
 
     protected final class DefaultIterator implements Iterator<Object> {
         private long currentIndex;
-        private final DynamicObject arrayObject;
+        private final JSDynamicObject arrayObject;
 
-        public DefaultIterator(DynamicObject arrayObject) {
+        public DefaultIterator(JSDynamicObject arrayObject) {
             this.arrayObject = arrayObject;
             this.currentIndex = firstElementIndex(arrayObject);
         }
@@ -274,7 +274,7 @@ public abstract class ScriptArray {
      * This is mostly used in tests, but also in a few places in Node.js.
      */
     @TruffleBoundary
-    public final Object[] toArray(DynamicObject thisObj) {
+    public final Object[] toArray(JSDynamicObject thisObj) {
         int len = lengthInt(thisObj);
         Object[] newArray = new Object[len];
         Arrays.fill(newArray, Undefined.instance);
@@ -303,7 +303,7 @@ public abstract class ScriptArray {
     }
 
     @TruffleBoundary
-    public String toString(DynamicObject object) {
+    public String toString(JSDynamicObject object) {
         StringBuilder sb = new StringBuilder();
         int i = 0;
         for (; i < length(object); i++) {
@@ -358,16 +358,16 @@ public abstract class ScriptArray {
         return false;
     }
 
-    public abstract boolean hasHoles(DynamicObject object);
+    public abstract boolean hasHoles(JSDynamicObject object);
 
     /**
      * This function deletes all elements in the range from [start..end[. This is equivalent to
      * shifting the whole array, starting with element index end, by end-start positions to the
      * left. Can be used by e.g. Array.prototype.splice;
      */
-    public abstract ScriptArray removeRangeImpl(DynamicObject object, long start, long end);
+    public abstract ScriptArray removeRangeImpl(JSDynamicObject object, long start, long end);
 
-    public final ScriptArray removeRange(DynamicObject object, long start, long end) {
+    public final ScriptArray removeRange(JSDynamicObject object, long start, long end) {
         assert start >= 0 && start <= end;
         if (isSealed()) {
             throw Errors.createTypeErrorCannotDeletePropertyOfSealedArray(start);
@@ -375,7 +375,7 @@ public abstract class ScriptArray {
         return removeRangeImpl(object, start, end);
     }
 
-    public final ScriptArray removeRange(DynamicObject object, long start, long end, BranchProfile errorBranch) {
+    public final ScriptArray removeRange(JSDynamicObject object, long start, long end, BranchProfile errorBranch) {
         assert start >= 0 && start <= end;
         if (isSealed()) {
             errorBranch.enter();
@@ -389,11 +389,11 @@ public abstract class ScriptArray {
      * implementation, the shift operation might be zero-copy. Can be used by e.g.
      * Array.prototype.shift;
      */
-    public ScriptArray shiftRangeImpl(DynamicObject object, long limit) {
+    public ScriptArray shiftRangeImpl(JSDynamicObject object, long limit) {
         return removeRangeImpl(object, 0, limit);
     }
 
-    public final ScriptArray shiftRange(DynamicObject object, long from) {
+    public final ScriptArray shiftRange(JSDynamicObject object, long from) {
         assert from >= 0;
         assert !isSealed();
         return shiftRangeImpl(object, from);
@@ -410,9 +410,9 @@ public abstract class ScriptArray {
      *
      * @return a {@link ScriptArray} instance with the new size
      */
-    public abstract ScriptArray addRangeImpl(DynamicObject object, long offset, int size);
+    public abstract ScriptArray addRangeImpl(JSDynamicObject object, long offset, int size);
 
-    public final ScriptArray addRange(DynamicObject object, long offset, int size) {
+    public final ScriptArray addRange(JSDynamicObject object, long offset, int size) {
         if (!isExtensible()) {
             throw addRangeNotExtensible();
         }
@@ -430,17 +430,17 @@ public abstract class ScriptArray {
         }
     }
 
-    public List<Object> ownPropertyKeys(DynamicObject object) {
+    public List<Object> ownPropertyKeys(JSDynamicObject object) {
         assert !isHolesType() || !hasHoles(object);
         return ownPropertyKeysContiguous(object);
     }
 
-    protected final List<Object> ownPropertyKeysContiguous(DynamicObject object) {
+    protected final List<Object> ownPropertyKeysContiguous(JSDynamicObject object) {
         return makeRangeList(firstElementIndex(object), lastElementIndex(object) + 1);
     }
 
     @TruffleBoundary
-    protected final List<Object> ownPropertyKeysHoles(DynamicObject object) {
+    protected final List<Object> ownPropertyKeysHoles(JSDynamicObject object) {
         long currentIndex = firstElementIndex(object);
         long start = currentIndex;
         long end = currentIndex;

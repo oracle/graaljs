@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ID;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalTimeZoneFunctionBuiltins;
@@ -56,6 +55,7 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -71,20 +71,20 @@ public final class JSTemporalTimeZone extends JSNonProxy implements JSConstructo
     private JSTemporalTimeZone() {
     }
 
-    public static DynamicObject create(JSContext context, BigInt nanoseconds, TruffleString identifier) {
+    public static JSDynamicObject create(JSContext context, BigInt nanoseconds, TruffleString identifier) {
         JSRealm realm = JSRealm.get(null);
         return create(context, realm, nanoseconds, identifier);
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm, BigInt nanoseconds, TruffleString identifier) {
+    public static JSDynamicObject create(JSContext context, JSRealm realm, BigInt nanoseconds, TruffleString identifier) {
         assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
         JSObjectFactory factory = context.getTemporalTimeZoneFactory();
-        DynamicObject obj = factory.initProto(new JSTemporalTimeZoneObject(factory.getShape(realm), nanoseconds, identifier), realm);
+        JSDynamicObject obj = factory.initProto(new JSTemporalTimeZoneObject(factory.getShape(realm), nanoseconds, identifier), realm);
         return context.trackAllocation(obj);
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return TO_STRING_TAG;
     }
 
@@ -94,9 +94,9 @@ public final class JSTemporalTimeZone extends JSNonProxy implements JSConstructo
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject constructor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalTimeZonePrototypeBuiltins.BUILTINS);
 
@@ -108,17 +108,17 @@ public final class JSTemporalTimeZone extends JSNonProxy implements JSConstructo
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, JSTemporalTimeZone.INSTANCE, context);
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getTemporalTimeZonePrototype();
     }
 
     @Override
-    public void fillConstructor(JSRealm realm, DynamicObject constructor) {
+    public void fillConstructor(JSRealm realm, JSDynamicObject constructor) {
         WithFunctionsAndSpecies.super.fillConstructor(realm, constructor);
     }
 

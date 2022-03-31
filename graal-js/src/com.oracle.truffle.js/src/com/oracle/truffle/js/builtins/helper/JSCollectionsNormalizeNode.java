@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -55,6 +54,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * This implements behavior for Collections of ES6. Instead of adhering to the SameValueNull
@@ -91,7 +91,7 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isJSDynamicObject(object)")
-    public Object doDynamicObject(DynamicObject object) {
+    public Object doDynamicObject(JSDynamicObject object) {
         return object;
     }
 

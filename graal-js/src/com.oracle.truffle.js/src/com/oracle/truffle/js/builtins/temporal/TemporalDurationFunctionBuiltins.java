@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -54,6 +53,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
@@ -99,7 +99,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        protected DynamicObject from(Object item,
+        protected JSDynamicObject from(Object item,
                         @Cached("create(getContext())") ToTemporalDurationNode toTemporalDurationNode) {
             if (isObject(item) && JSTemporalDuration.isJSTemporalDuration(item)) {
                 JSTemporalDurationObject duration = (JSTemporalDurationObject) item;
@@ -125,8 +125,8 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                         @Cached("create(getContext())") ToTemporalDurationNode toTemporalDurationNode) {
             JSTemporalDurationObject one = (JSTemporalDurationObject) toTemporalDurationNode.executeDynamicObject(oneParam);
             JSTemporalDurationObject two = (JSTemporalDurationObject) toTemporalDurationNode.executeDynamicObject(twoParam);
-            DynamicObject options = getOptionsObject(optionsParam);
-            DynamicObject relativeTo = toRelativeTemporalObjectNode.execute(options);
+            JSDynamicObject options = getOptionsObject(optionsParam);
+            JSDynamicObject relativeTo = toRelativeTemporalObjectNode.execute(options);
             double shift1 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
                             one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),
                             0, 0, 0, 0, 0, 0);

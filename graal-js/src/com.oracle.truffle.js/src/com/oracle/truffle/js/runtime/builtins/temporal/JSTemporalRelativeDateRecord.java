@@ -40,22 +40,22 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class JSTemporalRelativeDateRecord {
-    private final DynamicObject relativeTo;
+    private final JSDynamicObject relativeTo;
     private final long days;
 
-    private JSTemporalRelativeDateRecord(DynamicObject relativeTo, long days) {
+    private JSTemporalRelativeDateRecord(JSDynamicObject relativeTo, long days) {
         this.relativeTo = relativeTo;
         this.days = days;
     }
 
-    public static JSTemporalRelativeDateRecord create(DynamicObject relativeTo, long days) {
+    public static JSTemporalRelativeDateRecord create(JSDynamicObject relativeTo, long days) {
         return new JSTemporalRelativeDateRecord(relativeTo, days);
     }
 
-    public DynamicObject getRelativeTo() {
+    public JSDynamicObject getRelativeTo() {
         return relativeTo;
     }
 

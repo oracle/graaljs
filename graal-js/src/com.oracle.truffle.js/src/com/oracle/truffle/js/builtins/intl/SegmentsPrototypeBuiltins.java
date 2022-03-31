@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.ibm.icu.text.BreakIterator;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.SegmentsPrototypeBuiltinsFactory.SegmentsContainingNodeGen;
@@ -62,6 +61,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenterObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmentsObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class SegmentsPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<SegmentsPrototypeBuiltins.SegmentsPrototype> {
@@ -184,7 +184,7 @@ public final class SegmentsPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return new CreateSegmentIteratorNode(context);
         }
 
-        public DynamicObject execute(DynamicObject segmenter, TruffleString value) {
+        public JSDynamicObject execute(JSDynamicObject segmenter, TruffleString value) {
             assert JSSegmenter.isJSSegmenter(segmenter);
             return JSSegmenter.createSegmentIterator(context, getRealm(), segmenter, value);
         }

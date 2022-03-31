@@ -46,7 +46,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -64,6 +63,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -107,15 +107,15 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     private JSString() {
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm, TruffleString value) {
-        DynamicObject stringObj = JSStringObject.create(realm, context.getStringFactory(), value);
+    public static JSDynamicObject create(JSContext context, JSRealm realm, TruffleString value) {
+        JSDynamicObject stringObj = JSStringObject.create(realm, context.getStringFactory(), value);
         assert isJSString(stringObj);
         return context.trackAllocation(stringObj);
     }
 
     @TruffleBoundary
     @Override
-    public boolean hasOwnProperty(DynamicObject thisObj, Object key) {
+    public boolean hasOwnProperty(JSDynamicObject thisObj, Object key) {
         if (super.hasOwnProperty(thisObj, key)) {
             return true;
         }
@@ -123,19 +123,19 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
         return index >= 0 && index < getStringLength(thisObj);
     }
 
-    public static TruffleString getString(DynamicObject obj) {
+    public static TruffleString getString(JSDynamicObject obj) {
         assert isJSString(obj);
         return ((com.oracle.truffle.js.runtime.builtins.JSStringObject) obj).getString();
     }
 
     @TruffleBoundary
-    public static int getStringLength(DynamicObject obj) {
+    public static int getStringLength(JSDynamicObject obj) {
         assert isJSString(obj);
         return Strings.length(getString(obj));
     }
 
     @Override
-    public boolean hasOwnProperty(DynamicObject thisObj, long index) {
+    public boolean hasOwnProperty(JSDynamicObject thisObj, long index) {
         if (index >= 0 && index < getStringLength(thisObj)) {
             return true;
         }
@@ -144,7 +144,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+    public Object getOwnHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         long value = JSRuntime.propertyKeyToArrayIndex(key);
         if (0 <= value && value < getStringLength(store)) {
             return Strings.substring(JavaScriptLanguage.get(encapsulatingNode).getJSContext(), getString(store), (int) value, 1);
@@ -154,7 +154,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
+    public Object getOwnHelper(JSDynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
         if (0 <= index && index < getStringLength(store)) {
             return Strings.substring(JavaScriptLanguage.get(encapsulatingNode).getJSContext(), getString(store), (int) index, 1);
         }
@@ -163,7 +163,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    public boolean set(JSDynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         if (receiver != thisObj) {
             return ordinarySetWithReceiver(thisObj, key, value, receiver, isStrict, encapsulatingNode);
         }
@@ -181,7 +181,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    public boolean set(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         if (receiver != thisObj) {
             return ordinarySetWithReceiver(thisObj, Strings.fromLong(index), value, receiver, isStrict, encapsulatingNode);
         }
@@ -198,7 +198,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
 
     @TruffleBoundary
     @Override
-    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
+    public List<Object> getOwnPropertyKeys(JSDynamicObject thisObj, boolean strings, boolean symbols) {
         int len = getStringLength(thisObj);
         List<Object> indices = strings ? ScriptArray.makeRangeList(0, len) : Collections.emptyList();
         List<Object> keyList = thisObj.getShape().getKeyList();
@@ -232,7 +232,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     }
 
     @Override
-    public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
         long idx = JSRuntime.propertyKeyToArrayIndex(key);
         if (JSRuntime.isArrayIndex(idx) && ((0 <= idx) && (idx < getStringLength(thisObj)))) {
             if (isStrict) {
@@ -245,10 +245,10 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     }
 
     @Override
-    public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(final JSRealm realm, JSDynamicObject ctor) {
         JSContext ctx = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(ctx, INSTANCE, realm.getObjectPrototype());
-        DynamicObject prototype = JSStringObject.create(protoShape, Strings.EMPTY_STRING);
+        JSDynamicObject prototype = JSStringObject.create(protoShape, Strings.EMPTY_STRING);
         JSObjectUtil.setOrVerifyPrototype(ctx, prototype, realm.getObjectPrototype());
 
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
@@ -269,7 +269,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSString.INSTANCE, context);
         initialShape = Shape.newBuilder(initialShape).addConstantProperty(LENGTH, LENGTH_PROXY, JSAttributes.notConfigurableNotEnumerableNotWritable() | JSProperty.PROXY).build();
         return initialShape;
@@ -285,18 +285,18 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public TruffleString getBuiltinToStringTag(DynamicObject object) {
+    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
         return getClassName(object);
     }
 
     @TruffleBoundary
     @Override
-    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return Strings.concatAll(Strings.BRACKET_OPEN, CLASS_NAME, Strings.SPACE, getString(obj), Strings.BRACKET_CLOSE);
         } else {
@@ -311,13 +311,13 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
 
     public static final class StringLengthProxyProperty extends PropertyProxy {
         @Override
-        public Object get(DynamicObject store) {
+        public Object get(JSDynamicObject store) {
             return getStringLength(store);
         }
     }
 
     @Override
-    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
+    public PropertyDescriptor getOwnProperty(JSDynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
         PropertyDescriptor desc = ordinaryGetOwnProperty(thisObj, key);
         if (desc == null) {
@@ -334,7 +334,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
 
     @TruffleBoundary
     @Override
-    public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
+    public boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
         assert JSRuntime.isPropertyKey(key) : key.getClass().getName();
         long idx = JSRuntime.propertyKeyToArrayIndex(key);
         if (idx >= 0 && idx < getStringLength(thisObj)) {
@@ -352,7 +352,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
      * ES6, 9.4.3.1.1 StringGetIndexProperty (S, P).
      */
     @TruffleBoundary
-    public static PropertyDescriptor stringGetIndexProperty(DynamicObject thisObj, Object key) {
+    public static PropertyDescriptor stringGetIndexProperty(JSDynamicObject thisObj, Object key) {
         assert JSString.isJSString(thisObj);
         long index = JSRuntime.propertyKeyToArrayIndex(key);
         if (index < 0) {
@@ -368,7 +368,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getStringPrototype();
     }
 

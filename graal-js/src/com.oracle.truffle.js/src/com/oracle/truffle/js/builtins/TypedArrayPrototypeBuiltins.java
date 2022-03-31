@@ -53,7 +53,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -279,7 +278,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
          * @return subarray TypedArray
          */
         @Specialization(guards = "isJSArrayBufferView(thisObj)")
-        protected DynamicObject subarray(DynamicObject thisObj, int begin, int end,
+        protected JSDynamicObject subarray(JSDynamicObject thisObj, int begin, int end,
                         @Cached("createIdentityProfile()") ValueProfile arrayTypeProfile) {
             TypedArray array = arrayTypeProfile.profile(typedArrayGetArrayType(thisObj));
             int length = (int) array.length(thisObj);
@@ -289,7 +288,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = "isJSArrayBufferView(thisObj)")
-        protected DynamicObject subarray(DynamicObject thisObj, Object begin0, Object end0,
+        protected JSDynamicObject subarray(JSDynamicObject thisObj, Object begin0, Object end0,
                         @Cached("createIdentityProfile()") ValueProfile arrayTypeProfile,
                         @Cached("createBinaryProfile()") ConditionProfile negativeBegin,
                         @Cached("createBinaryProfile()") ConditionProfile negativeEnd,
@@ -308,14 +307,14 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSArrayBufferView(thisObj)")
-        protected DynamicObject subarrayGeneric(Object thisObj, Object begin0, Object end0) {
+        protected JSDynamicObject subarrayGeneric(Object thisObj, Object begin0, Object end0) {
             throw Errors.createTypeErrorArrayBufferViewExpected();
         }
 
-        protected DynamicObject subarrayImpl(DynamicObject thisObj, TypedArray arrayType, int begin, int end) {
+        protected JSDynamicObject subarrayImpl(JSDynamicObject thisObj, TypedArray arrayType, int begin, int end) {
             assert arrayType == JSArrayBufferView.typedArrayGetArrayType(thisObj);
             int offset = JSArrayBufferView.typedArrayGetOffset(thisObj);
-            DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(thisObj);
+            JSDynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(thisObj);
             return getArraySpeciesConstructorNode().typedArraySpeciesCreate(thisObj, arrayBuffer, offset + begin * arrayType.bytesPerElement(), end - begin);
         }
 
@@ -378,7 +377,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
          * @return void
          */
         @Specialization(guards = "isJSArrayBufferView(targetObj)")
-        protected Object set(DynamicObject targetObj, Object array, Object offset) {
+        protected Object set(JSDynamicObject targetObj, Object array, Object offset) {
             long targetOffsetLong = toInteger(offset);
             if (targetOffsetLong < 0 || targetOffsetLong > Integer.MAX_VALUE) {
                 needErrorBranch.enter();
@@ -387,9 +386,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             checkHasDetachedBuffer(targetObj);
             int targetOffset = (int) targetOffsetLong;
             if (arrayIsArrayBufferView.profile(JSArrayBufferView.isJSArrayBufferView(array))) {
-                setArrayBufferView(targetObj, (DynamicObject) array, targetOffset);
+                setArrayBufferView(targetObj, (JSDynamicObject) array, targetOffset);
             } else if (arrayIsFastArray.profile(JSArray.isJSFastArray(array))) {
-                setFastArray(targetObj, (DynamicObject) array, targetOffset);
+                setFastArray(targetObj, (JSDynamicObject) array, targetOffset);
             } else {
                 setOther(targetObj, array, targetOffset);
             }
@@ -402,7 +401,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
 
-        private void setFastArray(DynamicObject thisObj, DynamicObject array, int offset) {
+        private void setFastArray(JSDynamicObject thisObj, JSDynamicObject array, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             assert JSArray.isJSFastArray(array);
             ScriptArray sourceArray = sourceArrayProf.profile(arrayGetArrayType(array));
@@ -416,7 +415,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
         }
 
-        private void setOther(DynamicObject thisObj, Object array, int offset) {
+        private void setOther(JSDynamicObject thisObj, Object array, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             assert !JSArray.isJSFastArray(array);
             if (getContext().isOptionV8CompatibilityMode() && JSRuntime.isNumber(array)) {
@@ -432,7 +431,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             for (int i = 0, j = offset; i < srcLength; i++, j++) {
                 Object value;
                 if (srcIsJSObject.profile(isJSObject)) {
-                    value = JSObject.get((DynamicObject) src, i, sourceArrayClassProfile);
+                    value = JSObject.get((JSDynamicObject) src, i, sourceArrayClassProfile);
                 } else {
                     value = JSInteropUtil.readArrayElementOrDefault(src, i, Undefined.instance);
                 }
@@ -442,7 +441,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
         }
 
-        private void setArrayBufferView(DynamicObject targetView, DynamicObject sourceView, int offset) {
+        private void setArrayBufferView(JSDynamicObject targetView, JSDynamicObject sourceView, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(targetView);
             assert JSArrayBufferView.isJSArrayBufferView(sourceView);
             checkHasDetachedBuffer(sourceView);
@@ -453,8 +452,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             rangeCheck(0, sourceLength, offset, targetArray.length(targetView));
 
             int sourceLen = (int) sourceLength;
-            DynamicObject sourceBuffer = JSArrayBufferView.getArrayBuffer(sourceView);
-            DynamicObject targetBuffer = JSArrayBufferView.getArrayBuffer(targetView);
+            JSDynamicObject sourceBuffer = JSArrayBufferView.getArrayBuffer(sourceView);
+            JSDynamicObject targetBuffer = JSArrayBufferView.getArrayBuffer(targetView);
             int srcByteOffset = JSArrayBufferView.typedArrayGetOffset(sourceView);
             int targetByteOffset = JSArrayBufferView.typedArrayGetOffset(targetView);
 
@@ -470,7 +469,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @SuppressWarnings("unchecked")
-        private void copyTypedArrayElementsDistinctBuffers(DynamicObject targetBuffer, DynamicObject sourceBuffer, TypedArray targetType, TypedArray sourceType,
+        private void copyTypedArrayElementsDistinctBuffers(JSDynamicObject targetBuffer, JSDynamicObject sourceBuffer, TypedArray targetType, TypedArray sourceType,
                         int targetOffset, int targetByteOffset, int sourceLength, int sourceByteIndex) {
             int targetElementSize = targetType.bytesPerElement();
             int sourceElementSize = sourceType.bytesPerElement();
@@ -522,8 +521,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
         }
 
-        private DynamicObject cloneArrayBuffer(DynamicObject sourceBuffer, TypedArray sourceArray, int srcByteLength, int srcByteOffset) {
-            DynamicObject clonedArrayBuffer;
+        private JSDynamicObject cloneArrayBuffer(JSDynamicObject sourceBuffer, TypedArray sourceArray, int srcByteLength, int srcByteOffset) {
+            JSDynamicObject clonedArrayBuffer;
             if (sourceArray.isInterop()) {
                 InteropLibrary interop = getInterop();
                 clonedArrayBuffer = cloneInteropArrayBuffer(sourceBuffer, srcByteLength, srcByteOffset, interop);
@@ -541,12 +540,12 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             return clonedArrayBuffer;
         }
 
-        private DynamicObject cloneInteropArrayBuffer(DynamicObject sourceBuffer, int srcByteLength, int srcByteOffset, InteropLibrary interop) {
+        private JSDynamicObject cloneInteropArrayBuffer(JSDynamicObject sourceBuffer, int srcByteLength, int srcByteOffset, InteropLibrary interop) {
             assert JSArrayBuffer.isJSInteropArrayBuffer(sourceBuffer);
             boolean direct = getContext().isOptionDirectByteBuffer();
             TypedArray sourceType = TypedArrayFactory.Int8Array.createArrayType(false, false, true);
             TypedArray clonedType = TypedArrayFactory.Int8Array.createArrayType(direct, false);
-            DynamicObject clonedArrayBuffer = direct
+            JSDynamicObject clonedArrayBuffer = direct
                             ? JSArrayBuffer.createDirectArrayBuffer(getContext(), getRealm(), srcByteLength)
                             : JSArrayBuffer.createArrayBuffer(getContext(), getRealm(), srcByteLength);
             for (int i = 0; i < srcByteLength; i++) {
@@ -580,7 +579,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             return getLengthNode.executeLong(thisObject);
         }
 
-        private void checkHasDetachedBuffer(DynamicObject view) {
+        private void checkHasDetachedBuffer(JSDynamicObject view) {
             if (JSArrayBufferView.hasDetachedBuffer(view, getContext())) {
                 needErrorBranch.enter();
                 throw Errors.createTypeErrorDetachedBuffer();
@@ -603,7 +602,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = "isJSArrayBufferView(thisJSObj)")
-        protected Object forEach(DynamicObject thisJSObj, Object callback, Object thisArg) {
+        protected Object forEach(JSDynamicObject thisJSObj, Object callback, Object thisArg) {
             checkHasDetachedBuffer(thisJSObj);
             long length = JSArrayBufferView.typedArrayGetArrayType(thisJSObj).length(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
@@ -639,7 +638,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = "isJSArrayBufferView(thisObj)")
-        protected DynamicObject reverse(DynamicObject thisObj,
+        protected JSDynamicObject reverse(JSDynamicObject thisObj,
                         @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode) {
             checkHasDetachedBuffer(thisObj);
             long len = getLength(thisObj);
@@ -700,9 +699,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected DynamicObject fill(Object thisObj, Object value, Object start, Object end) {
+        protected JSDynamicObject fill(Object thisObj, Object value, Object start, Object end) {
             validateTypedArray(thisObj);
-            DynamicObject thisJSObj = (DynamicObject) thisObj;
+            JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
             long len = getLength(thisJSObj);
             Object convValue = JSArrayBufferView.isBigIntArrayBufferView(thisJSObj) ? toBigInt(value) : toNumber(value);
             long lStart = JSRuntime.getOffset(toIntegerAsLong(start), len, offsetProfile1);
@@ -742,18 +741,18 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = "isJSArrayBufferView(thisObj)")
-        protected DynamicObject doObject(VirtualFrame frame, DynamicObject thisObj) {
+        protected JSDynamicObject doObject(VirtualFrame frame, JSDynamicObject thisObj) {
             checkHasDetachedBuffer(thisObj);
             return createArrayIteratorNode.execute(frame, thisObj);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSArrayBufferView(thisObj)")
-        protected DynamicObject doNotObject(Object thisObj) {
+        protected JSDynamicObject doNotObject(Object thisObj) {
             throw Errors.createTypeErrorArrayBufferViewExpected();
         }
 
-        protected final void checkHasDetachedBuffer(DynamicObject view) {
+        protected final void checkHasDetachedBuffer(JSDynamicObject view) {
             if (JSArrayBufferView.hasDetachedBuffer(view, getContext())) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorDetachedBuffer();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -62,6 +61,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Implements OrdinaryToPrimitive (O, hint).
@@ -93,7 +93,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     public abstract Object execute(Object object);
 
     @Specialization(guards = {"isJSObject(object)"})
-    protected Object doObject(DynamicObject object) {
+    protected Object doObject(JSDynamicObject object) {
         if (hint == Hint.String) {
             return doHintString(object);
         } else {
@@ -125,7 +125,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         return OrdinaryToPrimitiveNodeGen.create(context, hint);
     }
 
-    protected Object doHintString(DynamicObject object) {
+    protected Object doHintString(JSDynamicObject object) {
         Object toString = getToString().executeWithTarget(object);
         if (toStringFunctionProfile.profile(isCallableNode.executeBoolean(toString))) {
             Object result = callToStringNode.executeCall(JSArguments.createZeroArg(object, toString));
@@ -145,7 +145,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
     }
 
-    protected Object doHintNumber(DynamicObject object) {
+    protected Object doHintNumber(JSDynamicObject object) {
         assert JSGuards.isJSObject(object);
         Object valueOf = getValueOf().executeWithTarget(object);
         if (valueOfFunctionProfile.profile(isCallableNode.executeBoolean(valueOf))) {
@@ -178,7 +178,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
                 return result;
             }
         }
-        DynamicObject proto = getForeignObjectPrototype(object);
+        JSDynamicObject proto = getForeignObjectPrototype(object);
         Object func = getToString().executeWithTarget(proto);
         if (toStringFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
             Object result = callToStringNode.executeCall(JSArguments.createZeroArg(object, func));
@@ -221,7 +221,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
                 return result;
             }
         }
-        DynamicObject proto = getForeignObjectPrototype(object);
+        JSDynamicObject proto = getForeignObjectPrototype(object);
         Object func = getValueOf().executeWithTarget(proto);
         if (valueOfFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
             Object result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, func));
@@ -270,7 +270,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         return getValueOfNode;
     }
 
-    private DynamicObject getForeignObjectPrototype(Object truffleObject) {
+    private JSDynamicObject getForeignObjectPrototype(Object truffleObject) {
         assert JSRuntime.isForeignObject(truffleObject);
         if (foreignObjectPrototypeNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
 import com.oracle.truffle.js.builtins.PromisePrototypeBuiltinsFactory.CatchNodeGen;
@@ -76,6 +75,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -129,7 +129,7 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             this.speciesConstructorNode = ArraySpeciesConstructorNode.create(context, false);
         }
 
-        protected final DynamicObject speciesConstructor(DynamicObject promise) {
+        protected final JSDynamicObject speciesConstructor(JSDynamicObject promise) {
             return speciesConstructorNode.speciesConstructor(promise, getRealm().getPromiseConstructor());
         }
     }
@@ -145,8 +145,8 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization(guards = "isJSPromise(promise)")
-        protected DynamicObject doPromise(DynamicObject promise, Object onFulfilled, Object onRejected) {
-            DynamicObject constructor = speciesConstructor(promise);
+        protected JSDynamicObject doPromise(JSDynamicObject promise, Object onFulfilled, Object onRejected) {
+            JSDynamicObject constructor = speciesConstructor(promise);
             getContext().notifyPromiseHook(-1 /* parent info */, promise);
             PromiseCapabilityRecord resultCapability = newPromiseCapability.execute(constructor);
             return performPromiseThen.execute(promise, onFulfilled, onRejected, resultCapability);
@@ -154,7 +154,7 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSPromise(thisObj)")
-        protected DynamicObject doNotPromise(Object thisObj, Object onFulfilled, Object onRejected) {
+        protected JSDynamicObject doNotPromise(Object thisObj, Object onFulfilled, Object onRejected) {
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
     }
@@ -193,8 +193,8 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization(guards = "isJSObject(promise)")
-        protected Object doObject(DynamicObject promise, Object onFinally) {
-            DynamicObject constructor = speciesConstructor(promise);
+        protected Object doObject(JSDynamicObject promise, Object onFinally) {
+            JSDynamicObject constructor = speciesConstructor(promise);
             assert JSRuntime.isConstructor(constructor);
             Object thenFinally;
             Object catchFinally;
@@ -210,11 +210,11 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSObject(thisObj)")
-        protected DynamicObject doNotObject(Object thisObj, Object onFinally) {
+        protected JSDynamicObject doNotObject(Object thisObj, Object onFinally) {
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
 
-        private DynamicObject createFinallyFunction(DynamicObject constructor, Object onFinally, boolean thenFinally) {
+        private JSDynamicObject createFinallyFunction(JSDynamicObject constructor, Object onFinally, boolean thenFinally) {
             if (setConstructor == null || setOnFinally == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.setConstructor = insert(PropertySetNode.createSetHidden(JSPromise.PROMISE_FINALLY_CONSTRUCTOR, getContext()));
@@ -226,7 +226,7 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             } else {
                 functionData = getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseCatchFinally, (c) -> createPromiseFinallyFunction(c, false));
             }
-            DynamicObject function = JSFunction.create(getRealm(), functionData);
+            JSDynamicObject function = JSFunction.create(getRealm(), functionData);
             setConstructor.setValue(function, constructor);
             setOnFinally.setValue(function, onFinally);
             return function;
@@ -245,13 +245,13 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                    DynamicObject onFinally = (DynamicObject) getOnFinally.getValue(functionObject);
+                    JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                    JSDynamicObject onFinally = (JSDynamicObject) getOnFinally.getValue(functionObject);
                     assert JSRuntime.isCallable(onFinally);
                     Object result = callFinally.executeCall(JSArguments.createZeroArg(Undefined.instance, onFinally));
-                    DynamicObject constructor = (DynamicObject) getConstructor.getValue(functionObject);
+                    JSDynamicObject constructor = (JSDynamicObject) getConstructor.getValue(functionObject);
                     assert JSRuntime.isConstructor(constructor);
-                    DynamicObject promise = promiseResolve.execute(constructor, result);
+                    JSDynamicObject promise = promiseResolve.execute(constructor, result);
                     Object value = valueNode.execute(frame);
                     Object thunk = createHandlerFunction(value);
                     return callThen.executeCall(JSArguments.create(promise, getThen.getValue(promise), thunk));
@@ -264,7 +264,7 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                     } else {
                         functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseThrower, (c) -> createThrower(c));
                     }
-                    DynamicObject function = JSFunction.create(getRealm(), functionData);
+                    JSDynamicObject function = JSFunction.create(getRealm(), functionData);
                     setValue.setValue(function, value);
                     return function;
                 }

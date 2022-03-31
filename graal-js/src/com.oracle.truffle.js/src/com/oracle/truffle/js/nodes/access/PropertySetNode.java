@@ -55,7 +55,6 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.BooleanLocation;
 import com.oracle.truffle.api.object.DoubleLocation;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -175,7 +174,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             if (isSimpleShapeCheck) {
                 Shape shape = receiverCheck.getShape();
                 if (isDynamicObject(thisObj, shape)) {
-                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    JSDynamicObject jsobj = castDynamicObject(thisObj, shape);
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
@@ -222,7 +221,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             if (isSimpleShapeCheck) {
                 Shape shape = receiverCheck.getShape();
                 if (isDynamicObject(thisObj, shape)) {
-                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    JSDynamicObject jsobj = castDynamicObject(thisObj, shape);
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
@@ -269,7 +268,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             if (isSimpleShapeCheck) {
                 Shape shape = receiverCheck.getShape();
                 if (isDynamicObject(thisObj, shape)) {
-                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    JSDynamicObject jsobj = castDynamicObject(thisObj, shape);
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
@@ -316,7 +315,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             if (isSimpleShapeCheck) {
                 Shape shape = receiverCheck.getShape();
                 if (isDynamicObject(thisObj, shape)) {
-                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    JSDynamicObject jsobj = castDynamicObject(thisObj, shape);
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
@@ -413,7 +412,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             if (location.canStore(value)) {
-                DynamicObject store = receiverCheck.getStore(thisObj);
+                JSDynamicObject store = receiverCheck.getStore(thisObj);
                 try {
                     location.set(store, value, receiverCheck.getShape());
                 } catch (IncompatibleLocationException | FinalLocationException e) {
@@ -445,7 +444,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             boolean ret = ((PropertyProxy) location.get(store, guard)).set(store, value);
             if (!ret && isStrict) {
                 errorBranch.enter();
@@ -469,7 +468,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             if (value instanceof Integer) {
                 int intValue = (int) value;
-                DynamicObject store = receiverCheck.getStore(thisObj);
+                JSDynamicObject store = receiverCheck.getStore(thisObj);
                 try {
                     location.setInt(store, intValue, receiverCheck.getShape());
                 } catch (FinalLocationException e) {
@@ -483,7 +482,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             try {
                 location.setInt(store, value, receiverCheck.getShape());
                 return true;
@@ -534,7 +533,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 valueProfile = p;
                 return setValue(thisObj, value, receiver, root, guard);
             }
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             try {
                 location.setDouble(store, doubleValue, receiverCheck.getShape());
                 return true;
@@ -545,7 +544,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             try {
                 location.setDouble(store, value, receiverCheck.getShape());
                 return true;
@@ -556,7 +555,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean setValueDouble(Object thisObj, double value, Object receiver, PropertySetNode root, boolean guard) {
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             try {
                 location.setDouble(store, value, receiverCheck.getShape());
                 return true;
@@ -584,7 +583,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             if (value instanceof Boolean) {
-                DynamicObject store = receiverCheck.getStore(thisObj);
+                JSDynamicObject store = receiverCheck.getStore(thisObj);
                 try {
                     location.setBoolean(store, (boolean) value, receiverCheck.getShape());
                 } catch (FinalLocationException e) {
@@ -598,7 +597,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean setValueBoolean(Object thisObj, boolean value, Object receiver, PropertySetNode root, boolean guard) {
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             try {
                 location.setBoolean(store, value, receiverCheck.getShape());
                 return true;
@@ -629,10 +628,10 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             Accessor accessor = (Accessor) location.get(store, guard);
 
-            DynamicObject setter = accessor.getSetter();
+            JSDynamicObject setter = accessor.getSetter();
             if (setter != Undefined.instance) {
                 callNode.executeCall(JSArguments.createOneArg(receiver, setter, value));
             } else {
@@ -751,7 +750,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            JSObject.set((DynamicObject) thisObj, root.getKey(), value, root.isStrict(), root);
+            JSObject.set((JSDynamicObject) thisObj, root.getKey(), value, root.isStrict(), root);
             return true;
         }
     }
@@ -989,7 +988,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             boolean ret = JSArray.setLength(store, value);
             if (!ret && isStrict) {
                 errorBranch.enter();
@@ -1000,7 +999,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             // shape check should be sufficient to guarantee this
             assert JSArray.isJSFastArray(store);
             if (value < 0) {
@@ -1125,7 +1124,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             } else if (JSProxy.isJSProxy(store) && JSRuntime.isPropertyKey(key)) {
                 return new JSProxyDispatcherPropertySetNode(context, createJSClassCheck(thisObj, depth), isStrict());
             } else if (JSArrayBufferView.isJSArrayBufferView(store) && (key instanceof TruffleString) && JSRuntime.canonicalNumericIndexString((TruffleString) key) != Undefined.instance) {
-                assert !JSArrayBufferView.isValidIntegerIndex((DynamicObject) store, (Number) JSRuntime.canonicalNumericIndexString((TruffleString) key));
+                assert !JSArrayBufferView.isValidIntegerIndex((JSDynamicObject) store, (Number) JSRuntime.canonicalNumericIndexString((TruffleString) key));
                 return new ReadOnlyPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, false), false);
             } else if (!JSRuntime.isObject(thisJSObj)) {
                 return new TypeErrorPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, true));

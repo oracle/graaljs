@@ -44,7 +44,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -54,6 +53,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -77,21 +77,21 @@ public abstract class TemporalCalendarFieldsNode extends JavaScriptBaseNode {
         return TemporalCalendarFieldsNodeGen.create(ctx);
     }
 
-    public abstract List<TruffleString> execute(DynamicObject calendar, List<TruffleString> strings);
+    public abstract List<TruffleString> execute(JSDynamicObject calendar, List<TruffleString> strings);
 
     @Specialization
-    protected List<TruffleString> calendarFields(DynamicObject calendar, List<TruffleString> strings) {
+    protected List<TruffleString> calendarFields(JSDynamicObject calendar, List<TruffleString> strings) {
         Object fields = getMethodFieldsNode.executeWithTarget(calendar);
         if (fieldsUndefined.profile(fields == Undefined.instance)) {
             return strings;
         } else {
-            DynamicObject fieldsArray = JSArray.createConstant(ctx, getRealm(), Boundaries.listToArray(strings));
+            JSDynamicObject fieldsArray = JSArray.createConstant(ctx, getRealm(), Boundaries.listToArray(strings));
             fieldsArray = callFields(fields, calendar, new Object[]{fieldsArray});
             return TemporalUtil.iterableToListOfTypeString(fieldsArray);
         }
     }
 
-    private DynamicObject callFields(Object fieldsFn, DynamicObject calendar, Object[] args) {
+    private JSDynamicObject callFields(Object fieldsFn, JSDynamicObject calendar, Object[] args) {
         if (callFieldsNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             callFieldsNode = insert(JSFunctionCallNode.createCall());

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -54,6 +53,7 @@ import com.oracle.truffle.js.nodes.access.FrequencyBasedPolymorphicAccessNode.Fr
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
@@ -67,7 +67,7 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
         this.context = context;
     }
 
-    public abstract Object execute(DynamicObject target, Object propertyKey, Object receiver, Object defaultValue);
+    public abstract Object execute(JSDynamicObject target, Object propertyKey, Object receiver, Object defaultValue);
 
     static CachedGetPropertyNode create(JSContext context) {
         return CachedGetPropertyNodeGen.create(context);
@@ -75,7 +75,7 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedKey != null", "!isArrayIndex(cachedKey)", "propertyKeyEquals(equalsNode, cachedKey, key)"}, limit = "MAX_DEPTH")
-    Object doCachedKey(DynamicObject target, Object key, Object receiver, Object defaultValue,
+    Object doCachedKey(JSDynamicObject target, Object key, Object receiver, Object defaultValue,
                     @Cached("cachedPropertyKey(key)") Object cachedKey,
                     @Cached("create(cachedKey, context)") PropertyGetNode propertyNode,
                     @Cached TruffleString.EqualNode equalsNode) {
@@ -83,13 +83,13 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isArrayIndex(index)", "!isJSProxy(target)"})
-    Object doIntIndex(DynamicObject target, int index, Object receiver, Object defaultValue,
+    Object doIntIndex(JSDynamicObject target, int index, Object receiver, Object defaultValue,
                     @Cached("create()") JSClassProfile jsclassProfile) {
         return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile, this);
     }
 
     @Specialization(guards = {"!isJSProxy(target)", "toArrayIndexNode.isResultArrayIndex(maybeIndex)"}, replaces = {"doIntIndex"})
-    Object doArrayIndex(DynamicObject target, @SuppressWarnings("unused") Object key, Object receiver, Object defaultValue,
+    Object doArrayIndex(JSDynamicObject target, @SuppressWarnings("unused") Object key, Object receiver, Object defaultValue,
                     @Cached("create()") RequireObjectCoercibleNode requireObjectCoercibleNode,
                     @Cached("createNoToPropertyKey()") @SuppressWarnings("unused") ToArrayIndexNode toArrayIndexNode,
                     @Bind("toArrayIndexNode.execute(key)") Object maybeIndex,
@@ -100,14 +100,14 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isJSProxy(target)"})
-    protected Object doProxy(DynamicObject target, Object index, Object receiver, @SuppressWarnings("unused") Object defaultValue,
+    protected Object doProxy(JSDynamicObject target, Object index, Object receiver, @SuppressWarnings("unused") Object defaultValue,
                     @Cached("create(context)") JSProxyPropertyGetNode proxyGet) {
         return proxyGet.executeWithReceiver(target, receiver, index);
     }
 
     @ReportPolymorphism.Megamorphic
     @Specialization(replaces = {"doCachedKey", "doArrayIndex", "doProxy"})
-    Object doGeneric(DynamicObject target, Object key, Object receiver, Object defaultValue,
+    Object doGeneric(JSDynamicObject target, Object key, Object receiver, Object defaultValue,
                     @Cached("create()") RequireObjectCoercibleNode requireObjectCoercibleNode,
                     @Cached("create()") ToArrayIndexNode toArrayIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile getType,

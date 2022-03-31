@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
@@ -55,6 +54,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyPrototypeArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -69,7 +69,7 @@ public final class JSObjectPrototype extends JSNonProxy {
     private JSObjectPrototype() {
     }
 
-    public static DynamicObject create(JSContext context) {
+    public static JSDynamicObject create(JSContext context) {
         return create(context.makeEmptyShapeWithNullPrototype(JSObjectPrototype.INSTANCE));
     }
 
@@ -78,18 +78,18 @@ public final class JSObjectPrototype extends JSNonProxy {
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return CLASS_NAME;
     }
 
     @Override
-    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return defaultToString(obj);
     }
 
     @TruffleBoundary
     @Override
-    public boolean hasOwnProperty(DynamicObject thisObj, Object key) {
+    public boolean hasOwnProperty(JSDynamicObject thisObj, Object key) {
         if (super.hasOwnProperty(thisObj, key)) {
             return true;
         }
@@ -102,7 +102,7 @@ public final class JSObjectPrototype extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public boolean hasOwnProperty(DynamicObject thisObj, long index) {
+    public boolean hasOwnProperty(JSDynamicObject thisObj, long index) {
         ScriptArray array = JSObject.getArray(thisObj);
         if (array.hasElement(thisObj, index)) {
             return true;
@@ -112,7 +112,7 @@ public final class JSObjectPrototype extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
+    public Object getOwnHelper(JSDynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
         ScriptArray array = JSObject.getArray(store);
         if (array.hasElement(store, index)) {
             return array.getElement(store, index);
@@ -122,7 +122,7 @@ public final class JSObjectPrototype extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+    public Object getOwnHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         long idx = JSRuntime.propertyKeyToArrayIndex(key);
         if (JSRuntime.isArrayIndex(idx)) {
             return getOwnHelper(store, thisObj, idx, encapsulatingNode);
@@ -132,7 +132,7 @@ public final class JSObjectPrototype extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
         long index = JSRuntime.propertyKeyToArrayIndex(key);
         if (index >= 0) {
             return delete(thisObj, index, isStrict);
@@ -143,7 +143,7 @@ public final class JSObjectPrototype extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
         ScriptArray array = JSObject.getArray(thisObj);
         if (array.hasElement(thisObj, index)) {
             if (array.canDeleteElement(thisObj, index, isStrict)) {
@@ -158,7 +158,7 @@ public final class JSObjectPrototype extends JSNonProxy {
     }
 
     @Override
-    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
+    public List<Object> getOwnPropertyKeys(JSDynamicObject thisObj, boolean strings, boolean symbols) {
         if (!strings || JSObject.getArray(thisObj).length(thisObj) == 0) {
             return super.getOwnPropertyKeys(thisObj, strings, symbols);
         }
@@ -166,12 +166,12 @@ public final class JSObjectPrototype extends JSNonProxy {
     }
 
     @Override
-    public boolean hasOnlyShapeProperties(DynamicObject thisObj) {
+    public boolean hasOnlyShapeProperties(JSDynamicObject thisObj) {
         return JSObject.getArray(thisObj).length(thisObj) == 0;
     }
 
     @Override
-    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
+    public PropertyDescriptor getOwnProperty(JSDynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
         return JSAbstractArray.ordinaryGetOwnPropertyArray(thisObj, key);
     }
@@ -185,19 +185,19 @@ public final class JSObjectPrototype extends JSNonProxy {
      * 9.4.7.2 SetImmutablePrototype ( O, V ).
      */
     @Override
-    public boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype) {
+    public boolean setPrototypeOf(JSDynamicObject thisObj, JSDynamicObject newPrototype) {
         return JSObject.getPrototype(thisObj) == newPrototype;
     }
 
     @Override
-    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    public boolean set(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         boolean result = super.set(thisObj, index, value, receiver, isStrict, encapsulatingNode);
         JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         return result;
     }
 
     @Override
-    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    public boolean set(JSDynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         boolean result = super.set(thisObj, key, value, receiver, isStrict, encapsulatingNode);
         if (JSRuntime.isArrayIndex(key)) {
             JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
@@ -206,7 +206,7 @@ public final class JSObjectPrototype extends JSNonProxy {
     }
 
     @Override
-    public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
+    public boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
         boolean result = super.defineOwnProperty(thisObj, key, desc, doThrow);
         if (JSRuntime.isArrayIndex(key)) {
             JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
@@ -214,7 +214,7 @@ public final class JSObjectPrototype extends JSNonProxy {
         return result;
     }
 
-    public static DynamicObject create(Shape shape) {
+    public static JSDynamicObject create(Shape shape) {
         assert JSShape.getJSClassNoCast(shape) == JSObjectPrototype.INSTANCE;
         return new Instance(shape);
     }

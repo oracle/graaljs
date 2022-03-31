@@ -51,7 +51,6 @@ import com.ibm.icu.number.NumberRangeFormatter;
 import com.ibm.icu.text.PluralRules;
 import com.ibm.icu.text.PluralRules.PluralType;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.PluralRulesFunctionBuiltins;
@@ -66,6 +65,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -90,14 +90,14 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject pluralRulesPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSDynamicObject pluralRulesPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, pluralRulesPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, pluralRulesPrototype, PluralRulesPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(pluralRulesPrototype, TO_STRING_TAG);
@@ -105,7 +105,7 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
     }
 
     @Override
-    public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext ctx, JSDynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
         return initialShape;
     }
@@ -114,7 +114,7 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         return INSTANCE.createConstructorAndPrototype(realm, PluralRulesFunctionBuiltins.BUILTINS);
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm) {
+    public static JSDynamicObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getPluralRulesFactory();
         JSPluralRulesObject obj = new JSPluralRulesObject(factory.getShape(realm), state);
@@ -123,16 +123,16 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         return context.trackAllocation(obj);
     }
 
-    public static PluralRules getPluralRulesProperty(DynamicObject obj) {
+    public static PluralRules getPluralRulesProperty(JSDynamicObject obj) {
         return getInternalState(obj).getPluralRules();
     }
 
-    public static LocalizedNumberFormatter getNumberFormatter(DynamicObject obj) {
+    public static LocalizedNumberFormatter getNumberFormatter(JSDynamicObject obj) {
         return getInternalState(obj).getNumberFormatter();
     }
 
     @TruffleBoundary
-    public static TruffleString select(DynamicObject pluralRulesObj, Object n) {
+    public static TruffleString select(JSDynamicObject pluralRulesObj, Object n) {
         PluralRules pluralRules = getPluralRulesProperty(pluralRulesObj);
         LocalizedNumberFormatter numberFormatter = getNumberFormatter(pluralRulesObj);
         Number number = JSRuntime.toNumber(n);
@@ -141,7 +141,7 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
     }
 
     @TruffleBoundary
-    public static TruffleString selectRange(DynamicObject pluralRulesObj, double x, double y) {
+    public static TruffleString selectRange(JSDynamicObject pluralRulesObj, double x, double y) {
         PluralRules pluralRules = getPluralRulesProperty(pluralRulesObj);
         LocalizedNumberRangeFormatter rangeFormatter = getInternalState(pluralRulesObj).getNumberRangeFormatter();
         FormattedNumberRange formattedRange = rangeFormatter.formatRange(x, y);
@@ -157,7 +157,7 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         private final List<TruffleString> pluralCategories = new LinkedList<>();
 
         @Override
-        void fillResolvedOptions(JSContext context, JSRealm realm, DynamicObject result) {
+        void fillResolvedOptions(JSContext context, JSRealm realm, JSDynamicObject result) {
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(getLocale()), JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_TYPE, Strings.fromJavaString(type), JSAttributes.getDefault());
             super.fillResolvedOptions(context, realm, result);
@@ -201,18 +201,18 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
     }
 
     @TruffleBoundary
-    public static DynamicObject resolvedOptions(JSContext context, JSRealm realm, DynamicObject pluralRulesObj) {
+    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject pluralRulesObj) {
         InternalState state = getInternalState(pluralRulesObj);
         return state.toResolvedOptionsObject(context, realm);
     }
 
-    public static InternalState getInternalState(DynamicObject obj) {
+    public static InternalState getInternalState(JSDynamicObject obj) {
         assert isJSPluralRules(obj);
         return ((JSPluralRulesObject) obj).getInternalState();
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getPluralRulesPrototype();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.CallSitePrototypeBuiltinsFactory.CallSiteGetBooleanNodeGen;
@@ -59,6 +58,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -144,7 +144,7 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             this.getStackTraceElementNode = PropertyGetNode.createGetHidden(JSError.STACK_TRACE_ELEMENT_PROPERTY_NAME, context);
         }
 
-        protected final JSStackTraceElement getStackTraceElement(DynamicObject thisObj) {
+        protected final JSStackTraceElement getStackTraceElement(JSDynamicObject thisObj) {
             Object element = getStackTraceElementNode.getValue(thisObj);
             if (!(element instanceof JSStackTraceElement)) {
                 errorBranch.enter();
@@ -163,7 +163,7 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        final int getNumber(DynamicObject thisObj) {
+        final int getNumber(JSDynamicObject thisObj) {
             JSStackTraceElement stackTraceElement = getStackTraceElement(thisObj);
             switch (method) {
                 case getLineNumber:
@@ -187,7 +187,7 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        final Object getFunctionName(DynamicObject thisObj) {
+        final Object getFunctionName(JSDynamicObject thisObj) {
             JSStackTraceElement stackTraceElement = getStackTraceElement(thisObj);
             switch (method) {
                 case getFunction:
@@ -256,7 +256,7 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        final boolean getBoolean(DynamicObject thisObj) {
+        final boolean getBoolean(JSDynamicObject thisObj) {
             JSStackTraceElement stackTraceElement = getStackTraceElement(thisObj);
             switch (method) {
                 case isConstructor:
@@ -264,7 +264,7 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 case isEval:
                     return stackTraceElement.isEval();
                 case isNative:
-                    return JSFunction.isJSFunction(stackTraceElement.getFunction()) && JSFunction.isBuiltin((DynamicObject) stackTraceElement.getFunction());
+                    return JSFunction.isJSFunction(stackTraceElement.getFunction()) && JSFunction.isBuiltin((JSDynamicObject) stackTraceElement.getFunction());
                 case isToplevel:
                     return JSRuntime.isNullOrUndefined(stackTraceElement.getThis()) || JSGlobal.isJSGlobalObject(stackTraceElement.getThis()) || stackTraceElement.isEval();
                 case isAsync:

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -61,6 +60,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.ByteArrayAccess;
 import com.oracle.truffle.js.runtime.array.ByteBufferAccess;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
@@ -99,11 +99,11 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         return ((Interop) thisObj).getInteropBuffer();
     }
 
-    public static JSAgentWaiterList getWaiterList(DynamicObject thisObj) {
+    public static JSAgentWaiterList getWaiterList(JSDynamicObject thisObj) {
         return ((Shared) thisObj).getWaiterList();
     }
 
-    public static void setWaiterList(DynamicObject thisObj, JSAgentWaiterList waiterList) {
+    public static void setWaiterList(JSDynamicObject thisObj, JSAgentWaiterList waiterList) {
         ((Shared) thisObj).setWaiterList(waiterList);
     }
 
@@ -685,19 +685,19 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
     }
 
-    public static DynamicObject createHeapArrayBuffer(Shape shape, byte[] byteArray) {
+    public static JSDynamicObject createHeapArrayBuffer(Shape shape, byte[] byteArray) {
         return new Heap(shape, byteArray);
     }
 
-    public static DynamicObject createDirectArrayBuffer(Shape shape, ByteBuffer byteBuffer) {
+    public static JSDynamicObject createDirectArrayBuffer(Shape shape, ByteBuffer byteBuffer) {
         return new Direct(shape, byteBuffer);
     }
 
-    public static DynamicObject createSharedArrayBuffer(Shape shape, ByteBuffer byteBuffer, JSAgentWaiterList waiterList) {
+    public static JSDynamicObject createSharedArrayBuffer(Shape shape, ByteBuffer byteBuffer, JSAgentWaiterList waiterList) {
         return new Shared(shape, byteBuffer, waiterList);
     }
 
-    public static DynamicObject createInteropArrayBuffer(Shape shape, Object interopBuffer) {
+    public static JSDynamicObject createInteropArrayBuffer(Shape shape, Object interopBuffer) {
         return new Interop(shape, interopBuffer);
     }
 

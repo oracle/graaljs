@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,12 +43,12 @@ package com.oracle.truffle.js.nodes.intl;
 import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /*
@@ -111,19 +111,19 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         this.setNumberFormatDigitOptions = SetNumberFormatDigitOptionsNode.create(context);
     }
 
-    public abstract DynamicObject executeInit(DynamicObject collator, Object locales, Object options);
+    public abstract JSDynamicObject executeInit(JSDynamicObject collator, Object locales, Object options);
 
     public static InitializeNumberFormatNode createInitalizeNumberFormatNode(JSContext context) {
         return InitializeNumberFormatNodeGen.create(context);
     }
 
     @Specialization
-    public DynamicObject initializeNumberFormat(DynamicObject numberFormatObj, Object localesArg, Object optionsArg) {
+    public JSDynamicObject initializeNumberFormat(JSDynamicObject numberFormatObj, Object localesArg, Object optionsArg) {
         try {
             JSNumberFormat.InternalState state = JSNumberFormat.getInternalState(numberFormatObj);
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-            DynamicObject options = coerceOptionsToObjectNode.execute(optionsArg);
+            JSDynamicObject options = coerceOptionsToObjectNode.execute(optionsArg);
 
             getLocaleMatcherOption.executeValue(options);
             String numberingSystem = getNumberingSystemOption.executeValue(options);
@@ -190,7 +190,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         return numberFormatObj;
     }
 
-    private void setNumberFormatUnitOptions(JSNumberFormat.InternalState state, DynamicObject options) {
+    private void setNumberFormatUnitOptions(JSNumberFormat.InternalState state, JSDynamicObject options) {
         String style = getStyleOption.executeValue(options);
         state.setStyle(style);
         boolean styleIsCurrency = IntlUtil.CURRENCY.equals(style);

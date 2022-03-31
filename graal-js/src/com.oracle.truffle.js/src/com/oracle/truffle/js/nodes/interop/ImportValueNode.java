@@ -48,7 +48,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -57,6 +56,7 @@ import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.interop.InteropFunction;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * This node prepares the import of a value from Interop. It transforms values allowed in Truffle,
@@ -140,7 +140,7 @@ public abstract class ImportValueNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    static Object fromDynamicObject(DynamicObject value) {
+    static Object fromDynamicObject(JSDynamicObject value) {
         return value;
     }
 

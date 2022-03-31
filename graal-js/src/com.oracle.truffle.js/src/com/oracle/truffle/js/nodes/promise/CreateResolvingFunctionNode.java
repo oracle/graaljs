@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -65,6 +64,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
@@ -94,16 +94,16 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
         return new CreateResolvingFunctionNode(context);
     }
 
-    public Pair<DynamicObject, DynamicObject> execute(DynamicObject promise) {
+    public Pair<JSDynamicObject, JSDynamicObject> execute(JSDynamicObject promise) {
         AlreadyResolved alreadyResolved = new AlreadyResolved();
-        DynamicObject resolve = createPromiseResolveFunction(promise, alreadyResolved);
-        DynamicObject reject = createPromiseRejectFunction(promise, alreadyResolved);
+        JSDynamicObject resolve = createPromiseResolveFunction(promise, alreadyResolved);
+        JSDynamicObject reject = createPromiseRejectFunction(promise, alreadyResolved);
         return new Pair<>(resolve, reject);
     }
 
-    private DynamicObject createPromiseResolveFunction(DynamicObject promise, AlreadyResolved alreadyResolved) {
+    private JSDynamicObject createPromiseResolveFunction(JSDynamicObject promise, AlreadyResolved alreadyResolved) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseResolveFunction, (c) -> createPromiseResolveFunctionImpl(c));
-        DynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSDynamicObject function = JSFunction.create(getRealm(), functionData);
         setPromiseNode.setValue(function, promise);
         setAlreadyResolvedNode.setValue(function, alreadyResolved);
         return function;
@@ -130,8 +130,8 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                DynamicObject promise = (DynamicObject) getPromise(functionObject);
+                JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                JSDynamicObject promise = (JSDynamicObject) getPromise(functionObject);
                 Object resolution = resolutionNode.execute(frame);
                 AlreadyResolved alreadyResolved = (AlreadyResolved) getAlreadyResolvedNode.getValue(functionObject);
                 if (alreadyResolvedProfile.profile(alreadyResolved.value)) {
@@ -162,12 +162,12 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 if (!isCallableNode.executeBoolean(then)) {
                     return fulfillPromise(promise, resolution);
                 }
-                DynamicObject job = promiseResolveThenableJob(promise, resolution, then);
+                JSDynamicObject job = promiseResolveThenableJob(promise, resolution, then);
                 context.promiseEnqueueJob(getRealm(), job);
                 return Undefined.instance;
             }
 
-            private Object fulfillPromise(DynamicObject promise, Object resolution) {
+            private Object fulfillPromise(JSDynamicObject promise, Object resolution) {
                 if (fulfillPromiseNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     fulfillPromiseNode = insert(FulfillPromiseNode.create(context));
@@ -183,7 +183,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 return getThenNode.getValue(resolution);
             }
 
-            private Object getPromise(DynamicObject functionObject) {
+            private Object getPromise(JSDynamicObject functionObject) {
                 if (getPromiseNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     getPromiseNode = insert(PropertyGetNode.createGetHidden(PROMISE_KEY, context));
@@ -191,7 +191,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 return getPromiseNode.getValue(functionObject);
             }
 
-            private Object rejectPromise(DynamicObject promise, Throwable exception) {
+            private Object rejectPromise(JSDynamicObject promise, Throwable exception) {
                 Object error = getErrorObjectNode.execute(exception);
                 return rejectPromiseNode.execute(promise, error);
             }
@@ -205,7 +205,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 }
             }
 
-            private DynamicObject promiseResolveThenableJob(DynamicObject promise, Object thenable, Object then) {
+            private JSDynamicObject promiseResolveThenableJob(JSDynamicObject promise, Object thenable, Object then) {
                 if (setPromiseNode == null || setThenableNode == null || setThenNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     setPromiseNode = insert(PropertySetNode.createSetHidden(PROMISE_KEY, context));
@@ -213,7 +213,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                     setThenNode = insert(PropertySetNode.createSetHidden(THEN_KEY, context));
                 }
                 JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseResolveThenableJob, (c) -> createPromiseResolveThenableJobImpl(c));
-                DynamicObject function = JSFunction.create(getRealm(), functionData);
+                JSDynamicObject function = JSFunction.create(getRealm(), functionData);
                 setPromiseNode.setValue(function, promise);
                 setThenableNode.setValue(function, thenable);
                 setThenNode.setValue(function, then);
@@ -221,9 +221,9 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             }
 
             @Override
-            public AsyncStackTraceInfo getAsyncStackTraceInfo(DynamicObject handlerFunction) {
+            public AsyncStackTraceInfo getAsyncStackTraceInfo(JSDynamicObject handlerFunction) {
                 assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
-                DynamicObject promise = (DynamicObject) JSObjectUtil.getHiddenProperty(handlerFunction, PROMISE_KEY);
+                JSDynamicObject promise = (JSDynamicObject) JSObjectUtil.getHiddenProperty(handlerFunction, PROMISE_KEY);
                 return new AsyncStackTraceInfo(promise, null);
             }
         }
@@ -239,8 +239,8 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                DynamicObject promiseToResolve = (DynamicObject) getPromiseToResolveNode.getValue(functionObject);
+                JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                JSDynamicObject promiseToResolve = (JSDynamicObject) getPromiseToResolveNode.getValue(functionObject);
                 Object thenable = getThenableNode.getValue(functionObject);
                 Object then = getThenNode.getValue(functionObject);
                 return promiseResolveThenable.execute(promiseToResolve, thenable, then);
@@ -249,9 +249,9 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
         return JSFunctionData.createCallOnly(context, new PromiseResolveThenableJob().getCallTarget(), 0, Strings.EMPTY_STRING);
     }
 
-    private DynamicObject createPromiseRejectFunction(DynamicObject promise, AlreadyResolved alreadyResolved) {
+    private JSDynamicObject createPromiseRejectFunction(JSDynamicObject promise, AlreadyResolved alreadyResolved) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseRejectFunction, (c) -> createPromiseRejectFunctionImpl(c));
-        DynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSDynamicObject function = JSFunction.create(getRealm(), functionData);
         setPromiseNode.setValue(function, promise);
         setAlreadyResolvedNode.setValue(function, alreadyResolved);
         return function;
@@ -268,8 +268,8 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             @Override
             public Object execute(VirtualFrame frame) {
                 init();
-                DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                DynamicObject promise = (DynamicObject) getPromiseNode.getValue(functionObject);
+                JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                JSDynamicObject promise = (JSDynamicObject) getPromiseNode.getValue(functionObject);
                 Object reason = reasonNode.execute(frame);
                 AlreadyResolved alreadyResolved = (AlreadyResolved) getAlreadyResolvedNode.getValue(functionObject);
                 if (alreadyResolvedProfile.profile(alreadyResolved.value)) {
@@ -291,9 +291,9 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             }
 
             @Override
-            public AsyncStackTraceInfo getAsyncStackTraceInfo(DynamicObject handlerFunction) {
+            public AsyncStackTraceInfo getAsyncStackTraceInfo(JSDynamicObject handlerFunction) {
                 assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
-                DynamicObject promise = (DynamicObject) JSObjectUtil.getHiddenProperty(handlerFunction, PROMISE_KEY);
+                JSDynamicObject promise = (JSDynamicObject) JSObjectUtil.getHiddenProperty(handlerFunction, PROMISE_KEY);
                 return new AsyncStackTraceInfo(promise, null);
             }
         }

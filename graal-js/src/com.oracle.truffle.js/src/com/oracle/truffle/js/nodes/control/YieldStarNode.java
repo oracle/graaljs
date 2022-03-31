@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
@@ -61,6 +60,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class YieldStarNode extends AbstractYieldNode implements ResumableNode.WithObjectState {
@@ -132,12 +132,12 @@ public class YieldStarNode extends AbstractYieldNode implements ResumableNode.Wi
     }
 
     private Object resumeReturn(VirtualFrame frame, IteratorRecord iteratorRecord, Object received) {
-        DynamicObject iterator = iteratorRecord.getIterator();
+        JSDynamicObject iterator = iteratorRecord.getIterator();
         Object returnMethod = getReturnMethodNode.executeWithTarget(iterator);
         if (returnMethod == Undefined.instance) {
             return returnValue(frame, received);
         } else {
-            DynamicObject innerReturnResult = callReturnMethod(iterator, received, returnMethod);
+            JSDynamicObject innerReturnResult = callReturnMethod(iterator, received, returnMethod);
             if (iteratorCompleteNode.execute(innerReturnResult)) {
                 return returnValue(frame, iteratorValueNode.execute(innerReturnResult));
             }
@@ -146,10 +146,10 @@ public class YieldStarNode extends AbstractYieldNode implements ResumableNode.Wi
     }
 
     private Object resumeThrow(VirtualFrame frame, IteratorRecord iteratorRecord, Object received) {
-        DynamicObject iterator = iteratorRecord.getIterator();
+        JSDynamicObject iterator = iteratorRecord.getIterator();
         Object throwMethod = getThrowMethodNode.executeWithTarget(iterator);
         if (throwMethod != Undefined.instance) {
-            DynamicObject innerResult = callThrowMethod(iterator, received, throwMethod);
+            JSDynamicObject innerResult = callThrowMethod(iterator, received, throwMethod);
             if (iteratorCompleteNode.execute(innerResult)) {
                 return iteratorValueNode.execute(innerResult);
             }
@@ -161,22 +161,22 @@ public class YieldStarNode extends AbstractYieldNode implements ResumableNode.Wi
         }
     }
 
-    private DynamicObject callThrowMethod(DynamicObject iterator, Object received, Object throwMethod) {
+    private JSDynamicObject callThrowMethod(JSDynamicObject iterator, Object received, Object throwMethod) {
         Object innerResult = callThrowNode.executeCall(JSArguments.createOneArg(iterator, throwMethod, received));
         if (!JSRuntime.isObject(innerResult)) {
             errorBranch.enter();
             throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
         }
-        return (DynamicObject) innerResult;
+        return (JSDynamicObject) innerResult;
     }
 
-    private DynamicObject callReturnMethod(DynamicObject iterator, Object received, Object returnMethod) {
+    private JSDynamicObject callReturnMethod(JSDynamicObject iterator, Object received, Object returnMethod) {
         Object innerResult = callReturnNode.executeCall(JSArguments.createOneArg(iterator, returnMethod, received));
         if (!JSRuntime.isObject(innerResult)) {
             errorBranch.enter();
             throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
         }
-        return (DynamicObject) innerResult;
+        return (JSDynamicObject) innerResult;
     }
 
     @Override

@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -66,6 +65,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
@@ -83,7 +83,7 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
     }
 
     @ExplodeLoop
-    public DynamicObject executeWithObject(VirtualFrame frame, DynamicObject object, JSRealm realm) {
+    public JSDynamicObject executeWithObject(VirtualFrame frame, JSDynamicObject object, JSRealm realm) {
         for (int i = 0; i < members.length; i++) {
             members[i].executeVoid(frame, object, realm);
         }
@@ -167,7 +167,7 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSRealm realm) {
+        public void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
             setNode.setValue(receiver, value);
         }
 
@@ -187,7 +187,7 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSRealm realm) {
+        public void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
             if (receiver instanceof JSOrdinaryObject.InternalFieldLayout) {
                 ((JSOrdinaryObject.InternalFieldLayout) receiver).setInternalFieldCount(value);
             } else {

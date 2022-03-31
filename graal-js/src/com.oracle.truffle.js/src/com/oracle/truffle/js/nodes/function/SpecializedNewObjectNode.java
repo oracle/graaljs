@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -62,6 +61,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -97,12 +97,12 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
         return create(functionData.getContext(), functionData.isBuiltin(), functionData.isConstructor(), functionData.isGenerator(), functionData.isAsyncGenerator(), instanceLayout);
     }
 
-    public final DynamicObject execute(VirtualFrame frame, DynamicObject newTarget) {
+    public final JSDynamicObject execute(VirtualFrame frame, JSDynamicObject newTarget) {
         Object prototype = getPrototypeNode != null ? getPrototypeNode.executeWithTarget(frame, newTarget) : Undefined.instance;
         return execute(newTarget, prototype);
     }
 
-    protected abstract DynamicObject execute(DynamicObject newTarget, Object prototype);
+    protected abstract JSDynamicObject execute(JSDynamicObject newTarget, Object prototype);
 
     protected Shape getProtoChildShape(Object prototype) {
         CompilerAsserts.neverPartOfCompilation();
@@ -119,7 +119,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "!context.isMultiContext()", "isJSObject(cachedPrototype)", "prototype == cachedPrototype"}, limit = "context.getPropertyCacheLimit()")
-    public DynamicObject doCachedProto(@SuppressWarnings("unused") DynamicObject target, @SuppressWarnings("unused") Object prototype,
+    public JSDynamicObject doCachedProto(@SuppressWarnings("unused") JSDynamicObject target, @SuppressWarnings("unused") Object prototype,
                     @Cached("prototype") @SuppressWarnings("unused") Object cachedPrototype,
                     @Cached("getProtoChildShape(prototype)") Shape shape) {
         return JSOrdinary.create(context, shape);
@@ -128,31 +128,31 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     /** Many different prototypes. */
     @ReportPolymorphism.Megamorphic
     @Specialization(guards = {"!isBuiltin", "isConstructor", "!context.isMultiContext()", "isJSObject(prototype)"}, replaces = "doCachedProto")
-    public DynamicObject doUncachedProto(@SuppressWarnings("unused") DynamicObject target, DynamicObject prototype,
+    public JSDynamicObject doUncachedProto(@SuppressWarnings("unused") JSDynamicObject target, JSDynamicObject prototype,
                     @Cached("create()") BranchProfile slowBranch) {
         Shape shape = JSObjectUtil.getProtoChildShape(prototype, instanceLayout, context, slowBranch);
         return JSOrdinary.create(context, shape);
     }
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "prototypeClass != null", "prototypeClass.isInstance(prototype)"}, limit = "1")
-    public DynamicObject createWithProtoCachedClass(@SuppressWarnings("unused") DynamicObject target, Object prototype,
+    public JSDynamicObject createWithProtoCachedClass(@SuppressWarnings("unused") JSDynamicObject target, Object prototype,
                     @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode,
                     @Cached("getClassIfJSObject(prototype)") Class<?> prototypeClass,
                     @Cached("getShapeWithoutProto()") Shape cachedShape) {
-        return createWithProto(target, (DynamicObject) prototypeClass.cast(prototype), setProtoNode, cachedShape);
+        return createWithProto(target, (JSDynamicObject) prototypeClass.cast(prototype), setProtoNode, cachedShape);
     }
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "isJSObject(prototype)"})
-    public DynamicObject createWithProto(@SuppressWarnings("unused") DynamicObject target, DynamicObject prototype,
+    public JSDynamicObject createWithProto(@SuppressWarnings("unused") JSDynamicObject target, JSDynamicObject prototype,
                     @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode,
                     @Cached("getShapeWithoutProto()") Shape cachedShape) {
-        DynamicObject object = JSOrdinary.create(context, cachedShape);
+        JSDynamicObject object = JSOrdinary.create(context, cachedShape);
         setProtoNode.put(object, JSObject.HIDDEN_PROTO, prototype);
         return object;
     }
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "!isJSObject(prototype)"})
-    public DynamicObject createDefaultProto(DynamicObject target, @SuppressWarnings("unused") Object prototype) {
+    public JSDynamicObject createDefaultProto(JSDynamicObject target, @SuppressWarnings("unused") Object prototype) {
         // user-provided prototype is not an object
         JSRealm realm = JSRuntime.getFunctionRealm(target, getRealm());
         if (isAsyncGenerator) {
@@ -164,12 +164,12 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isBuiltin", "isConstructor"})
-    static DynamicObject builtinConstructor(@SuppressWarnings("unused") DynamicObject target, @SuppressWarnings("unused") Object proto) {
+    static JSDynamicObject builtinConstructor(@SuppressWarnings("unused") JSDynamicObject target, @SuppressWarnings("unused") Object proto) {
         return JSFunction.CONSTRUCT;
     }
 
     @Specialization(guards = {"!isConstructor"})
-    public DynamicObject throwNotConstructorFunctionTypeError(DynamicObject target, @SuppressWarnings("unused") Object proto) {
+    public JSDynamicObject throwNotConstructorFunctionTypeError(JSDynamicObject target, @SuppressWarnings("unused") Object proto) {
         throw Errors.createTypeErrorNotAConstructor(target, context);
     }
 }

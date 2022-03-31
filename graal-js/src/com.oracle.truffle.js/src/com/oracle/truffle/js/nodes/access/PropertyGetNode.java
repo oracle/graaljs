@@ -63,7 +63,6 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.BooleanLocation;
 import com.oracle.truffle.api.object.DoubleLocation;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.IntLocation;
@@ -229,7 +228,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             } else if (isSimpleShapeCheck) {
                 Shape shape = receiverCheck.getShape();
                 if (isDynamicObject(thisObj, shape)) {
-                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    JSDynamicObject jsobj = castDynamicObject(thisObj, shape);
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
@@ -286,7 +285,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             } else if (isSimpleShapeCheck) {
                 Shape shape = receiverCheck.getShape();
                 if (isDynamicObject(thisObj, shape)) {
-                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    JSDynamicObject jsobj = castDynamicObject(thisObj, shape);
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
@@ -343,7 +342,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             } else if (isSimpleShapeCheck) {
                 Shape shape = receiverCheck.getShape();
                 if (isDynamicObject(thisObj, shape)) {
-                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    JSDynamicObject jsobj = castDynamicObject(thisObj, shape);
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
@@ -400,7 +399,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             } else if (isSimpleShapeCheck) {
                 Shape shape = receiverCheck.getShape();
                 if (isDynamicObject(thisObj, shape)) {
-                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    JSDynamicObject jsobj = castDynamicObject(thisObj, shape);
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
@@ -457,7 +456,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             } else if (isSimpleShapeCheck) {
                 Shape shape = receiverCheck.getShape();
                 if (isDynamicObject(thisObj, shape)) {
-                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    JSDynamicObject jsobj = castDynamicObject(thisObj, shape);
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
@@ -565,7 +564,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             return location.get(store, guard);
         }
     }
@@ -582,7 +581,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             Object value = location.get(store, guard);
             return ((PropertyProxy) value).get(store);
         }
@@ -620,7 +619,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return true;
             }
             int depth = ((AbstractShapeCheckNode) receiverCheck).getDepth();
-            DynamicObject store = (DynamicObject) thisObj;
+            JSDynamicObject store = (JSDynamicObject) thisObj;
             for (int i = 0; i < depth; i++) {
                 store = JSObject.getPrototype(store);
             }
@@ -665,7 +664,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 // Release unused weak reference and fall back to normal read.
                 finalValueRef = null;
             }
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             return location.get(store, guard);
         }
     }
@@ -890,10 +889,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             Accessor accessor = (Accessor) property.getLocation().get(store, guard);
 
-            DynamicObject getter = accessor.getGetter();
+            JSDynamicObject getter = accessor.getGetter();
             if (getter != Undefined.instance) {
                 return callNode.executeCall(JSArguments.createZeroArg(receiver, getter));
             } else {
@@ -932,14 +931,14 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 finalAccessorRef = null;
             }
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             return (Accessor) location.get(store, guard);
         }
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             Accessor accessor = getAccessor(thisObj, root, guard);
-            DynamicObject getter = accessor.getGetter();
+            JSDynamicObject getter = accessor.getGetter();
             if (getter != Undefined.instance) {
                 return callNode.executeCall(JSArguments.createZeroArg(receiver, getter));
             } else {
@@ -1002,7 +1001,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     Object function = getNoSuchMethod().getValue(thisObj);
                     if (function != Undefined.instance) {
                         if (JSFunction.isJSFunction(function)) {
-                            return callNoSuchHandler((DynamicObject) thisObj, (DynamicObject) function, root, false);
+                            return callNoSuchHandler((JSDynamicObject) thisObj, (JSDynamicObject) function, root, false);
                         } else {
                             return getFallback(defaultValue, root);
                         }
@@ -1011,14 +1010,14 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 if (!context.getNoSuchPropertyUnusedAssumption().isValid()) {
                     Object function = getNoSuchProperty().getValue(thisObj);
                     if (JSFunction.isJSFunction(function)) {
-                        return callNoSuchHandler((DynamicObject) thisObj, (DynamicObject) function, root, true);
+                        return callNoSuchHandler((JSDynamicObject) thisObj, (JSDynamicObject) function, root, true);
                     }
                 }
             }
             return getFallback(defaultValue, root);
         }
 
-        private Object callNoSuchHandler(DynamicObject thisObj, DynamicObject function, PropertyGetNode root, boolean noSuchProperty) {
+        private Object callNoSuchHandler(JSDynamicObject thisObj, JSDynamicObject function, PropertyGetNode root, boolean noSuchProperty) {
             // if accessing a global variable, pass undefined as `this` instead of global object.
             // only matters if callee is strict. cf. Nashorn ScriptObject.noSuch{Property,Method}.
             Object thisObject = root.isGlobal() ? Undefined.instance : thisObj;
@@ -1094,7 +1093,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             Object key = root.getKey();
             if (Strings.isTString(key)) {
-                return JavaPackage.getJavaClassOrConstructorOrSubPackage(root.getContext(), (DynamicObject) thisObj, (TruffleString) key);
+                return JavaPackage.getJavaClassOrConstructorOrSubPackage(root.getContext(), (JSDynamicObject) thisObj, (TruffleString) key);
             } else {
                 return Undefined.instance;
             }
@@ -1154,7 +1153,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             Object key = root.getKey();
-            DynamicObject proxy = receiverCheck.getStore(thisObj);
+            JSDynamicObject proxy = receiverCheck.getStore(thisObj);
             if (proxyHas.executeWithTargetAndKeyBoolean(proxy, key)) {
                 return proxyGet.executeWithReceiver(proxy, receiver, key);
             } else {
@@ -1172,7 +1171,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             Object key = root.getKey();
-            DynamicObject obj = (DynamicObject) thisObj;
+            JSDynamicObject obj = (JSDynamicObject) thisObj;
             Object result = root.isMethod() ? JSAdapter.INSTANCE.getMethodHelper(obj, obj, key, root) : JSAdapter.INSTANCE.getHelper(obj, obj, key, root);
             return JSRuntime.nullToUndefined(result);
         }
@@ -1185,7 +1184,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            return JSObject.get((DynamicObject) thisObj, root.getKey());
+            return JSObject.get((JSDynamicObject) thisObj, root.getKey());
         }
     }
 
@@ -1271,7 +1270,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
                 }
-                DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(thisObj);
+                JSDynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(thisObj);
                 return getFromJSObject(prototype, key);
             }
             return Undefined.instance;
@@ -1364,7 +1363,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             if (isJSObject.profile(JSDynamicObject.isJSDynamicObject(thisObj))) {
-                return getPropertyFromJSObject((DynamicObject) thisObj, receiver, defaultValue, root);
+                return getPropertyFromJSObject((JSDynamicObject) thisObj, receiver, defaultValue, root);
             } else {
                 if (isForeignObject.profile(JSGuards.isForeignObject(thisObj))) {
                     // a TruffleObject from another language
@@ -1379,13 +1378,13 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         toObjectNode = insert(JSToObjectNode.createToObjectNoCheck(root.getContext()));
                     }
-                    DynamicObject object = JSRuntime.expectJSObject(toObjectNode.execute(thisObj), notAJSObjectBranch);
+                    JSDynamicObject object = JSRuntime.expectJSObject(toObjectNode.execute(thisObj), notAJSObjectBranch);
                     return getPropertyFromJSObject(object, receiver, defaultValue, root);
                 }
             }
         }
 
-        private Object getPropertyFromJSObject(DynamicObject thisObj, Object receiver, Object defaultValue, PropertyGetNode root) {
+        private Object getPropertyFromJSObject(JSDynamicObject thisObj, Object receiver, Object defaultValue, PropertyGetNode root) {
             if (root.getKey() instanceof HiddenKey) {
                 Object result = JSDynamicObject.getOrNull(thisObj, root.getKey());
                 if (result != null) {
@@ -1403,7 +1402,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
         }
 
-        protected Object getFallback(@SuppressWarnings("unused") DynamicObject thisObj, PropertyGetNode root) {
+        protected Object getFallback(@SuppressWarnings("unused") JSDynamicObject thisObj, PropertyGetNode root) {
             if (root.isRequired()) {
                 throw Errors.createReferenceErrorNotDefined(root.getContext(), root.getKey(), this);
             }
@@ -1424,25 +1423,25 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             this.context = root.getContext();
         }
 
-        public abstract Object executeWithJSObject(DynamicObject thisObj, Object receiver, Object defaultValue, PropertyGetNode root);
+        public abstract Object executeWithJSObject(JSDynamicObject thisObj, Object receiver, Object defaultValue, PropertyGetNode root);
 
         public static GetPropertyFromJSObjectNode create(PropertyGetNode root) {
             return GetPropertyFromJSObjectNodeGen.create(root);
         }
 
         @Specialization(limit = "2", guards = {"!isGlobal()", "cachedClass == getJSClass(object)"})
-        protected Object doJSObjectCached(DynamicObject object, Object receiver, Object defaultValue, PropertyGetNode root,
+        protected Object doJSObjectCached(JSDynamicObject object, Object receiver, Object defaultValue, PropertyGetNode root,
                         @Cached("getJSClass(object)") JSClass cachedClass) {
             return getPropertyFromJSObjectIntl(cachedClass, object, receiver, defaultValue, root);
         }
 
         @Specialization(replaces = "doJSObjectCached", guards = {"!isGlobal()"})
-        protected Object doJSObjectDirect(DynamicObject object, Object receiver, Object defaultValue, PropertyGetNode root) {
+        protected Object doJSObjectDirect(JSDynamicObject object, Object receiver, Object defaultValue, PropertyGetNode root) {
             return getPropertyFromJSObjectIntl(JSObject.getJSClass(object), object, receiver, defaultValue, root);
         }
 
         @Specialization(guards = {"isGlobal()"})
-        protected Object doRequired(DynamicObject object, Object receiver, Object defaultValue, PropertyGetNode root,
+        protected Object doRequired(JSDynamicObject object, Object receiver, Object defaultValue, PropertyGetNode root,
                         @Cached("create()") JSHasPropertyNode hasPropertyNode,
                         @Cached("create()") JSClassProfile classProfile) {
             if (hasPropertyNode.executeBoolean(object, key)) {
@@ -1453,11 +1452,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
         }
 
-        protected JSClass getJSClass(DynamicObject object) {
+        protected JSClass getJSClass(JSDynamicObject object) {
             return JSObject.getJSClass(object);
         }
 
-        private Object getPropertyFromJSObjectIntl(JSClass jsclass, DynamicObject object, Object receiver, Object defaultValue, PropertyGetNode root) {
+        private Object getPropertyFromJSObjectIntl(JSClass jsclass, JSDynamicObject object, Object receiver, Object defaultValue, PropertyGetNode root) {
             final boolean isMethod = root.isMethod();
             assert !(key instanceof HiddenKey);
             // 0. check for null or undefined
@@ -1477,7 +1476,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return getNoSuchProperty(object, defaultValue, root);
         }
 
-        protected Object getNoSuchProperty(DynamicObject thisObj, Object defaultValue, PropertyGetNode root) {
+        protected Object getNoSuchProperty(JSDynamicObject thisObj, Object defaultValue, PropertyGetNode root) {
             if (root.getContext().isOptionNashornCompatibilityMode() &&
                             (!root.getContext().getNoSuchPropertyUnusedAssumption().isValid() || (root.isMethod() && !root.getContext().getNoSuchMethodUnusedAssumption().isValid()))) {
                 return getNoSuchPropertySlow(thisObj, defaultValue, root.isMethod());
@@ -1486,13 +1485,13 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
 
         @TruffleBoundary
-        private Object getNoSuchPropertySlow(DynamicObject thisObj, Object defaultValue, boolean isMethod) {
+        private Object getNoSuchPropertySlow(JSDynamicObject thisObj, Object defaultValue, boolean isMethod) {
             if (!(key instanceof Symbol) && JSRuntime.isObject(thisObj) && !JSAdapter.isJSAdapter(thisObj) && !JSProxy.isJSProxy(thisObj)) {
                 if (isMethod) {
                     Object function = JSObject.get(thisObj, JSObject.NO_SUCH_METHOD_NAME);
                     if (function != Undefined.instance) {
                         if (JSFunction.isJSFunction(function)) {
-                            return callNoSuchHandler(thisObj, (DynamicObject) function, false);
+                            return callNoSuchHandler(thisObj, (JSDynamicObject) function, false);
                         } else {
                             return getFallback(defaultValue);
                         }
@@ -1500,13 +1499,13 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 }
                 Object function = JSObject.get(thisObj, JSObject.NO_SUCH_PROPERTY_NAME);
                 if (JSFunction.isJSFunction(function)) {
-                    return callNoSuchHandler(thisObj, (DynamicObject) function, true);
+                    return callNoSuchHandler(thisObj, (JSDynamicObject) function, true);
                 }
             }
             return getFallback(defaultValue);
         }
 
-        private Object callNoSuchHandler(DynamicObject thisObj, DynamicObject function, boolean noSuchProperty) {
+        private Object callNoSuchHandler(JSDynamicObject thisObj, JSDynamicObject function, boolean noSuchProperty) {
             // if accessing a global variable, pass undefined as `this` instead of global object.
             // only matters if callee is strict. cf. Nashorn ScriptObject.noSuch{Property,Method}.
             Object thisObject = isGlobal() ? Undefined.instance : thisObj;
@@ -1542,7 +1541,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             if (!longLength) {
                 try {
                     return arrayLengthRead.executeInt(store);
@@ -1568,7 +1567,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
 
         private boolean assertIsArray(Object thisObj) {
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             // shape check should be sufficient to guarantee this assertion
             assert JSArray.isJSArray(store);
             return true;
@@ -1617,7 +1616,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static final class ClassPrototypePropertyGetNode extends LinkedPropertyGetNode {
 
-        @CompilationFinal private DynamicObject constantFunction;
+        @CompilationFinal private JSDynamicObject constantFunction;
         @Child private CreateMethodPropertyNode setConstructor;
         @CompilationFinal private int kind;
         private final JSContext context;
@@ -1628,8 +1627,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         private static final int GENERATOR = 2;
         private static final int ASYNC_GENERATOR = 3;
 
-        private static final DynamicObject UNKNOWN_FUN = Undefined.instance;
-        private static final DynamicObject GENERIC_FUN = null;
+        private static final JSDynamicObject UNKNOWN_FUN = Undefined.instance;
+        private static final JSDynamicObject GENERIC_FUN = null;
 
         public ClassPrototypePropertyGetNode(Property property, ReceiverCheckNode receiverCheck, JSContext context) {
             super(receiverCheck);
@@ -1640,9 +1639,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            DynamicObject functionObj = receiverCheck.getStore(thisObj);
+            JSDynamicObject functionObj = receiverCheck.getStore(thisObj);
             assert JSFunction.isJSFunction(functionObj);
-            DynamicObject constantFun = constantFunction;
+            JSDynamicObject constantFun = constantFunction;
             if (constantFun == UNKNOWN_FUN) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 constantFunction = functionObj;
@@ -1663,7 +1662,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
         }
 
-        private Object getPrototypeNotInitialized(DynamicObject functionObj) {
+        private Object getPrototypeNotInitialized(JSDynamicObject functionObj) {
             if (kind == UNKNOWN) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 JSFunctionData functionData = JSFunction.getFunctionData(functionObj);
@@ -1677,7 +1676,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
             JSRealm realm = JSFunction.getRealm(functionObj, context, this);
             // Function kind guaranteed by shape check, see JSFunction
-            DynamicObject prototype;
+            JSDynamicObject prototype;
             if (kind == CONSTRUCTOR) {
                 assert JSFunction.getFunctionData(functionObj).isConstructor();
                 if (setConstructor == null) {
@@ -1766,7 +1765,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             Object lazyRegexResult = Properties.getOrDefault(readLazyRegexResult, store, JSAbstractArray.LAZY_REGEX_RESULT_ID, null);
             assert lazyRegexResult != null;
             return readStartNode.execute(lazyRegexResult, TRegexUtil.Props.RegexResult.GET_START, 0);
@@ -1795,7 +1794,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             JSRegExpGroupsObject groups = (JSRegExpGroupsObject) store;
             Object regexResult = groups.getRegexResult();
             if (isIndicesObject.profile(groups.isIndices())) {
@@ -1876,7 +1875,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         return existingNode instanceof AbstractFinalPropertyGetNode;
     }
 
-    private boolean isEligibleForFinalSpecialization(Shape cacheShape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
+    private boolean isEligibleForFinalSpecialization(Shape cacheShape, JSDynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
         if (depth == 0) {
             return (JSConfig.SkipFinalShapeCheck && isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(cacheShape, key).isValid());
         } else {
@@ -1953,7 +1952,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     private GetCacheNode createFinalDataPropertySpecialization(Property property, Shape cacheShape, JSDynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
         AbstractShapeCheckNode finalShapeCheckNode = createShapeCheckNode(cacheShape, thisObj, depth, isConstantObjectFinal, false);
         finalShapeCheckNode.adoptChildren();
-        DynamicObject store = finalShapeCheckNode.getStore(thisObj);
+        JSDynamicObject store = finalShapeCheckNode.getStore(thisObj);
 
         JSDynamicObject constObjOrNull = isConstantObjectFinal ? thisObj : null;
         try {
@@ -1981,7 +1980,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     private GetCacheNode createFinalAccessorSpecialization(Property property, Shape cacheShape, JSDynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
         AbstractShapeCheckNode finalShapeCheckNode = createShapeCheckNode(cacheShape, thisObj, depth, isConstantObjectFinal, false);
         finalShapeCheckNode.adoptChildren();
-        DynamicObject store = finalShapeCheckNode.getStore(thisObj);
+        JSDynamicObject store = finalShapeCheckNode.getStore(thisObj);
         Accessor accessor = (Accessor) property.getLocation().get(store, null);
         JSDynamicObject constObjOrNull = isConstantObjectFinal ? thisObj : null;
         return new FinalAccessorPropertyGetNode(property, finalShapeCheckNode, accessor, constObjOrNull);

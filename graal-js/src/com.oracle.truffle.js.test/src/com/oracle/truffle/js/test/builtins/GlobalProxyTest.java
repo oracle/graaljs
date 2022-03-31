@@ -47,16 +47,16 @@ import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 
-import com.oracle.truffle.js.runtime.Strings;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Test;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.TestHelper;
@@ -74,7 +74,7 @@ public class GlobalProxyTest {
 
             JSContext context = helper.getJSContext();
             JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
-            DynamicObject proxyHandler = JSOrdinary.create(context, realm);
+            JSDynamicObject proxyHandler = JSOrdinary.create(context, realm);
             JSObject.set(proxyHandler, Strings.fromJavaString("has"), helper.runNoPolyglot("" +
                             "(function() {\n" +
                             "  let Reflect = globalThis.Reflect;\n" +
@@ -86,8 +86,8 @@ public class GlobalProxyTest {
                             "    return result;\n" +
                             "  };\n" +
                             "})()"));
-            DynamicObject oldGlobal = realm.getGlobalObject();
-            DynamicObject newGlobal = JSProxy.create(context, realm, oldGlobal, proxyHandler);
+            JSDynamicObject oldGlobal = realm.getGlobalObject();
+            JSDynamicObject newGlobal = JSProxy.create(context, realm, oldGlobal, proxyHandler);
             realm.setGlobalObject(newGlobal);
 
             try {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -59,6 +58,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class TypedArray extends ScriptArray {
@@ -82,47 +82,47 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     @Override
-    public final long length(DynamicObject object) {
+    public final long length(JSDynamicObject object) {
         return lengthInt(object);
     }
 
     @Override
-    public final int lengthInt(DynamicObject object) {
+    public final int lengthInt(JSDynamicObject object) {
         return typedArrayGetLength(object);
     }
 
     @Override
-    public final TypedArray setLengthImpl(DynamicObject object, long len, ProfileHolder profile) {
+    public final TypedArray setLengthImpl(JSDynamicObject object, long len, ProfileHolder profile) {
         return this;
     }
 
     @Override
-    public final long firstElementIndex(DynamicObject object) {
+    public final long firstElementIndex(JSDynamicObject object) {
         return 0;
     }
 
     @Override
-    public final long lastElementIndex(DynamicObject object) {
+    public final long lastElementIndex(JSDynamicObject object) {
         return length(object) - 1;
     }
 
     @Override
-    public final long nextElementIndex(DynamicObject object, long index) {
+    public final long nextElementIndex(JSDynamicObject object, long index) {
         return index + 1;
     }
 
     @Override
-    public final long previousElementIndex(DynamicObject object, long index) {
+    public final long previousElementIndex(JSDynamicObject object, long index) {
         return index - 1;
     }
 
     @Override
-    public final ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+    public final ScriptArray deleteElementImpl(JSDynamicObject object, long index, boolean strict) {
         return this;
     }
 
     @Override
-    public final boolean hasElement(DynamicObject object, long index) {
+    public final boolean hasElement(JSDynamicObject object, long index) {
         return 0 <= index && index < length(object);
     }
 
@@ -145,11 +145,11 @@ public abstract class TypedArray extends ScriptArray {
     /**
      * Get ArrayBuffer from TypedArray.
      */
-    public static DynamicObject getBufferFromTypedArray(DynamicObject typedArray) {
+    public static JSDynamicObject getBufferFromTypedArray(JSDynamicObject typedArray) {
         return JSArrayBufferView.getArrayBuffer(typedArray);
     }
 
-    protected final int getOffset(DynamicObject object) {
+    protected final int getOffset(JSDynamicObject object) {
         if (offset) {
             return typedArrayGetOffset(object);
         } else {
@@ -175,17 +175,17 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     @Override
-    public boolean hasHoles(DynamicObject object) {
+    public boolean hasHoles(JSDynamicObject object) {
         return false;
     }
 
     @Override
-    public ScriptArray removeRangeImpl(DynamicObject object, long start, long end) {
+    public ScriptArray removeRangeImpl(JSDynamicObject object, long start, long end) {
         throw Errors.unsupported("cannot removeRange() on TypedArray");
     }
 
     @Override
-    public ScriptArray addRangeImpl(DynamicObject object, long atOffset, int size) {
+    public ScriptArray addRangeImpl(JSDynamicObject object, long atOffset, int size) {
         throw Errors.unsupported("cannot addRange() on TypedArray");
     }
 
@@ -263,7 +263,7 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Object getElement(DynamicObject object, long index) {
+        public Object getElement(JSDynamicObject object, long index) {
             if (hasElement(object, index)) {
                 return getInt(object, (int) index, InteropLibrary.getUncached());
             } else {
@@ -272,24 +272,24 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Object getElementInBounds(DynamicObject object, long index) {
+        public Object getElementInBounds(JSDynamicObject object, long index) {
             assert hasElement(object, index);
             return getInt(object, (int) index, InteropLibrary.getUncached());
         }
 
         @Override
-        public TypedIntArray setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
+        public TypedIntArray setElementImpl(JSDynamicObject object, long index, Object value, boolean strict) {
             if (hasElement(object, index)) {
                 setInt(object, (int) index, JSRuntime.toInt32(value), InteropLibrary.getUncached());
             }
             return this;
         }
 
-        public final int getInt(DynamicObject object, int index, InteropLibrary interop) {
+        public final int getInt(JSDynamicObject object, int index, InteropLibrary interop) {
             return getIntImpl(getBufferFromTypedArray(object), getOffset(object), index, interop);
         }
 
-        public final void setInt(DynamicObject object, int index, int value, InteropLibrary interop) {
+        public final void setInt(JSDynamicObject object, int index, int value, InteropLibrary interop) {
             setIntImpl(getBufferFromTypedArray(object), getOffset(object), index, value, interop);
         }
 
@@ -494,7 +494,7 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public TypedIntArray setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
+        public TypedIntArray setElementImpl(JSDynamicObject object, long index, Object value, boolean strict) {
             if (hasElement(object, index)) {
                 setInt(object, (int) index, toInt(JSRuntime.toDouble(value)), InteropLibrary.getUncached());
             }
@@ -877,7 +877,7 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Object getElement(DynamicObject object, long index) {
+        public Object getElement(JSDynamicObject object, long index) {
             if (hasElement(object, index)) {
                 int value = getInt(object, (int) index, InteropLibrary.getUncached());
                 return toUint32(value);
@@ -895,7 +895,7 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Object getElementInBounds(DynamicObject object, long index) {
+        public Object getElementInBounds(JSDynamicObject object, long index) {
             assert hasElement(object, index);
             return toUint32(getInt(object, (int) index, InteropLibrary.getUncached()));
         }
@@ -990,7 +990,7 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Object getElement(DynamicObject object, long index) {
+        public Object getElement(JSDynamicObject object, long index) {
             if (hasElement(object, index)) {
                 return getBigInt(object, (int) index, InteropLibrary.getUncached());
             } else {
@@ -999,24 +999,24 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Object getElementInBounds(DynamicObject object, long index) {
+        public Object getElementInBounds(JSDynamicObject object, long index) {
             assert hasElement(object, index);
             return getBigInt(object, (int) index, InteropLibrary.getUncached());
         }
 
         @Override
-        public TypedBigIntArray setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
+        public TypedBigIntArray setElementImpl(JSDynamicObject object, long index, Object value, boolean strict) {
             if (hasElement(object, index)) {
                 setBigInt(object, (int) index, JSRuntime.toBigInt(value), InteropLibrary.getUncached());
             }
             return this;
         }
 
-        public final BigInt getBigInt(DynamicObject object, int index, InteropLibrary interop) {
+        public final BigInt getBigInt(JSDynamicObject object, int index, InteropLibrary interop) {
             return getBigIntImpl(getBufferFromTypedArray(object), getOffset(object), index, interop);
         }
 
-        public final void setBigInt(DynamicObject object, int index, BigInt value, InteropLibrary interop) {
+        public final void setBigInt(JSDynamicObject object, int index, BigInt value, InteropLibrary interop) {
             setLongImpl(getBufferFromTypedArray(object), getOffset(object), index, value.longValue(), interop);
         }
 
@@ -1245,7 +1245,7 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public final Object getElement(DynamicObject object, long index) {
+        public final Object getElement(JSDynamicObject object, long index) {
             if (hasElement(object, index)) {
                 return getDouble(object, (int) index, InteropLibrary.getUncached());
             } else {
@@ -1254,24 +1254,24 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Object getElementInBounds(DynamicObject object, long index) {
+        public Object getElementInBounds(JSDynamicObject object, long index) {
             assert hasElement(object, index);
             return getDouble(object, (int) index, InteropLibrary.getUncached());
         }
 
         @Override
-        public final TypedFloatArray setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
+        public final TypedFloatArray setElementImpl(JSDynamicObject object, long index, Object value, boolean strict) {
             if (hasElement(object, index)) {
                 setDouble(object, (int) index, JSRuntime.toDouble(value), InteropLibrary.getUncached());
             }
             return this;
         }
 
-        public final double getDouble(DynamicObject object, int index, InteropLibrary interop) {
+        public final double getDouble(JSDynamicObject object, int index, InteropLibrary interop) {
             return getDoubleImpl(getBufferFromTypedArray(object), getOffset(object), index, interop);
         }
 
-        public final void setDouble(DynamicObject object, int index, double value, InteropLibrary interop) {
+        public final void setDouble(JSDynamicObject object, int index, double value, InteropLibrary interop) {
             setDoubleImpl(getBufferFromTypedArray(object), getOffset(object), index, value, interop);
         }
 

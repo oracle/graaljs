@@ -45,7 +45,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.EPOCH_MILLISE
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.EPOCH_NANOSECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.EPOCH_SECONDS;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantFunctionBuiltins;
@@ -59,6 +58,7 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -81,12 +81,12 @@ public final class JSTemporalInstant extends JSNonProxy implements JSConstructor
     public static JSTemporalInstantObject create(JSContext context, JSRealm realm, BigInt nanoseconds) {
         assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
         JSObjectFactory factory = context.getTemporalInstantFactory();
-        DynamicObject obj = factory.initProto(new JSTemporalInstantObject(factory.getShape(realm), nanoseconds), realm);
+        JSDynamicObject obj = factory.initProto(new JSTemporalInstantObject(factory.getShape(realm), nanoseconds), realm);
         return (JSTemporalInstantObject) context.trackAllocation(obj);
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return TO_STRING_TAG;
     }
 
@@ -96,9 +96,9 @@ public final class JSTemporalInstant extends JSNonProxy implements JSConstructor
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject constructor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalInstantPrototypeBuiltins.BUILTINS);
 
@@ -113,17 +113,17 @@ public final class JSTemporalInstant extends JSNonProxy implements JSConstructor
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, JSTemporalInstant.INSTANCE, context);
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getTemporalInstantPrototype();
     }
 
     @Override
-    public void fillConstructor(JSRealm realm, DynamicObject constructor) {
+    public void fillConstructor(JSRealm realm, JSDynamicObject constructor) {
         WithFunctionsAndSpecies.super.fillConstructor(realm, constructor);
     }
 

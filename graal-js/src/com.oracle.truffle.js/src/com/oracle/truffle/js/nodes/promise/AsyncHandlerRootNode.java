@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,7 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.TruffleStackTraceElement;
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Implemented by built-in promise handler functions that contribute to async stack traces.
@@ -50,13 +50,13 @@ public interface AsyncHandlerRootNode {
     /**
      * Extract the stack trace element and the promise associated with this handler, both optional.
      */
-    AsyncStackTraceInfo getAsyncStackTraceInfo(DynamicObject handlerFunction);
+    AsyncStackTraceInfo getAsyncStackTraceInfo(JSDynamicObject handlerFunction);
 
     final class AsyncStackTraceInfo {
-        public final DynamicObject promise;
+        public final JSDynamicObject promise;
         public final TruffleStackTraceElement stackTraceElement;
 
-        public AsyncStackTraceInfo(DynamicObject promise, TruffleStackTraceElement stackTraceElement) {
+        public AsyncStackTraceInfo(JSDynamicObject promise, TruffleStackTraceElement stackTraceElement) {
             this.promise = promise;
             this.stackTraceElement = stackTraceElement;
         }

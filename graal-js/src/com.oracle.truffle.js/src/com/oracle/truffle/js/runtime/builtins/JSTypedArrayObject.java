@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
@@ -58,6 +57,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -117,7 +117,7 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
                     @CachedLibrary("this") InteropLibrary self,
                     @Cached(value = "create(language(self).getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Cached ExportValueNode exportNode) throws InvalidArrayIndexException, UnsupportedMessageException {
-        DynamicObject target = this;
+        JSDynamicObject target = this;
         if (index < 0 || index >= self.getArraySize(this)) {
             throw InvalidArrayIndexException.create(index);
         }
@@ -146,7 +146,7 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
                     @Cached ImportValueNode castValueNode,
                     @Cached(value = "createCachedInterop()", uncached = "getUncachedWrite()") WriteElementNode writeNode,
                     @CachedLibrary("this") InteropLibrary thisLibrary) throws InvalidArrayIndexException, UnsupportedMessageException {
-        DynamicObject target = this;
+        JSDynamicObject target = this;
         if (index < 0 || index >= thisLibrary.getArraySize(this)) {
             throw InvalidArrayIndexException.create(index);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -106,7 +105,7 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
             errorBranch.enter();
             throw Errors.createTypeErrorNotAFunction(function, this);
         } else {
-            DynamicObject pxHandler = JSProxy.getHandlerChecked(proxy, errorBranch);
+            JSDynamicObject pxHandler = JSProxy.getHandlerChecked(proxy, errorBranch);
             Object pxTarget = JSProxy.getTarget(proxy);
             Object pxTrapFun = trapGetter.executeWithTarget(pxHandler);
             Object[] proxyArguments = JSArguments.extractUserArguments(arguments);
@@ -131,7 +130,7 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
             errorBranch.enter();
             throw Errors.createTypeErrorNotAFunction(function, this);
         } else {
-            DynamicObject pxHandler = JSProxy.getHandlerChecked(proxy, errorBranch);
+            JSDynamicObject pxHandler = JSProxy.getHandlerChecked(proxy, errorBranch);
             Object pxTarget = JSProxy.getTarget(proxy);
             Object pxTrapFun = trapGetter.executeWithTarget(pxHandler);
             Object newTarget = isNewTarget ? JSArguments.getNewTarget(arguments) : proxy;

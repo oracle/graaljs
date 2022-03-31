@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,19 +42,19 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.Map;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSWeakMapObject extends JSNonProxyObject {
-    private final Map<DynamicObject, Object> weakHashMap;
+    private final Map<JSDynamicObject, Object> weakHashMap;
 
-    protected JSWeakMapObject(Shape shape, Map<DynamicObject, Object> weakHashMap) {
+    protected JSWeakMapObject(Shape shape, Map<JSDynamicObject, Object> weakHashMap) {
         super(shape);
         this.weakHashMap = weakHashMap;
     }
 
-    public Map<DynamicObject, Object> getWeakHashMap() {
+    public Map<JSDynamicObject, Object> getWeakHashMap() {
         return weakHashMap;
     }
 }

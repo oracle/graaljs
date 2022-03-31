@@ -69,7 +69,6 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -580,7 +579,7 @@ public class JSContext {
 
         // shapes and factories
         PrototypeSupplier objectPrototypeSupplier = JSOrdinary.INSTANCE;
-        CompilableBiFunction<JSContext, DynamicObject, Shape> ordinaryObjectShapeSupplier = JSOrdinary.SHAPE_SUPPLIER;
+        CompilableBiFunction<JSContext, JSDynamicObject, Shape> ordinaryObjectShapeSupplier = JSOrdinary.SHAPE_SUPPLIER;
         JSObjectFactory.IntrinsicBuilder builder = new JSObjectFactory.IntrinsicBuilder(this);
 
         this.functionFactory = builder.function(functionPrototypeSupplier, false, false, false, false, false);
@@ -841,7 +840,7 @@ public class JSContext {
     /**
      * ECMA 8.4.1 EnqueueJob.
      */
-    public final void promiseEnqueueJob(JSRealm realm, DynamicObject job) {
+    public final void promiseEnqueueJob(JSRealm realm, JSDynamicObject job) {
         invalidatePromiseQueueNotUsedAssumption();
         realm.getAgent().enqueuePromiseJob(job);
     }
@@ -1532,7 +1531,7 @@ public class JSContext {
         }
     }
 
-    public void notifyPromiseRejectionTracker(DynamicObject promise, int operation, Object value) {
+    public void notifyPromiseRejectionTracker(JSDynamicObject promise, int operation, Object value) {
         if (!promiseRejectionTrackerNotUsedAssumption.isValid() && promiseRejectionTracker != null) {
             switch (operation) {
                 case JSPromise.REJECTION_TRACKER_OPERATION_REJECT:
@@ -1554,22 +1553,22 @@ public class JSContext {
     }
 
     @TruffleBoundary
-    private void invokePromiseRejected(DynamicObject promise, Object value) {
+    private void invokePromiseRejected(JSDynamicObject promise, Object value) {
         promiseRejectionTracker.promiseRejected(promise, value);
     }
 
     @TruffleBoundary
-    private void invokePromiseRejectionHandled(DynamicObject promise) {
+    private void invokePromiseRejectionHandled(JSDynamicObject promise) {
         promiseRejectionTracker.promiseRejectionHandled(promise);
     }
 
     @TruffleBoundary
-    private void invokePromiseRejectedAfterResolved(DynamicObject promise, Object value) {
+    private void invokePromiseRejectedAfterResolved(JSDynamicObject promise, Object value) {
         promiseRejectionTracker.promiseRejectedAfterResolved(promise, value);
     }
 
     @TruffleBoundary
-    private void invokePromiseResolvedAfterResolved(DynamicObject promise, Object value) {
+    private void invokePromiseResolvedAfterResolved(JSDynamicObject promise, Object value) {
         promiseRejectionTracker.promiseResolvedAfterResolved(promise, value);
     }
 
@@ -1586,26 +1585,26 @@ public class JSContext {
     }
 
     // Helper field for PromiseHook.TYPE_INIT event (stores the parent promise)
-    private DynamicObject parentPromise;
+    private JSDynamicObject parentPromise;
 
-    public final void notifyPromiseHook(int changeType, DynamicObject promise) {
+    public final void notifyPromiseHook(int changeType, JSDynamicObject promise) {
         if (!promiseHookNotUsedAssumption.isValid() && promiseHook != null) {
             if (changeType == -1) {
                 // Information about parent for the incoming INIT event
                 storeParentPromise(promise);
             } else {
-                DynamicObject parent = (changeType == PromiseHook.TYPE_INIT) ? fetchParentPromise() : Undefined.instance;
+                JSDynamicObject parent = (changeType == PromiseHook.TYPE_INIT) ? fetchParentPromise() : Undefined.instance;
                 notifyPromiseHookImpl(changeType, promise, parent);
             }
         }
     }
 
-    private void storeParentPromise(DynamicObject promise) {
+    private void storeParentPromise(JSDynamicObject promise) {
         parentPromise = promise;
     }
 
-    private DynamicObject fetchParentPromise() {
-        DynamicObject parent = parentPromise;
+    private JSDynamicObject fetchParentPromise() {
+        JSDynamicObject parent = parentPromise;
         if (parent == null) {
             parent = Undefined.instance;
         } else {
@@ -1615,7 +1614,7 @@ public class JSContext {
     }
 
     @TruffleBoundary
-    private void notifyPromiseHookImpl(int changeType, DynamicObject promise, DynamicObject parent) {
+    private void notifyPromiseHookImpl(int changeType, JSDynamicObject promise, JSDynamicObject parent) {
         promiseHook.promiseChanged(changeType, promise, parent);
     }
 
@@ -1629,7 +1628,7 @@ public class JSContext {
     }
 
     @TruffleBoundary
-    public final void notifyImportMetaInitializer(DynamicObject importMeta, JSModuleRecord module) {
+    public final void notifyImportMetaInitializer(JSDynamicObject importMeta, JSModuleRecord module) {
         if (importMetaInitializer != null) {
             importMetaInitializer.initializeImportMeta(importMeta, module);
         }
@@ -1651,7 +1650,7 @@ public class JSContext {
      * @return the callback result (a promise or {@code null}).
      */
     @TruffleBoundary
-    public final DynamicObject hostImportModuleDynamically(JSRealm realm, ScriptOrModule referrer, Module.ModuleRequest moduleRequest) {
+    public final JSDynamicObject hostImportModuleDynamically(JSRealm realm, ScriptOrModule referrer, Module.ModuleRequest moduleRequest) {
         if (importModuleDynamicallyCallback != null) {
             return importModuleDynamicallyCallback.importModuleDynamically(realm, referrer, moduleRequest);
         } else {
@@ -1773,9 +1772,9 @@ public class JSContext {
                 if (!JSDynamicObject.isJSDynamicObject(obj)) {
                     return Undefined.instance;
                 }
-                DynamicObject thisObj = (DynamicObject) obj;
-                if (!JSObject.setPrototype(thisObj, (DynamicObject) value)) {
-                    throw Errors.createTypeErrorCannotSetProto(thisObj, (DynamicObject) value);
+                JSDynamicObject thisObj = (JSDynamicObject) obj;
+                if (!JSObject.setPrototype(thisObj, (JSDynamicObject) value)) {
+                    throw Errors.createTypeErrorCannotSetProto(thisObj, (JSDynamicObject) value);
                 }
                 return Undefined.instance;
             }

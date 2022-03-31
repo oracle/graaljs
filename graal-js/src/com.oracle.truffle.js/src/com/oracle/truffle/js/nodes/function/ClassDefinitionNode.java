@@ -46,11 +46,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
@@ -67,6 +66,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
@@ -124,7 +124,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @Override
-    public DynamicObject execute(VirtualFrame frame) {
+    public JSDynamicObject execute(VirtualFrame frame) {
         return executeWithName(frame, null);
     }
 
@@ -140,13 +140,13 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @Override
-    public DynamicObject executeWithName(VirtualFrame frame, Object className) {
+    public JSDynamicObject executeWithName(VirtualFrame frame, Object className) {
         return executeWithName(frame, className, null, -1);
     }
 
-    private DynamicObject executeWithName(VirtualFrame frame, Object className, ClassDefinitionResumptionRecord resumptionRecord, int stateSlot) {
-        DynamicObject proto;
-        DynamicObject constructor;
+    private JSDynamicObject executeWithName(VirtualFrame frame, Object className, ClassDefinitionResumptionRecord resumptionRecord, int stateSlot) {
+        JSDynamicObject proto;
+        JSDynamicObject constructor;
         Object[][] instanceFields;
         Object[][] staticElements;
         int instanceFieldIndex;
@@ -180,13 +180,13 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
 
             /* Let proto be ObjectCreate(protoParent). */
             assert protoParent == Null.instance || JSRuntime.isObject(protoParent);
-            proto = createPrototypeNode.execute(frame, ((DynamicObject) protoParent));
+            proto = createPrototypeNode.execute(frame, ((JSDynamicObject) protoParent));
 
             /*
              * Let constructorInfo be the result of performing DefineMethod for constructor with
              * arguments proto and constructorParent as the optional functionPrototype argument.
              */
-            constructor = defineConstructorMethodNode.execute(frame, proto, (DynamicObject) constructorParent);
+            constructor = defineConstructorMethodNode.execute(frame, proto, (JSDynamicObject) constructorParent);
 
             // Perform MakeConstructor(F, writablePrototype=false, proto).
             JSFunction.setClassPrototype(constructor, proto);
@@ -243,7 +243,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @ExplodeLoop
-    private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, Object[][] instanceFields, Object[][] staticElements, int startIndex, int instanceFieldIdx,
+    private void initializeMembers(VirtualFrame frame, JSDynamicObject proto, JSDynamicObject constructor, Object[][] instanceFields, Object[][] staticElements, int startIndex, int instanceFieldIdx,
                     int staticElementIdx, int stateSlot, JSRealm realm) {
         /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
         int instanceFieldIndex = instanceFieldIdx;
@@ -253,7 +253,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
             for (; i < memberNodes.length; i++) {
                 if (i >= startIndex) {
                     ObjectLiteralMemberNode memberNode = memberNodes[i];
-                    DynamicObject homeObject = memberNode.isStatic() ? constructor : proto;
+                    JSDynamicObject homeObject = memberNode.isStatic() ? constructor : proto;
                     memberNode.executeVoid(frame, homeObject, realm);
                     if (memberNode.isFieldOrStaticBlock()) {
                         Object key = memberNode.evaluateKey(frame);
@@ -278,7 +278,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
 
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == DynamicObject.class;
+        return clazz == JSDynamicObject.class;
     }
 
     @Override
@@ -300,8 +300,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     static class ClassDefinitionResumptionRecord {
-        final DynamicObject proto;
-        final DynamicObject constructor;
+        final JSDynamicObject proto;
+        final JSDynamicObject constructor;
         final Object[][] instanceFields;
         final Object[][] staticElements;
         final int instanceFieldIndex;
@@ -309,8 +309,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         final int index;
 
         ClassDefinitionResumptionRecord(
-                        DynamicObject proto,
-                        DynamicObject constructor,
+                        JSDynamicObject proto,
+                        JSDynamicObject constructor,
                         Object[][] instanceFields,
                         Object[][] staticElements,
                         int instanceFieldIndex,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -96,18 +95,18 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected boolean doGeneric(DynamicObject proxy, Object receiver, Object value, Object key,
+    protected boolean doGeneric(JSDynamicObject proxy, Object receiver, Object value, Object key,
                     @Cached("createBinaryProfile()") ConditionProfile hasTrap,
                     @Cached JSClassProfile targetClassProfile) {
         assert JSProxy.isJSProxy(proxy);
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKey(key);
-        DynamicObject handler = JSProxy.getHandlerChecked(proxy, errorBranch);
+        JSDynamicObject handler = JSProxy.getHandlerChecked(proxy, errorBranch);
         Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
             if (JSDynamicObject.isJSDynamicObject(target)) {
-                return JSObject.setWithReceiver((DynamicObject) target, propertyKey, value, receiver, isStrict, targetClassProfile, this);
+                return JSObject.setWithReceiver((JSDynamicObject) target, propertyKey, value, receiver, isStrict, targetClassProfile, this);
             } else {
                 truffleWrite(target, propertyKey, value);
                 return true;

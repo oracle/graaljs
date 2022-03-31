@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.CreateSetIteratorNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetAddNodeGen;
@@ -81,6 +80,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
@@ -218,13 +218,13 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization(guards = "isJSSet(thisObj)")
-        protected static DynamicObject clear(DynamicObject thisObj) {
+        protected static JSDynamicObject clear(JSDynamicObject thisObj) {
             JSSet.getInternalSet(thisObj).clear();
             return Undefined.instance;
         }
 
         @Specialization(guards = "!isJSSet(thisObj)")
-        protected static DynamicObject notSet(@SuppressWarnings("unused") Object thisObj) {
+        protected static JSDynamicObject notSet(@SuppressWarnings("unused") Object thisObj) {
             throw Errors.createTypeErrorSetExpected();
         }
     }
@@ -239,7 +239,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization(guards = "isJSSet(thisObj)")
-        protected boolean delete(DynamicObject thisObj, Object key) {
+        protected boolean delete(JSDynamicObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
             return JSSet.getInternalSet(thisObj).remove(normalizedKey);
         }
@@ -261,7 +261,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization(guards = "isJSSet(thisObj)")
-        protected DynamicObject add(DynamicObject thisObj, Object key) {
+        protected JSDynamicObject add(JSDynamicObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
             JSSet.getInternalSet(thisObj).put(normalizedKey, PRESENT);
             return thisObj;
@@ -269,7 +269,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSet(thisObj)")
-        protected static DynamicObject notSet(Object thisObj, Object key) {
+        protected static JSDynamicObject notSet(Object thisObj, Object key) {
             throw Errors.createTypeErrorSetExpected();
         }
     }
@@ -284,7 +284,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization(guards = "isJSSet(thisObj)")
-        protected boolean has(DynamicObject thisObj, Object key) {
+        protected boolean has(JSDynamicObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
             return JSSet.getInternalSet(thisObj).has(normalizedKey);
         }
@@ -343,7 +343,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             }
         }
 
-        protected final void iteratorCloseAbrupt(DynamicObject iterator) {
+        protected final void iteratorCloseAbrupt(JSDynamicObject iterator) {
             if (iteratorCloseNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
@@ -407,8 +407,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization(guards = "isJSSet(set)")
-        protected DynamicObject union(DynamicObject set, Object iterable) {
-            DynamicObject newSet = (DynamicObject) constructSet(set);
+        protected JSDynamicObject union(JSDynamicObject set, Object iterable) {
+            JSDynamicObject newSet = (JSDynamicObject) constructSet(set);
             Object adder = getAddFunction(newSet);
             addEntryFromIterable(newSet, iterable, adder);
             return newSet;
@@ -433,8 +433,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization(guards = "isJSSet(set)")
-        protected DynamicObject intersection(DynamicObject set, Object iterable) {
-            DynamicObject newSet = (DynamicObject) constructSet();
+        protected JSDynamicObject intersection(JSDynamicObject set, Object iterable) {
+            JSDynamicObject newSet = (JSDynamicObject) constructSet();
             Object hasCheck = getHasFunction(set);
             if (!isCallable(hasCheck)) {
                 hasError.enter();
@@ -484,8 +484,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization(guards = "isJSSet(set)")
-        protected DynamicObject difference(DynamicObject set, Object iterable) {
-            DynamicObject newSet = (DynamicObject) constructSet(set);
+        protected JSDynamicObject difference(JSDynamicObject set, Object iterable) {
+            JSDynamicObject newSet = (JSDynamicObject) constructSet(set);
             Object remover = getRemoveFunction(newSet);
             if (!isCallable(remover)) {
                 removerError.enter();
@@ -527,8 +527,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization(guards = "isJSSet(set)")
-        protected DynamicObject symmetricDifference(DynamicObject set, Object iterable) {
-            DynamicObject newSet = (DynamicObject) constructSet(set);
+        protected JSDynamicObject symmetricDifference(JSDynamicObject set, Object iterable) {
+            JSDynamicObject newSet = (JSDynamicObject) constructSet(set);
             Object remover = getRemoveFunction(newSet);
             if (!isCallable(remover)) {
                 removerError.enter();
@@ -581,17 +581,17 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization(guards = "isJSSet(set)")
-        protected Boolean isSubsetOf(DynamicObject set, Object iterable) {
+        protected Boolean isSubsetOf(JSDynamicObject set, Object iterable) {
             IteratorRecord iteratorRecord = getIteratorNode.execute(set);
             if (!JSRuntime.isObject(iterable)) {
                 isObjectError.enter();
                 throw Errors.createTypeErrorNotIterable(iterable, this);
             }
-            DynamicObject otherSet = (DynamicObject) iterable;
+            JSDynamicObject otherSet = (JSDynamicObject) iterable;
             Object hasCheck = getHasFunction(otherSet);
             if (!isCallable(hasCheck)) {
                 needCreateNewBranch.enter();
-                otherSet = (DynamicObject) constructSet();
+                otherSet = (JSDynamicObject) constructSet();
                 addEntryFromIterable(otherSet, iterable, getAddFunction(otherSet));
                 hasCheck = getHasFunction(otherSet);
             }
@@ -633,7 +633,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization(guards = "isJSSet(set)")
-        protected Boolean isSupersetOf(DynamicObject set, Object iterable) {
+        protected Boolean isSupersetOf(JSDynamicObject set, Object iterable) {
             Object hasCheck = getHasFunction(set);
             if (!isCallable(hasCheck)) {
                 hasError.enter();
@@ -678,7 +678,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization(guards = "isJSSet(set)")
-        protected Boolean isDisjointFrom(DynamicObject set, Object iterable) {
+        protected Boolean isDisjointFrom(JSDynamicObject set, Object iterable) {
             Object hasCheck = getHasFunction(set);
             if (!isCallable(hasCheck)) {
                 hasError.enter();
@@ -718,7 +718,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization(guards = {"isJSSet(thisObj)", "isCallable.executeBoolean(callback)"}, limit = "1")
-        protected Object forEachFunction(DynamicObject thisObj, DynamicObject callback, Object thisArg,
+        protected Object forEachFunction(JSDynamicObject thisObj, JSDynamicObject callback, Object thisArg,
                         @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable,
                         @Cached("createCall()") JSFunctionCallNode callNode) {
             JSHashMap map = JSSet.getInternalSet(thisObj);
@@ -761,8 +761,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization(guards = "isJSSet(set)")
-        protected DynamicObject doSet(VirtualFrame frame, DynamicObject set) {
-            DynamicObject iterator = createObjectNode.execute(frame, getRealm().getSetIteratorPrototype());
+        protected JSDynamicObject doSet(VirtualFrame frame, JSDynamicObject set) {
+            JSDynamicObject iterator = createObjectNode.execute(frame, getRealm().getSetIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, set);
             setNextIndexNode.setValue(iterator, JSSet.getInternalSet(set).getEntries());
             setIterationKindNode.setValueInt(iterator, iterationKind);
@@ -771,7 +771,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSet(thisObj)")
-        protected DynamicObject doIncompatibleReceiver(Object thisObj) {
+        protected JSDynamicObject doIncompatibleReceiver(Object thisObj) {
             throw Errors.createTypeError("not a Set");
         }
     }

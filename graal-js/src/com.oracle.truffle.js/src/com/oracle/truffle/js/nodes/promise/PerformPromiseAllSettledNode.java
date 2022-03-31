@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
@@ -56,6 +55,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -71,9 +71,9 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
     }
 
     @Override
-    protected DynamicObject createResolveElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
+    protected JSDynamicObject createResolveElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseAllSettledResolveElement, (c) -> createResolveElementFunctionImpl(c));
-        DynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSDynamicObject function = JSFunction.create(getRealm(), functionData);
         setArgs.setValue(function, new ResolveElementArgs(index, values, resultCapability, remainingElementsCount));
         return function;
     }
@@ -81,7 +81,7 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
     @Override
     protected Object createRejectElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseAllSettledRejectElement, (c) -> createRejectElementFunctionImpl(c));
-        DynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSDynamicObject function = JSFunction.create(getRealm(), functionData);
         setArgs.setValue(function, new ResolveElementArgs(index, values, resultCapability, remainingElementsCount));
         return function;
     }
@@ -97,7 +97,7 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
                 ResolveElementArgs args = (ResolveElementArgs) getArgs.getValue(functionObject);
                 if (args.alreadyCalled) {
                     return Undefined.instance;
@@ -105,14 +105,14 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
                 args.alreadyCalled = true;
                 Object value = valueNode.execute(frame);
 
-                DynamicObject obj = objectCreateNode.execute(frame);
+                JSDynamicObject obj = objectCreateNode.execute(frame);
                 createStatusPropertyNode.executeVoid(obj, Strings.FULFILLED);
                 createValuePropertyNode.executeVoid(obj, value);
 
                 args.values.set(args.index, obj);
                 args.remainingElements.value--;
                 if (args.remainingElements.value == 0) {
-                    DynamicObject valuesArray = JSArray.createConstantObjectArray(context, getRealm(), args.values.toArray());
+                    JSDynamicObject valuesArray = JSArray.createConstantObjectArray(context, getRealm(), args.values.toArray());
                     return callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, args.capability.getResolve(), valuesArray));
                 }
                 return Undefined.instance;
@@ -132,7 +132,7 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
                 ResolveElementArgs args = (ResolveElementArgs) getArgs.getValue(functionObject);
                 if (args.alreadyCalled) {
                     return Undefined.instance;
@@ -140,14 +140,14 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
                 args.alreadyCalled = true;
                 Object value = valueNode.execute(frame);
 
-                DynamicObject obj = objectCreateNode.execute(frame);
+                JSDynamicObject obj = objectCreateNode.execute(frame);
                 createStatusPropertyNode.executeVoid(obj, Strings.REJECTED);
                 createReasonPropertyNode.executeVoid(obj, value);
 
                 args.values.set(args.index, obj);
                 args.remainingElements.value--;
                 if (args.remainingElements.value == 0) {
-                    DynamicObject valuesArray = JSArray.createConstantObjectArray(context, getRealm(), args.values.toArray());
+                    JSDynamicObject valuesArray = JSArray.createConstantObjectArray(context, getRealm(), args.values.toArray());
                     return callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, args.capability.getResolve(), valuesArray));
                 }
                 return Undefined.instance;

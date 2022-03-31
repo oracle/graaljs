@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,11 +53,11 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -75,7 +75,7 @@ public final class SparseArray extends DynamicArray {
         return SPARSE_ARRAY;
     }
 
-    public static SparseArray makeSparseArray(DynamicObject object, ScriptArray fromArray) {
+    public static SparseArray makeSparseArray(JSDynamicObject object, ScriptArray fromArray) {
         assert !(fromArray instanceof SparseArray);
         TreeMap<Long, Object> arrayMap = createArrayMap();
         copyArrayToMap(object, fromArray, arrayMap);
@@ -89,7 +89,7 @@ public final class SparseArray extends DynamicArray {
         return new TreeMap<>();
     }
 
-    protected static void copyArrayToMap(DynamicObject object, ScriptArray fromArray, Map<Long, Object> toMap) {
+    protected static void copyArrayToMap(JSDynamicObject object, ScriptArray fromArray, Map<Long, Object> toMap) {
         for (long index = fromArray.firstElementIndex(object); index <= fromArray.lastElementIndex(object); index = fromArray.nextElementIndex(object, index)) {
             assert fromArray.hasElement(object, index);
             Boundaries.mapPut(toMap, index, fromArray.getElement(object, index));
@@ -97,20 +97,20 @@ public final class SparseArray extends DynamicArray {
     }
 
     @SuppressWarnings("unchecked")
-    private static TreeMap<Long, Object> arrayMap(DynamicObject object) {
+    private static TreeMap<Long, Object> arrayMap(JSDynamicObject object) {
         return (TreeMap<Long, Object>) arrayGetArray(object);
     }
 
     @TruffleBoundary
     @Override
-    public Object getElement(DynamicObject object, long index) {
+    public Object getElement(JSDynamicObject object, long index) {
         Object value = arrayMap(object).get(index);
         return value != null ? value : Undefined.instance;
     }
 
     @TruffleBoundary
     @Override
-    public Object getElementInBounds(DynamicObject object, long index) {
+    public Object getElementInBounds(JSDynamicObject object, long index) {
         Object value = arrayMap(object).get(index);
         assert value != null;
         return value;
@@ -118,7 +118,7 @@ public final class SparseArray extends DynamicArray {
 
     @TruffleBoundary
     @Override
-    public ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
+    public ScriptArray setElementImpl(JSDynamicObject object, long index, Object value, boolean strict) {
         arrayMap(object).put(index, value);
         if (index >= length(object)) {
             arraySetLength(object, index + 1);
@@ -127,12 +127,12 @@ public final class SparseArray extends DynamicArray {
     }
 
     @Override
-    public long length(DynamicObject object) {
+    public long length(JSDynamicObject object) {
         return arrayGetLength(object);
     }
 
     @Override
-    public int lengthInt(DynamicObject object) {
+    public int lengthInt(JSDynamicObject object) {
         long len = arrayGetLength(object);
         if (len > Integer.MAX_VALUE) {
             throw Errors.unsupported("array length too large");
@@ -142,7 +142,7 @@ public final class SparseArray extends DynamicArray {
 
     @TruffleBoundary
     @Override
-    public SparseArray setLengthImpl(DynamicObject object, long len, ProfileHolder profile) {
+    public SparseArray setLengthImpl(JSDynamicObject object, long len, ProfileHolder profile) {
         arraySetLength(object, len);
         arrayMap(object).tailMap(len).clear();
         return this;
@@ -150,7 +150,7 @@ public final class SparseArray extends DynamicArray {
 
     @TruffleBoundary
     @Override
-    public long firstElementIndex(DynamicObject object) {
+    public long firstElementIndex(JSDynamicObject object) {
         try {
             return arrayMap(object).firstKey();
         } catch (NoSuchElementException ex) {
@@ -160,7 +160,7 @@ public final class SparseArray extends DynamicArray {
 
     @TruffleBoundary
     @Override
-    public long lastElementIndex(DynamicObject object) {
+    public long lastElementIndex(JSDynamicObject object) {
         try {
             return arrayMap(object).lastKey();
         } catch (NoSuchElementException ex) {
@@ -170,33 +170,33 @@ public final class SparseArray extends DynamicArray {
 
     @TruffleBoundary
     @Override
-    public long nextElementIndex(DynamicObject object, long index) {
+    public long nextElementIndex(JSDynamicObject object, long index) {
         Long nextIndex = arrayMap(object).higherKey(index);
         return nextIndex != null ? nextIndex.longValue() : JSRuntime.MAX_SAFE_INTEGER_LONG;
     }
 
     @TruffleBoundary
     @Override
-    public long previousElementIndex(DynamicObject object, long index) {
+    public long previousElementIndex(JSDynamicObject object, long index) {
         Long nextIndex = arrayMap(object).lowerKey(index);
         return nextIndex != null ? nextIndex.longValue() : -1;
     }
 
     @Override
-    public Object cloneArray(DynamicObject object) {
+    public Object cloneArray(JSDynamicObject object) {
         return arrayMap(object).clone();
     }
 
     @TruffleBoundary
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+    public ScriptArray deleteElementImpl(JSDynamicObject object, long index, boolean strict) {
         arrayMap(object).remove(index);
         return this;
     }
 
     @TruffleBoundary
     @Override
-    public boolean hasElement(DynamicObject object, long index) {
+    public boolean hasElement(JSDynamicObject object, long index) {
         return arrayMap(object).containsKey(index);
     }
 
@@ -206,12 +206,12 @@ public final class SparseArray extends DynamicArray {
     }
 
     @Override
-    public boolean hasHoles(DynamicObject object) {
+    public boolean hasHoles(JSDynamicObject object) {
         return true;
     }
 
     @Override
-    public ScriptArray removeRangeImpl(DynamicObject object, long start, long end) {
+    public ScriptArray removeRangeImpl(JSDynamicObject object, long start, long end) {
         assert start <= end;
         assert start >= 0;
         assert end < length(object);
@@ -236,7 +236,7 @@ public final class SparseArray extends DynamicArray {
     }
 
     @Override
-    public ScriptArray addRangeImpl(DynamicObject object, long offset, int size) {
+    public ScriptArray addRangeImpl(JSDynamicObject object, long offset, int size) {
         assert offset < length(object);
 
         long pos = length(object);
@@ -254,7 +254,7 @@ public final class SparseArray extends DynamicArray {
 
     @TruffleBoundary
     @Override
-    public List<Object> ownPropertyKeys(DynamicObject object) {
+    public List<Object> ownPropertyKeys(JSDynamicObject object) {
         Set<Long> keySet = arrayMap(object).keySet();
         List<Object> list = new ArrayList<>(keySet.size());
         for (long index : keySet) {

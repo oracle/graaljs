@@ -51,7 +51,6 @@ import com.oracle.js.parser.JSType;
 import com.oracle.js.parser.ParserException;
 import com.oracle.js.parser.Source;
 import com.oracle.js.parser.Token;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -61,6 +60,7 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 
@@ -164,7 +164,7 @@ public class NashornJSONParser {
     }
 
     private Object parseObject() {
-        DynamicObject jsobject = JSOrdinary.create(context, JSRealm.get(null));
+        JSDynamicObject jsobject = JSOrdinary.create(context, JSRealm.get(null));
 
         int state = STATE_EMPTY;
 
@@ -206,7 +206,7 @@ public class NashornJSONParser {
         throw expectedError(pos, ERR_COMMA_OR_RBRACE, ERR_EOF_STR);
     }
 
-    private void addObjectProperty(final DynamicObject object, final Object idStr, final Object value) {
+    private void addObjectProperty(final JSDynamicObject object, final Object idStr, final Object value) {
         JSObjectUtil.defineDataProperty(context, object, idStr, value, JSAttributes.getDefault());
     }
 
@@ -219,7 +219,7 @@ public class NashornJSONParser {
     }
 
     private Object parseArray() {
-        DynamicObject jsarray = JSArray.createEmptyZeroLength(context, JSRealm.get(null));
+        JSDynamicObject jsarray = JSArray.createEmptyZeroLength(context, JSRealm.get(null));
         ScriptArray arrayData = arrayGetArrayType(jsarray);
 
         int state = STATE_EMPTY;

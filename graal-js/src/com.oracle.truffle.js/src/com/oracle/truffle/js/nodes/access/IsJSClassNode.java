@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,11 +45,11 @@ import java.util.Set;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class IsJSClassNode extends JSUnaryNode {
 
@@ -66,14 +66,14 @@ public abstract class IsJSClassNode extends JSUnaryNode {
 
     @Specialization(guards = "cachedShape.check(object)", limit = "MAX_SHAPE_COUNT")
     @SuppressWarnings("unused")
-    protected static boolean doIsInstanceShape(DynamicObject object, //
+    protected static boolean doIsInstanceShape(JSDynamicObject object, //
                     @Cached("object.getShape()") Shape cachedShape, //
                     @Cached("doIsInstance(object)") boolean cachedResult) {
         return cachedResult && cachedShape.check(object);
     }
 
     @Specialization(replaces = "doIsInstanceShape")
-    protected boolean doIsInstanceObject(DynamicObject object) {
+    protected boolean doIsInstanceObject(JSDynamicObject object) {
         return jsclass.isInstance(object);
     }
 

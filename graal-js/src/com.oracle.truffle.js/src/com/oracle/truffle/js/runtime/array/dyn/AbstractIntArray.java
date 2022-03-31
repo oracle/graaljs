@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,9 +48,9 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArr
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class AbstractIntArray extends AbstractWritableArray {
 
@@ -59,12 +59,12 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
     }
 
     @Override
-    AbstractWritableArray sameTypeHolesArray(DynamicObject object, int length, Object array, long indexOffset, int arrayOffset, int usedLength, int holeCount) {
+    AbstractWritableArray sameTypeHolesArray(JSDynamicObject object, int length, Object array, long indexOffset, int arrayOffset, int usedLength, int holeCount) {
         return HolesIntArray.makeHolesIntArray(object, length, (int[]) array, indexOffset, arrayOffset, usedLength, holeCount, integrityLevel);
     }
 
     @Override
-    public final ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
+    public final ScriptArray setElementImpl(JSDynamicObject object, long index, Object value, boolean strict) {
         assert index >= 0;
         if (injectBranchProbability(FASTPATH_PROBABILITY, value instanceof Integer && isSupported(object, index))) {
             int intValue = (int) value;
@@ -78,7 +78,7 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
         }
     }
 
-    private ScriptArray rewrite(DynamicObject object, long index, Object value) {
+    private ScriptArray rewrite(JSDynamicObject object, long index, Object value) {
         if (value instanceof Integer) {
             if (isSupportedContiguous(object, index)) {
                 return toContiguous(object, index, value);
@@ -95,7 +95,7 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
     }
 
     @Override
-    public Object getInBoundsFast(DynamicObject object, int index) {
+    public Object getInBoundsFast(JSDynamicObject object, int index) {
         return getInBoundsFastInt(object, index);
     }
 
@@ -104,7 +104,7 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
         return ((int[]) array).length;
     }
 
-    protected static int[] getArray(DynamicObject object) {
+    protected static int[] getArray(JSDynamicObject object) {
         Object array = arrayGetArray(object);
         if (array.getClass() == int[].class) {
             return (int[]) array;
@@ -114,18 +114,18 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
     }
 
     @Override
-    public abstract int getInBoundsFastInt(DynamicObject object, int index);
+    public abstract int getInBoundsFastInt(JSDynamicObject object, int index);
 
-    public abstract void setInBoundsFast(DynamicObject object, int index, int value);
+    public abstract void setInBoundsFast(JSDynamicObject object, int index, int value);
 
-    public final void setInBounds(DynamicObject object, int index, int value, ProfileHolder profile) {
+    public final void setInBounds(JSDynamicObject object, int index, int value, ProfileHolder profile) {
         getArray(object)[prepareInBounds(object, index, profile)] = value;
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBounds", index, value);
         }
     }
 
-    public final void setSupported(DynamicObject object, int index, int value, ProfileHolder profile) {
+    public final void setSupported(JSDynamicObject object, int index, int value, ProfileHolder profile) {
         int preparedIndex = prepareSupported(object, index, profile);
         getArray(object)[preparedIndex] = value;
         if (JSConfig.TraceArrayWrites) {
@@ -142,38 +142,38 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
     }
 
     @Override
-    protected final void setHoleValue(DynamicObject object, int preparedIndex) {
+    protected final void setHoleValue(JSDynamicObject object, int preparedIndex) {
         getArray(object)[preparedIndex] = HolesIntArray.HOLE_VALUE;
     }
 
     @Override
-    protected final boolean isHolePrepared(DynamicObject object, int preparedIndex) {
+    protected final boolean isHolePrepared(JSDynamicObject object, int preparedIndex) {
         return HolesIntArray.isHoleValue(getArray(object)[preparedIndex]);
     }
 
     @Override
-    protected final int getArrayCapacity(DynamicObject object) {
+    protected final int getArrayCapacity(JSDynamicObject object) {
         return getArray(object).length;
     }
 
     @Override
-    protected final void resizeArray(DynamicObject object, int newCapacity, int oldCapacity, int offset) {
+    protected final void resizeArray(JSDynamicObject object, int newCapacity, int oldCapacity, int offset) {
         int[] newArray = new int[newCapacity];
         System.arraycopy(getArray(object), 0, newArray, offset, oldCapacity);
         arraySetArray(object, newArray);
     }
 
     @Override
-    public abstract AbstractWritableArray toHoles(DynamicObject object, long index, Object value);
+    public abstract AbstractWritableArray toHoles(JSDynamicObject object, long index, Object value);
 
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+    public ScriptArray deleteElementImpl(JSDynamicObject object, long index, boolean strict) {
         return toHoles(object, index, HolesIntArray.HOLE_VALUE).deleteElementImpl(object, index, strict);
     }
 
-    protected abstract HolesObjectArray toObjectHoles(DynamicObject object);
+    protected abstract HolesObjectArray toObjectHoles(JSDynamicObject object);
 
-    protected static Object[] convertToObject(DynamicObject object) {
+    protected static Object[] convertToObject(JSDynamicObject object) {
         int[] array = getArray(object);
         int usedLength = getUsedLength(object);
         int arrayOffset = arrayGetArrayOffset(object);
@@ -184,7 +184,7 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
         return obj;
     }
 
-    protected static boolean containsHoleValue(DynamicObject object) {
+    protected static boolean containsHoleValue(JSDynamicObject object) {
         int[] array = getArray(object);
         int usedLength = getUsedLength(object);
         for (int i = 0; i < usedLength; i++) {
@@ -196,7 +196,7 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
     }
 
     @Override
-    protected final void moveRangePrepared(DynamicObject object, int src, int dst, int len) {
+    protected final void moveRangePrepared(JSDynamicObject object, int src, int dst, int len) {
         int[] array = getArray(object);
         System.arraycopy(array, src, array, dst, len);
     }
@@ -207,7 +207,7 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
     }
 
     @Override
-    public Object cloneArray(DynamicObject object) {
+    public Object cloneArray(JSDynamicObject object) {
         return getArray(object).clone();
     }
 

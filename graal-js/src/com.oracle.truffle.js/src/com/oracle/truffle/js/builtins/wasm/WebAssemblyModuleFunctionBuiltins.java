@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,8 +44,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyModuleFunctionBuiltinsFactory.WebAssemblyModuleCustomSectionsNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyModuleFunctionBuiltinsFactory.WebAssemblyModuleExportsNodeGen;
@@ -54,6 +52,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -62,6 +61,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -148,7 +148,7 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
         }
 
         private Object toJSExport(Object wasmExport) throws InteropException {
-            DynamicObject export = JSOrdinary.create(getContext(), getRealm());
+            JSDynamicObject export = JSOrdinary.create(getContext(), getRealm());
             InteropLibrary interop = InteropLibrary.getUncached(wasmExport);
             for (String key : new String[]{"name", "kind"}) {
                 Object value = interop.readMember(wasmExport, key);
@@ -195,7 +195,7 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
         }
 
         private Object toJSImport(Object wasmImport) throws InteropException {
-            DynamicObject export = JSOrdinary.create(getContext(), getRealm());
+            JSDynamicObject export = JSOrdinary.create(getContext(), getRealm());
             InteropLibrary interop = InteropLibrary.getUncached(wasmImport);
             for (String key : new String[]{"module", "name", "kind"}) {
                 Object value = interop.readMember(wasmImport, key);

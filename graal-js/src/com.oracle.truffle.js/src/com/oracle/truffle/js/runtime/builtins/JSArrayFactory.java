@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -50,6 +49,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
@@ -74,17 +74,17 @@ public abstract class JSArrayFactory {
         this.context = context;
     }
 
-    public final DynamicObject createWithRealm(JSRealm realm,
+    public final JSDynamicObject createWithRealm(JSRealm realm,
                     ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         return createWithPrototype(realm, getPrototype(realm), arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
-    public final DynamicObject createWithPrototype(JSRealm realm, DynamicObject prototype,
+    public final JSDynamicObject createWithPrototype(JSRealm realm, JSDynamicObject prototype,
                     ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         assert prototype != null;
         Shape shape = getShape(realm, prototype);
         if (isInObjectProto()) {
-            DynamicObject obj = newInstance(shape, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
+            JSDynamicObject obj = newInstance(shape, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
             setPrototype(obj, prototype);
             return obj;
         }
@@ -92,15 +92,15 @@ public abstract class JSArrayFactory {
         return newInstance(shape, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
-    protected DynamicObject newInstance(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
+    protected JSDynamicObject newInstance(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         return JSArrayObject.create(shape, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
-    protected abstract DynamicObject getPrototype(JSRealm realm);
+    protected abstract JSDynamicObject getPrototype(JSRealm realm);
 
-    protected abstract Shape getShape(JSRealm realm, DynamicObject prototype);
+    protected abstract Shape getShape(JSRealm realm, JSDynamicObject prototype);
 
-    protected final void setPrototype(DynamicObject obj, DynamicObject prototype) {
+    protected final void setPrototype(JSDynamicObject obj, JSDynamicObject prototype) {
         if (setProto == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             setProto = context.adoptNode(JSObjectUtil.createCached(JSObject.HIDDEN_PROTO, obj));
@@ -123,29 +123,29 @@ public abstract class JSArrayFactory {
         }
 
         @Override
-        protected DynamicObject getPrototype(JSRealm realm) {
+        protected JSDynamicObject getPrototype(JSRealm realm) {
             return prototypeSupplier.getIntrinsicDefaultProto(realm);
         }
 
         @Override
-        protected Shape getShape(JSRealm realm, DynamicObject prototype) {
+        protected Shape getShape(JSRealm realm, JSDynamicObject prototype) {
             return shape;
         }
     }
 
     private static class Intrinsic extends JSArrayFactory {
         private final int slot;
-        private final CompilableBiFunction<JSContext, DynamicObject, Shape> shapeSupplier;
+        private final CompilableBiFunction<JSContext, JSDynamicObject, Shape> shapeSupplier;
         @CompilationFinal private Shape shape;
 
-        protected Intrinsic(JSContext context, CompilableBiFunction<JSContext, DynamicObject, Shape> shapeSupplier, int slot) {
+        protected Intrinsic(JSContext context, CompilableBiFunction<JSContext, JSDynamicObject, Shape> shapeSupplier, int slot) {
             super(context);
             this.shapeSupplier = shapeSupplier;
             this.slot = slot;
         }
 
         @Override
-        protected final Shape getShape(JSRealm realm, DynamicObject prototype) {
+        protected final Shape getShape(JSRealm realm, JSDynamicObject prototype) {
             if (context.isMultiContext()) {
                 if (shape == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -166,7 +166,7 @@ public abstract class JSArrayFactory {
         }
 
         @Override
-        protected DynamicObject getPrototype(JSRealm realm) {
+        protected JSDynamicObject getPrototype(JSRealm realm) {
             return realm.getArrayPrototype();
         }
     }
@@ -180,12 +180,13 @@ public abstract class JSArrayFactory {
         }
 
         @Override
-        protected DynamicObject getPrototype(JSRealm realm) {
+        protected JSDynamicObject getPrototype(JSRealm realm) {
             return realm.getObjectPrototype();
         }
 
         @Override
-        protected DynamicObject newInstance(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
+        protected JSDynamicObject newInstance(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length,
+                        int usedLength, int indexOffset, int arrayOffset, int holeCount) {
             Object[] elements = (Object[]) array;
             if (mapped) {
                 return JSArgumentsArray.createMapped(shape, elements);

@@ -49,7 +49,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
@@ -61,6 +60,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Implementation of the synchronization primitives of ECMA2017 Shared Memory model.
@@ -73,7 +73,7 @@ public final class SharedMemorySync {
 
     // ##### Getters and setters with ordering and memory barriers
     @TruffleBoundary
-    public static int doVolatileGet(DynamicObject target, int intArrayOffset) {
+    public static int doVolatileGet(JSDynamicObject target, int intArrayOffset) {
         VarHandle.acquireFence();
         TypedArray array = typedArrayGetArrayType(target);
         TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) array;
@@ -82,7 +82,7 @@ public final class SharedMemorySync {
 
     // ##### Getters and setters with ordering and memory barriers
     @TruffleBoundary
-    public static BigInt doVolatileGetBigInt(DynamicObject target, int intArrayOffset) {
+    public static BigInt doVolatileGetBigInt(JSDynamicObject target, int intArrayOffset) {
         VarHandle.acquireFence();
         TypedArray array = typedArrayGetArrayType(target);
         TypedArray.TypedBigIntArray typedArray = (TypedArray.TypedBigIntArray) array;
@@ -90,7 +90,7 @@ public final class SharedMemorySync {
     }
 
     @TruffleBoundary
-    public static void doVolatilePut(DynamicObject target, int index, int value) {
+    public static void doVolatilePut(JSDynamicObject target, int index, int value) {
         TypedArray array = typedArrayGetArrayType(target);
         TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) array;
         typedArray.setInt(target, index, value, InteropLibrary.getUncached());
@@ -98,7 +98,7 @@ public final class SharedMemorySync {
     }
 
     @TruffleBoundary
-    public static void doVolatilePutBigInt(DynamicObject target, int index, BigInt value) {
+    public static void doVolatilePutBigInt(JSDynamicObject target, int index, BigInt value) {
         TypedArray array = typedArrayGetArrayType(target);
         TypedArray.TypedBigIntArray typedArray = (TypedArray.TypedBigIntArray) array;
         typedArray.setBigInt(target, index, value, InteropLibrary.getUncached());
@@ -107,7 +107,7 @@ public final class SharedMemorySync {
 
     // ##### Atomic CAS primitives
     @TruffleBoundary
-    public static boolean compareAndSwapInt(JSAgent agent, DynamicObject target, int intArrayOffset, int initial, int result) {
+    public static boolean compareAndSwapInt(JSAgent agent, JSDynamicObject target, int intArrayOffset, int initial, int result) {
         agent.atomicSectionEnter(target);
         try {
             int value = doVolatileGet(target, intArrayOffset);
@@ -122,7 +122,7 @@ public final class SharedMemorySync {
     }
 
     @TruffleBoundary
-    public static boolean compareAndSwapBigInt(JSAgent agent, DynamicObject target, int intArrayOffset, BigInt initial, BigInt result) {
+    public static boolean compareAndSwapBigInt(JSAgent agent, JSDynamicObject target, int intArrayOffset, BigInt initial, BigInt result) {
         agent.atomicSectionEnter(target);
         try {
             BigInt value = doVolatileGetBigInt(target, intArrayOffset);
@@ -138,7 +138,7 @@ public final class SharedMemorySync {
 
     // ##### Atomic Fetch-or-Get primitives
     @TruffleBoundary
-    public static long atomicFetchOrGetUnsigned(JSAgent agent, DynamicObject target, int intArrayOffset, Object expected, Object replacement) {
+    public static long atomicFetchOrGetUnsigned(JSAgent agent, JSDynamicObject target, int intArrayOffset, Object expected, Object replacement) {
         agent.atomicSectionEnter(target);
         long read = JSRuntime.toUInt32(doVolatileGet(target, intArrayOffset));
         if (read == JSRuntime.toUInt32(expected)) {
@@ -149,7 +149,7 @@ public final class SharedMemorySync {
     }
 
     @TruffleBoundary
-    public static long atomicFetchOrGetLong(JSAgent agent, DynamicObject target, int intArrayOffset, long expected, long replacement) {
+    public static long atomicFetchOrGetLong(JSAgent agent, JSDynamicObject target, int intArrayOffset, long expected, long replacement) {
         agent.atomicSectionEnter(target);
         try {
             int read = doVolatileGet(target, intArrayOffset);
@@ -163,7 +163,7 @@ public final class SharedMemorySync {
     }
 
     @TruffleBoundary
-    public static int atomicFetchOrGetInt(JSAgent agent, DynamicObject target, int intArrayOffset, int expected, int replacement) {
+    public static int atomicFetchOrGetInt(JSAgent agent, JSDynamicObject target, int intArrayOffset, int expected, int replacement) {
         agent.atomicSectionEnter(target);
         try {
             int read = doVolatileGet(target, intArrayOffset);
@@ -177,7 +177,7 @@ public final class SharedMemorySync {
     }
 
     @TruffleBoundary
-    public static int atomicFetchOrGetShort(JSAgent agent, DynamicObject target, int intArrayOffset, int expected, int replacement, boolean sign) {
+    public static int atomicFetchOrGetShort(JSAgent agent, JSDynamicObject target, int intArrayOffset, int expected, int replacement, boolean sign) {
         agent.atomicSectionEnter(target);
         int read = doVolatileGet(target, intArrayOffset);
         read = sign ? read : read & 0xFFFF;
@@ -191,7 +191,7 @@ public final class SharedMemorySync {
     }
 
     @TruffleBoundary
-    public static int atomicFetchOrGetByte(JSAgent agent, DynamicObject target, int intArrayOffset, int expected, int replacement, boolean sign) {
+    public static int atomicFetchOrGetByte(JSAgent agent, JSDynamicObject target, int intArrayOffset, int expected, int replacement, boolean sign) {
         agent.atomicSectionEnter(target);
         try {
             int read = doVolatileGet(target, intArrayOffset);
@@ -208,7 +208,7 @@ public final class SharedMemorySync {
     }
 
     @TruffleBoundary
-    public static BigInt atomicFetchOrGetBigInt(JSAgent agent, DynamicObject target, int intArrayOffset, BigInt expected, BigInt replacement) {
+    public static BigInt atomicFetchOrGetBigInt(JSAgent agent, JSDynamicObject target, int intArrayOffset, BigInt expected, BigInt replacement) {
         agent.atomicSectionEnter(target);
         try {
             BigInt read = doVolatileGetBigInt(target, intArrayOffset);
@@ -224,8 +224,8 @@ public final class SharedMemorySync {
     // ##### Thread Wake/Park primitives
 
     @SuppressWarnings("unused")
-    public static JSAgentWaiterListEntry getWaiterList(JSContext context, JSAgent agent, DynamicObject target, int indexPos) {
-        DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
+    public static JSAgentWaiterListEntry getWaiterList(JSContext context, JSAgent agent, JSDynamicObject target, int indexPos) {
+        JSDynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
         int offset = JSArrayBufferView.getByteOffset(target, context);
         int bytesPerElement = JSArrayBufferView.typedArrayGetArrayType(target).bytesPerElement();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -57,6 +56,7 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class ConstructorRootNode extends JavaScriptRootNode {
@@ -93,7 +93,7 @@ public final class ConstructorRootNode extends JavaScriptRootNode {
         Object thisObject;
         if (!getFunctionData().isDerived()) {
             Object functionObject = newTarget ? arguments[2] : arguments[1];
-            thisObject = newObjectNode.execute(frame, (DynamicObject) functionObject);
+            thisObject = newObjectNode.execute(frame, (JSDynamicObject) functionObject);
         } else {
             thisObject = JSFunction.CONSTRUCT; // Just a placeholder value; not actually used.
         }

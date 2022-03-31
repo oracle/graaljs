@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,13 +43,13 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -66,7 +66,7 @@ public abstract class IsRegExpNode extends JavaScriptBaseNode {
     public abstract boolean executeBoolean(Object obj);
 
     @Specialization
-    boolean doIsObject(DynamicObject obj,
+    boolean doIsObject(JSDynamicObject obj,
                     @Cached("create()") IsJSObjectNode isObjectNode,
                     @Cached("create()") JSToBooleanNode toBooleanNode,
                     @Cached("createIsJSRegExpNode()") IsJSClassNode isJSRegExpNode,

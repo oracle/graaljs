@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,15 +45,15 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetLen
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetUsedLength;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class ZeroBasedIntArray extends AbstractIntArray {
 
     private static final ZeroBasedIntArray ZERO_BASED_INT_ARRAY = new ZeroBasedIntArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
 
-    public static ZeroBasedIntArray makeZeroBasedIntArray(DynamicObject object, int length, int usedLength, int[] array, int integrityLevel) {
+    public static ZeroBasedIntArray makeZeroBasedIntArray(JSDynamicObject object, int length, int usedLength, int[] array, int integrityLevel) {
         ZeroBasedIntArray arrayType = createZeroBasedIntArray().setIntegrityLevel(integrityLevel);
         arraySetLength(object, length);
         arraySetUsedLength(object, usedLength);
@@ -70,17 +70,17 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
     }
 
     @Override
-    public boolean isSupported(DynamicObject object, long index) {
+    public boolean isSupported(JSDynamicObject object, long index) {
         return isSupportedZeroBased(object, (int) index);
     }
 
     @Override
-    public int getInBoundsFastInt(DynamicObject object, int index) {
+    public int getInBoundsFastInt(JSDynamicObject object, int index) {
         return getArray(object)[index];
     }
 
     @Override
-    public void setInBoundsFast(DynamicObject object, int index, int value) {
+    public void setInBoundsFast(JSDynamicObject object, int index, int value) {
         getArray(object)[index] = value;
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBoundsFast", index, value);
@@ -88,29 +88,29 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
     }
 
     @Override
-    protected int prepareInBoundsFast(DynamicObject object, long index) {
+    protected int prepareInBoundsFast(JSDynamicObject object, long index) {
         return (int) index;
     }
 
     @Override
-    protected int prepareInBounds(DynamicObject object, int index, ProfileHolder profile) {
+    protected int prepareInBounds(JSDynamicObject object, int index, ProfileHolder profile) {
         prepareInBoundsZeroBased(object, index, profile);
         return index;
     }
 
     @Override
-    protected int prepareSupported(DynamicObject object, int index, ProfileHolder profile) {
+    protected int prepareSupported(JSDynamicObject object, int index, ProfileHolder profile) {
         prepareSupportedZeroBased(object, index, profile);
         return index;
     }
 
     @Override
-    protected void setLengthLess(DynamicObject object, long length, ProfileHolder profile) {
+    protected void setLengthLess(JSDynamicObject object, long length, ProfileHolder profile) {
         setLengthLessZeroBased(object, length, profile);
     }
 
     @Override
-    public ZeroBasedDoubleArray toDouble(DynamicObject object, long index, double value) {
+    public ZeroBasedDoubleArray toDouble(JSDynamicObject object, long index, double value) {
         int[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
@@ -124,7 +124,7 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
     }
 
     @Override
-    public ZeroBasedObjectArray toObject(DynamicObject object, long index, Object value) {
+    public ZeroBasedObjectArray toObject(JSDynamicObject object, long index, Object value) {
         int[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
@@ -138,7 +138,7 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
     }
 
     @Override
-    public ContiguousIntArray toContiguous(DynamicObject object, long index, Object value) {
+    public ContiguousIntArray toContiguous(JSDynamicObject object, long index, Object value) {
         int[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
@@ -151,7 +151,7 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
     }
 
     @Override
-    public AbstractWritableArray toHoles(DynamicObject object, long index, Object value) {
+    public AbstractWritableArray toHoles(JSDynamicObject object, long index, Object value) {
         int[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
@@ -169,24 +169,24 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
     }
 
     @Override
-    protected HolesObjectArray toObjectHoles(DynamicObject object) {
+    protected HolesObjectArray toObjectHoles(JSDynamicObject object) {
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         return HolesObjectArray.makeHolesObjectArray(object, length, convertToObject(object), 0, 0, usedLength, 0, integrityLevel);
     }
 
     @Override
-    public long firstElementIndex(DynamicObject object) {
+    public long firstElementIndex(JSDynamicObject object) {
         return 0;
     }
 
     @Override
-    public long lastElementIndex(DynamicObject object) {
+    public long lastElementIndex(JSDynamicObject object) {
         return getUsedLength(object) - 1;
     }
 
     @Override
-    public ScriptArray removeRangeImpl(DynamicObject object, long start, long end) {
+    public ScriptArray removeRangeImpl(JSDynamicObject object, long start, long end) {
         int[] array = getArray(object);
         int usedLength = getUsedLength(object);
         long moveLength = usedLength - end;
@@ -197,7 +197,7 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
     }
 
     @Override
-    public ScriptArray shiftRangeImpl(DynamicObject object, long from) {
+    public ScriptArray shiftRangeImpl(JSDynamicObject object, long from) {
         int usedLength = getUsedLength(object);
         if (from < usedLength) {
             return ContiguousIntArray.makeContiguousIntArray(object, lengthInt(object) - from, getArray(object), -from, (int) from, (int) (usedLength - from), integrityLevel);
@@ -207,12 +207,12 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
     }
 
     @Override
-    public ScriptArray addRangeImpl(DynamicObject object, long offset, int size) {
+    public ScriptArray addRangeImpl(JSDynamicObject object, long offset, int size) {
         return addRangeImplZeroBased(object, offset, size);
     }
 
     @Override
-    public boolean hasHoles(DynamicObject object) {
+    public boolean hasHoles(JSDynamicObject object) {
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         return usedLength < length;
@@ -224,7 +224,7 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
     }
 
     @Override
-    public long nextElementIndex(DynamicObject object, long index) {
+    public long nextElementIndex(JSDynamicObject object, long index) {
         return nextElementIndexZeroBased(object, index);
     }
 }

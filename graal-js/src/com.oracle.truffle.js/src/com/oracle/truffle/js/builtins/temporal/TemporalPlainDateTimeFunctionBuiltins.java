@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimeFunctionBuiltinsFactory.JSTemporalPlainDateTimeCompareNodeGen;
@@ -53,6 +52,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -100,7 +100,7 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
         @Specialization
         protected Object from(Object item, Object optParam,
                         @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime) {
-            DynamicObject options = getOptionsObject(optParam);
+            JSDynamicObject options = getOptionsObject(optParam);
             if (isObject(item) && JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
                 JSTemporalPlainDateTimeObject dtItem = (JSTemporalPlainDateTimeObject) item;
                 toTemporalOverflow(options);

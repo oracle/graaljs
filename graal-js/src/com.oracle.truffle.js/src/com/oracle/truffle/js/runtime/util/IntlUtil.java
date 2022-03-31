@@ -64,7 +64,6 @@ import com.ibm.icu.util.Calendar;
 import com.ibm.icu.util.TimeZone;
 import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
@@ -72,6 +71,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
@@ -826,16 +826,16 @@ public final class IntlUtil {
         return IntlUtil.selectedLocale(ctx, locales).stripExtensions();
     }
 
-    public static DynamicObject makePart(JSContext context, JSRealm realm, String type, String value) {
+    public static JSDynamicObject makePart(JSContext context, JSRealm realm, String type, String value) {
         return makePart(context, realm, type, value, null);
     }
 
-    public static DynamicObject makePart(JSContext context, JSRealm realm, String type, String value, String unit) {
+    public static JSDynamicObject makePart(JSContext context, JSRealm realm, String type, String value, String unit) {
         return makePart(context, realm, type, value, unit, null);
     }
 
-    public static DynamicObject makePart(JSContext context, JSRealm realm, String type, String value, String unit, String source) {
-        DynamicObject p = JSOrdinary.create(context, realm);
+    public static JSDynamicObject makePart(JSContext context, JSRealm realm, String type, String value, String unit, String source) {
+        JSDynamicObject p = JSOrdinary.create(context, realm);
         JSObject.set(p, KEY_TYPE, Strings.fromJavaString(type));
         JSObject.set(p, KEY_VALUE, Strings.fromJavaString(value));
         if (unit != null) {

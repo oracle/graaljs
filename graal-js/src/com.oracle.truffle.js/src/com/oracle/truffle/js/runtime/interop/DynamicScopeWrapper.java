@@ -52,13 +52,13 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Dead;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 
 /**
@@ -66,9 +66,9 @@ import com.oracle.truffle.js.runtime.objects.JSProperty;
  */
 @ExportLibrary(InteropLibrary.class)
 public final class DynamicScopeWrapper implements TruffleObject {
-    final DynamicObject scope;
+    final JSDynamicObject scope;
 
-    public DynamicScopeWrapper(DynamicObject scope) {
+    public DynamicScopeWrapper(JSDynamicObject scope) {
         this.scope = scope;
     }
 

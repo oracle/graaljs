@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
@@ -72,7 +71,7 @@ public final class Null {
         }
 
         @Override
-        public TruffleString getClassName(DynamicObject object) {
+        public TruffleString getClassName(JSDynamicObject object) {
             return object == Undefined.instance ? Undefined.NAME : Null.NAME;
         }
 
@@ -82,22 +81,22 @@ public final class Null {
         }
 
         @Override
-        public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
+        public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
             return delete(thisObj, Strings.fromLong(index), isStrict);
         }
 
         @Override
-        public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
+        public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
             throw Errors.createTypeErrorCannotDeletePropertyOf(key, thisObj);
         }
 
         @Override
-        public TruffleString toDisplayStringImpl(DynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        public TruffleString toDisplayStringImpl(JSDynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
             return object == Undefined.instance ? DISPLAY_STRING_UNDEFINED : DISPLAY_STRING_NULL;
         }
 
         @Override
-        public TruffleString defaultToString(DynamicObject thisObj) {
+        public TruffleString defaultToString(JSDynamicObject thisObj) {
             return thisObj == Undefined.instance ? Undefined.NAME : Null.NAME;
         }
     }

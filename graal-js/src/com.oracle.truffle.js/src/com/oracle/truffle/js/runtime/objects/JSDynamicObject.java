@@ -160,7 +160,7 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
     /**
      * 9.1.8 [[Get]] (P, Receiver).
      *
-     * TODO: rename to {@code get} once {@link DynamicObject#get(Object)} is removed.
+     * TODO: rename to {@code get} once {@link JSDynamicObject#get(Object)} is removed.
      */
     @SuppressWarnings("javadoc")
     public Object getValue(Object key) {
@@ -361,53 +361,53 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
     // -- static --
 
     /**
-     * Returns whether object is a DynamicObject of JavaScript.
+     * Returns whether object is a JSDynamicObject (JSObject or null/undefined).
      */
     public static boolean isJSDynamicObject(Object object) {
         return object instanceof JSDynamicObject;
     }
 
-    public static JSContext getJSContext(DynamicObject obj) {
+    public static JSContext getJSContext(JSDynamicObject obj) {
         return getJSSharedData(obj).getContext();
     }
 
-    public static JSClass getJSClass(DynamicObject obj) {
+    public static JSClass getJSClass(JSDynamicObject obj) {
         return (JSClass) getDynamicType(obj);
     }
 
-    public static void setJSClass(DynamicObject obj, JSClass jsclass) {
+    public static void setJSClass(JSDynamicObject obj, JSClass jsclass) {
         DynamicObjectLibrary.getUncached().setDynamicType(obj, jsclass);
     }
 
-    public static Object getDynamicType(DynamicObject obj) {
+    public static Object getDynamicType(JSDynamicObject obj) {
         return obj.getShape().getDynamicType();
     }
 
-    public static boolean hasProperty(DynamicObject obj, Object key) {
+    public static boolean hasProperty(JSDynamicObject obj, Object key) {
         return Properties.containsKeyUncached(obj, key);
     }
 
-    public static Property getProperty(DynamicObject obj, Object key) {
+    public static Property getProperty(JSDynamicObject obj, Object key) {
         return Properties.getPropertyUncached(obj, key);
     }
 
-    public static Object[] getKeyArray(DynamicObject obj) {
+    public static Object[] getKeyArray(JSDynamicObject obj) {
         return obj.getShape().getKeyList().toArray();
     }
 
-    public static Property[] getPropertyArray(DynamicObject obj) {
+    public static Property[] getPropertyArray(JSDynamicObject obj) {
         return obj.getShape().getPropertyList().toArray(new Property[0]);
     }
 
-    public static Object getOrNull(DynamicObject obj, Object key) {
+    public static Object getOrNull(JSDynamicObject obj, Object key) {
         return Properties.getOrDefaultUncached(obj, key, null);
     }
 
-    public static Object getOrDefault(DynamicObject obj, Object key, Object defaultValue) {
+    public static Object getOrDefault(JSDynamicObject obj, Object key, Object defaultValue) {
         return Properties.getOrDefaultUncached(obj, key, defaultValue);
     }
 
-    public static int getIntOrDefault(DynamicObject obj, Object key, int defaultValue) {
+    public static int getIntOrDefault(JSDynamicObject obj, Object key, int defaultValue) {
         try {
             return DynamicObjectLibrary.getUncached().getIntOrDefault(obj, key, defaultValue);
         } catch (UnexpectedResultException e) {
@@ -415,19 +415,19 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
         }
     }
 
-    public static int getObjectFlags(DynamicObject obj) {
+    public static int getObjectFlags(JSDynamicObject obj) {
         return obj.getShape().getFlags();
     }
 
-    public static void setObjectFlags(DynamicObject obj, int flags) {
+    public static void setObjectFlags(JSDynamicObject obj, int flags) {
         DynamicObjectLibrary.getUncached().setShapeFlags(obj, flags);
     }
 
-    public static void setPropertyFlags(DynamicObject obj, Object key, int flags) {
+    public static void setPropertyFlags(JSDynamicObject obj, Object key, int flags) {
         Properties.setPropertyFlagsUncached(obj, key, flags);
     }
 
-    public static int getPropertyFlags(DynamicObject obj, Object key) {
+    public static int getPropertyFlags(JSDynamicObject obj, Object key) {
         return Properties.getPropertyUncached(obj, key).getFlags();
     }
 
@@ -438,10 +438,10 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
      *            the previous flags.
      * @return {@code true} if successful, {@code false} if there was no such property or no change
      *         was made.
-     * @see #setPropertyFlags(DynamicObject, Object, int)
-     * @see #getPropertyFlags(DynamicObject, Object)
+     * @see #setPropertyFlags(JSDynamicObject, Object, int)
+     * @see #getPropertyFlags(JSDynamicObject, Object)
      */
-    public static boolean updatePropertyFlags(DynamicObject obj, Object key, IntUnaryOperator updateFunction) {
+    public static boolean updatePropertyFlags(JSDynamicObject obj, Object key, IntUnaryOperator updateFunction) {
         DynamicObjectLibrary uncached = DynamicObjectLibrary.getUncached();
         Property property = Properties.getProperty(uncached, obj, key);
         if (property == null) {
@@ -455,15 +455,15 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
         return uncached.setPropertyFlags(obj, key, newFlags);
     }
 
-    public static boolean testProperties(DynamicObject obj, Predicate<Property> predicate) {
+    public static boolean testProperties(JSDynamicObject obj, Predicate<Property> predicate) {
         return obj.getShape().allPropertiesMatch(predicate);
     }
 
-    public static boolean removeKey(DynamicObject obj, Object key) {
+    public static boolean removeKey(JSDynamicObject obj, Object key) {
         return Properties.removeKeyUncached(obj, key);
     }
 
-    public static JSSharedData getJSSharedData(DynamicObject obj) {
+    public static JSSharedData getJSSharedData(JSDynamicObject obj) {
         return JSShape.getSharedData(obj.getShape());
     }
 }

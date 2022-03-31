@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -105,7 +104,7 @@ public final class JSError extends JSNonProxy {
 
     public static final PropertyProxy STACK_PROXY = new PropertyProxy() {
         @Override
-        public Object get(DynamicObject store) {
+        public Object get(JSDynamicObject store) {
             Object value = JSObjectUtil.getHiddenProperty(store, FORMATTED_STACK_NAME);
             if (value == null) {
                 // stack not prepared yet
@@ -129,7 +128,7 @@ public final class JSError extends JSNonProxy {
         }
 
         @Override
-        public boolean set(DynamicObject store, Object value) {
+        public boolean set(JSDynamicObject store, Object value) {
             JSObjectUtil.putHiddenProperty(store, FORMATTED_STACK_NAME, value);
             return true;
         }
@@ -138,22 +137,22 @@ public final class JSError extends JSNonProxy {
     private JSError() {
     }
 
-    public static DynamicObject createErrorObject(JSContext context, JSRealm realm, JSErrorType errorType) {
+    public static JSDynamicObject createErrorObject(JSContext context, JSRealm realm, JSErrorType errorType) {
         JSObjectFactory factory = context.getErrorFactory(errorType);
-        DynamicObject obj = JSErrorObject.create(realm, factory);
+        JSDynamicObject obj = JSErrorObject.create(realm, factory);
         factory.initProto(obj, realm);
         assert isJSError(obj);
         return context.trackAllocation(obj);
     }
 
-    public static void setMessage(DynamicObject obj, TruffleString message) {
+    public static void setMessage(JSDynamicObject obj, TruffleString message) {
         assert !JSDynamicObject.hasProperty(obj, MESSAGE);
         JSObjectUtil.putDataProperty(obj, MESSAGE, message, MESSAGE_ATTRIBUTES);
     }
 
-    public static DynamicObject create(JSErrorType errorType, JSRealm realm, Object message) {
+    public static JSDynamicObject create(JSErrorType errorType, JSRealm realm, Object message) {
         assert Strings.isTString(message) || message == Undefined.instance;
-        DynamicObject obj = createErrorObject(realm.getContext(), realm, errorType);
+        JSDynamicObject obj = createErrorObject(realm.getContext(), realm, errorType);
         String msg;
         if (message == Undefined.instance) {
             msg = null;
@@ -166,19 +165,19 @@ public final class JSError extends JSNonProxy {
         return obj;
     }
 
-    public static DynamicObject createFromJSException(JSException exception, JSRealm realm, String message) {
+    public static JSDynamicObject createFromJSException(JSException exception, JSRealm realm, String message) {
         Objects.requireNonNull(message);
         JSContext context = realm.getContext();
         JSErrorType errorType = exception.getErrorType();
-        DynamicObject obj = createErrorObject(context, realm, errorType);
+        JSDynamicObject obj = createErrorObject(context, realm, errorType);
         setMessage(obj, Strings.fromJavaString(message));
         setException(realm, obj, exception, context.isOptionNashornCompatibilityMode());
         return obj;
     }
 
     @TruffleBoundary
-    public static DynamicObject createAggregateError(JSRealm realm, Object errors, String msg) {
-        DynamicObject errorObj = createErrorObject(realm.getContext(), realm, JSErrorType.AggregateError);
+    public static JSDynamicObject createAggregateError(JSRealm realm, Object errors, String msg) {
+        JSDynamicObject errorObj = createErrorObject(realm.getContext(), realm, JSErrorType.AggregateError);
         if (msg != null) {
             setMessage(errorObj, Strings.fromJavaString(msg));
         }
@@ -187,11 +186,11 @@ public final class JSError extends JSNonProxy {
         return errorObj;
     }
 
-    private static DynamicObject createErrorPrototype(JSRealm realm, JSErrorType errorType) {
+    private static JSDynamicObject createErrorPrototype(JSRealm realm, JSErrorType errorType) {
         JSContext ctx = realm.getContext();
-        DynamicObject proto = errorType == JSErrorType.Error ? realm.getObjectPrototype() : realm.getErrorPrototype(JSErrorType.Error);
+        JSDynamicObject proto = errorType == JSErrorType.Error ? realm.getObjectPrototype() : realm.getErrorPrototype(JSErrorType.Error);
 
-        DynamicObject errorPrototype;
+        JSDynamicObject errorPrototype;
         if (ctx.getEcmaScriptVersion() < 6) {
             errorPrototype = JSErrorObject.create(JSShape.createPrototypeShape(ctx, INSTANCE, proto));
             JSObjectUtil.setOrVerifyPrototype(ctx, errorPrototype, proto);
@@ -213,8 +212,8 @@ public final class JSError extends JSNonProxy {
     public static JSConstructor createErrorConstructor(JSRealm realm, JSErrorType errorType) {
         JSContext context = realm.getContext();
         TruffleString name = Strings.fromJavaString(errorType.toString());
-        DynamicObject errorConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, name); // (Type)Error
-        DynamicObject classPrototype = JSError.createErrorPrototype(realm, errorType); // (Type)Error.prototype
+        JSDynamicObject errorConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, name); // (Type)Error
+        JSDynamicObject classPrototype = JSError.createErrorPrototype(realm, errorType); // (Type)Error.prototype
         if (errorType != JSErrorType.Error) {
             JSObject.setPrototype(errorConstructor, realm.getErrorConstructor(JSErrorType.Error));
         }
@@ -230,44 +229,44 @@ public final class JSError extends JSNonProxy {
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject errorPrototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject errorPrototype) {
         return JSObjectUtil.getProtoChildShape(errorPrototype, INSTANCE, context);
     }
 
-    private static DynamicObject createCallSitePrototype(JSRealm realm) {
-        DynamicObject callSitePrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+    private static JSDynamicObject createCallSitePrototype(JSRealm realm) {
+        JSDynamicObject callSitePrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putFunctionsFromContainer(realm, callSitePrototype, CallSitePrototypeBuiltins.BUILTINS);
         return callSitePrototype;
     }
 
     public static JSConstructor createCallSiteConstructor(JSRealm realm) {
         JSContext context = realm.getContext();
-        DynamicObject constructor = JSFunction.createNamedEmptyFunction(realm, CALL_SITE_CLASS_NAME);
-        DynamicObject prototype = createCallSitePrototype(realm);
+        JSDynamicObject constructor = JSFunction.createNamedEmptyFunction(realm, CALL_SITE_CLASS_NAME);
+        JSDynamicObject prototype = createCallSitePrototype(realm);
         JSObjectUtil.putConstructorProperty(context, prototype, constructor);
         JSObjectUtil.putConstructorPrototypeProperty(context, constructor, prototype);
         return new JSConstructor(constructor, prototype);
     }
 
-    public static Shape makeInitialCallSiteShape(JSContext context, DynamicObject callSitePrototype) {
+    public static Shape makeInitialCallSiteShape(JSContext context, JSDynamicObject callSitePrototype) {
         return JSObjectUtil.getProtoChildShape(callSitePrototype, JSOrdinary.INSTANCE, context);
     }
 
-    public static void setLineNumber(JSContext context, DynamicObject errorObj, Object lineNumber) {
+    public static void setLineNumber(JSContext context, JSDynamicObject errorObj, Object lineNumber) {
         setErrorProperty(context, errorObj, LINE_NUMBER_PROPERTY_NAME, lineNumber);
     }
 
-    public static void setColumnNumber(JSContext context, DynamicObject errorObj, Object columnNumber) {
+    public static void setColumnNumber(JSContext context, JSDynamicObject errorObj, Object columnNumber) {
         setErrorProperty(context, errorObj, COLUMN_NUMBER_PROPERTY_NAME, columnNumber);
     }
 
-    public static GraalJSException getException(DynamicObject errorObj) {
+    public static GraalJSException getException(JSDynamicObject errorObj) {
         Object exception = JSDynamicObject.getOrNull(errorObj, EXCEPTION_PROPERTY_NAME);
         return exception instanceof GraalJSException ? (GraalJSException) exception : null;
     }
 
     @TruffleBoundary
-    public static DynamicObject setException(JSRealm realm, DynamicObject errorObj, GraalJSException exception, boolean defaultColumnNumber) {
+    public static JSDynamicObject setException(JSRealm realm, JSDynamicObject errorObj, GraalJSException exception, boolean defaultColumnNumber) {
         assert isJSError(errorObj);
         defineStackProperty(realm, errorObj, exception);
         JSContext context = realm.getContext();
@@ -279,11 +278,11 @@ public final class JSError extends JSNonProxy {
         return errorObj;
     }
 
-    private static void setErrorProperty(JSContext context, DynamicObject errorObj, Object key, Object value) {
+    private static void setErrorProperty(JSContext context, JSDynamicObject errorObj, Object key, Object value) {
         JSObjectUtil.defineDataProperty(context, errorObj, key, value, JSAttributes.getDefaultNotEnumerable());
     }
 
-    private static void defineStackProperty(JSRealm realm, DynamicObject errorObj, GraalJSException exception) {
+    private static void defineStackProperty(JSRealm realm, JSDynamicObject errorObj, GraalJSException exception) {
         JSContext context = realm.getContext();
         setErrorProperty(context, errorObj, EXCEPTION_PROPERTY_NAME, exception);
 
@@ -295,7 +294,7 @@ public final class JSError extends JSNonProxy {
     // GR-31094 method has deoptimization sources without corresponding deoptimization targets
     // within native image.
     @TruffleBoundary
-    public static Object prepareStack(JSRealm realm, DynamicObject errorObj, GraalJSException exception) {
+    public static Object prepareStack(JSRealm realm, JSDynamicObject errorObj, GraalJSException exception) {
         JSStackTraceElement[] stackTrace = exception.getJSStackTrace();
         if (realm.isPreparingStackTrace()) {
             // Do not call Error.prepareStackTrace or PrepareStackTraceCallback
@@ -321,17 +320,17 @@ public final class JSError extends JSNonProxy {
      * function, it is called and the result is used; otherwise, the stack is formatted as string.
      */
     @TruffleBoundary
-    public static Object prepareStackNoCallback(JSRealm realm, DynamicObject errorObj, JSStackTraceElement[] jsStackTrace) {
-        DynamicObject error = realm.getErrorConstructor(JSErrorType.Error);
+    public static Object prepareStackNoCallback(JSRealm realm, JSDynamicObject errorObj, JSStackTraceElement[] jsStackTrace) {
+        JSDynamicObject error = realm.getErrorConstructor(JSErrorType.Error);
         Object prepareStackTrace = JSObject.get(error, PREPARE_STACK_TRACE_NAME);
         if (JSFunction.isJSFunction(prepareStackTrace)) {
-            return prepareStackWithUserFunction(realm, (DynamicObject) prepareStackTrace, errorObj, jsStackTrace);
+            return prepareStackWithUserFunction(realm, (JSDynamicObject) prepareStackTrace, errorObj, jsStackTrace);
         }
         return formatStackTrace(jsStackTrace, errorObj, realm);
     }
 
     @TruffleBoundary
-    private static Object prepareStackTraceWithCallback(JSRealm realm, PrepareStackTraceCallback callback, DynamicObject errorObj, JSStackTraceElement[] stackTrace) {
+    private static Object prepareStackTraceWithCallback(JSRealm realm, PrepareStackTraceCallback callback, JSDynamicObject errorObj, JSStackTraceElement[] stackTrace) {
         try {
             return callback.prepareStackTrace(realm, errorObj, toStructuredStackTrace(realm, stackTrace));
         } catch (Exception ex) {
@@ -339,11 +338,11 @@ public final class JSError extends JSNonProxy {
         }
     }
 
-    private static Object prepareStackWithUserFunction(JSRealm realm, DynamicObject prepareStackTraceFun, DynamicObject errorObj, JSStackTraceElement[] stackTrace) {
+    private static Object prepareStackWithUserFunction(JSRealm realm, JSDynamicObject prepareStackTraceFun, JSDynamicObject errorObj, JSStackTraceElement[] stackTrace) {
         return JSFunction.call(prepareStackTraceFun, errorObj, new Object[]{errorObj, toStructuredStackTrace(realm, stackTrace)});
     }
 
-    private static DynamicObject toStructuredStackTrace(JSRealm realm, JSStackTraceElement[] stackTrace) {
+    private static JSDynamicObject toStructuredStackTrace(JSRealm realm, JSStackTraceElement[] stackTrace) {
         Object[] elements = new Object[stackTrace.length];
         for (int i = 0; i < stackTrace.length; i++) {
             elements[i] = prepareStackElement(realm, stackTrace[i]);
@@ -353,28 +352,28 @@ public final class JSError extends JSNonProxy {
 
     private static Object prepareStackElement(JSRealm realm, JSStackTraceElement stackTraceElement) {
         JSContext context = realm.getContext();
-        DynamicObject callSite = JSOrdinary.createWithRealm(context, context.getCallSiteFactory(), realm);
+        JSDynamicObject callSite = JSOrdinary.createWithRealm(context, context.getCallSiteFactory(), realm);
         JSObjectUtil.putHiddenProperty(callSite, STACK_TRACE_ELEMENT_PROPERTY_NAME, stackTraceElement);
         return callSite;
     }
 
-    private static TruffleString getMessage(DynamicObject errorObj) {
+    private static TruffleString getMessage(JSDynamicObject errorObj) {
         Object message = JSObject.get(errorObj, MESSAGE);
         return (message == Undefined.instance) ? null : JSRuntime.toString(message);
     }
 
-    private static TruffleString getName(DynamicObject errorObj) {
+    private static TruffleString getName(JSDynamicObject errorObj) {
         Object name = JSObject.get(errorObj, NAME);
         return (name == Undefined.instance) ? null : JSRuntime.toString(name);
     }
 
-    private static boolean isInstanceOfJSError(DynamicObject errorObj, JSRealm realm) {
-        DynamicObject errorPrototype = realm.getErrorPrototype(JSErrorType.Error);
+    private static boolean isInstanceOfJSError(JSDynamicObject errorObj, JSRealm realm) {
+        JSDynamicObject errorPrototype = realm.getErrorPrototype(JSErrorType.Error);
         return JSRuntime.isPrototypeOf(errorObj, errorPrototype);
     }
 
     @TruffleBoundary
-    private static TruffleString formatStackTrace(JSStackTraceElement[] stackTrace, DynamicObject errObj, JSRealm realm) {
+    private static TruffleString formatStackTrace(JSStackTraceElement[] stackTrace, JSDynamicObject errObj, JSRealm realm) {
         TruffleStringBuilder builder = Strings.builderCreate();
         if (!realm.getContext().isOptionNashornCompatibilityMode() || isInstanceOfJSError(errObj, realm)) {
             TruffleString name = getName(errObj);
@@ -442,12 +441,12 @@ public final class JSError extends JSNonProxy {
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return CLASS_NAME;
     }
 
     @Override
-    public TruffleString getBuiltinToStringTag(DynamicObject object) {
+    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
         return getClassName(object);
     }
 
@@ -457,7 +456,7 @@ public final class JSError extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return super.toDisplayStringImpl(obj, allowSideEffects, format, depth);
         } else {
@@ -478,7 +477,7 @@ public final class JSError extends JSNonProxy {
         }
     }
 
-    private static Object getPropertyWithoutSideEffect(DynamicObject obj, Object key) {
+    private static Object getPropertyWithoutSideEffect(JSDynamicObject obj, Object key) {
         assert JSRuntime.isPropertyKey(key);
         Object value = JSDynamicObject.getOrNull(obj, key);
         if (value == null) {
@@ -496,7 +495,7 @@ public final class JSError extends JSNonProxy {
     }
 
     @Override
-    public boolean hasOnlyShapeProperties(DynamicObject obj) {
+    public boolean hasOnlyShapeProperties(JSDynamicObject obj) {
         return true;
     }
 

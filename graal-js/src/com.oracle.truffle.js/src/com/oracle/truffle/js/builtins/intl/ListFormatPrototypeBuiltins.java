@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.util.List;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.ListFormatPrototypeBuiltinsFactory.JSListFormatFormatNodeGen;
@@ -58,6 +57,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSListFormat;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<ListFormatPrototypeBuiltins.ListFormatPrototype> {
 
@@ -105,7 +105,7 @@ public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = "isJSListFormat(listFormat)")
-        public Object doResolvedOptions(DynamicObject listFormat) {
+        public Object doResolvedOptions(JSDynamicObject listFormat) {
             return JSListFormat.resolvedOptions(getContext(), getRealm(), listFormat);
         }
 
@@ -122,7 +122,7 @@ public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = {"isJSListFormat(listFormat)"})
-        public TruffleString doFormat(DynamicObject listFormat, Object value,
+        public TruffleString doFormat(JSDynamicObject listFormat, Object value,
                         @Cached("create(getContext())") JSStringListFromIterableNode strListFromIterableNode) {
             List<String> list = strListFromIterableNode.executeIterable(value);
             return JSListFormat.format(listFormat, list);
@@ -142,7 +142,7 @@ public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = {"isJSListFormat(listFormat)"})
-        public Object doFormatToParts(DynamicObject listFormat, Object value,
+        public Object doFormatToParts(JSDynamicObject listFormat, Object value,
                         @Cached("create(getContext())") JSStringListFromIterableNode strListFromIterableNode) {
             List<String> list = strListFromIterableNode.executeIterable(value);
             return JSListFormat.formatToParts(getContext(), getRealm(), listFormat, list);

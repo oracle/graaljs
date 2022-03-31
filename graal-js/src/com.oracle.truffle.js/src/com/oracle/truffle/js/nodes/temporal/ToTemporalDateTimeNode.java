@@ -44,7 +44,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -60,6 +59,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -83,10 +83,10 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
         return ToTemporalDateTimeNodeGen.create(context);
     }
 
-    public abstract DynamicObject executeDynamicObject(Object value, DynamicObject options);
+    public abstract JSDynamicObject executeDynamicObject(Object value, JSDynamicObject options);
 
     @Specialization
-    public DynamicObject toTemporalDateTime(Object item, DynamicObject optParam,
+    public JSDynamicObject toTemporalDateTime(Object item, JSDynamicObject optParam,
                     @Cached BranchProfile errorBranch,
                     @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToStringNode toStringNode,
@@ -94,15 +94,15 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
                     @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
                     @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode,
                     @Cached TemporalGetOptionNode getOptionNode) {
-        DynamicObject options = optParam;
+        JSDynamicObject options = optParam;
         assert optParam != null;
         if (optParam == Undefined.instance) {
             options = JSOrdinary.createWithNullPrototype(ctx);
         }
         JSTemporalDateTimeRecord result = null;
-        DynamicObject calendar = null;
+        JSDynamicObject calendar = null;
         if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
-            DynamicObject itemObj = (DynamicObject) item;
+            JSDynamicObject itemObj = (JSDynamicObject) item;
             if (isPlainDateTimeProfile.profile(itemObj instanceof JSTemporalPlainDateTimeObject)) {
                 return itemObj;
             } else if (isZonedDateTimeProfile.profile(TemporalUtil.isTemporalZonedDateTime(itemObj))) {
@@ -115,7 +115,7 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
             }
             calendar = getTemporalCalendarNode.executeDynamicObject(itemObj);
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDHMMMMMNSY);
-            DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.listEmpty);
+            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.listEmpty);
             result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options, getOptionNode);
         } else {
             TemporalUtil.toTemporalOverflow(options, getOptionNode);

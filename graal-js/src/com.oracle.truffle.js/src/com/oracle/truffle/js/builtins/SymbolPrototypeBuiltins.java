@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.SymbolPrototypeBuiltinsFactory.SymbolToPrimitiveNodeGen;
@@ -54,6 +53,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Contains builtins for Symbol.prototype.
@@ -118,7 +118,7 @@ public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         protected TruffleString toString(Object thisObj) {
             if (isSymbolObjectProfile.profile(JSSymbol.isJSSymbol(thisObj))) {
-                return JSSymbol.getSymbolData((DynamicObject) thisObj).toTString();
+                return JSSymbol.getSymbolData((JSDynamicObject) thisObj).toTString();
             } else if (isPrimitiveSymbolProfile.profile(thisObj instanceof Symbol)) {
                 return ((Symbol) thisObj).toTString();
             } else {
@@ -138,7 +138,7 @@ public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         protected Symbol valueOf(Object thisObj) {
             if (isSymbolObjectProfile.profile(JSSymbol.isJSSymbol(thisObj))) {
-                return JSSymbol.getSymbolData((DynamicObject) thisObj);
+                return JSSymbol.getSymbolData((JSDynamicObject) thisObj);
             } else if (isPrimitiveSymbolProfile.profile(thisObj instanceof Symbol)) {
                 return (Symbol) thisObj;
             } else {
@@ -160,7 +160,7 @@ public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (isSymbolProfile.profile(thisObj instanceof Symbol)) {
                 return (Symbol) thisObj;
             } else if (isSymbolObjectProfile.profile(JSSymbol.isJSSymbol(thisObj))) {
-                return JSSymbol.getSymbolData((DynamicObject) thisObj);
+                return JSSymbol.getSymbolData((JSDynamicObject) thisObj);
             } else {
                 throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,23 +40,23 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class JSConstructor {
 
-    private final DynamicObject constructor;
-    private final DynamicObject prototype;
+    private final JSDynamicObject constructor;
+    private final JSDynamicObject prototype;
 
-    public JSConstructor(DynamicObject constructor, DynamicObject prototype) {
+    public JSConstructor(JSDynamicObject constructor, JSDynamicObject prototype) {
         this.constructor = constructor;
         this.prototype = prototype;
     }
 
-    public DynamicObject getFunctionObject() {
+    public JSDynamicObject getFunctionObject() {
         return constructor;
     }
 
-    public DynamicObject getPrototype() {
+    public JSDynamicObject getPrototype() {
         return prototype;
     }
 }

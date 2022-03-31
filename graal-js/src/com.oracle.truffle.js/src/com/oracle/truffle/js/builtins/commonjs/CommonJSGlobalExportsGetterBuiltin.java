@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,11 +42,11 @@ package com.oracle.truffle.js.builtins.commonjs;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -62,9 +62,9 @@ public abstract class CommonJSGlobalExportsGetterBuiltin extends GlobalBuiltins.
     }
 
     @CompilerDirectives.TruffleBoundary
-    private DynamicObject getExportsObject() {
-        DynamicObject moduleObject = CommonJSGlobalModuleGetterBuiltin.getOrCreateModuleObject(getContext(), getRealm());
+    private JSDynamicObject getExportsObject() {
+        JSDynamicObject moduleObject = CommonJSGlobalModuleGetterBuiltin.getOrCreateModuleObject(getContext(), getRealm());
         assert moduleObject != Undefined.instance && moduleObject != null;
-        return (DynamicObject) JSObject.get(moduleObject, Strings.EXPORTS_PROPERTY_NAME);
+        return (JSDynamicObject) JSObject.get(moduleObject, Strings.EXPORTS_PROPERTY_NAME);
     }
 }

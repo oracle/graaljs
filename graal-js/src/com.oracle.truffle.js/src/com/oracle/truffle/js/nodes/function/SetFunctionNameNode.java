@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -49,6 +48,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
 public class SetFunctionNameNode extends JavaScriptBaseNode {
@@ -73,7 +73,7 @@ public class SetFunctionNameNode extends JavaScriptBaseNode {
         if (prefix != null && !Strings.isEmpty(prefix)) {
             name = concatenate(prefix, name);
         }
-        return setFunctionName((DynamicObject) functionValue, name);
+        return setFunctionName((JSDynamicObject) functionValue, name);
     }
 
     @TruffleBoundary
@@ -81,7 +81,7 @@ public class SetFunctionNameNode extends JavaScriptBaseNode {
         return Strings.concatAll(prefix, Strings.SPACE, name);
     }
 
-    private static Object setFunctionName(DynamicObject functionValue, TruffleString name) {
+    private static Object setFunctionName(JSDynamicObject functionValue, TruffleString name) {
         PropertyDescriptor propDesc = PropertyDescriptor.createData(name, false, false, true);
         JSRuntime.definePropertyOrThrow(functionValue, JSFunction.NAME, propDesc);
         return functionValue;

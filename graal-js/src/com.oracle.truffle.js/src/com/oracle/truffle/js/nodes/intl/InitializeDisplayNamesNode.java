@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,12 +43,12 @@ package com.oracle.truffle.js.nodes.intl;
 import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -75,14 +75,14 @@ public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
         this.getLanguageDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_LANGUAGE_DISPLAY, new String[]{IntlUtil.DIALECT, IntlUtil.STANDARD}, IntlUtil.DIALECT);
     }
 
-    public abstract DynamicObject executeInit(DynamicObject displayNames, Object locales, Object options);
+    public abstract JSDynamicObject executeInit(JSDynamicObject displayNames, Object locales, Object options);
 
     public static InitializeDisplayNamesNode createInitalizeDisplayNamesNode(JSContext context) {
         return InitializeDisplayNamesNodeGen.create(context);
     }
 
     @Specialization
-    public DynamicObject initializeDisplayNames(DynamicObject displayNamesObject, Object localesArg, Object optionsArg) {
+    public JSDynamicObject initializeDisplayNames(JSDynamicObject displayNamesObject, Object localesArg, Object optionsArg) {
         try {
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
             if (optionsArg == Undefined.instance) {

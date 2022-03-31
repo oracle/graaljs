@@ -46,7 +46,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -64,6 +63,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
@@ -98,12 +98,12 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
     }
 
     public abstract JSTemporalDurationRecord execute(double y1, double mon1, double w1, double d1, double h1, double min1, double s1, double ms1, double mus1, double ns1,
-                    double y2, double mon2, double w2, double d2, double h2, double min2, double s2, double ms2, double mus2, double ns2, DynamicObject relativeTo);
+                    double y2, double mon2, double w2, double d2, double h2, double min2, double s2, double ms2, double mus2, double ns2, JSDynamicObject relativeTo);
 
     // @Cached parameters create unused variable in generated code, see GR-37931
     @Specialization
     protected JSTemporalDurationRecord add(double y1, double mon1, double w1, double d1, double h1, double min1, double s1, double ms1, double mus1, double ns1,
-                    double y2, double mon2, double w2, double d2, double h2, double min2, double s2, double ms2, double mus2, double ns2, DynamicObject relativeTo) {
+                    double y2, double mon2, double w2, double d2, double h2, double min2, double s2, double ms2, double mus2, double ns2, JSDynamicObject relativeTo) {
         assert doubleIsInteger(y1) && doubleIsInteger(mon1) && doubleIsInteger(w1) && doubleIsInteger(d1);
         assert doubleIsInteger(h1) && doubleIsInteger(min1) && doubleIsInteger(s1) && doubleIsInteger(ms1) && doubleIsInteger(mus1) && doubleIsInteger(ns1);
         assert doubleIsInteger(y2) && doubleIsInteger(mon2) && doubleIsInteger(w2) && doubleIsInteger(d2);
@@ -124,20 +124,20 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
         } else if (JSTemporalPlainDate.isJSTemporalPlainDate(relativeTo)) {
             relativeToPlainDateBranch.enter();
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) relativeTo;
-            DynamicObject calendar = date.getCalendar();
-            DynamicObject dateDuration1 = JSTemporalDuration.createTemporalDuration(ctx, y1, mon1, w1, d1, 0, 0, 0, 0, 0, 0, errorBranch);
-            DynamicObject dateDuration2 = JSTemporalDuration.createTemporalDuration(ctx, y2, mon2, w2, d2, 0, 0, 0, 0, 0, 0, errorBranch);
+            JSDynamicObject calendar = date.getCalendar();
+            JSDynamicObject dateDuration1 = JSTemporalDuration.createTemporalDuration(ctx, y1, mon1, w1, d1, 0, 0, 0, 0, 0, 0, errorBranch);
+            JSDynamicObject dateDuration2 = JSTemporalDuration.createTemporalDuration(ctx, y2, mon2, w2, d2, 0, 0, 0, 0, 0, 0, errorBranch);
 
             Object dateAdd = getMethodDateAddNode.executeWithTarget(calendar);
-            DynamicObject firstAddOptions = JSOrdinary.createWithNullPrototype(ctx);
-            DynamicObject intermediate = calendarDateAdd(calendar, date, dateDuration1, firstAddOptions, dateAdd);
+            JSDynamicObject firstAddOptions = JSOrdinary.createWithNullPrototype(ctx);
+            JSDynamicObject intermediate = calendarDateAdd(calendar, date, dateDuration1, firstAddOptions, dateAdd);
 
-            DynamicObject secondAddOptions = JSOrdinary.createWithNullPrototype(ctx);
-            DynamicObject end = calendarDateAdd(calendar, intermediate, dateDuration2, secondAddOptions, dateAdd);
+            JSDynamicObject secondAddOptions = JSOrdinary.createWithNullPrototype(ctx);
+            JSDynamicObject end = calendarDateAdd(calendar, intermediate, dateDuration2, secondAddOptions, dateAdd);
 
             TemporalUtil.Unit dateLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(TemporalUtil.Unit.DAY, largestUnit);
 
-            DynamicObject differenceOptions = JSOrdinary.createWithNullPrototype(ctx);
+            JSDynamicObject differenceOptions = JSOrdinary.createWithNullPrototype(ctx);
             JSObjectUtil.putDataProperty(ctx, differenceOptions, LARGEST_UNIT, dateLargestUnit.toTruffleString());
             JSTemporalDurationObject dateDifference = calendarDateUntil(calendar, date, end, differenceOptions, Undefined.instance);
             JSTemporalDurationRecord result = TemporalUtil.balanceDuration(ctx, namesNode, TemporalUtil.dtol(dateDifference.getDays()),
@@ -148,8 +148,8 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
             relativeToZonedDateTimeBranch.enter();
             assert TemporalUtil.isTemporalZonedDateTime(relativeTo);
             JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) relativeTo;
-            DynamicObject timeZone = zdt.getTimeZone();
-            DynamicObject calendar = zdt.getCalendar();
+            JSDynamicObject timeZone = zdt.getTimeZone();
+            JSDynamicObject calendar = zdt.getCalendar();
             BigInt intermediateNs = TemporalUtil.addZonedDateTime(ctx, zdt.getNanoseconds(), timeZone, calendar, dtol(y1), dtol(mon1), dtol(w1), dtol(d1), dtol(h1), dtol(min1), dtol(s1), dtol(ms1),
                             dtol(mus1), dtol(ns1));
             BigInt endNs = TemporalUtil.addZonedDateTime(ctx, intermediateNs, timeZone, calendar, dtol(y2), dtol(mon2), dtol(w2), dtol(d2), dtol(h2), dtol(min2), dtol(s2), dtol(ms2), dtol(mus2),
@@ -166,7 +166,7 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
         }
     }
 
-    protected JSTemporalPlainDateObject calendarDateAdd(DynamicObject calendar, DynamicObject date, DynamicObject duration, DynamicObject options, Object dateAddPrepared) {
+    protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options, Object dateAddPrepared) {
         if (callDateAddNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             callDateAddNode = insert(JSFunctionCallNode.createCall());
@@ -175,7 +175,7 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
         return TemporalUtil.requireTemporalDate(addedDate);
     }
 
-    protected JSTemporalDurationObject calendarDateUntil(DynamicObject calendar, DynamicObject date, DynamicObject duration, DynamicObject options, Object dateUntil) {
+    protected JSTemporalDurationObject calendarDateUntil(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options, Object dateUntil) {
         Object dateUntilPrepared = dateUntil;
         if (dateUntilPrepared == Undefined.instance) {
             dateUntilPrepared = getMethodDateUntilNode.executeWithTarget(calendar);

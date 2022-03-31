@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -85,16 +84,16 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
     public abstract boolean executeWithTargetAndKeyBoolean(Object shared, Object key);
 
     @Specialization
-    protected boolean doGeneric(DynamicObject proxy, Object key,
+    protected boolean doGeneric(JSDynamicObject proxy, Object key,
                     @Cached("createBinaryProfile()") ConditionProfile trapFunProfile) {
         assert JSProxy.isJSProxy(proxy);
         Object propertyKey = toPropertyKeyNode.execute(key);
-        DynamicObject handler = JSProxy.getHandlerChecked(proxy, errorBranch);
+        JSDynamicObject handler = JSProxy.getHandlerChecked(proxy, errorBranch);
         Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGetter.executeWithTarget(handler);
         if (trapFunProfile.profile(trapFun == Undefined.instance)) {
             if (JSDynamicObject.isJSDynamicObject(target)) {
-                return JSObject.hasProperty((DynamicObject) target, propertyKey);
+                return JSObject.hasProperty((JSDynamicObject) target, propertyKey);
             } else {
                 return JSInteropUtil.hasProperty(target, propertyKey);
             }

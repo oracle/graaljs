@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,10 +44,10 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Node that returns a suitable prototype for a foreign object.
@@ -55,10 +55,10 @@ import com.oracle.truffle.js.runtime.JSRealm;
 @ImportStatic({JSConfig.class})
 public abstract class ForeignObjectPrototypeNode extends JavaScriptBaseNode {
 
-    public abstract DynamicObject executeDynamicObject(Object truffleObject);
+    public abstract JSDynamicObject executeDynamicObject(Object truffleObject);
 
     @Specialization(limit = "InteropLibraryLimit")
-    public DynamicObject doTruffleObject(Object truffleObject,
+    public JSDynamicObject doTruffleObject(Object truffleObject,
                     @CachedLibrary("truffleObject") InteropLibrary interop) {
         JSRealm realm = getRealm();
         if (interop.hasArrayElements(truffleObject)) {

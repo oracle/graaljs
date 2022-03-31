@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -58,6 +57,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class InNode extends JSBinaryNode {
 
@@ -79,12 +79,12 @@ public abstract class InNode extends JSBinaryNode {
     }
 
     @Specialization(guards = {"isJSObject(haystack)", "!isJSProxy(haystack)"})
-    protected boolean doObject(Object needle, DynamicObject haystack) {
+    protected boolean doObject(Object needle, JSDynamicObject haystack) {
         return getHasPropertyNode().executeBoolean(haystack, needle);
     }
 
     @Specialization(guards = {"isJSProxy(haystack)"})
-    protected boolean doProxy(Object needle, DynamicObject haystack,
+    protected boolean doProxy(Object needle, JSDynamicObject haystack,
                     @Cached("create(context)") JSProxyHasPropertyNode proxyHasPropertyNode) {
         return proxyHasPropertyNode.executeWithTargetAndKeyBoolean(haystack, needle);
     }

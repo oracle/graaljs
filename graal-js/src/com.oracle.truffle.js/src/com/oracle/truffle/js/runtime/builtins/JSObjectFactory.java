@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -53,6 +52,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Properties;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -67,7 +67,7 @@ public abstract class JSObjectFactory {
         return new JSObjectFactory.UnboundProto(context, factory);
     }
 
-    public static JSObjectFactory.BoundProto createBound(JSContext context, DynamicObject prototype, Shape factory) {
+    public static JSObjectFactory.BoundProto createBound(JSContext context, JSDynamicObject prototype, Shape factory) {
         return new JSObjectFactory.BoundProto(context, prototype, factory);
     }
 
@@ -75,7 +75,7 @@ public abstract class JSObjectFactory {
         return new JSObjectFactory.Eager(context, prototypeSupplier, factory);
     }
 
-    static JSObjectFactory createIntrinsic(JSContext context, PrototypeSupplier prototypeSupplier, CompilableBiFunction<JSContext, DynamicObject, Shape> shapeSupplier, int slot) {
+    static JSObjectFactory createIntrinsic(JSContext context, PrototypeSupplier prototypeSupplier, CompilableBiFunction<JSContext, JSDynamicObject, Shape> shapeSupplier, int slot) {
         return new JSObjectFactory.LazySupplier(context, prototypeSupplier, shapeSupplier, slot);
     }
 
@@ -83,7 +83,7 @@ public abstract class JSObjectFactory {
         return new JSObjectFactory.LazyJSClass<>(context, jsclass, slot);
     }
 
-    static CompilableBiFunction<JSContext, DynamicObject, Shape> defaultShapeSupplier(JSClass jsclass) {
+    static CompilableBiFunction<JSContext, JSDynamicObject, Shape> defaultShapeSupplier(JSClass jsclass) {
         return (ctx, proto) -> JSObjectUtil.getProtoChildShape(proto, jsclass, ctx);
     }
 
@@ -96,7 +96,7 @@ public abstract class JSObjectFactory {
             this.context = context;
         }
 
-        public JSObjectFactory create(PrototypeSupplier prototypeSupplier, CompilableBiFunction<JSContext, DynamicObject, Shape> shapeSupplier) {
+        public JSObjectFactory create(PrototypeSupplier prototypeSupplier, CompilableBiFunction<JSContext, JSDynamicObject, Shape> shapeSupplier) {
             int index = nextIndex();
             return createIntrinsic(context, prototypeSupplier, shapeSupplier, index);
         }
@@ -147,28 +147,28 @@ public abstract class JSObjectFactory {
         this.inObjectProto = inObjectProto;
     }
 
-    static boolean verifyPrototype(Shape shape, DynamicObject prototype) {
+    static boolean verifyPrototype(Shape shape, JSDynamicObject prototype) {
         return JSShape.getPrototypeProperty(shape).getLocation().isConstant() && JSShape.getPrototypeProperty(shape).getLocation().get(null) == prototype;
     }
 
-    protected abstract DynamicObject getPrototype(JSRealm realm);
+    protected abstract JSDynamicObject getPrototype(JSRealm realm);
 
     static boolean hasInObjectProto(Shape shape) {
         Property prototypeProperty = JSShape.getPrototypeProperty(shape);
         return prototypeProperty == null || !prototypeProperty.getLocation().isConstant();
     }
 
-    protected abstract Shape getShape(JSRealm realm, DynamicObject prototype);
+    protected abstract Shape getShape(JSRealm realm, JSDynamicObject prototype);
 
     public final Shape getShape(JSRealm realm) {
         return getShape(realm, getPrototype(realm));
     }
 
-    public final <T extends DynamicObject> T initProto(T obj, JSRealm realm) {
+    public final <T extends JSDynamicObject> T initProto(T obj, JSRealm realm) {
         return initProto(obj, getPrototype(realm));
     }
 
-    public final <T extends DynamicObject> T initProto(T obj, DynamicObject prototype) {
+    public final <T extends JSDynamicObject> T initProto(T obj, JSDynamicObject prototype) {
         if (isInObjectProto()) {
             setPrototype(obj, prototype);
         } else {
@@ -177,7 +177,7 @@ public abstract class JSObjectFactory {
         return obj;
     }
 
-    protected void setPrototype(DynamicObject obj, DynamicObject prototype) {
+    protected void setPrototype(JSDynamicObject obj, JSDynamicObject prototype) {
         if (setProto == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             setProto = context.adoptNode(JSObjectUtil.createCached(JSObject.HIDDEN_PROTO, obj));
@@ -185,7 +185,7 @@ public abstract class JSObjectFactory {
         Properties.put(setProto, obj, JSObject.HIDDEN_PROTO, prototype);
     }
 
-    public final <T extends DynamicObject> T trackAllocation(T obj) {
+    public final <T extends JSDynamicObject> T trackAllocation(T obj) {
         return context.trackAllocation(obj);
     }
 
@@ -202,33 +202,33 @@ public abstract class JSObjectFactory {
         }
 
         @Override
-        protected Shape getShape(JSRealm realm, DynamicObject proto) {
+        protected Shape getShape(JSRealm realm, JSDynamicObject proto) {
             return factory;
         }
 
         @Override
-        protected DynamicObject getPrototype(JSRealm realm) {
+        protected JSDynamicObject getPrototype(JSRealm realm) {
             throw Errors.shouldNotReachHere();
         }
     }
 
     public static final class BoundProto extends JSObjectFactory {
-        private final DynamicObject prototype;
+        private final JSDynamicObject prototype;
         private final Shape factory;
 
-        protected BoundProto(JSContext context, DynamicObject prototype, Shape factory) {
+        protected BoundProto(JSContext context, JSDynamicObject prototype, Shape factory) {
             super(context, hasInObjectProto(factory));
             this.prototype = Objects.requireNonNull(prototype);
             this.factory = factory;
         }
 
         @Override
-        protected DynamicObject getPrototype(JSRealm realm) {
+        protected JSDynamicObject getPrototype(JSRealm realm) {
             return prototype;
         }
 
         @Override
-        protected Shape getShape(JSRealm realm, DynamicObject proto) {
+        protected Shape getShape(JSRealm realm, JSDynamicObject proto) {
             assert proto == this.prototype;
             return factory;
         }
@@ -245,12 +245,12 @@ public abstract class JSObjectFactory {
         }
 
         @Override
-        protected DynamicObject getPrototype(JSRealm realm) {
+        protected JSDynamicObject getPrototype(JSRealm realm) {
             return prototypeSupplier.getIntrinsicDefaultProto(realm);
         }
 
         @Override
-        protected Shape getShape(JSRealm realm, DynamicObject prototype) {
+        protected Shape getShape(JSRealm realm, JSDynamicObject prototype) {
             return factory;
         }
     }
@@ -265,7 +265,7 @@ public abstract class JSObjectFactory {
         }
 
         @Override
-        protected final Shape getShape(JSRealm realm, DynamicObject prototype) {
+        protected final Shape getShape(JSRealm realm, JSDynamicObject prototype) {
             CompilerAsserts.partialEvaluationConstant(this);
             if (context.isMultiContext()) {
                 if (factory == null) {
@@ -286,26 +286,26 @@ public abstract class JSObjectFactory {
             }
         }
 
-        protected abstract Shape makeInitialShape(DynamicObject prototype);
+        protected abstract Shape makeInitialShape(JSDynamicObject prototype);
     }
 
     private static final class LazySupplier extends Lazy {
         protected final PrototypeSupplier prototypeSupplier;
-        protected final CompilableBiFunction<JSContext, DynamicObject, Shape> shapeSupplier;
+        protected final CompilableBiFunction<JSContext, JSDynamicObject, Shape> shapeSupplier;
 
-        protected LazySupplier(JSContext context, PrototypeSupplier prototypeSupplier, CompilableBiFunction<JSContext, DynamicObject, Shape> shapeSupplier, int slot) {
+        protected LazySupplier(JSContext context, PrototypeSupplier prototypeSupplier, CompilableBiFunction<JSContext, JSDynamicObject, Shape> shapeSupplier, int slot) {
             super(context, slot);
             this.prototypeSupplier = prototypeSupplier;
             this.shapeSupplier = shapeSupplier;
         }
 
         @Override
-        protected DynamicObject getPrototype(JSRealm realm) {
+        protected JSDynamicObject getPrototype(JSRealm realm) {
             return prototypeSupplier.getIntrinsicDefaultProto(realm);
         }
 
         @Override
-        protected Shape makeInitialShape(DynamicObject prototype) {
+        protected Shape makeInitialShape(JSDynamicObject prototype) {
             return shapeSupplier.apply(context, prototype);
         }
     }
@@ -319,12 +319,12 @@ public abstract class JSObjectFactory {
         }
 
         @Override
-        protected DynamicObject getPrototype(JSRealm realm) {
+        protected JSDynamicObject getPrototype(JSRealm realm) {
             return jsclass.getIntrinsicDefaultProto(realm);
         }
 
         @Override
-        protected Shape makeInitialShape(DynamicObject prototype) {
+        protected Shape makeInitialShape(JSDynamicObject prototype) {
             return jsclass.makeInitialShape(context, prototype);
         }
     }

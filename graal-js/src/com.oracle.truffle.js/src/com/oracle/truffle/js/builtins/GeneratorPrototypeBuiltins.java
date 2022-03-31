@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.GeneratorPrototypeBuiltinsFactory.GeneratorResumeNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -55,6 +54,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Completion;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -120,7 +120,7 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization(guards = "isJSObject(generator)")
-        protected Object resume(DynamicObject generator, Object value) {
+        protected Object resume(JSDynamicObject generator, Object value) {
             Object generatorTarget = getGeneratorTarget.getValue(generator);
             if (generatorTarget != Undefined.instance) {
                 Object generatorContext = getGeneratorContext.getValue(generator);

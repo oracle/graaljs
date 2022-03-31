@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins;
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.ArrayBufferPrototype;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferAbstractSliceNode;
@@ -56,6 +55,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Contains builtins for {@linkplain JSSharedArrayBuffer}.prototype.
@@ -87,13 +87,13 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
             super(context, builtin);
         }
 
-        private DynamicObject constructNewSharedArrayBuffer(DynamicObject thisObj, int newLen) {
-            DynamicObject defaultConstructor = getRealm().getSharedArrayBufferConstructor();
-            DynamicObject constr = getArraySpeciesConstructorNode().speciesConstructor(thisObj, defaultConstructor);
-            return (DynamicObject) getArraySpeciesConstructorNode().construct(constr, newLen);
+        private JSDynamicObject constructNewSharedArrayBuffer(JSDynamicObject thisObj, int newLen) {
+            JSDynamicObject defaultConstructor = getRealm().getSharedArrayBufferConstructor();
+            JSDynamicObject constr = getArraySpeciesConstructorNode().speciesConstructor(thisObj, defaultConstructor);
+            return (JSDynamicObject) getArraySpeciesConstructorNode().construct(constr, newLen);
         }
 
-        private void checkErrors(DynamicObject resObj, DynamicObject thisObj, int newLen) {
+        private void checkErrors(JSDynamicObject resObj, JSDynamicObject thisObj, int newLen) {
             if (!JSSharedArrayBuffer.isJSSharedArrayBuffer(resObj)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("SharedArrayBuffer expected");
@@ -109,14 +109,14 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
         }
 
         @Specialization(guards = "isJSSharedArrayBuffer(thisObj)")
-        protected DynamicObject sliceSharedIntInt(DynamicObject thisObj, int begin, int end) {
+        protected JSDynamicObject sliceSharedIntInt(JSDynamicObject thisObj, int begin, int end) {
             ByteBuffer byteBuffer = JSSharedArrayBuffer.getDirectByteBuffer(thisObj);
             int byteLength = JSArrayBuffer.getDirectByteLength(thisObj);
             int clampedBegin = clampIndex(begin, 0, byteLength);
             int clampedEnd = clampIndex(end, clampedBegin, byteLength);
             int newLen = clampedEnd - clampedBegin;
 
-            DynamicObject resObj = constructNewSharedArrayBuffer(thisObj, newLen);
+            JSDynamicObject resObj = constructNewSharedArrayBuffer(thisObj, newLen);
             checkErrors(resObj, thisObj, newLen);
 
             ByteBuffer resBuffer = JSArrayBuffer.getDirectByteBuffer(resObj);
@@ -125,7 +125,7 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
         }
 
         @Specialization(guards = "isJSSharedArrayBuffer(thisObj)", replaces = "sliceSharedIntInt")
-        protected DynamicObject sliceShared(DynamicObject thisObj, Object begin0, Object end0) {
+        protected JSDynamicObject sliceShared(JSDynamicObject thisObj, Object begin0, Object end0) {
             int len = JSSharedArrayBuffer.getDirectByteBuffer(thisObj).capacity();
             int begin = getStart(begin0, len);
             int end = getEnd(end0, len);
@@ -134,7 +134,7 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSharedArrayBuffer(thisObj)")
-        protected static DynamicObject error(Object thisObj, Object begin0, Object end0) {
+        protected static JSDynamicObject error(Object thisObj, Object begin0, Object end0) {
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
     }

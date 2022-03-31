@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.WeakSetPrototypeBuiltinsFactory.JSWeakSetAddNodeGen;
 import com.oracle.truffle.js.builtins.WeakSetPrototypeBuiltinsFactory.JSWeakSetDeleteNodeGen;
 import com.oracle.truffle.js.builtins.WeakSetPrototypeBuiltinsFactory.JSWeakSetHasNodeGen;
@@ -52,6 +51,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Contains builtins for {@linkplain JSWeakSet}.prototype.
@@ -115,7 +115,7 @@ public final class WeakSetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization(guards = {"isJSWeakSet(thisObj)", "isJSObject(key)"})
-        protected static boolean delete(DynamicObject thisObj, DynamicObject key) {
+        protected static boolean delete(JSDynamicObject thisObj, JSDynamicObject key) {
             return Boundaries.mapRemove(JSWeakSet.getInternalWeakMap(thisObj), key) != null;
         }
 
@@ -142,20 +142,20 @@ public final class WeakSetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization(guards = {"isJSWeakSet(thisObj)", "isJSObject(key)"})
-        protected static DynamicObject add(DynamicObject thisObj, DynamicObject key) {
+        protected static JSDynamicObject add(JSDynamicObject thisObj, JSDynamicObject key) {
             Boundaries.mapPut(JSWeakSet.getInternalWeakMap(thisObj), key, PRESENT);
             return thisObj;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSWeakSet(thisObj)", "!isJSObject(key)"})
-        protected static DynamicObject addNonObjectKey(Object thisObj, Object key) {
+        protected static JSDynamicObject addNonObjectKey(Object thisObj, Object key) {
             throw typeErrorKeyIsNotObject();
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSWeakSet(thisObj)")
-        protected static DynamicObject notWeakSet(Object thisObj, Object key) {
+        protected static JSDynamicObject notWeakSet(Object thisObj, Object key) {
             throw typeErrorWeakSetExpected();
         }
     }
@@ -170,7 +170,7 @@ public final class WeakSetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization(guards = {"isJSWeakSet(thisObj)", "isJSObject(key)"})
-        protected static boolean has(DynamicObject thisObj, DynamicObject key) {
+        protected static boolean has(JSDynamicObject thisObj, JSDynamicObject key) {
             return Boundaries.mapContainsKey(JSWeakSet.getInternalWeakMap(thisObj), key);
         }
 

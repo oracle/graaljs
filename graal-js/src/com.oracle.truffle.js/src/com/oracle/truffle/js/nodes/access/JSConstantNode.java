@@ -48,7 +48,6 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
@@ -90,7 +89,7 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
         } else if (value instanceof SafeInteger) {
             return createSafeInteger((SafeInteger) value);
         } else if (JSDynamicObject.isJSDynamicObject(value)) {
-            return new JSConstantJSObjectNode((DynamicObject) value);
+            return new JSConstantJSObjectNode((JSDynamicObject) value);
         } else {
             assert !(value instanceof String);
             return new JSConstantObjectNode(value);
@@ -362,9 +361,9 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
     }
 
     private static final class JSConstantJSObjectNode extends JSConstantNode {
-        private final DynamicObject objectValue;
+        private final JSDynamicObject objectValue;
 
-        private JSConstantJSObjectNode(DynamicObject obj) {
+        private JSConstantJSObjectNode(JSDynamicObject obj) {
             this.objectValue = obj;
         }
 
@@ -375,7 +374,7 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
 
         @Override
         public boolean isResultAlwaysOfType(Class<?> clazz) {
-            return clazz == DynamicObject.class;
+            return clazz == JSDynamicObject.class;
         }
 
         @Override
@@ -404,7 +403,7 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
 
         @Override
         public boolean isResultAlwaysOfType(Class<?> clazz) {
-            return clazz == DynamicObject.class;
+            return clazz == JSDynamicObject.class;
         }
 
         @Override
@@ -424,7 +423,7 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
 
         @Override
         public boolean isResultAlwaysOfType(Class<?> clazz) {
-            return clazz == DynamicObject.class;
+            return clazz == JSDynamicObject.class;
         }
 
         @Override

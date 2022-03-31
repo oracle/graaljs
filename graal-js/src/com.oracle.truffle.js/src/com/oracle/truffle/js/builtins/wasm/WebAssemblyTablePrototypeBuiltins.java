@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins.wasm;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
@@ -64,6 +63,7 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTable;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTableObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -211,7 +211,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             if (value == Null.instance) {
                 wasmFunction = Null.instance;
             } else if (JSWebAssembly.isExportedFunction(value)) {
-                wasmFunction = JSWebAssembly.getExportedFunction((DynamicObject) value);
+                wasmFunction = JSWebAssembly.getExportedFunction((JSDynamicObject) value);
             } else {
                 errorBranch.enter();
                 throw Errors.createTypeError("WebAssembly.Table.set(): Argument 1 must be null or a WebAssembly function");

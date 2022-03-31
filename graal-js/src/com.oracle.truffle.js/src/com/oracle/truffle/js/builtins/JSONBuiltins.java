@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -150,9 +149,9 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         protected Object parse(Object text, Object reviver,
                         @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
             Object unfiltered = parseIntl(toString(text));
-            DynamicObject root = JSOrdinary.create(getContext(), getRealm());
+            JSDynamicObject root = JSOrdinary.create(getContext(), getRealm());
             JSObjectUtil.putDataProperty(getContext(), root, Strings.EMPTY_STRING, unfiltered, JSAttributes.getDefault());
-            return walk((DynamicObject) reviver, root, Strings.EMPTY_STRING);
+            return walk((JSDynamicObject) reviver, root, Strings.EMPTY_STRING);
         }
 
         @Specialization(guards = "!isCallable.executeBoolean(reviver)", limit = "1")
@@ -167,10 +166,10 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         }
 
         @TruffleBoundary
-        private Object walk(DynamicObject reviverFn, DynamicObject holder, Object property) {
+        private Object walk(JSDynamicObject reviverFn, JSDynamicObject holder, Object property) {
             Object value = JSObject.get(holder, property);
             if (JSRuntime.isObject(value)) {
-                DynamicObject object = (DynamicObject) value;
+                JSDynamicObject object = (JSDynamicObject) value;
                 if (isArray(object)) {
                     int len = (int) JSRuntime.toLength(JSObject.get(object, JSArray.LENGTH));
                     for (int i = 0; i < len; i++) {
@@ -212,7 +211,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         private final BranchProfile spaceIsStringBranch = BranchProfile.create();
         private final ConditionProfile spaceIsUndefinedProfile = ConditionProfile.createBinaryProfile();
 
-        protected Object jsonStr(Object jsonData, Object keyStr, DynamicObject holder) {
+        protected Object jsonStr(Object jsonData, Object keyStr, JSDynamicObject holder) {
             if (jsonStringifyStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 jsonStringifyStringNode = insert(JSONStringifyStringNode.create(getContext()));
@@ -238,13 +237,13 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         }
 
         @Specialization(guards = "isCallable(replacerFn)")
-        protected Object stringify(Object value, DynamicObject replacerFn, Object spaceParam) {
+        protected Object stringify(Object value, JSDynamicObject replacerFn, Object spaceParam) {
             assert JSRuntime.isCallable(replacerFn);
             return stringifyIntl(value, spaceParam, replacerFn, null);
         }
 
         @Specialization(guards = "isArray(replacerObj)")
-        protected Object stringifyReplacerArray(Object value, DynamicObject replacerObj, Object spaceParam) {
+        protected Object stringifyReplacerArray(Object value, JSDynamicObject replacerObj, Object spaceParam) {
             int len = (int) JSRuntime.toLength(JSObject.get(replacerObj, JSArray.LENGTH));
             List<Object> replacerList = new ArrayList<>();
             for (int i = 0; i < len; i++) {
@@ -294,10 +293,10 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
             return stringifyIntl(value, spaceParam, null, null);
         }
 
-        private Object stringifyIntl(Object value, Object spaceParam, DynamicObject replacerFnObj, List<Object> replacerList) {
+        private Object stringifyIntl(Object value, Object spaceParam, JSDynamicObject replacerFnObj, List<Object> replacerList) {
             final TruffleString gap = spaceIsUndefinedProfile.profile(spaceParam == Undefined.instance) ? Strings.EMPTY_STRING : getGap(spaceParam);
 
-            DynamicObject wrapper = JSOrdinary.create(getContext(), getRealm());
+            JSDynamicObject wrapper = JSOrdinary.create(getContext(), getRealm());
             if (createWrapperPropertyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 createWrapperPropertyNode = insert(CreateDataPropertyNode.create(getContext(), Strings.EMPTY_STRING));

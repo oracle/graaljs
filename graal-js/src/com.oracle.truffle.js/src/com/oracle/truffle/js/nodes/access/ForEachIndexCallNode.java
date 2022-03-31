@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.LoopConditionProfile;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.BasicArrayOperation;
@@ -136,17 +135,17 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     public final Object executeForEachIndex(Object target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
         boolean isArray = isArrayNode.execute(target);
         if (isArray && context.getArrayPrototypeNoElementsAssumption().isValid()) {
-            return executeForEachIndexFast((DynamicObject) target, callback, callbackThisArg, fromIndex, length, initialResult);
+            return executeForEachIndexFast((JSDynamicObject) target, callback, callbackThisArg, fromIndex, length, initialResult);
         } else {
             return executeForEachIndexSlow(target, callback, callbackThisArg, fromIndex, length, initialResult);
         }
     }
 
-    protected abstract Object executeForEachIndexFast(DynamicObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult);
+    protected abstract Object executeForEachIndexFast(JSDynamicObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult);
 
     protected abstract Object executeForEachIndexSlow(Object target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult);
 
-    protected final long firstElementIndex(DynamicObject target, long length) {
+    protected final long firstElementIndex(JSDynamicObject target, long length) {
         if (firstElementIndexNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             firstElementIndexNode = insert(JSArrayFirstElementIndexNode.create(context));
@@ -154,7 +153,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         return firstElementIndexNode.executeLong(target, length);
     }
 
-    protected final long lastElementIndex(DynamicObject target, long length) {
+    protected final long lastElementIndex(JSDynamicObject target, long length) {
         if (lastElementIndexNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             lastElementIndexNode = insert(JSArrayLastElementIndexNode.create(context));
@@ -185,14 +184,14 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     protected Object getElement(Object target, long index, boolean isForeign, boolean isForeignArray) {
         if (!isForeign) {
             assert JSDynamicObject.isJSDynamicObject(target);
-            return JSObject.get((DynamicObject) target, index, targetClassProfile);
+            return JSObject.get((JSDynamicObject) target, index, targetClassProfile);
         } else {
             return foreignRead(target, index, isForeignArray);
         }
     }
 
     protected final boolean hasDetachedBuffer(Object view) {
-        return !context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBufferView.isJSArrayBufferView(view) && JSArrayBufferView.hasDetachedBuffer((DynamicObject) view);
+        return !context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBufferView.isJSArrayBufferView(view) && JSArrayBufferView.hasDetachedBuffer((JSDynamicObject) view);
     }
 
     protected final Object callback(long index, Object value, Object target, Object callback, Object callbackThisArg, Object currentResult) {
@@ -205,7 +204,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
     }
 
-    protected final Object readElementInBounds(DynamicObject target, long index) {
+    protected final Object readElementInBounds(JSDynamicObject target, long index) {
         return readElementNode.executeArrayGet(target, JSObject.getArray(target), index, target, Undefined.instance, context);
     }
 
@@ -227,7 +226,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected Object executeForEachIndexFast(DynamicObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
+        protected Object executeForEachIndexFast(JSDynamicObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
             long index = fromIndexZero.profile(fromIndex == 0) ? firstElementIndex(target, length) : nextElementIndex(target, fromIndex - 1, length);
             Object currentResult = initialResult;
             long count = 0;
@@ -269,7 +268,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             return currentResult;
         }
 
-        private long nextElementIndex(DynamicObject target, long currentIndex, long length) {
+        private long nextElementIndex(JSDynamicObject target, long currentIndex, long length) {
             if (nextElementIndexNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 nextElementIndexNode = insert(JSArrayNextElementIndexNode.create(context));
@@ -286,7 +285,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected Object executeForEachIndexFast(DynamicObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
+        protected Object executeForEachIndexFast(JSDynamicObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
             assert fromIndex < length;
             long index = previousElementIndex(target, fromIndex + 1);
             // NB: cannot rely on lastElementIndex here: can be > length (e.g. arguments object)
@@ -330,7 +329,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             return currentResult;
         }
 
-        private long previousElementIndex(DynamicObject target, long currentIndex) {
+        private long previousElementIndex(JSDynamicObject target, long currentIndex) {
             if (previousElementIndexNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 previousElementIndexNode = insert(JSArrayPreviousElementIndexNode.create(context));

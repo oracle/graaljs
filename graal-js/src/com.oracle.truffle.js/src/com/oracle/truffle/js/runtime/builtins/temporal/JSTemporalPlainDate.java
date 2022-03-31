@@ -56,7 +56,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -72,6 +71,7 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -92,7 +92,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return TO_STRING_TAG;
     }
 
@@ -102,9 +102,9 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject constructor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
 
         JSObjectUtil.putBuiltinAccessorProperty(prototype, CALENDAR, realm.lookupAccessor(TemporalPlainDatePrototypeBuiltins.BUILTINS, CALENDAR));
@@ -127,12 +127,12 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, JSTemporalPlainDate.INSTANCE, context);
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getTemporalPlainDatePrototype();
     }
 
@@ -144,7 +144,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         return obj instanceof JSTemporalPlainDateObject;
     }
 
-    public static JSTemporalPlainDateObject create(JSContext context, int year, int month, int day, DynamicObject calendar, BranchProfile errorBranch) {
+    public static JSTemporalPlainDateObject create(JSContext context, int year, int month, int day, JSDynamicObject calendar, BranchProfile errorBranch) {
         if (!TemporalUtil.validateISODate(year, month, day)) {
             errorBranch.enter();
             throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
@@ -156,7 +156,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         return createIntl(context, year, month, day, calendar);
     }
 
-    public static JSTemporalPlainDateObject create(JSContext context, int year, int month, int day, DynamicObject calendar) {
+    public static JSTemporalPlainDateObject create(JSContext context, int year, int month, int day, JSDynamicObject calendar) {
         if (!TemporalUtil.validateISODate(year, month, day)) {
             throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
         }
@@ -166,10 +166,10 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         return createIntl(context, year, month, day, calendar);
     }
 
-    private static JSTemporalPlainDateObject createIntl(JSContext context, int year, int month, int day, DynamicObject calendar) {
+    private static JSTemporalPlainDateObject createIntl(JSContext context, int year, int month, int day, JSDynamicObject calendar) {
         JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalPlainDateFactory();
-        DynamicObject object = factory.initProto(new JSTemporalPlainDateObject(factory.getShape(realm),
+        JSDynamicObject object = factory.initProto(new JSTemporalPlainDateObject(factory.getShape(realm),
                         year, month, day, calendar), realm);
         return (JSTemporalPlainDateObject) context.trackAllocation(object);
     }

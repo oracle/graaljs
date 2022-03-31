@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,17 +40,16 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Source Text Module Record.
@@ -78,11 +77,11 @@ public class JSModuleRecord extends ScriptOrModule {
     private Object executionResult;
 
     /** Lazily initialized Module Namespace object ({@code [[Namespace]]}). */
-    private DynamicObject namespace;
+    private JSDynamicObject namespace;
     /** Lazily initialized frame ({@code [[Environment]]}). */
     private MaterializedFrame environment;
     /** Lazily initialized import.meta object ({@code [[ImportMeta]]}). */
-    private DynamicObject importMeta;
+    private JSDynamicObject importMeta;
 
     // [HostDefined]
     private Object hostDefined;
@@ -162,11 +161,11 @@ public class JSModuleRecord extends ScriptOrModule {
         this.evaluationError = evaluationError;
     }
 
-    public DynamicObject getNamespace() {
+    public JSDynamicObject getNamespace() {
         return namespace;
     }
 
-    public void setNamespace(DynamicObject namespace) {
+    public void setNamespace(JSDynamicObject namespace) {
         assert this.namespace == null;
         this.namespace = namespace;
     }
@@ -224,15 +223,15 @@ public class JSModuleRecord extends ScriptOrModule {
         }
     }
 
-    public DynamicObject getImportMeta() {
+    public JSDynamicObject getImportMeta() {
         if (importMeta == null) {
             importMeta = createMetaObject();
         }
         return importMeta;
     }
 
-    private DynamicObject createMetaObject() {
-        DynamicObject metaObj = JSOrdinary.createWithNullPrototype(context);
+    private JSDynamicObject createMetaObject() {
+        JSDynamicObject metaObj = JSOrdinary.createWithNullPrototype(context);
         if (context.hasImportMetaInitializerBeenSet()) {
             context.notifyImportMetaInitializer(metaObj, this);
         } else {
@@ -242,7 +241,7 @@ public class JSModuleRecord extends ScriptOrModule {
     }
 
     @TruffleBoundary
-    private void initializeMetaObject(DynamicObject metaObj) {
+    private void initializeMetaObject(JSDynamicObject metaObj) {
         JSObject.set(metaObj, Strings.URL, Strings.fromJavaString(getSource().getURI().toString()));
     }
 

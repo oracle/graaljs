@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -67,6 +66,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.interop.InteropFunction;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -181,9 +181,9 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
     }
 
     @TruffleBoundary
-    private static SourceSection getSourceLocationImpl(DynamicObject receiver) {
+    private static SourceSection getSourceLocationImpl(JSDynamicObject receiver) {
         if (JSFunction.isJSFunction(receiver)) {
-            DynamicObject func = receiver;
+            JSDynamicObject func = receiver;
             CallTarget ct = JSFunction.getCallTarget(func);
             if (JSFunction.isBoundFunction(func)) {
                 func = JSFunction.getBoundTargetFunction(func);
@@ -229,7 +229,7 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
                 obj = ((JSException) obj).getErrorObjectEager();
             }
             if (JSGuards.isJSObject(obj) && !JSProxy.isJSProxy(obj)) {
-                DynamicObject proto = JSObject.getPrototype((DynamicObject) obj);
+                JSDynamicObject proto = JSObject.getPrototype((JSDynamicObject) obj);
                 while (proto != Null.instance) {
                     if (proto == constructorPrototype) {
                         return true;
@@ -249,7 +249,7 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
     }
 
     public static JSFunctionObject createBound(Shape shape, JSFunctionData functionData, JSRealm realm, Object classPrototype,
-                    DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
+                    JSDynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
         return new Bound(shape, functionData, realm, classPrototype, boundTargetFunction, boundThis, boundArguments);
     }
 
@@ -261,7 +261,7 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
 
     public static final class Bound extends JSFunctionObject {
         protected Bound(Shape shape, JSFunctionData functionData, JSRealm realm, Object classPrototype,
-                        DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
+                        JSDynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
             super(shape, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, realm, classPrototype);
             this.boundTargetFunction = boundTargetFunction;
             this.boundThis = boundThis;
@@ -269,13 +269,13 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
             this.boundLength = calculateBoundLength();
         }
 
-        private final DynamicObject boundTargetFunction;
+        private final JSDynamicObject boundTargetFunction;
         private final Object boundThis;
         private final Object[] boundArguments;
         private final int boundLength;
         private TruffleString boundName;
 
-        public DynamicObject getBoundTargetFunction() {
+        public JSDynamicObject getBoundTargetFunction() {
             return boundTargetFunction;
         }
 
@@ -303,7 +303,7 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
             setTargetName(getFunctionName(boundTargetFunction));
         }
 
-        private static TruffleString getFunctionName(DynamicObject function) {
+        private static TruffleString getFunctionName(JSDynamicObject function) {
             if (JSFunction.isBoundFunction(function)) {
                 return ((JSFunctionObject.Bound) function).getBoundName();
             } else {
@@ -319,7 +319,7 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
             return Math.max(0, getBoundFunctionLength(boundTargetFunction) - boundArguments.length);
         }
 
-        private static int getBoundFunctionLength(DynamicObject function) {
+        private static int getBoundFunctionLength(JSDynamicObject function) {
             if (JSFunction.isBoundFunction(function)) {
                 return ((JSFunctionObject.Bound) function).getBoundLength();
             } else {

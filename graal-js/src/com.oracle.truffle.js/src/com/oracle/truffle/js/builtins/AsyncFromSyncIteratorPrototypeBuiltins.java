@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.AsyncFromSyncIteratorPrototypeBuiltinsFactory.AsyncFromSyncNextNodeGen;
@@ -164,7 +163,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             return newPromiseCapabilityNode.executeDefault();
         }
 
-        protected boolean isAsyncFromSyncIterator(DynamicObject thiz) {
+        protected boolean isAsyncFromSyncIterator(JSDynamicObject thiz) {
             return thiz != Undefined.instance && getSyncIteratorRecordNode.getValue(thiz) != Undefined.instance;
         }
 
@@ -181,7 +180,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             executePromiseMethodNode.executeCall(JSArguments.createOneArg(Undefined.instance, valueWrapperCapability.getResolve(), result));
         }
 
-        protected Object getPromise(DynamicObject promiseCapability) {
+        protected Object getPromise(JSDynamicObject promiseCapability) {
             return getPromiseNode.getValue(promiseCapability);
         }
 
@@ -201,7 +200,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 return promiseCapability.getPromise();
             }
             JSRealm realm = getRealm();
-            DynamicObject valueWrapper;
+            JSDynamicObject valueWrapper;
             if (getContext().usePromiseResolve()) {
                 valueWrapper = promiseResolveNode.execute(realm.getPromiseConstructor(), returnValue);
             } else {
@@ -209,7 +208,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 promiseCapabilityResolve(valueWrapperCapability, returnValue);
                 valueWrapper = valueWrapperCapability.getPromise();
             }
-            DynamicObject onFulfilled = createIteratorValueUnwrapFunction(realm, done);
+            JSDynamicObject onFulfilled = createIteratorValueUnwrapFunction(realm, done);
             performPromiseThenNode.execute(valueWrapper, onFulfilled, Undefined.instance, promiseCapability);
             return promiseCapability.getPromise();
         }
@@ -217,10 +216,10 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         /**
          * Async-from-Sync Iterator Value Unwrap Functions.
          */
-        protected final DynamicObject createIteratorValueUnwrapFunction(JSRealm realm, boolean done) {
+        protected final JSDynamicObject createIteratorValueUnwrapFunction(JSRealm realm, boolean done) {
             JSContext context = realm.getContext();
             JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncFromSyncIteratorValueUnwrap, c -> createIteratorValueUnwrapImpl(c));
-            DynamicObject function = JSFunction.create(realm, functionData);
+            JSDynamicObject function = JSFunction.create(realm, functionData);
             setDoneNode.setValueBoolean(function, done);
             return function;
         }
@@ -233,7 +232,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                    JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
                     Object value = valueNode.execute(frame);
                     boolean done;
                     try {
@@ -255,7 +254,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
 
         @Specialization(guards = "isObject(thisObj)")
-        protected Object next(VirtualFrame frame, DynamicObject thisObj, Object value) {
+        protected Object next(VirtualFrame frame, JSDynamicObject thisObj, Object value) {
             PromiseCapabilityRecord promiseCapability = createPromiseCapability();
             if (!isAsyncFromSyncIterator(thisObj)) {
                 JSException typeError = Errors.createTypeErrorIncompatibleReceiver(thisObj);
@@ -292,7 +291,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         protected abstract Object processUndefinedMethod(VirtualFrame frame, PromiseCapabilityRecord promiseCapability, Object value);
 
-        protected Object doMethod(VirtualFrame frame, DynamicObject thisObj, Object value) {
+        protected Object doMethod(VirtualFrame frame, JSDynamicObject thisObj, Object value) {
             PromiseCapabilityRecord promiseCapability = createPromiseCapability();
             if (!isAsyncFromSyncIterator(thisObj)) {
                 JSException typeError = Errors.createTypeErrorIncompatibleReceiver(thisObj);
@@ -300,7 +299,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 return promiseCapability.getPromise();
             }
             IteratorRecord syncIteratorRecord = (IteratorRecord) getSyncIteratorRecordNode.getValue(thisObj);
-            DynamicObject syncIterator = syncIteratorRecord.getIterator();
+            JSDynamicObject syncIterator = syncIteratorRecord.getIterator();
             Object method = getMethod().executeWithTarget(syncIterator);
             if (method == Undefined.instance) {
                 return processUndefinedMethod(frame, promiseCapability, value);
@@ -342,13 +341,13 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         @Override
         protected Object processUndefinedMethod(VirtualFrame frame, PromiseCapabilityRecord promiseCapability, Object value) {
-            DynamicObject iterResult = createIterResult.execute(frame, value, true);
+            JSDynamicObject iterResult = createIterResult.execute(frame, value, true);
             promiseCapabilityResolve(promiseCapability, iterResult);
             return promiseCapability.getPromise();
         }
 
         @Specialization(guards = "isObject(thisObj)")
-        protected Object resume(VirtualFrame frame, DynamicObject thisObj, Object value) {
+        protected Object resume(VirtualFrame frame, JSDynamicObject thisObj, Object value) {
             return doMethod(frame, thisObj, value);
         }
     }
@@ -374,7 +373,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
 
         @Specialization(guards = "isObject(thisObj)")
-        protected Object doThrow(VirtualFrame frame, DynamicObject thisObj, Object value) {
+        protected Object doThrow(VirtualFrame frame, JSDynamicObject thisObj, Object value) {
             return doMethod(frame, thisObj, value);
         }
     }

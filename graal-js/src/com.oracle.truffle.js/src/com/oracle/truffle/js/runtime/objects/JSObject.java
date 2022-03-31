@@ -57,7 +57,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -142,7 +141,7 @@ public abstract class JSObject extends JSDynamicObject {
     }
 
     @TruffleBoundary
-    protected static String[] filterEnumerableNames(DynamicObject target, Iterable<Object> ownKeys, JSClass jsclass) {
+    protected static String[] filterEnumerableNames(JSDynamicObject target, Iterable<Object> ownKeys, JSClass jsclass) {
         List<String> names = new ArrayList<>();
         for (Object obj : ownKeys) {
             if (Strings.isTString(obj) && !JSRuntime.isArrayIndex(obj)) {
@@ -166,7 +165,7 @@ public abstract class JSObject extends JSDynamicObject {
                     @Cached(value = "language(self).bindMemberFunctions()", allowUncached = true) boolean bindMemberFunctions,
                     @Cached @Exclusive ExportValueNode exportNode) throws UnknownIdentifierException {
         TruffleString tStringKey = Strings.fromJavaString(key);
-        DynamicObject target = this;
+        JSDynamicObject target = this;
         Object result;
         if (readNode == null) {
             result = JSObject.getOrDefault(target, tStringKey, target, null);
@@ -191,7 +190,7 @@ public abstract class JSObject extends JSDynamicObject {
                     @Cached ImportValueNode castValueNode,
                     @Cached(value = "createCachedInterop()", uncached = "getUncachedWrite()") WriteElementNode writeNode)
                     throws UnknownIdentifierException, UnsupportedMessageException {
-        DynamicObject target = this;
+        JSDynamicObject target = this;
         if (testIntegrityLevel(true)) {
             throw UnsupportedMessageException.create();
         }
@@ -314,65 +313,65 @@ public abstract class JSObject extends JSDynamicObject {
         return null;
     }
 
-    public static JSClass getJSClass(DynamicObject obj) {
+    public static JSClass getJSClass(JSDynamicObject obj) {
         return JSShape.getJSClass(obj.getShape());
     }
 
     @TruffleBoundary
-    public static JSDynamicObject getPrototype(DynamicObject obj) {
+    public static JSDynamicObject getPrototype(JSDynamicObject obj) {
         return JSObject.getJSClass(obj).getPrototypeOf(obj);
     }
 
-    public static JSDynamicObject getPrototype(DynamicObject obj, JSClassProfile jsclassProfile) {
+    public static JSDynamicObject getPrototype(JSDynamicObject obj, JSClassProfile jsclassProfile) {
         return jsclassProfile.getJSClass(obj).getPrototypeOf(obj);
     }
 
     @TruffleBoundary
-    public static boolean setPrototype(DynamicObject obj, DynamicObject newPrototype) {
+    public static boolean setPrototype(JSDynamicObject obj, JSDynamicObject newPrototype) {
         assert newPrototype != null;
         return JSObject.getJSClass(obj).setPrototypeOf(obj, newPrototype);
     }
 
-    public static boolean setPrototype(DynamicObject obj, DynamicObject newPrototype, JSClassProfile jsclassProfile) {
+    public static boolean setPrototype(JSDynamicObject obj, JSDynamicObject newPrototype, JSClassProfile jsclassProfile) {
         assert newPrototype != null;
         return jsclassProfile.getJSClass(obj).setPrototypeOf(obj, newPrototype);
     }
 
     @TruffleBoundary
-    public static Object get(DynamicObject obj, long index) {
+    public static Object get(JSDynamicObject obj, long index) {
         return JSObject.getJSClass(obj).get(obj, index);
     }
 
     @TruffleBoundary
-    public static Object get(DynamicObject obj, Object key) {
+    public static Object get(JSDynamicObject obj, Object key) {
         assert JSRuntime.isPropertyKey(key);
         return JSObject.getJSClass(obj).get(obj, key);
     }
 
     @TruffleBoundary
-    public static Object getMethod(DynamicObject obj, Object name) {
+    public static Object getMethod(JSDynamicObject obj, Object name) {
         assert JSRuntime.isPropertyKey(name);
         Object result = JSRuntime.nullToUndefined(JSObject.getJSClass(obj).getMethodHelper(obj, obj, name, null));
         return (result == Null.instance) ? Undefined.instance : result;
     }
 
     @TruffleBoundary
-    public static boolean set(DynamicObject obj, long index, Object value) {
+    public static boolean set(JSDynamicObject obj, long index, Object value) {
         return set(obj, index, value, false, null);
     }
 
     @TruffleBoundary
-    public static boolean set(DynamicObject obj, Object key, Object value) {
+    public static boolean set(JSDynamicObject obj, Object key, Object value) {
         return set(obj, key, value, false, null);
     }
 
     @TruffleBoundary
-    public static boolean set(DynamicObject obj, long index, Object value, boolean isStrict, Node encapsulatingNode) {
+    public static boolean set(JSDynamicObject obj, long index, Object value, boolean isStrict, Node encapsulatingNode) {
         return JSObject.getJSClass(obj).set(obj, index, value, obj, isStrict, encapsulatingNode);
     }
 
     @TruffleBoundary
-    public static boolean set(DynamicObject obj, Object key, Object value, boolean isStrict, Node encapsulatingNode) {
+    public static boolean set(JSDynamicObject obj, Object key, Object value, boolean isStrict, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
         assert !(value instanceof String);
         return JSObject.getJSClass(obj).set(obj, key, value, obj, isStrict, encapsulatingNode);
@@ -381,92 +380,92 @@ public abstract class JSObject extends JSDynamicObject {
     /**
      * [[Set]] with a receiver different than the default.
      */
-    public static boolean setWithReceiver(DynamicObject obj, Object key, Object value, Object receiver, boolean isStrict, JSClassProfile classProfile, Node encapsulatingNode) {
+    public static boolean setWithReceiver(JSDynamicObject obj, Object key, Object value, Object receiver, boolean isStrict, JSClassProfile classProfile, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
         assert !(value instanceof String);
         return classProfile.getJSClass(obj).set(obj, key, value, receiver, isStrict, encapsulatingNode);
     }
 
-    public static boolean setWithReceiver(DynamicObject obj, long index, Object value, Object receiver, boolean isStrict, JSClassProfile classProfile, Node encapsulatingNode) {
+    public static boolean setWithReceiver(JSDynamicObject obj, long index, Object value, Object receiver, boolean isStrict, JSClassProfile classProfile, Node encapsulatingNode) {
         return classProfile.getJSClass(obj).set(obj, index, value, receiver, isStrict, encapsulatingNode);
     }
 
     @TruffleBoundary
-    public static boolean delete(DynamicObject obj, long index) {
+    public static boolean delete(JSDynamicObject obj, long index) {
         return JSObject.getJSClass(obj).delete(obj, index, false);
     }
 
     @TruffleBoundary
-    public static boolean delete(DynamicObject obj, long index, boolean isStrict) {
+    public static boolean delete(JSDynamicObject obj, long index, boolean isStrict) {
         return JSObject.getJSClass(obj).delete(obj, index, isStrict);
     }
 
-    public static boolean delete(DynamicObject obj, long index, boolean isStrict, JSClassProfile classProfile) {
+    public static boolean delete(JSDynamicObject obj, long index, boolean isStrict, JSClassProfile classProfile) {
         return classProfile.getJSClass(obj).delete(obj, index, isStrict);
     }
 
     @TruffleBoundary
-    public static boolean delete(DynamicObject obj, Object key) {
+    public static boolean delete(JSDynamicObject obj, Object key) {
         return delete(obj, key, false);
     }
 
     @TruffleBoundary
-    public static boolean delete(DynamicObject obj, Object key, boolean isStrict) {
+    public static boolean delete(JSDynamicObject obj, Object key, boolean isStrict) {
         assert JSRuntime.isPropertyKey(key);
         return JSObject.getJSClass(obj).delete(obj, key, isStrict);
     }
 
-    public static boolean delete(DynamicObject obj, Object key, boolean isStrict, JSClassProfile classProfile) {
+    public static boolean delete(JSDynamicObject obj, Object key, boolean isStrict, JSClassProfile classProfile) {
         assert JSRuntime.isPropertyKey(key);
         return classProfile.getJSClass(obj).delete(obj, key, isStrict);
     }
 
     @TruffleBoundary
-    public static boolean hasOwnProperty(DynamicObject obj, long index) {
+    public static boolean hasOwnProperty(JSDynamicObject obj, long index) {
         return JSObject.getJSClass(obj).hasOwnProperty(obj, index);
     }
 
-    public static boolean hasOwnProperty(DynamicObject obj, long index, JSClassProfile classProfile) {
+    public static boolean hasOwnProperty(JSDynamicObject obj, long index, JSClassProfile classProfile) {
         return classProfile.getJSClass(obj).hasOwnProperty(obj, index);
     }
 
     @TruffleBoundary
-    public static boolean hasOwnProperty(DynamicObject obj, Object key) {
+    public static boolean hasOwnProperty(JSDynamicObject obj, Object key) {
         assert JSRuntime.isPropertyKey(key);
         return JSObject.getJSClass(obj).hasOwnProperty(obj, key);
     }
 
-    public static boolean hasOwnProperty(DynamicObject obj, Object key, JSClassProfile classProfile) {
+    public static boolean hasOwnProperty(JSDynamicObject obj, Object key, JSClassProfile classProfile) {
         assert JSRuntime.isPropertyKey(key);
         return classProfile.getJSClass(obj).hasOwnProperty(obj, key);
     }
 
     @TruffleBoundary
-    public static boolean hasProperty(DynamicObject obj, long index) {
+    public static boolean hasProperty(JSDynamicObject obj, long index) {
         return JSObject.getJSClass(obj).hasProperty(obj, index);
     }
 
-    public static boolean hasProperty(DynamicObject obj, long index, JSClassProfile classProfile) {
+    public static boolean hasProperty(JSDynamicObject obj, long index, JSClassProfile classProfile) {
         return classProfile.getJSClass(obj).hasProperty(obj, index);
     }
 
     @TruffleBoundary
-    public static boolean hasProperty(DynamicObject obj, Object key) {
+    public static boolean hasProperty(JSDynamicObject obj, Object key) {
         assert JSRuntime.isPropertyKey(key);
         return JSObject.getJSClass(obj).hasProperty(obj, key);
     }
 
-    public static boolean hasProperty(DynamicObject obj, Object key, JSClassProfile classProfile) {
+    public static boolean hasProperty(JSDynamicObject obj, Object key, JSClassProfile classProfile) {
         assert JSRuntime.isPropertyKey(key);
         return classProfile.getJSClass(obj).hasProperty(obj, key);
     }
 
-    public static PropertyDescriptor getOwnProperty(DynamicObject obj, Object key) {
+    public static PropertyDescriptor getOwnProperty(JSDynamicObject obj, Object key) {
         assert JSRuntime.isPropertyKey(key);
         return JSObject.getJSClass(obj).getOwnProperty(obj, key);
     }
 
-    public static PropertyDescriptor getOwnProperty(DynamicObject obj, Object key, JSClassProfile classProfile) {
+    public static PropertyDescriptor getOwnProperty(JSDynamicObject obj, Object key, JSClassProfile classProfile) {
         assert JSRuntime.isPropertyKey(key);
         return classProfile.getJSClass(obj).getOwnProperty(obj, key);
     }
@@ -474,11 +473,11 @@ public abstract class JSObject extends JSDynamicObject {
     /**
      * [[OwnPropertyKeys]]. The returned keys are instanceof (String, Symbol).
      */
-    public static List<Object> ownPropertyKeys(DynamicObject obj) {
+    public static List<Object> ownPropertyKeys(JSDynamicObject obj) {
         return JSObject.getJSClass(obj).ownPropertyKeys(obj);
     }
 
-    public static List<Object> ownPropertyKeys(DynamicObject obj, JSClassProfile classProfile) {
+    public static List<Object> ownPropertyKeys(JSDynamicObject obj, JSClassProfile classProfile) {
         return classProfile.getJSClass(obj).ownPropertyKeys(obj);
     }
 
@@ -486,7 +485,7 @@ public abstract class JSObject extends JSDynamicObject {
      * 7.3.21 EnumerableOwnNames (O).
      */
     @TruffleBoundary
-    public static List<TruffleString> enumerableOwnNames(DynamicObject thisObj) {
+    public static List<TruffleString> enumerableOwnNames(JSDynamicObject thisObj) {
         JSClass jsclass = JSObject.getJSClass(thisObj);
         if (JSConfig.FastOwnKeys && jsclass.hasOnlyShapeProperties(thisObj)) {
             return JSShape.getEnumerablePropertyNames(thisObj.getShape());
@@ -505,54 +504,54 @@ public abstract class JSObject extends JSDynamicObject {
     }
 
     @TruffleBoundary
-    public static boolean defineOwnProperty(DynamicObject obj, Object key, PropertyDescriptor desc) {
+    public static boolean defineOwnProperty(JSDynamicObject obj, Object key, PropertyDescriptor desc) {
         assert JSRuntime.isPropertyKey(key);
         return JSObject.getJSClass(obj).defineOwnProperty(obj, key, desc, false);
     }
 
     @TruffleBoundary
-    public static boolean defineOwnProperty(DynamicObject obj, Object key, PropertyDescriptor desc, boolean doThrow) {
+    public static boolean defineOwnProperty(JSDynamicObject obj, Object key, PropertyDescriptor desc, boolean doThrow) {
         assert JSRuntime.isPropertyKey(key);
         return JSObject.getJSClass(obj).defineOwnProperty(obj, key, desc, doThrow);
     }
 
-    public static Object get(DynamicObject obj, Object key, JSClassProfile jsclassProfile) {
+    public static Object get(JSDynamicObject obj, Object key, JSClassProfile jsclassProfile) {
         assert JSRuntime.isPropertyKey(key);
         return jsclassProfile.getJSClass(obj).get(obj, key);
     }
 
-    public static Object get(DynamicObject obj, long index, JSClassProfile jsclassProfile) {
+    public static Object get(JSDynamicObject obj, long index, JSClassProfile jsclassProfile) {
         return jsclassProfile.getJSClass(obj).get(obj, index);
     }
 
-    public static Object getOrDefault(DynamicObject obj, Object key, Object receiver, Object defaultValue, JSClassProfile jsclassProfile, Node encapsulatingNode) {
+    public static Object getOrDefault(JSDynamicObject obj, Object key, Object receiver, Object defaultValue, JSClassProfile jsclassProfile, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
         Object result = jsclassProfile.getJSClass(obj).getHelper(obj, receiver, key, encapsulatingNode);
         return result == null ? defaultValue : result;
     }
 
-    public static Object getOrDefault(DynamicObject obj, long index, Object receiver, Object defaultValue, JSClassProfile jsclassProfile, Node encapsulatingNode) {
+    public static Object getOrDefault(JSDynamicObject obj, long index, Object receiver, Object defaultValue, JSClassProfile jsclassProfile, Node encapsulatingNode) {
         Object result = jsclassProfile.getJSClass(obj).getHelper(obj, receiver, index, encapsulatingNode);
         return result == null ? defaultValue : result;
     }
 
-    public static Object getOrDefault(DynamicObject obj, Object key, Object receiver, Object defaultValue) {
+    public static Object getOrDefault(JSDynamicObject obj, Object key, Object receiver, Object defaultValue) {
         return getOrDefault(obj, key, receiver, defaultValue, JSClassProfile.getUncached(), null);
     }
 
-    public static Object getOrDefault(DynamicObject obj, long index, Object receiver, Object defaultValue) {
+    public static Object getOrDefault(JSDynamicObject obj, long index, Object receiver, Object defaultValue) {
         return getOrDefault(obj, index, receiver, defaultValue, JSClassProfile.getUncached(), null);
     }
 
     @TruffleBoundary
-    public static Object getWithReceiver(DynamicObject obj, Object key, Object receiver, Node encapsulatingNode) {
+    public static Object getWithReceiver(JSDynamicObject obj, Object key, Object receiver, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
         Object result = getJSClass(obj).getHelper(obj, receiver, key, encapsulatingNode);
         return result == null ? Undefined.instance : result;
     }
 
     @TruffleBoundary
-    public static TruffleString defaultToString(DynamicObject obj) {
+    public static TruffleString defaultToString(JSDynamicObject obj) {
         return JSObject.getJSClass(obj).defaultToString(obj);
     }
 
@@ -560,7 +559,7 @@ public abstract class JSObject extends JSDynamicObject {
      * ES2015 7.1.1 ToPrimitive in case an Object is passed.
      */
     @TruffleBoundary
-    public static Object toPrimitive(DynamicObject obj, Object hint) {
+    public static Object toPrimitive(JSDynamicObject obj, Object hint) {
         assert obj != Null.instance && obj != Undefined.instance;
         Object exoticToPrim = JSObject.getMethod(obj, Symbol.SYMBOL_TO_PRIMITIVE);
         if (exoticToPrim != Undefined.instance) {
@@ -578,7 +577,7 @@ public abstract class JSObject extends JSDynamicObject {
     }
 
     @TruffleBoundary
-    public static Object toPrimitive(DynamicObject obj) {
+    public static Object toPrimitive(JSDynamicObject obj) {
         return toPrimitive(obj, Strings.HINT_DEFAULT);
     }
 
@@ -586,7 +585,7 @@ public abstract class JSObject extends JSDynamicObject {
      * ES2018 7.1.1.1 OrdinaryToPrimitive.
      */
     @TruffleBoundary
-    public static Object ordinaryToPrimitive(DynamicObject obj, Object hint) {
+    public static Object ordinaryToPrimitive(JSDynamicObject obj, Object hint) {
         assert JSRuntime.isObject(obj);
         assert Strings.HINT_STRING.equals(hint) || Strings.HINT_NUMBER.equals(hint);
         Object[] methodNames;
@@ -608,21 +607,21 @@ public abstract class JSObject extends JSDynamicObject {
     }
 
     @TruffleBoundary
-    public static boolean preventExtensions(DynamicObject obj) {
+    public static boolean preventExtensions(JSDynamicObject obj) {
         return preventExtensions(obj, false);
     }
 
     @TruffleBoundary
-    public static boolean preventExtensions(DynamicObject obj, boolean doThrow) {
+    public static boolean preventExtensions(JSDynamicObject obj, boolean doThrow) {
         return JSObject.getJSClass(obj).preventExtensions(obj, doThrow);
     }
 
     @TruffleBoundary
-    public static boolean isExtensible(DynamicObject obj) {
+    public static boolean isExtensible(JSDynamicObject obj) {
         return JSObject.getJSClass(obj).isExtensible(obj);
     }
 
-    public static boolean isExtensible(DynamicObject obj, JSClassProfile classProfile) {
+    public static boolean isExtensible(JSDynamicObject obj, JSClassProfile classProfile) {
         return classProfile.getJSClass(obj).isExtensible(obj);
     }
 
@@ -633,21 +632,21 @@ public abstract class JSObject extends JSDynamicObject {
      * @return the internal property [[Class]] of the object.
      */
     @TruffleBoundary
-    public static TruffleString getClassName(DynamicObject obj) {
+    public static TruffleString getClassName(JSDynamicObject obj) {
         return JSObject.getJSClass(obj).getClassName(obj);
     }
 
     @TruffleBoundary
-    public static boolean isFrozen(DynamicObject obj) {
+    public static boolean isFrozen(JSDynamicObject obj) {
         return testIntegrityLevel(obj, true);
     }
 
     @TruffleBoundary
-    public static boolean isSealed(DynamicObject obj) {
+    public static boolean isSealed(JSDynamicObject obj) {
         return testIntegrityLevel(obj, false);
     }
 
-    public static ScriptArray getArray(DynamicObject obj) {
+    public static ScriptArray getArray(JSDynamicObject obj) {
         assert hasArray(obj);
         if (obj instanceof JSArrayBase) {
             return ((JSArrayBase) obj).getArrayType();
@@ -656,7 +655,7 @@ public abstract class JSObject extends JSDynamicObject {
         }
     }
 
-    public static void setArray(DynamicObject obj, ScriptArray array) {
+    public static void setArray(JSDynamicObject obj, ScriptArray array) {
         assert hasArray(obj);
         ((JSArrayBase) obj).setArrayType(array);
     }
@@ -665,22 +664,22 @@ public abstract class JSObject extends JSDynamicObject {
         return JSArray.isJSArray(obj) || JSArgumentsArray.isJSArgumentsObject(obj) || JSArrayBufferView.isJSArrayBufferView(obj) || JSObjectPrototype.isJSObjectPrototype(obj);
     }
 
-    public static JSContext getJSContext(DynamicObject obj) {
+    public static JSContext getJSContext(JSDynamicObject obj) {
         return JSShape.getJSContext(obj.getShape());
     }
 
     @TruffleBoundary(transferToInterpreterOnException = false)
-    public static boolean testIntegrityLevel(DynamicObject obj, boolean frozen) {
+    public static boolean testIntegrityLevel(JSDynamicObject obj, boolean frozen) {
         return JSObject.getJSClass(obj).testIntegrityLevel(obj, frozen);
     }
 
     @TruffleBoundary
-    public static boolean setIntegrityLevel(DynamicObject obj, boolean freeze) {
+    public static boolean setIntegrityLevel(JSDynamicObject obj, boolean freeze) {
         return setIntegrityLevel(obj, freeze, false);
     }
 
     @TruffleBoundary
-    public static boolean setIntegrityLevel(DynamicObject obj, boolean freeze, boolean doThrow) {
+    public static boolean setIntegrityLevel(JSDynamicObject obj, boolean freeze, boolean doThrow) {
         return JSObject.getJSClass(obj).setIntegrityLevel(obj, freeze, doThrow);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseCombinatorNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.RejectNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.ResolveNodeGen;
@@ -70,6 +69,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -155,8 +155,8 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isJSObject(thisObj)")
-        protected DynamicObject doObject(DynamicObject thisObj, Object iterable) {
-            DynamicObject constructor = thisObj;
+        protected JSDynamicObject doObject(JSDynamicObject thisObj, Object iterable) {
+            JSDynamicObject constructor = thisObj;
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(constructor);
             Object promiseResolve;
             IteratorRecord iteratorRecord;
@@ -184,7 +184,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
         }
 
-        private Object getPromiseResolve(DynamicObject constructor) {
+        private Object getPromiseResolve(JSDynamicObject constructor) {
             assert JSRuntime.isConstructor(constructor);
             Object promiseResolve = getResolve.getValue(constructor);
             if (!isCallable.executeBoolean(promiseResolve)) {
@@ -193,7 +193,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             return promiseResolve;
         }
 
-        protected DynamicObject rejectPromise(Object value, PromiseCapabilityRecord promiseCapability) {
+        protected JSDynamicObject rejectPromise(Object value, PromiseCapabilityRecord promiseCapability) {
             if (callRejectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 callRejectNode = insert(JSFunctionCallNode.createCall());
@@ -221,7 +221,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSObject(thisObj)")
-        protected DynamicObject doNotObject(Object thisObj, Object iterable) {
+        protected JSDynamicObject doNotObject(Object thisObj, Object iterable) {
             throw Errors.createTypeError("Cannot create promise from this type");
         }
     }
@@ -237,7 +237,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isJSObject(constructor)")
-        protected DynamicObject doObject(DynamicObject constructor, Object reason) {
+        protected JSDynamicObject doObject(JSDynamicObject constructor, Object reason) {
             PromiseCapabilityRecord promiseCapability = newPromiseCapability.execute(constructor);
             callReject.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), reason));
             return promiseCapability.getPromise();
@@ -245,7 +245,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSObject(thisObj)")
-        protected DynamicObject doNotObject(Object thisObj, Object iterable) {
+        protected JSDynamicObject doNotObject(Object thisObj, Object iterable) {
             throw Errors.createTypeError("Cannot reject promise from this type");
         }
     }
@@ -259,13 +259,13 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isJSObject(constructor)")
-        protected DynamicObject doObject(DynamicObject constructor, Object value) {
+        protected JSDynamicObject doObject(JSDynamicObject constructor, Object value) {
             return promiseResolve.execute(constructor, value);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSObject(thisObj)")
-        protected DynamicObject doNotObject(Object thisObj, Object iterable) {
+        protected JSDynamicObject doNotObject(Object thisObj, Object iterable) {
             throw Errors.createTypeError("Cannot resolve promise from this type");
         }
     }

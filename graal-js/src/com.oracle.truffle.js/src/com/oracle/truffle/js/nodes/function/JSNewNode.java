@@ -58,7 +58,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -75,6 +74,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -139,7 +139,7 @@ public abstract class JSNewNode extends JavaScriptNode {
     }
 
     @Specialization(guards = "isJSFunction(target)")
-    public Object doNewReturnThis(VirtualFrame frame, DynamicObject target,
+    public Object doNewReturnThis(VirtualFrame frame, JSDynamicObject target,
                     @Cached("createNew()") @Shared("callNew") JSFunctionCallNode callNew) {
         int userArgumentCount = arguments.getCount(frame);
         Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, target, userArgumentCount);
@@ -148,24 +148,24 @@ public abstract class JSNewNode extends JavaScriptNode {
     }
 
     @Specialization(guards = "isJSProxy(proxy)")
-    protected Object doNewJSProxy(VirtualFrame frame, DynamicObject proxy,
+    protected Object doNewJSProxy(VirtualFrame frame, JSDynamicObject proxy,
                     @Cached("createNew()") @Shared("callNew") JSFunctionCallNode callNew) {
         return doNewReturnThis(frame, proxy, callNew);
     }
 
     @Specialization(guards = "isJSAdapter(target)")
-    public Object doJSAdapter(VirtualFrame frame, DynamicObject target) {
+    public Object doJSAdapter(VirtualFrame frame, JSDynamicObject target) {
         Object[] args = getAbstractFunctionArguments(frame);
         Object newFunction = JSObject.get(JSAdapter.getAdaptee(target), JSAdapter.NEW);
         if (JSFunction.isJSFunction(newFunction)) {
-            return JSFunction.call((DynamicObject) newFunction, target, args);
+            return JSFunction.call((JSDynamicObject) newFunction, target, args);
         } else {
             return Undefined.instance;
         }
     }
 
     @Specialization(guards = "isJavaPackage(target)")
-    public Object createClassNotFoundError(VirtualFrame frame, DynamicObject target) {
+    public Object createClassNotFoundError(VirtualFrame frame, JSDynamicObject target) {
         getAbstractFunctionArguments(frame);
         throw Errors.createTypeErrorClassNotFound(JavaPackage.getPackageName(target));
     }

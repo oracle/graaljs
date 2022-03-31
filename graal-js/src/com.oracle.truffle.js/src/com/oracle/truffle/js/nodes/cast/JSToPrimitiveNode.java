@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -73,6 +72,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -158,17 +158,17 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isJSNull(value)")
-    protected DynamicObject doNull(@SuppressWarnings("unused") Object value) {
+    protected JSDynamicObject doNull(@SuppressWarnings("unused") Object value) {
         return Null.instance;
     }
 
     @Specialization(guards = "isUndefined(value)")
-    protected DynamicObject doUndefined(@SuppressWarnings("unused") Object value) {
+    protected JSDynamicObject doUndefined(@SuppressWarnings("unused") Object value) {
         return Undefined.instance;
     }
 
     @Specialization(guards = "isJSObject(object)")
-    protected Object doJSObject(DynamicObject object,
+    protected Object doJSObject(JSDynamicObject object,
                     @Cached("createGetToPrimitive(object)") PropertyNode getToPrimitive,
                     @Cached("create()") IsPrimitiveNode isPrimitive,
                     @Cached("createOrdinaryToPrimitive(object)") OrdinaryToPrimitiveNode ordinaryToPrimitive,
@@ -304,12 +304,12 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         return ordinaryToPrimitiveNode.execute(object);
     }
 
-    protected static PropertyNode createGetToPrimitive(DynamicObject object) {
+    protected static PropertyNode createGetToPrimitive(JSDynamicObject object) {
         JSContext context = JSObject.getJSContext(object);
         return PropertyNode.createMethod(context, null, Symbol.SYMBOL_TO_PRIMITIVE);
     }
 
-    protected OrdinaryToPrimitiveNode createOrdinaryToPrimitive(DynamicObject object) {
+    protected OrdinaryToPrimitiveNode createOrdinaryToPrimitive(JSDynamicObject object) {
         JSContext context = JSObject.getJSContext(object);
         return OrdinaryToPrimitiveNode.create(context, isHintString() ? Hint.String : Hint.Number);
     }

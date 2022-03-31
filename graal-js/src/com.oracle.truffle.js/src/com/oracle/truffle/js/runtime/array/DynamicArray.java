@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,9 +43,9 @@ package com.oracle.truffle.js.runtime.array;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.builtins.ArrayAccess;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Common base class for all dynamic (i.e., non-typed) JavaScript arrays. Encapsulates information
@@ -157,7 +157,7 @@ public abstract class DynamicArray extends ScriptArray {
         return isLengthNotWritable() ? this : setIntegrityLevel(LENGTH_NOT_WRITABLE | (integrityLevel & ~LENGTH_WRITABLE_MASK));
     }
 
-    public abstract Object cloneArray(DynamicObject object);
+    public abstract Object cloneArray(JSDynamicObject object);
 
     protected static ArrayAccess array() {
         return ArrayAccess.SINGLETON;

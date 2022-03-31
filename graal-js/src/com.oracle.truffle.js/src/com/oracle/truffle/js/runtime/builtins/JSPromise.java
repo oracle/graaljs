@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -89,31 +88,31 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
     private JSPromise() {
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm) {
+    public static JSDynamicObject create(JSContext context, JSRealm realm) {
         return context.trackAllocation(JSPromiseObject.create(realm, context.getPromiseFactory(), PENDING));
     }
 
-    public static DynamicObject create(JSContext context, Shape shape) {
+    public static JSDynamicObject create(JSContext context, Shape shape) {
         JSPromiseObject promise = JSPromiseObject.create(shape, PENDING);
         assert isJSPromise(promise);
         return context.trackAllocation(promise);
     }
 
-    public static DynamicObject createWithoutPrototype(JSContext context) {
+    public static JSDynamicObject createWithoutPrototype(JSContext context) {
         Shape shape = context.getPromiseShapePrototypeInObject();
-        DynamicObject obj = JSPromiseObject.create(shape, PENDING);
+        JSDynamicObject obj = JSPromiseObject.create(shape, PENDING);
         // prototype is set in caller
         assert isJSPromise(obj);
         return obj;
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return CLASS_NAME;
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
     }
 
@@ -121,35 +120,35 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
         return obj instanceof JSPromiseObject;
     }
 
-    public static boolean isRejected(DynamicObject promise) {
+    public static boolean isRejected(JSDynamicObject promise) {
         return REJECTED == getPromiseState(promise);
     }
 
-    public static boolean isPending(DynamicObject promise) {
+    public static boolean isPending(JSDynamicObject promise) {
         return PENDING == getPromiseState(promise);
     }
 
-    public static boolean isFulfilled(DynamicObject promise) {
+    public static boolean isFulfilled(JSDynamicObject promise) {
         return FULFILLED == getPromiseState(promise);
     }
 
-    public static int getPromiseState(DynamicObject promise) {
+    public static int getPromiseState(JSDynamicObject promise) {
         assert isJSPromise(promise);
         return ((JSPromiseObject) promise).getPromiseState();
     }
 
-    public static void setPromiseState(DynamicObject promise, int promiseState) {
+    public static void setPromiseState(JSDynamicObject promise, int promiseState) {
         assert isJSPromise(promise);
         ((JSPromiseObject) promise).setPromiseState(promiseState);
     }
 
     @Override
-    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth,
                         CLASS_NAME, new TruffleString[]{Strings.PROMISE_STATUS, Strings.PROMISE_VALUE}, new Object[]{getStatus(obj), getValue(obj)});
     }
 
-    private static TruffleString getStatus(DynamicObject obj) {
+    private static TruffleString getStatus(JSDynamicObject obj) {
         if (isFulfilled(obj)) {
             return Strings.RESOLVED;
         } else if (isRejected(obj)) {
@@ -160,7 +159,7 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
         }
     }
 
-    private static Object getValue(DynamicObject obj) {
+    private static Object getValue(JSDynamicObject obj) {
         return JSDynamicObject.getOrDefault(obj, PROMISE_RESULT, Undefined.instance);
     }
 
@@ -170,9 +169,9 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject constructor) {
         JSContext context = realm.getContext();
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(context, prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, PromisePrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
@@ -184,7 +183,7 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getPromisePrototype();
     }
 

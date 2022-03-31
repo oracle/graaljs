@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,9 +46,9 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetInd
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayOffset;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetIndexOffset;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class AbstractContiguousObjectArray extends AbstractObjectArray {
 
@@ -57,12 +57,12 @@ public abstract class AbstractContiguousObjectArray extends AbstractObjectArray 
     }
 
     @Override
-    public Object getInBoundsFastObject(DynamicObject object, int index) {
+    public Object getInBoundsFastObject(JSDynamicObject object, int index) {
         return castNonNull(getArray(object)[(int) (index - getIndexOffset(object))]);
     }
 
     @Override
-    public void setInBoundsFast(DynamicObject object, int index, Object value) {
+    public void setInBoundsFast(JSDynamicObject object, int index, Object value) {
         getArray(object)[(int) (index - getIndexOffset(object))] = checkNonNull(value);
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBoundsFast", index, value);
@@ -70,52 +70,52 @@ public abstract class AbstractContiguousObjectArray extends AbstractObjectArray 
     }
 
     @Override
-    protected final void setLengthLess(DynamicObject object, long length, ProfileHolder profile) {
+    protected final void setLengthLess(JSDynamicObject object, long length, ProfileHolder profile) {
         setLengthLessContiguous(object, length, profile);
     }
 
     @Override
-    protected final int prepareInBoundsFast(DynamicObject object, long index) {
+    protected final int prepareInBoundsFast(JSDynamicObject object, long index) {
         return (int) (index - getIndexOffset(object));
     }
 
     @Override
-    protected final void setArrayOffset(DynamicObject object, int arrayOffset) {
+    protected final void setArrayOffset(JSDynamicObject object, int arrayOffset) {
         arraySetArrayOffset(object, arrayOffset);
     }
 
     @Override
-    protected final int getArrayOffset(DynamicObject object) {
+    protected final int getArrayOffset(JSDynamicObject object) {
         return arrayGetArrayOffset(object);
     }
 
     @Override
-    protected final void setIndexOffset(DynamicObject object, long indexOffset) {
+    protected final void setIndexOffset(JSDynamicObject object, long indexOffset) {
         arraySetIndexOffset(object, indexOffset);
     }
 
     @Override
-    protected final long getIndexOffset(DynamicObject object) {
+    protected final long getIndexOffset(JSDynamicObject object) {
         return arrayGetIndexOffset(object);
     }
 
     @Override
-    public final long firstElementIndex(DynamicObject object) {
+    public final long firstElementIndex(JSDynamicObject object) {
         return getIndexOffset(object) + getArrayOffset(object);
     }
 
     @Override
-    public final long lastElementIndex(DynamicObject object) {
+    public final long lastElementIndex(JSDynamicObject object) {
         return getIndexOffset(object) + getArrayOffset(object) + getUsedLength(object) - 1;
     }
 
     @Override
-    public boolean hasHoles(DynamicObject object) {
+    public boolean hasHoles(JSDynamicObject object) {
         return arrayGetHoleCount(object) > 0;
     }
 
     @Override
-    public ScriptArray addRangeImpl(DynamicObject object, long offset, int size) {
+    public ScriptArray addRangeImpl(JSDynamicObject object, long offset, int size) {
         return addRangeImplContiguous(object, offset, size);
     }
 }

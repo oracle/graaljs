@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -68,6 +67,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 @NodeInfo(shortName = "==")
@@ -231,7 +231,7 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization(guards = {"isObject(a)", "!isObject(b)", "!hasOverloadedOperators(a)"})
-    protected boolean doJSObject(DynamicObject a, Object b,
+    protected boolean doJSObject(JSDynamicObject a, Object b,
                     @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
                     @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
@@ -242,7 +242,7 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization(guards = {"!isObject(a)", "isObject(b)", "!hasOverloadedOperators(b)"})
-    protected boolean doJSObject(Object a, DynamicObject b,
+    protected boolean doJSObject(Object a, JSDynamicObject b,
                     @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
                     @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
@@ -277,7 +277,7 @@ public abstract class JSEqualNode extends JSCompareNode {
 
     // null-or-undefined check on one element suffices
     @Specialization(guards = {"!isNullOrUndefined(a)", "isJSDynamicObject(a)", "isJSDynamicObject(b)"})
-    protected static boolean doJSObject(DynamicObject a, DynamicObject b) {
+    protected static boolean doJSObject(JSDynamicObject a, JSDynamicObject b) {
         return a == b;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,6 @@ import com.ibm.icu.text.RelativeDateTimeFormatter.RelativeDateTimeUnit;
 import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.RelativeTimeFormatFunctionBuiltins;
@@ -73,6 +72,7 @@ import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.LazyValue;
@@ -98,14 +98,14 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject relativeTimeFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSDynamicObject relativeTimeFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, relativeTimeFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, relativeTimeFormatPrototype, RelativeTimeFormatPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(relativeTimeFormatPrototype, TO_STRING_TAG);
@@ -113,7 +113,7 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
     }
 
     @Override
-    public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext ctx, JSDynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
         return initialShape;
     }
@@ -122,7 +122,7 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
         return INSTANCE.createConstructorAndPrototype(realm, RelativeTimeFormatFunctionBuiltins.BUILTINS);
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm) {
+    public static JSDynamicObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getRelativeTimeFormatFactory();
         JSRelativeTimeFormatObject obj = new JSRelativeTimeFormatObject(factory.getShape(realm), state);
@@ -131,7 +131,7 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
         return context.trackAllocation(obj);
     }
 
-    public static RelativeDateTimeFormatter getRelativeDateTimeFormatterProperty(DynamicObject obj) {
+    public static RelativeDateTimeFormatter getRelativeDateTimeFormatterProperty(JSDynamicObject obj) {
         return getInternalState(obj).getRelativeDateTimeFormatter();
     }
 
@@ -142,7 +142,7 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
     }
 
     @TruffleBoundary
-    public static TruffleString format(DynamicObject relativeTimeFormatObj, double amount, String unit) {
+    public static TruffleString format(JSDynamicObject relativeTimeFormatObj, double amount, String unit) {
         ensureFiniteNumber(amount);
         InternalState state = getInternalState(relativeTimeFormatObj);
         RelativeDateTimeUnit icuUnit = singularRelativeTimeUnit("format", unit);
@@ -158,7 +158,7 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
     }
 
     @TruffleBoundary
-    public static DynamicObject formatToParts(JSContext context, JSRealm realm, DynamicObject relativeTimeFormatObj, double amount, String unit) {
+    public static JSDynamicObject formatToParts(JSContext context, JSRealm realm, JSDynamicObject relativeTimeFormatObj, double amount, String unit) {
         ensureFiniteNumber(amount);
         InternalState state = getInternalState(relativeTimeFormatObj);
         RelativeDateTimeFormatter relativeDateTimeFormatter = state.getRelativeDateTimeFormatter();
@@ -199,8 +199,8 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
         private String numeric;
 
         @Override
-        DynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
-            DynamicObject result = JSOrdinary.create(context, realm);
+        JSDynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
+            JSDynamicObject result = JSOrdinary.create(context, realm);
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(getLocale()), JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_NUMERIC, Strings.fromJavaString(numeric), JSAttributes.getDefault());
@@ -244,18 +244,18 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
     }
 
     @TruffleBoundary
-    public static DynamicObject resolvedOptions(JSContext context, JSRealm realm, DynamicObject relativeTimeFormatObj) {
+    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject relativeTimeFormatObj) {
         InternalState state = getInternalState(relativeTimeFormatObj);
         return state.toResolvedOptionsObject(context, realm);
     }
 
-    public static InternalState getInternalState(DynamicObject obj) {
+    public static InternalState getInternalState(JSDynamicObject obj) {
         assert isJSRelativeTimeFormat(obj);
         return ((JSRelativeTimeFormatObject) obj).getInternalState();
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getRelativeTimeFormatPrototype();
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -80,7 +79,7 @@ public final class JSShape {
     private JSShape() {
     }
 
-    public static Shape createPrototypeShape(JSContext context, JSClass jsclass, DynamicObject prototype) {
+    public static Shape createPrototypeShape(JSContext context, JSClass jsclass, JSDynamicObject prototype) {
         assert prototype == Null.instance || JSRuntime.isObject(prototype);
         if (context.isMultiContext()) {
             return JSObjectUtil.getProtoChildShape(null, jsclass, context);
@@ -89,7 +88,7 @@ public final class JSShape {
         }
     }
 
-    static Shape createObjectShape(JSContext context, JSClass jsclass, DynamicObject prototype) {
+    static Shape createObjectShape(JSContext context, JSClass jsclass, JSDynamicObject prototype) {
         Shape rootShape = newBuilder(context, jsclass, prototype).build();
         return Shape.newBuilder(rootShape).addConstantProperty(JSObject.HIDDEN_PROTO, prototype, 0).build();
     }
@@ -109,7 +108,7 @@ public final class JSShape {
     /**
      * Get empty shape for all objects inheriting from the prototype this shape is describing.
      */
-    public static Shape getProtoChildTree(DynamicObject prototype, JSClass jsclass) {
+    public static Shape getProtoChildTree(JSDynamicObject prototype, JSClass jsclass) {
         JSPrototypeData prototypeData = JSObjectUtil.getPrototypeData(prototype);
         if (prototypeData != null) {
             return prototypeData.getProtoChildTree(jsclass);
@@ -203,7 +202,7 @@ public final class JSShape {
         return new JSSharedData(context, proto);
     }
 
-    public static Class<? extends DynamicObject> getLayout(JSClass jsclass) {
+    public static Class<? extends JSDynamicObject> getLayout(JSClass jsclass) {
         if (jsclass == JSOrdinary.INSTANCE || jsclass == JSDictionary.INSTANCE) {
             return JSOrdinaryObject.DefaultLayout.class;
         } else if (jsclass == JSOrdinary.INTERNAL_FIELD_INSTANCE) {
@@ -216,12 +215,12 @@ public final class JSShape {
         return JSDynamicObject.class;
     }
 
-    public static Shape.Builder newBuilder(JSContext context, JSClass jsclass, DynamicObject proto) {
+    public static Shape.Builder newBuilder(JSContext context, JSClass jsclass, JSDynamicObject proto) {
         assert !context.isMultiContext() || (proto == null || proto == Null.instance);
         return Shape.newBuilder().//
                         layout(getLayout(jsclass)).//
                         dynamicType(jsclass).//
-                        sharedData(JSShape.makeJSSharedData(context, (JSDynamicObject) proto)).//
+                        sharedData(JSShape.makeJSSharedData(context, proto)).//
                         shapeFlags(getDefaultShapeFlags(jsclass)).//
                         allowImplicitCastIntToDouble(true).//
                         propertyAssumptions(JSConfig.PropertyAssumption && !context.isMultiContext());

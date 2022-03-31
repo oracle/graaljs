@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyBuiltinsFactory.WebAssemblyCompileNodeGen;
@@ -81,6 +80,7 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -149,7 +149,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
 
         protected abstract Object process(Object argument);
 
-        protected DynamicObject promisify(Object argument) {
+        protected JSDynamicObject promisify(Object argument) {
             JSRealm realm = getRealm();
             PromiseCapabilityRecord promiseCapability = newPromiseCapability.execute(realm.getPromiseConstructor());
             try {
@@ -241,7 +241,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
 
         @Specialization
         protected Object instantiate(Object byteSourceOrModule, Object importObject) {
-            DynamicObject promise = promisify(new Object[]{byteSourceOrModule, importObject});
+            JSDynamicObject promise = promisify(new Object[]{byteSourceOrModule, importObject});
 
             if (byteSourceOrModule instanceof JSWebAssemblyModuleObject) {
                 return promise;
@@ -327,7 +327,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
 
                 Object toJSInstantiatedSource(Object wasmModule, Object jsInstance) {
                     JSRealm realm = getRealm();
-                    DynamicObject instantiatedSource = JSOrdinary.create(context, realm);
+                    JSDynamicObject instantiatedSource = JSOrdinary.create(context, realm);
                     JSObject.set(instantiatedSource, Strings.MODULE, JSWebAssemblyModule.create(context, realm, wasmModule));
                     JSObject.set(instantiatedSource, Strings.INSTANCE, jsInstance);
                     return instantiatedSource;

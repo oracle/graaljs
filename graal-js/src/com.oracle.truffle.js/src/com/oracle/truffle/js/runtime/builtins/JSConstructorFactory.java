@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,33 +40,33 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public interface JSConstructorFactory {
 
     TruffleString getClassName();
 
-    DynamicObject createPrototype(JSRealm realm, DynamicObject constructor);
+    JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject constructor);
 
-    default DynamicObject createConstructorObject(JSRealm realm) {
+    default JSDynamicObject createConstructorObject(JSRealm realm) {
         return realm.lookupFunction(ConstructorBuiltins.BUILTINS, getClassName());
     }
 
     @SuppressWarnings("unused")
-    default void fillConstructor(JSRealm realm, DynamicObject constructor) {
+    default void fillConstructor(JSRealm realm, JSDynamicObject constructor) {
     }
 
     interface Default extends JSConstructorFactory {
         default JSConstructor createConstructorAndPrototype(JSRealm realm) {
             JSContext ctx = realm.getContext();
-            DynamicObject constructor = createConstructorObject(realm);
-            DynamicObject prototype = createPrototype(realm, constructor);
+            JSDynamicObject constructor = createConstructorObject(realm);
+            JSDynamicObject prototype = createPrototype(realm, constructor);
             JSObjectUtil.putPrototypeData(prototype);
             JSObjectUtil.putConstructorPrototypeProperty(ctx, constructor, prototype);
             fillConstructor(realm, constructor);
@@ -75,7 +75,7 @@ public interface JSConstructorFactory {
 
         interface WithSpecies extends Default {
             @Override
-            default void fillConstructor(JSRealm realm, DynamicObject constructor) {
+            default void fillConstructor(JSRealm realm, JSDynamicObject constructor) {
                 JSNonProxy.putConstructorSpeciesGetter(realm, constructor);
             }
         }
@@ -84,8 +84,8 @@ public interface JSConstructorFactory {
     interface WithFunctions extends JSConstructorFactory {
         default JSConstructor createConstructorAndPrototype(JSRealm realm, JSBuiltinsContainer functionBuiltins) {
             JSContext ctx = realm.getContext();
-            DynamicObject constructor = createConstructorObject(realm);
-            DynamicObject prototype = createPrototype(realm, constructor);
+            JSDynamicObject constructor = createConstructorObject(realm);
+            JSDynamicObject prototype = createPrototype(realm, constructor);
             JSObjectUtil.putPrototypeData(prototype);
             JSObjectUtil.putConstructorPrototypeProperty(ctx, constructor, prototype);
             JSObjectUtil.putFunctionsFromContainer(realm, constructor, functionBuiltins);
@@ -96,7 +96,7 @@ public interface JSConstructorFactory {
 
     interface WithFunctionsAndSpecies extends WithFunctions {
         @Override
-        default void fillConstructor(JSRealm realm, DynamicObject constructor) {
+        default void fillConstructor(JSRealm realm, JSDynamicObject constructor) {
             JSNonProxy.putConstructorSpeciesGetter(realm, constructor);
         }
     }

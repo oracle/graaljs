@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.MapIteratorPrototypeBuiltinsFactory.MapIteratorNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
@@ -59,6 +58,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
@@ -120,7 +120,7 @@ public final class MapIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization(guards = "isMapIterator(iterator)")
-        protected DynamicObject doMapIterator(VirtualFrame frame, DynamicObject iterator) {
+        protected JSDynamicObject doMapIterator(VirtualFrame frame, JSDynamicObject iterator) {
             Object map = getIteratedObjectNode.getValue(iterator);
             if (detachedProf.profile(map == Undefined.instance)) {
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
@@ -150,7 +150,7 @@ public final class MapIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @SuppressWarnings("unused")
         @Fallback
-        protected DynamicObject doIncompatibleReceiver(Object iterator) {
+        protected JSDynamicObject doIncompatibleReceiver(Object iterator) {
             throw Errors.createTypeError("not a Map Iterator");
         }
 
@@ -159,7 +159,7 @@ public final class MapIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
             return isMapIteratorNode.executeHasHiddenKey(thisObj);
         }
 
-        private int getIterationKind(DynamicObject iterator) {
+        private int getIterationKind(JSDynamicObject iterator) {
             try {
                 return getIterationKindNode.getValueInt(iterator);
             } catch (UnexpectedResultException e) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Realm-specific embedder data. Should never be persisted.
@@ -53,13 +53,13 @@ public final class RealmData {
 
     private Object securityToken;
     private final Map<Integer, Object> embedderData = new HashMap<>();
-    private final Map<Integer, DynamicObject> functionTemplateObjects = new HashMap<>();
+    private final Map<Integer, JSDynamicObject> functionTemplateObjects = new HashMap<>();
 
-    private DynamicObject nativeUtf8Write;
-    private DynamicObject nativeUtf8Slice;
-    private DynamicObject resolverFactory;
-    private DynamicObject extrasBindingObject;
-    private DynamicObject arrayBufferGetContentsFunction;
+    private JSDynamicObject nativeUtf8Write;
+    private JSDynamicObject nativeUtf8Slice;
+    private JSDynamicObject resolverFactory;
+    private JSDynamicObject extrasBindingObject;
+    private JSDynamicObject arrayBufferGetContentsFunction;
 
     private final GraalJSAccess graalJSAccess;
 
@@ -75,19 +75,19 @@ public final class RealmData {
         return securityToken;
     }
 
-    public DynamicObject getNativeUtf8Write() {
+    public JSDynamicObject getNativeUtf8Write() {
         return nativeUtf8Write;
     }
 
-    public void setNativeUtf8Write(DynamicObject nativeUtf8Write) {
+    public void setNativeUtf8Write(JSDynamicObject nativeUtf8Write) {
         this.nativeUtf8Write = nativeUtf8Write;
     }
 
-    public DynamicObject getNativeUtf8Slice() {
+    public JSDynamicObject getNativeUtf8Slice() {
         return nativeUtf8Slice;
     }
 
-    public void setNativeUtf8Slice(DynamicObject nativeUtf8Slice) {
+    public void setNativeUtf8Slice(JSDynamicObject nativeUtf8Slice) {
         this.nativeUtf8Slice = nativeUtf8Slice;
     }
 
@@ -99,36 +99,36 @@ public final class RealmData {
         return embedderData.get(index);
     }
 
-    public void setFunctionTemplateObject(int index, DynamicObject functionObject) {
+    public void setFunctionTemplateObject(int index, JSDynamicObject functionObject) {
         functionTemplateObjects.put(index, functionObject);
     }
 
     @TruffleBoundary
-    public DynamicObject getFunctionTemplateObject(int index) {
+    public JSDynamicObject getFunctionTemplateObject(int index) {
         return functionTemplateObjects.get(index);
     }
 
-    public void setResolverFactory(DynamicObject resolverFactory) {
+    public void setResolverFactory(JSDynamicObject resolverFactory) {
         this.resolverFactory = resolverFactory;
     }
 
-    public DynamicObject getResolverFactory() {
+    public JSDynamicObject getResolverFactory() {
         return resolverFactory;
     }
 
-    public void setExtrasBindingObject(DynamicObject extrasBindingObject) {
+    public void setExtrasBindingObject(JSDynamicObject extrasBindingObject) {
         this.extrasBindingObject = extrasBindingObject;
     }
 
-    public DynamicObject getExtrasBindingObject() {
+    public JSDynamicObject getExtrasBindingObject() {
         return extrasBindingObject;
     }
 
-    public DynamicObject getArrayBufferGetContentsFunction() {
+    public JSDynamicObject getArrayBufferGetContentsFunction() {
         return arrayBufferGetContentsFunction;
     }
 
-    public void setArrayBufferGetContentsFunction(DynamicObject arrayBufferGetContentsFunction) {
+    public void setArrayBufferGetContentsFunction(JSDynamicObject arrayBufferGetContentsFunction) {
         this.arrayBufferGetContentsFunction = arrayBufferGetContentsFunction;
     }
 

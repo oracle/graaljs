@@ -49,7 +49,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -131,7 +130,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             return functionNode.execute(frame);
         }
 
-        public Object executeWithObject(VirtualFrame frame, DynamicObject obj, JSRealm realm) {
+        public Object executeWithObject(VirtualFrame frame, JSDynamicObject obj, JSRealm realm) {
             Object function = executeWithRealm(functionNode, frame, realm);
             makeMethodNode.setValue(function, obj);
             return function;
@@ -169,9 +168,9 @@ public class ObjectLiteralNode extends JavaScriptNode {
             this.isAnonymousFunctionDefinition = isAnonymousFunctionDefinition;
         }
 
-        public abstract void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSRealm realm);
+        public abstract void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm);
 
-        public final void executeVoid(VirtualFrame frame, DynamicObject obj, JSRealm realm) {
+        public final void executeVoid(VirtualFrame frame, JSDynamicObject obj, JSRealm realm) {
             executeVoid(frame, obj, obj, realm);
         }
 
@@ -179,7 +178,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             throw Errors.shouldNotReachHere();
         }
 
-        public Object evaluateValue(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") DynamicObject homeObject, @SuppressWarnings("unused") JSRealm realm) {
+        public Object evaluateValue(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject homeObject, @SuppressWarnings("unused") JSRealm realm) {
             throw Errors.shouldNotReachHere();
         }
 
@@ -203,7 +202,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             return valueNode instanceof MakeMethodNode;
         }
 
-        protected static Object evaluateWithHomeObject(JavaScriptNode valueNode, VirtualFrame frame, DynamicObject obj, JSRealm realm) {
+        protected static Object evaluateWithHomeObject(JavaScriptNode valueNode, VirtualFrame frame, JSDynamicObject obj, JSRealm realm) {
             if (isMethodNode(valueNode)) {
                 return ((MakeMethodNode) valueNode).executeWithObject(frame, obj, realm);
             }
@@ -257,17 +256,17 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public final void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSRealm realm) {
+        public final void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
             Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
             execute(receiver, value);
         }
 
         @Override
-        public Object evaluateValue(VirtualFrame frame, DynamicObject homeObject, JSRealm realm) {
+        public Object evaluateValue(VirtualFrame frame, JSDynamicObject homeObject, JSRealm realm) {
             return evaluateWithHomeObject(valueNode, frame, homeObject, realm);
         }
 
-        private void execute(DynamicObject obj, Object value) {
+        private void execute(JSDynamicObject obj, Object value) {
             if (isFieldOrStaticBlock) {
                 return;
             }
@@ -292,7 +291,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public final void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSRealm realm) {
+        public final void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
             Object getterV = null;
             Object setterV = null;
             if (getterNode != null) {
@@ -305,11 +304,11 @@ public class ObjectLiteralNode extends JavaScriptNode {
             execute(receiver, getterV, setterV);
         }
 
-        private void execute(DynamicObject obj, Object getterV, Object setterV) {
+        private void execute(JSDynamicObject obj, Object getterV, Object setterV) {
             DynamicObjectLibrary dynamicObjectLib = dynamicObjectLibrary();
 
-            DynamicObject getter = (DynamicObject) getterV;
-            DynamicObject setter = (DynamicObject) setterV;
+            JSDynamicObject getter = (JSDynamicObject) getterV;
+            JSDynamicObject setter = (JSDynamicObject) setterV;
 
             if ((getterNode == null || setterNode == null) && JSProperty.isAccessor(dynamicObjectLib.getPropertyFlagsOrDefault(obj, name, 0))) {
                 // No full accessor information and there is an accessor property already
@@ -347,7 +346,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isFieldOrStaticBlock", "!isAnonymousFunctionDefinition", "setFunctionName==null", "!isMethodNode(valueNode)"}, limit = "3")
-        public final void doNoFieldNoFunctionDef(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSRealm realm,
+        public final void doNoFieldNoFunctionDef(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm,
                         @CachedLibrary("receiver") DynamicObjectLibrary dynamicObject) {
             Object key = evaluateKey(frame);
             Object value = valueNode.execute(frame);
@@ -356,7 +355,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         @SuppressWarnings("unused")
         @Specialization
-        public final void doGeneric(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSRealm realm) {
+        public final void doGeneric(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
             if (isFieldOrStaticBlock) {
                 return;
             }
@@ -383,7 +382,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public Object evaluateValue(VirtualFrame frame, DynamicObject homeObject, JSRealm realm) {
+        public Object evaluateValue(VirtualFrame frame, JSDynamicObject homeObject, JSRealm realm) {
             return evaluateWithHomeObject(valueNode, frame, homeObject, realm);
         }
 
@@ -415,7 +414,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public final void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSRealm realm) {
+        public final void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
             Object key = evaluateKey(frame);
             Object getterV = null;
             Object setterV = null;
@@ -433,7 +432,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             }
 
             assert getterV != null || setterV != null;
-            PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) getterV, (DynamicObject) setterV, attributes);
+            PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((JSDynamicObject) getterV, (JSDynamicObject) setterV, attributes);
             JSRuntime.definePropertyOrThrow(receiver, key, propDesc);
         }
 
@@ -459,13 +458,13 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public final void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSRealm realm) {
+        public final void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
             Object value = valueNode.execute(frame);
             if (JSDynamicObject.isJSDynamicObject(value)) {
                 if (value == Undefined.instance) {
                     return;
                 }
-                JSObject.setPrototype(receiver, (DynamicObject) value);
+                JSObject.setPrototype(receiver, (JSDynamicObject) value);
             }
         }
 
@@ -486,7 +485,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public final void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject target, JSRealm realm) {
+        public final void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject target, JSRealm realm) {
             Object sourceValue = valueNode.execute(frame);
             if (JSGuards.isNullOrUndefined(sourceValue)) {
                 return;
@@ -519,7 +518,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public final void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSRealm realm) {
+        public final void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
             Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
             PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
             JSObject.defineOwnProperty(receiver, name, propDesc, true);
@@ -544,7 +543,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public final void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSRealm realm) {
+        public final void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
             writePrivateNode.execute(frame);
         }
 
@@ -554,7 +553,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public Object evaluateValue(VirtualFrame frame, DynamicObject homeObject, JSRealm realm) {
+        public Object evaluateValue(VirtualFrame frame, JSDynamicObject homeObject, JSRealm realm) {
             return evaluateWithHomeObject(valueNode, frame, homeObject, realm);
         }
 
@@ -576,7 +575,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public final void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSRealm realm) {
+        public final void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
             Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
             writePrivateNode.executeWrite(frame, value);
         }
@@ -600,7 +599,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public final void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSRealm realm) {
+        public final void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
             Object getter = null;
             Object setter = null;
             if (getterNode != null) {
@@ -611,7 +610,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             }
 
             assert getter != null || setter != null;
-            Accessor accessor = new Accessor((DynamicObject) getter, (DynamicObject) setter);
+            Accessor accessor = new Accessor((JSDynamicObject) getter, (JSDynamicObject) setter);
             writePrivateNode.executeWrite(frame, accessor);
         }
 
@@ -715,14 +714,14 @@ public class ObjectLiteralNode extends JavaScriptNode {
     }
 
     @Override
-    public DynamicObject execute(VirtualFrame frame) {
+    public JSDynamicObject execute(VirtualFrame frame) {
         JSRealm realm = getRealm();
-        DynamicObject ret = objectCreateNode.executeWithRealm(frame, realm);
+        JSDynamicObject ret = objectCreateNode.executeWithRealm(frame, realm);
         return executeWithObject(frame, ret, realm);
     }
 
     @ExplodeLoop
-    protected DynamicObject executeWithObject(VirtualFrame frame, DynamicObject ret, JSRealm realm) {
+    protected JSDynamicObject executeWithObject(VirtualFrame frame, JSDynamicObject ret, JSRealm realm) {
         for (int i = 0; i < members.length; i++) {
             members[i].executeVoid(frame, ret, realm);
         }
@@ -731,7 +730,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == DynamicObject.class;
+        return clazz == JSDynamicObject.class;
     }
 
     @Override

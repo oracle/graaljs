@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSArrayFromNodeGen;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSArrayOfNodeGen;
@@ -73,6 +72,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -148,15 +148,15 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             super(context, builtin, isTypedArray);
         }
 
-        protected DynamicObject constructOrArray(Object thisObj, long len, boolean provideLengthArg) {
+        protected JSDynamicObject constructOrArray(Object thisObj, long len, boolean provideLengthArg) {
             if (isTypedArrayImplementation) {
-                return getArraySpeciesConstructorNode().typedArrayCreate((DynamicObject) thisObj, JSRuntime.longToIntOrDouble(len));
+                return getArraySpeciesConstructorNode().typedArrayCreate((JSDynamicObject) thisObj, JSRuntime.longToIntOrDouble(len));
             } else {
                 if (isConstructor.profile(JSFunction.isConstructor(thisObj))) {
                     if (provideLengthArg) {
-                        return (DynamicObject) getArraySpeciesConstructorNode().construct((DynamicObject) thisObj, JSRuntime.longToIntOrDouble(len));
+                        return (JSDynamicObject) getArraySpeciesConstructorNode().construct((JSDynamicObject) thisObj, JSRuntime.longToIntOrDouble(len));
                     } else {
-                        return (DynamicObject) getArraySpeciesConstructorNode().construct((DynamicObject) thisObj);
+                        return (JSDynamicObject) getArraySpeciesConstructorNode().construct((JSDynamicObject) thisObj);
                     }
                 } else {
                     if (arrayCreateNode == null) {
@@ -180,9 +180,9 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         @Specialization
-        protected DynamicObject arrayOf(Object thisObj, Object[] args) {
+        protected JSDynamicObject arrayOf(Object thisObj, Object[] args) {
             int len = args.length;
-            DynamicObject obj = constructOrArray(thisObj, len, true);
+            JSDynamicObject obj = constructOrArray(thisObj, len, true);
 
             int pos = 0;
             for (Object arg : args) {
@@ -215,7 +215,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             this.isFastArrayNode = isTypedArrayImplementation ? null : IsArrayNode.createIsFastArray();
         }
 
-        protected void iteratorCloseAbrupt(DynamicObject iterator) {
+        protected void iteratorCloseAbrupt(JSDynamicObject iterator) {
             if (iteratorCloseNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
@@ -240,7 +240,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             return GetIteratorNode.getIterator(object, usingIterator, callIteratorMethodNode, isObjectNode, getNextMethodNode, this);
         }
 
-        protected Object getIteratorValue(DynamicObject iteratorResult) {
+        protected Object getIteratorValue(JSDynamicObject iteratorResult) {
             if (getIteratorValueNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getIteratorValueNode = insert(IteratorValueNode.create(getContext()));
@@ -256,7 +256,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             return iteratorStepNode.execute(iteratorRecord);
         }
 
-        protected final Object callMapFn(Object target, DynamicObject function, Object... userArguments) {
+        protected final Object callMapFn(Object target, JSDynamicObject function, Object... userArguments) {
             if (callMapFnNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 callMapFnNode = insert(JSFunctionCallNode.createCall());
@@ -273,7 +273,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         @Specialization
-        protected DynamicObject arrayFrom(Object thisObj, Object[] args) {
+        protected JSDynamicObject arrayFrom(Object thisObj, Object[] args) {
             Object items = JSRuntime.getArgOrUndefined(args, 0);
             Object mapFn = JSRuntime.getArgOrUndefined(args, 1);
             Object thisArg = JSRuntime.getArgOrUndefined(args, 2);
@@ -281,7 +281,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             return arrayFromIntl(thisObj, items, mapFn, thisArg, true);
         }
 
-        protected DynamicObject arrayFromIntl(Object thisObj, Object items, Object mapFn, Object thisArg, boolean setLength) {
+        protected JSDynamicObject arrayFromIntl(Object thisObj, Object items, Object mapFn, Object thisArg, boolean setLength) {
             boolean mapping;
             if (mapFn == Undefined.instance) {
                 mapping = false;
@@ -299,24 +299,24 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
         }
 
-        protected DynamicObject arrayFromIterable(Object thisObj, Object items, Object mapFn, Object thisArg, boolean mapping) {
+        protected JSDynamicObject arrayFromIterable(Object thisObj, Object items, Object mapFn, Object thisArg, boolean mapping) {
             if (getIteratorNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getIteratorNode = insert(GetIteratorNode.create(getContext()));
             }
             IteratorRecord iteratorRecord = getIteratorNode.execute(items);
-            DynamicObject obj = constructOrArray(thisObj, 0, false);
+            JSDynamicObject obj = constructOrArray(thisObj, 0, false);
             return arrayFromIteratorRecord(obj, iteratorRecord, mapFn, thisArg, mapping);
         }
 
-        protected DynamicObject arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping) {
-            DynamicObject obj = constructOrArray(thisObj, 0, false);
+        protected JSDynamicObject arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping) {
+            JSDynamicObject obj = constructOrArray(thisObj, 0, false);
 
             IteratorRecord iteratorRecord = getIterator(items, usingIterator);
             return arrayFromIteratorRecord(obj, iteratorRecord, mapFn, thisArg, mapping);
         }
 
-        private DynamicObject arrayFromIteratorRecord(DynamicObject obj, IteratorRecord iteratorRecord, Object mapFn, Object thisArg, boolean mapping) {
+        private JSDynamicObject arrayFromIteratorRecord(JSDynamicObject obj, IteratorRecord iteratorRecord, Object mapFn, Object thisArg, boolean mapping) {
             long k = 0;
             try {
                 while (true) {
@@ -325,9 +325,9 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                         setLength(obj, k);
                         return obj;
                     }
-                    Object mapped = getIteratorValue((DynamicObject) next);
+                    Object mapped = getIteratorValue((JSDynamicObject) next);
                     if (mapping) {
-                        mapped = callMapFn(thisArg, (DynamicObject) mapFn, mapped, JSRuntime.positiveLongToIntOrDouble(k));
+                        mapped = callMapFn(thisArg, (JSDynamicObject) mapFn, mapped, JSRuntime.positiveLongToIntOrDouble(k));
                     }
                     if (isTypedArrayImplementation || isFastArrayNode.execute(obj)) {
                         writeOwn(obj, k, mapped);
@@ -342,17 +342,17 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
         }
 
-        protected DynamicObject arrayFromArrayLike(Object thisObj, Object items, Object mapFn, Object thisArg, boolean mapping, boolean setLength) {
+        protected JSDynamicObject arrayFromArrayLike(Object thisObj, Object items, Object mapFn, Object thisArg, boolean mapping, boolean setLength) {
             long len = getSourceLength(items);
 
-            DynamicObject obj = constructOrArray(thisObj, len, true);
+            JSDynamicObject obj = constructOrArray(thisObj, len, true);
 
             long k = 0;
             while (k < len) {
                 Object value = read(items, k);
                 Object mapped = value;
                 if (mapping) {
-                    mapped = callMapFn(thisArg, (DynamicObject) mapFn, mapped, JSRuntime.positiveLongToIntOrDouble(k));
+                    mapped = callMapFn(thisArg, (JSDynamicObject) mapFn, mapped, JSRuntime.positiveLongToIntOrDouble(k));
                 }
                 if (isTypedArrayImplementation || isFastArrayNode.execute(obj)) {
                     writeOwn(obj, k, mapped);

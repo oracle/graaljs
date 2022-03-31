@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -72,6 +71,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -142,7 +142,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization
-        public DynamicObject execute(VirtualFrame frame, Object target,
+        public JSDynamicObject execute(VirtualFrame frame, Object target,
                         @Cached("createEqualityProfile()") PrimitiveValueProfile valuesProfile) {
             Object iteratorValue = getIteratorNode.getValue(target);
             if (iteratorValue == Undefined.instance) {
@@ -166,7 +166,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         private Object findNext(ForInIterator state) {
             for (;;) {
-                DynamicObject object = state.object;
+                JSDynamicObject object = state.object;
                 if (!state.objectWasVisited) {
                     JSClass jsclass = JSObject.getJSClass(object);
                     Shape objectShape = object.getShape();
@@ -232,7 +232,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     }
                 }
 
-                DynamicObject proto = getPrototypeNode.execute(object);
+                JSDynamicObject proto = getPrototypeNode.execute(object);
                 if (tryFastForwardImmutablePrototype(proto)) {
                     proto = Null.instance;
                 }
@@ -265,7 +265,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             }
         }
 
-        private boolean tryFastForwardImmutablePrototype(DynamicObject proto) {
+        private boolean tryFastForwardImmutablePrototype(JSDynamicObject proto) {
             if (proto == Null.instance) {
                 return false;
             }

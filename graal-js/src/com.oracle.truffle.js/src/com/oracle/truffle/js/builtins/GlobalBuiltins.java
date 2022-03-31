@@ -73,7 +73,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -137,6 +136,7 @@ import com.oracle.truffle.js.runtime.builtins.JSURLDecoder;
 import com.oracle.truffle.js.runtime.builtins.JSURLEncoder;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -423,7 +423,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         private Object execIntl(String cmd, String input) {
             JSRealm realm = getRealm();
             TruffleLanguage.Env env = realm.getEnv();
-            DynamicObject globalObj = realm.getGlobalObject();
+            JSDynamicObject globalObj = realm.getGlobalObject();
             StringTokenizer tok = new StringTokenizer(cmd);
             String[] cmds = new String[tok.countTokens()];
             for (int i = 0; tok.hasMoreTokens(); i++) {
@@ -439,7 +439,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
                 Object envObj = JSObject.get(globalObj, Strings.DOLLAR_ENV);
                 if (JSGuards.isJSObject(envObj)) {
-                    DynamicObject dynEnvObj = (DynamicObject) envObj;
+                    JSDynamicObject dynEnvObj = (JSDynamicObject) envObj;
                     Object pwd = JSObject.get(dynEnvObj, Strings.CAPS_PWD);
                     if (pwd != Undefined.instance) {
                         builder.directory(env.getPublicTruffleFile(JSRuntime.toJavaString(pwd)));
@@ -1275,7 +1275,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization(guards = "isJSDynamicObject(object)")
-        public DynamicObject indirectEvalJSType(DynamicObject object) {
+        public JSDynamicObject indirectEvalJSType(JSDynamicObject object) {
             return object;
         }
 
@@ -1406,7 +1406,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization(guards = "isJSObject(scriptObj)")
-        protected Object loadScriptObj(DynamicObject scriptObj, Object[] args) {
+        protected Object loadScriptObj(JSDynamicObject scriptObj, Object[] args) {
             if (JSObject.hasProperty(scriptObj, Strings.EVAL_OBJ_FILE_NAME) && JSObject.hasProperty(scriptObj, Strings.EVAL_OBJ_SOURCE)) {
                 Object scriptNameObj = JSObject.get(scriptObj, Strings.EVAL_OBJ_FILE_NAME);
                 Object sourceObj = JSObject.get(scriptObj, Strings.EVAL_OBJ_SOURCE);
@@ -1458,7 +1458,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             JSRealm mainRealm = JSRealm.getMain(this);
             JSRealm prevRealm = mainRealm.enterRealm(this, childRealm);
             try {
-                DynamicObject argumentsArray = JSArray.createConstant(getContext(), childRealm, args);
+                JSDynamicObject argumentsArray = JSArray.createConstant(getContext(), childRealm, args);
                 assert JSObject.getPrototype(argumentsArray) == childRealm.getArrayPrototype();
                 JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argumentsArray);
                 return loadStringImpl(getContext(), fileName, source).run(childRealm);
@@ -1474,7 +1474,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             JSRealm mainRealm = JSRealm.getMain(this);
             JSRealm prevRealm = mainRealm.enterRealm(this, childRealm);
             try {
-                DynamicObject argumentsArray = JSArray.createConstant(getContext(), childRealm, args);
+                JSDynamicObject argumentsArray = JSArray.createConstant(getContext(), childRealm, args);
                 assert JSObject.getPrototype(argumentsArray) == childRealm.getArrayPrototype();
                 JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argumentsArray);
                 Source source = sourceFromPath(Strings.toJavaString(path), childRealm);
@@ -1625,14 +1625,14 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization
         @TruffleBoundary(transferToInterpreterOnException = false)
-        protected final DynamicObject readbuffer(Object fileParam) {
+        protected final JSDynamicObject readbuffer(Object fileParam) {
             JSRealm realm = getRealm();
             TruffleFile file = getFileFromArgument(fileParam, realm.getEnv());
 
             try {
                 final byte[] bytes = file.readAllBytes();
 
-                final DynamicObject arrayBuffer;
+                final JSDynamicObject arrayBuffer;
                 if (getContext().isOptionDirectByteBuffer()) {
                     ByteBuffer buffer = ByteBuffer.allocateDirect(bytes.length);
                     buffer.put(bytes);
@@ -1667,7 +1667,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary
         private void doImport(Object globalContextBindings) {
             JSRealm realm = getRealm();
-            DynamicObject globalObject = realm.getGlobalObject();
+            JSDynamicObject globalObject = realm.getGlobalObject();
 
             InteropLibrary bindingsInterop = InteropLibrary.getUncached(globalContextBindings);
             try {
@@ -1707,12 +1707,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
             @Override
             @TruffleBoundary
-            public Object get(DynamicObject store) {
+            public Object get(JSDynamicObject store) {
                 return JSInteropUtil.readMemberOrDefault(globalContextBindings, key, Undefined.instance, bindingsInterop, ImportValueNode.getUncached(), null);
             }
 
             @Override
-            public boolean set(DynamicObject store, Object value) {
+            public boolean set(JSDynamicObject store, Object value) {
                 JSObjectUtil.defineDataProperty(store, key, value, JSAttributes.getDefault());
                 return true;
             }

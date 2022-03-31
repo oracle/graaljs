@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,24 +40,22 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import com.oracle.truffle.api.object.DynamicObject;
-
 public final class PromiseCapabilityRecord {
-    private DynamicObject promise;
+    private JSDynamicObject promise;
     private Object resolve;
     private Object reject;
 
-    private PromiseCapabilityRecord(DynamicObject promise, DynamicObject resolve, DynamicObject reject) {
+    private PromiseCapabilityRecord(JSDynamicObject promise, JSDynamicObject resolve, JSDynamicObject reject) {
         this.promise = promise;
         this.resolve = resolve;
         this.reject = reject;
     }
 
-    public static PromiseCapabilityRecord create(DynamicObject promise, DynamicObject resolve, DynamicObject reject) {
+    public static PromiseCapabilityRecord create(JSDynamicObject promise, JSDynamicObject resolve, JSDynamicObject reject) {
         return new PromiseCapabilityRecord(promise, resolve, reject);
     }
 
-    public DynamicObject getPromise() {
+    public JSDynamicObject getPromise() {
         return promise;
     }
 
@@ -69,7 +67,7 @@ public final class PromiseCapabilityRecord {
         return reject;
     }
 
-    public void setPromise(DynamicObject promise) {
+    public void setPromise(JSDynamicObject promise) {
         this.promise = promise;
     }
 

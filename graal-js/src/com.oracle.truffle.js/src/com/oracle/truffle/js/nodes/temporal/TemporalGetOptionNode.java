@@ -45,7 +45,6 @@ import java.util.List;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -56,6 +55,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -78,10 +78,10 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
         return TemporalGetOptionNodeGen.getUncached();
     }
 
-    public abstract Object execute(DynamicObject options, TruffleString property, OptionType types, List<?> values, Object fallback);
+    public abstract Object execute(JSDynamicObject options, TruffleString property, OptionType types, List<?> values, Object fallback);
 
     @Specialization
-    protected Object getOption(DynamicObject options, TruffleString property, OptionType types, List<?> values, Object fallback,
+    protected Object getOption(JSDynamicObject options, TruffleString property, OptionType types, List<?> values, Object fallback,
                     @Cached BranchProfile errorBranch,
                     @Cached ConditionProfile isFallbackProfile,
                     @Cached JSToBooleanNode toBooleanNode,

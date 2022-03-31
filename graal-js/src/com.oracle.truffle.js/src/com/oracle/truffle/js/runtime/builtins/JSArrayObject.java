@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
@@ -67,6 +66,7 @@ import com.oracle.truffle.js.runtime.array.dyn.AbstractObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -76,12 +76,12 @@ public final class JSArrayObject extends JSArrayBase implements JSCopyableObject
         super(shape, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
-    public static DynamicObject create(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site,
+    public static JSDynamicObject create(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site,
                     long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         return new JSArrayObject(shape, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
-    public static DynamicObject createEmpty(Shape shape, ScriptArray arrayType) {
+    public static JSDynamicObject createEmpty(Shape shape, ScriptArray arrayType) {
         assert arrayType instanceof AbstractConstantEmptyArray || arrayType instanceof ConstantObjectArray || arrayType instanceof AbstractObjectArray;
         return new JSArrayObject(shape, arrayType, ScriptArray.EMPTY_OBJECT_ARRAY, null, 0, 0, 0, 0, 0);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -58,7 +57,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 /**
  * JavaScript WeakMap.
  */
-public class WeakMap implements Map<DynamicObject, Object> {
+public class WeakMap implements Map<JSDynamicObject, Object> {
     private static final HiddenKey INVERTED_WEAK_MAP_KEY = new HiddenKey("InvertedWeakMap");
 
     public WeakMap() {
@@ -72,15 +71,15 @@ public class WeakMap implements Map<DynamicObject, Object> {
         return HasHiddenKeyCacheNode.create(WeakMap.INVERTED_WEAK_MAP_KEY);
     }
 
-    private static DynamicObject checkKey(Object key) {
-        if (!(key instanceof DynamicObject)) {
-            throw new IllegalArgumentException("key must be instanceof DynamicObject");
+    private static JSDynamicObject checkKey(Object key) {
+        if (!(key instanceof JSDynamicObject)) {
+            throw new IllegalArgumentException("key must be instanceof JSDynamicObject");
         }
-        return (DynamicObject) key;
+        return (JSDynamicObject) key;
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<WeakMap, Object> getInvertedMap(DynamicObject k, boolean put) {
+    private static Map<WeakMap, Object> getInvertedMap(JSDynamicObject k, boolean put) {
         if (JSDynamicObject.hasProperty(k, INVERTED_WEAK_MAP_KEY)) {
             return (WeakHashMap<WeakMap, Object>) JSDynamicObject.getOrNull(k, INVERTED_WEAK_MAP_KEY);
         } else {
@@ -92,7 +91,7 @@ public class WeakMap implements Map<DynamicObject, Object> {
         }
     }
 
-    private static WeakHashMap<WeakMap, Object> putInvertedMap(DynamicObject k) {
+    private static WeakHashMap<WeakMap, Object> putInvertedMap(JSDynamicObject k) {
         WeakHashMap<WeakMap, Object> invertedMap = new WeakHashMap<>();
         boolean wasExtensible = false;
         assert (wasExtensible = ((JSDynamicObject.getObjectFlags(k) & JSShape.NOT_EXTENSIBLE_FLAG) == 0)) || Boolean.TRUE;
@@ -103,30 +102,30 @@ public class WeakMap implements Map<DynamicObject, Object> {
 
     @Override
     public boolean containsKey(Object key) {
-        DynamicObject k = checkKey(key);
+        JSDynamicObject k = checkKey(key);
         return getInvertedMap(k, false).containsKey(this);
     }
 
     @Override
     public Object get(Object key) {
-        DynamicObject k = checkKey(key);
+        JSDynamicObject k = checkKey(key);
         return getInvertedMap(k, false).get(this);
     }
 
     @Override
-    public Object put(DynamicObject key, Object value) {
-        DynamicObject k = checkKey(key);
+    public Object put(JSDynamicObject key, Object value) {
+        JSDynamicObject k = checkKey(key);
         return getInvertedMap(k, true).put(this, value);
     }
 
     @Override
     public Object remove(Object key) {
-        DynamicObject k = checkKey(key);
+        JSDynamicObject k = checkKey(key);
         return getInvertedMap(k, false).remove(this);
     }
 
     @Override
-    public void putAll(Map<? extends DynamicObject, ? extends Object> m) {
+    public void putAll(Map<? extends JSDynamicObject, ? extends Object> m) {
         m.forEach(this::put);
     }
 
@@ -151,7 +150,7 @@ public class WeakMap implements Map<DynamicObject, Object> {
     }
 
     @Override
-    public Set<DynamicObject> keySet() {
+    public Set<JSDynamicObject> keySet() {
         throw unsupported();
     }
 
@@ -161,7 +160,7 @@ public class WeakMap implements Map<DynamicObject, Object> {
     }
 
     @Override
-    public Set<java.util.Map.Entry<DynamicObject, Object>> entrySet() {
+    public Set<java.util.Map.Entry<JSDynamicObject, Object>> entrySet() {
         throw unsupported();
     }
 

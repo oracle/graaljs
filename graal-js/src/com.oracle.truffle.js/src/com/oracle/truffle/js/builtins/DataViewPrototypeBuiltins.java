@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -67,6 +66,7 @@ import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<DataViewPrototypeBuiltins.DataViewPrototype> {
@@ -184,7 +184,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         @Cached("create()") BranchProfile errorBranch,
                         @Cached("createClassProfile()") ValueProfile bufferTypeProfile,
                         @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
-            DynamicObject buffer = bufferTypeProfile.profile(JSDataView.getArrayBuffer(dataView));
+            JSDynamicObject buffer = bufferTypeProfile.profile(JSDataView.getArrayBuffer(dataView));
             long getIndex = toIndexNode.executeLong(byteOffset);
             boolean isLittleEndian = factory.getBytesPerElement() == 1 ? true : toBooleanNode.executeBoolean(littleEndian);
 
@@ -212,7 +212,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSDataView(thisObj)")
-        protected DynamicObject doIncompatibleReceiver(Object thisObj, Object byteOffset, Object littleEndian) {
+        protected JSDynamicObject doIncompatibleReceiver(Object thisObj, Object byteOffset, Object littleEndian) {
             throw Errors.createTypeErrorNotADataView();
         }
     }
@@ -237,7 +237,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         @Cached("create()") BranchProfile errorBranch,
                         @Cached("createClassProfile()") ValueProfile bufferTypeProfile,
                         @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
-            DynamicObject buffer = bufferTypeProfile.profile(JSDataView.getArrayBuffer(dataView));
+            JSDynamicObject buffer = bufferTypeProfile.profile(JSDataView.getArrayBuffer(dataView));
 
             long getIndex = toIndexNode.executeLong(byteOffset);
             Object numberValue = JSRuntime.isTypedArrayBigIntFactory(factory) ? toBigIntNode.executeBigInteger(value) : toNumberNode.executeNumber(value);
@@ -267,7 +267,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSDataView(thisObj)")
-        protected DynamicObject doIncompatibleReceiver(Object thisObj, Object byteOffset, Object value, Object littleEndian) {
+        protected JSDynamicObject doIncompatibleReceiver(Object thisObj, Object byteOffset, Object value, Object littleEndian) {
             throw Errors.createTypeErrorNotADataView();
         }
     }

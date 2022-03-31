@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArr
 
 import java.util.List;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -71,12 +70,12 @@ public final class ConstantObjectArray extends AbstractConstantArray {
         this.holes = holes;
     }
 
-    private static Object[] getArray(DynamicObject object) {
+    private static Object[] getArray(JSDynamicObject object) {
         return (Object[]) arrayGetArray(object);
     }
 
     @Override
-    public boolean hasElement(DynamicObject object, long index) {
+    public boolean hasElement(JSDynamicObject object, long index) {
         if (index >= 0 && index < getArray(object).length) {
             return !holes || getArray(object)[(int) index] != null;
         }
@@ -84,7 +83,7 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     }
 
     @Override
-    public Object getElementInBounds(DynamicObject object, int index) {
+    public Object getElementInBounds(JSDynamicObject object, int index) {
         Object value = getElementInBoundsDirect(object, index);
         if (holes && value == null) {
             return Undefined.instance;
@@ -92,31 +91,31 @@ public final class ConstantObjectArray extends AbstractConstantArray {
         return value;
     }
 
-    private static boolean isEmpty(DynamicObject object, int index) {
+    private static boolean isEmpty(JSDynamicObject object, int index) {
         return getArray(object)[index] == null;
     }
 
-    public static Object getElementInBoundsDirect(DynamicObject object, int index) {
+    public static Object getElementInBoundsDirect(JSDynamicObject object, int index) {
         return getArray(object)[index];
     }
 
     @Override
-    public boolean hasHoles(DynamicObject object) {
+    public boolean hasHoles(JSDynamicObject object) {
         return holes;
     }
 
     @Override
-    public int lengthInt(DynamicObject object) {
+    public int lengthInt(JSDynamicObject object) {
         return getArray(object).length;
     }
 
     @Override
-    public Object cloneArray(DynamicObject object) {
+    public Object cloneArray(JSDynamicObject object) {
         return getArray(object);
     }
 
     @Override
-    public long nextElementIndex(DynamicObject object, long index0) {
+    public long nextElementIndex(JSDynamicObject object, long index0) {
         if (!holes) {
             return super.nextElementIndex(object, index0);
         }
@@ -128,7 +127,7 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     }
 
     @Override
-    public long previousElementIndex(DynamicObject object, long index0) {
+    public long previousElementIndex(JSDynamicObject object, long index0) {
         if (!holes) {
             return super.previousElementIndex(object, index0);
         }
@@ -140,7 +139,7 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     }
 
     @Override
-    public long firstElementIndex(DynamicObject object) {
+    public long firstElementIndex(JSDynamicObject object) {
         if (!holes) {
             return super.firstElementIndex(object);
         }
@@ -153,7 +152,7 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     }
 
     @Override
-    public long lastElementIndex(DynamicObject object) {
+    public long lastElementIndex(JSDynamicObject object) {
         if (!holes) {
             return super.lastElementIndex(object);
         }
@@ -165,32 +164,32 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     }
 
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+    public ScriptArray deleteElementImpl(JSDynamicObject object, long index, boolean strict) {
         return createWriteableObject(object, index, null, ProfileHolder.empty()).deleteElementImpl(object, index, strict);
     }
 
     @Override
-    public ScriptArray setLengthImpl(DynamicObject object, long length, ProfileHolder profile) {
+    public ScriptArray setLengthImpl(JSDynamicObject object, long length, ProfileHolder profile) {
         return createWriteableObject(object, length - 1, null, ProfileHolder.empty()).setLengthImpl(object, length, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableInt(DynamicObject object, long index, int value, ProfileHolder profile) {
+    public AbstractObjectArray createWriteableInt(JSDynamicObject object, long index, int value, ProfileHolder profile) {
         return createWriteableObject(object, index, value, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableDouble(DynamicObject object, long index, double value, ProfileHolder profile) {
+    public AbstractObjectArray createWriteableDouble(JSDynamicObject object, long index, double value, ProfileHolder profile) {
         return createWriteableObject(object, index, value, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableJSObject(DynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
+    public AbstractObjectArray createWriteableJSObject(JSDynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
         return createWriteableObject(object, index, value, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile) {
+    public AbstractObjectArray createWriteableObject(JSDynamicObject object, long index, Object value, ProfileHolder profile) {
         Object[] array = getArray(object);
         AbstractObjectArray newArray;
         if (holes) {
@@ -207,7 +206,7 @@ public final class ConstantObjectArray extends AbstractConstantArray {
         return newArray;
     }
 
-    private int countHoles(DynamicObject object) {
+    private int countHoles(JSDynamicObject object) {
         int index = (int) (firstElementIndex(object));
         int lastIndex = (int) (lastElementIndex(object) + 1);
         Object[] objArray = getArray(object);
@@ -230,7 +229,7 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     }
 
     @Override
-    public ScriptArray removeRangeImpl(DynamicObject object, long start, long end) {
+    public ScriptArray removeRangeImpl(JSDynamicObject object, long start, long end) {
         Object[] array = getArray(object);
         if ((array.length - (end - start)) == 0) {
             AbstractConstantEmptyArray.setCapacity(object, 0);
@@ -244,7 +243,7 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     }
 
     @Override
-    public ScriptArray addRangeImpl(DynamicObject object, long offset, int size) {
+    public ScriptArray addRangeImpl(JSDynamicObject object, long offset, int size) {
         Object[] array = getArray(object);
         if (array.length == 0) {
             AbstractConstantEmptyArray.setCapacity(object, size);
@@ -265,7 +264,7 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     }
 
     @Override
-    public List<Object> ownPropertyKeys(DynamicObject object) {
+    public List<Object> ownPropertyKeys(JSDynamicObject object) {
         if (holes) {
             return ownPropertyKeysHoles(object);
         } else {

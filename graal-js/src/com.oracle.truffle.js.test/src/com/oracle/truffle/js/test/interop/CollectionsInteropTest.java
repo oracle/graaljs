@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.test.JSTest;
@@ -96,7 +95,7 @@ public class CollectionsInteropTest {
 
     @Test
     public void testForeignDynamicObjectNormalization() {
-        DynamicObject object = new ForeignDynamicObject();
+        Object object = new ForeignDynamicObject();
         checkNormalization(object, object);
     }
 

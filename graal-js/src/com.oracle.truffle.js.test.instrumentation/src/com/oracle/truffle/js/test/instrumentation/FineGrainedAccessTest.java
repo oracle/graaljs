@@ -74,7 +74,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.ReturnException;
@@ -539,7 +538,7 @@ public abstract class FineGrainedAccessTest {
 
     protected static final Consumer<Event> assertGlobalObjectInput = (e) -> {
         assertTrue(JSDynamicObject.isJSDynamicObject(e.val));
-        DynamicObject globalObject = JavaScriptLanguage.getCurrentJSRealm().getGlobalObject();
+        JSDynamicObject globalObject = JavaScriptLanguage.getCurrentJSRealm().getGlobalObject();
         assertEquals(globalObject, e.val);
     };
 
@@ -550,7 +549,7 @@ public abstract class FineGrainedAccessTest {
     protected static Consumer<Event> assertJSFunctionInputWithName(String expectedFunctionName) {
         return (e) -> {
             assertTrue(JSFunction.isJSFunction(e.val));
-            assertTrue(JSFunction.getName((DynamicObject) e.val).equals(Strings.fromJavaString(expectedFunctionName)));
+            assertTrue(JSFunction.getName((JSDynamicObject) e.val).equals(Strings.fromJavaString(expectedFunctionName)));
         };
     }
 

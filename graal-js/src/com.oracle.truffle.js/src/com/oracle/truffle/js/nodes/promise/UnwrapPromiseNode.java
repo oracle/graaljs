@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.promise;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -69,7 +68,7 @@ public abstract class UnwrapPromiseNode extends JavaScriptBaseNode {
         return UnwrapPromiseNodeGen.create(JavaScriptLanguage.get(null).getJSContext());
     }
 
-    public final Object execute(DynamicObject promise) {
+    public final Object execute(JSDynamicObject promise) {
         if (getPromiseResult == null) {
             return doUncached(promise);
         }
@@ -79,27 +78,27 @@ public abstract class UnwrapPromiseNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private Object doUncached(DynamicObject promise) {
+    private Object doUncached(JSDynamicObject promise) {
         return execute(promise, JSPromise.getPromiseState(promise), JSDynamicObject.getOrNull(promise, JSPromise.PROMISE_RESULT));
     }
 
-    protected abstract Object execute(DynamicObject promise, int promiseState, Object promiseResult);
+    protected abstract Object execute(JSDynamicObject promise, int promiseState, Object promiseResult);
 
     @SuppressWarnings("unused")
     @Specialization(guards = "promiseState == FULFILLED")
-    protected static Object fulfilled(DynamicObject promise, int promiseState, Object promiseResult) {
+    protected static Object fulfilled(JSDynamicObject promise, int promiseState, Object promiseResult) {
         return promiseResult;
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = "promiseState == REJECTED")
-    protected static Object rejected(DynamicObject promise, int promiseState, Object promiseResult) {
+    protected static Object rejected(JSDynamicObject promise, int promiseState, Object promiseResult) {
         throw UserScriptException.create(promiseResult);
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = "promiseState == PENDING")
-    protected static Object pending(DynamicObject promise, int promiseState, Object promiseResult) {
+    protected static Object pending(JSDynamicObject promise, int promiseState, Object promiseResult) {
         throw Errors.createTypeError("Attempt to unwrap pending promise");
     }
 

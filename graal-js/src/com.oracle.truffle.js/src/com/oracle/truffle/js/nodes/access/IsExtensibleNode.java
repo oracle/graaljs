@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,11 +45,11 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
@@ -63,11 +63,11 @@ public abstract class IsExtensibleNode extends JavaScriptBaseNode {
     protected IsExtensibleNode() {
     }
 
-    public abstract boolean executeBoolean(DynamicObject obj);
+    public abstract boolean executeBoolean(JSDynamicObject obj);
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"getJSClass(cachedShape).usesOrdinaryIsExtensible()", "cachedShape.check(object)"}, limit = "1")
-    protected static boolean doCachedShape(DynamicObject object,
+    protected static boolean doCachedShape(JSDynamicObject object,
                     @Cached("object.getShape()") Shape cachedShape,
                     @Cached("isExtensible(cachedShape)") boolean result) {
         return result;
@@ -75,14 +75,14 @@ public abstract class IsExtensibleNode extends JavaScriptBaseNode {
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedJSClass.usesOrdinaryIsExtensible()", "cachedJSClass.isInstance(object)"}, limit = "1", replaces = "doCachedShape")
-    protected static boolean doCachedJSClass(DynamicObject object,
+    protected static boolean doCachedJSClass(JSDynamicObject object,
                     @Cached("getJSClassChecked(object)") JSClass cachedJSClass,
                     @Cached("createBinaryProfile()") @Shared("resultProfile") ConditionProfile resultProfile) {
         return resultProfile.profile(JSShape.isExtensible(object.getShape()));
     }
 
     @Specialization(replaces = {"doCachedJSClass"})
-    protected static boolean doUncached(DynamicObject object,
+    protected static boolean doUncached(JSDynamicObject object,
                     @Cached("createBinaryProfile()") @Shared("resultProfile") ConditionProfile resultProfile) {
         return resultProfile.profile(JSObject.isExtensible(object));
     }

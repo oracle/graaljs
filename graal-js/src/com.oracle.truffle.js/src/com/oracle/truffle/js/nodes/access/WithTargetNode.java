@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -121,7 +120,7 @@ public final class WithTargetNode extends JavaScriptNode {
 
     private boolean hasNoSuchProperty(Object thisTruffleObj, boolean isMethod) {
         if (JSRuntime.isObject(thisTruffleObj)) {
-            DynamicObject thisObj = (DynamicObject) thisTruffleObj;
+            JSDynamicObject thisObj = (JSDynamicObject) thisTruffleObj;
             if ((!isMethod && !context.getNoSuchPropertyUnusedAssumption().isValid() && JSObject.hasOwnProperty(thisObj, JSObject.NO_SUCH_PROPERTY_NAME)) ||
                             (isMethod && !context.getNoSuchMethodUnusedAssumption().isValid() && JSObject.hasOwnProperty(thisObj, JSObject.NO_SUCH_METHOD_NAME))) {
                 return hasNoSuchPropertyImpl(thisObj, isMethod);
@@ -130,7 +129,7 @@ public final class WithTargetNode extends JavaScriptNode {
         return false;
     }
 
-    private static boolean hasNoSuchPropertyImpl(DynamicObject thisObj, boolean isMethod) {
+    private static boolean hasNoSuchPropertyImpl(JSDynamicObject thisObj, boolean isMethod) {
         assert JSRuntime.isObject(thisObj);
         Object function = JSObject.get(thisObj, isMethod ? JSObject.NO_SUCH_METHOD_NAME : JSObject.NO_SUCH_PROPERTY_NAME);
         return JSFunction.isJSFunction(function);

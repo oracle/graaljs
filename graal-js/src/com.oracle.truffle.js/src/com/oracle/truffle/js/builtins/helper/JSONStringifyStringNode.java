@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -95,14 +94,14 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         this.stringBuilderProfile = StringBuilderProfile.create(context.getStringLengthLimit());
     }
 
-    public abstract Object execute(Object data, Object keyStr, DynamicObject holder);
+    public abstract Object execute(Object data, Object keyStr, JSDynamicObject holder);
 
     public static JSONStringifyStringNode create(JSContext context) {
         return JSONStringifyStringNodeGen.create(context);
     }
 
     @Specialization
-    public Object jsonStrMain(Object jsonData, TruffleString keyStr, DynamicObject holder) {
+    public Object jsonStrMain(Object jsonData, TruffleString keyStr, JSDynamicObject holder) {
         try {
             assert jsonData instanceof JSONData;
             JSONData data = (JSONData) jsonData;
@@ -137,8 +136,8 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             appendNumber(builder, (Number) value);
         } else if (JSRuntime.isBigInt(value)) {
             throw Errors.createTypeError("Do not know how to serialize a BigInt");
-        } else if (JSDynamicObject.isJSDynamicObject(value) && !JSRuntime.isCallableIsJSObject((DynamicObject) value)) {
-            DynamicObject valueObj = (DynamicObject) value;
+        } else if (JSDynamicObject.isJSDynamicObject(value) && !JSRuntime.isCallableIsJSObject((JSDynamicObject) value)) {
+            JSDynamicObject valueObj = (JSDynamicObject) value;
             if (JSRuntime.isArray(valueObj)) {
                 jsonJA(builder, data, valueObj);
             } else {
@@ -187,7 +186,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     private Object jsonStrPrepare(JSONData data, TruffleString keyStr, Object holder) {
         Object value;
         if (JSDynamicObject.isJSDynamicObject(holder)) {
-            value = JSObject.get((DynamicObject) holder, keyStr);
+            value = JSObject.get((JSDynamicObject) holder, keyStr);
         } else {
             value = truffleRead(holder, keyStr);
         }
@@ -195,7 +194,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private Object jsonStrPrepareArray(JSONData data, int key, DynamicObject holder) {
+    private Object jsonStrPrepareArray(JSONData data, int key, JSDynamicObject holder) {
         Object value = JSObject.get(holder, key);
         return jsonStrPreparePart2(data, Strings.fromInt(key), holder, value);
     }
@@ -224,7 +223,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             value = JSRuntime.call(data.getReplacerFnObj(), holder, new Object[]{key, value});
         }
         if (JSDynamicObject.isJSDynamicObject(value)) {
-            return jsonStrPrepareJSObject((DynamicObject) value);
+            return jsonStrPrepareJSObject((JSDynamicObject) value);
         } else if (value instanceof Symbol) {
             return Undefined.instance;
         } else if (JSRuntime.isCallableForeign(value)) {
@@ -233,8 +232,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         return value;
     }
 
-    private static Object jsonStrPrepareJSObject(DynamicObject valueObj) {
-        assert JSDynamicObject.isJSDynamicObject(valueObj) : "JavaScript object expected, but foreign DynamicObject found";
+    private static Object jsonStrPrepareJSObject(JSDynamicObject valueObj) {
         JSClass builtinClass = JSObject.getJSClass(valueObj);
         if (builtinClass == JSNumber.INSTANCE) {
             return JSRuntime.toNumber(valueObj);
@@ -284,7 +282,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         int lengthBefore = StringBuilderProfile.length(sb);
         if (data.getPropertyList() == null) {
             if (JSDynamicObject.isJSDynamicObject(value)) {
-                serializeJSONObjectProperties(sb, data, value, indent, JSObject.enumerableOwnNames((DynamicObject) value));
+                serializeJSONObjectProperties(sb, data, value, indent, JSObject.enumerableOwnNames((JSDynamicObject) value));
             } else {
                 serializeForeignObjectProperties(sb, data, value, indent);
             }
@@ -374,7 +372,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         boolean isForeign = false;
         boolean isArray = false;
         if (JSDynamicObject.isJSDynamicObject(value)) { // Array or Proxy
-            lenObject = JSObject.get((DynamicObject) value, JSArray.LENGTH);
+            lenObject = JSObject.get((JSDynamicObject) value, JSArray.LENGTH);
             if (JSArray.isJSArray(value)) {
                 isArray = true;
             }
@@ -397,7 +395,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             }
             Object strPPrepared;
             if (isArray) {
-                strPPrepared = jsonStrPrepareArray(data, index, (DynamicObject) value);
+                strPPrepared = jsonStrPrepareArray(data, index, (JSDynamicObject) value);
             } else if (isForeign) {
                 strPPrepared = jsonStrPrepareForeign(data, index, value);
             } else {

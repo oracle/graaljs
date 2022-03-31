@@ -51,7 +51,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -66,6 +65,7 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -83,7 +83,7 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
     private JSTemporalPlainYearMonth() {
     }
 
-    public static DynamicObject create(JSContext context, int isoYear, int isoMonth, DynamicObject calendar, int referenceISODay, BranchProfile errorBranch) {
+    public static JSDynamicObject create(JSContext context, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay, BranchProfile errorBranch) {
         if (!TemporalUtil.validateISODate(isoYear, isoMonth, referenceISODay)) {
             errorBranch.enter();
             throw TemporalErrors.createRangeErrorDateOutsideRange();
@@ -95,16 +95,16 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
         return createIntl(context, isoYear, isoMonth, calendar, referenceISODay);
     }
 
-    private static DynamicObject createIntl(JSContext context, int isoYear, int isoMonth, DynamicObject calendar, int referenceISODay) {
+    private static JSDynamicObject createIntl(JSContext context, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay) {
         JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalPlainYearMonthFactory();
-        DynamicObject obj = factory.initProto(new JSTemporalPlainYearMonthObject(factory.getShape(realm), isoYear,
+        JSDynamicObject obj = factory.initProto(new JSTemporalPlainYearMonthObject(factory.getShape(realm), isoYear,
                         isoMonth, referenceISODay, calendar), realm);
         return context.trackAllocation(obj);
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return TO_STRING_TAG;
     }
 
@@ -114,9 +114,9 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject constructor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
 
         JSObjectUtil.putBuiltinAccessorProperty(prototype, CALENDAR, realm.lookupAccessor(TemporalPlainYearMonthPrototypeBuiltins.BUILTINS, CALENDAR));
@@ -135,12 +135,12 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, JSTemporalPlainYearMonth.INSTANCE, context);
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getTemporalPlainYearMonthPrototype();
     }
 

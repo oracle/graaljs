@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.ibm.icu.text.SimpleFormatter;
 import com.ibm.icu.util.ULocale;
 import com.ibm.icu.util.UResourceBundle;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.ListFormatFunctionBuiltins;
@@ -67,6 +66,7 @@ import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -91,14 +91,14 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject listFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSDynamicObject listFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, listFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, listFormatPrototype, ListFormatPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(listFormatPrototype, TO_STRING_TAG);
@@ -106,7 +106,7 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
     }
 
     @Override
-    public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext ctx, JSDynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
         return initialShape;
     }
@@ -115,7 +115,7 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
         return INSTANCE.createConstructorAndPrototype(realm, ListFormatFunctionBuiltins.BUILTINS);
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm) {
+    public static JSDynamicObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getListFormatFactory();
         JSListFormatObject obj = new JSListFormatObject(factory.getShape(realm), state);
@@ -182,18 +182,18 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
         }
     }
 
-    public static ListFormatter getListFormatterProperty(DynamicObject obj) {
+    public static ListFormatter getListFormatterProperty(JSDynamicObject obj) {
         return getInternalState(obj).listFormatter;
     }
 
     @TruffleBoundary
-    public static TruffleString format(DynamicObject listFormatObj, List<String> list) {
+    public static TruffleString format(JSDynamicObject listFormatObj, List<String> list) {
         ListFormatter listFormatter = getListFormatterProperty(listFormatObj);
         return Strings.fromJavaString(listFormatter.format(list));
     }
 
     @TruffleBoundary
-    public static DynamicObject formatToParts(JSContext context, JSRealm realm, DynamicObject listFormatObj, List<String> list) {
+    public static JSDynamicObject formatToParts(JSContext context, JSRealm realm, JSDynamicObject listFormatObj, List<String> list) {
         if (list.size() == 0) {
             return JSArray.createConstantEmptyArray(context, realm);
         }
@@ -233,8 +233,8 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
         private String type = IntlUtil.CONJUNCTION;
         private String style = IntlUtil.LONG;
 
-        DynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
-            DynamicObject result = JSOrdinary.create(context, realm);
+        JSDynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
+            JSDynamicObject result = JSOrdinary.create(context, realm);
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_TYPE, Strings.fromJavaString(type), JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
@@ -265,18 +265,18 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
     }
 
     @TruffleBoundary
-    public static DynamicObject resolvedOptions(JSContext context, JSRealm realm, DynamicObject listFormatObj) {
+    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject listFormatObj) {
         InternalState state = getInternalState(listFormatObj);
         return state.toResolvedOptionsObject(context, realm);
     }
 
-    public static InternalState getInternalState(DynamicObject obj) {
+    public static InternalState getInternalState(JSDynamicObject obj) {
         assert isJSListFormat(obj);
         return ((JSListFormatObject) obj).getInternalState();
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getListFormatPrototype();
     }
 }

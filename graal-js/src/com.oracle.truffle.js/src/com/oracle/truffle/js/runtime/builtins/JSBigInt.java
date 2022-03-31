@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.BigIntFunctionBuiltins;
@@ -53,6 +52,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.Default.WithFunctions {
@@ -66,25 +66,25 @@ public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.
     private JSBigInt() {
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm, BigInt value) {
-        DynamicObject obj = JSBigIntObject.create(realm, context.getBigIntFactory(), value);
+    public static JSDynamicObject create(JSContext context, JSRealm realm, BigInt value) {
+        JSDynamicObject obj = JSBigIntObject.create(realm, context.getBigIntFactory(), value);
         assert isJSBigInt(obj);
         return context.trackAllocation(obj);
     }
 
-    private static BigInt getBigIntegerField(DynamicObject obj) {
+    private static BigInt getBigIntegerField(JSDynamicObject obj) {
         assert isJSBigInt(obj);
         return ((JSBigIntObject) obj).getBigIntValue();
     }
 
-    public static BigInt valueOf(DynamicObject obj) {
+    public static BigInt valueOf(JSDynamicObject obj) {
         return getBigIntegerField(obj);
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject ctor) {
         JSContext context = realm.getContext();
-        DynamicObject bigIntPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSDynamicObject bigIntPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(context, bigIntPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, bigIntPrototype, BigIntPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(bigIntPrototype, CLASS_NAME);
@@ -92,7 +92,7 @@ public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         return initialShape;
     }
@@ -111,13 +111,13 @@ public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
     @TruffleBoundary
     @Override
-    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return super.toDisplayStringImpl(obj, allowSideEffects, format, depth);
         } else {
@@ -128,7 +128,7 @@ public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getBigIntPrototype();
     }
 }

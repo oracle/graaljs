@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,16 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
     private final Object wasmMemory;
-    private DynamicObject bufferObject;
+    private JSDynamicObject bufferObject;
 
     protected JSWebAssemblyMemoryObject(Shape shape, Object wasmMemory) {
         super(shape);
@@ -60,7 +60,7 @@ public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
         return wasmMemory;
     }
 
-    public DynamicObject getBufferObject(JSContext context, JSRealm realm) {
+    public JSDynamicObject getBufferObject(JSContext context, JSRealm realm) {
         if (bufferObject == null) {
             bufferObject = JSArrayBuffer.createInteropArrayBuffer(context, realm, wasmMemory);
         }

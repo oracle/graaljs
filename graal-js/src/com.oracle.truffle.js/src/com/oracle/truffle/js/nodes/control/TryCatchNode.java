@@ -54,7 +54,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -76,6 +75,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -312,7 +312,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
         }
 
         private Object doJSException(JSException exception) {
-            DynamicObject errorObj = exception.getErrorObject();
+            JSDynamicObject errorObj = exception.getErrorObject();
             // not thread safe, but should be alright in this case
             if (errorObj == null) {
                 JSRealm realm = exception.getRealm();
@@ -329,7 +329,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
         }
 
         @TruffleBoundary
-        private static DynamicObject createErrorFromJSException(JSContext context, JSRealm realm, JSErrorType errorType) {
+        private static JSDynamicObject createErrorFromJSException(JSContext context, JSRealm realm, JSErrorType errorType) {
             return JSError.createErrorObject(context, realm, errorType);
         }
     }

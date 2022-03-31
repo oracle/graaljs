@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.trufflenode;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class JSExternal extends JSNonProxy {
 
@@ -55,9 +55,9 @@ public final class JSExternal extends JSNonProxy {
     private JSExternal() {
     }
 
-    public static DynamicObject create(JSContext context, long pointer) {
+    public static JSDynamicObject create(JSContext context, long pointer) {
         ContextData contextData = GraalJSAccess.getContextEmbedderData(context);
-        DynamicObject obj = new JSExternalObject(contextData.getExternalObjectShape(), pointer);
+        JSDynamicObject obj = new JSExternalObject(contextData.getExternalObjectShape(), pointer);
         assert isJSExternalObject(obj);
         return obj;
     }
@@ -71,7 +71,7 @@ public final class JSExternal extends JSNonProxy {
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return CLASS_NAME;
     }
 }

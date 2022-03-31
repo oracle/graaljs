@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,7 +59,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
@@ -79,6 +78,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.AsyncGeneratorState;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
 import com.oracle.truffle.js.runtime.objects.Completion;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -118,7 +118,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         protected Object executeInRealm(VirtualFrame frame) {
             Object[] arguments = frame.getArguments();
             VirtualFrame generatorFrame = JSArguments.getResumeExecutionContext(arguments);
-            DynamicObject generatorObject = (DynamicObject) JSArguments.getResumeGeneratorOrPromiseCapability(arguments);
+            JSDynamicObject generatorObject = (JSDynamicObject) JSArguments.getResumeGeneratorOrPromiseCapability(arguments);
             Completion completion = JSArguments.getResumeCompletion(arguments);
 
             final JSRealm currentRealm = getRealm();
@@ -216,11 +216,11 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         }
 
         @Override
-        public DynamicObject getAsyncFunctionPromise(Frame asyncFrame) {
+        public JSDynamicObject getAsyncFunctionPromise(Frame asyncFrame) {
             Object[] initialState = (Object[]) readAsyncContext.execute((VirtualFrame) asyncFrame);
             RootCallTarget resumeTarget = (RootCallTarget) initialState[AsyncRootNode.CALL_TARGET_INDEX];
             assert resumeTarget.getRootNode() == this;
-            DynamicObject generatorObject = (DynamicObject) initialState[AsyncRootNode.GENERATOR_OBJECT_OR_PROMISE_CAPABILITY_INDEX];
+            JSDynamicObject generatorObject = (JSDynamicObject) initialState[AsyncRootNode.GENERATOR_OBJECT_OR_PROMISE_CAPABILITY_INDEX];
             Object queue = JSObjectUtil.getHiddenProperty(generatorObject, JSFunction.ASYNC_GENERATOR_QUEUE_ID);
             if (queue instanceof ArrayDeque<?> && ((ArrayDeque<?>) queue).size() == 1) {
                 AsyncGeneratorRequest request = (AsyncGeneratorRequest) ((ArrayDeque<?>) queue).peekFirst();
@@ -318,7 +318,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         }
     }
 
-    private void asyncGeneratorStart(VirtualFrame frame, DynamicObject generatorObject) {
+    private void asyncGeneratorStart(VirtualFrame frame, JSDynamicObject generatorObject) {
         MaterializedFrame materializedFrame = frame.materialize();
         setGeneratorState.setValue(generatorObject, AsyncGeneratorState.SuspendedStart);
         setGeneratorContext.setValue(generatorObject, materializedFrame);
@@ -331,7 +331,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         ensureCallTargetInitialized();
 
-        DynamicObject generatorObject = createAsyncGeneratorObject.execute(frame, JSFrameUtil.getFunctionObject(frame));
+        JSDynamicObject generatorObject = createAsyncGeneratorObject.execute(frame, JSFrameUtil.getFunctionObject(frame));
 
         asyncGeneratorStart(frame, generatorObject);
 

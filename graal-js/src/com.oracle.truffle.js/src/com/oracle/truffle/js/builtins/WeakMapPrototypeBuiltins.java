@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.util.WeakHashMap;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.WeakMapPrototypeBuiltinsFactory.JSWeakMapDeleteNodeGen;
@@ -61,6 +60,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.WeakMap;
 
@@ -141,13 +141,13 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)"})
-        protected static boolean delete(DynamicObject thisObj, DynamicObject key) {
+        protected static boolean delete(JSDynamicObject thisObj, JSDynamicObject key) {
             return Boundaries.mapRemove(JSWeakMap.getInternalWeakMap(thisObj), key) != null;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSWeakMap(thisObj)", "!isJSObject(key)"})
-        protected static Object deleteNonObjectKey(DynamicObject thisObj, Object key) {
+        protected static Object deleteNonObjectKey(JSDynamicObject thisObj, Object key) {
             return false;
         }
 
@@ -168,7 +168,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)", "!isJSProxy(key)"})
-        protected Object getCached(DynamicObject thisObj, DynamicObject key,
+        protected Object getCached(JSDynamicObject thisObj, JSDynamicObject key,
                         @Cached("createInvertedGet()") PropertyGetNode invertedGetter,
                         @Cached("createInvertedHas()") HasHiddenKeyCacheNode invertedHas,
                         @Cached("createClassProfile()") ValueProfile invertedKlassProfile,
@@ -187,7 +187,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)"})
-        protected Object getGeneric(DynamicObject thisObj, DynamicObject key) {
+        protected Object getGeneric(JSDynamicObject thisObj, JSDynamicObject key) {
             Object value = Boundaries.mapGet(JSWeakMap.getInternalWeakMap(thisObj), key);
             if (value != null) {
                 return value;
@@ -198,7 +198,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSWeakMap(thisObj)", "!isJSObject(key)"})
-        protected static Object getNonObjectKey(DynamicObject thisObj, Object key) {
+        protected static Object getNonObjectKey(JSDynamicObject thisObj, Object key) {
             return Undefined.instance;
         }
 
@@ -224,7 +224,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)", "!isJSProxy(key)"})
-        protected Object setCached(DynamicObject thisObj, DynamicObject key, Object value,
+        protected Object setCached(JSDynamicObject thisObj, JSDynamicObject key, Object value,
                         @Cached("createInvertedGet()") PropertyGetNode invertedGetter,
                         @Cached("createInvertedHas()") HasHiddenKeyCacheNode invertedHas,
                         @Cached("createClassProfile()") ValueProfile invertedKlassProfile,
@@ -242,20 +242,20 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)"})
-        protected static DynamicObject set(DynamicObject thisObj, DynamicObject key, Object value) {
+        protected static JSDynamicObject set(JSDynamicObject thisObj, JSDynamicObject key, Object value) {
             Boundaries.mapPut(JSWeakMap.getInternalWeakMap(thisObj), key, value);
             return thisObj;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSWeakMap(thisObj)", "!isJSObject(key)"})
-        protected static DynamicObject setNonObjectKey(DynamicObject thisObj, Object key, Object value) {
+        protected static JSDynamicObject setNonObjectKey(JSDynamicObject thisObj, Object key, Object value) {
             throw typeErrorKeyIsNotObject();
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSWeakMap(thisObj)")
-        protected static DynamicObject notWeakMap(Object thisObj, Object key, Object value) {
+        protected static JSDynamicObject notWeakMap(Object thisObj, Object key, Object value) {
             throw typeErrorWeakMapExpected();
         }
 
@@ -275,7 +275,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)", "!isJSProxy(key)"})
-        protected Object hasCached(DynamicObject thisObj, DynamicObject key,
+        protected Object hasCached(JSDynamicObject thisObj, JSDynamicObject key,
                         @Cached("createInvertedGet()") PropertyGetNode invertedGetter,
                         @Cached("createInvertedHas()") HasHiddenKeyCacheNode invertedHas,
                         @Cached("createClassProfile()") ValueProfile invertedKlassProfile,
@@ -296,13 +296,13 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)"})
-        protected static boolean has(DynamicObject thisObj, DynamicObject key) {
+        protected static boolean has(JSDynamicObject thisObj, JSDynamicObject key) {
             return Boundaries.mapContainsKey(JSWeakMap.getInternalWeakMap(thisObj), key);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSWeakMap(thisObj)", "!isJSObject(key)"})
-        protected static boolean hasNonObjectKey(DynamicObject thisObj, Object key) {
+        protected static boolean hasNonObjectKey(JSDynamicObject thisObj, Object key) {
             return false;
         }
 

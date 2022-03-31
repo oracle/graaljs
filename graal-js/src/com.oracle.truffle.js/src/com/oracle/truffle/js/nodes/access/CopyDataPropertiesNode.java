@@ -52,7 +52,6 @@ import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.builtins.helper.ListSizeNode;
@@ -65,6 +64,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -93,12 +93,12 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
 
     @SuppressWarnings("unused")
     @Specialization(guards = "isNullOrUndefined(value)")
-    protected static DynamicObject doNullOrUndefined(DynamicObject target, Object value, Object[] excludedItems, boolean withExcluded) {
+    protected static JSDynamicObject doNullOrUndefined(JSDynamicObject target, Object value, Object[] excludedItems, boolean withExcluded) {
         return target;
     }
 
     @Specialization(guards = {"isJSObject(source)"})
-    protected static DynamicObject copyDataProperties(DynamicObject target, DynamicObject source, Object[] excludedItems, boolean withExcluded,
+    protected static JSDynamicObject copyDataProperties(JSDynamicObject target, JSDynamicObject source, Object[] excludedItems, boolean withExcluded,
                     @Cached("create(context)") ReadElementNode getNode,
                     @Cached("create(false)") JSGetOwnPropertyNode getOwnProperty,
                     @Cached ListSizeNode listSize,
@@ -135,7 +135,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"!isJSDynamicObject(from)"}, limit = "InteropLibraryLimit")
-    protected final DynamicObject copyDataPropertiesForeign(DynamicObject target, Object from, Object[] excludedItems, boolean withExcluded,
+    protected final JSDynamicObject copyDataPropertiesForeign(JSDynamicObject target, Object from, Object[] excludedItems, boolean withExcluded,
                     @CachedLibrary("from") InteropLibrary objInterop,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary iteratorInterop,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary arrayInterop,

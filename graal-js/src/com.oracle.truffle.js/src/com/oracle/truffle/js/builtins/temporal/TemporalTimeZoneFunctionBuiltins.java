@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalTimeZoneFunctionBuiltinsFactory.JSTemporalTimeZoneFromNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -51,6 +50,7 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public class TemporalTimeZoneFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalTimeZoneFunctionBuiltins.TemporalTimeZoneFunction> {
 
@@ -91,7 +91,7 @@ public class TemporalTimeZoneFunctionBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        protected DynamicObject from(Object item,
+        protected JSDynamicObject from(Object item,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
             return toTemporalTimeZone.executeDynamicObject(item);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -70,6 +69,7 @@ import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -92,9 +92,9 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
         return new PromiseReactionJobNode(context);
     }
 
-    public DynamicObject execute(Object reaction, Object argument) {
+    public JSDynamicObject execute(Object reaction, Object argument) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseReactionJob, (c) -> createPromiseReactionJobImpl(c));
-        DynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSDynamicObject function = JSFunction.create(getRealm(), functionData);
         setReaction.setValue(function, reaction);
         setArgument.setValue(function, argument);
         return function;
@@ -124,7 +124,7 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+            JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
             PromiseReactionRecord reaction = (PromiseReactionRecord) getReaction.getValue(functionObject);
             Object argument = getArgument.getValue(functionObject);
 
@@ -218,13 +218,13 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                 return null;
             }
 
-            DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+            JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
             PromiseReactionRecord reaction = (PromiseReactionRecord) getReaction.getValue(functionObject);
             PromiseCapabilityRecord promiseCapability = reaction.getCapability();
             if (promiseCapability != null) {
                 return AwaitNode.findAsyncStackFramesFromPromise(promiseCapability.getPromise());
             } else if (JSFunction.isJSFunction(reaction.getHandler())) {
-                return AwaitNode.findAsyncStackFramesFromHandler((DynamicObject) reaction.getHandler());
+                return AwaitNode.findAsyncStackFramesFromHandler((JSDynamicObject) reaction.getHandler());
             }
             return null;
         }

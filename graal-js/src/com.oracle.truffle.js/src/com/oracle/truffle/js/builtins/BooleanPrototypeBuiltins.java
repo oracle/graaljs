@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.BooleanPrototypeBuiltinsFactory.JSBooleanToStringNodeGen;
 import com.oracle.truffle.js.builtins.BooleanPrototypeBuiltinsFactory.JSBooleanValueOfNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -58,6 +57,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Contains builtins for {@linkplain JSBoolean}.prototype.
@@ -105,7 +105,7 @@ public final class BooleanPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization(guards = "isJSBoolean(thisObj)")
-        protected Object toString(DynamicObject thisObj) {
+        protected Object toString(JSDynamicObject thisObj) {
             return Strings.fromBoolean(JSBoolean.valueOf(thisObj));
         }
 
@@ -142,7 +142,7 @@ public final class BooleanPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization(guards = "isJSBoolean(thisObj)")
-        protected boolean valueOf(DynamicObject thisObj) {
+        protected boolean valueOf(JSDynamicObject thisObj) {
             return JSBoolean.valueOf(thisObj);
         }
 

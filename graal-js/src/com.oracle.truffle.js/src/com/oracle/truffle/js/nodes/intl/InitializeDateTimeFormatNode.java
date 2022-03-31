@@ -44,7 +44,6 @@ import java.util.MissingResourceException;
 
 import com.ibm.icu.util.TimeZone;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -54,6 +53,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -131,21 +131,21 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         this.toStringNode = JSToStringNode.create();
     }
 
-    public abstract DynamicObject executeInit(DynamicObject collator, Object locales, Object options);
+    public abstract JSDynamicObject executeInit(JSDynamicObject collator, Object locales, Object options);
 
     public static InitializeDateTimeFormatNode createInitalizeDateTimeFormatNode(JSContext context, String required, String defaults) {
         return InitializeDateTimeFormatNodeGen.create(context, required, defaults);
     }
 
     @Specialization
-    public DynamicObject initializeDateTimeFormat(DynamicObject dateTimeFormatObj, Object localesArg, Object optionsArg) {
+    public JSDynamicObject initializeDateTimeFormat(JSDynamicObject dateTimeFormatObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data
         try {
             JSDateTimeFormat.InternalState state = JSDateTimeFormat.getInternalState(dateTimeFormatObj);
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-            DynamicObject options = createOptionsNode.execute(optionsArg, required, defaults);
+            JSDynamicObject options = createOptionsNode.execute(optionsArg, required, defaults);
 
             // enforce validity check
             getLocaleMatcherOption.executeValue(options);

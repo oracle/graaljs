@@ -85,7 +85,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
@@ -229,89 +228,89 @@ public class JSRealm {
 
     private final JSContext context;
 
-    @CompilationFinal private DynamicObject globalObject;
+    @CompilationFinal private JSDynamicObject globalObject;
 
-    private final DynamicObject objectConstructor;
-    private final DynamicObject objectPrototype;
-    private final DynamicObject functionConstructor;
-    private final DynamicObject functionPrototype;
+    private final JSDynamicObject objectConstructor;
+    private final JSDynamicObject objectPrototype;
+    private final JSDynamicObject functionConstructor;
+    private final JSDynamicObject functionPrototype;
 
-    private final DynamicObject arrayConstructor;
-    private final DynamicObject arrayPrototype;
-    private final DynamicObject booleanConstructor;
-    private final DynamicObject booleanPrototype;
-    private final DynamicObject numberConstructor;
-    private final DynamicObject numberPrototype;
-    private final DynamicObject bigIntConstructor;
-    private final DynamicObject bigIntPrototype;
-    private final DynamicObject stringConstructor;
-    private final DynamicObject stringPrototype;
-    private final DynamicObject regExpConstructor;
-    private final DynamicObject regExpPrototype;
-    private final DynamicObject collatorConstructor;
-    private final DynamicObject collatorPrototype;
-    private final DynamicObject numberFormatConstructor;
-    private final DynamicObject numberFormatPrototype;
-    private final DynamicObject pluralRulesConstructor;
-    private final DynamicObject pluralRulesPrototype;
-    private final DynamicObject listFormatConstructor;
-    private final DynamicObject listFormatPrototype;
-    private final DynamicObject dateTimeFormatConstructor;
-    private final DynamicObject dateTimeFormatPrototype;
-    private final DynamicObject relativeTimeFormatConstructor;
-    private final DynamicObject relativeTimeFormatPrototype;
-    private final DynamicObject segmenterConstructor;
-    private final DynamicObject segmenterPrototype;
-    private final DynamicObject displayNamesConstructor;
-    private final DynamicObject displayNamesPrototype;
-    private final DynamicObject localeConstructor;
-    private final DynamicObject localePrototype;
-    private final DynamicObject dateConstructor;
-    private final DynamicObject datePrototype;
-    @CompilationFinal(dimensions = 1) private final DynamicObject[] errorConstructors;
-    @CompilationFinal(dimensions = 1) private final DynamicObject[] errorPrototypes;
-    private final DynamicObject callSiteConstructor;
-    private final DynamicObject callSitePrototype;
+    private final JSDynamicObject arrayConstructor;
+    private final JSDynamicObject arrayPrototype;
+    private final JSDynamicObject booleanConstructor;
+    private final JSDynamicObject booleanPrototype;
+    private final JSDynamicObject numberConstructor;
+    private final JSDynamicObject numberPrototype;
+    private final JSDynamicObject bigIntConstructor;
+    private final JSDynamicObject bigIntPrototype;
+    private final JSDynamicObject stringConstructor;
+    private final JSDynamicObject stringPrototype;
+    private final JSDynamicObject regExpConstructor;
+    private final JSDynamicObject regExpPrototype;
+    private final JSDynamicObject collatorConstructor;
+    private final JSDynamicObject collatorPrototype;
+    private final JSDynamicObject numberFormatConstructor;
+    private final JSDynamicObject numberFormatPrototype;
+    private final JSDynamicObject pluralRulesConstructor;
+    private final JSDynamicObject pluralRulesPrototype;
+    private final JSDynamicObject listFormatConstructor;
+    private final JSDynamicObject listFormatPrototype;
+    private final JSDynamicObject dateTimeFormatConstructor;
+    private final JSDynamicObject dateTimeFormatPrototype;
+    private final JSDynamicObject relativeTimeFormatConstructor;
+    private final JSDynamicObject relativeTimeFormatPrototype;
+    private final JSDynamicObject segmenterConstructor;
+    private final JSDynamicObject segmenterPrototype;
+    private final JSDynamicObject displayNamesConstructor;
+    private final JSDynamicObject displayNamesPrototype;
+    private final JSDynamicObject localeConstructor;
+    private final JSDynamicObject localePrototype;
+    private final JSDynamicObject dateConstructor;
+    private final JSDynamicObject datePrototype;
+    @CompilationFinal(dimensions = 1) private final JSDynamicObject[] errorConstructors;
+    @CompilationFinal(dimensions = 1) private final JSDynamicObject[] errorPrototypes;
+    private final JSDynamicObject callSiteConstructor;
+    private final JSDynamicObject callSitePrototype;
 
     private final Shape initialRegExpPrototypeShape;
     private final JSObjectFactory.RealmData objectFactories;
 
-    private final DynamicObject temporalPlainTimeConstructor;
-    private final DynamicObject temporalPlainTimePrototype;
-    private final DynamicObject temporalPlainDateConstructor;
-    private final DynamicObject temporalPlainDatePrototype;
-    private final DynamicObject temporalPlainDateTimeConstructor;
-    private final DynamicObject temporalPlainDateTimePrototype;
-    private final DynamicObject temporalDurationConstructor;
-    private final DynamicObject temporalDurationPrototype;
-    private final DynamicObject temporalCalendarConstructor;
-    private final DynamicObject temporalCalendarPrototype;
-    private final DynamicObject temporalPlainYearMonthConstructor;
-    private final DynamicObject temporalPlainYearMonthPrototype;
-    private final DynamicObject temporalPlainMonthDayConstructor;
-    private final DynamicObject temporalPlainMonthDayPrototype;
-    private final DynamicObject temporalInstantConstructor;
-    private final DynamicObject temporalInstantPrototype;
-    private final DynamicObject temporalTimeZoneConstructor;
-    private final DynamicObject temporalTimeZonePrototype;
-    private final DynamicObject temporalZonedDateTimeConstructor;
-    private final DynamicObject temporalZonedDateTimePrototype;
+    private final JSDynamicObject temporalPlainTimeConstructor;
+    private final JSDynamicObject temporalPlainTimePrototype;
+    private final JSDynamicObject temporalPlainDateConstructor;
+    private final JSDynamicObject temporalPlainDatePrototype;
+    private final JSDynamicObject temporalPlainDateTimeConstructor;
+    private final JSDynamicObject temporalPlainDateTimePrototype;
+    private final JSDynamicObject temporalDurationConstructor;
+    private final JSDynamicObject temporalDurationPrototype;
+    private final JSDynamicObject temporalCalendarConstructor;
+    private final JSDynamicObject temporalCalendarPrototype;
+    private final JSDynamicObject temporalPlainYearMonthConstructor;
+    private final JSDynamicObject temporalPlainYearMonthPrototype;
+    private final JSDynamicObject temporalPlainMonthDayConstructor;
+    private final JSDynamicObject temporalPlainMonthDayPrototype;
+    private final JSDynamicObject temporalInstantConstructor;
+    private final JSDynamicObject temporalInstantPrototype;
+    private final JSDynamicObject temporalTimeZoneConstructor;
+    private final JSDynamicObject temporalTimeZonePrototype;
+    private final JSDynamicObject temporalZonedDateTimeConstructor;
+    private final JSDynamicObject temporalZonedDateTimePrototype;
     // ES6:
-    private final DynamicObject symbolConstructor;
-    private final DynamicObject symbolPrototype;
-    private final DynamicObject mapConstructor;
-    private final DynamicObject mapPrototype;
-    private final DynamicObject setConstructor;
-    private final DynamicObject setPrototype;
-    private final DynamicObject weakRefConstructor;
-    private final DynamicObject weakRefPrototype;
-    private final DynamicObject weakMapConstructor;
-    private final DynamicObject weakMapPrototype;
-    private final DynamicObject weakSetConstructor;
-    private final DynamicObject weakSetPrototype;
+    private final JSDynamicObject symbolConstructor;
+    private final JSDynamicObject symbolPrototype;
+    private final JSDynamicObject mapConstructor;
+    private final JSDynamicObject mapPrototype;
+    private final JSDynamicObject setConstructor;
+    private final JSDynamicObject setPrototype;
+    private final JSDynamicObject weakRefConstructor;
+    private final JSDynamicObject weakRefPrototype;
+    private final JSDynamicObject weakMapConstructor;
+    private final JSDynamicObject weakMapPrototype;
+    private final JSDynamicObject weakSetConstructor;
+    private final JSDynamicObject weakSetPrototype;
 
-    private final DynamicObject mathObject;
-    private DynamicObject realmBuiltinObject;
+    private final JSDynamicObject mathObject;
+    private JSDynamicObject realmBuiltinObject;
     private Object evalFunctionObject;
     private final Object applyFunctionObject;
     private final Object callFunctionObject;
@@ -321,72 +320,72 @@ public class JSRealm {
     private Map<String, Object> commonJSPreLoadedBuiltins;
     private Object jsonParseFunctionObject;
 
-    private final DynamicObject arrayBufferConstructor;
-    private final DynamicObject arrayBufferPrototype;
-    private final DynamicObject sharedArrayBufferConstructor;
-    private final DynamicObject sharedArrayBufferPrototype;
+    private final JSDynamicObject arrayBufferConstructor;
+    private final JSDynamicObject arrayBufferPrototype;
+    private final JSDynamicObject sharedArrayBufferConstructor;
+    private final JSDynamicObject sharedArrayBufferPrototype;
 
-    @CompilationFinal(dimensions = 1) private final DynamicObject[] typedArrayConstructors;
-    @CompilationFinal(dimensions = 1) private final DynamicObject[] typedArrayPrototypes;
-    private final DynamicObject dataViewConstructor;
-    private final DynamicObject dataViewPrototype;
-    private final DynamicObject jsAdapterConstructor;
-    private final DynamicObject jsAdapterPrototype;
-    private final DynamicObject javaImporterConstructor;
-    private final DynamicObject javaImporterPrototype;
-    private final DynamicObject proxyConstructor;
-    private final DynamicObject proxyPrototype;
-    private final DynamicObject finalizationRegistryConstructor;
-    private final DynamicObject finalizationRegistryPrototype;
+    @CompilationFinal(dimensions = 1) private final JSDynamicObject[] typedArrayConstructors;
+    @CompilationFinal(dimensions = 1) private final JSDynamicObject[] typedArrayPrototypes;
+    private final JSDynamicObject dataViewConstructor;
+    private final JSDynamicObject dataViewPrototype;
+    private final JSDynamicObject jsAdapterConstructor;
+    private final JSDynamicObject jsAdapterPrototype;
+    private final JSDynamicObject javaImporterConstructor;
+    private final JSDynamicObject javaImporterPrototype;
+    private final JSDynamicObject proxyConstructor;
+    private final JSDynamicObject proxyPrototype;
+    private final JSDynamicObject finalizationRegistryConstructor;
+    private final JSDynamicObject finalizationRegistryPrototype;
 
-    private final DynamicObject iteratorPrototype;
-    private final DynamicObject arrayIteratorPrototype;
-    private final DynamicObject setIteratorPrototype;
-    private final DynamicObject mapIteratorPrototype;
-    private final DynamicObject segmentsPrototype;
-    private final DynamicObject segmentIteratorPrototype;
-    private final DynamicObject stringIteratorPrototype;
-    private final DynamicObject regExpStringIteratorPrototype;
-    private final DynamicObject enumerateIteratorPrototype;
-    private final DynamicObject forInIteratorPrototype;
+    private final JSDynamicObject iteratorPrototype;
+    private final JSDynamicObject arrayIteratorPrototype;
+    private final JSDynamicObject setIteratorPrototype;
+    private final JSDynamicObject mapIteratorPrototype;
+    private final JSDynamicObject segmentsPrototype;
+    private final JSDynamicObject segmentIteratorPrototype;
+    private final JSDynamicObject stringIteratorPrototype;
+    private final JSDynamicObject regExpStringIteratorPrototype;
+    private final JSDynamicObject enumerateIteratorPrototype;
+    private final JSDynamicObject forInIteratorPrototype;
 
-    private final DynamicObject generatorFunctionConstructor;
-    private final DynamicObject generatorFunctionPrototype;
-    private final DynamicObject generatorObjectPrototype;
+    private final JSDynamicObject generatorFunctionConstructor;
+    private final JSDynamicObject generatorFunctionPrototype;
+    private final JSDynamicObject generatorObjectPrototype;
 
-    private final DynamicObject asyncFunctionConstructor;
-    private final DynamicObject asyncFunctionPrototype;
+    private final JSDynamicObject asyncFunctionConstructor;
+    private final JSDynamicObject asyncFunctionPrototype;
 
-    private final DynamicObject asyncIteratorPrototype;
-    private final DynamicObject asyncFromSyncIteratorPrototype;
-    private final DynamicObject asyncGeneratorObjectPrototype;
-    private final DynamicObject asyncGeneratorFunctionConstructor;
-    private final DynamicObject asyncGeneratorFunctionPrototype;
+    private final JSDynamicObject asyncIteratorPrototype;
+    private final JSDynamicObject asyncFromSyncIteratorPrototype;
+    private final JSDynamicObject asyncGeneratorObjectPrototype;
+    private final JSDynamicObject asyncGeneratorFunctionConstructor;
+    private final JSDynamicObject asyncGeneratorFunctionPrototype;
 
-    private final DynamicObject throwerFunction;
+    private final JSDynamicObject throwerFunction;
     private final Accessor throwerAccessor;
 
-    private final DynamicObject promiseConstructor;
-    private final DynamicObject promisePrototype;
-    private DynamicObject promiseAllFunctionObject;
+    private final JSDynamicObject promiseConstructor;
+    private final JSDynamicObject promisePrototype;
+    private JSDynamicObject promiseAllFunctionObject;
 
-    private final DynamicObject ordinaryHasInstanceFunction;
+    private final JSDynamicObject ordinaryHasInstanceFunction;
 
-    @CompilationFinal private DynamicObject javaPackageToPrimitiveFunction;
+    @CompilationFinal private JSDynamicObject javaPackageToPrimitiveFunction;
 
-    private final DynamicObject arrayProtoValuesIterator;
-    @CompilationFinal private DynamicObject typedArrayConstructor;
-    @CompilationFinal private DynamicObject typedArrayPrototype;
+    private final JSDynamicObject arrayProtoValuesIterator;
+    @CompilationFinal private JSDynamicObject typedArrayConstructor;
+    @CompilationFinal private JSDynamicObject typedArrayPrototype;
 
-    private DynamicObject preinitIntlObject;
-    private DynamicObject preinitConsoleBuiltinObject;
-    private DynamicObject preinitPerformanceObject;
+    private JSDynamicObject preinitIntlObject;
+    private JSDynamicObject preinitConsoleBuiltinObject;
+    private JSDynamicObject preinitPerformanceObject;
 
-    private volatile Map<Object, DynamicObject> templateRegistry;
+    private volatile Map<Object, JSDynamicObject> templateRegistry;
 
-    private final DynamicObject globalScope;
+    private final JSDynamicObject globalScope;
 
-    private final DynamicObject scriptEngineImportScope;
+    private final JSDynamicObject scriptEngineImportScope;
 
     @CompilationFinal private TopScopeObject topScope;
 
@@ -433,22 +432,22 @@ public class JSRealm {
     private final Object wasmEmbedderDataGet;
     private final Object wasmEmbedderDataSet;
 
-    private final DynamicObject webAssemblyObject;
-    private final DynamicObject webAssemblyGlobalConstructor;
-    private final DynamicObject webAssemblyGlobalPrototype;
-    private final DynamicObject webAssemblyInstanceConstructor;
-    private final DynamicObject webAssemblyInstancePrototype;
-    private final DynamicObject webAssemblyMemoryConstructor;
-    private final DynamicObject webAssemblyMemoryPrototype;
-    private final DynamicObject webAssemblyModuleConstructor;
-    private final DynamicObject webAssemblyModulePrototype;
-    private final DynamicObject webAssemblyTableConstructor;
-    private final DynamicObject webAssemblyTablePrototype;
+    private final JSDynamicObject webAssemblyObject;
+    private final JSDynamicObject webAssemblyGlobalConstructor;
+    private final JSDynamicObject webAssemblyGlobalPrototype;
+    private final JSDynamicObject webAssemblyInstanceConstructor;
+    private final JSDynamicObject webAssemblyInstancePrototype;
+    private final JSDynamicObject webAssemblyMemoryConstructor;
+    private final JSDynamicObject webAssemblyMemoryPrototype;
+    private final JSDynamicObject webAssemblyModuleConstructor;
+    private final JSDynamicObject webAssemblyModulePrototype;
+    private final JSDynamicObject webAssemblyTableConstructor;
+    private final JSDynamicObject webAssemblyTablePrototype;
 
     private final JSWebAssemblyMemoryGrowCallback webAssemblyMemoryGrowCallback;
 
     /** Foreign object prototypes. */
-    private final DynamicObject foreignIterablePrototype;
+    private final JSDynamicObject foreignIterablePrototype;
 
     /**
      * Local time zone ID. Initialized lazily. May be reinitialized by {@link #setLocalTimeZone}.
@@ -521,7 +520,7 @@ public class JSRealm {
     /**
      * Per-realm CommonJs `require` cache.
      */
-    private final Map<TruffleFile, DynamicObject> commonJSRequireCache;
+    private final Map<TruffleFile, JSDynamicObject> commonJSRequireCache;
 
     /**
      * Stack of receivers of (Typed)Array.prototype.join. Used to avoid cyclic calls.
@@ -653,8 +652,8 @@ public class JSRealm {
             this.promisePrototype = null;
         }
 
-        this.errorConstructors = new DynamicObject[JSErrorType.errorTypes().length];
-        this.errorPrototypes = new DynamicObject[JSErrorType.errorTypes().length];
+        this.errorConstructors = new JSDynamicObject[JSErrorType.errorTypes().length];
+        this.errorPrototypes = new JSDynamicObject[JSErrorType.errorTypes().length];
         initializeErrorConstructors();
         ctor = JSError.createCallSiteConstructor(this);
         this.callSiteConstructor = ctor.getFunctionObject();
@@ -663,8 +662,8 @@ public class JSRealm {
         ctor = JSArrayBuffer.createConstructor(this);
         this.arrayBufferConstructor = ctor.getFunctionObject();
         this.arrayBufferPrototype = ctor.getPrototype();
-        this.typedArrayConstructors = new DynamicObject[TypedArray.factories(context).length];
-        this.typedArrayPrototypes = new DynamicObject[TypedArray.factories(context).length];
+        this.typedArrayConstructors = new JSDynamicObject[TypedArray.factories(context).length];
+        this.typedArrayPrototypes = new JSDynamicObject[TypedArray.factories(context).length];
         initializeTypedArrayConstructors();
         ctor = JSDataView.createConstructor(this);
         this.dataViewConstructor = ctor.getFunctionObject();
@@ -720,7 +719,7 @@ public class JSRealm {
             ctor = JSFunction.createGeneratorFunctionConstructor(this);
             this.generatorFunctionConstructor = ctor.getFunctionObject();
             this.generatorFunctionPrototype = ctor.getPrototype();
-            this.generatorObjectPrototype = (DynamicObject) JSDynamicObject.getOrNull(generatorFunctionPrototype, JSObject.PROTOTYPE);
+            this.generatorObjectPrototype = (JSDynamicObject) JSDynamicObject.getOrNull(generatorFunctionPrototype, JSObject.PROTOTYPE);
         } else {
             this.generatorFunctionConstructor = null;
             this.generatorFunctionPrototype = null;
@@ -728,7 +727,7 @@ public class JSRealm {
         }
         this.enumerateIteratorPrototype = JSFunction.createEnumerateIteratorPrototype(this);
         this.forInIteratorPrototype = JSFunction.createForInIteratorPrototype(this);
-        this.arrayProtoValuesIterator = (DynamicObject) JSDynamicObject.getOrDefault(getArrayPrototype(), Symbol.SYMBOL_ITERATOR, Undefined.instance);
+        this.arrayProtoValuesIterator = (JSDynamicObject) JSDynamicObject.getOrDefault(getArrayPrototype(), Symbol.SYMBOL_ITERATOR, Undefined.instance);
 
         if (context.isOptionSharedArrayBuffer()) {
             ctor = JSSharedArrayBuffer.createConstructor(this);
@@ -758,7 +757,7 @@ public class JSRealm {
             ctor = JSFunction.createAsyncGeneratorFunctionConstructor(this);
             this.asyncGeneratorFunctionConstructor = ctor.getFunctionObject();
             this.asyncGeneratorFunctionPrototype = ctor.getPrototype();
-            this.asyncGeneratorObjectPrototype = (DynamicObject) JSDynamicObject.getOrNull(asyncGeneratorFunctionPrototype, JSObject.PROTOTYPE);
+            this.asyncGeneratorObjectPrototype = (JSDynamicObject) JSDynamicObject.getOrNull(asyncGeneratorFunctionPrototype, JSObject.PROTOTYPE);
         } else {
             this.asyncIteratorPrototype = null;
             this.asyncFromSyncIteratorPrototype = null;
@@ -1039,7 +1038,7 @@ public class JSRealm {
         this.currentRealm = prevRealm;
     }
 
-    public final DynamicObject lookupFunction(JSBuiltinsContainer container, TruffleString methodName) {
+    public final JSDynamicObject lookupFunction(JSBuiltinsContainer container, TruffleString methodName) {
         assert JSRuntime.isPropertyKey(methodName);
         Builtin builtin = Objects.requireNonNull(container.lookupFunctionByName(methodName));
         JSFunctionData functionData = builtin.createFunctionData(context);
@@ -1050,8 +1049,8 @@ public class JSRealm {
         Pair<JSBuiltin, JSBuiltin> pair = container.lookupAccessorByKey(key);
         JSBuiltin getterBuiltin = pair.getLeft();
         JSBuiltin setterBulitin = pair.getRight();
-        DynamicObject getterFunction = null;
-        DynamicObject setterFunction = null;
+        JSDynamicObject getterFunction = null;
+        JSDynamicObject setterFunction = null;
         if (getterBuiltin != null) {
             JSFunctionData functionData = getterBuiltin.createFunctionData(context);
             getterFunction = JSFunction.create(this, functionData);
@@ -1063,9 +1062,9 @@ public class JSRealm {
         return new Accessor(getterFunction, setterFunction);
     }
 
-    public static DynamicObject createObjectConstructor(JSRealm realm, DynamicObject objectPrototype) {
+    public static JSDynamicObject createObjectConstructor(JSRealm realm, JSDynamicObject objectPrototype) {
         JSContext context = realm.getContext();
-        DynamicObject objectConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, JSOrdinary.CLASS_NAME);
+        JSDynamicObject objectConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, JSOrdinary.CLASS_NAME);
         JSObjectUtil.putConstructorPrototypeProperty(context, objectConstructor, objectPrototype);
         JSObjectUtil.putFunctionsFromContainer(realm, objectConstructor, ObjectFunctionBuiltins.BUILTINS);
         if (context.isOptionNashornCompatibilityMode()) {
@@ -1074,19 +1073,19 @@ public class JSRealm {
         return objectConstructor;
     }
 
-    public final DynamicObject getErrorConstructor(JSErrorType type) {
+    public final JSDynamicObject getErrorConstructor(JSErrorType type) {
         return errorConstructors[type.ordinal()];
     }
 
-    public final DynamicObject getErrorPrototype(JSErrorType type) {
+    public final JSDynamicObject getErrorPrototype(JSErrorType type) {
         return errorPrototypes[type.ordinal()];
     }
 
-    public final DynamicObject getGlobalObject() {
+    public final JSDynamicObject getGlobalObject() {
         return globalObject;
     }
 
-    public final void setGlobalObject(DynamicObject global) {
+    public final void setGlobalObject(JSDynamicObject global) {
         context.getGlobalObjectPristineAssumption().invalidate();
         this.globalObject = global;
         this.topScope = createTopScope();
@@ -1101,203 +1100,203 @@ public class JSRealm {
         this.topScope = TopScopeObject.empty();
     }
 
-    public final DynamicObject getObjectConstructor() {
+    public final JSDynamicObject getObjectConstructor() {
         return objectConstructor;
     }
 
-    public final DynamicObject getObjectPrototype() {
+    public final JSDynamicObject getObjectPrototype() {
         return objectPrototype;
     }
 
-    public final DynamicObject getFunctionConstructor() {
+    public final JSDynamicObject getFunctionConstructor() {
         return functionConstructor;
     }
 
-    public final DynamicObject getFunctionPrototype() {
+    public final JSDynamicObject getFunctionPrototype() {
         return functionPrototype;
     }
 
-    public final DynamicObject getArrayConstructor() {
+    public final JSDynamicObject getArrayConstructor() {
         return arrayConstructor;
     }
 
-    public final DynamicObject getArrayPrototype() {
+    public final JSDynamicObject getArrayPrototype() {
         return arrayPrototype;
     }
 
-    public final DynamicObject getBooleanConstructor() {
+    public final JSDynamicObject getBooleanConstructor() {
         return booleanConstructor;
     }
 
-    public final DynamicObject getBooleanPrototype() {
+    public final JSDynamicObject getBooleanPrototype() {
         return booleanPrototype;
     }
 
-    public final DynamicObject getNumberConstructor() {
+    public final JSDynamicObject getNumberConstructor() {
         return numberConstructor;
     }
 
-    public final DynamicObject getNumberPrototype() {
+    public final JSDynamicObject getNumberPrototype() {
         return numberPrototype;
     }
 
-    public final DynamicObject getBigIntConstructor() {
+    public final JSDynamicObject getBigIntConstructor() {
         return bigIntConstructor;
     }
 
-    public final DynamicObject getBigIntPrototype() {
+    public final JSDynamicObject getBigIntPrototype() {
         return bigIntPrototype;
     }
 
-    public final DynamicObject getStringConstructor() {
+    public final JSDynamicObject getStringConstructor() {
         return stringConstructor;
     }
 
-    public final DynamicObject getStringPrototype() {
+    public final JSDynamicObject getStringPrototype() {
         return stringPrototype;
     }
 
-    public final DynamicObject getRegExpConstructor() {
+    public final JSDynamicObject getRegExpConstructor() {
         return regExpConstructor;
     }
 
-    public final DynamicObject getRegExpPrototype() {
+    public final JSDynamicObject getRegExpPrototype() {
         return regExpPrototype;
     }
 
-    public final DynamicObject getCollatorConstructor() {
+    public final JSDynamicObject getCollatorConstructor() {
         return collatorConstructor;
     }
 
-    public final DynamicObject getCollatorPrototype() {
+    public final JSDynamicObject getCollatorPrototype() {
         return collatorPrototype;
     }
 
-    public final DynamicObject getNumberFormatConstructor() {
+    public final JSDynamicObject getNumberFormatConstructor() {
         return numberFormatConstructor;
     }
 
-    public final DynamicObject getNumberFormatPrototype() {
+    public final JSDynamicObject getNumberFormatPrototype() {
         return numberFormatPrototype;
     }
 
-    public final DynamicObject getPluralRulesConstructor() {
+    public final JSDynamicObject getPluralRulesConstructor() {
         return pluralRulesConstructor;
     }
 
-    public final DynamicObject getPluralRulesPrototype() {
+    public final JSDynamicObject getPluralRulesPrototype() {
         return pluralRulesPrototype;
     }
 
-    public final DynamicObject getListFormatConstructor() {
+    public final JSDynamicObject getListFormatConstructor() {
         return listFormatConstructor;
     }
 
-    public final DynamicObject getListFormatPrototype() {
+    public final JSDynamicObject getListFormatPrototype() {
         return listFormatPrototype;
     }
 
-    public final DynamicObject getRelativeTimeFormatConstructor() {
+    public final JSDynamicObject getRelativeTimeFormatConstructor() {
         return relativeTimeFormatConstructor;
     }
 
-    public final DynamicObject getRelativeTimeFormatPrototype() {
+    public final JSDynamicObject getRelativeTimeFormatPrototype() {
         return relativeTimeFormatPrototype;
     }
 
-    public final DynamicObject getDateTimeFormatConstructor() {
+    public final JSDynamicObject getDateTimeFormatConstructor() {
         return dateTimeFormatConstructor;
     }
 
-    public final DynamicObject getDateTimeFormatPrototype() {
+    public final JSDynamicObject getDateTimeFormatPrototype() {
         return dateTimeFormatPrototype;
     }
 
-    public final DynamicObject getDateConstructor() {
+    public final JSDynamicObject getDateConstructor() {
         return dateConstructor;
     }
 
-    public final DynamicObject getDatePrototype() {
+    public final JSDynamicObject getDatePrototype() {
         return datePrototype;
     }
 
-    public final DynamicObject getSegmenterConstructor() {
+    public final JSDynamicObject getSegmenterConstructor() {
         return segmenterConstructor;
     }
 
-    public final DynamicObject getSegmenterPrototype() {
+    public final JSDynamicObject getSegmenterPrototype() {
         return segmenterPrototype;
     }
 
-    public final DynamicObject getDisplayNamesConstructor() {
+    public final JSDynamicObject getDisplayNamesConstructor() {
         return displayNamesConstructor;
     }
 
-    public final DynamicObject getDisplayNamesPrototype() {
+    public final JSDynamicObject getDisplayNamesPrototype() {
         return displayNamesPrototype;
     }
 
-    public final DynamicObject getLocaleConstructor() {
+    public final JSDynamicObject getLocaleConstructor() {
         return localeConstructor;
     }
 
-    public final DynamicObject getLocalePrototype() {
+    public final JSDynamicObject getLocalePrototype() {
         return localePrototype;
     }
 
-    public final DynamicObject getSymbolConstructor() {
+    public final JSDynamicObject getSymbolConstructor() {
         return symbolConstructor;
     }
 
-    public final DynamicObject getSymbolPrototype() {
+    public final JSDynamicObject getSymbolPrototype() {
         return symbolPrototype;
     }
 
-    public final DynamicObject getMapConstructor() {
+    public final JSDynamicObject getMapConstructor() {
         return mapConstructor;
     }
 
-    public final DynamicObject getMapPrototype() {
+    public final JSDynamicObject getMapPrototype() {
         return mapPrototype;
     }
 
-    public final DynamicObject getSetConstructor() {
+    public final JSDynamicObject getSetConstructor() {
         return setConstructor;
     }
 
-    public final DynamicObject getSetPrototype() {
+    public final JSDynamicObject getSetPrototype() {
         return setPrototype;
     }
 
-    public final DynamicObject getWeakRefConstructor() {
+    public final JSDynamicObject getWeakRefConstructor() {
         return weakRefConstructor;
     }
 
-    public final DynamicObject getWeakRefPrototype() {
+    public final JSDynamicObject getWeakRefPrototype() {
         return weakRefPrototype;
     }
 
-    public final DynamicObject getFinalizationRegistryConstructor() {
+    public final JSDynamicObject getFinalizationRegistryConstructor() {
         return finalizationRegistryConstructor;
     }
 
-    public final DynamicObject getFinalizationRegistryPrototype() {
+    public final JSDynamicObject getFinalizationRegistryPrototype() {
         return finalizationRegistryPrototype;
     }
 
-    public final DynamicObject getWeakMapConstructor() {
+    public final JSDynamicObject getWeakMapConstructor() {
         return weakMapConstructor;
     }
 
-    public final DynamicObject getWeakMapPrototype() {
+    public final JSDynamicObject getWeakMapPrototype() {
         return weakMapPrototype;
     }
 
-    public final DynamicObject getWeakSetConstructor() {
+    public final JSDynamicObject getWeakSetConstructor() {
         return weakSetConstructor;
     }
 
-    public final DynamicObject getWeakSetPrototype() {
+    public final JSDynamicObject getWeakSetPrototype() {
         return weakSetPrototype;
     }
 
@@ -1305,194 +1304,194 @@ public class JSRealm {
         return initialRegExpPrototypeShape;
     }
 
-    public final DynamicObject getArrayBufferConstructor() {
+    public final JSDynamicObject getArrayBufferConstructor() {
         return arrayBufferConstructor;
     }
 
-    public final DynamicObject getArrayBufferPrototype() {
+    public final JSDynamicObject getArrayBufferPrototype() {
         return arrayBufferPrototype;
     }
 
-    public final DynamicObject getSharedArrayBufferConstructor() {
+    public final JSDynamicObject getSharedArrayBufferConstructor() {
         assert context.isOptionSharedArrayBuffer();
         return sharedArrayBufferConstructor;
     }
 
-    public final DynamicObject getSharedArrayBufferPrototype() {
+    public final JSDynamicObject getSharedArrayBufferPrototype() {
         assert context.isOptionSharedArrayBuffer();
         return sharedArrayBufferPrototype;
     }
 
-    public final DynamicObject getArrayBufferViewConstructor(TypedArrayFactory factory) {
+    public final JSDynamicObject getArrayBufferViewConstructor(TypedArrayFactory factory) {
         return typedArrayConstructors[factory.getFactoryIndex()];
     }
 
-    public final DynamicObject getArrayBufferViewPrototype(TypedArrayFactory factory) {
+    public final JSDynamicObject getArrayBufferViewPrototype(TypedArrayFactory factory) {
         return typedArrayPrototypes[factory.getFactoryIndex()];
     }
 
-    public final DynamicObject getDataViewConstructor() {
+    public final JSDynamicObject getDataViewConstructor() {
         return dataViewConstructor;
     }
 
-    public final DynamicObject getDataViewPrototype() {
+    public final JSDynamicObject getDataViewPrototype() {
         return dataViewPrototype;
     }
 
-    public final DynamicObject getTypedArrayConstructor() {
+    public final JSDynamicObject getTypedArrayConstructor() {
         return typedArrayConstructor;
     }
 
-    public final DynamicObject getTypedArrayPrototype() {
+    public final JSDynamicObject getTypedArrayPrototype() {
         return typedArrayPrototype;
     }
 
-    public final DynamicObject getRealmBuiltinObject() {
+    public final JSDynamicObject getRealmBuiltinObject() {
         return realmBuiltinObject;
     }
 
-    public final DynamicObject getProxyConstructor() {
+    public final JSDynamicObject getProxyConstructor() {
         return proxyConstructor;
     }
 
-    public final DynamicObject getProxyPrototype() {
+    public final JSDynamicObject getProxyPrototype() {
         return proxyPrototype;
     }
 
-    public final DynamicObject getGeneratorFunctionConstructor() {
+    public final JSDynamicObject getGeneratorFunctionConstructor() {
         return generatorFunctionConstructor;
     }
 
-    public final DynamicObject getGeneratorFunctionPrototype() {
+    public final JSDynamicObject getGeneratorFunctionPrototype() {
         return generatorFunctionPrototype;
     }
 
-    public final DynamicObject getAsyncFunctionConstructor() {
+    public final JSDynamicObject getAsyncFunctionConstructor() {
         return asyncFunctionConstructor;
     }
 
-    public final DynamicObject getAsyncFunctionPrototype() {
+    public final JSDynamicObject getAsyncFunctionPrototype() {
         return asyncFunctionPrototype;
     }
 
-    public final DynamicObject getAsyncGeneratorFunctionConstructor() {
+    public final JSDynamicObject getAsyncGeneratorFunctionConstructor() {
         return asyncGeneratorFunctionConstructor;
     }
 
-    public final DynamicObject getAsyncGeneratorFunctionPrototype() {
+    public final JSDynamicObject getAsyncGeneratorFunctionPrototype() {
         return asyncGeneratorFunctionPrototype;
     }
 
-    public final DynamicObject getEnumerateIteratorPrototype() {
+    public final JSDynamicObject getEnumerateIteratorPrototype() {
         return enumerateIteratorPrototype;
     }
 
-    public final DynamicObject getForInIteratorPrototype() {
+    public final JSDynamicObject getForInIteratorPrototype() {
         return forInIteratorPrototype;
     }
 
-    public final DynamicObject getGeneratorObjectPrototype() {
+    public final JSDynamicObject getGeneratorObjectPrototype() {
         return generatorObjectPrototype;
     }
 
-    public final DynamicObject getAsyncGeneratorObjectPrototype() {
+    public final JSDynamicObject getAsyncGeneratorObjectPrototype() {
         return asyncGeneratorObjectPrototype;
     }
 
-    public final DynamicObject getJavaImporterConstructor() {
+    public final JSDynamicObject getJavaImporterConstructor() {
         return javaImporterConstructor;
     }
 
-    public final DynamicObject getJavaImporterPrototype() {
+    public final JSDynamicObject getJavaImporterPrototype() {
         return javaImporterPrototype;
     }
 
-    public final DynamicObject getJavaPackageToPrimitiveFunction() {
+    public final JSDynamicObject getJavaPackageToPrimitiveFunction() {
         assert javaPackageToPrimitiveFunction != null;
         return javaPackageToPrimitiveFunction;
     }
 
-    public final DynamicObject getTemporalPlainTimeConstructor() {
+    public final JSDynamicObject getTemporalPlainTimeConstructor() {
         return temporalPlainTimeConstructor;
     }
 
-    public final DynamicObject getTemporalPlainTimePrototype() {
+    public final JSDynamicObject getTemporalPlainTimePrototype() {
         return temporalPlainTimePrototype;
     }
 
-    public final DynamicObject getTemporalPlainDateConstructor() {
+    public final JSDynamicObject getTemporalPlainDateConstructor() {
         return temporalPlainDateConstructor;
     }
 
-    public final DynamicObject getTemporalPlainDatePrototype() {
+    public final JSDynamicObject getTemporalPlainDatePrototype() {
         return temporalPlainDatePrototype;
     }
 
-    public final DynamicObject getTemporalPlainDateTimeConstructor() {
+    public final JSDynamicObject getTemporalPlainDateTimeConstructor() {
         return temporalPlainDateTimeConstructor;
     }
 
-    public final DynamicObject getTemporalPlainDateTimePrototype() {
+    public final JSDynamicObject getTemporalPlainDateTimePrototype() {
         return temporalPlainDateTimePrototype;
     }
 
-    public final DynamicObject getTemporalDurationConstructor() {
+    public final JSDynamicObject getTemporalDurationConstructor() {
         return temporalDurationConstructor;
     }
 
-    public final DynamicObject getTemporalDurationPrototype() {
+    public final JSDynamicObject getTemporalDurationPrototype() {
         return temporalDurationPrototype;
     }
 
-    public final DynamicObject getTemporalCalendarConstructor() {
+    public final JSDynamicObject getTemporalCalendarConstructor() {
         return temporalCalendarConstructor;
     }
 
-    public final DynamicObject getTemporalCalendarPrototype() {
+    public final JSDynamicObject getTemporalCalendarPrototype() {
         return temporalCalendarPrototype;
     }
 
-    public final DynamicObject getTemporalPlainYearMonthConstructor() {
+    public final JSDynamicObject getTemporalPlainYearMonthConstructor() {
         return temporalPlainYearMonthConstructor;
     }
 
-    public DynamicObject getTemporalPlainYearMonthPrototype() {
+    public JSDynamicObject getTemporalPlainYearMonthPrototype() {
         return temporalPlainYearMonthPrototype;
     }
 
-    public DynamicObject getTemporalPlainMonthDayConstructor() {
+    public JSDynamicObject getTemporalPlainMonthDayConstructor() {
         return temporalPlainMonthDayConstructor;
     }
 
-    public DynamicObject getTemporalPlainMonthDayPrototype() {
+    public JSDynamicObject getTemporalPlainMonthDayPrototype() {
         return temporalPlainMonthDayPrototype;
     }
 
-    public DynamicObject getTemporalInstantConstructor() {
+    public JSDynamicObject getTemporalInstantConstructor() {
         return temporalInstantConstructor;
     }
 
-    public DynamicObject getTemporalInstantPrototype() {
+    public JSDynamicObject getTemporalInstantPrototype() {
         return temporalInstantPrototype;
     }
 
-    public DynamicObject getTemporalTimeZoneConstructor() {
+    public JSDynamicObject getTemporalTimeZoneConstructor() {
         return temporalTimeZoneConstructor;
     }
 
-    public DynamicObject getTemporalTimeZonePrototype() {
+    public JSDynamicObject getTemporalTimeZonePrototype() {
         return temporalTimeZonePrototype;
     }
 
-    public DynamicObject getTemporalZonedDateTimeConstructor() {
+    public JSDynamicObject getTemporalZonedDateTimeConstructor() {
         return temporalZonedDateTimeConstructor;
     }
 
-    public DynamicObject getTemporalZonedDateTimePrototype() {
+    public JSDynamicObject getTemporalZonedDateTimePrototype() {
         return temporalZonedDateTimePrototype;
     }
 
-    public final Map<Object, DynamicObject> getTemplateRegistry() {
+    public final Map<Object, JSDynamicObject> getTemplateRegistry() {
         if (templateRegistry == null) {
             createTemplateRegistry();
         }
@@ -1534,20 +1533,20 @@ public class JSRealm {
         return jsonParseFunctionObject;
     }
 
-    public final DynamicObject getPromiseAllFunctionObject() {
+    public final JSDynamicObject getPromiseAllFunctionObject() {
         return promiseAllFunctionObject;
     }
 
     private static void putProtoAccessorProperty(final JSRealm realm) {
         JSContext context = realm.getContext();
-        DynamicObject getProto = JSFunction.create(realm, context.protoGetterFunctionData);
-        DynamicObject setProto = JSFunction.create(realm, context.protoSetterFunctionData);
+        JSDynamicObject getProto = JSFunction.create(realm, context.protoGetterFunctionData);
+        JSDynamicObject setProto = JSFunction.create(realm, context.protoSetterFunctionData);
 
         // ES6 draft annex, B.2.2 Additional Properties of the Object.prototype Object
         JSObjectUtil.putBuiltinAccessorProperty(realm.getObjectPrototype(), JSObject.PROTO, getProto, setProto);
     }
 
-    public final DynamicObject getThrowerFunction() {
+    public final JSDynamicObject getThrowerFunction() {
         assert throwerFunction != null;
         return throwerFunction;
     }
@@ -1557,43 +1556,43 @@ public class JSRealm {
         return throwerAccessor;
     }
 
-    public DynamicObject getIteratorPrototype() {
+    public JSDynamicObject getIteratorPrototype() {
         return iteratorPrototype;
     }
 
-    public DynamicObject getAsyncIteratorPrototype() {
+    public JSDynamicObject getAsyncIteratorPrototype() {
         return asyncIteratorPrototype;
     }
 
-    public DynamicObject getAsyncFromSyncIteratorPrototype() {
+    public JSDynamicObject getAsyncFromSyncIteratorPrototype() {
         return asyncFromSyncIteratorPrototype;
     }
 
-    public DynamicObject getArrayIteratorPrototype() {
+    public JSDynamicObject getArrayIteratorPrototype() {
         return arrayIteratorPrototype;
     }
 
-    public DynamicObject getSetIteratorPrototype() {
+    public JSDynamicObject getSetIteratorPrototype() {
         return setIteratorPrototype;
     }
 
-    public DynamicObject getMapIteratorPrototype() {
+    public JSDynamicObject getMapIteratorPrototype() {
         return mapIteratorPrototype;
     }
 
-    public DynamicObject getStringIteratorPrototype() {
+    public JSDynamicObject getStringIteratorPrototype() {
         return stringIteratorPrototype;
     }
 
-    public DynamicObject getRegExpStringIteratorPrototype() {
+    public JSDynamicObject getRegExpStringIteratorPrototype() {
         return regExpStringIteratorPrototype;
     }
 
-    public DynamicObject getSegmentsPrototype() {
+    public JSDynamicObject getSegmentsPrototype() {
         return segmentsPrototype;
     }
 
-    public DynamicObject getSegmentIteratorPrototype() {
+    public JSDynamicObject getSegmentIteratorPrototype() {
         return segmentIteratorPrototype;
     }
 
@@ -1604,19 +1603,19 @@ public class JSRealm {
      * "[[ThrowTypeError]] function Object (13.2.3)".
      *
      */
-    private DynamicObject createThrowerFunction() {
+    private JSDynamicObject createThrowerFunction() {
         CompilerAsserts.neverPartOfCompilation();
-        DynamicObject thrower = JSFunction.create(this, context.throwerFunctionData);
+        JSDynamicObject thrower = JSFunction.create(this, context.throwerFunctionData);
         JSObject.preventExtensions(thrower);
         JSObject.setIntegrityLevel(thrower, true);
         return thrower;
     }
 
-    public DynamicObject getPromiseConstructor() {
+    public JSDynamicObject getPromiseConstructor() {
         return promiseConstructor;
     }
 
-    public DynamicObject getPromisePrototype() {
+    public JSDynamicObject getPromisePrototype() {
         return promisePrototype;
     }
 
@@ -1628,7 +1627,7 @@ public class JSRealm {
         CompilerAsserts.neverPartOfCompilation("do not setup globals from compiled code");
         long time = context.getContextOptions().isProfileTime() ? System.nanoTime() : 0L;
 
-        DynamicObject global = getGlobalObject();
+        JSDynamicObject global = getGlobalObject();
         putGlobalProperty(JSOrdinary.CLASS_NAME, getObjectConstructor());
         putGlobalProperty(JSFunction.CLASS_NAME, getFunctionConstructor());
         putGlobalProperty(JSArray.CLASS_NAME, getArrayConstructor());
@@ -1647,7 +1646,7 @@ public class JSRealm {
         JSObjectUtil.putFunctionsFromContainer(this, global, GlobalBuiltins.GLOBAL_FUNCTIONS);
 
         this.evalFunctionObject = JSObject.get(global, JSGlobal.EVAL_NAME);
-        DynamicObject jsonBuiltin = (DynamicObject) JSObject.get(global, Strings.CAPS_JSON);
+        JSDynamicObject jsonBuiltin = (JSDynamicObject) JSObject.get(global, Strings.CAPS_JSON);
         this.jsonParseFunctionObject = JSObject.get(jsonBuiltin, Strings.PARSE);
 
         boolean webassembly = context.getContextOptions().isWebAssembly();
@@ -1721,14 +1720,14 @@ public class JSRealm {
             putGlobalProperty(JSSymbol.CLASS_NAME, getSymbolConstructor());
             setupPredefinedSymbols(getSymbolConstructor());
 
-            DynamicObject reflectObject = createReflect();
+            JSDynamicObject reflectObject = createReflect();
             putGlobalProperty(REFLECT_CLASS_NAME, reflectObject);
             this.reflectApplyFunctionObject = JSObject.get(reflectObject, Strings.APPLY);
             this.reflectConstructFunctionObject = JSObject.get(reflectObject, Strings.CONSTRUCT);
 
             putGlobalProperty(JSProxy.CLASS_NAME, getProxyConstructor());
             putGlobalProperty(JSPromise.CLASS_NAME, getPromiseConstructor());
-            this.promiseAllFunctionObject = (DynamicObject) JSObject.get(getPromiseConstructor(), Strings.ALL);
+            this.promiseAllFunctionObject = (JSDynamicObject) JSObject.get(getPromiseConstructor(), Strings.ALL);
         }
 
         if (context.isOptionSharedArrayBuffer()) {
@@ -1801,17 +1800,17 @@ public class JSRealm {
                 throw Errors.createError("Access denied to CommonJS root folder: " + cwdOption);
             }
             // Define `require` and other globals in global scope.
-            DynamicObject requireFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, Strings.REQUIRE_PROPERTY_NAME);
-            DynamicObject resolveFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, Strings.RESOLVE_PROPERTY_NAME);
+            JSDynamicObject requireFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, Strings.REQUIRE_PROPERTY_NAME);
+            JSDynamicObject resolveFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, Strings.RESOLVE_PROPERTY_NAME);
             JSObject.set(requireFunction, Strings.RESOLVE_PROPERTY_NAME, resolveFunction);
             putGlobalProperty(Strings.REQUIRE_PROPERTY_NAME, requireFunction);
-            DynamicObject dirnameGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.dirnameGetter.getName());
+            JSDynamicObject dirnameGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.dirnameGetter.getName());
             JSObject.defineOwnProperty(getGlobalObject(), Strings.DIRNAME_VAR_NAME, PropertyDescriptor.createAccessor(dirnameGetter, Undefined.instance, false, false));
-            DynamicObject filenameGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.filenameGetter.getName());
+            JSDynamicObject filenameGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.filenameGetter.getName());
             JSObject.defineOwnProperty(getGlobalObject(), Strings.FILENAME_VAR_NAME, PropertyDescriptor.createAccessor(filenameGetter, Undefined.instance, false, false));
-            DynamicObject moduleGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.globalModuleGetter.getName());
+            JSDynamicObject moduleGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.globalModuleGetter.getName());
             JSObject.defineOwnProperty(getGlobalObject(), Strings.MODULE_PROPERTY_NAME, PropertyDescriptor.createAccessor(moduleGetter, Undefined.instance, false, false));
-            DynamicObject exportsGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.globalExportsGetter.getName());
+            JSDynamicObject exportsGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.globalExportsGetter.getName());
             JSObject.defineOwnProperty(getGlobalObject(), Strings.EXPORTS_PROPERTY_NAME, PropertyDescriptor.createAccessor(exportsGetter, Undefined.instance, false, false));
             this.commonJSRequireFunctionObject = requireFunction;
             // Load an (optional) bootstrap module. Can be used to define global properties (e.g.,
@@ -1895,7 +1894,7 @@ public class JSRealm {
 
     private void addTemporalGlobals() {
         assert context.isOptionTemporal();
-        DynamicObject temporalObject = JSOrdinary.createInit(this);
+        JSDynamicObject temporalObject = JSOrdinary.createInit(this);
         JSObjectUtil.putToStringTag(temporalObject, TemporalConstants.TEMPORAL);
 
         int flags = JSAttributes.configurableNotEnumerableWritable();
@@ -1910,7 +1909,7 @@ public class JSRealm {
         JSObjectUtil.putDataProperty(context, temporalObject, TemporalConstants.GLOBAL_TIME_ZONE, getTemporalTimeZoneConstructor(), flags);
         JSObjectUtil.putDataProperty(context, temporalObject, TemporalConstants.GLOBAL_ZONED_DATE_TIME, getTemporalZonedDateTimeConstructor(), flags);
 
-        DynamicObject nowObject = JSOrdinary.createInit(this);
+        JSDynamicObject nowObject = JSOrdinary.createInit(this);
 
         JSObjectUtil.putDataProperty(context, temporalObject, TemporalConstants.NOW, nowObject, flags);
         JSObjectUtil.putFunctionsFromContainer(this, nowObject, TemporalNowBuiltins.BUILTINS);
@@ -1919,17 +1918,17 @@ public class JSRealm {
         putGlobalProperty(TemporalConstants.TEMPORAL, temporalObject);
     }
 
-    private DynamicObject createIntlObject() {
-        DynamicObject intlObject = JSIntl.create(this);
-        DynamicObject collatorFn = getCollatorConstructor();
-        DynamicObject numberFormatFn = getNumberFormatConstructor();
-        DynamicObject dateTimeFormatFn = getDateTimeFormatConstructor();
-        DynamicObject pluralRulesFn = getPluralRulesConstructor();
-        DynamicObject listFormatFn = getListFormatConstructor();
-        DynamicObject relativeTimeFormatFn = getRelativeTimeFormatConstructor();
-        DynamicObject segmenterFn = getSegmenterConstructor();
-        DynamicObject displayNamesFn = getDisplayNamesConstructor();
-        DynamicObject localeFn = getLocaleConstructor();
+    private JSDynamicObject createIntlObject() {
+        JSDynamicObject intlObject = JSIntl.create(this);
+        JSDynamicObject collatorFn = getCollatorConstructor();
+        JSDynamicObject numberFormatFn = getNumberFormatConstructor();
+        JSDynamicObject dateTimeFormatFn = getDateTimeFormatConstructor();
+        JSDynamicObject pluralRulesFn = getPluralRulesConstructor();
+        JSDynamicObject listFormatFn = getListFormatConstructor();
+        JSDynamicObject relativeTimeFormatFn = getRelativeTimeFormatConstructor();
+        JSDynamicObject segmenterFn = getSegmenterConstructor();
+        JSDynamicObject displayNamesFn = getDisplayNamesConstructor();
+        JSDynamicObject localeFn = getLocaleConstructor();
         JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
@@ -1943,7 +1942,7 @@ public class JSRealm {
     }
 
     private void putGraalObject() {
-        DynamicObject graalObject = JSOrdinary.createInit(this);
+        JSDynamicObject graalObject = JSOrdinary.createInit(this);
         int flags = JSAttributes.notConfigurableEnumerableNotWritable();
         int esVersion = getContext().getContextOptions().getEcmaScriptVersion();
         esVersion = (esVersion > JSConfig.ECMAScript6 ? esVersion + JSConfig.ECMAScriptVersionYearDelta : esVersion);
@@ -1982,11 +1981,11 @@ public class JSRealm {
         JSObjectUtil.putDataProperty(getContext(), getGlobalObject(), key, value, attributes);
     }
 
-    private void putProperty(DynamicObject receiver, Object key, Object value) {
+    private void putProperty(JSDynamicObject receiver, Object key, Object value) {
         JSObjectUtil.putDataProperty(getContext(), receiver, key, value, JSAttributes.getDefaultNotEnumerable());
     }
 
-    private static void setupPredefinedSymbols(DynamicObject symbolFunction) {
+    private static void setupPredefinedSymbols(JSDynamicObject symbolFunction) {
         putSymbolProperty(symbolFunction, Strings.HAS_INSTANCE, Symbol.SYMBOL_HAS_INSTANCE);
         putSymbolProperty(symbolFunction, Strings.IS_CONCAT_SPREADABLE, Symbol.SYMBOL_IS_CONCAT_SPREADABLE);
         putSymbolProperty(symbolFunction, Strings.ITERATOR, Symbol.SYMBOL_ITERATOR);
@@ -2002,7 +2001,7 @@ public class JSRealm {
         putSymbolProperty(symbolFunction, Strings.UNSCOPABLES, Symbol.SYMBOL_UNSCOPABLES);
     }
 
-    private static void putSymbolProperty(DynamicObject symbolFunction, TruffleString name, Symbol symbol) {
+    private static void putSymbolProperty(JSDynamicObject symbolFunction, TruffleString name, Symbol symbol) {
         Properties.putConstantUncached(symbolFunction, name, symbol, JSAttributes.notConfigurableNotEnumerableNotWritable());
     }
 
@@ -2015,7 +2014,7 @@ public class JSRealm {
 
     private void setupJavaInterop() {
         assert isJavaInteropEnabled();
-        DynamicObject java = JSObjectUtil.createOrdinaryPrototypeObject(this);
+        JSDynamicObject java = JSObjectUtil.createOrdinaryPrototypeObject(this);
         JSObjectUtil.putToStringTag(java, JAVA_CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(this, java, JavaBuiltins.BUILTINS);
         if (context.isOptionNashornCompatibilityMode()) {
@@ -2043,7 +2042,7 @@ public class JSRealm {
     }
 
     private void setupPolyglot() {
-        DynamicObject polyglotObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
+        JSDynamicObject polyglotObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
         JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, PolyglotBuiltins.BUILTINS);
 
         if (getContext().isOptionDebugBuiltin()) {
@@ -2061,14 +2060,14 @@ public class JSRealm {
         }
     }
 
-    private DynamicObject createConsoleObject() {
-        DynamicObject console = JSOrdinary.createInit(this);
+    private JSDynamicObject createConsoleObject() {
+        JSDynamicObject console = JSOrdinary.createInit(this);
         JSObjectUtil.putFunctionsFromContainer(this, console, ConsoleBuiltins.BUILTINS);
         return console;
     }
 
-    private DynamicObject createPerformanceObject() {
-        DynamicObject obj = JSOrdinary.createInit(this);
+    private JSDynamicObject createPerformanceObject() {
+        JSDynamicObject obj = JSOrdinary.createInit(this);
         JSObjectUtil.putFunctionsFromContainer(this, obj, PerformanceBuiltins.BUILTINS);
         return obj;
     }
@@ -2076,21 +2075,21 @@ public class JSRealm {
     /**
      * Creates the %IteratorPrototype% object as specified in ES6 25.1.2.
      */
-    private DynamicObject createIteratorPrototype() {
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.getObjectPrototype());
+    private JSDynamicObject createIteratorPrototype() {
+        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.getObjectPrototype());
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(this), JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }
 
-    private static DynamicObject createIteratorPrototypeSymbolIteratorFunction(JSRealm realm) {
+    private static JSDynamicObject createIteratorPrototypeSymbolIteratorFunction(JSRealm realm) {
         return JSFunction.create(realm, realm.getContext().getSymbolIteratorThisGetterFunctionData());
     }
 
     /**
      * Creates the %ArrayIteratorPrototype% object as specified in ES6 22.1.5.2.
      */
-    private DynamicObject createArrayIteratorPrototype() {
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
+    private JSDynamicObject createArrayIteratorPrototype() {
+        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, ArrayIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, JSArray.ITERATOR_CLASS_NAME);
         return prototype;
@@ -2099,8 +2098,8 @@ public class JSRealm {
     /**
      * Creates the %SetIteratorPrototype% object.
      */
-    private DynamicObject createSetIteratorPrototype() {
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
+    private JSDynamicObject createSetIteratorPrototype() {
+        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, SetIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, JSSet.ITERATOR_CLASS_NAME);
         return prototype;
@@ -2109,8 +2108,8 @@ public class JSRealm {
     /**
      * Creates the %MapIteratorPrototype% object.
      */
-    private DynamicObject createMapIteratorPrototype() {
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
+    private JSDynamicObject createMapIteratorPrototype() {
+        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, MapIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, JSMap.ITERATOR_CLASS_NAME);
         return prototype;
@@ -2119,8 +2118,8 @@ public class JSRealm {
     /**
      * Creates the %StringIteratorPrototype% object.
      */
-    private DynamicObject createStringIteratorPrototype() {
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
+    private JSDynamicObject createStringIteratorPrototype() {
+        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, StringIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, JSString.ITERATOR_CLASS_NAME);
         return prototype;
@@ -2129,8 +2128,8 @@ public class JSRealm {
     /**
      * Creates the %RegExpStringIteratorPrototype% object.
      */
-    private DynamicObject createRegExpStringIteratorPrototype() {
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
+    private JSDynamicObject createRegExpStringIteratorPrototype() {
+        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, RegExpStringIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, JSString.REGEXP_ITERATOR_CLASS_NAME);
         return prototype;
@@ -2139,43 +2138,43 @@ public class JSRealm {
     /**
      * Creates the prototype object of foreign iterables.
      */
-    private DynamicObject createForeignIterablePrototype() {
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this);
+    private JSDynamicObject createForeignIterablePrototype() {
+        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, ForeignIterablePrototypeBuiltins.BUILTINS);
         return prototype;
     }
 
-    public DynamicObject getArrayProtoValuesIterator() {
+    public JSDynamicObject getArrayProtoValuesIterator() {
         return arrayProtoValuesIterator;
     }
 
-    private DynamicObject createReflect() {
-        DynamicObject obj = JSObjectUtil.createOrdinaryPrototypeObject(this, this.getObjectPrototype());
+    private JSDynamicObject createReflect() {
+        JSDynamicObject obj = JSObjectUtil.createOrdinaryPrototypeObject(this, this.getObjectPrototype());
         JSObjectUtil.putToStringTag(obj, REFLECT_CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(this, obj, ReflectBuiltins.BUILTINS);
         return obj;
     }
 
-    private DynamicObject createAtomics() {
-        DynamicObject obj = JSObjectUtil.createOrdinaryPrototypeObject(this, this.getObjectPrototype());
+    private JSDynamicObject createAtomics() {
+        JSDynamicObject obj = JSObjectUtil.createOrdinaryPrototypeObject(this, this.getObjectPrototype());
         JSObjectUtil.putToStringTag(obj, ATOMICS_CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(this, obj, AtomicsBuiltins.BUILTINS);
         return obj;
     }
 
-    public final DynamicObject getCallSiteConstructor() {
+    public final JSDynamicObject getCallSiteConstructor() {
         return callSiteConstructor;
     }
 
-    public final DynamicObject getCallSitePrototype() {
+    public final JSDynamicObject getCallSitePrototype() {
         return callSitePrototype;
     }
 
-    public final DynamicObject getGlobalScope() {
+    public final JSDynamicObject getGlobalScope() {
         return globalScope;
     }
 
-    public DynamicObject getScriptEngineImportScope() {
+    public JSDynamicObject getScriptEngineImportScope() {
         return scriptEngineImportScope;
     }
 
@@ -2195,10 +2194,10 @@ public class JSRealm {
         if (getContext().getParserOptions().isScripting()) {
             // $OPTIONS
             String timezone = getLocalTimeZoneId().getId();
-            DynamicObject timezoneObj = JSOrdinary.create(context, this);
+            JSDynamicObject timezoneObj = JSOrdinary.create(context, this);
             JSObjectUtil.putDataProperty(context, timezoneObj, Strings.CAPS_ID, Strings.fromJavaString(timezone), JSAttributes.configurableEnumerableWritable());
 
-            DynamicObject optionsObj = JSOrdinary.create(context, this);
+            JSDynamicObject optionsObj = JSOrdinary.create(context, this);
             JSObjectUtil.putDataProperty(context, optionsObj, Strings._TIMEZONE, timezoneObj, JSAttributes.configurableEnumerableWritable());
             JSObjectUtil.putDataProperty(context, optionsObj, Strings._SCRIPTING, true, JSAttributes.configurableEnumerableWritable());
             JSObjectUtil.putDataProperty(context, optionsObj, Strings._COMPILE_ONLY, false, JSAttributes.configurableEnumerableWritable());
@@ -2206,12 +2205,12 @@ public class JSRealm {
             putGlobalProperty(Strings.$_OPTIONS, optionsObj, JSAttributes.configurableNotEnumerableWritable());
 
             // $ARG
-            DynamicObject arguments = JSArray.createConstant(context, this, Strings.constantArray(getEnv().getApplicationArguments()));
+            JSDynamicObject arguments = JSArray.createConstant(context, this, Strings.constantArray(getEnv().getApplicationArguments()));
 
             putGlobalProperty(Strings.$_ARG, arguments, JSAttributes.configurableNotEnumerableWritable());
 
             // $ENV
-            DynamicObject envObj = JSOrdinary.create(context, this);
+            JSDynamicObject envObj = JSOrdinary.create(context, this);
             Map<String, String> sysenv = getEnv().getEnvironment();
             for (Map.Entry<String, String> entry : sysenv.entrySet()) {
                 JSObjectUtil.putDataProperty(context, envObj, Strings.fromJavaString(entry.getKey()), Strings.fromJavaString(entry.getValue()), JSAttributes.configurableEnumerableWritable());
@@ -2231,7 +2230,7 @@ public class JSRealm {
         }
     }
 
-    public void setRealmBuiltinObject(DynamicObject realmBuiltinObject) {
+    public void setRealmBuiltinObject(JSDynamicObject realmBuiltinObject) {
         if (this.realmBuiltinObject == null && realmBuiltinObject != null) {
             this.realmBuiltinObject = realmBuiltinObject;
             putGlobalProperty(Strings.UC_REALM, realmBuiltinObject);
@@ -2243,23 +2242,23 @@ public class JSRealm {
         setRealmBuiltinObject(createRealmBuiltinObject());
     }
 
-    private DynamicObject createRealmBuiltinObject() {
-        DynamicObject obj = JSOrdinary.createInit(this);
+    private JSDynamicObject createRealmBuiltinObject() {
+        JSDynamicObject obj = JSOrdinary.createInit(this);
         JSObjectUtil.putToStringTag(obj, REALM_BUILTIN_CLASS_NAME);
         JSObjectUtil.putProxyProperty(obj, REALM_SHARED_NAME, REALM_SHARED_PROXY, JSAttributes.getDefault());
         JSObjectUtil.putFunctionsFromContainer(this, obj, RealmFunctionBuiltins.BUILTINS);
         return obj;
     }
 
-    private DynamicObject createDebugObject() {
-        DynamicObject obj = JSOrdinary.createInit(this);
+    private JSDynamicObject createDebugObject() {
+        JSDynamicObject obj = JSOrdinary.createInit(this);
         JSObjectUtil.putToStringTag(obj, DEBUG_CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(this, obj, DebugBuiltins.BUILTINS);
         return obj;
     }
 
-    private DynamicObject createMleObject() {
-        DynamicObject obj = JSOrdinary.createInit(this);
+    private JSDynamicObject createMleObject() {
+        JSDynamicObject obj = JSOrdinary.createInit(this);
         JSObjectUtil.putToStringTag(obj, MLE_CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(this, obj, MLEBuiltins.BUILTINS);
         return obj;
@@ -2305,9 +2304,9 @@ public class JSRealm {
     private void putRegExpStaticPropertyAccessor(BuiltinFunctionKey builtinKey, TruffleString getterName, TruffleString propertyName) {
         Pair<JSBuiltin, JSBuiltin> pair = RegExpBuiltins.BUILTINS.lookupAccessorByKey(getterName);
         JSBuiltin getterBuiltin = pair.getLeft();
-        DynamicObject getter = JSFunction.create(this, getterBuiltin.createFunctionData(context));
+        JSDynamicObject getter = JSFunction.create(this, getterBuiltin.createFunctionData(context));
 
-        DynamicObject setter;
+        JSDynamicObject setter;
         JSBuiltin setterBuiltin = pair.getRight();
         if (setterBuiltin != null) {
             assert Strings.equals(propertyName, Strings.INPUT) || Strings.equals(propertyName, Strings.$_);
@@ -2332,15 +2331,15 @@ public class JSRealm {
                         context.isOptionV8CompatibilityModeInContextInit() ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable());
     }
 
-    public final DynamicObject getOrdinaryHasInstanceFunction() {
+    public final JSDynamicObject getOrdinaryHasInstanceFunction() {
         return ordinaryHasInstanceFunction;
     }
 
-    public final DynamicObject getJSAdapterConstructor() {
+    public final JSDynamicObject getJSAdapterConstructor() {
         return jsAdapterConstructor;
     }
 
-    public final DynamicObject getJSAdapterPrototype() {
+    public final JSDynamicObject getJSAdapterPrototype() {
         return jsAdapterPrototype;
     }
 
@@ -2747,12 +2746,12 @@ public class JSRealm {
 
     private static final class RealmSharedPropertyProxy extends PropertyProxy {
         @Override
-        public Object get(DynamicObject store) {
+        public Object get(JSDynamicObject store) {
             return topLevelRealm().v8RealmShared;
         }
 
         @Override
-        public boolean set(DynamicObject store, Object value) {
+        public boolean set(JSDynamicObject store, Object value) {
             topLevelRealm().v8RealmShared = value;
             return true;
         }
@@ -2778,7 +2777,7 @@ public class JSRealm {
         joinStack.pop();
     }
 
-    public final Map<TruffleFile, DynamicObject> getCommonJSRequireCache() {
+    public final Map<TruffleFile, JSDynamicObject> getCommonJSRequireCache() {
         assert context.getContextOptions().isCommonJSRequire();
         return commonJSRequireCache;
     }
@@ -2871,27 +2870,27 @@ public class JSRealm {
         return wasmMemAsByteBuffer;
     }
 
-    public DynamicObject getWebAssemblyModulePrototype() {
+    public JSDynamicObject getWebAssemblyModulePrototype() {
         return webAssemblyModulePrototype;
     }
 
-    public DynamicObject getWebAssemblyInstancePrototype() {
+    public JSDynamicObject getWebAssemblyInstancePrototype() {
         return webAssemblyInstancePrototype;
     }
 
-    public DynamicObject getWebAssemblyMemoryPrototype() {
+    public JSDynamicObject getWebAssemblyMemoryPrototype() {
         return webAssemblyMemoryPrototype;
     }
 
-    public DynamicObject getWebAssemblyTablePrototype() {
+    public JSDynamicObject getWebAssemblyTablePrototype() {
         return webAssemblyTablePrototype;
     }
 
-    public DynamicObject getWebAssemblyGlobalPrototype() {
+    public JSDynamicObject getWebAssemblyGlobalPrototype() {
         return webAssemblyGlobalPrototype;
     }
 
-    public DynamicObject getForeignIterablePrototype() {
+    public JSDynamicObject getForeignIterablePrototype() {
         return foreignIterablePrototype;
     }
 

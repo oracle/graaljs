@@ -44,7 +44,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
@@ -85,7 +84,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
@@ -94,9 +93,9 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         return Strings.toJavaString(getClassName());
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm, DynamicObject adaptee, DynamicObject overrides, DynamicObject proto) {
+    public static JSDynamicObject create(JSContext context, JSRealm realm, JSDynamicObject adaptee, JSDynamicObject overrides, JSDynamicObject proto) {
         JSObjectFactory factory = context.getJSAdapterFactory();
-        DynamicObject obj = new JSAdapterObject(factory.getShape(realm), adaptee, overrides);
+        JSDynamicObject obj = new JSAdapterObject(factory.getShape(realm), adaptee, overrides);
         factory.initProto(obj, realm);
         if (proto != null) {
             JSObject.setPrototype(obj, proto);
@@ -104,12 +103,12 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         return context.trackAllocation(obj);
     }
 
-    public static DynamicObject getAdaptee(DynamicObject obj) {
+    public static JSDynamicObject getAdaptee(JSDynamicObject obj) {
         assert isJSAdapter(obj);
         return ((JSAdapterObject) obj).getAdaptee();
     }
 
-    public static DynamicObject getOverrides(DynamicObject obj) {
+    public static JSDynamicObject getOverrides(JSDynamicObject obj) {
         assert isJSAdapter(obj);
         return ((JSAdapterObject) obj).getOverrides();
     }
@@ -124,9 +123,9 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+    public Object getOwnHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
-        DynamicObject overrides = getOverrides(store);
+        JSDynamicObject overrides = getOverrides(store);
         if (overrides != null && JSObject.hasOwnProperty(overrides, key)) {
             return JSObject.get(overrides, key);
         }
@@ -136,8 +135,8 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
-        DynamicObject overrides = getOverrides(store);
+    public Object getOwnHelper(JSDynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
+        JSDynamicObject overrides = getOverrides(store);
         if (overrides != null && JSObject.hasOwnProperty(overrides, index)) {
             return JSObject.get(overrides, index);
         }
@@ -146,22 +145,22 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         return getIntl(store, (int) index);
     }
 
-    private static Object getIntl(DynamicObject thisObj, Object key) {
+    private static Object getIntl(JSDynamicObject thisObj, Object key) {
         if (key instanceof Symbol) {
             return null;
         }
-        DynamicObject adaptee = getAdaptee(thisObj);
+        JSDynamicObject adaptee = getAdaptee(thisObj);
         Object get = JSObject.get(adaptee, GET);
         if (JSFunction.isJSFunction(get)) {
-            return JSFunction.call((DynamicObject) get, thisObj, new Object[]{key});
+            return JSFunction.call((JSDynamicObject) get, thisObj, new Object[]{key});
         }
         return null;
     }
 
     @TruffleBoundary
     @Override
-    public boolean hasOwnProperty(DynamicObject thisObj, long index) {
-        DynamicObject overrides = getOverrides(thisObj);
+    public boolean hasOwnProperty(JSDynamicObject thisObj, long index) {
+        JSDynamicObject overrides = getOverrides(thisObj);
         if (overrides != null && JSObject.hasOwnProperty(overrides, index)) {
             return true;
         }
@@ -170,113 +169,113 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @TruffleBoundary
     @Override
-    public boolean hasOwnProperty(DynamicObject thisObj, Object key) {
+    public boolean hasOwnProperty(JSDynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
-        DynamicObject overrides = getOverrides(thisObj);
+        JSDynamicObject overrides = getOverrides(thisObj);
         if (overrides != null && JSObject.hasOwnProperty(overrides, key)) {
             return true;
         }
         return hasOwnPropertyIntl(thisObj, key);
     }
 
-    private static boolean hasOwnPropertyIntl(DynamicObject thisObj, Object key) {
-        DynamicObject adaptee = getAdaptee(thisObj);
+    private static boolean hasOwnPropertyIntl(JSDynamicObject thisObj, Object key) {
+        JSDynamicObject adaptee = getAdaptee(thisObj);
         Object has = JSObject.get(adaptee, HAS);
         if (JSFunction.isJSFunction(has)) {
-            return JSRuntime.toBoolean(JSFunction.call((DynamicObject) has, thisObj, new Object[]{key}));
+            return JSRuntime.toBoolean(JSFunction.call((JSDynamicObject) has, thisObj, new Object[]{key}));
         }
         return false;
     }
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
-        DynamicObject overrides = getOverrides(thisObj);
+    public boolean set(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+        JSDynamicObject overrides = getOverrides(thisObj);
         if (overrides != null && JSObject.hasOwnProperty(overrides, index)) {
             JSObject.set(overrides, index, value, isStrict, encapsulatingNode);
             return true;
         }
 
-        DynamicObject adaptee = getAdaptee(thisObj);
+        JSDynamicObject adaptee = getAdaptee(thisObj);
         Object set = JSObject.get(adaptee, PUT);
         if (JSFunction.isJSFunction(set)) {
             assert JSRuntime.longIsRepresentableAsInt(index);
-            JSFunction.call((DynamicObject) set, thisObj, new Object[]{(int) index, value});
+            JSFunction.call((JSDynamicObject) set, thisObj, new Object[]{(int) index, value});
         }
         return true;
     }
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    public boolean set(JSDynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
-        DynamicObject overrides = getOverrides(thisObj);
+        JSDynamicObject overrides = getOverrides(thisObj);
         if (overrides != null && JSObject.hasOwnProperty(overrides, key)) {
             return JSObject.set(overrides, key, value, isStrict, encapsulatingNode);
         }
 
-        DynamicObject adaptee = getAdaptee(thisObj);
+        JSDynamicObject adaptee = getAdaptee(thisObj);
         Object set = JSObject.get(adaptee, PUT);
         if (JSFunction.isJSFunction(set)) {
-            JSFunction.call((DynamicObject) set, thisObj, new Object[]{key, value});
+            JSFunction.call((JSDynamicObject) set, thisObj, new Object[]{key, value});
         }
         return true;
     }
 
     @TruffleBoundary
     @Override
-    public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
-        DynamicObject overrides = getOverrides(thisObj);
+    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
+        JSDynamicObject overrides = getOverrides(thisObj);
         if (overrides != null && JSObject.delete(overrides, index, isStrict)) {
             return true;
         }
 
-        DynamicObject adaptee = getAdaptee(thisObj);
+        JSDynamicObject adaptee = getAdaptee(thisObj);
         Object delete = JSObject.get(adaptee, DELETE);
         if (JSFunction.isJSFunction(delete)) {
-            JSFunction.call((DynamicObject) delete, thisObj, new Object[]{index});
+            JSFunction.call((JSDynamicObject) delete, thisObj, new Object[]{index});
         }
         return true;
     }
 
     @TruffleBoundary
     @Override
-    public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
-        DynamicObject overrides = getOverrides(thisObj);
+    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
+        JSDynamicObject overrides = getOverrides(thisObj);
         if (overrides != null && JSObject.delete(overrides, key, isStrict)) {
             return true;
         }
 
-        DynamicObject adaptee = getAdaptee(thisObj);
+        JSDynamicObject adaptee = getAdaptee(thisObj);
         Object delete = JSObject.get(adaptee, DELETE);
         if (JSFunction.isJSFunction(delete)) {
-            JSFunction.call((DynamicObject) delete, thisObj, new Object[]{key});
+            JSFunction.call((JSDynamicObject) delete, thisObj, new Object[]{key});
         }
         return true;
     }
 
     @Override
-    public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
+    public boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
         return set(thisObj, key, desc.getValue(), thisObj, doThrow, null);
     }
 
     @Override
-    public boolean preventExtensions(DynamicObject thisObj, boolean doThrow) {
+    public boolean preventExtensions(JSDynamicObject thisObj, boolean doThrow) {
         throw typeError();
     }
 
     @Override
-    public boolean isExtensible(DynamicObject thisObj) {
+    public boolean isExtensible(JSDynamicObject thisObj) {
         throw typeError();
     }
 
     @TruffleBoundary
     @Override
-    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
-        DynamicObject adaptee = getAdaptee(thisObj);
+    public List<Object> getOwnPropertyKeys(JSDynamicObject thisObj, boolean strings, boolean symbols) {
+        JSDynamicObject adaptee = getAdaptee(thisObj);
         Object getIds = JSObject.get(adaptee, GET_IDS);
         if (JSFunction.isJSFunction(getIds)) {
-            Object returnValue = JSFunction.call((DynamicObject) getIds, thisObj, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+            Object returnValue = JSFunction.call((JSDynamicObject) getIds, thisObj, JSArguments.EMPTY_ARGUMENTS_ARRAY);
             if (JSRuntime.isObject(returnValue)) {
                 return filterOwnPropertyKeys(JSRuntime.createListFromArrayLikeAllowSymbolString(returnValue), strings, symbols);
             }
@@ -285,20 +284,20 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     @Override
-    public TruffleString toDisplayStringImpl(DynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return defaultToString(object);
     }
 
     @Override
-    public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+    public JSDynamicObject createPrototype(final JSRealm realm, JSDynamicObject ctor) {
+        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(realm.getContext(), prototype, ctor);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         return prototype;
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
     }
 
@@ -308,42 +307,42 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @TruffleBoundary
     @Override
-    public Object getMethodHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+    public Object getMethodHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         if (key instanceof Symbol) {
             return null;
         }
-        DynamicObject adaptee = getAdaptee(store);
+        JSDynamicObject adaptee = getAdaptee(store);
         Object call = JSObject.get(adaptee, CALL);
         if (JSFunction.isJSFunction(call)) {
-            return JSFunction.bind(JSFunction.getRealm((DynamicObject) call), (DynamicObject) call, store, new Object[]{key});
+            return JSFunction.bind(JSFunction.getRealm((JSDynamicObject) call), (JSDynamicObject) call, store, new Object[]{key});
         } else {
             throw createTypeErrorNoSuchFunction(store, key);
         }
     }
 
     @TruffleBoundary
-    private JSException createTypeErrorNoSuchFunction(DynamicObject thisObj, Object key) {
+    private JSException createTypeErrorNoSuchFunction(JSDynamicObject thisObj, Object key) {
         return Errors.createTypeErrorFormat("%s has no such function \"%s\"", defaultToString(thisObj), key);
     }
 
     @TruffleBoundary
     @Override
-    public JSDynamicObject getPrototypeOf(DynamicObject thisObj) {
+    public JSDynamicObject getPrototypeOf(JSDynamicObject thisObj) {
         return JSObjectUtil.getPrototype(thisObj);
     }
 
     @Override
-    public boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype) {
+    public boolean setPrototypeOf(JSDynamicObject thisObj, JSDynamicObject newPrototype) {
         return JSNonProxy.setPrototypeStatic(thisObj, newPrototype);
     }
 
     @Override
-    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
+    public PropertyDescriptor getOwnProperty(JSDynamicObject thisObj, Object key) {
         throw typeError();
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getJSAdapterPrototype();
     }
 

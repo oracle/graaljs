@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,18 @@
  */
 package com.oracle.truffle.js.nodes.module;
 
+import java.util.Set;
+
 import com.oracle.js.parser.ir.Module;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
-
-import java.util.Set;
 
 /**
  * Resolves a star import: gets the imported module's namespace object and initializes the local
@@ -81,7 +81,7 @@ public class ResolveStarImportNode extends StatementNode {
         Evaluator evaluator = context.getEvaluator();
         JSModuleRecord importedModule = evaluator.hostResolveImportedModule(context, referencingScriptOrModule, moduleRequest);
         // Let namespace be GetModuleNamespace(importedModule)
-        DynamicObject namespace = evaluator.getModuleNamespace(importedModule);
+        JSDynamicObject namespace = evaluator.getModuleNamespace(importedModule);
         // envRec.CreateImmutableBinding(in.[[LocalName]], true).
         // Call envRec.InitializeBinding(in.[[LocalName]], namespace).
         writeLocalNode.executeWrite(frame, namespace);

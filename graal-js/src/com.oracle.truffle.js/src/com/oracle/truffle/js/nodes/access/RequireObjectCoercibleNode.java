@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -62,6 +61,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Implementation of the abstract operation RequireObjectCoercible(argument) (ES6 7.2.1).
@@ -132,11 +132,11 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isNullOrUndefined(object)")
-    protected void doNullOrUndefined(DynamicObject object) {
+    protected void doNullOrUndefined(JSDynamicObject object) {
         throw Errors.createTypeErrorNotObjectCoercible(object, this);
     }
 
-    protected static Shape getShapeIfObject(DynamicObject object) {
+    protected static Shape getShapeIfObject(JSDynamicObject object) {
         if (JSGuards.isJSObject(object)) {
             return object.getShape();
         }

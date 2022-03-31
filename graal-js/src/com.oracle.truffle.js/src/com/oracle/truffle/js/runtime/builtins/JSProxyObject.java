@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -63,6 +62,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.interop.JSMetaType;
 import com.oracle.truffle.js.runtime.objects.JSClassObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -70,15 +70,15 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class JSProxyObject extends JSClassObject {
 
     private Object proxyTarget;
-    private DynamicObject proxyHandler;
+    private JSDynamicObject proxyHandler;
 
-    protected JSProxyObject(Shape shape, Object proxyTarget, DynamicObject proxyHandler) {
+    protected JSProxyObject(Shape shape, Object proxyTarget, JSDynamicObject proxyHandler) {
         super(shape);
         this.proxyTarget = proxyTarget;
         this.proxyHandler = proxyHandler;
     }
 
-    public DynamicObject getProxyHandler() {
+    public JSDynamicObject getProxyHandler() {
         return proxyHandler;
     }
 
@@ -91,7 +91,7 @@ public final class JSProxyObject extends JSClassObject {
         this.proxyTarget = RevokedTarget.lookup(isCallable, isConstructor);
     }
 
-    public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Object target, DynamicObject handler) {
+    public static JSDynamicObject create(JSRealm realm, JSObjectFactory factory, Object target, JSDynamicObject handler) {
         return factory.initProto(new JSProxyObject(factory.getShape(realm), target, handler), realm);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -87,19 +86,19 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
     public abstract Object executeWithReceiver(Object proxy, Object receiver, Object key);
 
     @Specialization
-    protected Object doGeneric(DynamicObject proxy, Object receiver, Object key,
+    protected Object doGeneric(JSDynamicObject proxy, Object receiver, Object key,
                     @Cached JSToPropertyKeyNode toPropertyKeyNode,
                     @Cached("createBinaryProfile()") ConditionProfile hasTrap,
                     @Cached JSClassProfile targetClassProfile) {
         assert JSProxy.isJSProxy(proxy);
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKeyNode.execute(key);
-        DynamicObject handler = JSProxy.getHandlerChecked(proxy, errorBranch);
+        JSDynamicObject handler = JSProxy.getHandlerChecked(proxy, errorBranch);
         Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
             if (JSDynamicObject.isJSDynamicObject(target)) {
-                return JSObject.getOrDefault((DynamicObject) target, propertyKey, receiver, Undefined.instance, targetClassProfile, this);
+                return JSObject.getOrDefault((JSDynamicObject) target, propertyKey, receiver, Undefined.instance, targetClassProfile, this);
             } else {
                 return JSInteropUtil.readMemberOrDefault(target, propertyKey, Undefined.instance);
             }
@@ -116,7 +115,7 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
         if (!JSDynamicObject.isJSDynamicObject(proxyTarget)) {
             return; // best effort, cannot check for foreign objects
         }
-        PropertyDescriptor targetDesc = getOwnProperty((DynamicObject) proxyTarget, propertyKey);
+        PropertyDescriptor targetDesc = getOwnProperty((JSDynamicObject) proxyTarget, propertyKey);
         if (targetDesc != null) {
             if (targetDesc.isDataDescriptor() && !targetDesc.getConfigurable() && !targetDesc.getWritable()) {
                 Object targetValue = targetDesc.getValue();
@@ -142,7 +141,7 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
         return sameValueNode.executeBoolean(trapResult, value);
     }
 
-    private PropertyDescriptor getOwnProperty(DynamicObject target, Object propertyKey) {
+    private PropertyDescriptor getOwnProperty(JSDynamicObject target, Object propertyKey) {
         if (getOwnPropertyNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getOwnPropertyNode = insert(JSGetOwnPropertyNode.create());

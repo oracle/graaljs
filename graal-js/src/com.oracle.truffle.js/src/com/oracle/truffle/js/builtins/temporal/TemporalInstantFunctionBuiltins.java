@@ -44,7 +44,6 @@ import java.math.BigInteger;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantFunctionBuiltinsFactory.JSTemporalInstantCompareNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantFunctionBuiltinsFactory.JSTemporalInstantFromEpochNodeGen;
@@ -60,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -117,7 +117,7 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        protected DynamicObject from(Object item) {
+        protected JSDynamicObject from(Object item) {
             if (TemporalUtil.isTemporalInstant(item)) {
                 return JSTemporalInstant.create(getContext(), ((JSTemporalInstantObject) item).getNanoseconds());
             }
@@ -138,7 +138,7 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        protected DynamicObject from(Object epochParam,
+        protected JSDynamicObject from(Object epochParam,
                         @Cached JSToNumberNode toNumberNode,
                         @Cached JSNumberToBigIntNode numberToBigIntNode) {
             BigInt epochNanoseconds = null;

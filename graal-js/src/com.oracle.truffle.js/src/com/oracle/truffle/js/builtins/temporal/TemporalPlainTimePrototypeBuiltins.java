@@ -57,7 +57,6 @@ import java.util.EnumSet;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
@@ -104,6 +103,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalTime;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
@@ -253,7 +253,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        public DynamicObject add(Object thisObj, Object temporalDurationLike,
+        public JSDynamicObject add(Object thisObj, Object temporalDurationLike,
                         @Cached("create(getContext())") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
@@ -284,7 +284,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        public DynamicObject subtract(Object thisObj, Object temporalDurationLike,
+        public JSDynamicObject subtract(Object thisObj, Object temporalDurationLike,
                         @Cached("create(getContext())") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
@@ -314,7 +314,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected DynamicObject with(Object thisObj, Object temporalTimeLike, Object options,
+        protected JSDynamicObject with(Object thisObj, Object temporalTimeLike, Object options,
                         @Cached("create()") JSToIntegerThrowOnInfinityNode toIntThrows,
                         @Cached("create()") JSToIntegerAsIntNode toInt) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
@@ -322,7 +322,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 errorBranch.enter();
                 throw Errors.createTypeError("Temporal.Time like object expected.");
             }
-            DynamicObject timeLikeObj = (DynamicObject) temporalTimeLike;
+            JSDynamicObject timeLikeObj = (JSDynamicObject) temporalTimeLike;
             TemporalUtil.rejectTemporalCalendarType(timeLikeObj, errorBranch);
             Object calendarProperty = JSObject.get(timeLikeObj, TemporalConstants.CALENDAR);
             if (calendarProperty != Undefined.instance) {
@@ -334,8 +334,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 errorBranch.enter();
                 throw TemporalErrors.createTypeErrorUnexpectedTimeZone();
             }
-            DynamicObject partialTime = JSTemporalPlainTime.toPartialTime(timeLikeObj, isObjectNode, toIntThrows, getContext());
-            DynamicObject normalizedOptions = getOptionsObject(options);
+            JSDynamicObject partialTime = JSTemporalPlainTime.toPartialTime(timeLikeObj, isObjectNode, toIntThrows, getContext());
+            JSDynamicObject normalizedOptions = getOptionsObject(options);
             Overflow overflow = toTemporalOverflow(normalizedOptions);
             int hour;
             int minute;
@@ -394,14 +394,14 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        public DynamicObject until(Object thisObj, Object otherObj, Object optionsParam,
+        public JSDynamicObject until(Object thisObj, Object otherObj, Object optionsParam,
                         @Cached("create()") JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
                         @Cached TruffleString.EqualNode equalNode, @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) toTemporalTime.executeDynamicObject(otherObj, null);
-            DynamicObject options = getOptionsObject(optionsParam);
+            JSDynamicObject options = getOptionsObject(optionsParam);
             Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND, equalNode);
             Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, Unit.HOUR, equalNode);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
@@ -431,7 +431,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        public DynamicObject since(Object thisObj, Object otherObj, Object optionsParam,
+        public JSDynamicObject since(Object thisObj, Object otherObj, Object optionsParam,
                         @Cached("create()") JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
@@ -439,7 +439,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) toTemporalTime.executeDynamicObject(otherObj, null);
-            DynamicObject options = getOptionsObject(optionsParam);
+            JSDynamicObject options = getOptionsObject(optionsParam);
             Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND, equalNode);
             Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, Unit.HOUR, equalNode);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
@@ -470,7 +470,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected DynamicObject round(Object thisObj, Object roundToParam,
+        protected JSDynamicObject round(Object thisObj, Object roundToParam,
                         @Cached("create()") JSToNumberNode toNumber,
                         @Cached TruffleString.EqualNode equalNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
@@ -478,7 +478,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 errorBranch.enter();
                 throw TemporalErrors.createTypeErrorOptionsUndefined();
             }
-            DynamicObject roundTo;
+            JSDynamicObject roundTo;
             if (Strings.isTString(roundToParam)) {
                 roundTo = JSOrdinary.createWithNullPrototype(getContext());
                 JSRuntime.createDataPropertyOrThrow(roundTo, TemporalConstants.SMALLEST_UNIT, JSRuntime.toStringIsString(roundToParam));
@@ -518,7 +518,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization(guards = "isJSTemporalTime(otherObj)")
-        protected boolean equalsOtherObj(Object thisObj, DynamicObject otherObj) {
+        protected boolean equalsOtherObj(Object thisObj, JSDynamicObject otherObj) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             return equalsIntl(temporalTime, (TemporalTime) otherObj);
         }
@@ -562,10 +562,10 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        public DynamicObject toPlainDateTime(Object thisObj, Object temporalDateObj,
+        public JSDynamicObject toPlainDateTime(Object thisObj, Object temporalDateObj,
                         @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
             TemporalTime time = requireTemporalTime(thisObj);
-            DynamicObject temporalDate = toTemporalDate.executeDynamicObject(temporalDateObj, Undefined.instance);
+            JSDynamicObject temporalDate = toTemporalDate.executeDynamicObject(temporalDateObj, Undefined.instance);
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) temporalDate;
 
             return JSTemporalPlainDateTime.create(getContext(), date.getYear(), date.getMonth(), date.getDay(),
@@ -582,14 +582,14 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        public DynamicObject toZonedDateTime(Object thisObj, Object itemParam,
+        public JSDynamicObject toZonedDateTime(Object thisObj, Object itemParam,
                         @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
             TemporalTime time = requireTemporalTime(thisObj);
             if (!JSRuntime.isObject(itemParam)) {
                 throw Errors.createTypeErrorNotAnObject(itemParam);
             }
-            DynamicObject item = (DynamicObject) itemParam;
+            JSDynamicObject item = (JSDynamicObject) itemParam;
 
             Object temporalDateLike = JSObject.get(item, PLAIN_DATE);
             if (temporalDateLike == Undefined.instance) {
@@ -602,7 +602,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 errorBranch.enter();
                 throw Errors.createTypeError("TimeZone expected");
             }
-            DynamicObject timeZone = toTemporalTimeZone.executeDynamicObject(temporalTimeZoneLike);
+            JSDynamicObject timeZone = toTemporalTimeZone.executeDynamicObject(temporalTimeZoneLike);
 
             JSTemporalPlainDateTimeObject temporalDateTime = JSTemporalPlainDateTime.create(getContext(), date.getYear(), date.getMonth(), date.getDay(),
                             time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(),
@@ -620,9 +620,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected DynamicObject getISOFields(Object thisObj) {
+        protected JSDynamicObject getISOFields(Object thisObj) {
             TemporalTime time = requireTemporalTime(thisObj);
-            DynamicObject fields = JSOrdinary.create(getContext(), getRealm());
+            JSDynamicObject fields = JSOrdinary.create(getContext(), getRealm());
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.CALENDAR, time.getCalendar());
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_HOUR, time.getHour());
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_MICROSECOND, time.getMicrosecond());
@@ -646,7 +646,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached JSToStringNode toStringNode,
                         @Cached TruffleString.EqualNode equalNode) {
             TemporalTime time = requireTemporalTime(thisObj);
-            DynamicObject options = getOptionsObject(optionsParam);
+            JSDynamicObject options = getOptionsObject(optionsParam);
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getOptionNode(), equalNode);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode);
             JSTemporalDurationRecord roundResult = TemporalUtil.roundTime(

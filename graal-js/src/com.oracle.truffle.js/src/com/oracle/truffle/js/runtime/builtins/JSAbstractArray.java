@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,12 +49,11 @@ import java.util.TreeMap;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -92,85 +91,85 @@ public abstract class JSAbstractArray extends JSNonProxy {
     public static final HiddenKey LAZY_REGEX_RESULT_ID = new HiddenKey("lazyRegexResult");
     public static final HiddenKey LAZY_REGEX_ORIGINAL_INPUT_ID = new HiddenKey("lazyRegexResultOriginalInput");
 
-    public static ScriptArray arrayGetArrayType(DynamicObject thisObj) {
+    public static ScriptArray arrayGetArrayType(JSDynamicObject thisObj) {
         assert JSArray.isJSArray(thisObj) || JSArgumentsArray.isJSArgumentsObject(thisObj) || JSObjectPrototype.isJSObjectPrototype(thisObj);
         return arrayAccess().getArrayType(thisObj);
     }
 
-    public static long arrayGetLength(DynamicObject thisObj) {
+    public static long arrayGetLength(JSDynamicObject thisObj) {
         return arrayAccess().getLength(thisObj);
     }
 
-    public static int arrayGetUsedLength(DynamicObject thisObj) {
+    public static int arrayGetUsedLength(JSDynamicObject thisObj) {
         return arrayAccess().getUsedLength(thisObj);
     }
 
-    public static long arrayGetIndexOffset(DynamicObject thisObj) {
+    public static long arrayGetIndexOffset(JSDynamicObject thisObj) {
         return arrayAccess().getIndexOffset(thisObj);
     }
 
-    public static int arrayGetArrayOffset(DynamicObject thisObj) {
+    public static int arrayGetArrayOffset(JSDynamicObject thisObj) {
         return arrayAccess().getArrayOffset(thisObj);
     }
 
-    public static void arraySetArrayType(DynamicObject thisObj, ScriptArray arrayType) {
+    public static void arraySetArrayType(JSDynamicObject thisObj, ScriptArray arrayType) {
         arrayAccess().setArrayType(thisObj, arrayType);
     }
 
-    public static void arraySetLength(DynamicObject thisObj, int length) {
+    public static void arraySetLength(JSDynamicObject thisObj, int length) {
         assert length >= 0;
         arrayAccess().setLength(thisObj, length);
     }
 
-    public static void arraySetLength(DynamicObject thisObj, long length) {
+    public static void arraySetLength(JSDynamicObject thisObj, long length) {
         assert JSRuntime.isValidArrayLength(length);
         arrayAccess().setLength(thisObj, length);
     }
 
-    public static void arraySetUsedLength(DynamicObject thisObj, int usedLength) {
+    public static void arraySetUsedLength(JSDynamicObject thisObj, int usedLength) {
         assert usedLength >= 0;
         arrayAccess().setUsedLength(thisObj, usedLength);
     }
 
-    public static void arraySetIndexOffset(DynamicObject thisObj, long indexOffset) {
+    public static void arraySetIndexOffset(JSDynamicObject thisObj, long indexOffset) {
         arrayAccess().setIndexOffset(thisObj, indexOffset);
     }
 
-    public static void arraySetArrayOffset(DynamicObject thisObj, int arrayOffset) {
+    public static void arraySetArrayOffset(JSDynamicObject thisObj, int arrayOffset) {
         assert arrayOffset >= 0;
         arrayAccess().setArrayOffset(thisObj, arrayOffset);
     }
 
-    public static Object arrayGetArray(DynamicObject thisObj) {
+    public static Object arrayGetArray(JSDynamicObject thisObj) {
         assert JSObject.hasArray(thisObj);
         return arrayAccess().getArray(thisObj);
     }
 
-    public static void arraySetArray(DynamicObject thisObj, Object array) {
+    public static void arraySetArray(JSDynamicObject thisObj, Object array) {
         assert JSObject.hasArray(thisObj);
         assert array != null && (array.getClass().isArray() || array instanceof TreeMap<?, ?>);
         arrayAccess().setArray(thisObj, array);
     }
 
-    public static int arrayGetHoleCount(DynamicObject thisObj) {
+    public static int arrayGetHoleCount(JSDynamicObject thisObj) {
         return arrayAccess().getHoleCount(thisObj);
     }
 
-    public static void arraySetHoleCount(DynamicObject thisObj, int holeCount) {
+    public static void arraySetHoleCount(JSDynamicObject thisObj, int holeCount) {
         assert holeCount >= 0;
         arrayAccess().setHoleCount(thisObj, holeCount);
     }
 
-    public static ArrayAllocationSite arrayGetAllocationSite(DynamicObject thisObj) {
+    public static ArrayAllocationSite arrayGetAllocationSite(JSDynamicObject thisObj) {
         return arrayAccess().getAllocationSite(thisObj);
     }
 
-    public static Object arrayGetRegexResult(DynamicObject thisObj, DynamicObjectLibrary lazyRegexResult) {
+    public static Object arrayGetRegexResult(JSDynamicObject thisObj, DynamicObjectLibrary lazyRegexResult) {
         assert JSArray.isJSArray(thisObj) && JSArray.arrayGetArrayType(thisObj) == LazyRegexResultArray.LAZY_REGEX_RESULT_ARRAY;
         return Properties.getOrDefault(lazyRegexResult, thisObj, LAZY_REGEX_RESULT_ID, null);
     }
 
-    public static TruffleString arrayGetRegexResultOriginalInput(DynamicObject thisObj, DynamicObjectLibrary lazyRegexResultOriginalInput) {
+    public static TruffleString arrayGetRegexResultOriginalInput(JSDynamicObject thisObj, DynamicObjectLibrary lazyRegexResultOriginalInput) {
         return (TruffleString) Properties.getOrDefault(lazyRegexResultOriginalInput, thisObj, LAZY_REGEX_ORIGINAL_INPUT_ID, null);
     }
 
@@ -248,12 +247,12 @@ public abstract class JSAbstractArray extends JSNonProxy {
         return ArrayAccess.SINGLETON;
     }
 
-    public long getLength(DynamicObject thisObj) {
+    public long getLength(JSDynamicObject thisObj) {
         return arrayGetLength(thisObj);
     }
 
     @TruffleBoundary
-    public boolean setLength(DynamicObject thisObj, long length, boolean doThrow) {
+    public boolean setLength(JSDynamicObject thisObj, long length, boolean doThrow) {
         if (length < 0) {
             throw Errors.createRangeErrorInvalidArrayLength();
         }
@@ -274,13 +273,13 @@ public abstract class JSAbstractArray extends JSNonProxy {
     }
 
     @Override
-    public TruffleString getBuiltinToStringTag(DynamicObject object) {
+    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
         return getClassName(object);
     }
 
     @TruffleBoundary
     @Override
-    public final Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+    public final Object getOwnHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         long idx = JSRuntime.propertyKeyToArrayIndex(key);
         if (JSRuntime.isArrayIndex(idx)) {
             return getOwnHelper(store, thisObj, idx, encapsulatingNode);
@@ -290,7 +289,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public final boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    public final boolean set(JSDynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         if (receiver != thisObj) {
             return ordinarySetWithReceiver(thisObj, key, value, receiver, isStrict, encapsulatingNode);
         }
@@ -305,7 +304,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    public boolean set(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         if (receiver != thisObj) {
             return ordinarySetWithReceiver(thisObj, Strings.fromLong(index), value, receiver, isStrict, encapsulatingNode);
         }
@@ -318,7 +317,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
     }
 
     @TruffleBoundary
-    private static boolean setPropertySlow(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    private static boolean setPropertySlow(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         if (!JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().isValid() && setPropertyPrototypes(thisObj, index, value, receiver, isStrict, encapsulatingNode)) {
             return true;
         }
@@ -332,9 +331,9 @@ public abstract class JSAbstractArray extends JSNonProxy {
         return setElement(thisObj, index, value, isStrict);
     }
 
-    private static boolean setPropertyPrototypes(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    private static boolean setPropertyPrototypes(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         // check prototype chain for accessors
-        DynamicObject current = JSObject.getPrototype(thisObj);
+        JSDynamicObject current = JSObject.getPrototype(thisObj);
         Object propertyName = null;
         while (current != Null.instance) {
             if (JSProxy.isJSProxy(current)) {
@@ -366,17 +365,17 @@ public abstract class JSAbstractArray extends JSNonProxy {
         return false;
     }
 
-    private static boolean canHaveReadOnlyOrAccessorProperties(DynamicObject current) {
+    private static boolean canHaveReadOnlyOrAccessorProperties(JSDynamicObject current) {
         return !JSArrayBufferView.isJSArrayBufferView(current);
     }
 
-    private static boolean setElement(DynamicObject thisObj, long index, Object value, boolean isStrict) {
+    private static boolean setElement(JSDynamicObject thisObj, long index, Object value, boolean isStrict) {
         arraySetArrayType(thisObj, arrayGetArrayType(thisObj).setElement(thisObj, index, value, isStrict));
         return true;
     }
 
     @Override
-    public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
         ScriptArray arrayType = arrayGetArrayType(thisObj);
         if (arrayType.canDeleteElement(thisObj, index, isStrict)) {
             arraySetArrayType(thisObj, arrayType.deleteElement(thisObj, index, isStrict));
@@ -388,7 +387,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
+    public Object getOwnHelper(JSDynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
         ScriptArray array = arrayGetArrayType(store);
         if (array.hasElement(store, index)) {
             return array.getElement(store, index);
@@ -403,13 +402,13 @@ public abstract class JSAbstractArray extends JSNonProxy {
      * This is mostly used in tests, but also in a few places in Node.js.
      */
     @TruffleBoundary
-    public static Object[] toArray(DynamicObject thisObj) {
+    public static Object[] toArray(JSDynamicObject thisObj) {
         return arrayGetArrayType(thisObj).toArray(thisObj);
     }
 
     @TruffleBoundary
     @Override
-    public final boolean hasOwnProperty(DynamicObject thisObj, Object key) {
+    public final boolean hasOwnProperty(JSDynamicObject thisObj, Object key) {
         if (super.hasOwnProperty(thisObj, key)) {
             return true;
         }
@@ -422,7 +421,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public final boolean hasOwnProperty(DynamicObject thisObj, long index) {
+    public final boolean hasOwnProperty(JSDynamicObject thisObj, long index) {
         ScriptArray array = arrayGetArrayType(thisObj);
         if (array.hasElement(thisObj, index)) {
             return true;
@@ -432,12 +431,12 @@ public abstract class JSAbstractArray extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
+    public List<Object> getOwnPropertyKeys(JSDynamicObject thisObj, boolean strings, boolean symbols) {
         return ownPropertyKeysSlowArray(thisObj, strings, symbols);
     }
 
     @TruffleBoundary
-    protected static List<Object> ownPropertyKeysFastArray(DynamicObject thisObj, boolean strings, boolean symbols) {
+    protected static List<Object> ownPropertyKeysFastArray(JSDynamicObject thisObj, boolean strings, boolean symbols) {
         assert JSArray.isJSFastArray(thisObj) || JSArgumentsArray.isJSFastArgumentsObject(thisObj);
         List<Object> indices = strings ? arrayGetArrayType(thisObj).ownPropertyKeys(thisObj) : Collections.emptyList();
         List<Object> keyList = thisObj.getShape().getKeyList();
@@ -465,7 +464,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
     }
 
     @TruffleBoundary
-    protected static List<Object> ownPropertyKeysSlowArray(DynamicObject thisObj, boolean strings, boolean symbols) {
+    protected static List<Object> ownPropertyKeysSlowArray(JSDynamicObject thisObj, boolean strings, boolean symbols) {
         List<Object> list = new ArrayList<>();
 
         if (strings) {
@@ -535,7 +534,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
 
     @Override
     @TruffleBoundary
-    public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow) {
+    public boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow) {
         if (Strings.isTString(key) && Strings.equals(LENGTH, (TruffleString) key)) {
             return defineOwnPropertyLength(thisObj, descriptor, doThrow);
         } else if (Strings.isTString(key) && JSRuntime.isArrayIndexString((TruffleString) key)) {
@@ -551,7 +550,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
      *
      * @return whether the operation was successful
      */
-    private boolean defineOwnPropertyLength(DynamicObject thisObj, PropertyDescriptor descriptor, boolean doThrow) {
+    private boolean defineOwnPropertyLength(JSDynamicObject thisObj, PropertyDescriptor descriptor, boolean doThrow) {
         if (!descriptor.hasValue()) {
             boolean success = DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, LENGTH, descriptor, doThrow);
             if (success && descriptor.hasWritable() && !descriptor.getWritable()) {
@@ -587,11 +586,11 @@ public abstract class JSAbstractArray extends JSNonProxy {
         }
     }
 
-    private static void setLengthNotWritable(DynamicObject thisObj) {
+    private static void setLengthNotWritable(JSDynamicObject thisObj) {
         arraySetArrayType(thisObj, arrayGetArrayType(thisObj).setLengthNotWritable());
     }
 
-    private boolean deleteElementsAfterShortening(DynamicObject thisObj, PropertyDescriptor descriptor, boolean doThrow, long newLen, PropertyDescriptor lenDesc, long startPos) {
+    private boolean deleteElementsAfterShortening(JSDynamicObject thisObj, PropertyDescriptor descriptor, boolean doThrow, long newLen, PropertyDescriptor lenDesc, long startPos) {
         assert JSRuntime.isValidArrayLength(newLen);
         long pos = startPos;
         while (pos > newLen) {
@@ -614,7 +613,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
         return true;
     }
 
-    private boolean definePropertyLength(DynamicObject thisObj, PropertyDescriptor descriptor, PropertyDescriptor currentDesc, long len, boolean doThrow) {
+    private boolean definePropertyLength(JSDynamicObject thisObj, PropertyDescriptor descriptor, PropertyDescriptor currentDesc, long len, boolean doThrow) {
         assert JSRuntime.isValidArrayLength(len);
         assert !currentDesc.getConfigurable();
         boolean currentWritable = currentDesc.getWritable();
@@ -657,7 +656,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
      *
      * @return whether the operation was successful
      */
-    protected boolean defineOwnPropertyIndex(DynamicObject thisObj, TruffleString name, PropertyDescriptor descriptor, boolean doThrow) {
+    protected boolean defineOwnPropertyIndex(JSDynamicObject thisObj, TruffleString name, PropertyDescriptor descriptor, boolean doThrow) {
         assert Strings.isTString(name);
         long index = JSRuntime.toUInt32(name);
         if (index >= this.getLength(thisObj)) {
@@ -674,7 +673,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
         return success;
     }
 
-    protected DynamicObject makeSlowArray(DynamicObject thisObj) {
+    protected JSDynamicObject makeSlowArray(JSDynamicObject thisObj) {
         CompilerAsserts.neverPartOfCompilation(MAKE_SLOW_ARRAY_NEVER_PART_OF_COMPILATION_MESSAGE);
         if (isSlowArray(thisObj)) {
             return thisObj;
@@ -691,19 +690,19 @@ public abstract class JSAbstractArray extends JSNonProxy {
         return thisObj;
     }
 
-    private static boolean isArrayPrototype(DynamicObject thisObj) {
+    private static boolean isArrayPrototype(JSDynamicObject thisObj) {
         return arrayGetArrayType(thisObj) instanceof ConstantEmptyPrototypeArray;
     }
 
     @Override
-    public boolean testIntegrityLevel(DynamicObject thisObj, boolean frozen) {
+    public boolean testIntegrityLevel(JSDynamicObject thisObj, boolean frozen) {
         ScriptArray array = arrayGetArrayType(thisObj);
         boolean arrayIs = frozen ? array.isFrozen() : array.isSealed();
         return arrayIs && super.testIntegrityLevelFast(thisObj, frozen);
     }
 
     @Override
-    public boolean setIntegrityLevel(DynamicObject thisObj, boolean freeze, boolean doThrow) {
+    public boolean setIntegrityLevel(JSDynamicObject thisObj, boolean freeze, boolean doThrow) {
         if (testIntegrityLevel(thisObj, freeze)) {
             return true;
         }
@@ -715,7 +714,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public final boolean preventExtensions(DynamicObject thisObj, boolean doThrow) {
+    public final boolean preventExtensions(JSDynamicObject thisObj, boolean doThrow) {
         boolean result = super.preventExtensions(thisObj, doThrow);
         ScriptArray arr = arrayGetArrayType(thisObj);
         arraySetArrayType(thisObj, arr.preventExtensions());
@@ -725,7 +724,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
         long index = JSRuntime.propertyKeyToArrayIndex(key);
         if (index >= 0) {
             return delete(thisObj, index, isStrict);
@@ -736,13 +735,13 @@ public abstract class JSAbstractArray extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype) {
+    public boolean setPrototypeOf(JSDynamicObject thisObj, JSDynamicObject newPrototype) {
         JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         return super.setPrototypeOf(thisObj, newPrototype);
     }
 
     @Override
-    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
+    public PropertyDescriptor getOwnProperty(JSDynamicObject thisObj, Object key) {
         return ordinaryGetOwnPropertyArray(thisObj, key);
     }
 
@@ -750,7 +749,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
      * 9.1.5.1 OrdinaryGetOwnProperty (O, P), implemented for Arrays.
      */
     @TruffleBoundary
-    public static PropertyDescriptor ordinaryGetOwnPropertyArray(DynamicObject thisObj, Object key) {
+    public static PropertyDescriptor ordinaryGetOwnPropertyArray(JSDynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
 
         long idx = JSRuntime.propertyKeyToArrayIndex(key);
@@ -769,7 +768,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
     }
 
     @Override
-    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
@@ -777,7 +776,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
         }
     }
 
-    protected boolean isSlowArray(DynamicObject thisObj) {
+    protected boolean isSlowArray(JSDynamicObject thisObj) {
         return JSSlowArray.isJSSlowArray(thisObj);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins.ConstructJSProxyNode;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSProxyNodeGen;
 import com.oracle.truffle.js.builtins.ProxyFunctionBuiltinsFactory.RevocableNodeGen;
@@ -64,6 +63,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -97,13 +97,13 @@ public final class ProxyFunctionBuiltins extends JSBuiltinsContainer.Lambda {
 
         @Specialization
         protected Object doDefault(VirtualFrame frame, Object target, Object handler) {
-            DynamicObject proxy = proxyCreateNode.execute(Undefined.instance, target, handler);
+            JSDynamicObject proxy = proxyCreateNode.execute(Undefined.instance, target, handler);
 
             JSFunctionData revokerFunctionData = getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ProxyRevokerFunction, c -> createProxyRevokerFunctionImpl(c));
-            DynamicObject revoker = JSFunction.create(getRealm(), revokerFunctionData);
+            JSDynamicObject revoker = JSFunction.create(getRealm(), revokerFunctionData);
             setRevocableProxySlotNode.setValue(revoker, proxy);
 
-            DynamicObject result = createObjectNode.execute(frame);
+            JSDynamicObject result = createObjectNode.execute(frame);
             createProxyPropertyNode.executeVoid(result, proxy);
             createRevokePropertyNode.executeVoid(result, revoker);
             return result;
@@ -118,7 +118,7 @@ public final class ProxyFunctionBuiltins extends JSBuiltinsContainer.Lambda {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                    JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
                     Object revocableProxy = getRevocableProxyNode.getValue(functionObject);
                     if (revocableProxy == Null.instance) {
                         return Undefined.instance;

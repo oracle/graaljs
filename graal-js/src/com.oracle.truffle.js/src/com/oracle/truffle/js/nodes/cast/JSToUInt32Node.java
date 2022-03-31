@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -68,6 +67,7 @@ import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class JSToUInt32Node extends JavaScriptBaseNode {
 
@@ -196,7 +196,7 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isJSObject(value)", "!isUnsignedRightShift() || !hasOverloadedOperators(value)"})
-    protected double doJSObject(DynamicObject value,
+    protected double doJSObject(JSDynamicObject value,
                     @Cached("create()") JSToNumberNode toNumberNode) {
         return JSRuntime.toUInt32(toNumberNode.executeNumber(value));
     }

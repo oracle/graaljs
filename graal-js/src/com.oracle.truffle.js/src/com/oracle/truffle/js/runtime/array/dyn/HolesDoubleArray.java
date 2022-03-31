@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,10 +45,10 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetHol
 
 import java.util.List;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
@@ -61,7 +61,7 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
         super(integrityLevel, cache);
     }
 
-    public static HolesDoubleArray makeHolesDoubleArray(DynamicObject object, int length, double[] array, long indexOffset, int arrayOffset, int usedLength, int holeCount, int integrityLevel) {
+    public static HolesDoubleArray makeHolesDoubleArray(JSDynamicObject object, int length, double[] array, long indexOffset, int arrayOffset, int usedLength, int holeCount, int integrityLevel) {
         HolesDoubleArray arrayType = createHolesDoubleArray().setIntegrityLevel(integrityLevel);
         setArrayProperties(object, array, length, usedLength, indexOffset, arrayOffset);
         arraySetHoleCount(object, holeCount);
@@ -74,41 +74,41 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
     }
 
     @Override
-    AbstractWritableArray sameTypeHolesArray(DynamicObject object, int length, Object array, long indexOffset, int arrayOffset, int usedLength, int holeCount) {
+    AbstractWritableArray sameTypeHolesArray(JSDynamicObject object, int length, Object array, long indexOffset, int arrayOffset, int usedLength, int holeCount) {
         setArrayProperties(object, array, length, usedLength, indexOffset, arrayOffset);
         arraySetHoleCount(object, holeCount);
         return this;
     }
 
     @Override
-    public int prepareInBounds(DynamicObject object, int index, ProfileHolder profile) {
+    public int prepareInBounds(JSDynamicObject object, int index, ProfileHolder profile) {
         return prepareInBoundsHoles(object, index, profile);
     }
 
     @Override
-    public void setInBoundsFast(DynamicObject object, int index, double value) {
+    public void setInBoundsFast(JSDynamicObject object, int index, double value) {
         throw Errors.shouldNotReachHere("should not call this method, use setInBounds(Non)Hole");
     }
 
-    public boolean isHoleFast(DynamicObject object, int index) {
+    public boolean isHoleFast(JSDynamicObject object, int index) {
         int internalIndex = (int) (index - getIndexOffset(object));
         return isHolePrepared(object, internalIndex);
     }
 
-    public void setInBoundsFastHole(DynamicObject object, int index, double value) {
+    public void setInBoundsFastHole(JSDynamicObject object, int index, double value) {
         int internalIndex = (int) (index - getIndexOffset(object));
         assert isHolePrepared(object, internalIndex);
         incrementHolesCount(object, -1);
         setInBoundsFastIntl(object, index, internalIndex, value);
     }
 
-    public void setInBoundsFastNonHole(DynamicObject object, int index, double value) {
+    public void setInBoundsFastNonHole(JSDynamicObject object, int index, double value) {
         int internalIndex = (int) (index - getIndexOffset(object));
         assert !isHolePrepared(object, internalIndex);
         setInBoundsFastIntl(object, index, internalIndex, value);
     }
 
-    private void setInBoundsFastIntl(DynamicObject object, int index, int internalIndex, double value) {
+    private void setInBoundsFastIntl(JSDynamicObject object, int index, int internalIndex, double value) {
         getArray(object)[internalIndex] = value;
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBoundsFast", index, value);
@@ -116,12 +116,12 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
     }
 
     @Override
-    public boolean containsHoles(DynamicObject object, long index) {
+    public boolean containsHoles(JSDynamicObject object, long index) {
         return arrayGetHoleCount(object) > 0 || !isInBoundsFast(object, index);
     }
 
     @Override
-    public AbstractDoubleArray toNonHoles(DynamicObject object, long index, Object value) {
+    public AbstractDoubleArray toNonHoles(JSDynamicObject object, long index, Object value) {
         assert !containsHoles(object, index);
         double[] array = getArray(object);
         int length = lengthInt(object);
@@ -143,22 +143,22 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
     }
 
     @Override
-    protected void incrementHolesCount(DynamicObject object, int offset) {
+    protected void incrementHolesCount(JSDynamicObject object, int offset) {
         arraySetHoleCount(object, arrayGetHoleCount(object) + offset);
     }
 
     @Override
-    public boolean isSupported(DynamicObject object, long index) {
+    public boolean isSupported(JSDynamicObject object, long index) {
         return isSupportedHoles(object, index);
     }
 
     @Override
-    public int prepareSupported(DynamicObject object, int index, ProfileHolder profile) {
+    public int prepareSupported(JSDynamicObject object, int index, ProfileHolder profile) {
         return prepareSupportedHoles(object, index, profile);
     }
 
     @Override
-    public Object getInBoundsFast(DynamicObject object, int index) {
+    public Object getInBoundsFast(JSDynamicObject object, int index) {
         double value = getInBoundsFastDouble(object, index);
         if (HolesDoubleArray.isHoleValue(value)) {
             return Undefined.instance;
@@ -167,12 +167,12 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
     }
 
     @Override
-    public HolesDoubleArray toHoles(DynamicObject object, long index, Object value) {
+    public HolesDoubleArray toHoles(JSDynamicObject object, long index, Object value) {
         return this;
     }
 
     @Override
-    public AbstractWritableArray toObject(DynamicObject object, long index, Object value) {
+    public AbstractWritableArray toObject(JSDynamicObject object, long index, Object value) {
         double[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
@@ -193,22 +193,22 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
     }
 
     @Override
-    public long nextElementIndex(DynamicObject object, long index0) {
+    public long nextElementIndex(JSDynamicObject object, long index0) {
         return nextElementIndexHoles(object, index0);
     }
 
     @Override
-    public long previousElementIndex(DynamicObject object, long index0) {
+    public long previousElementIndex(JSDynamicObject object, long index0) {
         return previousElementIndexHoles(object, index0);
     }
 
     @Override
-    public boolean hasElement(DynamicObject object, long index) {
+    public boolean hasElement(JSDynamicObject object, long index) {
         return super.hasElement(object, index) && !isHolePrepared(object, prepareInBoundsFast(object, (int) index));
     }
 
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+    public ScriptArray deleteElementImpl(JSDynamicObject object, long index, boolean strict) {
         return deleteElementHoles(object, index);
     }
 
@@ -218,7 +218,7 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
     }
 
     @Override
-    public ScriptArray removeRangeImpl(DynamicObject object, long start, long end) {
+    public ScriptArray removeRangeImpl(JSDynamicObject object, long start, long end) {
         return removeRangeHoles(object, start, end);
     }
 
@@ -228,7 +228,7 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
     }
 
     @Override
-    public List<Object> ownPropertyKeys(DynamicObject object) {
+    public List<Object> ownPropertyKeys(JSDynamicObject object) {
         return ownPropertyKeysHoles(object);
     }
 }

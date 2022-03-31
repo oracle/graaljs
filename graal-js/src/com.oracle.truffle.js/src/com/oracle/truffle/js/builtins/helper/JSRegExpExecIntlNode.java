@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -71,6 +70,7 @@ import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -102,10 +102,10 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         return JSRegExpExecIntlNodeGen.create(context);
     }
 
-    public abstract Object execute(DynamicObject regExp, Object input);
+    public abstract Object execute(JSDynamicObject regExp, Object input);
 
     @Specialization
-    Object doGeneric(DynamicObject regExp, TruffleString input) {
+    Object doGeneric(JSDynamicObject regExp, TruffleString input) {
         if (context.getEcmaScriptVersion() >= 6) {
             if (isPristineProfile.profile(isPristine(regExp))) {
                 return builtinExec((JSRegExpObject) regExp, input);
@@ -122,7 +122,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         return builtinExec((JSRegExpObject) regExp, input);
     }
 
-    private Object callJSFunction(DynamicObject regExp, Object input, Object exec) {
+    private Object callJSFunction(JSDynamicObject regExp, Object input, Object exec) {
         Object result = doCallJSFunction(exec, regExp, input);
         if (validResultProfile.profile(result == Null.instance || isJSObject(result) && result != Undefined.instance)) {
             return result;
@@ -130,7 +130,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         throw Errors.createTypeError("object or null expected");
     }
 
-    private boolean isPristine(DynamicObject regExp) {
+    private boolean isPristine(JSDynamicObject regExp) {
         if (isPristineObjectNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             isPristineObjectNode = insert(IsPristineObjectNode.createRegExpExecAndMatch(context));
@@ -138,7 +138,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         return isPristineObjectNode.execute(regExp);
     }
 
-    private Object getExecProperty(DynamicObject regExp) {
+    private Object getExecProperty(JSDynamicObject regExp) {
         if (getExecNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getExecNode = insert(PropertyGetNode.create(Strings.EXEC, false, context));
@@ -170,7 +170,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         return isJSObjectNode.executeBoolean(obj);
     }
 
-    private Object doCallJSFunction(Object exec, DynamicObject regExp, Object input) {
+    private Object doCallJSFunction(Object exec, JSDynamicObject regExp, Object input) {
         if (specialCallNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             specialCallNode = insert(JSFunctionCallNode.createCall());
@@ -202,10 +202,10 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             return JSRegExpExecIntlNodeGen.JSRegExpExecIntlIgnoreLastIndexNodeGen.create(context, doStaticResultUpdate);
         }
 
-        public abstract Object execute(DynamicObject regExp, Object input, long lastIndex);
+        public abstract Object execute(JSDynamicObject regExp, Object input, long lastIndex);
 
         @Specialization
-        Object doGeneric(DynamicObject regExp, TruffleString input, long lastIndex,
+        Object doGeneric(JSDynamicObject regExp, TruffleString input, long lastIndex,
                         @Cached("create()") TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor,
                         @Cached("create()") TRegexUtil.TRegexResultAccessor regexResultAccessor) {
             assert JSRegExp.isJSRegExp(regExp);
@@ -232,14 +232,14 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             return BuildGroupsObjectNodeGen.create();
         }
 
-        public abstract DynamicObject execute(JSContext context, DynamicObject regExp, Object regexResult, Object input, boolean isIndices);
+        public abstract JSDynamicObject execute(JSContext context, JSDynamicObject regExp, Object regexResult, Object input, boolean isIndices);
 
         // We can reuse the cachedGroupsFactory even if the new groups factory is different, as long
         // as the compiledRegex is the same. This can happen if a new RegExp instance is repeatedly
         // created for the same regular expression.
         @Specialization(guards = "getGroupsFactory(regExp) == cachedGroupsFactory || getCompiledRegex(regExp) == cachedCompiledRegex")
-        final DynamicObject doCachedGroupsFactory(JSContext context,
-                        @SuppressWarnings("unused") DynamicObject regExp,
+        final JSDynamicObject doCachedGroupsFactory(JSContext context,
+                        @SuppressWarnings("unused") JSDynamicObject regExp,
                         Object regexResult,
                         TruffleString input,
                         boolean isIndices,
@@ -251,11 +251,11 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
         @Specialization
         @TruffleBoundary
-        final DynamicObject doVaryingGroupsFactory(JSContext context, DynamicObject regExp, Object regexResult, TruffleString input, boolean isIndices) {
+        final JSDynamicObject doVaryingGroupsFactory(JSContext context, JSDynamicObject regExp, Object regexResult, TruffleString input, boolean isIndices) {
             return doIt(context, getRealm(), JSRegExp.getGroupsFactory(regExp), regexResult, input, isIndices);
         }
 
-        private static DynamicObject doIt(JSContext context, JSRealm realm, JSObjectFactory groupsFactory, Object regexResult, TruffleString input, boolean isIndices) {
+        private static JSDynamicObject doIt(JSContext context, JSRealm realm, JSObjectFactory groupsFactory, Object regexResult, TruffleString input, boolean isIndices) {
             if (groupsFactory == null) {
                 return Undefined.instance;
             } else {
@@ -378,18 +378,18 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             return JSRegExp.getRealm(regExp) == thisRealm;
         }
 
-        // converts RegexResult into DynamicObject
-        private DynamicObject getMatchResult(JSRegExpObject regExp, Object regexResult, int groupCount, TruffleString inputStr, boolean hasIndices, JSRealm realm) {
-            DynamicObject groups = getGroupsObject(regExp, regexResult, inputStr, false);
-            DynamicObject resultArray = JSArray.createLazyRegexArray(context, realm, groupCount);
+        // converts RegexResult into JSDynamicObject
+        private JSDynamicObject getMatchResult(JSRegExpObject regExp, Object regexResult, int groupCount, TruffleString inputStr, boolean hasIndices, JSRealm realm) {
+            JSDynamicObject groups = getGroupsObject(regExp, regexResult, inputStr, false);
+            JSDynamicObject resultArray = JSArray.createLazyRegexArray(context, realm, groupCount);
             setRegexResultNode.setValue(resultArray, regexResult);
             setRegexOriginalInputNode.setValue(resultArray, inputStr);
             setIndexNode.putConstant(resultArray, JSRegExp.INDEX, JSRegExp.LAZY_INDEX_PROXY, JSAttributes.getDefault() | JSProperty.PROXY);
             setInputNode.put(resultArray, JSRegExp.INPUT, inputStr);
             setGroupsNode.put(resultArray, JSRegExp.GROUPS, groups);
             if (context.isOptionRegexpMatchIndices() && hasIndices) {
-                DynamicObject indicesGroups = getGroupsObject(regExp, regexResult, inputStr, true);
-                DynamicObject indicesArray = JSArray.createLazyRegexIndicesArray(context, realm, groupCount);
+                JSDynamicObject indicesGroups = getGroupsObject(regExp, regexResult, inputStr, true);
+                JSDynamicObject indicesArray = JSArray.createLazyRegexIndicesArray(context, realm, groupCount);
                 setIndicesRegexResultNode.put(indicesArray, JSRegExp.GROUPS_RESULT_ID, regexResult);
                 setIndicesGroupsNode.put(indicesArray, JSRegExp.GROUPS, indicesGroups);
                 setIndicesNode.put(resultArray, JSRegExp.INDICES, indicesArray);
@@ -398,7 +398,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         }
 
         // builds the object containing the matches of the named capture groups
-        private DynamicObject getGroupsObject(DynamicObject regExp, Object result, Object input, boolean isIndices) {
+        private JSDynamicObject getGroupsObject(JSDynamicObject regExp, Object result, Object input, boolean isIndices) {
             if (groupsBuilder == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 groupsBuilder = insert(BuildGroupsObjectNode.create());
@@ -406,7 +406,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             return groupsBuilder.execute(context, regExp, result, input, isIndices);
         }
 
-        private long getLastIndex(DynamicObject regExp) {
+        private long getLastIndex(JSDynamicObject regExp) {
             if (getLastIndexNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getLastIndexNode = insert(PropertyGetNode.create(JSRegExp.LAST_INDEX, false, context));
@@ -423,7 +423,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             }
         }
 
-        private void setLastIndex(DynamicObject regExp, int value) {
+        private void setLastIndex(JSDynamicObject regExp, int value) {
             if (setLastIndexNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 setLastIndexNode = insert(PropertySetNode.create(JSRegExp.LAST_INDEX, false, context, true));
@@ -431,7 +431,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             setLastIndexNode.setValueInt(regExp, value);
         }
 
-        protected boolean isJSRegExp(DynamicObject regExp) {
+        protected boolean isJSRegExp(JSDynamicObject regExp) {
             if (isJSRegExpNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 isJSRegExpNode = createIsJSRegExpNode();

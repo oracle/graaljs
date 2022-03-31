@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes;
 import java.util.List;
 
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -113,8 +112,8 @@ public final class JSGuards {
     }
 
     /**
-     * Is this a DynamicObject representing a JavaScript object; this excludes Null and Undefined,
-     * and excludes objects from other languages.
+     * Checks if this value is a JSObject; this excludes Null and Undefined, and foreign objects
+     * (values from other languages).
      */
     public static boolean isJSObject(Object value) {
         return JSRuntime.isObject(value);
@@ -164,14 +163,14 @@ public final class JSGuards {
     }
 
     public static boolean isBoundJSFunction(Object value) {
-        return isJSFunction(value) && JSFunction.isBoundFunction((DynamicObject) value);
+        return isJSFunction(value) && JSFunction.isBoundFunction((JSDynamicObject) value);
     }
 
     public static boolean isCallable(Object reviver) {
         return JSRuntime.isCallable(reviver);
     }
 
-    public static boolean isCallableProxy(DynamicObject proxy) {
+    public static boolean isCallableProxy(JSDynamicObject proxy) {
         return JSRuntime.isCallableProxy(proxy);
     }
 
@@ -279,7 +278,7 @@ public final class JSGuards {
      * Guard used to ensure that the parameter is a JSObject containing a JSNumber, that hosts an
      * Integer.
      */
-    public static boolean isJSNumberInteger(DynamicObject thisObj) {
+    public static boolean isJSNumberInteger(JSDynamicObject thisObj) {
         return JSNumber.valueOf(thisObj) instanceof Integer;
     }
 
@@ -483,7 +482,7 @@ public final class JSGuards {
         return i.fitsInLong() && JSRuntime.isArrayIndex(i.longValue());
     }
 
-    public static boolean isArgumentsDisconnected(DynamicObject argumentsArray) {
+    public static boolean isArgumentsDisconnected(JSDynamicObject argumentsArray) {
         return JSArgumentsArray.hasDisconnectedIndices(argumentsArray);
     }
 
@@ -494,7 +493,7 @@ public final class JSGuards {
         return null;
     }
 
-    public static JSClass getJSClassChecked(DynamicObject object) {
+    public static JSClass getJSClassChecked(JSDynamicObject object) {
         if (JSDynamicObject.isJSDynamicObject(object)) {
             return JSObject.getJSClass(object);
         } else {
@@ -502,7 +501,7 @@ public final class JSGuards {
         }
     }
 
-    public static JSClass getJSClassIfObject(DynamicObject object) {
+    public static JSClass getJSClassIfObject(JSDynamicObject object) {
         if (isJSObject(object)) {
             return JSObject.getJSClass(object);
         } else {

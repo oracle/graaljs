@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltins.JSArrayFromNode;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltins.JSArrayFunctionOperation;
@@ -55,6 +54,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
@@ -101,12 +101,12 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        protected DynamicObject arrayOf(Object thisObj, Object... args) {
+        protected JSDynamicObject arrayOf(Object thisObj, Object... args) {
             if (!isTypedArrayConstructor(thisObj)) {
                 throw Errors.createTypeErrorNotAConstructor(thisObj, getContext());
             }
             int len = args.length;
-            DynamicObject newObj = getArraySpeciesConstructorNode().typedArrayCreate((DynamicObject) thisObj, len);
+            JSDynamicObject newObj = getArraySpeciesConstructorNode().typedArrayCreate((JSDynamicObject) thisObj, len);
             int k = 0;
             while (k < len) {
                 Object kValue = args[k];
@@ -127,7 +127,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
 
         @Override
         @Specialization
-        protected DynamicObject arrayFrom(Object thisObj, Object[] args) {
+        protected JSDynamicObject arrayFrom(Object thisObj, Object[] args) {
             Object source = JSRuntime.getArgOrUndefined(args, 0);
             Object mapFn = JSRuntime.getArgOrUndefined(args, 1);
             Object thisArg = JSRuntime.getArgOrUndefined(args, 2);
@@ -139,7 +139,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Override
-        protected DynamicObject arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping) {
+        protected JSDynamicObject arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping) {
             SimpleArrayList<Object> values = new SimpleArrayList<>();
 
             IteratorRecord iteratorRecord = getIterator(items, usingIterator);
@@ -148,15 +148,15 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
                 if (next == Boolean.FALSE) {
                     break;
                 }
-                Object nextValue = getIteratorValue((DynamicObject) next);
+                Object nextValue = getIteratorValue((JSDynamicObject) next);
                 values.add(nextValue, growProfile);
             }
             int len = values.size();
-            DynamicObject obj = getArraySpeciesConstructorNode().typedArrayCreate((DynamicObject) thisObj, len);
+            JSDynamicObject obj = getArraySpeciesConstructorNode().typedArrayCreate((JSDynamicObject) thisObj, len);
             for (int k = 0; k < len; k++) {
                 Object mapped = values.get(k);
                 if (mapping) {
-                    mapped = callMapFn(thisArg, (DynamicObject) mapFn, mapped, k);
+                    mapped = callMapFn(thisArg, (JSDynamicObject) mapFn, mapped, k);
                 }
                 writeOwn(obj, k, mapped);
             }

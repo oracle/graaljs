@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.array.dyn;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
@@ -59,61 +58,61 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
         super(integrityLevel, cache);
     }
 
-    protected static void setCapacity(DynamicObject object, long length) {
+    protected static void setCapacity(JSDynamicObject object, long length) {
         JSArray.arraySetLength(object, length);
     }
 
-    protected static long getCapacity(DynamicObject object) {
+    protected static long getCapacity(JSDynamicObject object) {
         return JSArray.arrayGetLength(object);
     }
 
     @Override
-    public Object getElementInBounds(DynamicObject object, int index) {
+    public Object getElementInBounds(JSDynamicObject object, int index) {
         return Undefined.instance;
     }
 
     @Override
-    public int lengthInt(DynamicObject object) {
+    public int lengthInt(JSDynamicObject object) {
         return (int) getCapacity(object);
     }
 
     @Override
-    public Object cloneArray(DynamicObject object) {
+    public Object cloneArray(JSDynamicObject object) {
         return ScriptArray.EMPTY_OBJECT_ARRAY;
     }
 
     @Override
-    public boolean hasElement(DynamicObject object, long index) {
+    public boolean hasElement(JSDynamicObject object, long index) {
         return false;
     }
 
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+    public ScriptArray deleteElementImpl(JSDynamicObject object, long index, boolean strict) {
         return this;
     }
 
     @Override
-    public long firstElementIndex(DynamicObject object) {
+    public long firstElementIndex(JSDynamicObject object) {
         return 0; // there is no element in this array
     }
 
     @Override
-    public long lastElementIndex(DynamicObject object) {
+    public long lastElementIndex(JSDynamicObject object) {
         return -1; // there is no element in this array
     }
 
     @Override
-    public long nextElementIndex(DynamicObject object, long index) {
+    public long nextElementIndex(JSDynamicObject object, long index) {
         return JSRuntime.MAX_SAFE_INTEGER_LONG;
     }
 
     @Override
-    public long previousElementIndex(DynamicObject object, long index) {
+    public long previousElementIndex(JSDynamicObject object, long index) {
         return -1;
     }
 
     @Override
-    public AbstractIntArray createWriteableInt(DynamicObject object, long index, int value, ProfileHolder profile) {
+    public AbstractIntArray createWriteableInt(JSDynamicObject object, long index, int value, ProfileHolder profile) {
         assert index >= 0; // corner case, length would not be int then
         int capacity = lengthInt(object);
         int[] initialArray = new int[calcNewArraySize(capacity, profile)];
@@ -130,7 +129,7 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
         return newArray;
     }
 
-    private AbstractIntArray createWritableIntContiguous(DynamicObject object, int capacity, long index, int[] initialArray, ProfileHolder profile) {
+    private AbstractIntArray createWritableIntContiguous(JSDynamicObject object, int capacity, long index, int[] initialArray, ProfileHolder profile) {
         long length = Math.max(index + 1, capacity);
         int arrayOffset = 0;
         long indexOffset = index;
@@ -152,7 +151,7 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractDoubleArray createWriteableDouble(DynamicObject object, long index, double value, ProfileHolder profile) {
+    public AbstractDoubleArray createWriteableDouble(JSDynamicObject object, long index, double value, ProfileHolder profile) {
         int capacity = lengthInt(object);
         double[] initialArray = new double[calcNewArraySize(capacity, profile)];
         AbstractDoubleArray newArray;
@@ -168,7 +167,7 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
         return newArray;
     }
 
-    private AbstractDoubleArray createWritableDoubleContiguous(DynamicObject object, int capacity, long index, double[] initialArray, ProfileHolder profile) {
+    private AbstractDoubleArray createWritableDoubleContiguous(JSDynamicObject object, int capacity, long index, double[] initialArray, ProfileHolder profile) {
         long length = Math.max(index + 1, capacity);
         int arrayOffset = 0;
         long indexOffset = index;
@@ -180,7 +179,7 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractJSObjectArray createWriteableJSObject(DynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
+    public AbstractJSObjectArray createWriteableJSObject(JSDynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
         int capacity = lengthInt(object);
         JSDynamicObject[] initialArray = new JSDynamicObject[calcNewArraySize(capacity, profile)];
         AbstractJSObjectArray newArray;
@@ -196,7 +195,7 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
         return newArray;
     }
 
-    private AbstractJSObjectArray createWritableJSObjectContiguous(DynamicObject object, int capacity, long index, JSDynamicObject[] initialArray, ProfileHolder profile) {
+    private AbstractJSObjectArray createWritableJSObjectContiguous(JSDynamicObject object, int capacity, long index, JSDynamicObject[] initialArray, ProfileHolder profile) {
         long length = Math.max(index + 1, capacity);
         int arrayOffset = 0;
         long indexOffset = index;
@@ -208,7 +207,7 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractObjectArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile) {
+    public AbstractObjectArray createWriteableObject(JSDynamicObject object, long index, Object value, ProfileHolder profile) {
         int capacity = lengthInt(object);
         Object[] initialArray = new Object[calcNewArraySize(capacity, profile)];
         AbstractObjectArray newArray;
@@ -224,7 +223,7 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
         return newArray;
     }
 
-    private AbstractObjectArray createWritableObjectContiguous(DynamicObject object, int capacity, long index, Object[] initialArray, ProfileHolder profile) {
+    private AbstractObjectArray createWritableObjectContiguous(JSDynamicObject object, int capacity, long index, Object[] initialArray, ProfileHolder profile) {
         long length = Math.max(index + 1, capacity);
         int arrayOffset = 0;
         long indexOffset = index;
@@ -241,16 +240,16 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     @Override
-    public boolean hasHoles(DynamicObject object) {
+    public boolean hasHoles(JSDynamicObject object) {
         return getCapacity(object) != 0;
     }
 
     @Override
-    public List<Object> ownPropertyKeys(DynamicObject object) {
+    public List<Object> ownPropertyKeys(JSDynamicObject object) {
         return ownPropertyKeysContiguous(object);
     }
 
-    private void notifyAllocationSite(DynamicObject object, ScriptArray newArray) {
+    private void notifyAllocationSite(JSDynamicObject object, ScriptArray newArray) {
         if (JSConfig.TrackArrayAllocationSites && CompilerDirectives.inInterpreter()) {
             ArrayAllocationSite site = JSAbstractArray.arrayGetAllocationSite(object);
             if (site != null) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,19 +41,19 @@
 
 package com.oracle.truffle.js.nodes.binary;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
-
-import java.util.Set;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class PrivateFieldInNode extends JSBinaryNode {
     protected PrivateFieldInNode(JavaScriptNode left, JavaScriptNode right) {
@@ -65,12 +65,12 @@ public abstract class PrivateFieldInNode extends JSBinaryNode {
     }
 
     @Specialization(guards = {"isJSObject(haystack)"}, limit = "3")
-    protected boolean doInstance(HiddenKey needle, DynamicObject haystack, @CachedLibrary("haystack") DynamicObjectLibrary access) {
+    protected boolean doInstance(HiddenKey needle, JSDynamicObject haystack, @CachedLibrary("haystack") DynamicObjectLibrary access) {
         return access.containsKey(haystack, needle);
     }
 
     @Specialization(guards = {"isJSObject(haystack)"})
-    protected boolean doStatic(DynamicObject needle, DynamicObject haystack) {
+    protected boolean doStatic(JSDynamicObject needle, JSDynamicObject haystack) {
         return needle == haystack;
     }
 

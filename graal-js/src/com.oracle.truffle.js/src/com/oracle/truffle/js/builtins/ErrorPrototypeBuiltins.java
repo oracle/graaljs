@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ErrorPrototypeGetStackTraceNodeGen;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ErrorPrototypeToStringNodeGen;
@@ -132,7 +131,7 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
         }
 
         @Specialization(guards = "isJSObject(errorObj)")
-        protected Object toStringObject(DynamicObject errorObj) {
+        protected Object toStringObject(JSDynamicObject errorObj) {
             Object objName = getName(errorObj);
             TruffleString strName = (objName == Undefined.instance) ? Strings.UC_ERROR : toStringConv(objName);
             Object objMessage = getMessage(errorObj);
@@ -159,7 +158,7 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
             return Strings.concatAll(strName, Strings.COLON_SPACE, strMessage);
         }
 
-        protected Object getName(DynamicObject errObj) {
+        protected Object getName(JSDynamicObject errObj) {
             if (getNameNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getNameNode = insert(PropertyGetNode.create(JSError.NAME, false, getContext()));
@@ -167,7 +166,7 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
             return getNameNode.getValue(errObj);
         }
 
-        protected Object getMessage(DynamicObject errObj) {
+        protected Object getMessage(JSDynamicObject errObj) {
             if (getMessageNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getMessageNode = insert(PropertyGetNode.create(JSError.MESSAGE, false, getContext()));
@@ -183,12 +182,12 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
         }
 
         @Specialization(guards = "!isJSObject(thisObj)")
-        protected DynamicObject getStackTrace(Object thisObj) {
+        protected JSDynamicObject getStackTrace(Object thisObj) {
             throw Errors.createTypeErrorNotAnObject(thisObj);
         }
 
         @Specialization(guards = "isJSObject(thisObj)")
-        protected DynamicObject getStackTrace(DynamicObject thisObj) {
+        protected JSDynamicObject getStackTrace(JSDynamicObject thisObj) {
             // get original exception from special exception property; call
             // Throwable#getStackTrace(), transform it a bit and turn it into a JSArray
             Object exception = JSDynamicObject.getOrNull(thisObj, JSError.EXCEPTION_PROPERTY_NAME);

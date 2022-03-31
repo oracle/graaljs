@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,12 +43,12 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 @ImportStatic({JSObject.class, JSConfig.class})
@@ -61,20 +61,20 @@ public abstract class HasOnlyShapePropertiesNode extends JavaScriptBaseNode {
         return HasOnlyShapePropertiesNodeGen.create();
     }
 
-    public final boolean execute(DynamicObject object) {
+    public final boolean execute(JSDynamicObject object) {
         return execute(object, JSObject.getJSClass(object));
     }
 
-    public abstract boolean execute(DynamicObject object, JSClass jsclass);
+    public abstract boolean execute(JSDynamicObject object, JSClass jsclass);
 
     @Specialization(guards = {"jsclass == cachedJSClass", "!isJSObjectPrototype(cachedJSClass)"}, limit = "InteropLibraryLimit")
-    static boolean doCached(DynamicObject object, @SuppressWarnings("unused") JSClass jsclass,
+    static boolean doCached(JSDynamicObject object, @SuppressWarnings("unused") JSClass jsclass,
                     @Cached(value = "jsclass") JSClass cachedJSClass) {
         return cachedJSClass.hasOnlyShapeProperties(object);
     }
 
     @Specialization(guards = {"isJSObjectPrototype(jsclass)"})
-    static boolean doObjectPrototype(DynamicObject object, JSClass jsclass,
+    static boolean doObjectPrototype(JSDynamicObject object, JSClass jsclass,
                     @Cached("getJSContext(object)") JSContext context) {
         if (context.getArrayPrototypeNoElementsAssumption().isValid()) {
             assert jsclass.hasOnlyShapeProperties(object);
@@ -84,7 +84,7 @@ public abstract class HasOnlyShapePropertiesNode extends JavaScriptBaseNode {
     }
 
     @Specialization(replaces = {"doCached", "doObjectPrototype"})
-    static boolean doUncached(DynamicObject object, JSClass jsclass) {
+    static boolean doUncached(JSDynamicObject object, JSClass jsclass) {
         return jsclass.hasOnlyShapeProperties(object);
     }
 

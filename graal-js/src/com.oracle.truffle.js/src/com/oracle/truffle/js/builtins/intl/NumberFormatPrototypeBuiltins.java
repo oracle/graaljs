@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins.intl;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
@@ -59,6 +58,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<NumberFormatPrototypeBuiltins.NumberFormatPrototype> {
@@ -123,7 +123,7 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
         }
 
         @Specialization(guards = {"isJSNumberFormat(numberFormat)"})
-        public Object doResolvedOptions(DynamicObject numberFormat) {
+        public Object doResolvedOptions(JSDynamicObject numberFormat) {
             return JSNumberFormat.resolvedOptions(getContext(), getRealm(), numberFormat);
         }
 
@@ -140,7 +140,7 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
         }
 
         @Specialization(guards = {"isJSNumberFormat(numberFormat)"})
-        public Object doFormatToParts(DynamicObject numberFormat, Object value) {
+        public Object doFormatToParts(JSDynamicObject numberFormat, Object value) {
             return JSNumberFormat.formatToParts(getContext(), getRealm(), numberFormat, value);
         }
 
@@ -158,7 +158,7 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
         }
 
         @Specialization(guards = {"isJSNumberFormat(numberFormat)"})
-        public TruffleString doFormatRange(DynamicObject numberFormat, Object start, Object end,
+        public TruffleString doFormatRange(JSDynamicObject numberFormat, Object start, Object end,
                         @Cached("create(true)") ToIntlMathematicalValue startToIntlMVNode,
                         @Cached("create(true)") ToIntlMathematicalValue endToIntlMVNode,
                         @Cached BranchProfile errorBranch) {
@@ -185,7 +185,7 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
         }
 
         @Specialization(guards = {"isJSNumberFormat(numberFormat)"})
-        public Object doFormatRangeToParts(DynamicObject numberFormat, Object start, Object end,
+        public Object doFormatRangeToParts(JSDynamicObject numberFormat, Object start, Object end,
                         @Cached("create(true)") ToIntlMathematicalValue startToIntlMVNode,
                         @Cached("create(true)") ToIntlMathematicalValue endToIntlMVNode,
                         @Cached BranchProfile errorBranch) {

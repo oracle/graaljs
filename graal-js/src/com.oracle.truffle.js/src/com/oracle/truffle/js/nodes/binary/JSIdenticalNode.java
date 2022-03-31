@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -68,6 +67,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @NodeInfo(shortName = "===")
@@ -190,12 +190,12 @@ public abstract class JSIdenticalNode extends JSCompareNode {
     }
 
     @Specialization(guards = {"isJSObject(a)"})
-    protected static boolean doJSObjectA(DynamicObject a, Object b) {
+    protected static boolean doJSObjectA(JSDynamicObject a, Object b) {
         return a == b;
     }
 
     @Specialization(guards = {"isJSObject(b)"})
-    protected static boolean doJSObjectB(Object a, DynamicObject b) {
+    protected static boolean doJSObjectB(Object a, JSDynamicObject b) {
         return a == b;
     }
 

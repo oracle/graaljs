@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.ArrayIteratorPrototypeBuiltinsFactory.ArrayIteratorNextNodeGen;
@@ -63,6 +62,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -129,7 +129,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "isArrayIterator(iterator)")
-        protected DynamicObject doArrayIterator(VirtualFrame frame, DynamicObject iterator) {
+        protected JSDynamicObject doArrayIterator(VirtualFrame frame, JSDynamicObject iterator) {
             Object array = getIteratedObjectNode.getValue(iterator);
             if (array == Undefined.instance) {
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
@@ -139,7 +139,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             int itemKind = getIterationKind(iterator);
             long length;
             if (isTypedArrayProfile.profile(JSArrayBufferView.isJSArrayBufferView(array))) {
-                DynamicObject typedArray = (DynamicObject) array;
+                JSDynamicObject typedArray = (JSDynamicObject) array;
                 if (JSArrayBufferView.hasDetachedBuffer(typedArray, getContext())) {
                     errorBranch.enter();
                     throw Errors.createTypeError("Cannot perform Array Iterator.prototype.next on a detached ArrayBuffer");
@@ -172,7 +172,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @SuppressWarnings("unused")
         @Fallback
-        protected DynamicObject doIncompatibleReceiver(Object iterator) {
+        protected JSDynamicObject doIncompatibleReceiver(Object iterator) {
             throw Errors.createTypeError("not an Array Iterator");
         }
 
@@ -181,7 +181,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             return isArrayIteratorNode.executeHasHiddenKey(thisObj);
         }
 
-        private long getNextIndex(DynamicObject iterator) {
+        private long getNextIndex(JSDynamicObject iterator) {
             try {
                 return getNextIndexNode.getValueLong(iterator);
             } catch (UnexpectedResultException e) {
@@ -189,7 +189,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             }
         }
 
-        private int getIterationKind(DynamicObject iterator) {
+        private int getIterationKind(JSDynamicObject iterator) {
             try {
                 return getIterationKindNode.getValueInt(iterator);
             } catch (UnexpectedResultException e) {

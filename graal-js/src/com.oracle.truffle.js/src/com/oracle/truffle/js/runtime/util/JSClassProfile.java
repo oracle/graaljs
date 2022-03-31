@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,9 +43,9 @@ package com.oracle.truffle.js.runtime.util;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.NodeCloneable;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
 public abstract class JSClassProfile extends NodeCloneable {
@@ -60,7 +60,7 @@ public abstract class JSClassProfile extends NodeCloneable {
         return UNCACHED;
     }
 
-    public JSClass getJSClass(DynamicObject jsobject) {
+    public JSClass getJSClass(JSDynamicObject jsobject) {
         return (JSClass) JSShape.getJSClassNoCast(jsobject.getShape());
     }
 
@@ -73,7 +73,7 @@ public abstract class JSClassProfile extends NodeCloneable {
         @CompilationFinal private boolean polymorphicJSClass;
 
         @Override
-        public JSClass getJSClass(DynamicObject jsobject) {
+        public JSClass getJSClass(JSDynamicObject jsobject) {
             Object jsobjectClass = JSShape.getJSClassNoCast(jsobject.getShape());
             if (!polymorphicJSClass) {
                 if (jsobjectClass == expectedJSClass) {

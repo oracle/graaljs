@@ -46,13 +46,13 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 @GenerateUncached
@@ -64,10 +64,10 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
         return JSInteropInvokeNodeGen.create();
     }
 
-    public abstract Object execute(DynamicObject receiver, TruffleString name, Object[] arguments) throws UnknownIdentifierException, UnsupportedMessageException;
+    public abstract Object execute(JSDynamicObject receiver, TruffleString name, Object[] arguments) throws UnknownIdentifierException, UnsupportedMessageException;
 
     @Specialization(guards = {"stringEquals(equalNode, cachedName, name)"}, limit = "1")
-    Object doCached(DynamicObject receiver, @SuppressWarnings("unused") TruffleString name, Object[] arguments,
+    Object doCached(JSDynamicObject receiver, @SuppressWarnings("unused") TruffleString name, Object[] arguments,
                     @Cached("name") TruffleString cachedName,
                     @Cached @SuppressWarnings("unused") TruffleString.EqualNode equalNode,
                     @Cached("createGetProperty(cachedName)") PropertyGetNode functionPropertyGetNode,
@@ -86,7 +86,7 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
     }
 
     @Specialization(replaces = "doCached")
-    Object doUncached(DynamicObject receiver, TruffleString name, Object[] arguments,
+    Object doUncached(JSDynamicObject receiver, TruffleString name, Object[] arguments,
                     @Cached(value = "create(getLanguage().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
                     @Shared("call") @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins.intl;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.RelativeTimeFormatPrototypeBuiltinsFactory.JSRelativeTimeFormatFormatNodeGen;
@@ -58,6 +57,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<RelativeTimeFormatPrototypeBuiltins.RelativeTimeFormatPrototype> {
 
@@ -105,7 +105,7 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
         }
 
         @Specialization(guards = "isJSRelativeTimeFormat(relativeTimeFormat)")
-        public Object doResolvedOptions(DynamicObject relativeTimeFormat) {
+        public Object doResolvedOptions(JSDynamicObject relativeTimeFormat) {
             return JSRelativeTimeFormat.resolvedOptions(getContext(), getRealm(), relativeTimeFormat);
         }
 
@@ -122,7 +122,7 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
         }
 
         @Specialization(guards = "isJSRelativeTimeFormat(relativeTimeFormat)")
-        public TruffleString doFormat(DynamicObject relativeTimeFormat, Object value, Object unit,
+        public TruffleString doFormat(JSDynamicObject relativeTimeFormat, Object value, Object unit,
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("create()") JSToNumberNode toNumberNode) {
             return JSRelativeTimeFormat.format(relativeTimeFormat, JSRuntime.doubleValue(toNumberNode.executeNumber(value)), Strings.toJavaString(toStringNode.executeString(unit)));
@@ -142,7 +142,7 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
         }
 
         @Specialization(guards = {"isJSRelativeTimeFormat(relativeTimeFormat)"})
-        public Object doFormatToParts(DynamicObject relativeTimeFormat, Object value, Object unit,
+        public Object doFormatToParts(JSDynamicObject relativeTimeFormat, Object value, Object unit,
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("create()") JSToNumberNode toNumberNode) {
             double amount = JSRuntime.doubleValue(toNumberNode.executeNumber(value));

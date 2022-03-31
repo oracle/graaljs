@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
@@ -62,6 +61,7 @@ import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Implementation of ECMAScript 5.1, 10.4.3 Entering Function Code, for non-strict callees.
@@ -84,7 +84,7 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
     }
 
     @Specialization(guards = "isNullOrUndefined(object)")
-    protected DynamicObject doJSObject(@SuppressWarnings("unused") Object object) {
+    protected JSDynamicObject doJSObject(@SuppressWarnings("unused") Object object) {
         return getRealm().getGlobalObject();
     }
 
@@ -96,42 +96,42 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
     }
 
     @Specialization(guards = "isJSObject(object)", replaces = "doJSObjectCached")
-    protected DynamicObject doJSObject(DynamicObject object) {
+    protected JSDynamicObject doJSObject(JSDynamicObject object) {
         return object;
     }
 
     @Specialization
-    protected DynamicObject doBoolean(boolean value) {
+    protected JSDynamicObject doBoolean(boolean value) {
         return JSBoolean.create(context, getRealm(), value);
     }
 
     @Specialization
-    protected DynamicObject doString(TruffleString value) {
+    protected JSDynamicObject doString(TruffleString value) {
         return JSString.create(context, getRealm(), value);
     }
 
     @Specialization
-    protected DynamicObject doInt(int value) {
+    protected JSDynamicObject doInt(int value) {
         return JSNumber.create(context, getRealm(), value);
     }
 
     @Specialization
-    protected DynamicObject doDouble(double value) {
+    protected JSDynamicObject doDouble(double value) {
         return JSNumber.create(context, getRealm(), value);
     }
 
     @Specialization
-    protected DynamicObject doBigInt(BigInt value) {
+    protected JSDynamicObject doBigInt(BigInt value) {
         return JSBigInt.create(context, getRealm(), value);
     }
 
     @Specialization(guards = "isJavaNumber(value)")
-    protected DynamicObject doNumber(Object value) {
+    protected JSDynamicObject doNumber(Object value) {
         return JSNumber.create(context, getRealm(), (Number) value);
     }
 
     @Specialization
-    protected DynamicObject doSymbol(Symbol value) {
+    protected JSDynamicObject doSymbol(Symbol value) {
         return JSSymbol.create(context, getRealm(), value);
     }
 

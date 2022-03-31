@@ -49,7 +49,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -66,6 +65,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -91,15 +91,15 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
             throw TemporalErrors.createRangeErrorTimeOutsideRange();
         }
         JSRealm realm = JSRealm.get(null);
-        DynamicObject calendar = TemporalUtil.getISO8601Calendar(context, realm, errorBranch);
+        JSDynamicObject calendar = TemporalUtil.getISO8601Calendar(context, realm, errorBranch);
         JSObjectFactory factory = context.getTemporalPlainTimeFactory();
-        DynamicObject obj = factory.initProto(new JSTemporalPlainTimeObject(factory.getShape(realm),
+        JSDynamicObject obj = factory.initProto(new JSTemporalPlainTimeObject(factory.getShape(realm),
                         hours, minutes, seconds, milliseconds, microseconds, nanoseconds, calendar), realm);
         return (JSTemporalPlainTimeObject) context.trackAllocation(obj);
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return TO_STRING_TAG;
     }
 
@@ -109,9 +109,9 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject constructor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalPlainTimePrototypeBuiltins.BUILTINS);
 
@@ -129,17 +129,17 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, JSTemporalPlainTime.INSTANCE, context);
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getTemporalPlainTimePrototype();
     }
 
     @Override
-    public void fillConstructor(JSRealm realm, DynamicObject constructor) {
+    public void fillConstructor(JSRealm realm, JSDynamicObject constructor) {
         WithFunctionsAndSpecies.super.fillConstructor(realm, constructor);
     }
 
@@ -154,12 +154,12 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     // region Abstract methods
 
     // 4.5.3
-    public static DynamicObject toPartialTime(DynamicObject temporalTimeLike, IsObjectNode isObject, JSToIntegerThrowOnInfinityNode toInt, JSContext ctx) {
+    public static JSDynamicObject toPartialTime(JSDynamicObject temporalTimeLike, IsObjectNode isObject, JSToIntegerThrowOnInfinityNode toInt, JSContext ctx) {
         if (!isObject.executeBoolean(temporalTimeLike)) {
             throw TemporalErrors.createTypeErrorTemporalTimeExpected();
         }
         JSRealm realm = JSRealm.get(null);
-        DynamicObject result = JSOrdinary.create(ctx, realm);
+        JSDynamicObject result = JSOrdinary.create(ctx, realm);
         boolean any = false;
         for (TruffleString property : TemporalUtil.TIME_LIKE_PROPERTIES) {
             Object value = JSObject.get(temporalTimeLike, property);

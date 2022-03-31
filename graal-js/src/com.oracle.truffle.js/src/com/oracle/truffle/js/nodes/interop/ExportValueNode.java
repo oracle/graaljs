@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -58,6 +57,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.interop.InteropAsyncFunction;
 import com.oracle.truffle.js.runtime.interop.InteropBoundFunction;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -84,12 +84,12 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"!bindFunctions", "!isInteropCompletePromises() || !isAsyncFunction(function)"})
-    protected static DynamicObject doFunctionNoBind(JSFunctionObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
+    protected static JSDynamicObject doFunctionNoBind(JSFunctionObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return function;
     }
 
     @Specialization(guards = {"bindFunctions", "isUndefined(thiz)", "!isInteropCompletePromises() || !isAsyncFunction(function)"})
-    protected static DynamicObject doFunctionUndefinedThis(JSFunctionObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
+    protected static JSDynamicObject doFunctionUndefinedThis(JSFunctionObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return function;
     }
 
@@ -99,7 +99,7 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"bindFunctions", "isBoundJSFunction(function)", "!isInteropCompletePromises() || !isAsyncFunction(function)"})
-    protected static DynamicObject doBoundFunction(JSFunctionObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
+    protected static JSDynamicObject doBoundFunction(JSFunctionObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return function;
     }
 
@@ -114,7 +114,7 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"!isJSFunction(value)"})
-    protected static DynamicObject doObject(DynamicObject value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
+    protected static JSDynamicObject doObject(JSDynamicObject value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return value;
     }
 

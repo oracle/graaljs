@@ -66,7 +66,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -80,6 +79,7 @@ import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 public class TestHelper implements AutoCloseable {
@@ -120,7 +120,7 @@ public class TestHelper implements AutoCloseable {
         return JavaScriptLanguage.getJSRealm(getPolyglotContext());
     }
 
-    public DynamicObject getGlobalObject() {
+    public JSDynamicObject getGlobalObject() {
         return getRealm().getGlobalObject();
     }
 
@@ -235,10 +235,10 @@ public class TestHelper implements AutoCloseable {
         return toHostValue(runRedirectOutput(sourceCode, stream, stream, false, Collections.emptyMap()));
     }
 
-    public DynamicObject runJSArray(String source) {
+    public JSDynamicObject runJSArray(String source) {
         Object obj = runNoPolyglot(source);
         assert JSArray.isJSArray(obj);
-        return (DynamicObject) obj;
+        return (JSDynamicObject) obj;
     }
 
     public class ParsedFunction {
@@ -249,7 +249,7 @@ public class TestHelper implements AutoCloseable {
         }
 
         public Object call(Object[] args) {
-            DynamicObject funObj = createFunctionObject();
+            JSDynamicObject funObj = createFunctionObject();
             return JSFunction.call(funObj, Null.instance, args);
         }
 
@@ -257,7 +257,7 @@ public class TestHelper implements AutoCloseable {
             return ((RootCallTarget) functionData.getCallTarget()).getRootNode();
         }
 
-        public DynamicObject createFunctionObject() {
+        public JSDynamicObject createFunctionObject() {
             return JSFunction.create(getRealm(), functionData);
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import java.nio.charset.CodingErrorAction;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -57,6 +56,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
@@ -67,12 +67,12 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
         super(context, builtin);
     }
 
-    private DynamicObject getNativeUtf8Slice() {
+    private JSDynamicObject getNativeUtf8Slice() {
         return GraalJSAccess.getRealmEmbedderData(getRealm()).getNativeUtf8Slice();
     }
 
     @Specialization(guards = {"accept(target)"})
-    public Object slice(DynamicObject target, int start, int end) {
+    public Object slice(JSDynamicObject target, int start, int end) {
         try {
             return doSlice(target, start, end);
         } catch (CharacterCodingException e) {
@@ -81,7 +81,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
     }
 
     @Specialization(guards = {"accept(target)"})
-    public Object slice(DynamicObject target, double start, double end) {
+    public Object slice(JSDynamicObject target, double start, double end) {
         try {
             return doSlice(target, (int) start, (int) end);
         } catch (CharacterCodingException e) {
@@ -90,7 +90,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
     }
 
     @Specialization
-    public Object sliceDefault(DynamicObject target, Object start, Object end) {
+    public Object sliceDefault(JSDynamicObject target, Object start, Object end) {
         return JSFunction.call(getNativeUtf8Slice(), target, new Object[]{start, end});
     }
 
@@ -100,13 +100,13 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
         throw Errors.createTypeErrorArrayBufferViewExpected();
     }
 
-    private Object doNativeFallback(DynamicObject target, Object start, Object end) {
+    private Object doNativeFallback(JSDynamicObject target, Object start, Object end) {
         nativePath.enter();
         return JSFunction.call(getNativeUtf8Slice(), target, new Object[]{start, end});
     }
 
-    private Object doSlice(DynamicObject target, int start, int end) throws CharacterCodingException {
-        DynamicObject arrayBuffer = getArrayBuffer(target);
+    private Object doSlice(JSDynamicObject target, int start, int end) throws CharacterCodingException {
+        JSDynamicObject arrayBuffer = getArrayBuffer(target);
         ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
         if (rawBuffer == null) {
             rawBuffer = interopArrayBufferGetContents(arrayBuffer);

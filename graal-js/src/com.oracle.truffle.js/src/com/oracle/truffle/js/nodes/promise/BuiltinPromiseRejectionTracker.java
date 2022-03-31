@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
-
 import java.io.PrintWriter;
 import java.util.Deque;
 import java.util.Iterator;
@@ -56,6 +48,14 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
+
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
 
@@ -68,19 +68,19 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
         this.mode = mode;
     }
 
-    private final Set<DynamicObject> pendingUnhandledRejections = new LinkedHashSet<>();
+    private final Set<JSDynamicObject> pendingUnhandledRejections = new LinkedHashSet<>();
     private final Deque<PromiseChainInfoRecord> asyncHandledRejections = new LinkedList<>();
-    private final Map<DynamicObject, PromiseChainInfoRecord> maybeUnhandledPromises = new WeakHashMap<>();
+    private final Map<JSDynamicObject, PromiseChainInfoRecord> maybeUnhandledPromises = new WeakHashMap<>();
 
     @Override
-    public void promiseRejected(DynamicObject promise, Object reason) {
+    public void promiseRejected(JSDynamicObject promise, Object reason) {
         maybeUnhandledPromises.put(promise, new PromiseChainInfoRecord(reason, false));
         pendingUnhandledRejections.add(promise);
         context.getLanguage().getPromiseJobsQueueEmptyAssumption().invalidate("Potential unhandled rejection");
     }
 
     @Override
-    public void promiseRejectionHandled(DynamicObject promise) {
+    public void promiseRejectionHandled(JSDynamicObject promise) {
         PromiseChainInfoRecord promiseInfo = maybeUnhandledPromises.get(promise);
         if (promiseInfo != null) {
             maybeUnhandledPromises.remove(promise);
@@ -92,11 +92,11 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
     }
 
     @Override
-    public void promiseRejectedAfterResolved(DynamicObject promise, Object value) {
+    public void promiseRejectedAfterResolved(JSDynamicObject promise, Object value) {
     }
 
     @Override
-    public void promiseResolvedAfterResolved(DynamicObject promise, Object value) {
+    public void promiseResolvedAfterResolved(JSDynamicObject promise, Object value) {
     }
 
     @Override
@@ -108,8 +108,8 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
             out.flush();
         }
 
-        for (Iterator<DynamicObject> it = pendingUnhandledRejections.iterator(); it.hasNext();) {
-            DynamicObject unhandled = it.next();
+        for (Iterator<JSDynamicObject> it = pendingUnhandledRejections.iterator(); it.hasNext();) {
+            JSDynamicObject unhandled = it.next();
             it.remove();
             PromiseChainInfoRecord info = maybeUnhandledPromises.get(unhandled);
             if (info == null) {

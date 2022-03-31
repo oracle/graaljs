@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.util.Locale;
 import com.ibm.icu.text.BreakIterator;
 import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.SegmentIteratorPrototypeBuiltins;
@@ -63,6 +62,7 @@ import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -162,14 +162,14 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject segmenterPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSDynamicObject segmenterPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, segmenterPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, segmenterPrototype, SegmenterPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(segmenterPrototype, TO_STRING_TAG);
@@ -177,7 +177,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     }
 
     @Override
-    public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext ctx, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
     }
 
@@ -185,7 +185,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         return INSTANCE.createConstructorAndPrototype(realm, SegmenterFunctionBuiltins.BUILTINS);
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm) {
+    public static JSDynamicObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getSegmenterFactory();
         JSSegmenterObject obj = new JSSegmenterObject(factory.getShape(realm), state);
@@ -194,7 +194,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         return context.trackAllocation(obj);
     }
 
-    public static DynamicObject createSegmentIterator(JSContext context, JSRealm realm, DynamicObject segmenter, TruffleString value) {
+    public static JSDynamicObject createSegmentIterator(JSContext context, JSRealm realm, JSDynamicObject segmenter, TruffleString value) {
         BreakIterator icuIterator = JSSegmenter.createBreakIterator(segmenter, Strings.toJavaString(value));
         Granularity granularity = JSSegmenter.getGranularity(segmenter);
         JSSegmenter.IteratorState iteratorState = new JSSegmenter.IteratorState(value, icuIterator, granularity);
@@ -204,7 +204,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         return context.trackAllocation(segmentIterator);
     }
 
-    public static DynamicObject createSegments(JSContext context, JSRealm realm, JSSegmenterObject segmenter, TruffleString string) {
+    public static JSDynamicObject createSegments(JSContext context, JSRealm realm, JSSegmenterObject segmenter, TruffleString string) {
         JSObjectFactory factory = context.getSegmentsFactory();
         JSSegmentsObject segments = new JSSegmentsObject(factory.getShape(realm), segmenter, string);
         factory.initProto(segments, realm);
@@ -247,8 +247,8 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
 
         Granularity granularity = Granularity.GRAPHEME;
 
-        DynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
-            DynamicObject result = JSOrdinary.create(context, realm);
+        JSDynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
+            JSDynamicObject result = JSOrdinary.create(context, realm);
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_GRANULARITY, Strings.fromJavaString(granularity.getName()), JSAttributes.getDefault());
             return result;
@@ -256,7 +256,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     }
 
     @TruffleBoundary
-    public static BreakIterator createBreakIterator(DynamicObject segmenterObj) {
+    public static BreakIterator createBreakIterator(JSDynamicObject segmenterObj) {
         InternalState state = getInternalState(segmenterObj);
         ULocale ulocale = ULocale.forLocale(state.javaLocale);
         BreakIterator icuIterator = state.granularity.getIterator(ulocale);
@@ -264,36 +264,36 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     }
 
     @TruffleBoundary
-    public static BreakIterator createBreakIterator(DynamicObject segmenterObj, String text) {
+    public static BreakIterator createBreakIterator(JSDynamicObject segmenterObj, String text) {
         BreakIterator icuIterator = createBreakIterator(segmenterObj);
         icuIterator.setText(text);
         return icuIterator;
     }
 
-    public static Granularity getGranularity(DynamicObject segmenterObj) {
+    public static Granularity getGranularity(JSDynamicObject segmenterObj) {
         InternalState state = getInternalState(segmenterObj);
         return state.granularity;
     }
 
     @TruffleBoundary
-    public static DynamicObject resolvedOptions(JSContext context, JSRealm realm, DynamicObject segmenterObj) {
+    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject segmenterObj) {
         InternalState state = getInternalState(segmenterObj);
         return state.toResolvedOptionsObject(context, realm);
     }
 
-    public static InternalState getInternalState(DynamicObject segmenterObj) {
+    public static InternalState getInternalState(JSDynamicObject segmenterObj) {
         assert isJSSegmenter(segmenterObj);
         return ((JSSegmenterObject) segmenterObj).getInternalState();
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getSegmenterPrototype();
     }
 
     // Segments Object
 
-    public static Shape makeInitialSegmentsShape(JSContext ctx, DynamicObject prototype) {
+    public static Shape makeInitialSegmentsShape(JSContext ctx, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, JSOrdinary.BARE_INSTANCE, ctx);
     }
 
@@ -301,15 +301,15 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         return obj instanceof JSSegmentsObject;
     }
 
-    public static DynamicObject createSegmentsPrototype(JSRealm realm) {
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+    public static JSDynamicObject createSegmentsPrototype(JSRealm realm) {
+        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, SegmentsPrototypeBuiltins.BUILTINS);
         return prototype;
     }
 
     // Segment Iterator
 
-    public static Shape makeInitialSegmentIteratorShape(JSContext ctx, DynamicObject prototype) {
+    public static Shape makeInitialSegmentIteratorShape(JSContext ctx, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, JSOrdinary.BARE_INSTANCE, ctx);
     }
 
@@ -320,8 +320,8 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     /**
      * Creates the %SegmentIteratorPrototype% object.
      */
-    public static DynamicObject createSegmentIteratorPrototype(JSRealm realm) {
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getIteratorPrototype());
+    public static JSDynamicObject createSegmentIteratorPrototype(JSRealm realm) {
+        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getIteratorPrototype());
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, SegmentIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, ITERATOR_CLASS_NAME);
         return prototype;

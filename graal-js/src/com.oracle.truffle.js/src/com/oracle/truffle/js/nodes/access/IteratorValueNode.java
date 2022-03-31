@@ -51,13 +51,13 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * ES6 7.4.4 IteratorValue(iterResult).
@@ -81,7 +81,7 @@ public abstract class IteratorValueNode extends JavaScriptNode {
     }
 
     @Specialization
-    protected Object doIteratorNext(DynamicObject iterResult) {
+    protected Object doIteratorNext(JSDynamicObject iterResult) {
         return getValueNode.getValue(iterResult);
     }
 
