@@ -1581,10 +1581,10 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static TruffleString padISOYear(int year) {
-        if (999 < year && year < 9999) {
-            return Strings.fromLong(year);
+        if (0 <= year && year <= 9999) {
+            return Strings.format("%1$04d", year);
         }
-        TruffleString sign = year >= 0 ? Strings.SYMBOL_PLUS : Strings.SYMBOL_MINUS;
+        TruffleString sign = year > 0 ? Strings.SYMBOL_PLUS : Strings.SYMBOL_MINUS;
         long y = Math.abs(year);
         return Strings.concat(sign, Strings.format("%1$06d", y));
     }
