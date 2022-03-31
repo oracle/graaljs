@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.util;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -79,20 +78,17 @@ public class WeakMap implements Map<JSDynamicObject, Object> {
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<WeakMap, Object> getInvertedMap(JSDynamicObject k, boolean put) {
-        if (JSDynamicObject.hasProperty(k, INVERTED_WEAK_MAP_KEY)) {
-            return (WeakHashMap<WeakMap, Object>) JSDynamicObject.getOrNull(k, INVERTED_WEAK_MAP_KEY);
+    private static Map<WeakMap, Object> getInvertedMap(JSDynamicObject k) {
+        Object invertedMap = JSDynamicObject.getOrNull(k, INVERTED_WEAK_MAP_KEY);
+        if (invertedMap != null) {
+            return (WeakHashMap<WeakMap, Object>) invertedMap;
         } else {
-            if (put) {
-                return putInvertedMap(k);
-            } else {
-                return Collections.emptyMap();
-            }
+            return null;
         }
     }
 
-    private static WeakHashMap<WeakMap, Object> putInvertedMap(JSDynamicObject k) {
-        WeakHashMap<WeakMap, Object> invertedMap = new WeakHashMap<>();
+    private static Map<WeakMap, Object> putInvertedMap(JSDynamicObject k) {
+        Map<WeakMap, Object> invertedMap = newInvertedMap();
         boolean wasExtensible = false;
         assert (wasExtensible = ((JSDynamicObject.getObjectFlags(k) & JSShape.NOT_EXTENSIBLE_FLAG) == 0)) || Boolean.TRUE;
         JSObjectUtil.putHiddenProperty(k, INVERTED_WEAK_MAP_KEY, invertedMap);
@@ -100,28 +96,39 @@ public class WeakMap implements Map<JSDynamicObject, Object> {
         return invertedMap;
     }
 
+    private static Map<WeakMap, Object> newInvertedMap() {
+        return new WeakHashMap<>();
+    }
+
     @Override
     public boolean containsKey(Object key) {
         JSDynamicObject k = checkKey(key);
-        return getInvertedMap(k, false).containsKey(this);
+        Map<WeakMap, Object> invertedMap = getInvertedMap(k);
+        return invertedMap == null ? false : invertedMap.containsKey(this);
     }
 
     @Override
     public Object get(Object key) {
         JSDynamicObject k = checkKey(key);
-        return getInvertedMap(k, false).get(this);
+        Map<WeakMap, Object> invertedMap = getInvertedMap(k);
+        return invertedMap == null ? null : invertedMap.get(this);
     }
 
     @Override
     public Object put(JSDynamicObject key, Object value) {
         JSDynamicObject k = checkKey(key);
-        return getInvertedMap(k, true).put(this, value);
+        Map<WeakMap, Object> invertedMap = getInvertedMap(k);
+        if (invertedMap == null) {
+            invertedMap = putInvertedMap(k);
+        }
+        return invertedMap.put(this, value);
     }
 
     @Override
     public Object remove(Object key) {
         JSDynamicObject k = checkKey(key);
-        return getInvertedMap(k, false).remove(this);
+        Map<WeakMap, Object> invertedMap = getInvertedMap(k);
+        return invertedMap == null ? null : invertedMap.remove(this);
     }
 
     @Override

@@ -42,11 +42,11 @@ package com.oracle.truffle.js.builtins;
 
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.WeakMapPrototypeBuiltinsFactory.JSWeakMapDeleteNodeGen;
 import com.oracle.truffle.js.builtins.WeakMapPrototypeBuiltinsFactory.JSWeakMapGetNodeGen;
 import com.oracle.truffle.js.builtins.WeakMapPrototypeBuiltinsFactory.JSWeakMapHasNodeGen;
@@ -129,6 +129,11 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         protected HasHiddenKeyCacheNode createInvertedHas() {
             return WeakMap.createInvertedKeyMapHasNode();
         }
+
+        @SuppressWarnings("unchecked")
+        protected static WeakHashMap<WeakMap, Object> castWeakHashMap(Object inverted) {
+            return CompilerDirectives.castExact(inverted, WeakHashMap.class);
+        }
     }
 
     /**
@@ -170,14 +175,11 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)", "!isJSProxy(key)"})
         protected Object getCached(JSDynamicObject thisObj, JSDynamicObject key,
                         @Cached("createInvertedGet()") PropertyGetNode invertedGetter,
-                        @Cached("createInvertedHas()") HasHiddenKeyCacheNode invertedHas,
-                        @Cached("createClassProfile()") ValueProfile invertedKlassProfile,
                         @Cached("createBinaryProfile()") ConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
-            if (hasInvertedProfile.profile(invertedHas.executeHasHiddenKey(key))) {
-                Object inverted = invertedKlassProfile.profile(invertedGetter.getValue(key));
-                @SuppressWarnings("unchecked")
-                WeakHashMap<WeakMap, Object> invertedMap = (WeakHashMap<WeakMap, Object>) inverted;
+            Object inverted = invertedGetter.getValueOrDefault(key, null);
+            if (hasInvertedProfile.profile(inverted != null)) {
+                WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
                 Object value = mapGet(map, invertedMap);
                 if (value != null) {
                     return value;
@@ -226,17 +228,14 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)", "!isJSProxy(key)"})
         protected Object setCached(JSDynamicObject thisObj, JSDynamicObject key, Object value,
                         @Cached("createInvertedGet()") PropertyGetNode invertedGetter,
-                        @Cached("createInvertedHas()") HasHiddenKeyCacheNode invertedHas,
-                        @Cached("createClassProfile()") ValueProfile invertedKlassProfile,
                         @Cached("createBinaryProfile()") ConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
-            if (hasInvertedProfile.profile(invertedHas.executeHasHiddenKey(key))) {
-                Object inverted = invertedKlassProfile.profile(invertedGetter.getValue(key));
-                @SuppressWarnings("unchecked")
-                WeakHashMap<WeakMap, Object> invertedMap = (WeakHashMap<WeakMap, Object>) inverted;
+            Object inverted = invertedGetter.getValueOrDefault(key, null);
+            if (hasInvertedProfile.profile(inverted != null)) {
+                WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
                 mapPut(map, invertedMap, value);
             } else {
-                Boundaries.mapPut(JSWeakMap.getInternalWeakMap(thisObj), key, value);
+                Boundaries.mapPut(map, key, value);
             }
             return thisObj;
         }
@@ -277,14 +276,11 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)", "!isJSProxy(key)"})
         protected Object hasCached(JSDynamicObject thisObj, JSDynamicObject key,
                         @Cached("createInvertedGet()") PropertyGetNode invertedGetter,
-                        @Cached("createInvertedHas()") HasHiddenKeyCacheNode invertedHas,
-                        @Cached("createClassProfile()") ValueProfile invertedKlassProfile,
                         @Cached("createBinaryProfile()") ConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
-            if (hasInvertedProfile.profile(invertedHas.executeHasHiddenKey(key))) {
-                Object inverted = invertedKlassProfile.profile(invertedGetter.getValue(key));
-                @SuppressWarnings("unchecked")
-                WeakHashMap<WeakMap, Object> invertedMap = (WeakHashMap<WeakMap, Object>) inverted;
+            Object inverted = invertedGetter.getValueOrDefault(key, null);
+            if (hasInvertedProfile.profile(inverted != null)) {
+                WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
                 return mapHas(map, invertedMap);
             }
             return false;
