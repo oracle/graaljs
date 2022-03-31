@@ -525,7 +525,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     // 2. ExecuteModule() / ExecuteAsyncModule()
                     JavaScriptNode[] linkHalf = Arrays.copyOfRange(statements, 0, i);
                     JavaScriptNode[] evalHalf = Arrays.copyOfRange(statements, i + 1, statements.length);
-                    JavaScriptNode linkBlock = factory.createModuleInitializeEnvironment(factory.createVoidBlock(linkHalf));
+                    JavaScriptNode linkBlock = tagBody(factory.createModuleInitializeEnvironment(factory.createVoidBlock(linkHalf)), functionNode);
                     JavaScriptNode evalBlock = handleModuleBody(factory.createExprBlock(evalHalf));
                     FunctionBodyNode linkBody = factory.createFunctionBody(linkBlock);
                     FunctionBodyNode evalBody = factory.createFunctionBody(evalBlock);
