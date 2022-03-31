@@ -410,6 +410,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             DynamicObject options = getOptionsObject(optParam);
             DynamicObject calendar = ym.getCalendar();
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listMCY);
+            DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), ym, fieldNames, TemporalUtil.listEmpty);
             int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
             int day = 0;
             if (sign < 0) {
@@ -418,7 +419,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             } else {
                 day = 1;
             }
-            DynamicObject date = JSTemporalPlainDate.create(getContext(), ym.getYear(), ym.getMonth(), day, calendar, errorBranch);
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.DAY, day);
+            DynamicObject date = TemporalUtil.dateFromFields(calendar, fields, Undefined.instance);
             DynamicObject durationToAdd = JSTemporalDuration.createTemporalDuration(getContext(), duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0,
                             0, 0, 0, 0, 0, errorBranch);
             DynamicObject addedDate = TemporalUtil.calendarDateAdd(calendar, date, durationToAdd, options, Undefined.instance);
@@ -449,6 +451,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             DynamicObject options = getOptionsObject(optParam);
             DynamicObject calendar = ym.getCalendar();
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listMCY);
+            DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), ym, fieldNames, TemporalUtil.listEmpty);
             int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
             int day = 0;
             if (sign < 0) {
@@ -456,7 +459,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             } else {
                 day = 1;
             }
-            DynamicObject date = JSTemporalPlainDate.create(getContext(), ym.getYear(), ym.getMonth(), day, calendar, errorBranch);
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.DAY, day);
+            DynamicObject date = TemporalUtil.dateFromFields(calendar, fields, Undefined.instance);
             DynamicObject durationToAdd = JSTemporalDuration.createTemporalDuration(getContext(), duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0,
                             0, 0, 0, errorBranch);
             DynamicObject addedDate = TemporalUtil.calendarDateAdd(calendar, date, durationToAdd, options, Undefined.instance);
