@@ -239,7 +239,7 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
             callDateAddNode = insert(JSFunctionCallNode.createCall());
         }
         Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendar, dateAdd, date, duration, options));
-        return TemporalUtil.requireTemporalDate(addedDate);
+        return TemporalUtil.requireTemporalDate(addedDate, errorBranch);
     }
 
     protected JSTemporalDurationObject calendarDateUntil(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options, Object dateUntil) {

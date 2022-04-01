@@ -110,7 +110,9 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                     @Cached JSToStringNode toStringNode,
                     @Cached IsObjectNode isObjectNode,
                     @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
-                    @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode) {
+                    @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode,
+                    @Cached("create(ctx)") TemporalDateFromFieldsNode dateFromFieldsNode,
+                    @Cached("create()") TemporalGetOptionNode getOptionNode) {
         Object value = getRelativeToNode.getValue(options);
         if (valueIsUndefined.profile(value == Undefined.instance)) {
             return Undefined.instance;
@@ -136,7 +138,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
 
             JSDynamicObject dateOptions = JSOrdinary.createWithNullPrototype(ctx);
             JSObjectUtil.putDataProperty(ctx, dateOptions, OVERFLOW, CONSTRAIN);
-            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, dateOptions, TemporalGetOptionNode.getUncached());
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, dateOptions, getOptionNode, dateFromFieldsNode);
             offset = getOffsetNode.getValue(valueObj);
             timeZone = getTimeZoneNode.getValue(valueObj);
             if (timeZone != Undefined.instance) {

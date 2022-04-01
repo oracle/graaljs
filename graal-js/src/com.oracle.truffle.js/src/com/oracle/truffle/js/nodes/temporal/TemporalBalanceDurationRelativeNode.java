@@ -47,6 +47,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -79,6 +80,7 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
     @Child private JSFunctionCallNode callDateUntilNode;
     @Child private GetMethodNode getMethodDateUntilNode;
     @Child private TemporalMoveRelativeDateNode moveRelativeDateNode;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected TemporalBalanceDurationRelativeNode(JSContext ctx) {
         this.ctx = ctx;
@@ -225,7 +227,7 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
             callDateAddNode = insert(JSFunctionCallNode.createCall());
         }
         Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendar, dateAdd, date, duration, options));
-        return TemporalUtil.requireTemporalDate(addedDate);
+        return TemporalUtil.requireTemporalDate(addedDate, errorBranch);
     }
 
     protected JSTemporalDurationObject calendarDateUntil(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options, Object dateUntil) {

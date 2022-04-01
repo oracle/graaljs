@@ -48,6 +48,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -75,6 +76,7 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetOption;
  */
 public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
 
+    private final BranchProfile errorBranch = BranchProfile.create();
     private final ConditionProfile isObjectProfile = ConditionProfile.createBinaryProfile();
     private final ConditionProfile isZonedDateTimeProfile = ConditionProfile.createBinaryProfile();
 
@@ -99,7 +101,8 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                     @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
                     @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
                     @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode,
-                    @Cached TruffleString.EqualNode equalNode) {
+                    @Cached TruffleString.EqualNode equalNode,
+                    @Cached("create(ctx)") TemporalDateFromFieldsNode dateFromFieldsNode) {
         JSDynamicObject options = optionsParam;
         assert options != null;
         if (options == Undefined.instance) {
@@ -130,7 +133,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             } else {
                 offsetString = toStringNode.executeString(offsetStringObj);
             }
-            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options, getOptionNode);
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options, getOptionNode, dateFromFieldsNode);
         } else {
             TemporalUtil.toTemporalOverflow(options, getOptionNode);
             TruffleString string = toStringNode.executeString(item);
@@ -140,6 +143,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             assert timeZoneName != null;
             if (!TemporalUtil.canParseAsTimeZoneNumericUTCOffset(timeZoneName)) {
                 if (!TemporalUtil.isValidTimeZoneName(timeZoneName)) {
+                    errorBranch.enter();
                     throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
                 }
                 timeZoneName = TemporalUtil.canonicalizeTimeZoneName(timeZoneName);

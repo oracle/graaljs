@@ -122,6 +122,7 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalDurationAddNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarNode;
@@ -1273,9 +1274,9 @@ public final class TemporalUtil {
         throw Errors.shouldNotReachHere("unknown overflow type: " + result);
     }
 
-    public static JSTemporalDateTimeRecord interpretTemporalDateTimeFields(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options, TemporalGetOptionNode getOptionNode) {
+    public static JSTemporalDateTimeRecord interpretTemporalDateTimeFields(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options, TemporalGetOptionNode getOptionNode, TemporalDateFromFieldsNode dateFromFieldsNode) {
         JSTemporalDateTimeRecord timeResult = toTemporalTimeRecord(fields);
-        JSTemporalPlainDateObject date = dateFromFields(calendar, fields, options);
+        JSTemporalPlainDateObject date = dateFromFieldsNode.executeDynamicObject(calendar, fields, options);
         Overflow overflow = toTemporalOverflow(options, getOptionNode);
         JSTemporalDurationRecord timeResult2 = regulateTime(
                         timeResult.getHour(), timeResult.getMinute(), timeResult.getSecond(), timeResult.getMillisecond(), timeResult.getMicrosecond(), timeResult.getNanosecond(),
@@ -1547,6 +1548,14 @@ public final class TemporalUtil {
         return 0;
     }
 
+    public static JSTemporalPlainDateObject requireTemporalDate(Object obj, BranchProfile errorBranch) {
+        if (!(obj instanceof JSTemporalPlainDateObject)) {
+            errorBranch.enter();
+            throw TemporalErrors.createTypeErrorTemporalDateExpected();
+        }
+        return (JSTemporalPlainDateObject) obj;
+    }
+
     public static JSTemporalPlainDateObject requireTemporalDate(Object obj) {
         if (!(obj instanceof JSTemporalPlainDateObject)) {
             throw TemporalErrors.createTypeErrorTemporalDateExpected();
@@ -1559,13 +1568,6 @@ public final class TemporalUtil {
             throw TemporalErrors.createTypeErrorTemporalDurationExpected();
         }
         return (JSTemporalDurationObject) obj;
-    }
-
-    public static JSTemporalPlainMonthDayObject requireTemporalMonthDay(Object obj) {
-        if (!(obj instanceof JSTemporalPlainMonthDayObject)) {
-            throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
-        }
-        return (JSTemporalPlainMonthDayObject) obj;
     }
 
     public static boolean isTemporalZonedDateTime(Object obj) {

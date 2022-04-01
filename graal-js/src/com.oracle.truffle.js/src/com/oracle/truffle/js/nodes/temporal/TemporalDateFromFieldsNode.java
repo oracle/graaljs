@@ -40,60 +40,42 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.GetMethodNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalRelativeDateRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Implementation of the Temporal moveRelativeDate operation.
+ * Implementation of dateFromFields() operation.
  */
-public abstract class TemporalMoveRelativeDateNode extends JavaScriptBaseNode {
+public abstract class TemporalDateFromFieldsNode extends JavaScriptBaseNode {
 
-    protected final JSContext ctx;
-    @Child private GetMethodNode getMethodDateAddNode;
-    @Child private JSFunctionCallNode callDateAddNode;
     private final BranchProfile errorBranch = BranchProfile.create();
+    @Child protected PropertyGetNode getDateFromFieldsNode;
+    @Child protected JSFunctionCallNode callNode;
 
-    protected TemporalMoveRelativeDateNode(JSContext ctx) {
-        this.ctx = ctx;
+    protected TemporalDateFromFieldsNode(JSContext ctx) {
+        this.getDateFromFieldsNode = PropertyGetNode.create(TemporalConstants.DATE_FROM_FIELDS, false, ctx);
+        this.callNode = JSFunctionCallNode.createCall();
     }
 
-    public static TemporalMoveRelativeDateNode create(JSContext ctx) {
-        return TemporalMoveRelativeDateNodeGen.create(ctx);
+    public static TemporalDateFromFieldsNode create(JSContext context) {
+        return TemporalDateFromFieldsNodeGen.create(context);
     }
 
-    public abstract JSTemporalRelativeDateRecord execute(JSDynamicObject calendar, JSDynamicObject relativeTo, JSDynamicObject duration);
+    public abstract JSTemporalPlainDateObject executeDynamicObject(DynamicObject calendar, DynamicObject fields, Object options);
 
     @Specialization
-    protected JSTemporalRelativeDateRecord add(JSDynamicObject calendar, JSDynamicObject relativeTo, JSDynamicObject duration) {
-        JSDynamicObject options = JSOrdinary.createWithNullPrototype(ctx);
-        JSTemporalPlainDateObject newDate = calendarDateAdd(calendar, relativeTo, duration, options);
-        long days = TemporalUtil.daysUntil(relativeTo, newDate);
-        return JSTemporalRelativeDateRecord.create(newDate, days);
-    }
-
-    protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options) {
-        if (getMethodDateAddNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            getMethodDateAddNode = insert(GetMethodNode.create(ctx, TemporalConstants.DATE_ADD));
-        }
-        if (callDateAddNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            callDateAddNode = insert(JSFunctionCallNode.createCall());
-        }
-        Object dateAddPrepared = getMethodDateAddNode.executeWithTarget(calendar);
-        Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendar, dateAddPrepared, date, duration, options));
-        return TemporalUtil.requireTemporalDate(addedDate, errorBranch);
+    public JSTemporalPlainDateObject toTemporalDate(DynamicObject calendar, DynamicObject fields, Object options) {
+        Object dateFromFields = getDateFromFieldsNode.getValue(calendar);
+        Object date = callNode.executeCall(JSArguments.create(calendar, dateFromFields, fields, options));
+        return TemporalUtil.requireTemporalDate(date, errorBranch);
     }
 }

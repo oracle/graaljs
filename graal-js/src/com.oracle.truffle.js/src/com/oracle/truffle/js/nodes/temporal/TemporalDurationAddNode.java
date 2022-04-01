@@ -172,7 +172,7 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
             callDateAddNode = insert(JSFunctionCallNode.createCall());
         }
         Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendar, dateAddPrepared, date, duration, options));
-        return TemporalUtil.requireTemporalDate(addedDate);
+        return TemporalUtil.requireTemporalDate(addedDate, errorBranch);
     }
 
     protected JSTemporalDurationObject calendarDateUntil(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options, Object dateUntil) {

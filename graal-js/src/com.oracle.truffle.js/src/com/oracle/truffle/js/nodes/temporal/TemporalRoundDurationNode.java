@@ -126,7 +126,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
                 zonedRelativeTo = relativeTo;
                 relativeTo = toTemporalDateNode.executeDynamicObject(relativeTo, Undefined.instance);
             } else {
-                TemporalUtil.requireTemporalDate(relativeTo);
+                TemporalUtil.requireTemporalDate(relativeTo, errorBranch);
             }
             calendar = ((JSTemporalPlainDateObject) relativeTo).getCalendar();
         }
