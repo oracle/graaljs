@@ -321,12 +321,12 @@ public final class TemporalParser {
             if (Strings.charAt(rest, 0) == '+' || Strings.charAt(rest, 0) == '-') {
                 move(1);
                 try {
-                    int unpaddedHour = Integer.parseInt(rest.toJavaStringUncached());
+                    int unpaddedHour = rest.parseIntUncached();
                     if (0 <= unpaddedHour && unpaddedHour <= 23) {
                         this.timeZoneIANAName = ianaName;
                         return true;
                     }
-                } catch (ArithmeticException ex) {
+                } catch (TruffleString.NumberFormatException e) {
                     // parsingError, intentionally left blank
                 }
             }

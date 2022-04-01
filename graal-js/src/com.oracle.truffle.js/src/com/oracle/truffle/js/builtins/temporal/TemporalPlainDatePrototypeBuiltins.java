@@ -789,8 +789,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         public DynamicObject toZonedDateTime(Object thisObj, Object item,
-                        @Cached("createBinaryProfile()") ConditionProfile timeZoneIsUndefined,
-                        @Cached("createBinaryProfile()") ConditionProfile timeIsUndefined,
+                        @Cached ConditionProfile timeZoneIsUndefined,
+                        @Cached ConditionProfile timeIsUndefined,
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
             JSTemporalPlainDateObject td = requireTemporalDate(thisObj);

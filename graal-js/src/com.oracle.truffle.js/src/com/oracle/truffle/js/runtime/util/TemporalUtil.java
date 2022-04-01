@@ -240,19 +240,19 @@ public final class TemporalUtil {
     private static final BigInteger temporalInstantLowerBound = temporalInstantUpperBound.negate();
 
     // 8.64 * 10^13
-    private static final BigInteger bi_8_64_13 = new BigInteger("86400000000000");
+    private static final BigInteger BI_8_64_13 = new BigInteger("86400000000000");
 
-    public static final BigInteger bi_36_10_pow_11 = new BigInteger("3600000000000");
-    public static final BigInteger bi_6_10_pow_10 = new BigInteger("60000000000");
-    public static final BigInteger bi_10_pow_9 = new BigInteger("1000000000"); // 10 ^ 9
-    public static final BigInteger bi_10_pow_6 = new BigInteger("1000000"); // 10 ^ 6
-    public static final BigInteger bi_1000 = new BigInteger("1000");  // 10 ^ 3
+    public static final BigInteger BI_36_10_POW_11 = new BigInteger("3600000000000");
+    public static final BigInteger BI_6_10_POW_10 = new BigInteger("60000000000");
+    public static final BigInteger BI_10_POW_9 = new BigInteger("1000000000"); // 10 ^ 9
+    public static final BigInteger BI_10_POW_6 = new BigInteger("1000000"); // 10 ^ 6
+    public static final BigInteger BI_1000 = new BigInteger("1000");  // 10 ^ 3
 
-    public static final BigDecimal bd_10 = new BigDecimal("10");
-    public static final BigDecimal bd_1000 = new BigDecimal("1000");
-    public static final BigDecimal bd_10_pow_m3 = new BigDecimal("0.001");
-    public static final BigDecimal bd_10_pow_m6 = new BigDecimal("0.000001");
-    public static final BigDecimal bd_10_pow_m9 = new BigDecimal("0.000000001");
+    public static final BigDecimal BD_10 = new BigDecimal("10");
+    public static final BigDecimal BD_1000 = new BigDecimal("1000");
+    public static final BigDecimal BD_10_POW_M_3 = new BigDecimal("0.001");
+    public static final BigDecimal BD_10_POW_M_6 = new BigDecimal("0.000001");
+    public static final BigDecimal BD_10_POW_M_9 = new BigDecimal("0.000000001");
 
     public static final char UNICODE_MINUS_SIGN = '\u2212';
 
@@ -514,7 +514,7 @@ public final class TemporalUtil {
         if (smallestUnit != null && Boundaries.listContains(disallowedUnits, smallestUnit)) {
             throw Errors.createRangeError("Smallest unit not allowed.");
         }
-        return TemporalUtil.toUnit(smallestUnit, equalNode);
+        return toUnit(smallestUnit, equalNode);
     }
 
     @TruffleBoundary
@@ -1246,8 +1246,8 @@ public final class TemporalUtil {
         double ms = JSDate.makeDate(date, time);
         assert isFinite(ms);
 
-        BigInteger bi = BigInteger.valueOf((long) ms).multiply(TemporalUtil.bi_10_pow_6);
-        BigInteger bims = BigInteger.valueOf(microsecond).multiply(TemporalUtil.bi_1000);
+        BigInteger bi = BigInteger.valueOf((long) ms).multiply(BI_10_POW_6);
+        BigInteger bims = BigInteger.valueOf(microsecond).multiply(BI_1000);
         BigInteger biresult = bi.add(bims).add(BigInteger.valueOf(nanosecond));
 
         return biresult;
@@ -1277,7 +1277,7 @@ public final class TemporalUtil {
         JSTemporalDateTimeRecord timeResult = toTemporalTimeRecord(fields);
         JSTemporalPlainDateObject date = dateFromFields(calendar, fields, options);
         Overflow overflow = toTemporalOverflow(options, getOptionNode);
-        JSTemporalDurationRecord timeResult2 = TemporalUtil.regulateTime(
+        JSTemporalDurationRecord timeResult2 = regulateTime(
                         timeResult.getHour(), timeResult.getMinute(), timeResult.getSecond(), timeResult.getMillisecond(), timeResult.getMicrosecond(), timeResult.getNanosecond(),
                         overflow);
         return JSTemporalDateTimeRecord.create(
@@ -1292,7 +1292,7 @@ public final class TemporalUtil {
         if (overflow == Overflow.CONSTRAIN) {
             return constrainTime(dtoi(hours), dtoi(minutes), dtoi(seconds), dtoi(milliseconds), dtoi(microseconds), dtoi(nanoseconds));
         } else {
-            if (!TemporalUtil.isValidTime(dtoi(hours), dtoi(minutes), dtoi(seconds), dtoi(milliseconds), dtoi(microseconds), dtoi(nanoseconds))) {
+            if (!isValidTime(dtoi(hours), dtoi(minutes), dtoi(seconds), dtoi(milliseconds), dtoi(microseconds), dtoi(nanoseconds))) {
                 throw Errors.createRangeError("Given time outside the range.");
             }
             return JSTemporalDurationRecord.create(0, 0, 0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
@@ -1305,7 +1305,7 @@ public final class TemporalUtil {
         if (overflow == Overflow.CONSTRAIN) {
             return constrainTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         } else {
-            if (!TemporalUtil.isValidTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
+            if (!isValidTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
                 throw Errors.createRangeError("Given time outside the range.");
             }
             return JSTemporalDurationRecord.create(0, 0, 0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
@@ -1315,12 +1315,12 @@ public final class TemporalUtil {
     public static JSTemporalDurationRecord constrainTime(int hours, int minutes, int seconds, int milliseconds,
                     int microseconds, int nanoseconds) {
         return JSTemporalDurationRecord.create(0, 0, 0,
-                        TemporalUtil.constrainToRange(hours, 0, 23),
-                        TemporalUtil.constrainToRange(minutes, 0, 59),
-                        TemporalUtil.constrainToRange(seconds, 0, 59),
-                        TemporalUtil.constrainToRange(milliseconds, 0, 999),
-                        TemporalUtil.constrainToRange(microseconds, 0, 999),
-                        TemporalUtil.constrainToRange(nanoseconds, 0, 999));
+                        constrainToRange(hours, 0, 23),
+                        constrainToRange(minutes, 0, 59),
+                        constrainToRange(seconds, 0, 59),
+                        constrainToRange(milliseconds, 0, 999),
+                        constrainToRange(microseconds, 0, 999),
+                        constrainToRange(nanoseconds, 0, 999));
     }
 
     public static JSTemporalDateTimeRecord toTemporalTimeRecord(DynamicObject temporalTimeLike) {
@@ -1333,7 +1333,7 @@ public final class TemporalUtil {
         int microsecond = 0;
         int nanosecond = 0;
 
-        for (TruffleString property : TemporalUtil.TIME_LIKE_PROPERTIES) {
+        for (TruffleString property : TIME_LIKE_PROPERTIES) {
             Object val = JSObject.get(temporalTimeLike, property);
 
             int iVal = 0;
@@ -1341,7 +1341,7 @@ public final class TemporalUtil {
                 iVal = 0;
             } else {
                 any = true;
-                iVal = JSRuntime.intValue(TemporalUtil.toIntegerThrowOnInfinity(val));
+                iVal = JSRuntime.intValue(toIntegerThrowOnInfinity(val));
             }
             if (HOUR.equals(property)) {
                 hour = iVal;
@@ -1949,10 +1949,10 @@ public final class TemporalUtil {
     public static JSTemporalDurationRecord balanceDuration(JSContext ctx, EnumerableOwnPropertyNamesNode namesNode, double days, double hours, double minutes, double seconds, double milliseconds,
                     double microseconds, BigInteger nanoseconds, Unit largestUnit, DynamicObject relativeTo) {
         BigInt nsBi;
-        if (TemporalUtil.isTemporalZonedDateTime(relativeTo)) {
+        if (isTemporalZonedDateTime(relativeTo)) {
             JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) relativeTo;
             // conversion set to fail. addZonedDateTime creates PlainDateTime that would fail anyway
-            BigInt endNs = TemporalUtil.addZonedDateTime(ctx, zdt.getNanoseconds(), zdt.getTimeZone(), zdt.getCalendar(), 0, 0, 0, dtol(days, true), dtol(hours, true), dtol(minutes, true),
+            BigInt endNs = addZonedDateTime(ctx, zdt.getNanoseconds(), zdt.getTimeZone(), zdt.getCalendar(), 0, 0, 0, dtol(days, true), dtol(hours, true), dtol(minutes, true),
                             dtol(seconds, true), dtol(milliseconds, true), dtol(microseconds, true), nanoseconds, Undefined.instance);
             nsBi = endNs.subtract(zdt.getNanoseconds());
         } else {
@@ -1977,7 +1977,7 @@ public final class TemporalUtil {
         nsBi2 = nsBi2.abs();
         if (largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK ||
                         largestUnit == Unit.DAY || largestUnit == Unit.HOUR) {
-            BigInteger[] res = nsBi2.divideAndRemainder(bi_1000);
+            BigInteger[] res = nsBi2.divideAndRemainder(BI_1000);
             mus = bitod(res[0]);
             nsBi2 = res[1];
             ms = Math.floor(mus / 1000.0);
@@ -1989,7 +1989,7 @@ public final class TemporalUtil {
             h = Math.floor(min / 60.0);
             min = min % 60;
         } else if (largestUnit == Unit.MINUTE) {
-            BigInteger[] res = nsBi2.divideAndRemainder(bi_1000);
+            BigInteger[] res = nsBi2.divideAndRemainder(BI_1000);
             mus = bitod(res[0]);
             nsBi2 = res[1];
             ms = Math.floor(mus / 1000.0);
@@ -1999,7 +1999,7 @@ public final class TemporalUtil {
             min = Math.floor(s / 60.0);
             s = s % 60;
         } else if (largestUnit == Unit.SECOND) {
-            BigInteger[] res = nsBi2.divideAndRemainder(bi_1000);
+            BigInteger[] res = nsBi2.divideAndRemainder(BI_1000);
             mus = bitod(res[0]);
             nsBi2 = res[1];
             ms = Math.floor(mus / 1000.0);
@@ -2007,13 +2007,13 @@ public final class TemporalUtil {
             s = Math.floor(ms / 1000.0);
             ms = ms % 1000;
         } else if (largestUnit == Unit.MILLISECOND) {
-            BigInteger[] res = nsBi2.divideAndRemainder(bi_1000);
+            BigInteger[] res = nsBi2.divideAndRemainder(BI_1000);
             mus = bitod(res[0]);
             nsBi2 = res[1];
             ms = Math.floor(mus / 1000.0);
             mus = mus % 1000;
         } else if (largestUnit == Unit.MICROSECOND) {
-            BigInteger[] res = nsBi2.divideAndRemainder(bi_1000);
+            BigInteger[] res = nsBi2.divideAndRemainder(BI_1000);
             mus = bitod(res[0]);
             nsBi2 = res[1];
         } else {
@@ -2187,7 +2187,7 @@ public final class TemporalUtil {
     // 7.5.15
     public static JSTemporalRelativeDateRecord moveRelativeDate(JSContext ctx, DynamicObject calendar, DynamicObject relativeTo, DynamicObject duration) {
         DynamicObject options = JSOrdinary.createWithNullPrototype(ctx);
-        JSTemporalPlainDateObject newDate = TemporalUtil.calendarDateAdd(calendar, relativeTo, duration, options, Undefined.instance);
+        JSTemporalPlainDateObject newDate = calendarDateAdd(calendar, relativeTo, duration, options, Undefined.instance);
         long days = daysUntil(relativeTo, newDate);
         return JSTemporalRelativeDateRecord.create(newDate, days);
     }
@@ -2204,9 +2204,9 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static BigDecimal roundDurationCalculateFractionalSeconds(double seconds, double microseconds, double milliseconds, double nanoseconds) {
-        BigDecimal part1 = BigDecimal.valueOf(nanoseconds).multiply(bd_10_pow_m9);
-        BigDecimal part2 = BigDecimal.valueOf(microseconds).multiply(bd_10_pow_m6);
-        BigDecimal part3 = BigDecimal.valueOf(milliseconds).multiply(bd_10_pow_m3);
+        BigDecimal part1 = BigDecimal.valueOf(nanoseconds).multiply(BD_10_POW_M_9);
+        BigDecimal part2 = BigDecimal.valueOf(microseconds).multiply(BD_10_POW_M_6);
+        BigDecimal part3 = BigDecimal.valueOf(milliseconds).multiply(BD_10_POW_M_3);
         return part1.add(part2).add(part3).add(BigDecimal.valueOf(seconds));
     }
 
@@ -2215,11 +2215,11 @@ public final class TemporalUtil {
         BigInteger nanoseconds = nanosecondsParam.bigIntegerValue();
         long sign = nanoseconds.signum();
         BigInteger signBI = BigInteger.valueOf(sign);
-        BigInteger dayLengthNs = bi_8_64_13;
+        BigInteger dayLengthNs = BI_8_64_13;
         if (sign == 0) {
             return JSTemporalNanosecondsDaysRecord.create(BigInteger.ZERO, BigInteger.ZERO, dayLengthNs);
         }
-        if (!TemporalUtil.isTemporalZonedDateTime(relativeTo)) {
+        if (!isTemporalZonedDateTime(relativeTo)) {
             BigInteger val = nanoseconds.divide(dayLengthNs);
             BigInteger val2 = nanoseconds.abs().mod(dayLengthNs).multiply(signBI);
             return JSTemporalNanosecondsDaysRecord.create(val, val2, dayLengthNs);
@@ -2227,28 +2227,28 @@ public final class TemporalUtil {
         JSTemporalZonedDateTimeObject relativeZDT = (JSTemporalZonedDateTimeObject) relativeTo;
         BigInt startNs = relativeZDT.getNanoseconds();
         JSTemporalInstantObject startInstant = JSTemporalInstant.create(ctx, startNs);
-        JSTemporalPlainDateTimeObject startDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, relativeZDT.getTimeZone(), startInstant, relativeZDT.getCalendar());
+        JSTemporalPlainDateTimeObject startDateTime = builtinTimeZoneGetPlainDateTimeFor(ctx, relativeZDT.getTimeZone(), startInstant, relativeZDT.getCalendar());
         BigInt endNs = startNs.add(nanosecondsParam);
         JSTemporalInstantObject endInstant = JSTemporalInstant.create(ctx, endNs);
-        JSTemporalPlainDateTimeObject endDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, relativeZDT.getTimeZone(), endInstant,
+        JSTemporalPlainDateTimeObject endDateTime = builtinTimeZoneGetPlainDateTimeFor(ctx, relativeZDT.getTimeZone(), endInstant,
                         relativeZDT.getCalendar());
-        JSTemporalDurationRecord dateDifference = TemporalUtil.differenceISODateTime(ctx, namesNode, startDateTime.getYear(), startDateTime.getMonth(),
+        JSTemporalDurationRecord dateDifference = differenceISODateTime(ctx, namesNode, startDateTime.getYear(), startDateTime.getMonth(),
                         startDateTime.getDay(), startDateTime.getHour(), startDateTime.getMinute(), startDateTime.getSecond(), startDateTime.getMillisecond(),
                         startDateTime.getMicrosecond(), startDateTime.getNanosecond(), endDateTime.getYear(), endDateTime.getMonth(), endDateTime.getDay(), endDateTime.getHour(),
                         endDateTime.getMinute(), endDateTime.getSecond(), endDateTime.getMillisecond(), endDateTime.getMicrosecond(), endDateTime.getNanosecond(), relativeZDT.getCalendar(), Unit.DAY,
                         Undefined.instance);
         long days = dtol(dateDifference.getDays());
-        BigInt intermediateNs = TemporalUtil.addZonedDateTime(ctx, startNs, relativeZDT.getTimeZone(), relativeZDT.getCalendar(), 0, 0, 0, days, 0, 0, 0, 0, 0, 0);
+        BigInt intermediateNs = addZonedDateTime(ctx, startNs, relativeZDT.getTimeZone(), relativeZDT.getCalendar(), 0, 0, 0, days, 0, 0, 0, 0, 0, 0);
         if (sign == 1) {
             while (days > 0 && intermediateNs.compareTo(endNs) == 1) {
                 days = days - 1;
-                intermediateNs = TemporalUtil.addZonedDateTime(ctx, startNs, relativeZDT.getTimeZone(), relativeZDT.getCalendar(), 0, 0, 0, days, 0, 0, 0, 0, 0, 0);
+                intermediateNs = addZonedDateTime(ctx, startNs, relativeZDT.getTimeZone(), relativeZDT.getCalendar(), 0, 0, 0, days, 0, 0, 0, 0, 0, 0);
             }
         }
         nanoseconds = endNs.subtract(intermediateNs).bigIntegerValue();
         boolean done = false;
         while (!done) {
-            BigInteger oneDayFartherNs = TemporalUtil.addZonedDateTime(ctx, intermediateNs, relativeZDT.getTimeZone(), relativeZDT.getCalendar(), 0, 0, 0, sign, 0, 0, 0, 0, 0, 0).bigIntegerValue();
+            BigInteger oneDayFartherNs = addZonedDateTime(ctx, intermediateNs, relativeZDT.getTimeZone(), relativeZDT.getCalendar(), 0, 0, 0, sign, 0, 0, 0, 0, 0, 0).bigIntegerValue();
             dayLengthNs = oneDayFartherNs.subtract(intermediateNs.bigIntegerValue());
             if (nanoseconds.subtract(dayLengthNs).multiply(signBI).compareTo(BigInteger.ZERO) != -1) {
                 nanoseconds = nanoseconds.subtract(dayLengthNs);
@@ -2266,22 +2266,22 @@ public final class TemporalUtil {
                     double weeks, double days, double hours,
                     double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds, double increment, Unit unit, RoundingMode roundingMode,
                     DynamicObject relativeToParam) {
-        if (!(TemporalUtil.isTemporalZonedDateTime(relativeToParam)) || unit == Unit.YEAR || unit == Unit.MONTH || unit == Unit.WEEK || unit == Unit.DAY ||
+        if (!(isTemporalZonedDateTime(relativeToParam)) || unit == Unit.YEAR || unit == Unit.MONTH || unit == Unit.WEEK || unit == Unit.DAY ||
                         (unit == Unit.NANOSECOND && increment == 1)) {
             return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         }
         JSTemporalZonedDateTimeObject relativeTo = (JSTemporalZonedDateTimeObject) relativeToParam;
         long timeRemainderNs = dtol(totalDurationNanoseconds(0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0));
         long direction = Long.signum(timeRemainderNs);
-        BigInt dayStart = TemporalUtil.addZonedDateTime(ctx,
+        BigInt dayStart = addZonedDateTime(ctx,
                         relativeTo.getNanoseconds(), relativeTo.getTimeZone(), relativeTo.getCalendar(),
                         dtol(years), dtol(months), dtol(weeks), dtol(days), 0, 0, 0, 0, 0, 0);
-        BigInt dayEnd = TemporalUtil.addZonedDateTime(ctx, dayStart, relativeTo.getTimeZone(), relativeTo.getCalendar(), 0, 0, 0, direction, 0, 0, 0, 0, 0, 0);
+        BigInt dayEnd = addZonedDateTime(ctx, dayStart, relativeTo.getTimeZone(), relativeTo.getCalendar(), 0, 0, 0, direction, 0, 0, 0, 0, 0, 0);
         long dayLengthNs = bigIntToLong(dayEnd.subtract(dayStart));
         if (((timeRemainderNs - dayLengthNs) * direction) < 0) {
             return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         }
-        BigInteger timeRemainderNsBi = TemporalUtil.roundTemporalInstant(Boundaries.bigDecimalValueOf(timeRemainderNs - dayLengthNs), increment, unit, roundingMode);
+        BigInteger timeRemainderNsBi = roundTemporalInstant(Boundaries.bigDecimalValueOf(timeRemainderNs - dayLengthNs), increment, unit, roundingMode);
         JSTemporalDurationRecord add = durationAddNode.execute(dtol(years), dtol(months), dtol(weeks), dtol(days), 0, 0, 0, 0,
                         0, 0, 0, 0, 0, direction, 0, 0, 0, 0, 0, 0, relativeToParam);
         JSTemporalDurationRecord atd = balanceDuration(ctx, namesNode, 0, 0, 0, 0, 0, 0, timeRemainderNsBi, Unit.HOUR, Undefined.instance);
@@ -2314,7 +2314,7 @@ public final class TemporalUtil {
         double s = seconds + min * 60;
         double ms = milliseconds + s * 1000;
         double mus = microseconds + ms * 1000;
-        return nanoseconds.add(BigDecimal.valueOf(mus).toBigInteger().multiply(bi_1000));
+        return nanoseconds.add(BigDecimal.valueOf(mus).toBigInteger().multiply(BI_1000));
     }
 
     // 7.5.11
@@ -2384,7 +2384,7 @@ public final class TemporalUtil {
             assert unit == Unit.NANOSECOND;
             quantity = nanoseconds;
         }
-        long result = dtol(TemporalUtil.roundNumberToIncrement(quantity, increment, roundingMode));
+        long result = dtol(roundNumberToIncrement(quantity, increment, roundingMode));
         if (unit == Unit.DAY) {
             return JSTemporalDurationRecord.create(0, 0, result, 0, 0, 0, 0, 0, 0);
         }
@@ -2424,17 +2424,17 @@ public final class TemporalUtil {
         double minutes = min;
         double hours = h;
         microseconds = microseconds + Math.floor(nanoseconds / 1000.0);
-        nanoseconds = TemporalUtil.nonNegativeModulo(nanoseconds, 1000);
+        nanoseconds = nonNegativeModulo(nanoseconds, 1000);
         milliseconds = milliseconds + Math.floor(microseconds / 1000.0);
-        microseconds = TemporalUtil.nonNegativeModulo(microseconds, 1000);
+        microseconds = nonNegativeModulo(microseconds, 1000);
         seconds = seconds + Math.floor(milliseconds / 1000.0);
-        milliseconds = TemporalUtil.nonNegativeModulo(milliseconds, 1000);
+        milliseconds = nonNegativeModulo(milliseconds, 1000);
         minutes = minutes + Math.floor(seconds / 60.0);
-        seconds = TemporalUtil.nonNegativeModulo(seconds, 60);
+        seconds = nonNegativeModulo(seconds, 60);
         hours = hours + Math.floor(minutes / 60.0);
-        minutes = TemporalUtil.nonNegativeModulo(minutes, 60);
+        minutes = nonNegativeModulo(minutes, 60);
         double days = Math.floor(hours / 24.0);
-        hours = TemporalUtil.nonNegativeModulo(hours, 24);
+        hours = nonNegativeModulo(hours, 24);
         return JSTemporalDurationRecord.create(0, 0, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
     }
 
@@ -2447,17 +2447,17 @@ public final class TemporalUtil {
         long minutes = min;
         long hours = h;
         microseconds = microseconds + (long) Math.floor(nanoseconds / 1000.0);
-        nanoseconds = (long) TemporalUtil.nonNegativeModulo(nanoseconds, 1000);
+        nanoseconds = (long) nonNegativeModulo(nanoseconds, 1000);
         milliseconds = milliseconds + (long) Math.floor(microseconds / 1000.0);
-        microseconds = (long) TemporalUtil.nonNegativeModulo(microseconds, 1000);
+        microseconds = (long) nonNegativeModulo(microseconds, 1000);
         seconds = seconds + (long) Math.floor(milliseconds / 1000.0);
-        milliseconds = (long) TemporalUtil.nonNegativeModulo(milliseconds, 1000);
+        milliseconds = (long) nonNegativeModulo(milliseconds, 1000);
         minutes = minutes + (long) Math.floor(seconds / 60.0);
-        seconds = (long) TemporalUtil.nonNegativeModulo(seconds, 60);
+        seconds = (long) nonNegativeModulo(seconds, 60);
         hours = hours + (long) Math.floor(minutes / 60.0);
-        minutes = (long) TemporalUtil.nonNegativeModulo(minutes, 60);
+        minutes = (long) nonNegativeModulo(minutes, 60);
         long days = (long) Math.floor(hours / 24.0);
-        hours = (long) TemporalUtil.nonNegativeModulo(hours, 24);
+        hours = (long) nonNegativeModulo(hours, 24);
         return JSTemporalDurationRecord.create(0, 0, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
     }
 
@@ -2512,8 +2512,8 @@ public final class TemporalUtil {
 
     public static JSTemporalDurationRecord roundISODateTime(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond,
                     int nanosecond, double increment, Unit unit, RoundingMode roundingMode, Long dayLength) {
-        JSTemporalDurationRecord rt = TemporalUtil.roundTime(hour, minute, second, millisecond, microsecond, nanosecond, increment, unit, roundingMode, dayLength);
-        JSTemporalDateTimeRecord br = TemporalUtil.balanceISODate(year, month, day + dtoi(rt.getDays()));
+        JSTemporalDurationRecord rt = roundTime(hour, minute, second, millisecond, microsecond, nanosecond, increment, unit, roundingMode, dayLength);
+        JSTemporalDateTimeRecord br = balanceISODate(year, month, day + dtoi(rt.getDays()));
         return JSTemporalDurationRecord.create(br.getYear(), br.getMonth(), br.getDay(),
                         rt.getHours(), rt.getMinutes(), rt.getSeconds(),
                         rt.getMilliseconds(), rt.getMicroseconds(), rt.getNanoseconds());
@@ -2604,7 +2604,7 @@ public final class TemporalUtil {
             remainderNs = epochNanoseconds.longValue() % 1_000_000;
             epochMilliseconds = (epochNanoseconds.longValue() - remainderNs) / 1_000_000;
         } else {
-            BigInteger[] result = epochNanoseconds.bigIntegerValue().divideAndRemainder(bi_10_pow_6);
+            BigInteger[] result = epochNanoseconds.bigIntegerValue().divideAndRemainder(BI_10_POW_6);
             remainderNs = result[1].longValue();
             epochMilliseconds = result[0].longValue();
         }
@@ -2710,11 +2710,11 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static BigInt addInstant(BigInt epochNanoseconds, long hours, long minutes, long seconds, long milliseconds, long microseconds, BigInteger nanoseconds) {
         BigInteger res = epochNanoseconds.bigIntegerValue().add(nanoseconds);
-        res = res.add(BigInteger.valueOf(microseconds).multiply(bi_1000));
-        res = res.add(BigInteger.valueOf(milliseconds).multiply(bi_10_pow_6));
-        res = res.add(BigInteger.valueOf(seconds).multiply(bi_10_pow_9));
-        res = res.add(BigInteger.valueOf(minutes).multiply(bi_6_10_pow_10));
-        res = res.add(BigInteger.valueOf(hours).multiply(bi_36_10_pow_11));
+        res = res.add(BigInteger.valueOf(microseconds).multiply(BI_1000));
+        res = res.add(BigInteger.valueOf(milliseconds).multiply(BI_10_POW_6));
+        res = res.add(BigInteger.valueOf(seconds).multiply(BI_10_POW_9));
+        res = res.add(BigInteger.valueOf(minutes).multiply(BI_6_10_POW_10));
+        res = res.add(BigInteger.valueOf(hours).multiply(BI_36_10_POW_11));
         BigInt result = new BigInt(res);
         if (!isValidEpochNanoseconds(result)) {
             throw TemporalErrors.createRangeErrorInvalidNanoseconds();
@@ -2857,11 +2857,11 @@ public final class TemporalUtil {
     public static JSTemporalDateTimeRecord addDateTime(JSContext ctx, int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond,
                     double nanosecond, DynamicObject calendar, double years, double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds,
                     double microseconds, double nanoseconds, DynamicObject options) {
-        JSTemporalDurationRecord timeResult = TemporalUtil.addTimeDouble(hour, minute, second, millisecond, microsecond, nanosecond,
+        JSTemporalDurationRecord timeResult = addTimeDouble(hour, minute, second, millisecond, microsecond, nanosecond,
                         hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         DynamicObject datePart = JSTemporalPlainDate.create(ctx, year, month, day, calendar);
         DynamicObject dateDuration = JSTemporalDuration.createTemporalDuration(ctx, years, months, weeks, days + timeResult.getDays(), 0L, 0L, 0L, 0L, 0L, 0L);
-        JSTemporalPlainDateObject addedDate = (JSTemporalPlainDateObject) TemporalUtil.calendarDateAdd(calendar, datePart, dateDuration, options);
+        JSTemporalPlainDateObject addedDate = (JSTemporalPlainDateObject) calendarDateAdd(calendar, datePart, dateDuration, options);
         return JSTemporalDateTimeRecord.create(addedDate.getYear(), addedDate.getMonth(), addedDate.getDay(),
                         dtoi(timeResult.getHours()), dtoi(timeResult.getMinutes()), dtoi(timeResult.getSeconds()),
                         dtoi(timeResult.getMilliseconds()), dtoi(timeResult.getMicroseconds()), dtoi(timeResult.getNanoseconds()));
@@ -2869,9 +2869,9 @@ public final class TemporalUtil {
 
     public static int compareISODateTime(int year, int month, int day, int hours, int minutes, int seconds, int milliseconds, int microseconds, int nanoseconds, int year2, int month2,
                     int day2, int hours2, int minutes2, int seconds2, int milliseconds2, int microseconds2, int nanoseconds2) {
-        int date = TemporalUtil.compareISODate(year, month, day, year2, month2, day2);
+        int date = compareISODate(year, month, day, year2, month2, day2);
         if (date == 0) {
-            return TemporalUtil.compareTemporalTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds, hours2, minutes2, seconds2, milliseconds2, microseconds2, nanoseconds2);
+            return compareTemporalTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds, hours2, minutes2, seconds2, milliseconds2, microseconds2, nanoseconds2);
         }
         return date;
     }
@@ -3025,8 +3025,8 @@ public final class TemporalUtil {
         }
         BigInteger epochNanoseconds = getEpochFromISOParts(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
                         dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
-        JSTemporalInstantObject dayBefore = JSTemporalInstant.create(ctx, new BigInt(epochNanoseconds.subtract(bi_8_64_13)));
-        JSTemporalInstantObject dayAfter = JSTemporalInstant.create(ctx, new BigInt(epochNanoseconds.add(bi_8_64_13)));
+        JSTemporalInstantObject dayBefore = JSTemporalInstant.create(ctx, new BigInt(epochNanoseconds.subtract(BI_8_64_13)));
+        JSTemporalInstantObject dayAfter = JSTemporalInstant.create(ctx, new BigInt(epochNanoseconds.add(BI_8_64_13)));
         long offsetBefore = getOffsetNanosecondsFor(timeZone, dayBefore);
         long offsetAfter = getOffsetNanosecondsFor(timeZone, dayAfter);
         long nanoseconds = offsetAfter - offsetBefore;
@@ -3211,7 +3211,7 @@ public final class TemporalUtil {
     @SuppressWarnings("unused")
     public static OptionalLong getIANATimeZoneNextTransition(BigInt nanoseconds, TruffleString identifier) {
         try {
-            BigInteger[] sec = nanoseconds.bigIntegerValue().divideAndRemainder(bi_10_pow_9);
+            BigInteger[] sec = nanoseconds.bigIntegerValue().divideAndRemainder(BI_10_POW_9);
             Instant instant = Instant.ofEpochSecond(sec[0].longValue(), sec[1].longValue());
             ZoneId zoneId = ZoneId.of(Strings.toJavaString(identifier));
             ZoneRules zoneRule = zoneId.getRules();
@@ -3230,7 +3230,7 @@ public final class TemporalUtil {
     @SuppressWarnings("unused")
     public static OptionalLong getIANATimeZonePreviousTransition(BigInt nanoseconds, TruffleString identifier) {
         try {
-            BigInteger[] sec = nanoseconds.bigIntegerValue().divideAndRemainder(bi_10_pow_9);
+            BigInteger[] sec = nanoseconds.bigIntegerValue().divideAndRemainder(BI_10_POW_9);
             Instant instant = Instant.ofEpochSecond(sec[0].longValue(), sec[1].longValue());
             ZoneId zoneId = ZoneId.of(Strings.toJavaString(identifier));
             ZoneRules zoneRule = zoneId.getRules();
@@ -3349,7 +3349,7 @@ public final class TemporalUtil {
         if (month != Undefined.instance && m1 != numberPart2) {
             throw Errors.createRangeError("Month does not equal the month code.");
         }
-        if (!identicalNode.executeBoolean(monthCode, TemporalUtil.buildISOMonthCode((int) numberPart2))) {
+        if (!identicalNode.executeBoolean(monthCode, buildISOMonthCode((int) numberPart2))) {
             throw Errors.createRangeError("Not same value");
         }
 
@@ -3360,8 +3360,8 @@ public final class TemporalUtil {
     public static JSTemporalDateTimeRecord isoDateFromFields(DynamicObject fields, DynamicObject options, JSContext ctx, IsObjectNode isObject,
                     TemporalGetOptionNode getOptionNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
-        Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
-        DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(ctx, fields, TemporalUtil.listDMMCY, TemporalUtil.listEmpty);
+        Overflow overflow = toTemporalOverflow(options, getOptionNode);
+        DynamicObject preparedFields = prepareTemporalFields(ctx, fields, listDMMCY, listEmpty);
         Object year = JSObject.get(preparedFields, YEAR);
         if (year == Undefined.instance) {
             throw TemporalErrors.createTypeErrorTemporalYearNotPresent();
@@ -3371,7 +3371,7 @@ public final class TemporalUtil {
         if (day == Undefined.instance) {
             throw TemporalErrors.createTypeErrorTemporalDayNotPresent();
         }
-        return TemporalUtil.regulateISODate(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))), dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))),
+        return regulateISODate(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))), dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))),
                         dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(day))), overflow);
     }
 
@@ -3379,15 +3379,15 @@ public final class TemporalUtil {
     public static JSTemporalYearMonthDayRecord isoYearMonthFromFields(DynamicObject fields, DynamicObject options, JSContext ctx, IsObjectNode isObject,
                     TemporalGetOptionNode getOptionNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
-        Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
-        DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(ctx, fields, TemporalUtil.listMMCY, TemporalUtil.listEmpty);
+        Overflow overflow = toTemporalOverflow(options, getOptionNode);
+        DynamicObject preparedFields = prepareTemporalFields(ctx, fields, listMMCY, listEmpty);
         Object year = JSObject.get(preparedFields, YEAR);
         if (year == Undefined.instance) {
             throw TemporalErrors.createTypeErrorTemporalYearNotPresent();
         }
         Object month = resolveISOMonth(ctx, preparedFields, toIntOrInfinityNode, identicalNode);
 
-        JSTemporalYearMonthDayRecord result = TemporalUtil.regulateISOYearMonth(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))),
+        JSTemporalYearMonthDayRecord result = regulateISOYearMonth(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))),
                         dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))), overflow);
         return JSTemporalYearMonthDayRecord.create(result.getYear(), result.getMonth(), 1);
     }
@@ -3395,8 +3395,8 @@ public final class TemporalUtil {
     public static JSTemporalYearMonthDayRecord isoMonthDayFromFields(DynamicObject fields, DynamicObject options, JSContext ctx, IsObjectNode isObject,
                     TemporalGetOptionNode getOptionNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
-        Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
-        DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(ctx, fields, TemporalUtil.listDMMCY, TemporalUtil.listEmpty);
+        Overflow overflow = toTemporalOverflow(options, getOptionNode);
+        DynamicObject preparedFields = prepareTemporalFields(ctx, fields, listDMMCY, listEmpty);
         Object month = JSObject.get(preparedFields, MONTH);
         Object monthCode = JSObject.get(preparedFields, MONTH_CODE);
         Object year = JSObject.get(preparedFields, YEAR);
@@ -3411,10 +3411,10 @@ public final class TemporalUtil {
         int referenceISOYear = 1972;
         JSTemporalDateTimeRecord result = null;
         if (monthCode == Undefined.instance) {
-            result = TemporalUtil.regulateISODate(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))), dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))),
+            result = regulateISODate(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))), dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))),
                             dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(day))), overflow);
         } else {
-            result = TemporalUtil.regulateISODate(referenceISOYear, dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))),
+            result = regulateISODate(referenceISOYear, dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))),
                             dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(day))), overflow);
         }
         return JSTemporalYearMonthDayRecord.create(referenceISOYear, result.getMonth(), result.getDay());
@@ -3428,7 +3428,7 @@ public final class TemporalUtil {
 
     public static JSTemporalDurationRecord createDurationRecord(double years, double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds,
                     double microseconds, double nanoseconds) {
-        if (!TemporalUtil.isValidDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
+        if (!isValidDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
             throw TemporalErrors.createTypeErrorDurationOutsideRange();
         }
         return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);

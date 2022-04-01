@@ -83,7 +83,7 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
     @Specialization
     protected Object getOption(DynamicObject options, TruffleString property, OptionType types, List<?> values, Object fallback,
                     @Cached BranchProfile errorBranch,
-                    @Cached("createBinaryProfile()") ConditionProfile isFallbackProfile,
+                    @Cached ConditionProfile isFallbackProfile,
                     @Cached JSToBooleanNode toBooleanNode,
                     @Cached(uncached = "createEmptyToString()") JSToStringNode toStringNode,
                     @Cached(uncached = "createEmptyToNumber()") JSToNumberNode toNumberNode) {

@@ -266,13 +266,13 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 assert !Strings.contains(fSeconds, '.'); // substring(1) handled above
                 TruffleString fSecondsDigits = fSeconds;
                 int fSecondsScale = Strings.length(fSecondsDigits);
-                millisecondsMV = TemporalUtil.bd_1000.multiply(BigDecimal.valueOf(TemporalUtil.toIntegerOrInfinity(fSecondsDigits).longValue())).divide(
-                                TemporalUtil.bd_10.pow(fSecondsScale));
+                millisecondsMV = TemporalUtil.BD_1000.multiply(BigDecimal.valueOf(TemporalUtil.toIntegerOrInfinity(fSecondsDigits).longValue())).divide(
+                                TemporalUtil.BD_10.pow(fSecondsScale));
             } else {
-                millisecondsMV = new BigDecimal(secondsMV).remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.bd_1000, TemporalUtil.mc_20_floor);
+                millisecondsMV = new BigDecimal(secondsMV).remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.BD_1000, TemporalUtil.mc_20_floor);
             }
-            microsecondsMV = millisecondsMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.bd_1000);
-            nanosecondsMV = microsecondsMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.bd_1000);
+            microsecondsMV = millisecondsMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.BD_1000);
+            nanosecondsMV = microsecondsMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.BD_1000);
 
             int factor = (sign.equals(Strings.SYMBOL_MINUS) || sign.equals(Strings.UNICODE_MINUS_SIGN)) ? -1 : 1;
 
@@ -424,15 +424,15 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     @TruffleBoundary
     private static TruffleString temporalDurationToStringIntl(BigInteger yearsP, BigInteger monthsP, BigInteger weeksP, BigInteger daysP, BigInteger hoursP, BigInteger minutesP, BigInteger secondsP,
                     BigInteger millisecondsP, BigInteger microsecondsP, BigInteger nanosecondsP, Object precision, int sign, boolean condition) {
-        BigInteger[] res = nanosecondsP.divideAndRemainder(TemporalUtil.bi_1000);
+        BigInteger[] res = nanosecondsP.divideAndRemainder(TemporalUtil.BI_1000);
         BigInteger microseconds = microsecondsP.add(res[0]);
         BigInteger nanoseconds = res[1];
 
-        res = microseconds.divideAndRemainder(TemporalUtil.bi_1000);
+        res = microseconds.divideAndRemainder(TemporalUtil.BI_1000);
         BigInteger milliseconds = millisecondsP.add(res[0]);
         microseconds = res[1];
 
-        res = milliseconds.divideAndRemainder(TemporalUtil.bi_1000);
+        res = milliseconds.divideAndRemainder(TemporalUtil.BI_1000);
         BigInteger seconds = secondsP.add(res[0]);
         milliseconds = res[1];
 

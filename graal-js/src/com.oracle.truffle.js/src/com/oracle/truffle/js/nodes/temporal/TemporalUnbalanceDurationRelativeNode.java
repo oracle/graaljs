@@ -96,10 +96,10 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
     // TODO still using (some) long arithmetics here, should use double?
     @Specialization
     protected JSTemporalDurationRecord unbalanceDurationRelative(double y, double m, double w, double d, TemporalUtil.Unit largestUnit, DynamicObject relTo,
-                    @Cached("createBinaryProfile()") ConditionProfile unitIsYear,
-                    @Cached("createBinaryProfile()") ConditionProfile unitIsWeek,
-                    @Cached("createBinaryProfile()") ConditionProfile unitIsMonth,
-                    @Cached("createBinaryProfile()") ConditionProfile relativeToAvailable,
+                    @Cached ConditionProfile unitIsYear,
+                    @Cached ConditionProfile unitIsWeek,
+                    @Cached ConditionProfile unitIsMonth,
+                    @Cached ConditionProfile relativeToAvailable,
                     @Cached("create(ctx)") ToTemporalDateNode toTemporalDateNode) {
         long years = dtol(y);
         long months = dtol(m);

@@ -473,10 +473,10 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         // in contrast to `dtoi`, set to Integer.MAX_VALUE/MIN_VALUE if outside range.
         // later operations either CONSTRAIN or REJECT anyway!
         protected int dtoiConstrain(double d) {
-            if (needConstrain.profile(!JSRuntime.doubleIsRepresentableAsInt(d))) {
-                return d > 0 ? Integer.MAX_VALUE : Integer.MIN_VALUE;
-            } else {
+            if (needConstrain.profile(JSRuntime.doubleIsRepresentableAsInt(d))) {
                 return (int) d;
+            } else {
+                return d > 0 ? Integer.MAX_VALUE : Integer.MIN_VALUE;
             }
         }
     }
