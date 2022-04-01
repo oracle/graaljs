@@ -79,10 +79,17 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
 
     protected final JSContext ctx;
     private final BranchProfile errorBranch = BranchProfile.create();
+    private final ConditionProfile hasRelativeTo = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile unitYMWD = ConditionProfile.createBinaryProfile();
+    private final ValueProfile unitValueProfile = ValueProfile.createIdentityProfile();
     @Child private TemporalMoveRelativeDateNode moveRelativeDateNode;
+    @Child EnumerableOwnPropertyNamesNode namesNode;
+    @Child ToTemporalDateNode toTemporalDateNode;
 
     protected TemporalRoundDurationNode(JSContext ctx) {
         this.ctx = ctx;
+        this.namesNode = EnumerableOwnPropertyNamesNode.createKeys(ctx);
+        this.toTemporalDateNode = ToTemporalDateNode.create(ctx);
     }
 
     public static TemporalRoundDurationNode create(JSContext ctx) {
@@ -93,15 +100,11 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
                     double sec, double milsec, double micsec, double nsec, double increment,
                     TemporalUtil.Unit unit, TemporalUtil.RoundingMode roundingMode, DynamicObject relTo);
 
+    // @Cached parameters create unused variable in generated code, see GR-37931
     @Specialization
     protected JSTemporalDurationRecord add(double years, double months, double weeks, double d, double h, double min,
                     double sec, double milsec, double micsec, double nsec, double increment,
-                    TemporalUtil.Unit unit, TemporalUtil.RoundingMode roundingMode, DynamicObject relTo,
-                    @Cached("createBinaryProfile()") ConditionProfile hasRelativeTo,
-                    @Cached("createBinaryProfile()") ConditionProfile unitYMWD,
-                    @Cached("createIdentityProfile()") ValueProfile unitValueProfile,
-                    @Cached("createKeys(ctx)") EnumerableOwnPropertyNamesNode namesNode,
-                    @Cached("create(ctx)") ToTemporalDateNode toTemporalDateNode) {
+                    TemporalUtil.Unit unit, TemporalUtil.RoundingMode roundingMode, DynamicObject relTo) {
         double days = d;
         double hours = h;
         double minutes = min;
@@ -287,7 +290,8 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private static JSTemporalDurationRecord getUnitSecond(double increment, TemporalUtil.RoundingMode roundingMode, double years, double months, double weeks, double days, double hours, double minutes,
+    private static JSTemporalDurationRecord getUnitSecond(double increment, TemporalUtil.RoundingMode roundingMode, double years, double months, double weeks, double days, double hours,
+                    double minutes,
                     BigDecimal fractionalSeconds) {
         double seconds = TemporalUtil.bitod(TemporalUtil.roundNumberToIncrement(fractionalSeconds, new BigDecimal(increment), roundingMode));
         double remainder = TemporalUtil.roundDurationFractionalSecondsSubtract(seconds, fractionalSeconds);

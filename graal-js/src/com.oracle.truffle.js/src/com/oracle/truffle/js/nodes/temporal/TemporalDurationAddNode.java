@@ -45,7 +45,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalUtil.doubleIsInteger;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -80,11 +79,18 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode callDateAddNode;
     @Child private GetMethodNode getMethodDateUntilNode;
     @Child private JSFunctionCallNode callDateUntilNode;
+    @Child EnumerableOwnPropertyNamesNode namesNode;
+    private final BranchProfile errorBranch = BranchProfile.create();
+    private final BranchProfile relativeToUndefinedBranch = BranchProfile.create();
+    private final BranchProfile relativeToPlainDateBranch = BranchProfile.create();
+    private final BranchProfile relativeToZonedDateTimeBranch = BranchProfile.create();
+    private final ConditionProfile largetUnitYMWDProfile = ConditionProfile.createBinaryProfile();
 
     protected TemporalDurationAddNode(JSContext ctx) {
         this.ctx = ctx;
         this.getMethodDateAddNode = GetMethodNode.create(ctx, TemporalConstants.DATE_ADD);
         this.getMethodDateUntilNode = GetMethodNode.create(ctx, TemporalConstants.DATE_UNTIL);
+        this.namesNode = EnumerableOwnPropertyNamesNode.createKeys(ctx);
     }
 
     public static TemporalDurationAddNode create(JSContext ctx) {
@@ -94,15 +100,10 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
     public abstract JSTemporalDurationRecord execute(double y1, double mon1, double w1, double d1, double h1, double min1, double s1, double ms1, double mus1, double ns1,
                     double y2, double mon2, double w2, double d2, double h2, double min2, double s2, double ms2, double mus2, double ns2, DynamicObject relativeTo);
 
+    // @Cached parameters create unused variable in generated code, see GR-37931
     @Specialization
     protected JSTemporalDurationRecord add(double y1, double mon1, double w1, double d1, double h1, double min1, double s1, double ms1, double mus1, double ns1,
-                    double y2, double mon2, double w2, double d2, double h2, double min2, double s2, double ms2, double mus2, double ns2, DynamicObject relativeTo,
-                    @Cached BranchProfile errorBranch,
-                    @Cached BranchProfile relativeToUndefinedBranch,
-                    @Cached BranchProfile relativeToPlainDateBranch,
-                    @Cached BranchProfile relativeToZonedDateTimeBranch,
-                    @Cached("createBinaryProfile()") ConditionProfile largetUnitYMWDProfile,
-                    @Cached("createKeys(ctx)") EnumerableOwnPropertyNamesNode namesNode) {
+                    double y2, double mon2, double w2, double d2, double h2, double min2, double s2, double ms2, double mus2, double ns2, DynamicObject relativeTo) {
         assert doubleIsInteger(y1) && doubleIsInteger(mon1) && doubleIsInteger(w1) && doubleIsInteger(d1);
         assert doubleIsInteger(h1) && doubleIsInteger(min1) && doubleIsInteger(s1) && doubleIsInteger(ms1) && doubleIsInteger(mus1) && doubleIsInteger(ns1);
         assert doubleIsInteger(y2) && doubleIsInteger(mon2) && doubleIsInteger(w2) && doubleIsInteger(d2);
