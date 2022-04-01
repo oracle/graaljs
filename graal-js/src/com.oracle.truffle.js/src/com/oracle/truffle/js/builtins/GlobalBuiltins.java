@@ -793,10 +793,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
      */
     public abstract static class JSGlobalParseFloatNode extends JSGlobalOperation {
         @Child protected JSTrimWhitespaceNode trimWhitespaceNode;
-        @Child protected TruffleString.RegionEqualByteIndexNode regionEqualsNode1;
-        @Child protected TruffleString.RegionEqualByteIndexNode regionEqualsNode2;
-        @Child protected TruffleString.RegionEqualByteIndexNode regionEqualsNode3;
+        @Child protected TruffleString.RegionEqualByteIndexNode regionEqualsNode;
         @Child protected FloatParserNode floatParserNode;
+
+        private static final int INFINITY_LENGTH = "Infinity".length();
 
         public JSGlobalParseFloatNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -846,17 +846,21 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private double parseFloatIntl2(TruffleString trimmedString) {
-            if (regionEqualsNode1 == null || regionEqualsNode2 == null || regionEqualsNode3 == null || floatParserNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                regionEqualsNode1 = insert(TruffleString.RegionEqualByteIndexNode.create());
-                regionEqualsNode2 = insert(TruffleString.RegionEqualByteIndexNode.create());
-                regionEqualsNode3 = insert(TruffleString.RegionEqualByteIndexNode.create());
-                floatParserNode = insert(FloatParserNode.create());
+            int trimmedLength = Strings.length(trimmedString);
+            if (trimmedLength >= INFINITY_LENGTH) {
+                if (regionEqualsNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    regionEqualsNode = insert(TruffleString.RegionEqualByteIndexNode.create());
+                }
+                if (Strings.startsWith(regionEqualsNode, trimmedString, Strings.INFINITY) || Strings.startsWith(regionEqualsNode, trimmedString, Strings.POSITIVE_INFINITY)) {
+                    return Double.POSITIVE_INFINITY;
+                } else if (Strings.startsWith(regionEqualsNode, trimmedString, Strings.NEGATIVE_INFINITY)) {
+                    return Double.NEGATIVE_INFINITY;
+                }
             }
-            if (Strings.startsWith(regionEqualsNode1, trimmedString, Strings.INFINITY) || Strings.startsWith(regionEqualsNode2, trimmedString, Strings.POSITIVE_INFINITY)) {
-                return Double.POSITIVE_INFINITY;
-            } else if (Strings.startsWith(regionEqualsNode3, trimmedString, Strings.NEGATIVE_INFINITY)) {
-                return Double.NEGATIVE_INFINITY;
+            if (floatParserNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                floatParserNode = insert(FloatParserNode.create());
             }
             return floatParserNode.parse(trimmedString);
         }
