@@ -74,6 +74,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.ToLimitedTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalInstantNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -263,9 +264,10 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         public JSDynamicObject untilOrSince(Object thisObj, Object otherObj, Object optionsParam,
                         @Cached("create()") JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached TruffleString.EqualNode equalNode) {
+                        @Cached TruffleString.EqualNode equalNode,
+                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
-            JSTemporalInstantObject other = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(getContext(), otherObj);
+            JSTemporalInstantObject other = toTemporalInstantNode.executeDynamicObject(otherObj);
             JSDynamicObject options = getOptionsObject(optionsParam);
             Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND, equalNode);
             Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.SECOND, smallestUnit);
@@ -340,9 +342,10 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        public boolean equals(Object thisObj, Object otherObj) {
+        public boolean equals(Object thisObj, Object otherObj,
+                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
-            JSTemporalInstantObject other = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(getContext(), otherObj);
+            JSTemporalInstantObject other = toTemporalInstantNode.executeDynamicObject(otherObj);
             return instant.getNanoseconds().compareTo(other.getNanoseconds()) == 0;
         }
     }

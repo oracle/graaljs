@@ -68,6 +68,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarWithISODefaultNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateTimeNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalInstantNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -227,13 +228,13 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
-        @TruffleBoundary
         @Specialization
-        protected long getOffsetNanosecondsFor(Object thisObj, Object instantParam) {
+        protected double getOffsetNanosecondsFor(Object thisObj, Object instantParam,
+                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
             JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
-            JSTemporalInstantObject instant = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(getContext(), instantParam);
+            JSTemporalInstantObject instant = toTemporalInstantNode.executeDynamicObject(instantParam);
             if (timeZone.getNanoseconds() != null) {
-                return timeZone.getNanoseconds().bigIntegerValue().longValue();
+                return timeZone.getNanoseconds().doubleValue();
             }
             return TemporalUtil.getIANATimeZoneOffsetNanoseconds(instant.getNanoseconds(), timeZone.getIdentifier());
         }
@@ -246,9 +247,10 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected TruffleString getOffsetStringFor(Object thisObj, Object instantParam) {
+        protected TruffleString getOffsetStringFor(Object thisObj, Object instantParam,
+                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
             JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
-            JSDynamicObject instant = TemporalUtil.toTemporalInstant(getContext(), instantParam);
+            JSDynamicObject instant = toTemporalInstantNode.executeDynamicObject(instantParam);
             return TemporalUtil.builtinTimeZoneGetOffsetStringFor(timeZone, instant);
         }
     }
@@ -261,9 +263,10 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected JSDynamicObject getPlainDateTimeFor(Object thisObj, Object instantParam, Object calendarLike,
-                        @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode) {
+                        @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
+                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
             JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
-            JSDynamicObject instant = TemporalUtil.toTemporalInstant(getContext(), instantParam);
+            JSDynamicObject instant = toTemporalInstantNode.executeDynamicObject(instantParam);
             JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(calendarLike);
             return TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), timeZone, instant, calendar);
         }
@@ -328,9 +331,10 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected JSDynamicObject getTransition(Object thisObj, Object startingPointParam) {
+        protected JSDynamicObject getTransition(Object thisObj, Object startingPointParam,
+                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
             JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
-            JSTemporalInstantObject startingPoint = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(getContext(), startingPointParam);
+            JSTemporalInstantObject startingPoint = toTemporalInstantNode.executeDynamicObject(startingPointParam);
             if (timeZone.getNanoseconds() != null) {
                 return Null.instance;
             }

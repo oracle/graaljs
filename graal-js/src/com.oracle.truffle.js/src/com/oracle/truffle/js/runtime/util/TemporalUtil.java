@@ -2675,20 +2675,6 @@ public final class TemporalUtil {
         return JSTemporalInstant.isJSTemporalInstant(obj);
     }
 
-    public static JSDynamicObject toTemporalInstant(JSContext ctx, Object item) {
-        if (JSRuntime.isObject(item)) {
-            if (isTemporalInstant(item)) {
-                return (JSDynamicObject) item;
-            }
-            if (isTemporalZonedDateTime(item)) {
-                return JSTemporalInstant.create(ctx, ((JSTemporalZonedDateTimeObject) item).getNanoseconds());
-            }
-        }
-        TruffleString string = JSRuntime.toString(item);
-        BigInt epochNanoseconds = parseTemporalInstant(string);
-        return JSTemporalInstant.create(ctx, epochNanoseconds);
-    }
-
     public static int compareEpochNanoseconds(BigInt one, BigInt two) {
         return one.compareTo(two);
     }
@@ -2968,7 +2954,7 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    private static BigInt parseTemporalInstant(TruffleString string) {
+    public static BigInt parseTemporalInstant(TruffleString string) {
         JSTemporalZonedDateTimeRecord result = parseTemporalInstantString(string);
         TruffleString offsetString = result.getTimeZoneOffsetString();
         if (offsetString == null) {
