@@ -45,12 +45,16 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 public class TimezoneICUJDKCompat {
 
     @Test
     public void compareICUandJDKTimezones() {
+        // No need to pass on an obsolete JDK 15 (that is not updated anymore)
+        Assume.assumeFalse(System.getProperty("java.version").startsWith("15"));
+
         String[] icuIDs = com.ibm.icu.util.TimeZone.getAvailableIDs();
         String[] jdkIDs = java.util.TimeZone.getAvailableIDs();
         Set<String> jdkSet = new HashSet<>(Arrays.asList(jdkIDs));
@@ -88,6 +92,9 @@ public class TimezoneICUJDKCompat {
 
     @Test
     public void compareICUandJDKversions() {
+        // No need to pass on an obsolete JDK 15 (that is not updated anymore)
+        Assume.assumeFalse(System.getProperty("java.version").startsWith("15"));
+
         String versionJDK = java.time.zone.ZoneRulesProvider.getVersions("UTC").lastEntry().getKey();
         String versionICU = com.ibm.icu.util.TimeZone.getTZDataVersion();
         if ("2021a3".equals(versionICU)) {
