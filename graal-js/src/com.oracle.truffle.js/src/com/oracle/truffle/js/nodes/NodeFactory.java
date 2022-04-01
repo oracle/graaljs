@@ -216,6 +216,7 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryPlusNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.nodes.unary.VoidNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
@@ -753,8 +754,16 @@ public class NodeFactory {
 
     public FunctionRootNode createModuleRootNode(AbstractBodyNode linkBody, AbstractBodyNode evalBody, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection,
                     String internalFunctionName) {
-        FunctionRootNode linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection, internalFunctionName);
-        FunctionRootNode evalRoot = linkBody == evalBody ? linkRoot : FunctionRootNode.create(evalBody, null, functionData, sourceSection, internalFunctionName);
+        FunctionRootNode linkRoot;
+        FunctionRootNode evalRoot;
+        if (linkBody == evalBody) {
+            evalRoot = linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection, internalFunctionName);
+        } else {
+            linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection,
+                            internalFunctionName.concat(Evaluator.MODULE_LINK_SUFFIX));
+            evalRoot = FunctionRootNode.create(evalBody, JavaScriptRootNode.MODULE_DUMMY_FRAMEDESCRIPTOR, functionData, sourceSection,
+                            internalFunctionName.concat(Evaluator.MODULE_EVAL_SUFFIX));
+        }
 
         RootCallTarget linkCallTarget = Truffle.getRuntime().createCallTarget(linkRoot);
         RootCallTarget evalCallTarget = Truffle.getRuntime().createCallTarget(evalRoot);
