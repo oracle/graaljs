@@ -344,6 +344,13 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         charIndex |= EXPRESSION_TAG_BIT;
     }
 
+    final boolean hasImportantTag() {
+        return ((charIndex & ROOT_BODY_TAG_BIT) != 0 ||
+                        (charIndex & EXPRESSION_TAG_BIT) != 0 ||
+                        (charLength & STATEMENT_TAG_BIT) != 0 ||
+                        (charLength & CALL_TAG_BIT) != 0);
+    }
+
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         if (this instanceof WrapperNode) {
             WrapperNode wrapperNode = (WrapperNode) this;

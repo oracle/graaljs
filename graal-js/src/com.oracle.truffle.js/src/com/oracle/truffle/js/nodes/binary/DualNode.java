@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,11 +43,11 @@ package com.oracle.truffle.js.nodes.binary;
 import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.AbstractBlockNode;
 import com.oracle.truffle.js.nodes.control.ExprBlockNode;
@@ -68,12 +68,7 @@ public class DualNode extends JavaScriptNode implements SequenceNode, ResumableN
     }
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
-        if (left instanceof DualNode && !(right instanceof DualNode || right instanceof AbstractBlockNode)) {
-            // When de-sugaring certain inc/dec operations, we end up having two (nested) dual
-            // nodes. In this case, rather than flattening the nodes in a block, we return the
-            // nested dual nodes. In this way, they can be detected as expressions by instruments.
-            return new DualNode(left, right);
-        } else if (left instanceof DualNode || left instanceof AbstractBlockNode || right instanceof DualNode || right instanceof AbstractBlockNode) {
+        if (isFlatteningCandidate(left) || isFlatteningCandidate(right)) {
             final int len = getLen(left) + getLen(right);
             if (len > 2) {
                 JavaScriptNode[] arr = new JavaScriptNode[len];
@@ -87,16 +82,17 @@ public class DualNode extends JavaScriptNode implements SequenceNode, ResumableN
         return new DualNode(left, right);
     }
 
+    private static boolean isFlatteningCandidate(JavaScriptNode left) {
+        return left instanceof DualNode || left instanceof AbstractBlockNode;
+    }
+
     private static int flatten(JavaScriptNode[] arr, int pos, JavaScriptNode node) {
-        if (node.hasTag(RootBodyTag.class)) {
-            arr[pos] = node;
-            return pos + 1;
-        } else if (node instanceof DualNode) {
+        if (node instanceof DualNode && !JSNodeUtil.hasImportantTag(node)) {
             DualNode dual = (DualNode) node;
             arr[pos] = dual.left;
             arr[pos + 1] = dual.right;
             return pos + 2;
-        } else if (node instanceof AbstractBlockNode) {
+        } else if (node instanceof AbstractBlockNode && !JSNodeUtil.hasImportantTag(node)) {
             AbstractBlockNode block = (AbstractBlockNode) node;
             int len = block.getStatements().length;
             System.arraycopy(block.getStatements(), 0, arr, pos, len);
@@ -108,11 +104,9 @@ public class DualNode extends JavaScriptNode implements SequenceNode, ResumableN
     }
 
     private static int getLen(JavaScriptNode node) {
-        if (node.hasTag(RootBodyTag.class)) {
-            return 1;
-        } else if (node instanceof DualNode) {
+        if (node instanceof DualNode && !JSNodeUtil.hasImportantTag(node)) {
             return 2;
-        } else if (node instanceof AbstractBlockNode) {
+        } else if (node instanceof AbstractBlockNode && !JSNodeUtil.hasImportantTag(node)) {
             return ((AbstractBlockNode) node).getStatements().length;
         } else {
             return 1;
