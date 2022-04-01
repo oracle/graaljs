@@ -92,7 +92,7 @@ public abstract class ToTemporalInstantNode extends JavaScriptBaseNode {
                 return (JSTemporalInstantObject) item;
             }
             if (TemporalUtil.isTemporalZonedDateTime(item)) {
-                return JSTemporalInstant.create(ctx, ((JSTemporalZonedDateTimeObject) item).getNanoseconds());
+                return JSTemporalInstant.create(ctx, getRealm(), ((JSTemporalZonedDateTimeObject) item).getNanoseconds());
             }
         }
         TruffleString string = toStringNode.executeString(item);

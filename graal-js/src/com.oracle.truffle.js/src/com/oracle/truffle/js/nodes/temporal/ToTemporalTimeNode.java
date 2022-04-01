@@ -102,7 +102,7 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
                 return itemObj;
             } else if (isZonedDateTimeProfile.profile(TemporalUtil.isTemporalZonedDateTime(itemObj))) {
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) itemObj;
-                JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, zdt.getNanoseconds());
+                JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, getRealm(), zdt.getNanoseconds());
                 JSTemporalPlainDateTimeObject plainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, zdt.getTimeZone(), instant, zdt.getCalendar());
                 return JSTemporalPlainTime.create(ctx, plainDateTime.getHour(), plainDateTime.getMinute(),
                                 plainDateTime.getSecond(), plainDateTime.getMillisecond(), plainDateTime.getMicrosecond(), plainDateTime.getNanosecond(), errorBranch);

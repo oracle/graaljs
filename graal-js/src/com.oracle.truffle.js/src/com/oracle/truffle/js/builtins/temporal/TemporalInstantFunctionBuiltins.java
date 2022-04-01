@@ -121,7 +121,7 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
         protected JSDynamicObject from(Object item,
                         @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
             if (TemporalUtil.isTemporalInstant(item)) {
-                return JSTemporalInstant.create(getContext(), ((JSTemporalInstantObject) item).getNanoseconds());
+                return JSTemporalInstant.create(getContext(), getRealm(), ((JSTemporalInstantObject) item).getNanoseconds());
             }
             return toTemporalInstantNode.executeDynamicObject(item);
         }
@@ -154,7 +154,7 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
             if (!TemporalUtil.isValidEpochNanoseconds(epochNanoseconds)) {
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }
-            return JSTemporalInstant.create(getContext(), epochNanoseconds);
+            return JSTemporalInstant.create(getContext(), getRealm(), epochNanoseconds);
         }
 
     }

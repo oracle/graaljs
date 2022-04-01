@@ -230,7 +230,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listPluralYMWD);
             BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
-            return JSTemporalInstant.create(getContext(), ns);
+            return JSTemporalInstant.create(getContext(), getRealm(), ns);
         }
     }
 
@@ -247,7 +247,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listPluralYMWD);
             BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(),
                             -duration.getMilliseconds(), -duration.getMicroseconds(), -duration.getNanoseconds());
-            return JSTemporalInstant.create(getContext(), ns);
+            return JSTemporalInstant.create(getContext(), getRealm(), ns);
         }
     }
 
@@ -331,7 +331,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             }
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(roundTo, maximum, true, isObjectNode, toNumber);
             BigInteger roundedNs = TemporalUtil.roundTemporalInstant(instant.getNanoseconds(), (long) roundingIncrement, smallestUnit, roundingMode);
-            return JSTemporalInstant.create(getContext(), new BigInt(roundedNs));
+            return JSTemporalInstant.create(getContext(), getRealm(), new BigInt(roundedNs));
         }
     }
 
@@ -372,7 +372,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode);
             BigInt ns = instant.getNanoseconds();
             BigInteger roundedNs = TemporalUtil.roundTemporalInstant(ns, (long) precision.getIncrement(), precision.getUnit(), roundingMode);
-            JSDynamicObject roundedInstant = JSTemporalInstant.create(getContext(), new BigInt(roundedNs));
+            JSDynamicObject roundedInstant = JSTemporalInstant.create(getContext(), getRealm(), new BigInt(roundedNs));
             return TemporalUtil.temporalInstantToString(getContext(), getRealm(), roundedInstant, timeZone, precision.getPrecision());
         }
     }

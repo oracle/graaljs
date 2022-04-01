@@ -305,7 +305,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
             if (timeZone.getNanoseconds() != null) {
                 BigInteger epochNanoseconds = TemporalUtil.getEpochFromISOParts(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(),
                                 dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
-                Object instant = JSTemporalInstant.create(getContext(), new BigInt(epochNanoseconds.subtract(timeZone.getNanoseconds().bigIntegerValue())));
+                Object instant = JSTemporalInstant.create(getContext(), getRealm(), new BigInt(epochNanoseconds.subtract(timeZone.getNanoseconds().bigIntegerValue())));
                 List<Object> list = new ArrayList<>();
                 list.add(instant);
                 return JSRuntime.createArrayFromList(getContext(), getRealm(), list);
@@ -314,7 +314,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
                             dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
             List<Object> possibleInstants = new ArrayList<>();
             for (BigInt epochNanoseconds : possibleEpochNanoseconds) {
-                JSDynamicObject instant = JSTemporalInstant.create(getContext(), epochNanoseconds);
+                JSDynamicObject instant = JSTemporalInstant.create(getContext(), getRealm(), epochNanoseconds);
                 possibleInstants.add(instant);
             }
             return JSRuntime.createArrayFromList(getContext(), getRealm(), possibleInstants);
@@ -348,7 +348,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return Null.instance;
             }
             // orElse avoids Exception
-            return JSTemporalInstant.create(getContext(), BigInt.valueOf(transition.orElse(0)));
+            return JSTemporalInstant.create(getContext(), getRealm(), BigInt.valueOf(transition.orElse(0)));
         }
     }
 

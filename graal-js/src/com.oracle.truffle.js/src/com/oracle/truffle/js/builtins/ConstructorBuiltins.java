@@ -1306,7 +1306,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }
-            return swapPrototype(JSTemporalInstant.create(getContext(), bi), newTarget);
+            return swapPrototype(JSTemporalInstant.create(getContext(), getRealm(), bi), newTarget);
         }
 
         @Override

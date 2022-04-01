@@ -108,7 +108,7 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
                 return itemObj;
             } else if (isZonedDateTimeProfile.profile(TemporalUtil.isTemporalZonedDateTime(itemObj))) {
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) itemObj;
-                JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, zdt.getNanoseconds());
+                JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, getRealm(), zdt.getNanoseconds());
                 return TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, zdt.getTimeZone(), instant, zdt.getCalendar());
             } else if (isPlainDateProfile.profile(itemObj instanceof JSTemporalPlainDateObject)) {
                 JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) itemObj;
