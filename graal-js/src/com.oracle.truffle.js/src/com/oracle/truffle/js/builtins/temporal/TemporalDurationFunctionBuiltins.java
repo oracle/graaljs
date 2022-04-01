@@ -129,12 +129,10 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             DynamicObject relativeTo = toRelativeTemporalObjectNode.execute(options);
             double shift1 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
                             one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),
-                            one.getHours(), one.getMinutes(), one.getSeconds(),
-                            one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds());
+                            0, 0, 0, 0, 0, 0);
             double shift2 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
                             two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(),
-                            two.getHours(), two.getMinutes(), two.getSeconds(),
-                            two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds());
+                            0, 0, 0, 0, 0, 0);
             double days1;
             double days2;
             if (one.getYears() != 0 || two.getYears() != 0 ||
