@@ -858,11 +858,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             } else if (Strings.startsWith(regionEqualsNode3, trimmedString, Strings.NEGATIVE_INFINITY)) {
                 return Double.NEGATIVE_INFINITY;
             }
-            try {
-                return floatParserNode.parse(trimmedString);
-            } catch (TruffleString.NumberFormatException e) {
-                return Double.NaN;
-            }
+            return floatParserNode.parse(trimmedString);
         }
 
         protected TruffleString trimWhitespace(TruffleString s) {

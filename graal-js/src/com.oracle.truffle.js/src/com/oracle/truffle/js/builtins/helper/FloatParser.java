@@ -51,7 +51,7 @@ public final class FloatParser {
     private boolean isNaN;
     private final double value;
 
-    public FloatParser(TruffleString s, FloatParserNode node) throws TruffleString.NumberFormatException {
+    public FloatParser(TruffleString s, FloatParserNode node) {
         input = s;
         pos = 0;
         isNaN = false;
@@ -62,7 +62,7 @@ public final class FloatParser {
         return value;
     }
 
-    private double parse(FloatParserNode node) throws TruffleString.NumberFormatException {
+    private double parse(FloatParserNode node) {
         strDecimalLiteral(node);
         if (isNaN) {
             return Double.NaN;
@@ -70,9 +70,15 @@ public final class FloatParser {
         return parseValidSubstring(node);
     }
 
-    private double parseValidSubstring(FloatParserNode node) throws TruffleString.NumberFormatException {
+    private double parseValidSubstring(FloatParserNode node) {
         // always use lazy substring here, since the substring never escapes
-        return Strings.parseDouble(node.parseDoubleNode, Strings.substring(true, node.substringNode, input, 0, pos));
+        TruffleString validSubstring = Strings.substring(true, node.substringNode, input, 0, pos);
+        try {
+            return Strings.parseDouble(node.parseDoubleNode, validSubstring);
+        } catch (TruffleString.NumberFormatException e) {
+            isNaN = true;
+            return Double.NaN;
+        }
     }
 
     private void strDecimalLiteral(FloatParserNode node) {

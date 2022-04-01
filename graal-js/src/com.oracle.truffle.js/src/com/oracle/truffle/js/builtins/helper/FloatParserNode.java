@@ -58,7 +58,7 @@ public class FloatParserNode extends Node {
         return new FloatParserNode();
     }
 
-    public double parse(TruffleString input) throws TruffleString.NumberFormatException {
+    public double parse(TruffleString input) {
         return new FloatParser(input, this).getResult();
     }
 }
