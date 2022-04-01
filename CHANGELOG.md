@@ -5,6 +5,7 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 21.3.2
 * Updated Node.js to version 14.19.1.
+* Updated ICU4J library to version 70.1.
 
 ## Version 21.3.1
 * Updated Node.js to version 14.18.1.
