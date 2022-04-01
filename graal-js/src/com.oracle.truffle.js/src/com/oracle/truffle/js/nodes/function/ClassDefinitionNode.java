@@ -152,8 +152,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         int instanceFieldIndex;
         int staticElementIndex;
         int startIndex;
+        JSRealm realm = getRealm();
         if (resumptionRecord == null) {
-            JSRealm realm = getRealm();
             Object protoParent = realm.getObjectPrototype();
             Object constructorParent = realm.getFunctionPrototype();
             if (classHeritageNode != null) {
@@ -214,7 +214,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
             startIndex = resumptionRecord.index;
         }
 
-        initializeMembers(frame, proto, constructor, instanceFields, staticElements, startIndex, instanceFieldIndex, staticElementIndex, stateSlot);
+        initializeMembers(frame, proto, constructor, instanceFields, staticElements, startIndex, instanceFieldIndex, staticElementIndex, stateSlot, realm);
 
         if (writeClassBindingNode != null) {
             writeClassBindingNode.executeWrite(frame, constructor);
@@ -244,7 +244,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
 
     @ExplodeLoop
     private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, Object[][] instanceFields, Object[][] staticElements, int startIndex, int instanceFieldIdx,
-                    int staticElementIdx, int stateSlot) {
+                    int staticElementIdx, int stateSlot, JSRealm realm) {
         /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
         int instanceFieldIndex = instanceFieldIdx;
         int staticElementIndex = staticElementIdx;
@@ -254,10 +254,10 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                 if (i >= startIndex) {
                     ObjectLiteralMemberNode memberNode = memberNodes[i];
                     DynamicObject homeObject = memberNode.isStatic() ? constructor : proto;
-                    memberNode.executeVoid(frame, homeObject, context);
+                    memberNode.executeVoid(frame, homeObject, realm);
                     if (memberNode.isFieldOrStaticBlock()) {
                         Object key = memberNode.evaluateKey(frame);
-                        Object value = memberNode.evaluateValue(frame, homeObject);
+                        Object value = memberNode.evaluateValue(frame, homeObject, realm);
                         Object[] field = new Object[]{key, value, memberNode.isAnonymousFunctionDefinition()};
                         if (memberNode.isStatic()) {
                             staticElements[staticElementIndex++] = field;

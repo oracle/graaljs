@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,42 +42,37 @@ package com.oracle.truffle.js.nodes.control;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * The entry point of module functions. Responsible for saving and restoring the module's
- * environment frame and the target of {@link ModuleYieldNode}.
+ * The InitializeEnvironment() entry point of an ES module.
  */
-public final class ModuleBodyNode extends JavaScriptNode {
+public final class ModuleInitializeEnvironmentNode extends JavaScriptNode {
 
     @Child private JavaScriptNode moduleBodyNode;
 
-    private ModuleBodyNode(JavaScriptNode body) {
+    private ModuleInitializeEnvironmentNode(JavaScriptNode body) {
         this.moduleBodyNode = body;
     }
 
     public static JavaScriptNode create(JavaScriptNode body) {
-        return new ModuleBodyNode(body);
+        return new ModuleInitializeEnvironmentNode(body);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
         JSModuleRecord moduleRecord = (JSModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
-        MaterializedFrame moduleFrame = moduleRecord.getEnvironment() != null ? JSFrameUtil.castMaterializedFrame(moduleRecord.getEnvironment()) : frame.materialize();
-        try {
-            return moduleBodyNode.execute(moduleFrame);
-        } catch (YieldException e) {
-            assert e.isYield();
-            moduleRecord.setEnvironment(moduleFrame);
-            return Undefined.instance;
-        }
+        assert moduleRecord.getStatus() == Status.Linking : moduleRecord.getStatus();
+        assert moduleRecord.getEnvironment() == null;
+        moduleBodyNode.executeVoid(frame);
+        moduleRecord.setEnvironment(frame.materialize());
+        return Undefined.instance;
     }
 
     @Override

@@ -202,7 +202,7 @@ public abstract class BlockScopeNode extends NamedEvaluationTargetNode implement
                 arguments = JSFrameUtil.castMaterializedFrame(parentScopeFrame).getArguments();
             } else {
                 assert parentScopeFrame == Undefined.instance || captureFunctionFrame;
-                arguments = JSArguments.createZeroArg(Undefined.instance, JSFrameUtil.getFunctionObject(frame));
+                arguments = JSArguments.createZeroArg(Undefined.instance, JSFrameUtil.getFunctionObjectNoCast(frame));
             }
             MaterializedFrame scopeFrame = Truffle.getRuntime().createVirtualFrame(arguments, frameDescriptor).materialize();
             scopeFrame.setObject(parentSlot, parentScopeFrame);

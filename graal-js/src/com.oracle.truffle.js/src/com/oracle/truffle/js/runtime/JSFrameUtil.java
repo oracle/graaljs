@@ -50,9 +50,9 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InternalSlotId;
 
@@ -85,8 +85,12 @@ public final class JSFrameUtil {
         return JSArguments.getThisObject(frame.getArguments());
     }
 
-    public static DynamicObject getFunctionObject(Frame frame) {
-        return (DynamicObject) JSArguments.getFunctionObject(frame.getArguments());
+    public static JSFunctionObject getFunctionObject(Frame frame) {
+        return (JSFunctionObject.Unbound) JSArguments.getFunctionObject(frame.getArguments());
+    }
+
+    public static Object getFunctionObjectNoCast(Frame frame) {
+        return JSArguments.getFunctionObject(frame.getArguments());
     }
 
     public static Object[] getArgumentsArray(Frame frame) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -233,7 +233,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 instanceTemplateNode = insert(ObjectTemplateNode.fromObjectTemplate(instanceTemplate, context, graalAccess, realm));
             }
-            instanceTemplateNode.executeWithObject(frame, thisObject);
+            instanceTemplateNode.executeWithObject(frame, thisObject, realm);
         } else {
             // when aux engine cache is enabled, don't specialize on ObjectTemplate instances.
             graalAccess.objectTemplateInstantiate(realm, instanceTemplate, thisObject);

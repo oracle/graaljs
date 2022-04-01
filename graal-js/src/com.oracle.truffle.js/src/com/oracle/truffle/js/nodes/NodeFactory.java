@@ -41,10 +41,12 @@
 package com.oracle.truffle.js.nodes;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -178,6 +180,7 @@ import com.oracle.truffle.js.nodes.control.IfNode;
 import com.oracle.truffle.js.nodes.control.IteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.LabelNode;
 import com.oracle.truffle.js.nodes.control.ModuleBodyNode;
+import com.oracle.truffle.js.nodes.control.ModuleInitializeEnvironmentNode;
 import com.oracle.truffle.js.nodes.control.ModuleYieldNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.control.ReturnNode;
@@ -223,6 +226,7 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryPlusNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.nodes.unary.VoidNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
@@ -648,6 +652,26 @@ public class NodeFactory {
         return InitializeFrameSlotsNode.create(scope, slots);
     }
 
+    public JavaScriptNode createInitializeFrameSlotRange(ScopeFrameNode scope, int start, int end) {
+        return InitializeFrameSlotsNode.createRange(scope, start, end);
+    }
+
+    public final JavaScriptNode createInitializeFrameSlots(ScopeFrameNode scope, int[] slots, int from, int to) {
+        if (to - from >= 2) {
+            boolean isRange = true;
+            for (int i = from + 1; i < to; i++) {
+                if (slots[i - 1] != slots[i] - 1) {
+                    isRange = false;
+                    break;
+                }
+            }
+            if (isRange) {
+                return createInitializeFrameSlotRange(scope, slots[from], slots[to - 1] + 1);
+            }
+        }
+        return createInitializeFrameSlots(scope, (from == 0 && to == slots.length) ? slots : Arrays.copyOfRange(slots, from, to));
+    }
+
     public JavaScriptNode createThrow(JSContext context, JavaScriptNode expression) {
         return ThrowNode.create(expression, context);
     }
@@ -805,6 +829,29 @@ public class NodeFactory {
         return functionRoot;
     }
 
+    public FunctionRootNode createModuleRootNode(AbstractBodyNode linkBody, AbstractBodyNode evalBody, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection,
+                    TruffleString internalFunctionName) {
+        FunctionRootNode linkRoot;
+        FunctionRootNode evalRoot;
+        if (linkBody == evalBody) {
+            evalRoot = linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection, internalFunctionName);
+        } else {
+            linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection, Strings.concat(internalFunctionName, Evaluator.MODULE_LINK_SUFFIX));
+            evalRoot = FunctionRootNode.create(evalBody, null, functionData, sourceSection, Strings.concat(internalFunctionName, Evaluator.MODULE_EVAL_SUFFIX));
+        }
+
+        RootCallTarget linkCallTarget = linkRoot.getCallTarget();
+        RootCallTarget evalCallTarget = evalRoot.getCallTarget();
+        // Module function data is always eagerly initialized.
+        // The [[Construct]] target is used to represent InitializeEnvironment().
+        // The [[Call]] target is used to represent ExecuteModule().
+        functionData.setRootTarget(evalCallTarget);
+        functionData.setCallTarget(evalCallTarget);
+        functionData.setConstructTarget(linkCallTarget);
+        functionData.setConstructNewTarget(linkCallTarget);
+        return linkRoot;
+    }
+
     public ConstructorRootNode createConstructorRootNode(JSFunctionData functionData, CallTarget callTarget, boolean newTarget) {
         return ConstructorRootNode.create(functionData, callTarget, newTarget);
     }
@@ -813,12 +860,18 @@ public class NodeFactory {
         return FunctionBodyNode.create(body);
     }
 
+    /**
+     * @param functionNode used by snapshot recording.
+     */
     public JSFunctionExpressionNode createFunctionExpression(JSFunctionData function, FunctionRootNode functionNode, JSFrameSlot blockScopeSlot) {
-        return JSFunctionExpressionNode.create(function, functionNode, blockScopeSlot);
+        return JSFunctionExpressionNode.create(function, blockScopeSlot);
     }
 
+    /**
+     * @param functionNode used by snapshot recording.
+     */
     public JSFunctionExpressionNode createFunctionExpressionLexicalThis(JSFunctionData function, FunctionRootNode functionNode, JSFrameSlot blockScopeSlot, JavaScriptNode thisNode) {
-        return JSFunctionExpressionNode.createLexicalThis(function, functionNode, blockScopeSlot, thisNode);
+        return JSFunctionExpressionNode.createLexicalThis(function, blockScopeSlot, thisNode);
     }
 
     public JavaScriptNode createPrepareThisBinding(JSContext context, JavaScriptNode child) {
@@ -1167,8 +1220,12 @@ public class NodeFactory {
         return ModuleBodyNode.create(moduleBody);
     }
 
-    public JavaScriptNode createModuleYield(JSFrameSlot stateSlot) {
-        return ModuleYieldNode.create(stateSlot.getIndex());
+    public JavaScriptNode createModuleInitializeEnvironment(JavaScriptNode moduleBody) {
+        return ModuleInitializeEnvironmentNode.create(moduleBody);
+    }
+
+    public JavaScriptNode createModuleYield() {
+        return ModuleYieldNode.create();
     }
 
     public JavaScriptNode createTopLevelAsyncModuleBody(JSContext context, JavaScriptNode moduleBody, JSWriteFrameSlotNode asyncResult, JSWriteFrameSlotNode writeAsyncContextNode) {

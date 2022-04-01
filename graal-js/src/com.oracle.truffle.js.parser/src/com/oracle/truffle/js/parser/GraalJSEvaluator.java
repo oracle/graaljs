@@ -432,7 +432,8 @@ public final class GraalJSEvaluator implements JSParser {
                 module.getEnvironment().setObject(defaultSlot, module.getHostDefined());
             }
         };
-        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), rootNode.getCallTarget(), 0, Strings.EMPTY_STRING);
+        CallTarget callTarget = rootNode.getCallTarget();
+        JSFunctionData functionData = JSFunctionData.create(realm.getContext(), callTarget, callTarget, 0, Strings.EMPTY_STRING, false, false, true, true);
         final JSModuleData parseModule = new JSModuleData(moduleNode, source, functionData, frameDescriptor);
         return new JSModuleRecord(parseModule, realm.getModuleLoader(), hostDefined);
     }
@@ -669,7 +670,10 @@ public final class GraalJSEvaluator implements JSParser {
 
         // Initialize the environment by executing the module function.
         // It will automatically yield when the module is instantiated.
-        moduleExecution(realm, moduleRecord, null);
+        var moduleFunction = JSFunction.create(realm, moduleRecord.getFunctionData());
+        Object[] arguments = JSArguments.create(Undefined.instance, moduleFunction, moduleRecord);
+        // The [[Construct]] target of a module is used to initialize the environment.
+        JSFunction.getConstructTarget(moduleFunction).call(arguments);
     }
 
     @TruffleBoundary

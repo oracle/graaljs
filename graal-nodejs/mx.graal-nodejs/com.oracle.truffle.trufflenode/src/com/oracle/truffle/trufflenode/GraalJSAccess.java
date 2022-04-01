@@ -3878,7 +3878,7 @@ public final class GraalJSAccess {
         JSFunctionData functionData = engineCacheData.getOrCreateSyntheticModuleData((TruffleString) moduleName, exportNames, (c) -> {
             JavaScriptRootNode rootNode = new SyntheticModuleRootNode(mainJSContext.getLanguage(), source, frameDescriptor);
             CallTarget callTarget = rootNode.getCallTarget();
-            return JSFunctionData.createCallOnly(mainJSContext, callTarget, 0, (TruffleString) moduleName);
+            return JSFunctionData.create(mainJSContext, callTarget, callTarget, 0, (TruffleString) moduleName, false, false, true, true);
         });
 
         final JSModuleData parsedModule = new JSModuleData(moduleNode, source, functionData, frameDescriptor);

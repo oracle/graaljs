@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.YieldResultNode.ExceptionYieldResultNode;
+import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -53,18 +56,16 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * finished initializing the environment. Execution is resumed at this point when the module is
  * evaluated.
  */
-public class ModuleYieldNode extends JavaScriptNode implements ResumableNode.WithIntState, SuspendNode {
+public class ModuleYieldNode extends JavaScriptNode implements ResumableNode, SuspendNode {
 
-    private final int stateSlot;
     @Child private YieldResultNode generatorYieldNode;
 
-    protected ModuleYieldNode(int stateSlot) {
-        this.stateSlot = stateSlot;
+    protected ModuleYieldNode() {
         this.generatorYieldNode = new ExceptionYieldResultNode();
     }
 
-    public static ModuleYieldNode create(int stateSlot) {
-        return new ModuleYieldNode(stateSlot);
+    public static ModuleYieldNode create() {
+        return new ModuleYieldNode();
     }
 
     protected final Object generatorYield(VirtualFrame frame) {
@@ -73,20 +74,17 @@ public class ModuleYieldNode extends JavaScriptNode implements ResumableNode.Wit
 
     @Override
     public Object execute(VirtualFrame frame) {
-        int index = getStateAsInt(frame, stateSlot);
-        if (index == 0) {
-            setStateAsInt(frame, stateSlot, 1);
+        JSModuleRecord moduleRecord = (JSModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
+        if (moduleRecord.getStatus() == Status.Linking) {
             return generatorYield(frame);
         } else {
-            assert index == 1;
-            setStateAsInt(frame, stateSlot, 0);
             return Undefined.instance;
         }
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(stateSlot);
+        return create();
     }
 
 }

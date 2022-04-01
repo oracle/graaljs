@@ -43,16 +43,17 @@ package com.oracle.truffle.js.parser;
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.LexicalContext;
 import com.oracle.js.parser.ir.Scope;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.env.EvalEnvironment;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
 
 public final class JavaScriptTranslator extends GraalJSTranslator {
@@ -124,16 +125,16 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
     public static JSModuleData translateModule(NodeFactory factory, JSContext context, Source source) {
         FunctionNode parsed = GraalJSParserHelper.parseModule(context, source, context.getParserOptions().putStrict(true));
         JavaScriptTranslator translator = new JavaScriptTranslator(factory, context, source, 0, null, true);
-        FunctionRootNode functionRoot = translator.translateModule(parsed);
-        return new JSModuleData(parsed.getModule(), source, functionRoot.getFunctionData(), functionRoot.getFrameDescriptor());
+        JSFunctionData functionData = translator.translateModule(parsed);
+        return new JSModuleData(parsed.getModule(), source, functionData, ((RootCallTarget) functionData.getConstructTarget()).getRootNode().getFrameDescriptor());
     }
 
-    private FunctionRootNode translateModule(com.oracle.js.parser.ir.FunctionNode functionNode) {
+    private JSFunctionData translateModule(com.oracle.js.parser.ir.FunctionNode functionNode) {
         if (!functionNode.isModule()) {
             throw new IllegalArgumentException("root function node is not a module");
         }
         JSFunctionExpressionNode functionExpression = (JSFunctionExpressionNode) transformFunction(functionNode);
-        return functionExpression.getFunctionNode();
+        return functionExpression.getFunctionData();
     }
 
     @Override
