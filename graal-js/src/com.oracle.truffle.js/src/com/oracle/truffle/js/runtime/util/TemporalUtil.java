@@ -118,6 +118,7 @@ import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -841,18 +842,13 @@ public final class TemporalUtil {
         return result;
     }
 
-    // like toPositiveInteger, but constrains to int values
-    // used when caller would constrain/reject anyway
-    public static int toPositiveIntegerConstrainInt(Object value) {
-        Number result = toIntegerThrowOnInfinity(value);
-        double dResult = JSRuntime.doubleValue(result);
-        if (dResult <= 0) {
+    public static int toPositiveIntegerConstrainInt(Object value, JSToIntegerThrowOnInfinityNode toIntegerThrowOnInfinityNode, BranchProfile errorBranch) {
+        int integer = toIntegerThrowOnInfinityNode.executeIntOrThrow(value);
+        if (integer <= 0) {
+            errorBranch.enter();
             throw Errors.createRangeError("positive value expected");
         }
-        if (dResult > Integer.MAX_VALUE) {
-            return Integer.MAX_VALUE;
-        }
-        return JSRuntime.intValue(result);
+       return integer;
     }
 
     // 13.52
