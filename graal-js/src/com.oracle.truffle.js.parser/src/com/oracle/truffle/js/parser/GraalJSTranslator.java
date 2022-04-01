@@ -503,6 +503,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return functionRoot;
     }
 
+    /**
+     * Creates one or two module root nodes out of a module body. Every module has exactly one yield
+     * statement separating the linking and evaluation parts, so we try to split it up into two root
+     * nodes, eliminating the yield and the need to suspend and resume (except for top-level await).
+     *
+     * @see #splitModuleBodyAtYield
+     */
     private FunctionRootNode createModuleRoot(FunctionNode functionNode, JSFunctionData functionData, FunctionEnvironment currentFunction, JavaScriptNode body) {
         if (JSConfig.PrintAst) {
             printAST(body);
@@ -1433,8 +1440,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     /**
-     * Moves all statements up to, and including, module yield to scopeInit and returns a new body.
-     * This ensures a flat block up to the yield, followed by a RootBody-tagged (block) node.
+     * Moves all statements up to, and including, module yield to scopeInit and returns a new block
+     * containing the rest of the body. This ensures a flat block up to the yield, followed by a
+     * RootBody-tagged (block) node. Otherwise we might end up with a nested block that contains the
+     * yield, making it more involved to split up the module at the yield into link() and execute();
+     * but even if we kept the yield, we'd still have two blocks to resume into instead of one.
+     *
+     * <pre>
+     * [ScopeInit] | [ModuleLink Yield ModuleExecute]:body =>
+     * [ScopeInit ModuleLink Yield] | [ModuleExecute]:body
+     * </pre>
      */
     private JavaScriptNode splitModuleBodyAtYield(JavaScriptNode blockNode, List<JavaScriptNode> scopeInit) {
         if (blockNode instanceof SequenceNode) {
@@ -1454,6 +1469,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return blockNode;
     }
 
+    /**
+     * Detects a module yield, optionally wrapped in a return value slot assignment.
+     */
     private static boolean isModuleYieldStatement(JavaScriptNode statement) {
         return statement instanceof ModuleYieldNode || (statement instanceof JSWriteFrameSlotNode && ((JSWriteFrameSlotNode) statement).getRhs() instanceof ModuleYieldNode);
     }
