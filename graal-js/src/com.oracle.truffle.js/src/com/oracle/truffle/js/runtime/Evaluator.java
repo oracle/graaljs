@@ -62,6 +62,9 @@ public interface Evaluator {
     TruffleString TS_EVAL_SOURCE_NAME = Strings.constant(EVAL_SOURCE_NAME);
     TruffleString TS_EVAL_AT_SOURCE_NAME_PREFIX = Strings.constant(EVAL_AT_SOURCE_NAME_PREFIX);
 
+    TruffleString MODULE_LINK_SUFFIX = Strings.constant(":link");
+    TruffleString MODULE_EVAL_SUFFIX = Strings.constant(":eval");
+
     /**
      * Parse (indirect) eval code using the global execution context.
      *
