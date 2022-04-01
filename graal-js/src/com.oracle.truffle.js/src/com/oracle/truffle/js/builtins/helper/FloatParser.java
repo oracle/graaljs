@@ -40,76 +40,63 @@
  */
 package com.oracle.truffle.js.builtins.helper;
 
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 
-public class FloatParser {
+public final class FloatParser {
 
     private final TruffleString input;
     private int pos;
     private boolean isNaN;
     private final double value;
 
-    private final BranchProfile exponentBranch;
-    private final TruffleString.ReadCharUTF16Node charAtNode;
-    private final TruffleString.SubstringByteIndexNode substringNode;
-    private final TruffleString.ParseDoubleNode parseDoubleNode;
-
-    public FloatParser(TruffleString s, BranchProfile exponentBranch,
-                    TruffleString.ReadCharUTF16Node charAtNode,
-                    TruffleString.SubstringByteIndexNode substringNode,
-                    TruffleString.ParseDoubleNode parseDoubleNode) throws TruffleString.NumberFormatException {
+    public FloatParser(TruffleString s, FloatParserNode node) throws TruffleString.NumberFormatException {
         input = s;
-        this.charAtNode = charAtNode;
-        this.substringNode = substringNode;
-        this.parseDoubleNode = parseDoubleNode;
         pos = 0;
         isNaN = false;
-        this.exponentBranch = exponentBranch;
-        value = parse();
+        value = parse(node);
     }
 
     public double getResult() {
         return value;
     }
 
-    private double parse() throws TruffleString.NumberFormatException {
-        strDecimalLiteral();
+    private double parse(FloatParserNode node) throws TruffleString.NumberFormatException {
+        strDecimalLiteral(node);
         if (isNaN) {
             return Double.NaN;
         }
-        return parseValidSubstring();
+        return parseValidSubstring(node);
     }
 
-    private double parseValidSubstring() throws TruffleString.NumberFormatException {
+    private double parseValidSubstring(FloatParserNode node) throws TruffleString.NumberFormatException {
         // always use lazy substring here, since the substring never escapes
-        return Strings.parseDouble(parseDoubleNode, Strings.substring(true, substringNode, input, 0, pos));
+        return Strings.parseDouble(node.parseDoubleNode, Strings.substring(true, node.substringNode, input, 0, pos));
     }
 
-    private void strDecimalLiteral() {
-        char currentChar = current();
+    private void strDecimalLiteral(FloatParserNode node) {
+        char currentChar = current(node);
         if (currentChar == '+' || currentChar == '-') {
             next();
-            currentChar = current();
+            currentChar = current(node);
         }
         if (JSRuntime.isAsciiDigit(currentChar) || currentChar == '.') {
-            strUnsignedDecimalLiteral();
+            strUnsignedDecimalLiteral(node);
         } else {
             isNaN = true;
         }
     }
 
-    private void strUnsignedDecimalLiteral() {
-        if (JSRuntime.isAsciiDigit(current())) {
-            decimalDigits();
+    private void strUnsignedDecimalLiteral(FloatParserNode node) {
+        if (JSRuntime.isAsciiDigit(current(node))) {
+            decimalDigits(node);
         }
         int prevPos = pos;
-        if (hasNext() && current() == '.') {
+        if (hasNext() && current(node) == '.') {
             next();
-            if (JSRuntime.isAsciiDigit(current())) {
-                decimalDigits();
+            if (JSRuntime.isAsciiDigit(current(node))) {
+                decimalDigits(node);
             }
         }
         if (isNaN) {
@@ -118,8 +105,8 @@ public class FloatParser {
             return;
         }
         prevPos = pos;
-        if (isExponentPart()) {
-            exponentPart();
+        if (isExponentPart(node)) {
+            exponentPart(node);
         }
         if (isNaN) {
             pos = prevPos;
@@ -131,9 +118,9 @@ public class FloatParser {
         pos++;
     }
 
-    private char current() {
+    private char current(FloatParserNode node) {
         if (hasNext()) {
-            return Strings.charAt(charAtNode, input, pos);
+            return Strings.charAt(node.charAtNode, input, pos);
         } else {
             return 0;
         }
@@ -143,36 +130,36 @@ public class FloatParser {
         return pos < Strings.length(input);
     }
 
-    private void exponentPart() {
-        exponentBranch.enter();
-        assert current() == 'e' || current() == 'E';
+    private void exponentPart(FloatParserNode node) {
+        node.exponentBranch.enter();
+        assert current(node) == 'e' || current(node) == 'E';
         next();
-        char currentChar = current();
+        char currentChar = current(node);
         if (JSRuntime.isAsciiDigit(currentChar)) {
-            decimalDigits();
+            decimalDigits(node);
         } else if (currentChar == '+' || currentChar == '-') {
             next();
-            decimalDigits();
+            decimalDigits(node);
         } else {
             isNaN = true;
         }
     }
 
-    private boolean isExponentPart() {
+    private boolean isExponentPart(FloatParserNode node) {
         if (hasNext()) {
-            char firstChar = current();
+            char firstChar = current(node);
             return firstChar == 'e' || firstChar == 'E';
         }
         return false;
     }
 
-    private void decimalDigits() {
-        char currentChar = current();
+    private void decimalDigits(FloatParserNode node) {
+        char currentChar = current(node);
         boolean valid = false;
         while (JSRuntime.isAsciiDigit(currentChar) && hasNext()) {
             valid = true;
             next();
-            currentChar = current();
+            currentChar = current(node);
         }
         if (!valid) {
             isNaN = true;

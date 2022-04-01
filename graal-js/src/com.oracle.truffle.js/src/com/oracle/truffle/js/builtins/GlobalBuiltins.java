@@ -99,7 +99,7 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadFullyNod
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadLineNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalUnEscapeNodeGen;
 import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
-import com.oracle.truffle.js.builtins.helper.FloatParser;
+import com.oracle.truffle.js.builtins.helper.FloatParserNode;
 import com.oracle.truffle.js.builtins.helper.StringEscape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -792,14 +792,11 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
      * Implementation of ECMAScript 5.1 15.1.2.3 parseFloat() method.
      */
     public abstract static class JSGlobalParseFloatNode extends JSGlobalOperation {
-        private final BranchProfile exponentBranch = BranchProfile.create();
         @Child protected JSTrimWhitespaceNode trimWhitespaceNode;
         @Child protected TruffleString.RegionEqualByteIndexNode regionEqualsNode1;
         @Child protected TruffleString.RegionEqualByteIndexNode regionEqualsNode2;
         @Child protected TruffleString.RegionEqualByteIndexNode regionEqualsNode3;
-        @Child protected TruffleString.ReadCharUTF16Node charAtNode;
-        @Child protected TruffleString.SubstringByteIndexNode substringNode;
-        @Child protected TruffleString.ParseDoubleNode parseDoubleNode;
+        @Child protected FloatParserNode floatParserNode;
 
         public JSGlobalParseFloatNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -849,14 +846,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private double parseFloatIntl2(TruffleString trimmedString) {
-            if (regionEqualsNode1 == null || regionEqualsNode2 == null || regionEqualsNode3 == null || charAtNode == null || substringNode == null || parseDoubleNode == null) {
+            if (regionEqualsNode1 == null || regionEqualsNode2 == null || regionEqualsNode3 == null || floatParserNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 regionEqualsNode1 = insert(TruffleString.RegionEqualByteIndexNode.create());
                 regionEqualsNode2 = insert(TruffleString.RegionEqualByteIndexNode.create());
                 regionEqualsNode3 = insert(TruffleString.RegionEqualByteIndexNode.create());
-                charAtNode = insert(TruffleString.ReadCharUTF16Node.create());
-                substringNode = insert(TruffleString.SubstringByteIndexNode.create());
-                parseDoubleNode = insert(TruffleString.ParseDoubleNode.create());
+                floatParserNode = insert(FloatParserNode.create());
             }
             if (Strings.startsWith(regionEqualsNode1, trimmedString, Strings.INFINITY) || Strings.startsWith(regionEqualsNode2, trimmedString, Strings.POSITIVE_INFINITY)) {
                 return Double.POSITIVE_INFINITY;
@@ -864,8 +859,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return Double.NEGATIVE_INFINITY;
             }
             try {
-                FloatParser parser = new FloatParser(trimmedString, exponentBranch, charAtNode, substringNode, parseDoubleNode);
-                return parser.getResult();
+                return floatParserNode.parse(trimmedString);
             } catch (TruffleString.NumberFormatException e) {
                 return Double.NaN;
             }
