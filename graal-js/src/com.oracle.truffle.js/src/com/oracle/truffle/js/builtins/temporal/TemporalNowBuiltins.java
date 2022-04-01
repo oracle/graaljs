@@ -235,7 +235,7 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
 
         @Specialization
         public DynamicObject plainTimeISO(Object temporalTimeZoneLike,
-                                          @Cached("create()") BranchProfile errorBranch) {
+                        @Cached("create()") BranchProfile errorBranch) {
             DynamicObject calendar = TemporalUtil.getISO8601Calendar(getContext(), getRealm(), errorBranch);
             JSTemporalPlainDateTimeObject dateTime = TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext());
             return JSTemporalPlainTime.create(getContext(), dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(),

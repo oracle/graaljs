@@ -848,7 +848,7 @@ public final class TemporalUtil {
             errorBranch.enter();
             throw Errors.createRangeError("positive value expected");
         }
-       return integer;
+        return integer;
     }
 
     // 13.52
@@ -1097,7 +1097,7 @@ public final class TemporalUtil {
         return values;
     }
 
-    //TODO rewrite this to node
+    // TODO rewrite this to node
     public static JSTemporalPlainDateObject dateFromFields(DynamicObject calendar, DynamicObject fields, Object options) {
         Object dateFromFields = JSObject.get(calendar, TemporalConstants.DATE_FROM_FIELDS);
         Object date = JSRuntime.call(dateFromFields, calendar, new Object[]{fields, options});

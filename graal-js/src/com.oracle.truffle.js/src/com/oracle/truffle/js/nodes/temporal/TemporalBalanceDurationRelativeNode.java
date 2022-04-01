@@ -102,7 +102,8 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
         long weeks = dtol(w);
         long days = dtol(d);
 
-        if (unitIsDay.profile((largestUnit != TemporalUtil.Unit.YEAR && largestUnit != TemporalUtil.Unit.MONTH && largestUnit != TemporalUtil.Unit.WEEK) || (years == 0 && months == 0 && weeks == 0 && days == 0))) {
+        if (unitIsDay.profile((largestUnit != TemporalUtil.Unit.YEAR && largestUnit != TemporalUtil.Unit.MONTH && largestUnit != TemporalUtil.Unit.WEEK) ||
+                        (years == 0 && months == 0 && weeks == 0 && days == 0))) {
             return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
         }
         long sign = TemporalUtil.durationSign(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
@@ -122,7 +123,8 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
         }
     }
 
-    private JSTemporalDurationRecord getUnitYear(long yearsP, long monthsP, long weeks, long daysP, long sign, DynamicObject oneYear, DynamicObject oneMonth, DynamicObject relativeToP, DynamicObject calendar) {
+    private JSTemporalDurationRecord getUnitYear(long yearsP, long monthsP, long weeks, long daysP, long sign, DynamicObject oneYear, DynamicObject oneMonth, DynamicObject relativeToP,
+                    DynamicObject calendar) {
         long years = yearsP;
         long months = monthsP;
         long days = daysP;
@@ -190,7 +192,8 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
         return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
     }
 
-    private JSTemporalDurationRecord getUnitWeek(TemporalUtil.Unit largestUnit, long years, long months, long weeksP, long daysP, long sign, DynamicObject oneWeek, DynamicObject relativeToP, DynamicObject calendar) {
+    private JSTemporalDurationRecord getUnitWeek(TemporalUtil.Unit largestUnit, long years, long months, long weeksP, long daysP, long sign, DynamicObject oneWeek, DynamicObject relativeToP,
+                    DynamicObject calendar) {
         long weeks = weeksP;
         long days = daysP;
         DynamicObject relativeTo = relativeToP;

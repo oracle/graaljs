@@ -99,7 +99,7 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
         JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalPlainYearMonthFactory();
         DynamicObject obj = factory.initProto(new JSTemporalPlainYearMonthObject(factory.getShape(realm), isoYear,
-                isoMonth, referenceISODay, calendar), realm);
+                        isoMonth, referenceISODay, calendar), realm);
         return context.trackAllocation(obj);
     }
 
