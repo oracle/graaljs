@@ -675,7 +675,7 @@ public final class ScopeVariables implements TruffleObject {
 
         // traverse non-local frames
         while (outerFrame != JSFrameUtil.NULL_MATERIALIZED_FRAME) {
-            visitor.descNode = ((RootCallTarget) JSFunction.getFunctionData(JSFrameUtil.getFunctionObject(outerFrame)).getRootTarget()).getRootNode();
+            visitor.descNode = JSFunction.getFunctionData(JSFrameUtil.getFunctionObject(outerFrame)).getRootNode();
             visitor.scopeLevel = 0;
             for (;;) {
                 visitor.parentSlot = -1;

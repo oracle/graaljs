@@ -46,7 +46,6 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -215,7 +214,7 @@ final class ScopeMembers implements TruffleObject {
 
             // traverse non-local frames
             while (outerFrame != JSFrameUtil.NULL_MATERIALIZED_FRAME) {
-                visitor.descNode = ((RootCallTarget) JSFunction.getFunctionData(JSFrameUtil.getFunctionObject(outerFrame)).getRootTarget()).getRootNode();
+                visitor.descNode = JSFunction.getFunctionData(JSFrameUtil.getFunctionObject(outerFrame)).getRootNode();
                 visitor.seenThis = false;
                 for (;;) {
                     visitor.parentSlot = -1;
