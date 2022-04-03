@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -219,7 +219,8 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
         if (JSConfig.LazyFunctionData) {
             functionData.setLazyInit(this);
         } else {
-            initializeEager(functionData);
+            initializeRoot(functionData);
+            initializeCallTargets(functionData);
         }
 
         context.putBuiltinFunctionData(this, functionData);
@@ -252,17 +253,16 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
         JSBuiltinNode functionRoot = JSBuiltinNode.createBuiltin(context, builtin, false, false);
         FrameDescriptor frameDescriptor = null;
         FunctionRootNode callRoot = FunctionRootNode.create(functionRoot, frameDescriptor, functionData, getSourceSection(), builtin.getFullName());
-
-        CallTarget callTarget = callRoot.getCallTarget();
-        callTarget = functionData.setRootTarget(callTarget);
-        functionData.setCallTarget(callTarget);
+        functionData.setRootNode(callRoot);
     }
 
     private static void initializeFunctionDataCallTarget(JSFunctionData functionData, JSBuiltin builtin, JSFunctionData.Target target, CallTarget callTarget) {
         JSContext context = functionData.getContext();
         NodeFactory factory = NodeFactory.getDefaultInstance();
         FrameDescriptor frameDescriptor = null;
-        if (target == JSFunctionData.Target.Construct) {
+        if (target == JSFunctionData.Target.Call) {
+            functionData.setCallTarget(callTarget);
+        } else if (target == JSFunctionData.Target.Construct) {
             RootNode constructRoot;
             if (builtin.hasSeparateConstructor()) {
                 JSBuiltinNode constructNode = JSBuiltinNode.createBuiltin(context, builtin, true, false);

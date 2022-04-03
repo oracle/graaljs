@@ -43,7 +43,6 @@ package com.oracle.truffle.js.parser;
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.LexicalContext;
 import com.oracle.js.parser.ir.Scope;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -126,7 +125,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
         FunctionNode parsed = GraalJSParserHelper.parseModule(context, source, context.getParserOptions().putStrict(true));
         JavaScriptTranslator translator = new JavaScriptTranslator(factory, context, source, 0, null, true);
         JSFunctionData functionData = translator.translateModule(parsed);
-        return new JSModuleData(parsed.getModule(), source, functionData, ((RootCallTarget) functionData.getConstructTarget()).getRootNode().getFrameDescriptor());
+        return new JSModuleData(parsed.getModule(), source, functionData, functionData.getRootNode().getFrameDescriptor());
     }
 
     private JSFunctionData translateModule(com.oracle.js.parser.ir.FunctionNode functionNode) {

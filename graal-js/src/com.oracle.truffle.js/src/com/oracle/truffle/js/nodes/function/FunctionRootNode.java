@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -189,16 +189,6 @@ public final class FunctionRootNode extends JavaScriptRealmBoundaryRootNode impl
 
     public static void setOmitFromStackTrace(JSFunctionData until) {
         OMIT_FROM_STACK_TRACE.set(until);
-    }
-
-    @Override
-    public void initializeRoot(JSFunctionData fd) {
-        if (fd.getRootTarget() != null) {
-            // Root call target is already being initialized! This can happen when instrumentation
-            // is attempting to materialize this function's definition during its initialization.
-            return;
-        }
-        fd.setRootTarget(this.getCallTarget());
     }
 
     @Override

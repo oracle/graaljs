@@ -112,6 +112,7 @@ public final class JSConfig {
     public static final boolean ManyBlockScopes = false;
     public static final boolean YieldResultInFrame = true;
     public static final boolean LazyFunctionData = true;
+    public static final boolean SplitModuleRoot = Boolean.FALSE;
     public static final boolean PrintAst = false;
     public static final boolean PrintParse = false;
 

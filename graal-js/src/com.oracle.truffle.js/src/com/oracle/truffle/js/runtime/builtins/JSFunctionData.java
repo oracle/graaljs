@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,11 +48,10 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public final class JSFunctionData {
@@ -93,8 +92,8 @@ public final class JSFunctionData {
     /** Is this a bound function. */
     private static final int IS_BOUND = 1 << 10;
 
-    /** Innermost call target used for lazy creation of the actual call targets. */
-    private volatile CallTarget rootTarget;
+    /** Innermost root node used for lazy creation of the actual call targets. */
+    private volatile RootNode rootNode;
     /** Lazy initialization function. */
     private volatile Initializer lazyInit;
 
@@ -104,8 +103,8 @@ public final class JSFunctionData {
                     AtomicReferenceFieldUpdater.newUpdater(JSFunctionData.class, CallTarget.class, "constructTarget");
     private static final AtomicReferenceFieldUpdater<JSFunctionData, CallTarget> UPDATER_CONSTRUCT_NEW_TARGET = //
                     AtomicReferenceFieldUpdater.newUpdater(JSFunctionData.class, CallTarget.class, "constructNewTarget");
-    private static final AtomicReferenceFieldUpdater<JSFunctionData, CallTarget> UPDATER_ROOT_TARGET = //
-                    AtomicReferenceFieldUpdater.newUpdater(JSFunctionData.class, CallTarget.class, "rootTarget");
+    private static final AtomicReferenceFieldUpdater<JSFunctionData, RootNode> UPDATER_ROOT_TARGET = //
+                    AtomicReferenceFieldUpdater.newUpdater(JSFunctionData.class, RootNode.class, "rootNode");
 
     private JSFunctionData(JSContext context, CallTarget callTarget, CallTarget constructTarget, CallTarget constructNewTarget, int length, TruffleString name, int flags) {
         this.context = context;
@@ -317,16 +316,20 @@ public final class JSFunctionData {
     }
 
     public CallTarget getRootTarget() {
-        return rootTarget;
+        return rootNode.getCallTarget();
     }
 
-    public CallTarget setRootTarget(CallTarget rootTarget) {
+    public RootNode getRootNode() {
+        return rootNode;
+    }
+
+    public RootNode setRootNode(RootNode rootNode) {
         CompilerAsserts.neverPartOfCompilation();
-        Objects.requireNonNull(rootTarget);
-        if (UPDATER_ROOT_TARGET.compareAndSet(this, null, rootTarget)) {
-            return rootTarget;
+        Objects.requireNonNull(rootNode);
+        if (UPDATER_ROOT_TARGET.compareAndSet(this, null, rootNode)) {
+            return rootNode;
         } else {
-            throw Errors.shouldNotReachHere("call target created more than once");
+            throw Errors.shouldNotReachHere("RootNode created more than once");
         }
     }
 
@@ -347,8 +350,7 @@ public final class JSFunctionData {
     }
 
     public void setLazyInit(Initializer lazyInit) {
-        assert JSConfig.LazyFunctionData;
-        assert this.lazyInit == null;
+        assert this.lazyInit == null || (this.rootNode != null && lazyInit instanceof CallTargetInitializer);
         this.lazyInit = lazyInit;
     }
 
@@ -359,24 +361,18 @@ public final class JSFunctionData {
     private CallTarget ensureInitialized(Target target) {
         CompilerAsserts.neverPartOfCompilation();
         Initializer init = lazyInit;
-        assert init != null;
-        CallTarget rootCallTarget = rootTarget;
-        if (rootCallTarget == null) {
+        RootNode root = rootNode;
+        if (root == null) {
             // synchronizing on context so we do not need one lock per function
             synchronized (context) {
-                rootCallTarget = rootTarget;
-                if (rootCallTarget == null) {
+                root = rootNode;
+                if (root == null) {
                     init.initializeRoot(this);
-                    rootCallTarget = rootTarget;
-
-                    // release lazy initialization closure
-                    if (!(init instanceof CallTargetInitializer)) {
-                        lazyInit = init = (CallTargetInitializer) ((RootCallTarget) rootCallTarget).getRootNode();
-                    }
+                    root = rootNode;
                 }
             }
         }
-        assert rootCallTarget != null;
+        assert root != null;
         AtomicReferenceFieldUpdater<JSFunctionData, CallTarget> updater = target.getUpdater();
         CallTarget result = updater.get(this);
         if (result != null) {
@@ -386,26 +382,28 @@ public final class JSFunctionData {
         if (init instanceof CallTargetInitializer) {
             callTargetInit = (CallTargetInitializer) init;
         } else {
-            callTargetInit = (CallTargetInitializer) ((RootCallTarget) rootCallTarget).getRootNode();
+            callTargetInit = (CallTargetInitializer) root;
         }
-        callTargetInit.initializeCallTarget(this, target, rootCallTarget);
+        callTargetInit.initializeCallTarget(this, target, root.getCallTarget());
         result = updater.get(this);
-        assert result != null;
-        return result;
+        return Objects.requireNonNull(result);
     }
 
     public void materialize() {
         CompilerAsserts.neverPartOfCompilation();
         assert !isBuiltin();
-        Initializer init = lazyInit;
-        if (init != null && rootTarget == null) {
+        if (rootNode == null) {
+            // lazy translation
+            Initializer init = lazyInit;
             // synchronizing on context so we do not need one lock per function
             synchronized (context) {
-                if (rootTarget == null) {
+                if (rootNode == null) {
                     init.initializeRoot(this);
                 }
             }
         }
+        // ensure call target is initialized and visible to instrumentation
+        rootNode.getCallTarget();
     }
 
     public enum Target {
@@ -431,10 +429,14 @@ public final class JSFunctionData {
     public interface CallTargetInitializer extends Initializer {
         void initializeCallTarget(JSFunctionData functionData, Target target, CallTarget rootTarget);
 
-        default void initializeEager(JSFunctionData functionData) {
-            assert functionData.rootTarget == null;
-            initializeRoot(functionData);
-            CallTarget rootTarget = Objects.requireNonNull(functionData.rootTarget);
+        @Override
+        default void initializeRoot(JSFunctionData functionData) {
+            assert functionData.rootNode != null;
+        }
+
+        default void initializeCallTargets(JSFunctionData functionData) {
+            // RootNode must already be initialized at this point
+            CallTarget rootTarget = functionData.rootNode.getCallTarget();
             initializeCallTarget(functionData, Target.Call, rootTarget);
             initializeCallTarget(functionData, Target.Construct, rootTarget);
             initializeCallTarget(functionData, Target.ConstructNewTarget, rootTarget);
