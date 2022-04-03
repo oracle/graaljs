@@ -523,7 +523,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (isModuleYieldStatement(body)) {
             statements = new JavaScriptNode[]{body};
         }
-        if (statements != null) {
+        if (JSConfig.SplitModuleRoot && statements != null) {
             for (int i = 0; i < statements.length; i++) {
                 JavaScriptNode statement = statements[i];
                 if (isModuleYieldStatement(statement)) {
