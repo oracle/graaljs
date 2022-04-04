@@ -1,0 +1,11 @@
+#/*
+# * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+# * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+# *
+# * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
+# */
+> mkdir ${TMP_DIR}/symbols
+> cd ${TMP_DIR}/symbols
+>[0?] js --native --experimental-options --engine.TraceCache --engine.CacheStore=${TMP_DIR}/symbols.image  ${TEST_DIR}/resources/symbol-species-getter-array-map.js
+# Here, we assert that the output is empty (i.e., no compilations/deopts happen)
+> js --native --experimental-options --vm.XX:+TraceDeoptimizationDetails --engine.TraceCompilation --engine.CacheLoad=${TMP_DIR}/symbols.image ${TEST_DIR}/resources/symbol-species-getter-array-map.js

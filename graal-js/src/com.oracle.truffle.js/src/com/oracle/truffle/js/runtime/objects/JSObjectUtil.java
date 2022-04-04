@@ -67,7 +67,6 @@ import com.oracle.truffle.js.runtime.builtins.Builtin;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 
 /**
@@ -417,7 +416,7 @@ public final class JSObjectUtil {
     }
 
     public static DynamicObject createSymbolSpeciesGetterFunction(JSRealm realm) {
-        return JSFunction.create(realm, JSFunctionData.createCallOnly(realm.getContext(), realm.getContext().getSpeciesGetterFunctionCallTarget(), 0, JSNonProxy.GET_SYMBOL_SPECIES_NAME));
+        return JSFunction.create(realm, realm.getContext().getSymbolSpeciesThisGetterFunctionData());
     }
 
     public static void putFunctionsFromContainer(JSRealm realm, DynamicObject thisObj, JSBuiltinsContainer container) {

@@ -647,7 +647,7 @@ public abstract class JSNonProxy extends JSClass {
     }
 
     protected static DynamicObject createSymbolSpeciesGetterFunction(JSRealm realm) {
-        return JSFunction.create(realm, JSFunctionData.createCallOnly(realm.getContext(), realm.getContext().getSpeciesGetterFunctionCallTarget(), 0, GET_SYMBOL_SPECIES_NAME));
+        return JSFunction.create(realm, realm.getContext().getSymbolSpeciesThisGetterFunctionData());
     }
 
     @Override

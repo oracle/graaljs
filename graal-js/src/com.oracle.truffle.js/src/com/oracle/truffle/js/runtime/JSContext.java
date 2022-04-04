@@ -155,6 +155,9 @@ import com.oracle.truffle.js.runtime.util.DebugJSAgent;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
 
+import static com.oracle.truffle.js.runtime.JSRealm.SYMBOL_ITERATOR_NAME;
+import static com.oracle.truffle.js.runtime.builtins.JSNonProxy.GET_SYMBOL_SPECIES_NAME;
+
 public class JSContext {
 
     private static final VarHandle FUNCTION_DATA_ARRAY_VAR_HANDLE = MethodHandles.arrayElementVarHandle(JSFunctionData[].class);
@@ -243,7 +246,9 @@ public class JSContext {
     private final Assumption importModuleDynamicallyCallbackNotUsedAssumption;
 
     private final CallTarget emptyFunctionCallTarget;
-    private final CallTarget speciesGetterFunctionCallTarget;
+
+    public final JSFunctionData symbolSpeciesThisGetterFunctionData;
+    public final JSFunctionData symbolIteratorThisGetterFunctionData;
 
     private volatile CallTarget notConstructibleCallTargetCache;
     private volatile CallTarget generatorNotConstructibleCallTargetCache;
@@ -394,6 +399,7 @@ public class JSContext {
     private final JSContextOptions contextOptions;
 
     private final Map<Builtin, JSFunctionData> builtinFunctionDataMap = new ConcurrentHashMap<>();
+    private final Map<TruffleString, JSFunctionData> namedEmptyFunctionsDataMap = new ConcurrentHashMap<>();
 
     private final JSPrototypeData nullPrototypeData = new JSPrototypeData();
     private final JSPrototypeData inObjectPrototypeData = new JSPrototypeData();
@@ -556,7 +562,8 @@ public class JSContext {
         this.importModuleDynamicallyCallbackNotUsedAssumption = Truffle.getRuntime().createAssumption("importModuleDynamicallyCallbackNotUsedAssumption");
 
         this.emptyFunctionCallTarget = createEmptyFunctionCallTarget(lang);
-        this.speciesGetterFunctionCallTarget = createSpeciesGetterFunctionCallTarget(lang);
+        this.symbolSpeciesThisGetterFunctionData = JSFunctionData.createCallOnly(this, createReadFrameThisCallTarget(lang), 0, GET_SYMBOL_SPECIES_NAME);
+        this.symbolIteratorThisGetterFunctionData = JSFunctionData.createCallOnly(this, createReadFrameThisCallTarget(lang), 0, SYMBOL_ITERATOR_NAME);
 
         this.builtinFunctionData = new JSFunctionData[BuiltinFunctionKey.values().length];
 
@@ -1250,6 +1257,10 @@ public class JSContext {
         return emptyFunctionCallTarget;
     }
 
+    public JSFunctionData getNamedEmptyFunctionData(TruffleString name) {
+        return namedEmptyFunctionsDataMap.computeIfAbsent(name, k -> JSFunctionData.createCallOnly(this, emptyFunctionCallTarget, 0, name));
+    }
+
     /** CallTarget for an empty function that returns undefined. */
     private static CallTarget createEmptyFunctionCallTarget(JavaScriptLanguage lang) {
         return new JavaScriptRootNode(lang, null, null) {
@@ -1260,11 +1271,15 @@ public class JSContext {
         }.getCallTarget();
     }
 
-    public CallTarget getSpeciesGetterFunctionCallTarget() {
-        return speciesGetterFunctionCallTarget;
+    public JSFunctionData getSymbolIteratorThisGetterFunctionData() {
+        return symbolIteratorThisGetterFunctionData;
     }
 
-    private static CallTarget createSpeciesGetterFunctionCallTarget(JavaScriptLanguage lang) {
+    public JSFunctionData getSymbolSpeciesThisGetterFunctionData() {
+        return symbolSpeciesThisGetterFunctionData;
+    }
+
+    private static CallTarget createReadFrameThisCallTarget(JavaScriptLanguage lang) {
         return new JavaScriptRootNode(lang, null, null) {
             @Override
             public Object execute(VirtualFrame frame) {

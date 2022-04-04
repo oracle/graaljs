@@ -56,10 +56,8 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 
@@ -90,10 +88,6 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         } else {
             return new LexicalThisAutonomousFunctionExpressionNode(function, thisNode);
         }
-    }
-
-    public static JSFunctionExpressionNode createEmpty(JSContext context, int length, String sourceName) {
-        return new AutonomousFunctionExpressionNode(JSFunctionData.create(context, context.getEmptyFunctionCallTarget(), length, Strings.fromJavaString(sourceName)));
     }
 
     @Override
