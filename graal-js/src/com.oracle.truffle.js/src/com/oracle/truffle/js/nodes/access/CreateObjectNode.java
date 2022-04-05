@@ -113,7 +113,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @Override
         public JSDynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
-            return JSOrdinary.create(context, getRealm());
+            return JSOrdinary.create(context, realm);
         }
 
         @Override
@@ -218,7 +218,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @Override
         public JSDynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
-            return JSDictionary.create(context, getRealm());
+            return JSDictionary.create(context, realm);
         }
 
         @Override
