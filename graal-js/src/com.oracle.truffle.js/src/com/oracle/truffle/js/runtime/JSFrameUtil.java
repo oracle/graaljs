@@ -145,6 +145,10 @@ public final class JSFrameUtil {
         return (getFlags(frameSlot) & IS_IMPORT_BINDING) != 0;
     }
 
+    public static boolean isImportBinding(FrameDescriptor desc, int index) {
+        return (getFlags(desc, index) & IS_IMPORT_BINDING) != 0;
+    }
+
     public static boolean isPrivateName(JSFrameSlot frameSlot) {
         return (getFlags(frameSlot) & IS_PRIVATE_NAME) != 0;
     }

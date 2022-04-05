@@ -73,6 +73,7 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
+import com.oracle.truffle.js.nodes.module.ReadImportBindingNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -463,7 +464,7 @@ public final class ScopeVariables implements TruffleObject {
         }
 
         boolean isModifiable() {
-            return hasSlot() && !JSFrameUtil.isConst(descriptor, slot) && !JSFrameUtil.isThisSlot(descriptor, slot);
+            return hasSlot() && !JSFrameUtil.isConst(descriptor, slot) && !JSFrameUtil.isThisSlot(descriptor, slot) && !JSFrameUtil.isImportBinding(descriptor, slot);
         }
 
         boolean hasSlot() {
@@ -609,6 +610,9 @@ public final class ScopeVariables implements TruffleObject {
                 } else if (JSFrameUtil.isThisSlot(frameDescriptor, slot) && ScopeVariables.RECEIVER_MEMBER.equals(member)) {
                     return new ResolvedThisSlot(slot, frameLevel, effectiveScopeLevel, frameDescriptor);
                 } else if (!JSFrameUtil.isInternal(frameDescriptor, slot) && member.equals(slotName)) {
+                    if (JSFrameUtil.isImportBinding(frameDescriptor, slot)) {
+                        return new ResolvedImportSlot(slot, frameLevel, effectiveScopeLevel, frameDescriptor);
+                    }
                     return new ResolvedSlot(slot, frameLevel, effectiveScopeLevel, frameDescriptor);
                 }
                 return null; // continue
@@ -796,6 +800,20 @@ public final class ScopeVariables implements TruffleObject {
                 return thisFromFunctionOrArguments(frame.getArguments());
             }
             return thisValue;
+        }
+    }
+
+    static class ResolvedImportSlot extends ResolvedSlot {
+        ResolvedImportSlot(int slot, int frameLevel, int scopeLevel, FrameDescriptor descriptor) {
+            super(slot, frameLevel, scopeLevel, descriptor);
+        }
+
+        @Override
+        JavaScriptNode createReadNode() {
+            if (!hasSlot()) {
+                return JSConstantNode.createUndefined();
+            }
+            return ReadImportBindingNode.create(super.createReadNode());
         }
     }
 }
