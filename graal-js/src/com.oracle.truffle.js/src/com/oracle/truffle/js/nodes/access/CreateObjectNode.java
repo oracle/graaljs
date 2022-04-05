@@ -129,12 +129,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
             this.prototypeExpression = prototypeExpression;
         }
 
-        public abstract DynamicObject execute(VirtualFrame frame, DynamicObject prototype);
-
-        public final DynamicObject execute(DynamicObject prototype) {
-            assert prototypeExpression == null;
-            return execute(null, prototype);
-        }
+        public abstract DynamicObject execute(DynamicObject prototype);
 
         @Override
         public final DynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {

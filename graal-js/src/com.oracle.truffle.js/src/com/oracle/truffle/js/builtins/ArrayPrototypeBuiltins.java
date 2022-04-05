@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -3190,9 +3190,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return new CreateArrayIteratorNode(context, iterationKind);
         }
 
-        public DynamicObject execute(VirtualFrame frame, Object array) {
+        public DynamicObject execute(Object array) {
             assert JSGuards.isJSObject(array) || JSGuards.isForeignObject(array);
-            DynamicObject iterator = createObjectNode.execute(frame, getRealm().getArrayIteratorPrototype());
+            DynamicObject iterator = createObjectNode.execute(getRealm().getArrayIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, array);
             setNextIndexNode.setValue(iterator, 0L);
             setIterationKindNode.setValueInt(iterator, iterationKind);
@@ -3209,14 +3209,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "isJSObject(thisObj)")
-        protected DynamicObject doJSObject(VirtualFrame frame, DynamicObject thisObj) {
-            return createArrayIteratorNode.execute(frame, thisObj);
+        protected DynamicObject doJSObject(DynamicObject thisObj) {
+            return createArrayIteratorNode.execute(thisObj);
         }
 
         @Specialization(guards = "!isJSObject(thisObj)")
-        protected DynamicObject doNotJSObject(VirtualFrame frame, Object thisObj,
+        protected DynamicObject doNotJSObject(Object thisObj,
                         @Cached("createToObject(getContext())") JSToObjectNode toObjectNode) {
-            return createArrayIteratorNode.execute(frame, toObjectNode.execute(thisObj));
+            return createArrayIteratorNode.execute(toObjectNode.execute(thisObj));
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
@@ -1526,7 +1525,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isObjectNode.executeBoolean(regex)", limit = "1")
-        protected Object matchAll(VirtualFrame frame, DynamicObject regex, Object stringObj,
+        protected Object matchAll(DynamicObject regex, Object stringObj,
                         @Cached("create()") JSToStringNode toStringNodeForInput,
                         @Cached("createSpeciesConstructNode()") ArraySpeciesConstructorNode speciesConstructNode,
                         @Cached("create(FLAGS, getContext())") PropertyGetNode getFlagsNode,
@@ -1546,7 +1545,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             setLastIndexNode.setValue(matcher, JSRuntime.boxIndex(lastIndex, indexInIntRangeProf));
             boolean global = flags.indexOf('g') != -1;
             boolean fullUnicode = flags.indexOf('u') != -1;
-            return createRegExpStringIteratorNode.createIterator(frame, matcher, string, global, fullUnicode);
+            return createRegExpStringIteratorNode.createIterator(matcher, string, global, fullUnicode);
         }
 
         ArraySpeciesConstructorNode createSpeciesConstructNode() {
