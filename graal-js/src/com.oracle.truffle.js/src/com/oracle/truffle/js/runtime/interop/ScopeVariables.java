@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,6 +75,7 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
+import com.oracle.truffle.js.nodes.module.ReadImportBindingNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -451,11 +452,23 @@ public final class ScopeVariables implements TruffleObject {
         }
 
         boolean isModifiable() {
-            return slot != null && !JSFrameUtil.isConst(slot);
+            return hasSlot() && !JSFrameUtil.isConst(slot) && !JSFrameUtil.isThisSlot(slot) && !JSFrameUtil.isImportBinding(slot);
+        }
+
+        boolean hasSlot() {
+            return slot != null;
         }
 
         boolean isFunctionFrame() {
             return scopeLevel < 0;
+        }
+
+        @Override
+        public String toString() {
+            if (hasSlot()) {
+                return getClass().getSimpleName() + "(" + slot + ", " + frameLevel + "/" + scopeLevel + ")";
+            }
+            return super.toString();
         }
     }
 
@@ -552,6 +565,9 @@ public final class ScopeVariables implements TruffleObject {
                 if (slot != null) {
                     if (JSFrameUtil.isInternal(slot)) {
                         return null;
+                    }
+                    if (JSFrameUtil.isImportBinding(slot)) {
+                        return new ResolvedImportSlot(slot, frameLevel, scopeLevel, frameDescriptor, parentSlotList);
                     }
                     return new ResolvedSlot(slot, frameLevel, scopeLevel, frameDescriptor, parentSlotList);
                 }
@@ -675,4 +691,17 @@ public final class ScopeVariables implements TruffleObject {
         return !JSFunction.isConstructor(function) && JSFunction.isClassPrototypeInitialized(function);
     }
 
+    static class ResolvedImportSlot extends ResolvedSlot {
+        ResolvedImportSlot(FrameSlot slot, int frameLevel, int scopeLevel, FrameDescriptor descriptor, List<FrameSlot> parentSlotList) {
+            super(slot, frameLevel, scopeLevel, descriptor, parentSlotList);
+        }
+
+        @Override
+        JavaScriptNode createReadNode() {
+            if (!hasSlot()) {
+                return JSConstantNode.createUndefined();
+            }
+            return ReadImportBindingNode.create(super.createReadNode());
+        }
+    }
 }

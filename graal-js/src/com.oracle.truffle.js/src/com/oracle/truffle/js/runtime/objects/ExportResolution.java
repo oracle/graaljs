@@ -104,7 +104,7 @@ public abstract class ExportResolution {
         return AMBIGUOUS;
     }
 
-    private static final class Resolved extends ExportResolution {
+    public static final class Resolved extends ExportResolution {
         private final JSModuleRecord module;
         private final String bindingName;
 
