@@ -57,7 +57,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -2884,8 +2883,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = "isCallable.executeBoolean(executor)")
-        protected JSDynamicObject construct(VirtualFrame frame, JSDynamicObject newTarget, Object executor) {
-            JSDynamicObject promise = createPromiseFromConstructor.executeWithConstructor(frame, newTarget);
+        protected JSDynamicObject construct(JSDynamicObject newTarget, Object executor) {
+            JSDynamicObject promise = createPromiseFromConstructor.executeWithConstructor(newTarget);
             JSPromise.setPromiseState(promise, JSPromise.PENDING);
             setPromiseFulfillReactions.setValue(promise, new SimpleArrayList<>());
             setPromiseRejectReactions.setValue(promise, new SimpleArrayList<>());

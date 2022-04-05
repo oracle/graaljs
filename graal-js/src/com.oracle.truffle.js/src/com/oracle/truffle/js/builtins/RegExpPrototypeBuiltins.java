@@ -48,7 +48,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -1617,7 +1616,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isObjectNode.executeBoolean(regex)", limit = "1")
-        protected Object matchAll(VirtualFrame frame, JSDynamicObject regex, Object stringObj,
+        protected Object matchAll(JSDynamicObject regex, Object stringObj,
                         @Cached JSToStringNode toStringNodeForInput,
                         @Cached("createSpeciesConstructNode()") ArraySpeciesConstructorNode speciesConstructNode,
                         @Cached("create(FLAGS, getContext())") PropertyGetNode getFlagsNode,
@@ -1638,7 +1637,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             setLastIndexNode.setValue(matcher, JSRuntime.boxIndex(lastIndex, indexInIntRangeProf));
             boolean global = Strings.indexOf(stringIndexOfNode, flags, 'g') != -1;
             boolean fullUnicode = Strings.indexOf(stringIndexOfNode, flags, 'u') != -1;
-            return createRegExpStringIteratorNode.createIterator(frame, matcher, string, global, fullUnicode);
+            return createRegExpStringIteratorNode.createIterator(matcher, string, global, fullUnicode);
         }
 
         ArraySpeciesConstructorNode createSpeciesConstructNode() {

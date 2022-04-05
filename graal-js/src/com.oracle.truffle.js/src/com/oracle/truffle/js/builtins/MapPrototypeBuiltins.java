@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.StopIterationException;
@@ -440,8 +439,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         }
 
         @Specialization
-        protected JSDynamicObject doMap(VirtualFrame frame, JSMapObject map) {
-            JSDynamicObject iterator = createObjectNode.execute(frame, getRealm().getMapIteratorPrototype());
+        protected JSDynamicObject doMap(JSMapObject map) {
+            JSDynamicObject iterator = createObjectNode.execute(getRealm().getMapIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, map);
             setNextIndexNode.setValue(iterator, JSMap.getInternalMap(map).getEntries());
             setIterationKindNode.setValueInt(iterator, iterationKind);

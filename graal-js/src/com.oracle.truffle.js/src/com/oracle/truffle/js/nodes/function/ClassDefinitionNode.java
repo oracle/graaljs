@@ -181,7 +181,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
 
             /* Let proto be ObjectCreate(protoParent). */
             assert protoParent == Null.instance || JSRuntime.isObject(protoParent);
-            proto = createPrototypeNode.execute(frame, ((JSDynamicObject) protoParent));
+            proto = createPrototypeNode.execute((JSDynamicObject) protoParent);
 
             /*
              * Let constructorInfo be the result of performing DefineMethod for constructor with

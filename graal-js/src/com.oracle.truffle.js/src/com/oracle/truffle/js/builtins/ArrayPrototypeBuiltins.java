@@ -3326,9 +3326,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return new CreateArrayIteratorNode(context, iterationKind);
         }
 
-        public JSDynamicObject execute(VirtualFrame frame, Object array) {
+        public JSDynamicObject execute(Object array) {
             assert JSGuards.isJSObject(array) || JSGuards.isForeignObject(array);
-            JSDynamicObject iterator = createObjectNode.execute(frame, getRealm().getArrayIteratorPrototype());
+            JSDynamicObject iterator = createObjectNode.execute(getRealm().getArrayIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, array);
             setNextIndexNode.setValue(iterator, 0L);
             setIterationKindNode.setValueInt(iterator, iterationKind);
@@ -3345,14 +3345,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "isJSObject(thisObj)")
-        protected JSDynamicObject doJSObject(VirtualFrame frame, JSDynamicObject thisObj) {
-            return createArrayIteratorNode.execute(frame, thisObj);
+        protected JSDynamicObject doJSObject(JSDynamicObject thisObj) {
+            return createArrayIteratorNode.execute(thisObj);
         }
 
         @Specialization(guards = "!isJSObject(thisObj)")
-        protected JSDynamicObject doNotJSObject(VirtualFrame frame, Object thisObj,
+        protected JSDynamicObject doNotJSObject(Object thisObj,
                         @Cached("createToObject(getContext())") JSToObjectNode toObjectNode) {
-            return createArrayIteratorNode.execute(frame, toObjectNode.execute(thisObj));
+            return createArrayIteratorNode.execute(toObjectNode.execute(thisObj));
         }
     }
 

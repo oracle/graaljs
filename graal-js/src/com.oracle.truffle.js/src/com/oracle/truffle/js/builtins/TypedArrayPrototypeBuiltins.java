@@ -51,7 +51,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -743,9 +742,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = "isJSArrayBufferView(thisObj)")
-        protected JSDynamicObject doObject(VirtualFrame frame, JSDynamicObject thisObj) {
+        protected JSDynamicObject doObject(JSDynamicObject thisObj) {
             checkHasDetachedBuffer(thisObj);
-            return createArrayIteratorNode.execute(frame, thisObj);
+            return createArrayIteratorNode.execute(thisObj);
         }
 
         @SuppressWarnings("unused")
