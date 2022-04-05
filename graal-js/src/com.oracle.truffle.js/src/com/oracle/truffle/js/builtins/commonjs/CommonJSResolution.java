@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins.commonjs;
 
 import java.io.IOException;
+import java.nio.file.InvalidPathException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -64,13 +65,24 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+import static com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader.DOT_DOT_SLASH;
+import static com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader.DOT_SLASH;
+import static com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader.SLASH;
+
 public final class CommonJSResolution {
 
+    public static final String FILE = "file";
     public static final String NODE_MODULES = "node_modules";
     public static final String PACKAGE_JSON = "package.json";
     public static final String INDEX_JS = "index.js";
     public static final String INDEX_JSON = "index.json";
     public static final String INDEX_NODE = "index.node";
+
+    public static final String JS_EXT = ".js";
+    public static final String CJS_EXT = ".cjs";
+    public static final String MJS_EXT = ".mjs";
+    public static final String JSON_EXT = ".json";
+    public static final String NODE_EXT = ".node";
 
     private CommonJSResolution() {
     }
@@ -127,7 +139,7 @@ public final class CommonJSResolution {
         }
         // 3. If X begins with './' or '/' or '../'
         if (isPathFileName(moduleIdentifier)) {
-            TruffleFile module = loadAsFileOrDirectory(realm, joinPaths(env, currentWorkingPath, moduleIdentifier));
+            TruffleFile module = loadAsFileOrDirectory(realm, joinPaths(currentWorkingPath, moduleIdentifier));
             // XXX(db) The Node.js informal spec says we should throw if module is null here.
             // Node v12.x, however, does not throw and attempts to load as a folder.
             if (module != null) {
@@ -150,7 +162,7 @@ public final class CommonJSResolution {
          */
         List<TruffleFile> nodeModulesPaths = getNodeModulesPaths(startFolder);
         for (TruffleFile s : nodeModulesPaths) {
-            TruffleFile module = loadAsFileOrDirectory(realm, joinPaths(realm.getEnv(), s, moduleIdentifier));
+            TruffleFile module = loadAsFileOrDirectory(realm, joinPaths(s, moduleIdentifier));
             if (module != null) {
                 return module;
             }
@@ -158,7 +170,7 @@ public final class CommonJSResolution {
         return null;
     }
 
-    public static TruffleFile loadIndex(TruffleLanguage.Env env, TruffleFile modulePath) {
+    public static TruffleFile loadIndex(TruffleFile modulePath) {
         /* @formatter:off
          *
          * LOAD_INDEX(X)
@@ -168,14 +180,14 @@ public final class CommonJSResolution {
          *
          * @formatter:on
          */
-        TruffleFile indexJs = joinPaths(env, modulePath, INDEX_JS);
+        TruffleFile indexJs = joinPaths(modulePath, INDEX_JS);
         if (fileExists(indexJs)) {
             return indexJs;
         }
-        TruffleFile indexJson = joinPaths(env, modulePath, INDEX_JSON);
+        TruffleFile indexJson = joinPaths(modulePath, INDEX_JSON);
         if (fileExists(indexJson)) {
             return indexJson;
-        } else if (fileExists(joinPaths(env, modulePath, INDEX_NODE))) {
+        } else if (fileExists(joinPaths(modulePath, INDEX_NODE))) {
             // Ignore .node files.
             return null;
         }
@@ -245,25 +257,24 @@ public final class CommonJSResolution {
     }
 
     private static TruffleFile loadAsDirectory(JSRealm realm, TruffleFile modulePath) {
-        TruffleLanguage.Env env = realm.getEnv();
-        TruffleFile packageJson = joinPaths(env, modulePath, PACKAGE_JSON);
+        TruffleFile packageJson = joinPaths(modulePath, PACKAGE_JSON);
         if (fileExists(packageJson)) {
             JSDynamicObject jsonObj = loadJsonObject(packageJson, realm);
             if (JSDynamicObject.isJSDynamicObject(jsonObj)) {
                 Object main = JSObject.get(jsonObj, Strings.PACKAGE_JSON_MAIN_PROPERTY_NAME);
                 if (!Strings.isTString(main)) {
-                    return loadIndex(env, modulePath);
+                    return loadIndex(modulePath);
                 }
-                TruffleFile module = joinPaths(env, modulePath, Strings.toJavaString(JSRuntime.safeToString(main)));
-                TruffleFile asFile = loadAsFile(env, module);
+                TruffleFile module = joinPaths(modulePath, JSRuntime.safeToString(main).toJavaStringUncached());
+                TruffleFile asFile = loadAsFile(realm.getEnv(), module);
                 if (asFile != null) {
                     return asFile;
                 } else {
-                    return loadIndex(env, module);
+                    return loadIndex(module);
                 }
             }
         } else {
-            return loadIndex(env, modulePath);
+            return loadIndex(modulePath);
         }
         return null;
     }
@@ -305,15 +316,16 @@ public final class CommonJSResolution {
     }
 
     private static boolean isPathFileName(String moduleIdentifier) {
-        return moduleIdentifier.startsWith("/") || moduleIdentifier.startsWith("./") || moduleIdentifier.startsWith("../");
+        return moduleIdentifier.startsWith(SLASH) || moduleIdentifier.startsWith(DOT_SLASH) || moduleIdentifier.startsWith(DOT_DOT_SLASH);
     }
 
-    public static TruffleFile joinPaths(TruffleLanguage.Env env, TruffleFile p1, String p2) {
+    public static TruffleFile joinPaths(TruffleFile p1, String p2) {
         Objects.requireNonNull(p1);
-        String pathSeparator = env.getFileNameSeparator();
-        String pathName = p1.normalize().toString();
-        TruffleFile truffleFile = env.getPublicTruffleFile(pathName + pathSeparator + p2);
-        return truffleFile.normalize();
+        try {
+            return p1.resolve(p2).getAbsoluteFile().normalize();
+        } catch (InvalidPathException e) {
+            throw CommonJSRequireBuiltin.fail(p2);
+        }
     }
 
     private static TruffleFile getFileSystemRootPath(TruffleLanguage.Env env) {

@@ -62,6 +62,11 @@ import java.util.Objects;
 
 public class DefaultESModuleLoader implements JSModuleLoader {
 
+    public static final String DOT = ".";
+    public static final String SLASH = "/";
+    public static final String DOT_SLASH = "./";
+    public static final String DOT_DOT_SLASH = "../";
+
     private static final int JS_MODULE_TYPE = 1 << 0;
     private static final int JSON_MODULE_TYPE = 1 << 1;
 
@@ -91,7 +96,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
 
     @Override
     public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
-        TruffleString refPath = referrer == null ? null : Strings.fromJavaString(referrer.getSource().getPath());
+        String refPath = referrer == null ? null : referrer.getSource().getPath();
         try {
             TruffleString specifierTS = moduleRequest.getSpecifier();
             String specifier = Strings.toJavaString(specifierTS);
@@ -99,9 +104,9 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             String canonicalPath;
             URI maybeUri = asURI(specifier);
 
-            TruffleString maybeCustomPath = realm.getCustomEsmPathMapping(refPath, specifierTS);
+            TruffleString maybeCustomPath = realm.getCustomEsmPathMapping(Strings.fromJavaString(refPath), specifierTS);
             if (maybeCustomPath != null) {
-                canonicalPath = Strings.toJavaString(maybeCustomPath);
+                canonicalPath = maybeCustomPath.toJavaStringUncached();
                 moduleFile = realm.getEnv().getPublicTruffleFile(canonicalPath).getCanonicalFile();
             } else {
                 if (refPath == null) {
@@ -111,7 +116,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
                         moduleFile = realm.getEnv().getPublicTruffleFile(specifier);
                     }
                 } else {
-                    TruffleFile refFile = realm.getEnv().getPublicTruffleFile(Strings.toJavaString(refPath));
+                    TruffleFile refFile = realm.getEnv().getPublicTruffleFile(refPath);
                     if (maybeUri != null) {
                         String uriFile = realm.getEnv().getPublicTruffleFile(maybeUri).getCanonicalFile().getPath();
                         moduleFile = refFile.resolveSibling(uriFile);
@@ -151,7 +156,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         if (options.isEsmBareSpecifierRelativeLookup()) {
             return false;
         }
-        return !(specifier.startsWith("/") || specifier.startsWith("./") || specifier.startsWith("../"));
+        return !(specifier.startsWith(SLASH) || specifier.startsWith(DOT_SLASH) || specifier.startsWith(DOT_DOT_SLASH));
     }
 
     protected JSModuleRecord loadModuleFromUrl(ScriptOrModule referrer, ModuleRequest moduleRequest, TruffleFile maybeModuleFile, String maybeCanonicalPath) throws IOException {
