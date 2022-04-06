@@ -67,6 +67,7 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -1669,6 +1670,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private JSToStringNode separatorToStringNode;
         @Child private JSToStringNode elementToStringNode;
         @Child private TruffleString.ConcatNode stringConcatNode;
+        @Child private InteropLibrary interopLibrary;
         private final ConditionProfile separatorNotEmpty = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isZero = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isOne = ConditionProfile.createBinaryProfile();
@@ -1800,8 +1802,23 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private static boolean isValidEntry(Object value) {
-            return value != Undefined.instance && value != Null.instance;
+        private boolean isValidEntry(Object value) {
+            return value != Undefined.instance && value != Null.instance && !isForeignNull(value);
+        }
+
+        private boolean isForeignNull(Object value) {
+            if (value instanceof JSDynamicObject) {
+                return false;
+            }
+            if (value instanceof TruffleObject) {
+                if (interopLibrary == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    interopLibrary = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
+                }
+                return interopLibrary.isNull(value);
+            } else {
+                return false;
+            }
         }
 
         private TruffleString joinSparse(Object thisObject, long length, TruffleString joinSeparator, final boolean appendSep) {
