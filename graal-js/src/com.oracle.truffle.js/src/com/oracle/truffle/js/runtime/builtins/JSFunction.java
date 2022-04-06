@@ -613,7 +613,7 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static JSFunctionData createNamedEmptyFunctionData(JSContext context, TruffleString name) {
-        return JSFunctionData.createCallOnly(context, context.getEmptyFunctionCallTarget(), 0, name);
+        return context.getNamedEmptyFunctionData(name);
     }
 
     public static JSFunctionData createEmptyFunctionData(JSContext context) {

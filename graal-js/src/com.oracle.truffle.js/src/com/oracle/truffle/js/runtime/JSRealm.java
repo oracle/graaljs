@@ -2083,7 +2083,7 @@ public class JSRealm {
     }
 
     private static DynamicObject createIteratorPrototypeSymbolIteratorFunction(JSRealm realm) {
-        return JSFunction.create(realm, JSFunctionData.createCallOnly(realm.getContext(), realm.getContext().getSpeciesGetterFunctionCallTarget(), 0, SYMBOL_ITERATOR_NAME));
+        return JSFunction.create(realm, realm.getContext().getSymbolIteratorThisGetterFunctionData());
     }
 
     /**
