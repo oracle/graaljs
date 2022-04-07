@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * Implementation of ECMAScript 5.1, 10.4.3 Entering Function Code, for non-strict callees.
@@ -101,37 +102,37 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
     }
 
     @Specialization
-    protected JSDynamicObject doBoolean(boolean value) {
+    protected JSObject doBoolean(boolean value) {
         return JSBoolean.create(context, getRealm(), value);
     }
 
     @Specialization
-    protected JSDynamicObject doString(TruffleString value) {
+    protected JSObject doString(TruffleString value) {
         return JSString.create(context, getRealm(), value);
     }
 
     @Specialization
-    protected JSDynamicObject doInt(int value) {
+    protected JSObject doInt(int value) {
         return JSNumber.create(context, getRealm(), value);
     }
 
     @Specialization
-    protected JSDynamicObject doDouble(double value) {
+    protected JSObject doDouble(double value) {
         return JSNumber.create(context, getRealm(), value);
     }
 
     @Specialization
-    protected JSDynamicObject doBigInt(BigInt value) {
+    protected JSObject doBigInt(BigInt value) {
         return JSBigInt.create(context, getRealm(), value);
     }
 
     @Specialization(guards = "isJavaNumber(value)")
-    protected JSDynamicObject doNumber(Object value) {
+    protected JSObject doNumber(Object value) {
         return JSNumber.create(context, getRealm(), (Number) value);
     }
 
     @Specialization
-    protected JSDynamicObject doSymbol(Symbol value) {
+    protected JSObject doSymbol(Symbol value) {
         return JSSymbol.create(context, getRealm(), value);
     }
 

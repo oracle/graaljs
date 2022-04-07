@@ -77,8 +77,10 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
@@ -235,10 +237,10 @@ public class TestHelper implements AutoCloseable {
         return toHostValue(runRedirectOutput(sourceCode, stream, stream, false, Collections.emptyMap()));
     }
 
-    public JSDynamicObject runJSArray(String source) {
+    public JSArrayObject runJSArray(String source) {
         Object obj = runNoPolyglot(source);
         assert JSArray.isJSArray(obj);
-        return (JSDynamicObject) obj;
+        return (JSArrayObject) obj;
     }
 
     public class ParsedFunction {
@@ -249,7 +251,7 @@ public class TestHelper implements AutoCloseable {
         }
 
         public Object call(Object[] args) {
-            JSDynamicObject funObj = createFunctionObject();
+            JSFunctionObject funObj = createFunctionObject();
             return JSFunction.call(funObj, Null.instance, args);
         }
 
@@ -257,7 +259,7 @@ public class TestHelper implements AutoCloseable {
             return ((RootCallTarget) functionData.getCallTarget()).getRootNode();
         }
 
-        public JSDynamicObject createFunctionObject() {
+        public JSFunctionObject createFunctionObject() {
             return JSFunction.create(getRealm(), functionData);
         }
     }

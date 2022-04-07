@@ -2187,7 +2187,7 @@ public final class JSRuntime {
         if (desc == null) {
             return Undefined.instance;
         }
-        JSDynamicObject obj = JSOrdinary.create(context, JSRealm.get(null));
+        JSObject obj = JSOrdinary.create(context, JSRealm.get(null));
         if (desc.hasValue()) {
             JSObject.set(obj, JSAttributes.VALUE, desc.getValue());
         }

@@ -53,6 +53,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
@@ -65,9 +66,9 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
     private JSWeakSet() {
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm) {
+    public static JSWeakSetObject create(JSContext context, JSRealm realm) {
         JSObjectFactory factory = context.getWeakSetFactory();
-        JSDynamicObject obj = factory.initProto(new JSWeakSetObject(factory.getShape(realm), newWeakHashMap()), realm);
+        JSWeakSetObject obj = factory.initProto(new JSWeakSetObject(factory.getShape(realm), newWeakHashMap()), realm);
         assert isJSWeakSet(obj);
         return context.trackAllocation(obj);
     }
@@ -85,9 +86,9 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public JSDynamicObject createPrototype(final JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WeakSetPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);

@@ -55,10 +55,12 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -81,8 +83,8 @@ public final class JSTemporalInstant extends JSNonProxy implements JSConstructor
     public static JSTemporalInstantObject create(JSContext context, JSRealm realm, BigInt nanoseconds) {
         assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
         JSObjectFactory factory = context.getTemporalInstantFactory();
-        JSDynamicObject obj = factory.initProto(new JSTemporalInstantObject(factory.getShape(realm), nanoseconds), realm);
-        return (JSTemporalInstantObject) context.trackAllocation(obj);
+        JSTemporalInstantObject obj = factory.initProto(new JSTemporalInstantObject(factory.getShape(realm), nanoseconds), realm);
+        return context.trackAllocation(obj);
     }
 
     @Override
@@ -96,9 +98,9 @@ public final class JSTemporalInstant extends JSNonProxy implements JSConstructor
     }
 
     @Override
-    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject constructor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalInstantPrototypeBuiltins.BUILTINS);
 

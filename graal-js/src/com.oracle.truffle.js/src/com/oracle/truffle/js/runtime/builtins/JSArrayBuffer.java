@@ -72,13 +72,13 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     private JSArrayBuffer() {
     }
 
-    public static JSDynamicObject createArrayBuffer(JSContext context, JSRealm realm, int length) {
+    public static JSArrayBufferObject createArrayBuffer(JSContext context, JSRealm realm, int length) {
         return createArrayBuffer(context, realm, new byte[length]);
     }
 
-    public static JSDynamicObject createArrayBuffer(JSContext context, JSRealm realm, byte[] byteArray) {
+    public static JSArrayBufferObject createArrayBuffer(JSContext context, JSRealm realm, byte[] byteArray) {
         JSObjectFactory factory = context.getArrayBufferFactory();
-        JSDynamicObject obj = JSArrayBufferObject.createHeapArrayBuffer(factory.getShape(realm), byteArray);
+        JSArrayBufferObject obj = JSArrayBufferObject.createHeapArrayBuffer(factory.getShape(realm), byteArray);
         factory.initProto(obj, realm);
         assert isJSHeapArrayBuffer(obj);
         return context.trackAllocation(obj);
@@ -103,13 +103,13 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return JSArrayBufferObject.getDirectByteBuffer(thisObj);
     }
 
-    public static JSDynamicObject createDirectArrayBuffer(JSContext context, JSRealm realm, int length) {
+    public static JSArrayBufferObject createDirectArrayBuffer(JSContext context, JSRealm realm, int length) {
         return createDirectArrayBuffer(context, realm, DirectByteBufferHelper.allocateDirect(length));
     }
 
-    public static JSDynamicObject createDirectArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer) {
+    public static JSArrayBufferObject createDirectArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer) {
         JSObjectFactory factory = context.getDirectArrayBufferFactory();
-        JSDynamicObject obj = JSArrayBufferObject.createDirectArrayBuffer(factory.getShape(realm), buffer);
+        JSArrayBufferObject obj = JSArrayBufferObject.createDirectArrayBuffer(factory.getShape(realm), buffer);
         factory.initProto(obj, realm);
         assert isJSDirectArrayBuffer(obj);
         return context.trackAllocation(obj);
@@ -120,19 +120,19 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return JSArrayBufferObject.getInteropBuffer(thisObj);
     }
 
-    public static JSDynamicObject createInteropArrayBuffer(JSContext context, JSRealm realm, Object buffer) {
+    public static JSArrayBufferObject createInteropArrayBuffer(JSContext context, JSRealm realm, Object buffer) {
         assert InteropLibrary.getUncached().hasBufferElements(buffer);
         JSObjectFactory factory = context.getInteropArrayBufferFactory();
-        JSDynamicObject obj = JSArrayBufferObject.createInteropArrayBuffer(factory.getShape(realm), buffer);
+        JSArrayBufferObject obj = JSArrayBufferObject.createInteropArrayBuffer(factory.getShape(realm), buffer);
         factory.initProto(obj, realm);
         assert isJSInteropArrayBuffer(obj);
         return context.trackAllocation(obj);
     }
 
     @Override
-    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext context = realm.getContext();
-        JSDynamicObject arrayBufferPrototype;
+        JSObject arrayBufferPrototype;
         if (context.getEcmaScriptVersion() < 6) {
             Shape protoShape = JSShape.createPrototypeShape(context, HEAP_INSTANCE, realm.getObjectPrototype());
             arrayBufferPrototype = JSArrayBufferObject.createHeapArrayBuffer(protoShape, new byte[0]);

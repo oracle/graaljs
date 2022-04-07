@@ -82,6 +82,7 @@ import com.oracle.truffle.js.runtime.builtins.JSBooleanObject;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSNumberObject;
@@ -92,6 +93,7 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSStringObject;
 import com.oracle.truffle.js.runtime.builtins.JSSymbolObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.test.JSTest;
@@ -116,7 +118,7 @@ public class JSRuntimeTest extends JSTest {
         super.close();
     }
 
-    private JSDynamicObject createOrdinaryObject() {
+    private JSObject createOrdinaryObject() {
         return JSOrdinary.create(testHelper.getJSContext(), testHelper.getRealm());
     }
 
@@ -318,10 +320,10 @@ public class JSRuntimeTest extends JSTest {
     @Test
     public void testIsPrototypeOf() {
         JSContext ctx = testHelper.getJSContext();
-        JSDynamicObject parent1 = createOrdinaryObject();
-        JSDynamicObject parent2 = createOrdinaryObject();
-        JSDynamicObject child1 = JSOrdinary.createWithPrototype(parent1, ctx);
-        JSDynamicObject grandchild1 = JSOrdinary.createWithPrototype(child1, ctx);
+        JSObject parent1 = createOrdinaryObject();
+        JSObject parent2 = createOrdinaryObject();
+        JSObject child1 = JSOrdinary.createWithPrototype(parent1, ctx);
+        JSObject grandchild1 = JSOrdinary.createWithPrototype(child1, ctx);
 
         assertFalse(JSRuntime.isPrototypeOf(parent1, parent2));
         assertFalse(JSRuntime.isPrototypeOf(parent1, parent1));
@@ -349,11 +351,11 @@ public class JSRuntimeTest extends JSTest {
     @Test
     public void testCall() {
         JSContext ctx = testHelper.getJSContext();
-        JSDynamicObject thisObj = createOrdinaryObject();
+        JSObject thisObj = createOrdinaryObject();
         Object[] defaultArgs = new Object[]{"foo", 42, false};
 
         JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
-        JSDynamicObject fnObj = JSFunction.create(realm, JSFunctionData.createCallOnly(ctx, new JavaScriptRootNode(ctx.getLanguage(), null, null) {
+        JSFunctionObject fnObj = JSFunction.create(realm, JSFunctionData.createCallOnly(ctx, new JavaScriptRootNode(ctx.getLanguage(), null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] args = frame.getArguments();

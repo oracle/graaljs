@@ -85,9 +85,9 @@ public abstract class CommonJSGlobalModuleGetterBuiltin extends GlobalBuiltins.J
         }
     }
 
-    private static JSDynamicObject createModuleObject(JSContext context, JSRealm realm) {
-        JSDynamicObject moduleObject = JSOrdinary.create(context, realm);
-        JSDynamicObject exportsObject = JSOrdinary.create(context, realm);
+    private static JSObject createModuleObject(JSContext context, JSRealm realm) {
+        JSObject moduleObject = JSOrdinary.create(context, realm);
+        JSObject exportsObject = JSOrdinary.create(context, realm);
         JSObject.set(moduleObject, Strings.EXPORTS_PROPERTY_NAME, exportsObject);
         return moduleObject;
     }

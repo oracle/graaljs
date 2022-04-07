@@ -63,6 +63,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormatObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -197,21 +198,21 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @TruffleBoundary
-        private JSDynamicObject createNumberFormat(Object locales, Object options) {
-            JSDynamicObject numberFormatObj = JSNumberFormat.create(getContext(), getRealm());
+        private JSNumberFormatObject createNumberFormat(Object locales, Object options) {
+            JSNumberFormatObject numberFormatObj = JSNumberFormat.create(getContext(), getRealm());
             initNumberFormatNode.executeInit(numberFormatObj, locales, options);
             return numberFormatObj;
         }
 
         @Specialization
         protected TruffleString bigIntToLocaleString(BigInt thisObj, Object locales, Object options) {
-            JSDynamicObject numberFormatObj = createNumberFormat(locales, options);
+            JSNumberFormatObject numberFormatObj = createNumberFormat(locales, options);
             return JSNumberFormat.format(numberFormatObj, thisObj);
         }
 
         @Specialization(guards = "isJSBigInt(thisObj)")
         protected TruffleString jsBigIntToLocaleString(JSDynamicObject thisObj, Object locales, Object options) {
-            JSDynamicObject numberFormatObj = createNumberFormat(locales, options);
+            JSNumberFormatObject numberFormatObj = createNumberFormat(locales, options);
             return JSNumberFormat.format(numberFormatObj, getBigIntValue(thisObj));
         }
 

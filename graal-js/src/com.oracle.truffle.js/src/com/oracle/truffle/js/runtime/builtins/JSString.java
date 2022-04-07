@@ -107,8 +107,8 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     private JSString() {
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, TruffleString value) {
-        JSDynamicObject stringObj = JSStringObject.create(realm, context.getStringFactory(), value);
+    public static JSStringObject create(JSContext context, JSRealm realm, TruffleString value) {
+        JSStringObject stringObj = JSStringObject.create(realm, context.getStringFactory(), value);
         assert isJSString(stringObj);
         return context.trackAllocation(stringObj);
     }
@@ -245,10 +245,10 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     }
 
     @Override
-    public JSDynamicObject createPrototype(final JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(ctx, INSTANCE, realm.getObjectPrototype());
-        JSDynamicObject prototype = JSStringObject.create(protoShape, Strings.EMPTY_STRING);
+        JSObject prototype = JSStringObject.create(protoShape, Strings.EMPTY_STRING);
         JSObjectUtil.setOrVerifyPrototype(ctx, prototype, realm.getObjectPrototype());
 
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);

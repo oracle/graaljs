@@ -44,7 +44,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSONBuiltins;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSON {
@@ -54,8 +54,8 @@ public final class JSON {
     private JSON() {
     }
 
-    public static JSDynamicObject create(JSRealm realm) {
-        JSDynamicObject obj = JSOrdinary.createInit(realm);
+    public static JSObject create(JSRealm realm) {
+        JSObject obj = JSOrdinary.createInit(realm);
         JSObjectUtil.putToStringTag(obj, CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(realm, obj, JSONBuiltins.BUILTINS);
         return obj;

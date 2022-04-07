@@ -52,10 +52,12 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -71,15 +73,15 @@ public final class JSTemporalTimeZone extends JSNonProxy implements JSConstructo
     private JSTemporalTimeZone() {
     }
 
-    public static JSDynamicObject create(JSContext context, BigInt nanoseconds, TruffleString identifier) {
+    public static JSTemporalTimeZoneObject create(JSContext context, BigInt nanoseconds, TruffleString identifier) {
         JSRealm realm = JSRealm.get(null);
         return create(context, realm, nanoseconds, identifier);
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, BigInt nanoseconds, TruffleString identifier) {
+    public static JSTemporalTimeZoneObject create(JSContext context, JSRealm realm, BigInt nanoseconds, TruffleString identifier) {
         assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
         JSObjectFactory factory = context.getTemporalTimeZoneFactory();
-        JSDynamicObject obj = factory.initProto(new JSTemporalTimeZoneObject(factory.getShape(realm), nanoseconds, identifier), realm);
+        JSTemporalTimeZoneObject obj = factory.initProto(new JSTemporalTimeZoneObject(factory.getShape(realm), nanoseconds, identifier), realm);
         return context.trackAllocation(obj);
     }
 
@@ -94,9 +96,9 @@ public final class JSTemporalTimeZone extends JSNonProxy implements JSConstructo
     }
 
     @Override
-    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject constructor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalTimeZonePrototypeBuiltins.BUILTINS);
 

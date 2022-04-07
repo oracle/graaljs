@@ -56,6 +56,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public class DefineMethodNode extends JavaScriptBaseNode {
@@ -78,10 +79,10 @@ public class DefineMethodNode extends JavaScriptBaseNode {
         return functionData;
     }
 
-    public JSDynamicObject execute(VirtualFrame frame, JSDynamicObject homeObject, JSDynamicObject functionPrototype) {
+    public JSFunctionObject execute(VirtualFrame frame, JSDynamicObject homeObject, JSDynamicObject functionPrototype) {
         assert JSRuntime.isObject(functionPrototype);
         assert JSRuntime.isObject(homeObject);
-        JSDynamicObject closure = functionCreateNode.executeWithPrototype(frame, functionPrototype);
+        JSFunctionObject closure = functionCreateNode.executeWithPrototype(frame, functionPrototype);
         makeMethodNode.setValue(closure, homeObject);
         return closure;
     }
@@ -106,11 +107,11 @@ public class DefineMethodNode extends JavaScriptBaseNode {
             return FunctionCreateNodeGen.create(context, functionData, blockScopeSlot);
         }
 
-        public abstract JSDynamicObject executeWithPrototype(VirtualFrame frame, Object prototype);
+        public abstract JSFunctionObject executeWithPrototype(VirtualFrame frame, Object prototype);
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!getContext().isMultiContext()", "prototype == cachedPrototype", "isJSObject(cachedPrototype)"}, limit = "getContext().getPropertyCacheLimit()")
-        protected final JSDynamicObject doCached(VirtualFrame frame, JSDynamicObject prototype,
+        protected final JSFunctionObject doCached(VirtualFrame frame, JSDynamicObject prototype,
                         @Cached("prototype") JSDynamicObject cachedPrototype,
                         @Cached("makeFactory(prototype)") JSFunctionFactory factory) {
             return makeFunction(frame, factory, cachedPrototype);
@@ -118,13 +119,13 @@ public class DefineMethodNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = {"!getContext().isMultiContext()", "isJSObject(prototype)"}, replaces = "doCached")
-        protected final JSDynamicObject doUncached(VirtualFrame frame, JSDynamicObject prototype) {
+        protected final JSFunctionObject doUncached(VirtualFrame frame, JSDynamicObject prototype) {
             JSFunctionFactory factory = makeFactory(prototype);
             return makeFunction(frame, factory, prototype);
         }
 
         @Specialization(guards = {"getContext().isMultiContext()", "isJSObject(prototype)"})
-        protected final JSDynamicObject doMultiContext(VirtualFrame frame, JSDynamicObject prototype,
+        protected final JSFunctionObject doMultiContext(VirtualFrame frame, JSDynamicObject prototype,
                         @Cached("makeFactoryMultiContext()") JSFunctionFactory factory) {
             return makeFunction(frame, factory, prototype);
         }
@@ -138,7 +139,7 @@ public class DefineMethodNode extends JavaScriptBaseNode {
             return makeFactory(null);
         }
 
-        protected final JSDynamicObject makeFunction(VirtualFrame frame, JSFunctionFactory factory, JSDynamicObject prototype) {
+        protected final JSFunctionObject makeFunction(VirtualFrame frame, JSFunctionFactory factory, JSDynamicObject prototype) {
             MaterializedFrame enclosingFrame;
             if (functionData.needsParentFrame()) {
                 if (blockScopeSlot >= 0) {
@@ -151,7 +152,7 @@ public class DefineMethodNode extends JavaScriptBaseNode {
                 enclosingFrame = JSFrameUtil.NULL_MATERIALIZED_FRAME;
             }
             JSRealm realm = getRealm();
-            JSDynamicObject function = factory.createWithPrototype(functionData, enclosingFrame, JSFunction.CLASS_PROTOTYPE_PLACEHOLDER, realm, prototype);
+            JSFunctionObject function = factory.createWithPrototype(functionData, enclosingFrame, JSFunction.CLASS_PROTOTYPE_PLACEHOLDER, realm, prototype);
             initFunctionNode.execute(function);
             return function;
         }
@@ -161,7 +162,7 @@ public class DefineMethodNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = "!isJSObject(prototype)")
-        protected final JSDynamicObject doNonObject(@SuppressWarnings("unused") Object prototype) {
+        protected final JSFunctionObject doNonObject(@SuppressWarnings("unused") Object prototype) {
             throw Errors.createTypeError("functionPrototype not an object", this);
         }
     }

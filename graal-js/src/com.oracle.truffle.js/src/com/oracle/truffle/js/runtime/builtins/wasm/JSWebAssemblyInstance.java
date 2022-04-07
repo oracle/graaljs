@@ -105,9 +105,9 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     }
 
     @Override
-    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject constructor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
         JSObjectUtil.putAccessorProperty(ctx, prototype, EXPORTS, createExportsGetterFunction(realm), Undefined.instance, JSAttributes.configurableEnumerableWritable());
         JSObjectUtil.putToStringTag(prototype, WEB_ASSEMBLY_INSTANCE);
@@ -136,7 +136,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         return context.trackAllocation(object);
     }
 
-    private static JSDynamicObject createExportsGetterFunction(JSRealm realm) {
+    private static JSFunctionObject createExportsGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyInstanceGetExports, (c) -> {
             CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 private final BranchProfile errorBranch = BranchProfile.create();
@@ -158,8 +158,8 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         return JSFunction.create(realm, getterData);
     }
 
-    private static Object createExportsObject(JSContext context, JSRealm realm, Object wasmInstance, Object wasmModule) {
-        JSDynamicObject exports = JSOrdinary.createWithNullPrototype(context);
+    private static JSObject createExportsObject(JSContext context, JSRealm realm, Object wasmInstance, Object wasmModule) {
+        JSObject exports = JSOrdinary.createWithNullPrototype(context);
         try {
             Object exportsFunction = realm.getWASMModuleExports();
             Object exportsInfo = InteropLibrary.getUncached(exportsFunction).execute(exportsFunction, wasmModule);
@@ -271,7 +271,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         }.getCallTarget();
 
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, callTarget, argCount, name);
-        JSDynamicObject result = JSFunction.create(realm, functionData);
+        JSFunctionObject result = JSFunction.create(realm, functionData);
         JSObjectUtil.putHiddenProperty(result, JSWebAssembly.FUNCTION_ADDRESS, export);
         JSWebAssembly.setEmbedderData(realm, export, result);
         return result;

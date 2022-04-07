@@ -50,6 +50,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -70,7 +71,7 @@ public final class Errors {
     public static JSException createAggregateError(Object errors, TruffleString message, Node originatingNode) {
         JSContext context = JavaScriptLanguage.get(originatingNode).getJSContext();
         JSRealm realm = JSRealm.get(originatingNode);
-        JSDynamicObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
+        JSErrorObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
         JSError.setMessage(errorObj, message);
         JSObjectUtil.putDataProperty(context, errorObj, JSError.ERRORS_NAME, errors, JSError.ERRORS_ATTRIBUTES);
         JSException exception = JSException.create(JSErrorType.AggregateError, Strings.toJavaString(message), errorObj, realm);
@@ -82,7 +83,7 @@ public final class Errors {
     public static JSException createAggregateError(Object errors, Node originatingNode) {
         JSContext context = JavaScriptLanguage.get(originatingNode).getJSContext();
         JSRealm realm = JSRealm.get(originatingNode);
-        JSDynamicObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
+        JSErrorObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
         JSObjectUtil.putDataProperty(context, errorObj, JSError.ERRORS_NAME, errors, JSError.ERRORS_ATTRIBUTES);
         JSException exception = JSException.create(JSErrorType.AggregateError, null, errorObj, realm);
         JSError.setException(realm, errorObj, exception, false);

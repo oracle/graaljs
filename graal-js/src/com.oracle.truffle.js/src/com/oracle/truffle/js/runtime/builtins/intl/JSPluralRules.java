@@ -61,11 +61,13 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -95,9 +97,9 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
     }
 
     @Override
-    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject pluralRulesPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject pluralRulesPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, pluralRulesPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, pluralRulesPrototype, PluralRulesPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(pluralRulesPrototype, TO_STRING_TAG);
@@ -114,7 +116,7 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         return INSTANCE.createConstructorAndPrototype(realm, PluralRulesFunctionBuiltins.BUILTINS);
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm) {
+    public static JSPluralRulesObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getPluralRulesFactory();
         JSPluralRulesObject obj = new JSPluralRulesObject(factory.getShape(realm), state);

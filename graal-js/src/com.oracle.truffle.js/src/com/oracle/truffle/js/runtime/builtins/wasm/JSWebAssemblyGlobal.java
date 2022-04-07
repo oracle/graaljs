@@ -63,11 +63,13 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -95,9 +97,9 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
     }
 
     @Override
-    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject constructor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WebAssemblyGlobalPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putAccessorProperty(ctx, prototype, VALUE, createValueGetterFunction(realm), createValueSetterFunction(realm), JSAttributes.configurableEnumerableWritable());
@@ -131,7 +133,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
         return context.trackAllocation(object);
     }
 
-    private static JSDynamicObject createValueGetterFunction(JSRealm realm) {
+    private static JSFunctionObject createValueGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyGlobalGetValue, (c) -> {
             CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
@@ -162,7 +164,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
         return JSFunction.create(realm, getterData);
     }
 
-    private static JSDynamicObject createValueSetterFunction(JSRealm realm) {
+    private static JSFunctionObject createValueSetterFunction(JSRealm realm) {
         JSFunctionData setterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyGlobalSetValue, (c) -> {
             CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();

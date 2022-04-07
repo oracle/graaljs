@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * The prototype of foreign iterable objects, fulfilling the JS Iterable contract. Provides
@@ -127,7 +128,7 @@ public final class ForeignIterablePrototypeBuiltins extends JSBuiltinsContainer.
                 errorBranch.enter();
                 throw Errors.createTypeErrorInteropException(target, e, "getIterator", null);
             }
-            JSDynamicObject iteratorObj = JSOrdinary.create(getContext(), getContext().getEnumerateIteratorFactory(), getRealm());
+            JSObject iteratorObj = JSOrdinary.create(getContext(), getContext().getEnumerateIteratorFactory(), getRealm());
             setEnumerateIteratorNode.setValue(iteratorObj, iterator);
             return iteratorObj;
         }

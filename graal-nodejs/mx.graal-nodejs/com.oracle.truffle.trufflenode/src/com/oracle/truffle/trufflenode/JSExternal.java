@@ -55,9 +55,9 @@ public final class JSExternal extends JSNonProxy {
     private JSExternal() {
     }
 
-    public static JSDynamicObject create(JSContext context, long pointer) {
+    public static JSExternalObject create(JSContext context, long pointer) {
         ContextData contextData = GraalJSAccess.getContextEmbedderData(context);
-        JSDynamicObject obj = new JSExternalObject(contextData.getExternalObjectShape(), pointer);
+        JSExternalObject obj = new JSExternalObject(contextData.getExternalObjectShape(), pointer);
         assert isJSExternalObject(obj);
         return obj;
     }

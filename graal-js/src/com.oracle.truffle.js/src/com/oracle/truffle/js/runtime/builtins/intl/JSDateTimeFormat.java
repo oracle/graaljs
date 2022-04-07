@@ -90,6 +90,7 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -137,9 +138,9 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     @Override
-    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject numberFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject numberFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, numberFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberFormatPrototype, DateTimeFormatPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putBuiltinAccessorProperty(numberFormatPrototype, Strings.FORMAT, createFormatFunctionGetter(realm, ctx), Undefined.instance);
@@ -157,7 +158,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return INSTANCE.createConstructorAndPrototype(realm, DateTimeFormatFunctionBuiltins.BUILTINS);
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm) {
+    public static JSDateTimeFormatObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getDateTimeFormatFactory();
         JSDateTimeFormatObject obj = new JSDateTimeFormatObject(factory.getShape(realm), state);
@@ -913,7 +914,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     private static Object makePart(JSContext context, JSRealm realm, String type, String value, String source) {
-        JSDynamicObject p = JSOrdinary.create(context, realm);
+        JSObject p = JSOrdinary.create(context, realm);
         JSObject.set(p, IntlUtil.KEY_TYPE, Strings.fromJavaString(type));
         JSObject.set(p, IntlUtil.KEY_VALUE, Strings.fromJavaString(value));
         if (source != null) {
@@ -953,8 +954,8 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         private String dateStyle;
         private String timeStyle;
 
-        JSDynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
-            JSDynamicObject result = JSOrdinary.create(context, realm);
+        JSObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
+            JSObject result = JSOrdinary.create(context, realm);
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
             if (calendar != null) {
                 JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_CALENDAR, Strings.fromJavaString(calendar), JSAttributes.getDefault());

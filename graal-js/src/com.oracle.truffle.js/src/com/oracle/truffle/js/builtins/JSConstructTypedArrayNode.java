@@ -84,6 +84,7 @@ import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
@@ -276,7 +277,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         TypedArray sourceType = JSArrayBufferView.typedArrayGetArrayType(arrayBufferView);
         long length = sourceType.length(arrayBufferView);
 
-        JSDynamicObject srcData = JSArrayBufferView.getArrayBuffer(arrayBufferView);
+        JSArrayBufferObject srcData = JSArrayBufferView.getArrayBuffer(arrayBufferView);
         JSDynamicObject defaultBufferConstructor = getRealm().getArrayBufferConstructor();
         JSDynamicObject bufferConstructor;
         if (JSSharedArrayBuffer.isJSSharedArrayBuffer(srcData)) {
@@ -284,7 +285,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         } else {
             bufferConstructor = getArraySpeciesConstructorNode().speciesConstructor(srcData, defaultBufferConstructor);
         }
-        JSDynamicObject arrayBuffer = createTypedArrayBuffer(length);
+        JSArrayBufferObject arrayBuffer = createTypedArrayBuffer(length);
         JSObject.setPrototype(arrayBuffer, getPrototypeFromConstructorBuffer(bufferConstructor));
 
         checkDetachedBuffer(srcData);
@@ -461,7 +462,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         throw Errors.createTypeError("newTarget is not a function");
     }
 
-    private JSDynamicObject createTypedArrayBuffer(long length) {
+    private JSArrayBufferObject createTypedArrayBuffer(long length) {
         assert length >= 0;
         int elementSize = factory.getBytesPerElement();
         checkLengthLimit(length, elementSize);

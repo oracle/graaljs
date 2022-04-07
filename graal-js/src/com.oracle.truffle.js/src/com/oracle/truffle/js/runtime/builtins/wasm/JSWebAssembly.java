@@ -50,6 +50,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSWebAssembly {
@@ -61,8 +62,8 @@ public final class JSWebAssembly {
     private JSWebAssembly() {
     }
 
-    public static JSDynamicObject create(JSRealm realm) {
-        JSDynamicObject webAssembly = JSOrdinary.createInit(realm);
+    public static JSObject create(JSRealm realm) {
+        JSObject webAssembly = JSOrdinary.createInit(realm);
         JSObjectUtil.putToStringTag(webAssembly, CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(realm, webAssembly, WebAssemblyBuiltins.BUILTINS);
         return webAssembly;

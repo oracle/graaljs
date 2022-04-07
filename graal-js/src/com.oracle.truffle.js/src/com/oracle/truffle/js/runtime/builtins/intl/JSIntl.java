@@ -45,7 +45,7 @@ import com.oracle.truffle.js.builtins.intl.IntlBuiltins;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSIntl {
@@ -55,8 +55,8 @@ public final class JSIntl {
     private JSIntl() {
     }
 
-    public static JSDynamicObject create(JSRealm realm) {
-        JSDynamicObject obj = JSOrdinary.createInit(realm);
+    public static JSObject create(JSRealm realm) {
+        JSObject obj = JSOrdinary.createInit(realm);
         JSObjectUtil.putFunctionsFromContainer(realm, obj, IntlBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(obj, CLASS_NAME);
         return obj;

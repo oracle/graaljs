@@ -53,6 +53,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.RealmData;
@@ -69,9 +70,9 @@ public final class NIOBuffer extends JSNonProxy {
     }
 
     @TruffleBoundary
-    private static JSDynamicObject create(JSRealm realm) {
+    private static JSObject create(JSRealm realm) {
         JSContext context = realm.getContext();
-        JSDynamicObject obj = JSOrdinary.createWithNullPrototype(context);
+        JSObject obj = JSOrdinary.createWithNullPrototype(context);
         JSObjectUtil.putFunctionsFromContainer(realm, obj, NIO_BUFFER_BUILTINS);
         return obj;
     }

@@ -207,7 +207,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             setEnumerateIteratorNode = insert(PropertySetNode.createSetHidden(JSRuntime.ENUMERATE_ITERATOR_ID, context));
         }
-        JSDynamicObject obj = JSOrdinary.create(context, context.getEnumerateIteratorFactory(), getRealm());
+        JSObject obj = JSOrdinary.create(context, context.getEnumerateIteratorFactory(), getRealm());
         setEnumerateIteratorNode.setValue(obj, iterator);
         return obj;
     }

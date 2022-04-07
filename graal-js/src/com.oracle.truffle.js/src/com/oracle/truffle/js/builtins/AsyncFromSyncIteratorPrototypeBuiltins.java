@@ -78,6 +78,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
@@ -208,7 +209,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 promiseCapabilityResolve(valueWrapperCapability, returnValue);
                 valueWrapper = valueWrapperCapability.getPromise();
             }
-            JSDynamicObject onFulfilled = createIteratorValueUnwrapFunction(realm, done);
+            JSFunctionObject onFulfilled = createIteratorValueUnwrapFunction(realm, done);
             performPromiseThenNode.execute(valueWrapper, onFulfilled, Undefined.instance, promiseCapability);
             return promiseCapability.getPromise();
         }
@@ -216,10 +217,10 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         /**
          * Async-from-Sync Iterator Value Unwrap Functions.
          */
-        protected final JSDynamicObject createIteratorValueUnwrapFunction(JSRealm realm, boolean done) {
+        protected final JSFunctionObject createIteratorValueUnwrapFunction(JSRealm realm, boolean done) {
             JSContext context = realm.getContext();
             JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncFromSyncIteratorValueUnwrap, c -> createIteratorValueUnwrapImpl(c));
-            JSDynamicObject function = JSFunction.create(realm, functionData);
+            JSFunctionObject function = JSFunction.create(realm, functionData);
             setDoneNode.setValueBoolean(function, done);
             return function;
         }

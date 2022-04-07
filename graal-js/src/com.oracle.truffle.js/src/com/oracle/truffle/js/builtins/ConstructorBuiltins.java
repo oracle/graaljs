@@ -215,6 +215,7 @@ import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -2307,7 +2308,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         private JSDynamicObject constructErrorImpl(JSDynamicObject newTarget, TruffleString messageOpt, Object options) {
             JSRealm realm = getRealm();
-            JSDynamicObject errorObj = JSError.createErrorObject(getContext(), realm, errorType);
+            JSErrorObject errorObj = JSError.createErrorObject(getContext(), realm, errorType);
             swapPrototype(errorObj, newTarget);
 
             int stackTraceLimit = stackTraceLimitNode.executeInt();
@@ -2361,7 +2362,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached("create()") BranchProfile growProfile) {
             JSContext context = getContext();
             JSRealm realm = getRealm();
-            JSDynamicObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
+            JSObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
             swapPrototype(errorObj, newTarget);
 
             TruffleString message;
@@ -2402,7 +2403,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return false;
         }
 
-        private void installErrorCause(JSDynamicObject errorObj, Object options) {
+        private void installErrorCause(JSObject errorObj, Object options) {
             if (installErrorCauseNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 installErrorCauseNode = insert(new InstallErrorCauseNode(getContext()));

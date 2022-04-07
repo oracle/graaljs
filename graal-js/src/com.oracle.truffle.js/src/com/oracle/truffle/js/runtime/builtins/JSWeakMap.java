@@ -52,6 +52,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.WeakMap;
 
@@ -65,10 +66,10 @@ public final class JSWeakMap extends JSNonProxy implements JSConstructorFactory.
     private JSWeakMap() {
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm) {
+    public static JSWeakMapObject create(JSContext context, JSRealm realm) {
         WeakMap weakMap = new WeakMap();
         JSObjectFactory factory = context.getWeakMapFactory();
-        JSDynamicObject obj = factory.initProto(new JSWeakMapObject(factory.getShape(realm), weakMap), realm);
+        JSWeakMapObject obj = factory.initProto(new JSWeakMapObject(factory.getShape(realm), weakMap), realm);
         assert isJSWeakMap(obj);
         return context.trackAllocation(obj);
     }
@@ -80,9 +81,9 @@ public final class JSWeakMap extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public JSDynamicObject createPrototype(final JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WeakMapPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);

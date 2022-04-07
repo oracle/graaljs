@@ -133,6 +133,7 @@ import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSMath;
@@ -1038,7 +1039,7 @@ public class JSRealm {
         this.currentRealm = prevRealm;
     }
 
-    public final JSDynamicObject lookupFunction(JSBuiltinsContainer container, TruffleString methodName) {
+    public final JSFunctionObject lookupFunction(JSBuiltinsContainer container, TruffleString methodName) {
         assert JSRuntime.isPropertyKey(methodName);
         Builtin builtin = Objects.requireNonNull(container.lookupFunctionByName(methodName));
         JSFunctionData functionData = builtin.createFunctionData(context);
@@ -2014,7 +2015,7 @@ public class JSRealm {
 
     private void setupJavaInterop() {
         assert isJavaInteropEnabled();
-        JSDynamicObject java = JSObjectUtil.createOrdinaryPrototypeObject(this);
+        JSObject java = JSObjectUtil.createOrdinaryPrototypeObject(this);
         JSObjectUtil.putToStringTag(java, JAVA_CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(this, java, JavaBuiltins.BUILTINS);
         if (context.isOptionNashornCompatibilityMode()) {
@@ -2042,7 +2043,7 @@ public class JSRealm {
     }
 
     private void setupPolyglot() {
-        JSDynamicObject polyglotObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
+        JSObject polyglotObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
         JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, PolyglotBuiltins.BUILTINS);
 
         if (getContext().isOptionDebugBuiltin()) {
@@ -2067,7 +2068,7 @@ public class JSRealm {
     }
 
     private JSDynamicObject createPerformanceObject() {
-        JSDynamicObject obj = JSOrdinary.createInit(this);
+        JSObject obj = JSOrdinary.createInit(this);
         JSObjectUtil.putFunctionsFromContainer(this, obj, PerformanceBuiltins.BUILTINS);
         return obj;
     }
@@ -2139,7 +2140,7 @@ public class JSRealm {
      * Creates the prototype object of foreign iterables.
      */
     private JSDynamicObject createForeignIterablePrototype() {
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, ForeignIterablePrototypeBuiltins.BUILTINS);
         return prototype;
     }
@@ -2242,23 +2243,23 @@ public class JSRealm {
         setRealmBuiltinObject(createRealmBuiltinObject());
     }
 
-    private JSDynamicObject createRealmBuiltinObject() {
-        JSDynamicObject obj = JSOrdinary.createInit(this);
+    private JSObject createRealmBuiltinObject() {
+        JSObject obj = JSOrdinary.createInit(this);
         JSObjectUtil.putToStringTag(obj, REALM_BUILTIN_CLASS_NAME);
         JSObjectUtil.putProxyProperty(obj, REALM_SHARED_NAME, REALM_SHARED_PROXY, JSAttributes.getDefault());
         JSObjectUtil.putFunctionsFromContainer(this, obj, RealmFunctionBuiltins.BUILTINS);
         return obj;
     }
 
-    private JSDynamicObject createDebugObject() {
-        JSDynamicObject obj = JSOrdinary.createInit(this);
+    private JSObject createDebugObject() {
+        JSObject obj = JSOrdinary.createInit(this);
         JSObjectUtil.putToStringTag(obj, DEBUG_CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(this, obj, DebugBuiltins.BUILTINS);
         return obj;
     }
 
-    private JSDynamicObject createMleObject() {
-        JSDynamicObject obj = JSOrdinary.createInit(this);
+    private JSObject createMleObject() {
+        JSObject obj = JSOrdinary.createInit(this);
         JSObjectUtil.putToStringTag(obj, MLE_CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(this, obj, MLEBuiltins.BUILTINS);
         return obj;

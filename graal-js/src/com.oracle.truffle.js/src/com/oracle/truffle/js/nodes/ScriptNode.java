@@ -51,7 +51,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 
 public final class ScriptNode {
 
@@ -82,7 +82,7 @@ public final class ScriptNode {
     }
 
     public Object[] argumentsToRunWithThisObject(JSRealm realm, Object thisObj) {
-        JSDynamicObject functionObj = JSFunction.create(realm, functionData);
+        JSFunctionObject functionObj = JSFunction.create(realm, functionData);
         return JSArguments.createZeroArg(thisObj, functionObj);
     }
 
@@ -91,12 +91,12 @@ public final class ScriptNode {
     }
 
     public Object[] argumentsToRunWithThisObjectWithArguments(JSRealm realm, Object thisObj, Object[] args) {
-        JSDynamicObject functionObj = JSFunction.create(realm, functionData);
+        JSFunctionObject functionObj = JSFunction.create(realm, functionData);
         return JSArguments.create(thisObj, functionObj, args);
     }
 
     public Object runEval(IndirectCallNode callNode, JSRealm realm, Object thisObj, MaterializedFrame materializedFrame) {
-        JSDynamicObject functionObj = JSFunction.create(realm, getFunctionData(), materializedFrame);
+        JSFunctionObject functionObj = JSFunction.create(realm, getFunctionData(), materializedFrame);
         return callNode.call(callTarget, JSArguments.createZeroArg(thisObj, functionObj));
     }
 

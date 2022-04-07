@@ -91,7 +91,7 @@ public final class JSProxyObject extends JSClassObject {
         this.proxyTarget = RevokedTarget.lookup(isCallable, isConstructor);
     }
 
-    public static JSDynamicObject create(JSRealm realm, JSObjectFactory factory, Object target, JSDynamicObject handler) {
+    public static JSProxyObject create(JSRealm realm, JSObjectFactory factory, Object target, JSDynamicObject handler) {
         return factory.initProto(new JSProxyObject(factory.getShape(realm), target, handler), realm);
     }
 

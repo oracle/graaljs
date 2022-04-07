@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -196,10 +197,10 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         }
         // Create `require` and other builtins for this module.
         TruffleString dirnameBuiltin = Strings.fromJavaString(modulePath.getParent().getAbsoluteFile().normalize().toString());
-        JSDynamicObject exportsBuiltin = createExportsBuiltin(realm);
-        JSDynamicObject moduleBuiltin = createModuleBuiltin(realm, exportsBuiltin, filenameBuiltin);
-        JSDynamicObject requireBuiltin = createRequireBuiltin(realm, moduleBuiltin, filenameBuiltin);
-        JSDynamicObject env = JSOrdinary.create(getContext(), getRealm());
+        JSObject exportsBuiltin = createExportsBuiltin(realm);
+        JSObject moduleBuiltin = createModuleBuiltin(realm, exportsBuiltin, filenameBuiltin);
+        JSObject requireBuiltin = createRequireBuiltin(realm, moduleBuiltin, filenameBuiltin);
+        JSObject env = JSOrdinary.create(getContext(), getRealm());
         JSObject.set(env, Strings.ENV_PROPERTY_NAME, JSOrdinary.create(getContext(), getRealm()));
         // Parse the module
         CharSequence characters = MODULE_PREAMBLE + source.getCharacters() + MODULE_END;
@@ -269,8 +270,8 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         return JSException.create(JSErrorType.TypeError, sb.toString());
     }
 
-    private static JSDynamicObject createModuleBuiltin(JSRealm realm, JSDynamicObject exportsBuiltin, TruffleString fileNameBuiltin) {
-        JSDynamicObject module = JSOrdinary.create(realm.getContext(), realm);
+    private static JSObject createModuleBuiltin(JSRealm realm, JSDynamicObject exportsBuiltin, TruffleString fileNameBuiltin) {
+        JSObject module = JSOrdinary.create(realm.getContext(), realm);
         JSObject.set(module, Strings.EXPORTS_PROPERTY_NAME, exportsBuiltin);
         JSObject.set(module, Strings.ID_PROPERTY_NAME, fileNameBuiltin);
         JSObject.set(module, Strings.FILENAME_PROPERTY_NAME, fileNameBuiltin);
@@ -278,11 +279,11 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         return module;
     }
 
-    private static JSDynamicObject createRequireBuiltin(JSRealm realm, JSDynamicObject moduleBuiltin, TruffleString fileNameBuiltin) {
-        JSDynamicObject mainRequire = (JSDynamicObject) realm.getCommonJSRequireFunctionObject();
-        JSDynamicObject mainResolve = (JSDynamicObject) JSObject.get(mainRequire, Strings.RESOLVE_PROPERTY_NAME);
+    private static JSObject createRequireBuiltin(JSRealm realm, JSDynamicObject moduleBuiltin, TruffleString fileNameBuiltin) {
+        JSFunctionObject mainRequire = (JSFunctionObject) realm.getCommonJSRequireFunctionObject();
+        Object mainResolve = JSObject.get(mainRequire, Strings.RESOLVE_PROPERTY_NAME);
         JSFunctionData functionData = JSFunction.getFunctionData(mainRequire);
-        JSDynamicObject newRequire = JSFunction.create(realm, functionData);
+        JSObject newRequire = JSFunction.create(realm, functionData);
         JSObject.set(newRequire, Strings.MODULE_PROPERTY_NAME, moduleBuiltin);
         JSObject.set(newRequire, Strings.RESOLVE_PROPERTY_NAME, mainResolve);
         // XXX(db) Here, we store the current filename in the (new) require builtin.
@@ -292,7 +293,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         return newRequire;
     }
 
-    private static JSDynamicObject createExportsBuiltin(JSRealm realm) {
+    private static JSObject createExportsBuiltin(JSRealm realm) {
         return JSOrdinary.create(realm.getContext(), realm);
     }
 

@@ -54,6 +54,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
@@ -67,23 +68,23 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     private JSSharedArrayBuffer() {
     }
 
-    public static JSDynamicObject createSharedArrayBuffer(JSContext context, JSRealm realm, int length) {
+    public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, int length) {
         return createSharedArrayBuffer(context, realm, DirectByteBufferHelper.allocateDirect(length));
     }
 
-    public static JSDynamicObject createSharedArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer) {
+    public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer) {
         assert buffer != null;
         JSObjectFactory factory = context.getSharedArrayBufferFactory();
-        JSDynamicObject obj = JSArrayBufferObject.createSharedArrayBuffer(factory.getShape(realm), buffer, new JSAgentWaiterList());
+        JSArrayBufferObject obj = JSArrayBufferObject.createSharedArrayBuffer(factory.getShape(realm), buffer, new JSAgentWaiterList());
         factory.initProto(obj, realm);
         assert isJSSharedArrayBuffer(obj);
         return context.trackAllocation(obj);
     }
 
     @Override
-    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext context = realm.getContext();
-        JSDynamicObject arrayBufferPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject arrayBufferPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         putConstructorProperty(context, arrayBufferPrototype, ctor);
         putFunctionsFromContainer(realm, arrayBufferPrototype, SharedArrayBufferPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putBuiltinAccessorProperty(arrayBufferPrototype, BYTE_LENGTH, realm.lookupAccessor(SharedArrayBufferPrototypeBuiltins.BUILTINS, BYTE_LENGTH));

@@ -197,9 +197,9 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
      * {@link TruffleBoundary} in cases when your regular expression has no named capture groups,
      * consider using the {@code com.oracle.truffle.js.nodes.intl.CreateRegExpNode}.
      */
-    public static JSDynamicObject create(JSContext ctx, JSRealm realm, Object compiledRegex) {
+    public static JSRegExpObject create(JSContext ctx, JSRealm realm, Object compiledRegex) {
         JSObjectFactory groupsFactory = computeGroupsFactory(ctx, compiledRegex);
-        JSDynamicObject obj = create(ctx, realm, compiledRegex, groupsFactory);
+        JSRegExpObject obj = create(ctx, realm, compiledRegex, groupsFactory);
         JSObjectUtil.putDataProperty(ctx, obj, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
         assert isJSRegExp(obj);
         return obj;
@@ -208,7 +208,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     /**
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
-    public static JSDynamicObject create(JSContext context, JSRealm realm, Object compiledRegex, JSObjectFactory groupsFactory) {
+    public static JSRegExpObject create(JSContext context, JSRealm realm, Object compiledRegex, JSObjectFactory groupsFactory) {
         return create(context, realm, compiledRegex, groupsFactory, true);
     }
 
@@ -301,7 +301,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     }
 
     @Override
-    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
         JSDynamicObject prototype;
         if (ctx.getEcmaScriptVersion() < 6) {

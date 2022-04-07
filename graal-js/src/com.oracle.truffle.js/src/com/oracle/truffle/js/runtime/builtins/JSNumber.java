@@ -52,6 +52,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
@@ -70,9 +71,8 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
     private JSNumber() {
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, Number value) {
-        JSDynamicObject obj = JSNumberObject.create(realm, context.getNumberFactory(), value);
-        assert isJSNumber(obj);
+    public static JSNumberObject create(JSContext context, JSRealm realm, Number value) {
+        JSNumberObject obj = JSNumberObject.create(realm, context.getNumberFactory(), value);
         return context.trackAllocation(obj);
     }
 
@@ -86,10 +86,10 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
     }
 
     @Override
-    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext context = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
-        JSDynamicObject numberPrototype = JSNumberObject.create(protoShape, 0);
+        JSObject numberPrototype = JSNumberObject.create(protoShape, 0);
         JSObjectUtil.setOrVerifyPrototype(context, numberPrototype, realm.getObjectPrototype());
 
         JSObjectUtil.putConstructorProperty(context, numberPrototype, ctor);

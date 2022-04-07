@@ -183,6 +183,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSMapObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
@@ -3433,7 +3434,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected Object groupBy(Object thisObj, Object callback, Object thisArg) {
             Map<Object, List<Object>> groups = collectGroupByResults(thisObj, callback, thisArg);
-            JSDynamicObject obj = JSOrdinary.createWithNullPrototype(getContext());
+            JSObject obj = JSOrdinary.createWithNullPrototype(getContext());
             return createGroupByResult(obj, groups);
         }
 
@@ -3462,7 +3463,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected Object groupByToMap(Object thisObj, Object callback, Object thisArg) {
             Map<Object, List<Object>> groups = collectGroupByResults(thisObj, callback, thisArg);
-            var map = JSMap.create(getContext(), getRealm());
+            JSMapObject map = JSMap.create(getContext(), getRealm());
             return createGroupByResult(map, groups);
         }
 
@@ -3472,7 +3473,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @TruffleBoundary
-        protected Object createGroupByResult(JSDynamicObject map, Map<Object, List<Object>> groups) {
+        protected Object createGroupByResult(JSMapObject map, Map<Object, List<Object>> groups) {
             JSHashMap internalMap = JSMap.getInternalMap(map);
             JSRealm realm = getRealm();
             for (Map.Entry<Object, List<Object>> entry : groups.entrySet()) {

@@ -54,6 +54,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -81,7 +82,7 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
     private JSDataView() {
     }
 
-    public static JSDynamicObject getArrayBuffer(Object thisObj) {
+    public static JSArrayBufferObject getArrayBuffer(Object thisObj) {
         assert JSDataView.isJSDataView(thisObj);
         return JSDataViewObject.getArrayBuffer(thisObj);
     }
@@ -97,9 +98,9 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
     }
 
     @Override
-    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext context = realm.getContext();
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(context, prototype, ctor);
         putGetters(realm, prototype);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, DataViewPrototypeBuiltins.BUILTINS);
@@ -107,7 +108,7 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
         return prototype;
     }
 
-    private static void putGetters(JSRealm realm, JSDynamicObject prototype) {
+    private static void putGetters(JSRealm realm, JSObject prototype) {
         putGetter(realm, prototype, BUFFER, BuiltinFunctionKey.DataViewBuffer, view -> getArrayBuffer(view));
         putGetter(realm, prototype, BYTE_LENGTH, BuiltinFunctionKey.DataViewByteLength, view -> typedArrayGetLengthChecked(view));
         putGetter(realm, prototype, BYTE_OFFSET, BuiltinFunctionKey.DataViewByteOffset, view -> typedArrayGetOffsetChecked(view));
@@ -127,7 +128,7 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
         return typedArrayGetOffset(thisObj);
     }
 
-    private static void putGetter(JSRealm realm, JSDynamicObject prototype, TruffleString name, BuiltinFunctionKey key, Function<JSDynamicObject, Object> function) {
+    private static void putGetter(JSRealm realm, JSObject prototype, TruffleString name, BuiltinFunctionKey key, Function<JSDynamicObject, Object> function) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(key, (c) -> {
             return JSFunctionData.createCallOnly(c, new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Override

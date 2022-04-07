@@ -56,7 +56,6 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.TestHelper;
@@ -74,7 +73,7 @@ public class GlobalProxyTest {
 
             JSContext context = helper.getJSContext();
             JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
-            JSDynamicObject proxyHandler = JSOrdinary.create(context, realm);
+            var proxyHandler = JSOrdinary.create(context, realm);
             JSObject.set(proxyHandler, Strings.fromJavaString("has"), helper.runNoPolyglot("" +
                             "(function() {\n" +
                             "  let Reflect = globalThis.Reflect;\n" +
@@ -86,8 +85,8 @@ public class GlobalProxyTest {
                             "    return result;\n" +
                             "  };\n" +
                             "})()"));
-            JSDynamicObject oldGlobal = realm.getGlobalObject();
-            JSDynamicObject newGlobal = JSProxy.create(context, realm, oldGlobal, proxyHandler);
+            var oldGlobal = realm.getGlobalObject();
+            var newGlobal = JSProxy.create(context, realm, oldGlobal, proxyHandler);
             realm.setGlobalObject(newGlobal);
 
             try {

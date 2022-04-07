@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.AsyncGeneratorState;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
 import com.oracle.truffle.js.runtime.objects.Completion;
@@ -129,8 +130,8 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
                         enterReturnBranch();
                         setGeneratorStateNode.setValue(generator, AsyncGeneratorState.AwaitingReturn);
                         JSDynamicObject promise = promiseResolve(next.getCompletionValue());
-                        JSDynamicObject onFulfilled = createAsyncGeneratorReturnProcessorFulfilledFunction(generator);
-                        JSDynamicObject onRejected = createAsyncGeneratorReturnProcessorRejectedFunction(generator);
+                        JSFunctionObject onFulfilled = createAsyncGeneratorReturnProcessorFulfilledFunction(generator);
+                        JSFunctionObject onRejected = createAsyncGeneratorReturnProcessorRejectedFunction(generator);
                         PromiseCapabilityRecord throwawayCapability = newThrowawayCapability();
                         performPromiseThenNode.execute(promise, onFulfilled, onRejected, throwawayCapability);
                         return Undefined.instance;
@@ -233,9 +234,9 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
         }
     }
 
-    private JSDynamicObject createAsyncGeneratorReturnProcessorFulfilledFunction(JSDynamicObject generator) {
+    private JSFunctionObject createAsyncGeneratorReturnProcessorFulfilledFunction(JSDynamicObject generator) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncGeneratorReturnFulfilled, (c) -> createAsyncGeneratorReturnProcessorFulfilledImpl(c));
-        JSDynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSFunctionObject function = JSFunction.create(getRealm(), functionData);
         setGeneratorNode.setValue(function, generator);
         return function;
     }
@@ -259,9 +260,9 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
         return JSFunctionData.createCallOnly(context, new AsyncGeneratorReturnFulfilledRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
-    private JSDynamicObject createAsyncGeneratorReturnProcessorRejectedFunction(JSDynamicObject generator) {
+    private JSFunctionObject createAsyncGeneratorReturnProcessorRejectedFunction(JSDynamicObject generator) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncGeneratorReturnRejected, (c) -> createAsyncGeneratorReturnProcessorRejectedImpl(c));
-        JSDynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSFunctionObject function = JSFunction.create(getRealm(), functionData);
         setGeneratorNode.setValue(function, generator);
         return function;
     }

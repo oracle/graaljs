@@ -149,7 +149,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         protected Object parse(Object text, Object reviver,
                         @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
             Object unfiltered = parseIntl(toString(text));
-            JSDynamicObject root = JSOrdinary.create(getContext(), getRealm());
+            JSObject root = JSOrdinary.create(getContext(), getRealm());
             JSObjectUtil.putDataProperty(getContext(), root, Strings.EMPTY_STRING, unfiltered, JSAttributes.getDefault());
             return walk((JSDynamicObject) reviver, root, Strings.EMPTY_STRING);
         }

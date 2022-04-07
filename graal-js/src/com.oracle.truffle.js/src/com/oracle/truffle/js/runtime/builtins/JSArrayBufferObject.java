@@ -685,19 +685,19 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
     }
 
-    public static JSDynamicObject createHeapArrayBuffer(Shape shape, byte[] byteArray) {
+    public static JSArrayBufferObject createHeapArrayBuffer(Shape shape, byte[] byteArray) {
         return new Heap(shape, byteArray);
     }
 
-    public static JSDynamicObject createDirectArrayBuffer(Shape shape, ByteBuffer byteBuffer) {
+    public static JSArrayBufferObject createDirectArrayBuffer(Shape shape, ByteBuffer byteBuffer) {
         return new Direct(shape, byteBuffer);
     }
 
-    public static JSDynamicObject createSharedArrayBuffer(Shape shape, ByteBuffer byteBuffer, JSAgentWaiterList waiterList) {
+    public static JSArrayBufferObject createSharedArrayBuffer(Shape shape, ByteBuffer byteBuffer, JSAgentWaiterList waiterList) {
         return new Shared(shape, byteBuffer, waiterList);
     }
 
-    public static JSDynamicObject createInteropArrayBuffer(Shape shape, Object interopBuffer) {
+    public static JSArrayBufferObject createInteropArrayBuffer(Shape shape, Object interopBuffer) {
         return new Interop(shape, interopBuffer);
     }
 

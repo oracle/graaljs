@@ -99,6 +99,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -364,7 +365,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @Specialization(guards = "isJSObject(syncIterator)")
         protected Object createAsyncFromSyncIterator(JSDynamicObject syncIterator) {
             JSContext context = getContext();
-            JSDynamicObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory(), getRealm());
+            JSObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory(), getRealm());
             IteratorRecord syncIteratorRecord = IteratorRecord.create(syncIterator, getNextMethodNode.getValue(syncIterator), false);
             setState.setValue(obj, syncIteratorRecord);
             return obj;

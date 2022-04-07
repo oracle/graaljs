@@ -90,18 +90,18 @@ public final class JSObjectUtil {
         return Strings.concatAll(Strings.BRACKET_OBJECT_SPC, object, Strings.BRACKET_CLOSE);
     }
 
-    public static JSDynamicObject createOrdinaryPrototypeObject(JSRealm realm) {
+    public static JSObject createOrdinaryPrototypeObject(JSRealm realm) {
         CompilerAsserts.neverPartOfCompilation();
         return createOrdinaryPrototypeObject(realm, realm.getObjectPrototype());
     }
 
-    public static JSDynamicObject createOrdinaryPrototypeObject(JSRealm realm, JSDynamicObject prototype) {
+    public static JSObject createOrdinaryPrototypeObject(JSRealm realm, JSDynamicObject prototype) {
         CompilerAsserts.neverPartOfCompilation();
         // slow; only use for initialization
         assert prototype == Null.instance || JSRuntime.isObject(prototype);
 
         JSContext context = realm.getContext();
-        JSDynamicObject obj;
+        JSObject obj;
         if (context.isMultiContext()) {
             obj = JSOrdinary.createInitWithInstancePrototype(prototype, context);
         } else {

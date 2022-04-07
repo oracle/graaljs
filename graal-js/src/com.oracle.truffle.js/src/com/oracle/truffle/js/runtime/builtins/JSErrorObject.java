@@ -67,11 +67,11 @@ public final class JSErrorObject extends JSNonProxyObject implements JSCopyableO
         super(shape);
     }
 
-    public static JSDynamicObject create(Shape shape) {
+    public static JSErrorObject create(Shape shape) {
         return new JSErrorObject(shape);
     }
 
-    public static JSDynamicObject create(JSRealm realm, JSObjectFactory factory) {
+    public static JSErrorObject create(JSRealm realm, JSObjectFactory factory) {
         return factory.initProto(new JSErrorObject(factory.getShape(realm)), realm);
     }
 

@@ -53,6 +53,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
@@ -69,17 +70,17 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
     private JSBoolean() {
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, boolean value) {
-        JSDynamicObject obj = JSBooleanObject.create(realm, context.getBooleanFactory(), value);
+    public static JSBooleanObject create(JSContext context, JSRealm realm, boolean value) {
+        JSBooleanObject obj = JSBooleanObject.create(realm, context.getBooleanFactory(), value);
         assert isJSBoolean(obj);
         return context.trackAllocation(obj);
     }
 
     @Override
-    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
-        JSDynamicObject booleanPrototype = JSBooleanObject.create(protoShape, false);
+        JSObject booleanPrototype = JSBooleanObject.create(protoShape, false);
         JSObjectUtil.setOrVerifyPrototype(ctx, booleanPrototype, realm.getObjectPrototype());
 
         JSObjectUtil.putConstructorProperty(ctx, booleanPrototype, ctor);

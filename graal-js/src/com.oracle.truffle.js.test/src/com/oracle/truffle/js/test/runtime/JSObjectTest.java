@@ -48,7 +48,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.test.JSTest;
 
@@ -70,13 +69,13 @@ public class JSObjectTest extends JSTest {
         super.close();
     }
 
-    private JSDynamicObject createOrdinaryObject() {
+    private JSObject createOrdinaryObject() {
         return JSOrdinary.create(testHelper.getJSContext(), testHelper.getRealm());
     }
 
     @Test
     public void testSetGet() {
-        JSDynamicObject obj = createOrdinaryObject();
+        JSObject obj = createOrdinaryObject();
         JSObject.set(obj, X, 10);
         assertEquals(10, JSObject.get(obj, X));
         JSObject.set(obj, Y, 20);
@@ -86,7 +85,7 @@ public class JSObjectTest extends JSTest {
 
     @Test
     public void testRemove() {
-        JSDynamicObject obj = createOrdinaryObject();
+        JSObject obj = createOrdinaryObject();
         JSObject.set(obj, X, 10);
         JSObject.set(obj, Y, 20);
         assertEquals(10, JSObject.get(obj, X));
@@ -102,7 +101,7 @@ public class JSObjectTest extends JSTest {
 
     @Test
     public void testRemove2() {
-        JSDynamicObject obj = createOrdinaryObject();
+        JSObject obj = createOrdinaryObject();
         JSObject.set(obj, X, 10);
         JSObject.set(obj, Y, 20);
         assertEquals(10, JSObject.get(obj, X));
@@ -136,7 +135,7 @@ public class JSObjectTest extends JSTest {
 
     @Test
     public void propertyTest() {
-        JSDynamicObject po = createOrdinaryObject();
+        JSObject po = createOrdinaryObject();
         for (int i = 0; i < 10000; i++) {
             JSObject.set(po, Strings.fromInt(i), i);
         }

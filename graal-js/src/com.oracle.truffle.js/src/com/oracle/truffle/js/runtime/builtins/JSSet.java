@@ -60,6 +60,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
@@ -81,9 +82,9 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
     private JSSet() {
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm) {
+    public static JSSetObject create(JSContext context, JSRealm realm) {
         JSObjectFactory factory = context.getSetFactory();
-        JSDynamicObject obj = factory.initProto(new JSSetObject(factory.getShape(realm), new JSHashMap()), realm);
+        JSSetObject obj = factory.initProto(new JSSetObject(factory.getShape(realm), new JSHashMap()), realm);
         assert isJSSet(obj);
         return context.trackAllocation(obj);
     }
@@ -137,9 +138,9 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
     }
 
     @Override
-    public JSDynamicObject createPrototype(final JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         // sets the size just for the prototype
         JSObjectUtil.putBuiltinAccessorProperty(prototype, SIZE, createSizeGetterFunction(realm), Undefined.instance);

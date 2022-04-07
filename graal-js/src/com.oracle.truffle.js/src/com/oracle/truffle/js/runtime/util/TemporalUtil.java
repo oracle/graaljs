@@ -1025,11 +1025,11 @@ public final class TemporalUtil {
         return id.equals(ISO8601) || id.equals(GREGORY) || id.equals(JAPANESE);
     }
 
-    public static JSDynamicObject getISO8601Calendar(JSContext ctx, JSRealm realm, BranchProfile errorBranch) {
+    public static JSTemporalCalendarObject getISO8601Calendar(JSContext ctx, JSRealm realm, BranchProfile errorBranch) {
         return getBuiltinCalendar(ISO8601, ctx, realm, errorBranch);
     }
 
-    public static JSDynamicObject getISO8601Calendar(JSContext ctx, JSRealm realm) {
+    public static JSTemporalCalendarObject getISO8601Calendar(JSContext ctx, JSRealm realm) {
         return getBuiltinCalendar(ISO8601, ctx, realm);
     }
 
@@ -1038,14 +1038,14 @@ public final class TemporalUtil {
             errorBranch.enter();
             throw TemporalErrors.createRangeErrorCalendarNotSupported();
         }
-        return (JSTemporalCalendarObject) JSTemporalCalendar.create(ctx, realm, id, errorBranch);
+        return JSTemporalCalendar.create(ctx, realm, id, errorBranch);
     }
 
     public static JSTemporalCalendarObject getBuiltinCalendar(TruffleString id, JSContext ctx, JSRealm realm) {
         if (!isBuiltinCalendar(id)) {
             throw TemporalErrors.createRangeErrorCalendarNotSupported();
         }
-        return (JSTemporalCalendarObject) JSTemporalCalendar.create(ctx, realm, id);
+        return JSTemporalCalendar.create(ctx, realm, id);
     }
 
     /**
@@ -2859,7 +2859,7 @@ public final class TemporalUtil {
                     double microseconds, double nanoseconds, JSDynamicObject options) {
         JSTemporalDurationRecord timeResult = addTimeDouble(hour, minute, second, millisecond, microsecond, nanosecond,
                         hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-        JSDynamicObject datePart = JSTemporalPlainDate.create(ctx, year, month, day, calendar);
+        JSTemporalPlainDateObject datePart = JSTemporalPlainDate.create(ctx, year, month, day, calendar);
         JSDynamicObject dateDuration = JSTemporalDuration.createTemporalDuration(ctx, years, months, weeks, days + timeResult.getDays(), 0L, 0L, 0L, 0L, 0L, 0L);
         JSTemporalPlainDateObject addedDate = (JSTemporalPlainDateObject) calendarDateAdd(calendar, datePart, dateDuration, options);
         return JSTemporalDateTimeRecord.create(addedDate.getYear(), addedDate.getMonth(), addedDate.getDay(),
@@ -2909,7 +2909,7 @@ public final class TemporalUtil {
         BigInteger ns = roundTemporalInstant(zonedDateTime.getNanoseconds(), (long) increment, unit, roundingMode);
         JSDynamicObject timeZone = zonedDateTime.getTimeZone();
         JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, new BigInt(ns));
-        JSTemporalCalendarObject isoCalendar = (JSTemporalCalendarObject) getISO8601Calendar(ctx, realm);
+        JSTemporalCalendarObject isoCalendar = getISO8601Calendar(ctx, realm);
         JSTemporalPlainDateTimeObject temporalDateTime = builtinTimeZoneGetPlainDateTimeFor(ctx, timeZone, instant, isoCalendar);
         TruffleString dateTimeString = JSTemporalPlainDateTime.temporalDateTimeToString(temporalDateTime.getYear(), temporalDateTime.getMonth(), temporalDateTime.getDay(),
                         temporalDateTime.getHour(), temporalDateTime.getMinute(), temporalDateTime.getSecond(), temporalDateTime.getMillisecond(),

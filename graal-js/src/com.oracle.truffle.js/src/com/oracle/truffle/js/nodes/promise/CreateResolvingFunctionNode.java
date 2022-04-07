@@ -63,6 +63,7 @@ import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -96,14 +97,14 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
 
     public Pair<JSDynamicObject, JSDynamicObject> execute(JSDynamicObject promise) {
         AlreadyResolved alreadyResolved = new AlreadyResolved();
-        JSDynamicObject resolve = createPromiseResolveFunction(promise, alreadyResolved);
-        JSDynamicObject reject = createPromiseRejectFunction(promise, alreadyResolved);
+        JSFunctionObject resolve = createPromiseResolveFunction(promise, alreadyResolved);
+        JSFunctionObject reject = createPromiseRejectFunction(promise, alreadyResolved);
         return new Pair<>(resolve, reject);
     }
 
-    private JSDynamicObject createPromiseResolveFunction(JSDynamicObject promise, AlreadyResolved alreadyResolved) {
+    private JSFunctionObject createPromiseResolveFunction(JSDynamicObject promise, AlreadyResolved alreadyResolved) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseResolveFunction, (c) -> createPromiseResolveFunctionImpl(c));
-        JSDynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSFunctionObject function = JSFunction.create(getRealm(), functionData);
         setPromiseNode.setValue(function, promise);
         setAlreadyResolvedNode.setValue(function, alreadyResolved);
         return function;
@@ -162,7 +163,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 if (!isCallableNode.executeBoolean(then)) {
                     return fulfillPromise(promise, resolution);
                 }
-                JSDynamicObject job = promiseResolveThenableJob(promise, resolution, then);
+                JSFunctionObject job = promiseResolveThenableJob(promise, resolution, then);
                 context.promiseEnqueueJob(getRealm(), job);
                 return Undefined.instance;
             }
@@ -205,7 +206,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 }
             }
 
-            private JSDynamicObject promiseResolveThenableJob(JSDynamicObject promise, Object thenable, Object then) {
+            private JSFunctionObject promiseResolveThenableJob(JSDynamicObject promise, Object thenable, Object then) {
                 if (setPromiseNode == null || setThenableNode == null || setThenNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     setPromiseNode = insert(PropertySetNode.createSetHidden(PROMISE_KEY, context));
@@ -213,7 +214,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                     setThenNode = insert(PropertySetNode.createSetHidden(THEN_KEY, context));
                 }
                 JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseResolveThenableJob, (c) -> createPromiseResolveThenableJobImpl(c));
-                JSDynamicObject function = JSFunction.create(getRealm(), functionData);
+                JSFunctionObject function = JSFunction.create(getRealm(), functionData);
                 setPromiseNode.setValue(function, promise);
                 setThenableNode.setValue(function, thenable);
                 setThenNode.setValue(function, then);
@@ -249,9 +250,9 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
         return JSFunctionData.createCallOnly(context, new PromiseResolveThenableJob().getCallTarget(), 0, Strings.EMPTY_STRING);
     }
 
-    private JSDynamicObject createPromiseRejectFunction(JSDynamicObject promise, AlreadyResolved alreadyResolved) {
+    private JSFunctionObject createPromiseRejectFunction(JSDynamicObject promise, AlreadyResolved alreadyResolved) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseRejectFunction, (c) -> createPromiseRejectFunctionImpl(c));
-        JSDynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSFunctionObject function = JSFunction.create(getRealm(), functionData);
         setPromiseNode.setValue(function, promise);
         setAlreadyResolvedNode.setValue(function, alreadyResolved);
         return function;

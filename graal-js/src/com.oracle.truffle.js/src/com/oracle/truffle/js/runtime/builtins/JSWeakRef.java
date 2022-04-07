@@ -50,6 +50,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
@@ -62,10 +63,10 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
     private JSWeakRef() {
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, Object referent) {
+    public static JSWeakRefObject create(JSContext context, JSRealm realm, Object referent) {
         TruffleWeakReference<Object> weakReference = new TruffleWeakReference<>(referent);
         JSObjectFactory factory = context.getWeakRefFactory();
-        JSDynamicObject obj = factory.initProto(new JSWeakRefObject(factory.getShape(realm), weakReference), realm);
+        JSWeakRefObject obj = factory.initProto(new JSWeakRefObject(factory.getShape(realm), weakReference), realm);
         assert isJSWeakRef(obj);
         // Used for KeepDuringJob(target) in the specification
         context.addWeakRefTargetToSet(referent);
@@ -78,9 +79,9 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public JSDynamicObject createPrototype(final JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WeakRefPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);

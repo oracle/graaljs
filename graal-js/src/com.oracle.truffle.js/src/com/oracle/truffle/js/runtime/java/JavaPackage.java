@@ -60,6 +60,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -76,12 +77,12 @@ public final class JavaPackage extends JSNonProxy {
     private JavaPackage() {
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, TruffleString packageName) {
+    public static JavaPackageObject create(JSContext context, JSRealm realm, TruffleString packageName) {
         JavaPackageObject obj = createInstance(context, realm, packageName);
         return context.trackAllocation(obj);
     }
 
-    public static JSDynamicObject createInit(JSRealm realm, TruffleString packageName) {
+    public static JavaPackageObject createInit(JSRealm realm, TruffleString packageName) {
         CompilerAsserts.neverPartOfCompilation();
         JSContext context = realm.getContext();
         return createInstance(context, realm, packageName);
@@ -176,7 +177,7 @@ public final class JavaPackage extends JSNonProxy {
         return Strings.concatAll(Strings.BRACKET_OPEN, CLASS_NAME, Strings.SPACE, getPackageName(obj), Strings.BRACKET_CLOSE);
     }
 
-    public static JSDynamicObject createToPrimitiveFunction(JSContext context, JSRealm realm) {
+    public static JSFunctionObject createToPrimitiveFunction(JSContext context, JSRealm realm) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.JavaPackageToPrimitive, JavaPackage::createToPrimitiveFunctionImpl);
         return JSFunction.create(realm, functionData);
     }

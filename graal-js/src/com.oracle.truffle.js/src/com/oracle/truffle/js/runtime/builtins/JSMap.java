@@ -60,6 +60,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
@@ -81,10 +82,9 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
     private JSMap() {
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm) {
+    public static JSMapObject create(JSContext context, JSRealm realm) {
         JSObjectFactory factory = context.getMapFactory();
-        JSDynamicObject obj = factory.initProto(new JSMapObject(factory.getShape(realm), new JSHashMap()), realm);
-        assert isJSMap(obj);
+        JSMapObject obj = factory.initProto(new JSMapObject(factory.getShape(realm), new JSHashMap()), realm);
         return context.trackAllocation(obj);
     }
 
@@ -98,7 +98,7 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
         return getInternalMap(obj).size();
     }
 
-    private static JSDynamicObject createSizeGetterFunction(JSRealm realm) {
+    private static JSFunctionObject createSizeGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.MapGetSize, (c) -> {
             CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 private final BranchProfile errorBranch = BranchProfile.create();
@@ -116,14 +116,13 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
             }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, Strings.concat(Strings.GET_SPC, SIZE));
         });
-        JSDynamicObject sizeGetter = JSFunction.create(realm, getterData);
-        return sizeGetter;
+        return JSFunction.create(realm, getterData);
     }
 
     @Override
-    public JSDynamicObject createPrototype(final JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         // sets the size just for the prototype
         JSObjectUtil.putBuiltinAccessorProperty(prototype, SIZE, createSizeGetterFunction(realm), Undefined.instance);

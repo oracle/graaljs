@@ -47,7 +47,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 
 /**
  * Represents abstract operation ArrayCreate (length).
@@ -65,20 +65,20 @@ public abstract class ArrayCreateNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isValidArrayLength(length)", "length <= MAX_VALUE"})
-    protected JSDynamicObject doDefault(long length) {
+    protected JSArrayObject doDefault(long length) {
         return JSArray.createEmptyChecked(context, getRealm(), length);
     }
 
     @Specialization(guards = {"isValidArrayLength(length)", "length > MAX_VALUE"})
-    protected JSDynamicObject doLargeLength(long length) {
+    protected JSArrayObject doLargeLength(long length) {
         return JSArray.createSparseArray(context, getRealm(), length);
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = "!isValidArrayLength(length)")
-    protected JSDynamicObject doInvalidLength(long length) {
+    protected JSArrayObject doInvalidLength(long length) {
         throw Errors.createRangeErrorInvalidArrayLength();
     }
 
-    public abstract JSDynamicObject execute(long length);
+    public abstract JSArrayObject execute(long length);
 }

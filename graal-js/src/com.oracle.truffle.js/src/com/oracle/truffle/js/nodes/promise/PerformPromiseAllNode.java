@@ -65,6 +65,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -131,16 +132,16 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
             Object nextValue = iteratorValueOrSetDone(iteratorRecord, next);
             values.add(Undefined.instance, growProfile);
             Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, promiseResolve, nextValue));
-            JSDynamicObject resolveElement = createResolveElementFunction(index, values, resultCapability, remainingElementsCount);
+            JSFunctionObject resolveElement = createResolveElementFunction(index, values, resultCapability, remainingElementsCount);
             Object rejectElement = createRejectElementFunction(index, values, resultCapability, remainingElementsCount);
             remainingElementsCount.value++;
             callThen.executeCall(JSArguments.create(nextPromise, getThen.getValue(nextPromise), resolveElement, rejectElement));
         }
     }
 
-    protected JSDynamicObject createResolveElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
+    protected JSFunctionObject createResolveElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseAllResolveElement, (c) -> createResolveElementFunctionImpl(c));
-        JSDynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSFunctionObject function = JSFunction.create(getRealm(), functionData);
         setArgs.setValue(function, new ResolveElementArgs(index, values, resultCapability, remainingElementsCount));
         return function;
     }

@@ -106,9 +106,9 @@ public final class JSModuleNamespace extends JSNonProxy {
         return ((JSModuleNamespaceObject) obj).getExports();
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, JSModuleRecord module, Map<TruffleString, ExportResolution> exports) {
+    public static JSModuleNamespaceObject create(JSContext context, JSRealm realm, JSModuleRecord module, Map<TruffleString, ExportResolution> exports) {
         JSObjectFactory factory = context.getModuleNamespaceFactory();
-        JSDynamicObject obj = JSModuleNamespaceObject.create(realm, factory, module, exports);
+        JSModuleNamespaceObject obj = JSModuleNamespaceObject.create(realm, factory, module, exports);
         assert isJSModuleNamespace(obj);
         assert !JSObject.isExtensible(obj);
         return context.trackAllocation(obj);

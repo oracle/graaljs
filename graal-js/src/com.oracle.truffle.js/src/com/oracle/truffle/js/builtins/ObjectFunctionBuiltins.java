@@ -1166,7 +1166,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected JSDynamicObject entries(Object iterable) {
             requireObjectCoercibleNode.executeVoid(iterable);
-            JSDynamicObject obj = JSOrdinary.create(getContext(), getRealm());
+            JSObject obj = JSOrdinary.create(getContext(), getRealm());
             return addEntriesFromIterable(obj, iterable);
         }
 

@@ -65,9 +65,11 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -131,15 +133,15 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
             errors.add(Undefined.instance, growProfile);
             Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, promiseResolve, nextValue));
             Object resolveElement = createResolveElementFunction(index, errors, resultCapability, remainingElementsCount);
-            JSDynamicObject rejectElement = createRejectElementFunction(index, errors, resultCapability, remainingElementsCount);
+            JSFunctionObject rejectElement = createRejectElementFunction(index, errors, resultCapability, remainingElementsCount);
             remainingElementsCount.value++;
             callThen.executeCall(JSArguments.create(nextPromise, getThen.getValue(nextPromise), resolveElement, rejectElement));
         }
     }
 
-    protected JSDynamicObject createRejectElementFunction(int index, SimpleArrayList<Object> errors, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
+    protected JSFunctionObject createRejectElementFunction(int index, SimpleArrayList<Object> errors, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseAnyRejectElement, (c) -> createRejectElementFunctionImpl(c));
-        JSDynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSFunctionObject function = JSFunction.create(getRealm(), functionData);
         setArgs.setValue(function, new RejectElementArgs(index, errors, resultCapability, remainingElementsCount));
         return function;
     }
@@ -179,7 +181,7 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
                 int stackTraceLimit = stackTraceLimitNode.executeInt();
                 JSRealm realm = getRealm();
                 JSDynamicObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors);
-                JSDynamicObject aggregateErrorObject = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
+                JSObject aggregateErrorObject = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
                 JSDynamicObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);
                 GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, null, aggregateErrorObject, realm, stackTraceLimit, errorFunction, false);
                 initErrorObjectNode.execute(aggregateErrorObject, exception, null, errorsArray);

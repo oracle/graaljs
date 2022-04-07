@@ -255,33 +255,33 @@ public final class JSFunction extends JSNonProxy {
         return realm;
     }
 
-    public static JSDynamicObject create(JSRealm realm, JSFunctionData functionData) {
+    public static JSFunctionObject create(JSRealm realm, JSFunctionData functionData) {
         return create(realm, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME);
     }
 
-    public static JSDynamicObject create(JSRealm realm, JSFunctionData functionData, MaterializedFrame enclosingFrame) {
+    public static JSFunctionObject create(JSRealm realm, JSFunctionData functionData, MaterializedFrame enclosingFrame) {
         return createDefault(functionData, enclosingFrame, CLASS_PROTOTYPE_PLACEHOLDER, realm);
     }
 
-    public static JSDynamicObject createWithPrototype(JSFunctionFactory factory, JSRealm realm, JSFunctionData functionData, MaterializedFrame enclosingFrame, JSDynamicObject prototype) {
+    public static JSFunctionObject createWithPrototype(JSFunctionFactory factory, JSRealm realm, JSFunctionData functionData, MaterializedFrame enclosingFrame, JSDynamicObject prototype) {
         return createWithPrototype(factory, functionData, enclosingFrame, CLASS_PROTOTYPE_PLACEHOLDER, realm, prototype);
     }
 
-    public static JSDynamicObject createLexicalThis(JSRealm realm, JSFunctionData functionData, MaterializedFrame enclosingFrame, Object lexicalThis) {
+    public static JSFunctionObject createLexicalThis(JSRealm realm, JSFunctionData functionData, MaterializedFrame enclosingFrame, Object lexicalThis) {
         return createDefault(functionData, enclosingFrame, lexicalThis, realm);
     }
 
-    private static JSDynamicObject createDefault(JSFunctionData functionData, MaterializedFrame enclosingFrame, Object classPrototype, JSRealm realm) {
+    private static JSFunctionObject createDefault(JSFunctionData functionData, MaterializedFrame enclosingFrame, Object classPrototype, JSRealm realm) {
         JSFunctionFactory factory = initialFactory(functionData);
         return factory.create(functionData, enclosingFrame, classPrototype, realm);
     }
 
-    private static JSDynamicObject createWithPrototype(JSFunctionFactory factory, JSFunctionData functionData, MaterializedFrame enclosingFrame, Object classPrototype, JSRealm realm,
+    private static JSFunctionObject createWithPrototype(JSFunctionFactory factory, JSFunctionData functionData, MaterializedFrame enclosingFrame, Object classPrototype, JSRealm realm,
                     JSDynamicObject prototype) {
         return factory.createWithPrototype(functionData, enclosingFrame, classPrototype, realm, prototype);
     }
 
-    public static JSDynamicObject createBound(JSContext context, JSRealm realm, JSFunctionData functionData, JSDynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
+    public static JSFunctionObject createBound(JSContext context, JSRealm realm, JSFunctionData functionData, JSDynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
         assert functionData != null;
         JSFunctionFactory factory = context.getBoundFunctionFactory(functionData);
         return factory.createBound(functionData, CLASS_PROTOTYPE_PLACEHOLDER, realm, boundTargetFunction, boundThis, boundArguments);
@@ -619,11 +619,11 @@ public final class JSFunction extends JSNonProxy {
         return createNamedEmptyFunctionData(context, Strings.EMPTY_STRING);
     }
 
-    public static JSDynamicObject createNamedEmptyFunction(JSRealm realm, TruffleString name) {
+    public static JSFunctionObject createNamedEmptyFunction(JSRealm realm, TruffleString name) {
         return JSFunction.create(realm, createNamedEmptyFunctionData(realm.getContext(), name));
     }
 
-    public static JSDynamicObject createEmptyFunction(JSRealm realm) {
+    public static JSFunctionObject createEmptyFunction(JSRealm realm) {
         return JSFunction.create(realm, createEmptyFunctionData(realm.getContext()));
     }
 
@@ -710,20 +710,20 @@ public final class JSFunction extends JSNonProxy {
 
     // ##### Generator functions
 
-    public static JSDynamicObject createGeneratorFunctionPrototype(JSRealm realm, JSDynamicObject constructor) {
+    public static JSObject createGeneratorFunctionPrototype(JSRealm realm, JSDynamicObject constructor) {
         JSContext ctx = realm.getContext();
         // intrinsic object %Generator%
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getFunctionPrototype());
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getFunctionPrototype());
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.PROTOTYPE, createGeneratorPrototype(realm, prototype), JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putToStringTag(prototype, GENERATOR_FUNCTION_NAME);
         return prototype;
     }
 
-    private static JSDynamicObject createGeneratorPrototype(JSRealm realm, JSDynamicObject constructor) {
+    private static JSObject createGeneratorPrototype(JSRealm realm, JSDynamicObject constructor) {
         JSContext ctx = realm.getContext();
         // intrinsic object %GeneratorPrototype%
-        JSDynamicObject generatorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getIteratorPrototype());
+        JSObject generatorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getIteratorPrototype());
         JSObjectUtil.putFunctionsFromContainer(realm, generatorPrototype, GeneratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(ctx, generatorPrototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putToStringTag(generatorPrototype, GENERATOR_NAME);
@@ -733,19 +733,19 @@ public final class JSFunction extends JSNonProxy {
     public static JSConstructor createGeneratorFunctionConstructor(JSRealm realm) {
         JSContext ctx = realm.getContext();
         // intrinsic object %GeneratorFunction%
-        JSDynamicObject constructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, GENERATOR_FUNCTION_NAME);
+        JSFunctionObject constructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, GENERATOR_FUNCTION_NAME);
         JSObject.setPrototype(constructor, realm.getFunctionConstructor());
-        JSDynamicObject prototype = createGeneratorFunctionPrototype(realm, constructor);
+        JSObject prototype = createGeneratorFunctionPrototype(realm, constructor);
         JSObjectUtil.putDataProperty(ctx, constructor, JSObject.PROTOTYPE, prototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
         return new JSConstructor(constructor, prototype);
     }
 
     // ##### Async functions
 
-    public static JSDynamicObject createAsyncFunctionPrototype(JSRealm realm, JSDynamicObject constructor) {
+    public static JSObject createAsyncFunctionPrototype(JSRealm realm, JSDynamicObject constructor) {
         JSContext ctx = realm.getContext();
         // intrinsic object %AsyncFunctionPrototype%
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getFunctionPrototype());
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getFunctionPrototype());
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putToStringTag(prototype, ASYNC_FUNCTION_NAME);
         return prototype;
@@ -754,9 +754,9 @@ public final class JSFunction extends JSNonProxy {
     public static JSConstructor createAsyncFunctionConstructor(JSRealm realm) {
         JSContext ctx = realm.getContext();
         // intrinsic constructor %AsyncFunction%
-        JSDynamicObject constructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, ASYNC_FUNCTION_NAME);
+        JSFunctionObject constructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, ASYNC_FUNCTION_NAME);
         JSObject.setPrototype(constructor, realm.getFunctionConstructor());
-        JSDynamicObject prototype = createAsyncFunctionPrototype(realm, constructor);
+        JSObject prototype = createAsyncFunctionPrototype(realm, constructor);
         JSObjectUtil.putDataProperty(ctx, constructor, JSObject.PROTOTYPE, prototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
         return new JSConstructor(constructor, prototype);
     }
@@ -764,9 +764,9 @@ public final class JSFunction extends JSNonProxy {
     /**
      * Creates the %AsyncIteratorPrototype% object (ES2018 11.1.2).
      */
-    public static JSDynamicObject createAsyncIteratorPrototype(JSRealm realm) {
+    public static JSObject createAsyncIteratorPrototype(JSRealm realm) {
         JSContext context = realm.getContext();
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSFunctionData functionData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.FunctionAsyncIterator, (c) -> {
             return JSFunctionData.createCallOnly(context, new JavaScriptRootNode(context.getLanguage(), null, null) {
                 @Override
@@ -775,7 +775,7 @@ public final class JSFunction extends JSNonProxy {
                 }
             }.getCallTarget(), 0, Symbol.SYMBOL_ASYNC_ITERATOR.toFunctionNameString());
         });
-        JSDynamicObject asyncIterator = JSFunction.create(realm, functionData);
+        JSFunctionObject asyncIterator = JSFunction.create(realm, functionData);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_ASYNC_ITERATOR, asyncIterator, JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }
@@ -783,26 +783,26 @@ public final class JSFunction extends JSNonProxy {
     /**
      * Creates the %AsyncFromSyncIteratorPrototype% object (ES2018 11.1.3.2).
      */
-    public static JSDynamicObject createAsyncFromSyncIteratorPrototype(JSRealm realm) {
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+    public static JSObject createAsyncFromSyncIteratorPrototype(JSRealm realm) {
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, AsyncFromSyncIteratorPrototypeBuiltins.BUILTINS);
         return prototype;
     }
 
-    public static JSDynamicObject createAsyncGeneratorFunctionPrototype(JSRealm realm, JSDynamicObject constructor) {
+    public static JSObject createAsyncGeneratorFunctionPrototype(JSRealm realm, JSDynamicObject constructor) {
         JSContext ctx = realm.getContext();
         // intrinsic object %AsyncGenerator%
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getFunctionPrototype());
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getFunctionPrototype());
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.PROTOTYPE, createAsyncGeneratorPrototype(realm, prototype), JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putToStringTag(prototype, ASYNC_GENERATOR_FUNCTION_NAME);
         return prototype;
     }
 
-    private static JSDynamicObject createAsyncGeneratorPrototype(JSRealm realm, JSDynamicObject constructor) {
+    private static JSObject createAsyncGeneratorPrototype(JSRealm realm, JSDynamicObject constructor) {
         JSContext ctx = realm.getContext();
         // intrinsic object %AsyncGeneratorPrototype%
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getAsyncIteratorPrototype());
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getAsyncIteratorPrototype());
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, AsyncGeneratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putToStringTag(prototype, ASYNC_GENERATOR_NAME);
@@ -812,9 +812,9 @@ public final class JSFunction extends JSNonProxy {
     public static JSConstructor createAsyncGeneratorFunctionConstructor(JSRealm realm) {
         JSContext ctx = realm.getContext();
         // intrinsic constructor %AsyncGeneratorFunction%
-        JSDynamicObject constructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, ASYNC_GENERATOR_FUNCTION_NAME);
+        JSFunctionObject constructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, ASYNC_GENERATOR_FUNCTION_NAME);
         JSObject.setPrototype(constructor, realm.getFunctionConstructor());
-        JSDynamicObject prototype = createAsyncGeneratorFunctionPrototype(realm, constructor);
+        JSObject prototype = createAsyncGeneratorFunctionPrototype(realm, constructor);
         JSObjectUtil.putDataProperty(ctx, constructor, JSObject.PROTOTYPE, prototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
         return new JSConstructor(constructor, prototype);
     }

@@ -123,7 +123,7 @@ public final class JSArrayBufferView extends JSNonProxy {
     private JSArrayBufferView() {
     }
 
-    public static JSDynamicObject getArrayBuffer(JSDynamicObject thisObj) {
+    public static JSArrayBufferObject getArrayBuffer(JSDynamicObject thisObj) {
         assert JSArrayBufferView.isJSArrayBufferView(thisObj);
         return typedArray().getArrayBuffer(thisObj);
     }
@@ -338,7 +338,7 @@ public final class JSArrayBufferView extends JSNonProxy {
         return d < JSArrayBufferView.typedArrayGetLength(thisObj);
     }
 
-    public static JSDynamicObject createArrayBufferView(JSContext context, JSRealm realm, JSDynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
+    public static JSTypedArrayObject createArrayBufferView(JSContext context, JSRealm realm, JSDynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
         CompilerAsserts.partialEvaluationConstant(arrayType);
         assert JSArrayBuffer.isJSAbstractBuffer(arrayBuffer);
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
@@ -348,32 +348,32 @@ public final class JSArrayBufferView extends JSNonProxy {
         return createArrayBufferView(context, realm, objectFactory, arrayBuffer, arrayType, offset, length);
     }
 
-    public static JSDynamicObject createArrayBufferView(JSContext context, JSRealm realm, JSObjectFactory objectFactory,
+    public static JSTypedArrayObject createArrayBufferView(JSContext context, JSRealm realm, JSObjectFactory objectFactory,
                     JSDynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
         return createArrayBufferView(context, realm, objectFactory, arrayBuffer, arrayType, offset, length, objectFactory.getPrototype(realm));
     }
 
-    public static JSDynamicObject createArrayBufferViewWithProto(JSContext context, JSRealm realm, JSObjectFactory objectFactory,
+    public static JSTypedArrayObject createArrayBufferViewWithProto(JSContext context, JSRealm realm, JSObjectFactory objectFactory,
                     JSDynamicObject arrayBuffer, TypedArray arrayType, int offset, int length, JSDynamicObject prototype) {
         return createArrayBufferView(context, realm, objectFactory, arrayBuffer, arrayType, offset, length, prototype);
     }
 
-    private static JSDynamicObject createArrayBufferView(JSContext context, JSRealm realm, JSObjectFactory objectFactory,
+    private static JSTypedArrayObject createArrayBufferView(JSContext context, JSRealm realm, JSObjectFactory objectFactory,
                     JSDynamicObject arrayBuffer, TypedArray arrayType, int offset, int length, JSDynamicObject prototype) {
         assert !JSArrayBuffer.isDetachedBuffer(arrayBuffer);
         assert offset >= 0 && offset + length * arrayType.bytesPerElement() <= ((JSArrayBufferObject) arrayBuffer).getByteLength();
         assert offset != 0 == arrayType.hasOffset();
 
-        JSDynamicObject obj = JSTypedArrayObject.create(objectFactory.getShape(realm), arrayType, (JSArrayBufferObject) arrayBuffer, length, offset);
+        JSTypedArrayObject obj = JSTypedArrayObject.create(objectFactory.getShape(realm), arrayType, (JSArrayBufferObject) arrayBuffer, length, offset);
         objectFactory.initProto(obj, prototype);
         assert JSArrayBuffer.isJSAbstractBuffer(arrayBuffer);
         assert isJSArrayBufferView(obj);
         return context.trackAllocation(obj);
     }
 
-    private static JSDynamicObject createArrayBufferViewPrototype(JSRealm realm, JSDynamicObject ctor, int bytesPerElement, TypedArrayFactory factory, JSDynamicObject taPrototype) {
+    private static JSObject createArrayBufferViewPrototype(JSRealm realm, JSDynamicObject ctor, int bytesPerElement, TypedArrayFactory factory, JSDynamicObject taPrototype) {
         JSContext context = realm.getContext();
-        JSDynamicObject prototype = context.getEcmaScriptVersion() >= 6
+        JSObject prototype = context.getEcmaScriptVersion() >= 6
                         ? JSObjectUtil.createOrdinaryPrototypeObject(realm, taPrototype)
                         : createLegacyArrayBufferViewPrototype(realm, factory, taPrototype);
         JSObjectUtil.putDataProperty(context, prototype, BYTES_PER_ELEMENT, bytesPerElement, JSAttributes.notConfigurableNotEnumerableNotWritable());
@@ -381,14 +381,14 @@ public final class JSArrayBufferView extends JSNonProxy {
         return prototype;
     }
 
-    private static JSDynamicObject createLegacyArrayBufferViewPrototype(JSRealm realm, TypedArrayFactory factory, JSDynamicObject taPrototype) {
+    private static JSObject createLegacyArrayBufferViewPrototype(JSRealm realm, TypedArrayFactory factory, JSDynamicObject taPrototype) {
         JSContext context = realm.getContext();
         byte[] byteArray = new byte[0];
         JSObjectFactory bufferFactory = context.getArrayBufferFactory();
-        JSDynamicObject emptyArrayBuffer = bufferFactory.initProto(JSArrayBufferObject.createHeapArrayBuffer(bufferFactory.getShape(realm), byteArray), realm);
+        JSArrayBufferObject emptyArrayBuffer = bufferFactory.initProto(JSArrayBufferObject.createHeapArrayBuffer(bufferFactory.getShape(realm), byteArray), realm);
         TypedArray arrayType = factory.createArrayType(context.isOptionDirectByteBuffer(), false);
         Shape shape = JSShape.createPrototypeShape(context, INSTANCE, taPrototype);
-        JSDynamicObject prototype = JSTypedArrayObject.create(shape, arrayType, (JSArrayBufferObject) emptyArrayBuffer, 0, 0);
+        JSObject prototype = JSTypedArrayObject.create(shape, arrayType, emptyArrayBuffer, 0, 0);
         JSObjectUtil.setOrVerifyPrototype(context, prototype, taPrototype);
         return prototype;
     }
@@ -425,19 +425,19 @@ public final class JSArrayBufferView extends JSNonProxy {
 
     public static JSConstructor createConstructor(JSRealm realm, TypedArrayFactory factory, JSConstructor taConstructor) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject arrayBufferViewConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, factory.getName());
+        JSFunctionObject arrayBufferViewConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, factory.getName());
         JSObject.setPrototype(arrayBufferViewConstructor, taConstructor.getFunctionObject());
 
-        JSDynamicObject arrayBufferViewPrototype = createArrayBufferViewPrototype(realm, arrayBufferViewConstructor, factory.getBytesPerElement(), factory, taConstructor.getPrototype());
+        JSObject arrayBufferViewPrototype = createArrayBufferViewPrototype(realm, arrayBufferViewConstructor, factory.getBytesPerElement(), factory, taConstructor.getPrototype());
         JSObjectUtil.putConstructorPrototypeProperty(ctx, arrayBufferViewConstructor, arrayBufferViewPrototype);
         JSObjectUtil.putDataProperty(ctx, arrayBufferViewConstructor, BYTES_PER_ELEMENT, factory.getBytesPerElement(), JSAttributes.notConfigurableNotEnumerableNotWritable());
         putConstructorSpeciesGetter(realm, arrayBufferViewConstructor);
         return new JSConstructor(arrayBufferViewConstructor, arrayBufferViewPrototype);
     }
 
-    private static JSDynamicObject createTypedArrayPrototype(final JSRealm realm, JSDynamicObject ctor) {
+    private static JSObject createTypedArrayPrototype(final JSRealm realm, JSDynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TypedArrayPrototypeBuiltins.BUILTINS);
         putArrayBufferViewPrototypeGetter(realm, prototype, LENGTH, BuiltinFunctionKey.ArrayBufferViewLength, new ArrayBufferViewGetter() {
@@ -495,8 +495,8 @@ public final class JSArrayBufferView extends JSNonProxy {
 
     public static JSConstructor createTypedArrayConstructor(JSRealm realm) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject taConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, CLASS_NAME);
-        JSDynamicObject taPrototype = createTypedArrayPrototype(realm, taConstructor);
+        JSFunctionObject taConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, CLASS_NAME);
+        JSObject taPrototype = createTypedArrayPrototype(realm, taConstructor);
         JSObjectUtil.putConstructorPrototypeProperty(ctx, taConstructor, taPrototype);
         JSObjectUtil.putFunctionsFromContainer(realm, taConstructor, TypedArrayFunctionBuiltins.BUILTINS);
         putConstructorSpeciesGetter(realm, taConstructor);

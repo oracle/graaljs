@@ -73,7 +73,7 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
     private JSFinalizationRegistry() {
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, Object cleanupCallback) {
+    public static JSFinalizationRegistryObject create(JSContext context, JSRealm realm, Object cleanupCallback) {
         JSObjectFactory factory = context.getFinalizationRegistryFactory();
         JSFinalizationRegistryObject obj = factory.initProto(new JSFinalizationRegistryObject(factory.getShape(realm), cleanupCallback, new ArrayList<>(), new ReferenceQueue<>()), realm);
         assert isJSFinalizationRegistry(obj);
@@ -83,9 +83,9 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
     }
 
     @Override
-    public JSDynamicObject createPrototype(final JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, FinalizationRegistryPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);

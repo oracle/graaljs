@@ -54,6 +54,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -72,9 +73,9 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
         this.getLenNode = ArrayBufferViewGetByteLengthNodeGen.create(context);
     }
 
-    protected static JSDynamicObject getArrayBuffer(JSDynamicObject target) {
+    protected static JSArrayBufferObject getArrayBuffer(JSDynamicObject target) {
         assert JSArrayBufferView.isJSArrayBufferView(target) : "Target object must be a JSArrayBufferView";
-        JSDynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
+        JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         return arrayBuffer;
     }
 

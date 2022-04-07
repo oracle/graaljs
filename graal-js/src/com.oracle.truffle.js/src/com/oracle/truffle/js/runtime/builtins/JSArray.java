@@ -101,11 +101,11 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     private JSArray() {
     }
 
-    public static JSDynamicObject createConstant(JSContext context, JSRealm realm, Object[] elements) {
+    public static JSArrayObject createConstant(JSContext context, JSRealm realm, Object[] elements) {
         return create(context, realm, ScriptArray.createConstantArray(elements), elements, elements.length);
     }
 
-    public static JSDynamicObject createEmpty(JSContext context, JSRealm realm, int length) {
+    public static JSArrayObject createEmpty(JSContext context, JSRealm realm, int length) {
         if (length < 0) {
             throw Errors.createRangeErrorInvalidArrayLength();
         }
@@ -116,11 +116,11 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
      * Creates an empty array of a certain size. The size is expected to be within the valid range
      * of JavaScript array sizes.
      */
-    private static JSDynamicObject createEmptyChecked(JSContext context, JSRealm realm, int length) {
+    private static JSArrayObject createEmptyChecked(JSContext context, JSRealm realm, int length) {
         return createConstantEmptyArray(context, realm, length);
     }
 
-    public static JSDynamicObject createEmpty(JSContext context, JSRealm realm, long length) {
+    public static JSArrayObject createEmpty(JSContext context, JSRealm realm, long length) {
         if (!JSRuntime.isValidArrayLength(length)) {
             throw Errors.createRangeErrorInvalidArrayLength();
         } else if (length > Integer.MAX_VALUE) {
@@ -133,42 +133,42 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
      * Creates an empty array of a certain size. The size is expected to be within the valid range
      * of JavaScript array sizes.
      */
-    public static JSDynamicObject createEmptyChecked(JSContext context, JSRealm realm, long length) {
+    public static JSArrayObject createEmptyChecked(JSContext context, JSRealm realm, long length) {
         assert 0 <= length && length <= Integer.MAX_VALUE;
         return createConstantEmptyArray(context, realm, (int) length);
     }
 
-    public static JSDynamicObject createEmptyZeroLength(JSContext context, JSRealm realm) {
+    public static JSArrayObject createEmptyZeroLength(JSContext context, JSRealm realm) {
         return createConstantEmptyArray(context, realm);
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, long length) {
+    public static JSArrayObject create(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, long length) {
         return create(context, realm, arrayType, array, length, 0);
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, long length, int usedLength) {
+    public static JSArrayObject create(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, long length, int usedLength) {
         return create(context, realm, arrayType, array, length, usedLength, 0, 0);
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, long length, int usedLength, int indexOffset, int arrayOffset) {
+    public static JSArrayObject create(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, long length, int usedLength, int indexOffset, int arrayOffset) {
         return create(context, realm, arrayType, array, length, usedLength, indexOffset, arrayOffset, 0);
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
+    public static JSArrayObject create(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         return createImpl(context, realm, arrayType, array, null, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset,
+    public static JSArrayObject create(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset,
                     int holeCount) {
         return createImpl(context, realm, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
-    private static JSDynamicObject createImpl(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset,
+    private static JSArrayObject createImpl(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset,
                     int arrayOffset, int holeCount) {
         // (array, arrayType, allocSite, length, usedLength, indexOffset, arrayOffset, holeCount)
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
         JSObjectFactory factory = context.getArrayFactory();
-        JSDynamicObject obj = JSArrayObject.create(factory.getShape(realm), arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
+        JSArrayObject obj = JSArrayObject.create(factory.getShape(realm), arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
         factory.initProto(obj, realm);
         assert isJSArray(obj);
         return context.trackAllocation(obj);
@@ -197,11 +197,11 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     }
 
     @Override
-    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
 
         Shape protoShape = JSShape.createPrototypeShape(ctx, INSTANCE, realm.getObjectPrototype());
-        JSDynamicObject arrayPrototype = JSArrayObject.createEmpty(protoShape, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray());
+        JSObject arrayPrototype = JSArrayObject.createEmpty(protoShape, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray());
         JSObjectUtil.setOrVerifyPrototype(ctx, arrayPrototype, realm.getObjectPrototype());
 
         putConstructorProperty(ctx, arrayPrototype, ctor);
@@ -258,8 +258,8 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         return true;
     }
 
-    private static JSDynamicObject createUnscopables(JSContext context, List<TruffleString> unscopableNames) {
-        JSDynamicObject unscopables = JSOrdinary.createWithNullPrototypeInit(context);
+    private static JSObject createUnscopables(JSContext context, List<TruffleString> unscopableNames) {
+        JSObject unscopables = JSOrdinary.createWithNullPrototypeInit(context);
         for (Object name : unscopableNames) {
             putDataProperty(context, unscopables, name, true, JSAttributes.getDefault());
         }
@@ -310,107 +310,107 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         return !JSAbstractArray.arrayGetArrayType(store).isLengthNotWritable() && ((JSAbstractArray) JSObject.getJSClass(store)).setLength(store, arrLength, false);
     }
 
-    public static JSDynamicObject createConstantEmptyArray(JSContext context, JSRealm realm, int capacity) {
+    public static JSArrayObject createConstantEmptyArray(JSContext context, JSRealm realm, int capacity) {
         ScriptArray arrayType = ScriptArray.createConstantEmptyArray();
         return create(context, realm, arrayType, ScriptArray.EMPTY_OBJECT_ARRAY, capacity);
     }
 
-    public static JSDynamicObject createConstantEmptyArray(JSContext context, JSRealm realm) {
+    public static JSArrayObject createConstantEmptyArray(JSContext context, JSRealm realm) {
         return createConstantEmptyArray(context, realm, 0);
     }
 
-    public static JSDynamicObject createConstantEmptyArray(JSContext context, JSRealm realm, ArrayAllocationSite site) {
+    public static JSArrayObject createConstantEmptyArray(JSContext context, JSRealm realm, ArrayAllocationSite site) {
         return createConstantEmptyArray(context, realm, site, 0);
     }
 
-    public static JSDynamicObject createConstantEmptyArray(JSContext context, JSRealm realm, ArrayAllocationSite site, int capacity) {
+    public static JSArrayObject createConstantEmptyArray(JSContext context, JSRealm realm, ArrayAllocationSite site, int capacity) {
         ScriptArray arrayType = ScriptArray.createConstantEmptyArray();
         return create(context, realm, arrayType, ScriptArray.EMPTY_OBJECT_ARRAY, site, capacity, 0, 0, 0, 0);
     }
 
-    public static JSDynamicObject createConstantByteArray(JSContext context, JSRealm realm, byte[] byteArray) {
+    public static JSArrayObject createConstantByteArray(JSContext context, JSRealm realm, byte[] byteArray) {
         ScriptArray arrayType = ConstantByteArray.createConstantByteArray();
         return create(context, realm, arrayType, byteArray, byteArray.length);
     }
 
-    public static JSDynamicObject createConstantIntArray(JSContext context, JSRealm realm, int[] intArray) {
+    public static JSArrayObject createConstantIntArray(JSContext context, JSRealm realm, int[] intArray) {
         ScriptArray arrayType = ConstantIntArray.createConstantIntArray();
         return create(context, realm, arrayType, intArray, intArray.length);
     }
 
-    public static JSDynamicObject createConstantDoubleArray(JSContext context, JSRealm realm, double[] doubleArray) {
+    public static JSArrayObject createConstantDoubleArray(JSContext context, JSRealm realm, double[] doubleArray) {
         ScriptArray arrayType = ConstantDoubleArray.createConstantDoubleArray();
         return create(context, realm, arrayType, doubleArray, doubleArray.length);
     }
 
-    public static JSDynamicObject createConstantObjectArray(JSContext context, JSRealm realm, Object[] objectArray) {
+    public static JSArrayObject createConstantObjectArray(JSContext context, JSRealm realm, Object[] objectArray) {
         ScriptArray arrayType = ConstantObjectArray.createConstantObjectArray();
         return create(context, realm, arrayType, objectArray, objectArray.length);
     }
 
-    public static JSDynamicObject createZeroBasedHolesObjectArray(JSContext context, JSRealm realm, Object[] objectArray, int usedLength, int arrayOffset, int holeCount) {
+    public static JSArrayObject createZeroBasedHolesObjectArray(JSContext context, JSRealm realm, Object[] objectArray, int usedLength, int arrayOffset, int holeCount) {
         return create(context, realm, HolesObjectArray.createHolesObjectArray(), objectArray, objectArray.length, usedLength, 0, arrayOffset, holeCount);
     }
 
-    public static JSDynamicObject createZeroBasedIntArray(JSContext context, JSRealm realm, int[] intArray) {
+    public static JSArrayObject createZeroBasedIntArray(JSContext context, JSRealm realm, int[] intArray) {
         return create(context, realm, ZeroBasedIntArray.createZeroBasedIntArray(), intArray, intArray.length, intArray.length, 0, 0);
     }
 
-    public static JSDynamicObject createZeroBasedDoubleArray(JSContext context, JSRealm realm, double[] doubleArray) {
+    public static JSArrayObject createZeroBasedDoubleArray(JSContext context, JSRealm realm, double[] doubleArray) {
         return create(context, realm, ZeroBasedDoubleArray.createZeroBasedDoubleArray(), doubleArray, doubleArray.length, doubleArray.length, 0, 0);
     }
 
-    public static JSDynamicObject createZeroBasedObjectArray(JSContext context, JSRealm realm, Object[] objectArray) {
+    public static JSArrayObject createZeroBasedObjectArray(JSContext context, JSRealm realm, Object[] objectArray) {
         return create(context, realm, ZeroBasedObjectArray.createZeroBasedObjectArray(), objectArray, objectArray.length, objectArray.length, 0, 0);
     }
 
-    public static JSDynamicObject createZeroBasedJSObjectArray(JSContext context, JSRealm realm, JSDynamicObject[] objectArray) {
+    public static JSArrayObject createZeroBasedJSObjectArray(JSContext context, JSRealm realm, JSDynamicObject[] objectArray) {
         return create(context, realm, ZeroBasedJSObjectArray.createZeroBasedJSObjectArray(), objectArray, objectArray.length, objectArray.length, 0, 0);
     }
 
-    public static JSDynamicObject createSparseArray(JSContext context, JSRealm realm, long length) {
+    public static JSArrayObject createSparseArray(JSContext context, JSRealm realm, long length) {
         return create(context, realm, SparseArray.createSparseArray(), SparseArray.createArrayMap(), length);
     }
 
-    public static JSDynamicObject createLazyRegexArray(JSContext context, JSRealm realm, int length) {
+    public static JSArrayObject createLazyRegexArray(JSContext context, JSRealm realm, int length) {
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
         Object[] array = new Object[length];
         return create(context, realm, LazyRegexResultArray.createLazyRegexResultArray(), array, length);
     }
 
-    public static JSDynamicObject createLazyRegexArray(JSContext context, JSRealm realm, int length, Object regexResult, TruffleString input, JSDynamicObject groups, JSDynamicObject indicesGroups) {
+    public static JSArrayObject createLazyRegexArray(JSContext context, JSRealm realm, int length, Object regexResult, TruffleString input, JSDynamicObject groups, JSDynamicObject indicesGroups) {
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
-        JSDynamicObject obj = createLazyRegexArray(context, realm, length);
+        JSArrayObject obj = createLazyRegexArray(context, realm, length);
         JSObjectUtil.putHiddenProperty(obj, JSArray.LAZY_REGEX_RESULT_ID, regexResult);
         JSObjectUtil.putHiddenProperty(obj, JSArray.LAZY_REGEX_ORIGINAL_INPUT_ID, input);
         JSObjectUtil.putProxyProperty(obj, JSRegExp.INDEX, JSRegExp.LAZY_INDEX_PROXY, JSAttributes.getDefault());
         JSObjectUtil.putDataProperty(context, obj, JSRegExp.INPUT, input, JSAttributes.getDefault());
         JSObjectUtil.putDataProperty(context, obj, JSRegExp.GROUPS, groups, JSAttributes.getDefault());
         if (context.isOptionRegexpMatchIndices()) {
-            JSDynamicObject indices = createLazyRegexIndicesArray(context, realm, length, regexResult, indicesGroups);
+            JSArrayObject indices = createLazyRegexIndicesArray(context, realm, length, regexResult, indicesGroups);
             JSObjectUtil.putDataProperty(context, obj, JSRegExp.INDICES, indices, JSAttributes.getDefault());
         }
         assert isJSArray(obj);
         return obj;
     }
 
-    public static JSDynamicObject createLazyRegexIndicesArray(JSContext context, JSRealm realm, int length) {
+    public static JSArrayObject createLazyRegexIndicesArray(JSContext context, JSRealm realm, int length) {
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
         Object[] array = new Object[length];
         return create(context, realm, LazyRegexResultIndicesArray.createLazyRegexResultIndicesArray(), array, length);
     }
 
-    private static JSDynamicObject createLazyRegexIndicesArray(JSContext context, JSRealm realm, int length, Object regexResult, JSDynamicObject indicesGroups) {
+    private static JSArrayObject createLazyRegexIndicesArray(JSContext context, JSRealm realm, int length, Object regexResult, JSDynamicObject indicesGroups) {
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
         Object[] array = new Object[length];
-        JSDynamicObject obj = create(context, realm, LazyRegexResultIndicesArray.createLazyRegexResultIndicesArray(), array, length);
+        JSArrayObject obj = create(context, realm, LazyRegexResultIndicesArray.createLazyRegexResultIndicesArray(), array, length);
         JSObjectUtil.putHiddenProperty(obj, JSArray.LAZY_REGEX_RESULT_ID, regexResult);
         JSObjectUtil.putDataProperty(context, obj, JSRegExp.GROUPS, indicesGroups, JSAttributes.getDefault());
         assert isJSArray(obj);
         return obj;
     }
 
-    public static JSDynamicObject createLazyArray(JSContext context, JSRealm realm, List<?> list, int size) {
+    public static JSArrayObject createLazyArray(JSContext context, JSRealm realm, List<?> list, int size) {
         assert list.size() == size;
         return create(context, realm, LazyArray.createLazyArray(), list, size);
     }

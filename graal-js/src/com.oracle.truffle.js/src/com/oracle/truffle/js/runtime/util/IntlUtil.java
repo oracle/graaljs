@@ -71,7 +71,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
@@ -826,16 +825,16 @@ public final class IntlUtil {
         return IntlUtil.selectedLocale(ctx, locales).stripExtensions();
     }
 
-    public static JSDynamicObject makePart(JSContext context, JSRealm realm, String type, String value) {
+    public static JSObject makePart(JSContext context, JSRealm realm, String type, String value) {
         return makePart(context, realm, type, value, null);
     }
 
-    public static JSDynamicObject makePart(JSContext context, JSRealm realm, String type, String value, String unit) {
+    public static JSObject makePart(JSContext context, JSRealm realm, String type, String value, String unit) {
         return makePart(context, realm, type, value, unit, null);
     }
 
-    public static JSDynamicObject makePart(JSContext context, JSRealm realm, String type, String value, String unit, String source) {
-        JSDynamicObject p = JSOrdinary.create(context, realm);
+    public static JSObject makePart(JSContext context, JSRealm realm, String type, String value, String unit, String source) {
+        JSObject p = JSOrdinary.create(context, realm);
         JSObject.set(p, KEY_TYPE, Strings.fromJavaString(type));
         JSObject.set(p, KEY_VALUE, Strings.fromJavaString(value));
         if (unit != null) {

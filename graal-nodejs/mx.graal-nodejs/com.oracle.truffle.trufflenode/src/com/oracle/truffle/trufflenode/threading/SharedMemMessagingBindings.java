@@ -53,6 +53,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 /**
@@ -72,9 +73,9 @@ public final class SharedMemMessagingBindings extends JSNonProxy {
     }
 
     @TruffleBoundary
-    private static JSDynamicObject create(JSRealm realm) {
+    private static JSObject create(JSRealm realm) {
         Shape shape = realm.getContext().makeEmptyShapeWithNullPrototype(INSTANCE);
-        JSDynamicObject obj = new Instance(shape);
+        JSObject obj = new Instance(shape);
         JSObjectUtil.putFunctionsFromContainer(realm, obj, BUILTINS);
         return obj;
     }

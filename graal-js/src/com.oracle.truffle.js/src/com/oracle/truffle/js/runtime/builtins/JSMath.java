@@ -45,7 +45,7 @@ import com.oracle.truffle.js.builtins.math.MathBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 /**
@@ -58,9 +58,9 @@ public final class JSMath {
     private JSMath() {
     }
 
-    public static JSDynamicObject create(JSRealm realm) {
+    public static JSObject create(JSRealm realm) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject obj = JSOrdinary.createInit(realm);
+        JSObject obj = JSOrdinary.createInit(realm);
         JSObjectUtil.putToStringTag(obj, CLASS_NAME);
 
         JSObjectUtil.putDataProperty(ctx, obj, Strings.E, Math.E);

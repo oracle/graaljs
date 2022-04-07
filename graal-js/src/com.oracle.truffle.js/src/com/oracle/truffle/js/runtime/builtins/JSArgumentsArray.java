@@ -67,10 +67,10 @@ public final class JSArgumentsArray extends JSAbstractArgumentsArray {
     }
 
     @TruffleBoundary
-    public static JSDynamicObject createStrictSlow(JSRealm realm, Object[] elements) {
+    public static JSArgumentsObject createStrictSlow(JSRealm realm, Object[] elements) {
         JSContext context = realm.getContext();
         JSObjectFactory factory = context.getStrictArgumentsFactory();
-        JSDynamicObject argumentsObject = createUnmapped(factory.getShape(realm), elements);
+        JSArgumentsObject argumentsObject = createUnmapped(factory.getShape(realm), elements);
         factory.initProto(argumentsObject, realm);
 
         JSObjectUtil.putDataProperty(context, argumentsObject, LENGTH, elements.length, JSAttributes.configurableNotEnumerableWritable());
@@ -86,10 +86,10 @@ public final class JSArgumentsArray extends JSAbstractArgumentsArray {
     }
 
     @TruffleBoundary
-    public static JSDynamicObject createNonStrictSlow(JSRealm realm, Object[] elements, JSDynamicObject callee) {
+    public static JSArgumentsObject createNonStrictSlow(JSRealm realm, Object[] elements, JSDynamicObject callee) {
         JSContext context = realm.getContext();
         JSObjectFactory factory = context.getNonStrictArgumentsFactory();
-        JSDynamicObject argumentsObject = createMapped(factory.getShape(realm), elements);
+        JSArgumentsObject argumentsObject = createMapped(factory.getShape(realm), elements);
         factory.initProto(argumentsObject, realm);
 
         JSObjectUtil.putDataProperty(context, argumentsObject, LENGTH, elements.length, JSAttributes.configurableNotEnumerableWritable());

@@ -51,6 +51,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -88,21 +89,19 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
     private JSPromise() {
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm) {
+    public static JSPromiseObject create(JSContext context, JSRealm realm) {
         return context.trackAllocation(JSPromiseObject.create(realm, context.getPromiseFactory(), PENDING));
     }
 
-    public static JSDynamicObject create(JSContext context, Shape shape) {
+    public static JSPromiseObject create(JSContext context, Shape shape) {
         JSPromiseObject promise = JSPromiseObject.create(shape, PENDING);
-        assert isJSPromise(promise);
         return context.trackAllocation(promise);
     }
 
-    public static JSDynamicObject createWithoutPrototype(JSContext context) {
+    public static JSPromiseObject createWithoutPrototype(JSContext context) {
         Shape shape = context.getPromiseShapePrototypeInObject();
-        JSDynamicObject obj = JSPromiseObject.create(shape, PENDING);
+        JSPromiseObject obj = JSPromiseObject.create(shape, PENDING);
         // prototype is set in caller
-        assert isJSPromise(obj);
         return obj;
     }
 
@@ -169,9 +168,9 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject constructor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
         JSContext context = realm.getContext();
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(context, prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, PromisePrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);

@@ -137,9 +137,9 @@ public final class JSError extends JSNonProxy {
     private JSError() {
     }
 
-    public static JSDynamicObject createErrorObject(JSContext context, JSRealm realm, JSErrorType errorType) {
+    public static JSErrorObject createErrorObject(JSContext context, JSRealm realm, JSErrorType errorType) {
         JSObjectFactory factory = context.getErrorFactory(errorType);
-        JSDynamicObject obj = JSErrorObject.create(realm, factory);
+        JSErrorObject obj = JSErrorObject.create(realm, factory);
         factory.initProto(obj, realm);
         assert isJSError(obj);
         return context.trackAllocation(obj);
@@ -150,9 +150,9 @@ public final class JSError extends JSNonProxy {
         JSObjectUtil.putDataProperty(obj, MESSAGE, message, MESSAGE_ATTRIBUTES);
     }
 
-    public static JSDynamicObject create(JSErrorType errorType, JSRealm realm, Object message) {
+    public static JSObject create(JSErrorType errorType, JSRealm realm, Object message) {
         assert Strings.isTString(message) || message == Undefined.instance;
-        JSDynamicObject obj = createErrorObject(realm.getContext(), realm, errorType);
+        JSObject obj = createErrorObject(realm.getContext(), realm, errorType);
         String msg;
         if (message == Undefined.instance) {
             msg = null;
@@ -165,19 +165,19 @@ public final class JSError extends JSNonProxy {
         return obj;
     }
 
-    public static JSDynamicObject createFromJSException(JSException exception, JSRealm realm, String message) {
+    public static JSObject createFromJSException(JSException exception, JSRealm realm, String message) {
         Objects.requireNonNull(message);
         JSContext context = realm.getContext();
         JSErrorType errorType = exception.getErrorType();
-        JSDynamicObject obj = createErrorObject(context, realm, errorType);
+        JSObject obj = createErrorObject(context, realm, errorType);
         setMessage(obj, Strings.fromJavaString(message));
         setException(realm, obj, exception, context.isOptionNashornCompatibilityMode());
         return obj;
     }
 
     @TruffleBoundary
-    public static JSDynamicObject createAggregateError(JSRealm realm, Object errors, String msg) {
-        JSDynamicObject errorObj = createErrorObject(realm.getContext(), realm, JSErrorType.AggregateError);
+    public static JSObject createAggregateError(JSRealm realm, Object errors, String msg) {
+        JSObject errorObj = createErrorObject(realm.getContext(), realm, JSErrorType.AggregateError);
         if (msg != null) {
             setMessage(errorObj, Strings.fromJavaString(msg));
         }
@@ -190,7 +190,7 @@ public final class JSError extends JSNonProxy {
         JSContext ctx = realm.getContext();
         JSDynamicObject proto = errorType == JSErrorType.Error ? realm.getObjectPrototype() : realm.getErrorPrototype(JSErrorType.Error);
 
-        JSDynamicObject errorPrototype;
+        JSObject errorPrototype;
         if (ctx.getEcmaScriptVersion() < 6) {
             errorPrototype = JSErrorObject.create(JSShape.createPrototypeShape(ctx, INSTANCE, proto));
             JSObjectUtil.setOrVerifyPrototype(ctx, errorPrototype, proto);
@@ -212,7 +212,7 @@ public final class JSError extends JSNonProxy {
     public static JSConstructor createErrorConstructor(JSRealm realm, JSErrorType errorType) {
         JSContext context = realm.getContext();
         TruffleString name = Strings.fromJavaString(errorType.toString());
-        JSDynamicObject errorConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, name); // (Type)Error
+        JSFunctionObject errorConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, name); // (Type)Error
         JSDynamicObject classPrototype = JSError.createErrorPrototype(realm, errorType); // (Type)Error.prototype
         if (errorType != JSErrorType.Error) {
             JSObject.setPrototype(errorConstructor, realm.getErrorConstructor(JSErrorType.Error));
@@ -241,7 +241,7 @@ public final class JSError extends JSNonProxy {
 
     public static JSConstructor createCallSiteConstructor(JSRealm realm) {
         JSContext context = realm.getContext();
-        JSDynamicObject constructor = JSFunction.createNamedEmptyFunction(realm, CALL_SITE_CLASS_NAME);
+        JSFunctionObject constructor = JSFunction.createNamedEmptyFunction(realm, CALL_SITE_CLASS_NAME);
         JSDynamicObject prototype = createCallSitePrototype(realm);
         JSObjectUtil.putConstructorProperty(context, prototype, constructor);
         JSObjectUtil.putConstructorPrototypeProperty(context, constructor, prototype);

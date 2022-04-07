@@ -231,7 +231,7 @@ public class JSModuleRecord extends ScriptOrModule {
     }
 
     private JSDynamicObject createMetaObject() {
-        JSDynamicObject metaObj = JSOrdinary.createWithNullPrototype(context);
+        JSObject metaObj = JSOrdinary.createWithNullPrototype(context);
         if (context.hasImportMetaInitializerBeenSet()) {
             context.notifyImportMetaInitializer(metaObj, this);
         } else {
@@ -241,7 +241,7 @@ public class JSModuleRecord extends ScriptOrModule {
     }
 
     @TruffleBoundary
-    private void initializeMetaObject(JSDynamicObject metaObj) {
+    private void initializeMetaObject(JSObject metaObj) {
         JSObject.set(metaObj, Strings.URL, Strings.fromJavaString(getSource().getURI().toString()));
     }
 

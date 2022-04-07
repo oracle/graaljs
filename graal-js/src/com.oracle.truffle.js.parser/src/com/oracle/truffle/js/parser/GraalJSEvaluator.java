@@ -111,7 +111,9 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
+import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -288,8 +290,8 @@ public final class GraalJSEvaluator implements JSParser {
             boolean isAsync = context.isOptionTopLevelAwait() && moduleRecord.isAsyncEvaluation();
             if (isAsync) {
                 assert JSPromise.isJSPromise(promise);
-                JSDynamicObject onRejected = createTopLevelAwaitReject(context, realm);
-                JSDynamicObject onAccepted = createTopLevelAwaitResolve(context, realm);
+                JSFunctionObject onRejected = createTopLevelAwaitReject(context, realm);
+                JSFunctionObject onAccepted = createTopLevelAwaitResolve(context, realm);
                 performPromiseThenNode.execute((JSDynamicObject) promise, onAccepted, onRejected, null);
             }
             if (context.getContextOptions().isEsmEvalReturnsExports()) {
@@ -308,7 +310,7 @@ public final class GraalJSEvaluator implements JSParser {
         }
     }
 
-    private static JSDynamicObject createTopLevelAwaitReject(JSContext context, JSRealm realm) {
+    private static JSFunctionObject createTopLevelAwaitReject(JSContext context, JSRealm realm) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.TopLevelAwaitReject, (c) -> createTopLevelAwaitRejectImpl(c));
         return JSFunction.create(realm, functionData);
     }
@@ -326,7 +328,7 @@ public final class GraalJSEvaluator implements JSParser {
         return JSFunctionData.createCallOnly(context, new TopLevelAwaitRejectedRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
-    private static JSDynamicObject createTopLevelAwaitResolve(JSContext context, JSRealm realm) {
+    private static JSFunctionObject createTopLevelAwaitResolve(JSContext context, JSRealm realm) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.TopLevelAwaitResolve, (c) -> createTopLevelAwaitResolveImpl(c));
         return JSFunction.create(realm, functionData);
     }
@@ -592,7 +594,7 @@ public final class GraalJSEvaluator implements JSParser {
         }
         Map<TruffleString, ExportResolution> sortedNames = new LinkedHashMap<>();
         unambiguousNames.stream().sorted((a, b) -> a.getFirst().compareCharsUTF16Uncached(b.getFirst())).forEachOrdered(p -> sortedNames.put(p.getFirst(), p.getSecond()));
-        JSDynamicObject namespace = JSModuleNamespace.create(moduleRecord.getContext(), JSRealm.get(null), moduleRecord, sortedNames);
+        JSModuleNamespaceObject namespace = JSModuleNamespace.create(moduleRecord.getContext(), JSRealm.get(null), moduleRecord, sortedNames);
         moduleRecord.setNamespace(namespace);
         return namespace;
     }
@@ -821,18 +823,18 @@ public final class GraalJSEvaluator implements JSParser {
         assert module.getStatus() == Status.Evaluating || module.getStatus() == Status.EvaluatingAsync;
         assert module.hasTLA();
         PromiseCapabilityRecord capability = NewPromiseCapabilityNode.createDefault(realm);
-        JSDynamicObject onFulfilled = createCallAsyncModuleFulfilled(realm, module);
-        JSDynamicObject onRejected = createCallAsyncModuleRejected(realm, module);
+        JSFunctionObject onFulfilled = createCallAsyncModuleFulfilled(realm, module);
+        JSFunctionObject onRejected = createCallAsyncModuleRejected(realm, module);
         Object then = JSObject.get(capability.getPromise(), Strings.THEN);
         JSFunction.call(JSArguments.create(capability.getPromise(), then, onFulfilled, onRejected));
         moduleExecution(realm, module, capability);
     }
 
     @TruffleBoundary
-    private static JSDynamicObject createCallAsyncModuleFulfilled(JSRealm realm, JSModuleRecord module) {
+    private static JSFunctionObject createCallAsyncModuleFulfilled(JSRealm realm, JSModuleRecord module) {
         // AsyncModuleExecutionFulfilled ( module )
         JSFunctionData functionData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncModuleExecutionFulfilled, (c) -> createCallAsyncModuleFulfilledImpl(c));
-        JSDynamicObject function = JSFunction.create(realm, functionData);
+        JSFunctionObject function = JSFunction.create(realm, functionData);
         JSObjectUtil.putHiddenProperty(function, STORE_MODULE_KEY, module);
         return function;
     }
@@ -854,10 +856,10 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @TruffleBoundary
-    private static JSDynamicObject createCallAsyncModuleRejected(JSRealm realm, JSModuleRecord module) {
+    private static JSFunctionObject createCallAsyncModuleRejected(JSRealm realm, JSModuleRecord module) {
         // AsyncModuleExecutionRejected ( module )
         JSFunctionData functionData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncModuleExecutionRejected, (c) -> createCallAsyncModuleRejectedImpl(c));
-        JSDynamicObject function = JSFunction.create(realm, functionData);
+        JSFunctionObject function = JSFunction.create(realm, functionData);
         JSObjectUtil.putHiddenProperty(function, STORE_MODULE_KEY, module);
         return function;
     }

@@ -93,9 +93,9 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         return Strings.toJavaString(getClassName());
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, JSDynamicObject adaptee, JSDynamicObject overrides, JSDynamicObject proto) {
+    public static JSObject create(JSContext context, JSRealm realm, JSDynamicObject adaptee, JSDynamicObject overrides, JSDynamicObject proto) {
         JSObjectFactory factory = context.getJSAdapterFactory();
-        JSDynamicObject obj = new JSAdapterObject(factory.getShape(realm), adaptee, overrides);
+        JSAdapterObject obj = new JSAdapterObject(factory.getShape(realm), adaptee, overrides);
         factory.initProto(obj, realm);
         if (proto != null) {
             JSObject.setPrototype(obj, proto);
@@ -289,8 +289,8 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     @Override
-    public JSDynamicObject createPrototype(final JSRealm realm, JSDynamicObject ctor) {
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+    public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(realm.getContext(), prototype, ctor);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         return prototype;

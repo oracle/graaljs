@@ -52,9 +52,9 @@ public interface JSConstructorFactory {
 
     TruffleString getClassName();
 
-    JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject constructor);
+    JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor);
 
-    default JSDynamicObject createConstructorObject(JSRealm realm) {
+    default JSFunctionObject createConstructorObject(JSRealm realm) {
         return realm.lookupFunction(ConstructorBuiltins.BUILTINS, getClassName());
     }
 
@@ -65,7 +65,7 @@ public interface JSConstructorFactory {
     interface Default extends JSConstructorFactory {
         default JSConstructor createConstructorAndPrototype(JSRealm realm) {
             JSContext ctx = realm.getContext();
-            JSDynamicObject constructor = createConstructorObject(realm);
+            JSFunctionObject constructor = createConstructorObject(realm);
             JSDynamicObject prototype = createPrototype(realm, constructor);
             JSObjectUtil.putPrototypeData(prototype);
             JSObjectUtil.putConstructorPrototypeProperty(ctx, constructor, prototype);
@@ -84,7 +84,7 @@ public interface JSConstructorFactory {
     interface WithFunctions extends JSConstructorFactory {
         default JSConstructor createConstructorAndPrototype(JSRealm realm, JSBuiltinsContainer functionBuiltins) {
             JSContext ctx = realm.getContext();
-            JSDynamicObject constructor = createConstructorObject(realm);
+            JSFunctionObject constructor = createConstructorObject(realm);
             JSDynamicObject prototype = createPrototype(realm, constructor);
             JSObjectUtil.putPrototypeData(prototype);
             JSObjectUtil.putConstructorPrototypeProperty(ctx, constructor, prototype);

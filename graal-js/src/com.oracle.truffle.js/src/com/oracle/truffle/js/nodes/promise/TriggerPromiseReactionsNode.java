@@ -42,7 +42,7 @@ package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
@@ -67,7 +67,7 @@ public class TriggerPromiseReactionsNode extends JavaScriptBaseNode {
         SimpleArrayList<?> list = (SimpleArrayList<?>) reactions;
         for (int i = 0; i < list.size(); i++) {
             Object reaction = list.get(i);
-            JSDynamicObject job = promiseReactionJob.execute(reaction, argument);
+            JSFunctionObject job = promiseReactionJob.execute(reaction, argument);
             context.promiseEnqueueJob(getRealm(), job);
         }
         return Undefined.instance;

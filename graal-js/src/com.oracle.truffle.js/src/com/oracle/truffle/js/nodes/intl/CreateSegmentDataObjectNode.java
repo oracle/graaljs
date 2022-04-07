@@ -49,7 +49,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public class CreateSegmentDataObjectNode extends JavaScriptBaseNode {
@@ -72,8 +72,8 @@ public class CreateSegmentDataObjectNode extends JavaScriptBaseNode {
         return new CreateSegmentDataObjectNode(context);
     }
 
-    public JSDynamicObject execute(BreakIterator icuIterator, JSSegmenter.Granularity granularity, TruffleString string, int startIndex, int endIndex) {
-        JSDynamicObject result = JSOrdinary.create(context, getRealm());
+    public JSObject execute(BreakIterator icuIterator, JSSegmenter.Granularity granularity, TruffleString string, int startIndex, int endIndex) {
+        JSObject result = JSOrdinary.create(context, getRealm());
         createSegmentPropertyNode.executeVoid(result, Strings.substring(context, string, startIndex, endIndex - startIndex));
         createIndexPropertyNode.executeVoid(result, startIndex);
         createInputPropertyNode.executeVoid(result, string);
@@ -83,7 +83,7 @@ public class CreateSegmentDataObjectNode extends JavaScriptBaseNode {
         return result;
     }
 
-    private void createIsWordLikeProperty(JSDynamicObject target, boolean isWordLike) {
+    private void createIsWordLikeProperty(JSObject target, boolean isWordLike) {
         if (createIsWordLikePropertyNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             createIsWordLikePropertyNode = insert(CreateDataPropertyNode.create(context, IntlUtil.KEY_IS_WORD_LIKE));

@@ -106,7 +106,9 @@ import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -314,7 +316,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected JSDynamicObject subarrayImpl(JSDynamicObject thisObj, TypedArray arrayType, int begin, int end) {
             assert arrayType == JSArrayBufferView.typedArrayGetArrayType(thisObj);
             int offset = JSArrayBufferView.typedArrayGetOffset(thisObj);
-            JSDynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(thisObj);
+            JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(thisObj);
             return getArraySpeciesConstructorNode().typedArraySpeciesCreate(thisObj, arrayBuffer, offset + begin * arrayType.bytesPerElement(), end - begin);
         }
 
@@ -521,8 +523,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
         }
 
-        private JSDynamicObject cloneArrayBuffer(JSDynamicObject sourceBuffer, TypedArray sourceArray, int srcByteLength, int srcByteOffset) {
-            JSDynamicObject clonedArrayBuffer;
+        private JSArrayBufferObject cloneArrayBuffer(JSDynamicObject sourceBuffer, TypedArray sourceArray, int srcByteLength, int srcByteOffset) {
+            JSArrayBufferObject clonedArrayBuffer;
             if (sourceArray.isInterop()) {
                 InteropLibrary interop = getInterop();
                 clonedArrayBuffer = cloneInteropArrayBuffer(sourceBuffer, srcByteLength, srcByteOffset, interop);
@@ -540,12 +542,12 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             return clonedArrayBuffer;
         }
 
-        private JSDynamicObject cloneInteropArrayBuffer(JSDynamicObject sourceBuffer, int srcByteLength, int srcByteOffset, InteropLibrary interop) {
+        private JSArrayBufferObject cloneInteropArrayBuffer(JSDynamicObject sourceBuffer, int srcByteLength, int srcByteOffset, InteropLibrary interop) {
             assert JSArrayBuffer.isJSInteropArrayBuffer(sourceBuffer);
             boolean direct = getContext().isOptionDirectByteBuffer();
             TypedArray sourceType = TypedArrayFactory.Int8Array.createArrayType(false, false, true);
             TypedArray clonedType = TypedArrayFactory.Int8Array.createArrayType(direct, false);
-            JSDynamicObject clonedArrayBuffer = direct
+            JSArrayBufferObject clonedArrayBuffer = direct
                             ? JSArrayBuffer.createDirectArrayBuffer(getContext(), getRealm(), srcByteLength)
                             : JSArrayBuffer.createArrayBuffer(getContext(), getRealm(), srcByteLength);
             for (int i = 0; i < srcByteLength; i++) {

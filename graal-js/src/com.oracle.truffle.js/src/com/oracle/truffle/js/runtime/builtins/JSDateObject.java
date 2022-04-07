@@ -53,7 +53,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 @ExportLibrary(InteropLibrary.class)
@@ -73,7 +72,7 @@ public final class JSDateObject extends JSNonProxyObject {
         this.value = value;
     }
 
-    public static JSDynamicObject create(Shape shape, double value) {
+    public static JSDateObject create(Shape shape, double value) {
         return new JSDateObject(shape, value);
     }
 

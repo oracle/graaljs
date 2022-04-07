@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
@@ -379,9 +380,9 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         }
 
         // converts RegexResult into JSDynamicObject
-        private JSDynamicObject getMatchResult(JSRegExpObject regExp, Object regexResult, int groupCount, TruffleString inputStr, boolean hasIndices, JSRealm realm) {
+        private JSArrayObject getMatchResult(JSRegExpObject regExp, Object regexResult, int groupCount, TruffleString inputStr, boolean hasIndices, JSRealm realm) {
             JSDynamicObject groups = getGroupsObject(regExp, regexResult, inputStr, false);
-            JSDynamicObject resultArray = JSArray.createLazyRegexArray(context, realm, groupCount);
+            JSArrayObject resultArray = JSArray.createLazyRegexArray(context, realm, groupCount);
             setRegexResultNode.setValue(resultArray, regexResult);
             setRegexOriginalInputNode.setValue(resultArray, inputStr);
             setIndexNode.putConstant(resultArray, JSRegExp.INDEX, JSRegExp.LAZY_INDEX_PROXY, JSAttributes.getDefault() | JSProperty.PROXY);
@@ -389,7 +390,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             setGroupsNode.put(resultArray, JSRegExp.GROUPS, groups);
             if (context.isOptionRegexpMatchIndices() && hasIndices) {
                 JSDynamicObject indicesGroups = getGroupsObject(regExp, regexResult, inputStr, true);
-                JSDynamicObject indicesArray = JSArray.createLazyRegexIndicesArray(context, realm, groupCount);
+                JSArrayObject indicesArray = JSArray.createLazyRegexIndicesArray(context, realm, groupCount);
                 setIndicesRegexResultNode.put(indicesArray, JSRegExp.GROUPS_RESULT_ID, regexResult);
                 setIndicesGroupsNode.put(indicesArray, JSRegExp.GROUPS, indicesGroups);
                 setIndicesNode.put(resultArray, JSRegExp.INDICES, indicesArray);

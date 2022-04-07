@@ -65,6 +65,7 @@ import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -184,7 +185,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         @Cached("create()") BranchProfile errorBranch,
                         @Cached("createClassProfile()") ValueProfile bufferTypeProfile,
                         @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
-            JSDynamicObject buffer = bufferTypeProfile.profile(JSDataView.getArrayBuffer(dataView));
+            JSArrayBufferObject buffer = bufferTypeProfile.profile(JSDataView.getArrayBuffer(dataView));
             long getIndex = toIndexNode.executeLong(byteOffset);
             boolean isLittleEndian = factory.getBytesPerElement() == 1 ? true : toBooleanNode.executeBoolean(littleEndian);
 
@@ -237,7 +238,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         @Cached("create()") BranchProfile errorBranch,
                         @Cached("createClassProfile()") ValueProfile bufferTypeProfile,
                         @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
-            JSDynamicObject buffer = bufferTypeProfile.profile(JSDataView.getArrayBuffer(dataView));
+            JSArrayBufferObject buffer = bufferTypeProfile.profile(JSDataView.getArrayBuffer(dataView));
 
             long getIndex = toIndexNode.executeLong(byteOffset);
             Object numberValue = JSRuntime.isTypedArrayBigIntFactory(factory) ? toBigIntNode.executeBigInteger(value) : toNumberNode.executeNumber(value);

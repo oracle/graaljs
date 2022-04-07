@@ -50,6 +50,7 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
@@ -98,7 +99,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
             ((SimpleArrayList<? super PromiseReactionRecord>) getPromiseRejectReactionsNode.getValue(promise)).add(rejectReaction, growProfile);
         } else if (fulfilledProf.profile(promiseState == JSPromise.FULFILLED)) {
             Object value = getPromiseResult(promise);
-            JSDynamicObject job = getPromiseReactionJob(fulfillReaction, value);
+            JSFunctionObject job = getPromiseReactionJob(fulfillReaction, value);
             context.promiseEnqueueJob(getRealm(), job);
         } else {
             assert promiseState == JSPromise.REJECTED;
@@ -106,7 +107,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
             if (unhandledProf.profile(!getPromiseIsHandled(promise))) {
                 context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_HANDLE, Undefined.instance);
             }
-            JSDynamicObject job = getPromiseReactionJob(rejectReaction, reason);
+            JSFunctionObject job = getPromiseReactionJob(rejectReaction, reason);
             context.promiseEnqueueJob(getRealm(), job);
         }
         setPromiseIsHandledNode.setValueBoolean(promise, true);
@@ -116,7 +117,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
         return resultCapability.getPromise();
     }
 
-    private JSDynamicObject getPromiseReactionJob(PromiseReactionRecord reaction, Object value) {
+    private JSFunctionObject getPromiseReactionJob(PromiseReactionRecord reaction, Object value) {
         if (promiseReactionJobNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             promiseReactionJobNode = insert(PromiseReactionJobNode.create(context));

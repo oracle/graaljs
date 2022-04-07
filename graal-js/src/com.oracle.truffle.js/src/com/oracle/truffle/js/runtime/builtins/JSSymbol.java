@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -78,9 +79,8 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
     private JSSymbol() {
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, Symbol symbol) {
-        JSDynamicObject mapObj = JSSymbolObject.create(realm, context.getSymbolFactory(), symbol);
-        assert isJSSymbol(mapObj);
+    public static JSSymbolObject create(JSContext context, JSRealm realm, Symbol symbol) {
+        JSSymbolObject mapObj = JSSymbolObject.create(realm, context.getSymbolFactory(), symbol);
         return context.trackAllocation(mapObj);
     }
 
@@ -90,9 +90,9 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
     }
 
     @Override
-    public JSDynamicObject createPrototype(final JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, SymbolPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);

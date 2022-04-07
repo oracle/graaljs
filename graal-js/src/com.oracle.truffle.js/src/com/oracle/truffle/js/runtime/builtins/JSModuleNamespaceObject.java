@@ -82,7 +82,7 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
         return exports;
     }
 
-    public static JSDynamicObject create(JSRealm realm, JSObjectFactory factory, JSModuleRecord module, Map<TruffleString, ExportResolution> exports) {
+    public static JSModuleNamespaceObject create(JSRealm realm, JSObjectFactory factory, JSModuleRecord module, Map<TruffleString, ExportResolution> exports) {
         return factory.initProto(new JSModuleNamespaceObject(factory.getShape(realm), module, exports), realm);
     }
 

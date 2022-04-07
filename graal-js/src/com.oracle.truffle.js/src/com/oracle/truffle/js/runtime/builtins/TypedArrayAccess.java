@@ -88,7 +88,7 @@ public class TypedArrayAccess {
         return byteBuffer;
     }
 
-    public JSDynamicObject getArrayBuffer(JSDynamicObject thisObj) {
+    public JSArrayBufferObject getArrayBuffer(JSDynamicObject thisObj) {
         assert JSArrayBufferView.isJSArrayBufferView(thisObj);
         return ((JSArrayBufferViewBase) thisObj).getArrayBuffer();
     }

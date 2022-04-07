@@ -224,6 +224,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -1927,7 +1928,7 @@ public final class GraalJSAccess {
         return template.getFunctionObject(jsRealm);
     }
 
-    private JSDynamicObject functionTemplateCreateCallback(JSContext context, JSRealm realm, FunctionTemplate template) {
+    private JSFunctionObject functionTemplateCreateCallback(JSContext context, JSRealm realm, FunctionTemplate template) {
         CompilerAsserts.neverPartOfCompilation("do not create function template in compiled code");
 
         JSFunctionData functionData = template.getFunctionData();
@@ -1950,7 +1951,7 @@ public final class GraalJSAccess {
             template.setFunctionData(functionData);
         }
 
-        JSDynamicObject functionObject = JSFunction.create(realm, functionData);
+        JSFunctionObject functionObject = JSFunction.create(realm, functionData);
         template.setFunctionObject(realm, functionObject);
 
         JSObjectUtil.putHiddenProperty(functionObject, FUNCTION_TEMPLATE_KEY, template);
@@ -2163,7 +2164,7 @@ public final class GraalJSAccess {
             }
         } else {
             assert exts.length == 0;
-            JSDynamicObject graalExtension = JSOrdinary.create(jsContext, realm);
+            JSObject graalExtension = JSOrdinary.create(jsContext, realm);
             JSObject.set(graalExtension, GRAAL_EXTENSION, extraArgument);
             extensions = new Object[]{graalExtension};
         }
@@ -2480,7 +2481,7 @@ public final class GraalJSAccess {
             CallTarget callbackCallTarget = rootNode.getCallTarget();
             return JSFunctionData.create(context, callbackCallTarget, callbackCallTarget, 0, Strings.EMPTY_STRING, false, false, false, true);
         });
-        JSDynamicObject functionObj = functionFromFunctionData(realm, functionData, proxy);
+        JSFunctionObject functionObj = functionFromFunctionData(realm, functionData, proxy);
         JSObjectUtil.putHiddenProperty(functionObj, OBJECT_TEMPLATE_KEY, template);
         return functionObj;
     }
@@ -2492,11 +2493,11 @@ public final class GraalJSAccess {
         return PropertyDescriptor.createData(value, enumerable, writable, configurable);
     }
 
-    private static JSDynamicObject functionFromFunctionData(JSRealm realm, JSFunctionData functionData, Object holder) {
+    private static JSFunctionObject functionFromFunctionData(JSRealm realm, JSFunctionData functionData, Object holder) {
         if (functionData == null) {
             return null;
         }
-        JSDynamicObject function = JSFunction.create(realm, functionData);
+        JSFunctionObject function = JSFunction.create(realm, functionData);
         if (holder != null) {
             JSObjectUtil.putHiddenProperty(function, HOLDER_KEY, holder);
         }
@@ -2868,7 +2869,7 @@ public final class GraalJSAccess {
                 global = propertyHandlerInstantiate(context, realm, template, global, true);
                 realm.setGlobalObject(global);
             } else {
-                JSDynamicObject prototype = JSOrdinary.create(context, realm);
+                JSObject prototype = JSOrdinary.create(context, realm);
                 objectTemplateInstantiate(realm, template, prototype);
                 JSObject.setPrototype(global, prototype);
             }
@@ -2939,7 +2940,7 @@ public final class GraalJSAccess {
     }
 
     private static JSDynamicObject initializeExtrasBindingObject(JSRealm realm) {
-        JSDynamicObject extras = JSOrdinary.create(realm.getContext(), realm);
+        JSObject extras = JSOrdinary.create(realm.getContext(), realm);
 
         ContextData engineCacheData = getContextEmbedderData(realm.getContext());
         JSFunctionData isEnabledFunctionData = engineCacheData.getOrCreateFunctionData(ConstantFalse, (c) -> {
@@ -3407,7 +3408,7 @@ public final class GraalJSAccess {
         double used = total - runtime.freeMemory();
 
         JSRealm realm = getCurrentRealm();
-        JSDynamicObject result = JSOrdinary.create(mainJSContext, realm);
+        JSObject result = JSOrdinary.create(mainJSContext, realm);
         JSObject.set(result, TOTAL, createMemoryInfoObject(used, total, realm));
 
         if (detailed) {
@@ -3427,7 +3428,7 @@ public final class GraalJSAccess {
 
     private Object createMemoryInfoObject(double used, double total, JSRealm realm) {
         Object range = JSArray.createConstantDoubleArray(mainJSContext, realm, new double[]{used, total});
-        JSDynamicObject result = JSOrdinary.create(mainJSContext, realm);
+        JSObject result = JSOrdinary.create(mainJSContext, realm);
         JSObject.set(result, JS_MEMORY_ESTIMATE, used);
         JSObject.set(result, JS_MEMORY_RANGE, range);
         return result;
@@ -3678,7 +3679,7 @@ public final class GraalJSAccess {
     }
 
     public Object jsonStringify(Object context, Object object, Object gap) {
-        JSDynamicObject stringify = ((JSRealm) context).lookupFunction(JSONBuiltins.BUILTINS, STRINGIFY);
+        JSFunctionObject stringify = ((JSRealm) context).lookupFunction(JSONBuiltins.BUILTINS, STRINGIFY);
         return (TruffleString) JSFunction.call(stringify, Undefined.instance, new Object[]{
                         object,
                         Undefined.instance, // replacer

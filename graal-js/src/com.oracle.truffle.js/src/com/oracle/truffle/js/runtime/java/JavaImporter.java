@@ -53,10 +53,12 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JavaImporter extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
@@ -82,7 +84,7 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
         return Strings.toJavaString(CLASS_NAME);
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, Object[] value) {
+    public static JavaImporterObject create(JSContext context, JSRealm realm, Object[] value) {
         JSObjectFactory factory = context.getJavaImporterFactory();
         JavaImporterObject obj = new JavaImporterObject(factory.getShape(realm), value);
         factory.initProto(obj, realm);
@@ -140,9 +142,9 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     }
 
     @Override
-    public JSDynamicObject createPrototype(final JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSContext context = realm.getContext();
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         JSObjectUtil.putConstructorProperty(context, prototype, ctor);
         return prototype;

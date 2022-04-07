@@ -134,7 +134,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         return Strings.toJavaString(CLASS_NAME);
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, Object target, JSDynamicObject handler) {
+    public static JSProxyObject create(JSContext context, JSRealm realm, Object target, JSDynamicObject handler) {
         return JSProxyObject.create(realm, context.getProxyFactory(), target, handler);
     }
 
@@ -590,11 +590,11 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        JSDynamicObject proxyConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, CLASS_NAME);
+        JSFunctionObject proxyConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(realm, proxyConstructor, ProxyFunctionBuiltins.BUILTINS);
         // Proxy constructor does not have a prototype property (ES6 26.2.2)
         // Still, makeInitialShape currently needs a dummy prototype
-        JSDynamicObject dummyPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject dummyPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         return new JSConstructor(proxyConstructor, dummyPrototype);
     }
 

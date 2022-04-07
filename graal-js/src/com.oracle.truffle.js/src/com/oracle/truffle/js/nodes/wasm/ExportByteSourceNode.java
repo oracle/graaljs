@@ -54,7 +54,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDataViewObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Exports byte source such that it can be read by WASM.
@@ -114,7 +113,7 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
     }
 
     private Object exportBuffer(JSArrayBufferObject arrayBuffer, int offset, int length) {
-        JSDynamicObject buffer = arrayBuffer;
+        JSArrayBufferObject buffer = arrayBuffer;
         if (emptyByteSouceMessage != null && length == 0) {
             throw Errors.createCompileError(emptyByteSouceMessage, this);
         }

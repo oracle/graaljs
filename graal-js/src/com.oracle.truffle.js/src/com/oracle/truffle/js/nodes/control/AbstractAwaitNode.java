@@ -81,6 +81,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -153,13 +154,13 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
         MaterializedFrame asyncContext = (MaterializedFrame) initialState[AsyncRootNode.ASYNC_FRAME_INDEX];
 
         if (asyncTypeProf.profile(generatorOrCapability instanceof PromiseCapabilityRecord)) {
-            Object parentPromise = ((PromiseCapabilityRecord) generatorOrCapability).getPromise();
-            context.notifyPromiseHook(-1 /* parent info */, (JSDynamicObject) parentPromise);
+            JSDynamicObject parentPromise = ((PromiseCapabilityRecord) generatorOrCapability).getPromise();
+            context.notifyPromiseHook(-1 /* parent info */, parentPromise);
         }
 
         JSDynamicObject promise = promiseResolve(value);
-        JSDynamicObject onFulfilled = createAwaitFulfilledFunction(resumeTarget, asyncContext, generatorOrCapability);
-        JSDynamicObject onRejected = createAwaitRejectedFunction(resumeTarget, asyncContext, generatorOrCapability);
+        JSFunctionObject onFulfilled = createAwaitFulfilledFunction(resumeTarget, asyncContext, generatorOrCapability);
+        JSFunctionObject onRejected = createAwaitRejectedFunction(resumeTarget, asyncContext, generatorOrCapability);
         PromiseCapabilityRecord throwawayCapability = newThrowawayCapability();
 
         fillAsyncStackTrace(frame, onFulfilled, onRejected);
@@ -258,9 +259,9 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
         return newPromiseCapabilityNode.executeDefault();
     }
 
-    private JSDynamicObject createAwaitFulfilledFunction(CallTarget resumeTarget, MaterializedFrame asyncContext, Object generator) {
+    private JSFunctionObject createAwaitFulfilledFunction(CallTarget resumeTarget, MaterializedFrame asyncContext, Object generator) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AwaitFulfilled, (c) -> createAwaitFulfilledImpl(c));
-        JSDynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSFunctionObject function = JSFunction.create(getRealm(), functionData);
         setAsyncTargetNode.setValue(function, resumeTarget);
         setAsyncContextNode.setValue(function, asyncContext);
         setAsyncGeneratorNode.setValue(function, generator);
@@ -316,9 +317,9 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
         return JSFunctionData.createCallOnly(context, new AwaitFulfilledRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
-    private JSDynamicObject createAwaitRejectedFunction(CallTarget resumeTarget, MaterializedFrame asyncContext, Object generator) {
+    private JSFunctionObject createAwaitRejectedFunction(CallTarget resumeTarget, MaterializedFrame asyncContext, Object generator) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AwaitRejected, (c) -> createAwaitRejectedImpl(c));
-        JSDynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSFunctionObject function = JSFunction.create(getRealm(), functionData);
         setAsyncTargetNode.setValue(function, resumeTarget);
         setAsyncContextNode.setValue(function, asyncContext);
         setAsyncGeneratorNode.setValue(function, generator);

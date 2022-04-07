@@ -56,6 +56,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -84,7 +85,7 @@ public abstract class GetAsyncIteratorNode extends GetIteratorNode {
         if (asyncToSync.profile(method == Undefined.instance)) {
             Object syncMethod = getIteratorMethodNode().executeWithTarget(iteratedObject);
             IteratorRecord syncIteratorRecord = getIterator(iteratedObject, syncMethod, isCallableNode, methodCallNode, isObjectNode);
-            JSDynamicObject asyncIterator = createAsyncFromSyncIterator(syncIteratorRecord);
+            JSObject asyncIterator = createAsyncFromSyncIterator(syncIteratorRecord);
             return IteratorRecord.create(asyncIterator, getNextMethodNode.getValue(asyncIterator), false);
         }
         return getIterator(iteratedObject, method, isCallableNode, methodCallNode, isObjectNode);
@@ -95,12 +96,12 @@ public abstract class GetAsyncIteratorNode extends GetIteratorNode {
         return GetAsyncIteratorNodeGen.create(context, cloneUninitialized(objectNode, materializedTags));
     }
 
-    private JSDynamicObject createAsyncFromSyncIterator(IteratorRecord syncIteratorRecord) {
+    private JSObject createAsyncFromSyncIterator(IteratorRecord syncIteratorRecord) {
         JSDynamicObject syncIterator = syncIteratorRecord.getIterator();
         if (!JSDynamicObject.isJSDynamicObject(syncIterator)) {
             throw Errors.createTypeErrorNotAnObject(syncIterator, this);
         }
-        JSDynamicObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory(), getRealm());
+        JSObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory(), getRealm());
         setState.setValue(obj, syncIteratorRecord);
         return obj;
     }

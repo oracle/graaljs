@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -93,9 +94,9 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
         JSRealm realm = JSRealm.get(null);
         JSDynamicObject calendar = TemporalUtil.getISO8601Calendar(context, realm, errorBranch);
         JSObjectFactory factory = context.getTemporalPlainTimeFactory();
-        JSDynamicObject obj = factory.initProto(new JSTemporalPlainTimeObject(factory.getShape(realm),
+        JSTemporalPlainTimeObject obj = factory.initProto(new JSTemporalPlainTimeObject(factory.getShape(realm),
                         hours, minutes, seconds, milliseconds, microseconds, nanoseconds, calendar), realm);
-        return (JSTemporalPlainTimeObject) context.trackAllocation(obj);
+        return context.trackAllocation(obj);
     }
 
     @Override
@@ -109,9 +110,9 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     }
 
     @Override
-    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject constructor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalPlainTimePrototypeBuiltins.BUILTINS);
 

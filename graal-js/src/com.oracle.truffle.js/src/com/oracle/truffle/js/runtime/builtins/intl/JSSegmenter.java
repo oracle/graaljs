@@ -57,12 +57,14 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -167,9 +169,9 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     }
 
     @Override
-    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        JSDynamicObject segmenterPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject segmenterPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, segmenterPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, segmenterPrototype, SegmenterPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(segmenterPrototype, TO_STRING_TAG);
@@ -185,7 +187,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         return INSTANCE.createConstructorAndPrototype(realm, SegmenterFunctionBuiltins.BUILTINS);
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm) {
+    public static JSSegmenterObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getSegmenterFactory();
         JSSegmenterObject obj = new JSSegmenterObject(factory.getShape(realm), state);
@@ -194,7 +196,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         return context.trackAllocation(obj);
     }
 
-    public static JSDynamicObject createSegmentIterator(JSContext context, JSRealm realm, JSDynamicObject segmenter, TruffleString value) {
+    public static JSSegmentIteratorObject createSegmentIterator(JSContext context, JSRealm realm, JSDynamicObject segmenter, TruffleString value) {
         BreakIterator icuIterator = JSSegmenter.createBreakIterator(segmenter, Strings.toJavaString(value));
         Granularity granularity = JSSegmenter.getGranularity(segmenter);
         JSSegmenter.IteratorState iteratorState = new JSSegmenter.IteratorState(value, icuIterator, granularity);
@@ -204,7 +206,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         return context.trackAllocation(segmentIterator);
     }
 
-    public static JSDynamicObject createSegments(JSContext context, JSRealm realm, JSSegmenterObject segmenter, TruffleString string) {
+    public static JSSegmentsObject createSegments(JSContext context, JSRealm realm, JSSegmenterObject segmenter, TruffleString string) {
         JSObjectFactory factory = context.getSegmentsFactory();
         JSSegmentsObject segments = new JSSegmentsObject(factory.getShape(realm), segmenter, string);
         factory.initProto(segments, realm);
@@ -301,8 +303,8 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         return obj instanceof JSSegmentsObject;
     }
 
-    public static JSDynamicObject createSegmentsPrototype(JSRealm realm) {
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+    public static JSObject createSegmentsPrototype(JSRealm realm) {
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, SegmentsPrototypeBuiltins.BUILTINS);
         return prototype;
     }
@@ -320,8 +322,8 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     /**
      * Creates the %SegmentIteratorPrototype% object.
      */
-    public static JSDynamicObject createSegmentIteratorPrototype(JSRealm realm) {
-        JSDynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getIteratorPrototype());
+    public static JSObject createSegmentIteratorPrototype(JSRealm realm) {
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getIteratorPrototype());
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, SegmentIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, ITERATOR_CLASS_NAME);
         return prototype;

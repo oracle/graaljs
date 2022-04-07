@@ -69,6 +69,7 @@ import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
@@ -92,9 +93,9 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
         return new PromiseReactionJobNode(context);
     }
 
-    public JSDynamicObject execute(Object reaction, Object argument) {
+    public JSFunctionObject execute(Object reaction, Object argument) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseReactionJob, (c) -> createPromiseReactionJobImpl(c));
-        JSDynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSFunctionObject function = JSFunction.create(getRealm(), functionData);
         setReaction.setValue(function, reaction);
         setArgument.setValue(function, argument);
         return function;

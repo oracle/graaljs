@@ -53,8 +53,9 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 public class TruffleJSONParser {
@@ -143,7 +144,7 @@ public class TruffleJSONParser {
         incDepth();
         skipChar('{');
         skipWhitespace();
-        JSDynamicObject object = JSOrdinary.create(context, realm);
+        JSObject object = JSOrdinary.create(context, realm);
         if (get() != '}') {
             parseJSONMemberList(object, realm);
             if (get() != '}') {
@@ -160,7 +161,7 @@ public class TruffleJSONParser {
         return object;
     }
 
-    private void parseJSONMemberList(JSDynamicObject object, JSRealm realm) {
+    private void parseJSONMemberList(JSObject object, JSRealm realm) {
         Member member = parseJSONMember(realm);
         JSRuntime.createDataProperty(object, member.getKey(), member.getValue());
         while (get() == ',') {
@@ -184,7 +185,7 @@ public class TruffleJSONParser {
         incDepth();
         skipChar('[');
         skipWhitespace();
-        JSDynamicObject array = JSArray.createEmptyZeroLength(context, realm);
+        JSArrayObject array = JSArray.createEmptyZeroLength(context, realm);
         if (get() != ']') {
             parseJSONElementList(array, realm);
             if (get() != ']') {
@@ -216,7 +217,7 @@ public class TruffleJSONParser {
         this.parseDepth--;
     }
 
-    protected ScriptArray parseJSONElementList(JSDynamicObject arrayObject, JSRealm realm) {
+    protected ScriptArray parseJSONElementList(JSArrayObject arrayObject, JSRealm realm) {
         int index = 0;
         ScriptArray scriptArray = JSAbstractArray.arrayGetArrayType(arrayObject);
         scriptArray = scriptArray.setElement(arrayObject, index, parseJSONValue(realm), false);

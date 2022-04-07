@@ -53,6 +53,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.Default.WithFunctions {
@@ -66,8 +67,8 @@ public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.
     private JSBigInt() {
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, BigInt value) {
-        JSDynamicObject obj = JSBigIntObject.create(realm, context.getBigIntFactory(), value);
+    public static JSBigIntObject create(JSContext context, JSRealm realm, BigInt value) {
+        JSBigIntObject obj = JSBigIntObject.create(realm, context.getBigIntFactory(), value);
         assert isJSBigInt(obj);
         return context.trackAllocation(obj);
     }
@@ -82,9 +83,9 @@ public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.
     }
 
     @Override
-    public JSDynamicObject createPrototype(JSRealm realm, JSDynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext context = realm.getContext();
-        JSDynamicObject bigIntPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject bigIntPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(context, bigIntPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, bigIntPrototype, BigIntPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(bigIntPrototype, CLASS_NAME);

@@ -61,7 +61,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -148,7 +147,7 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
         }
 
         private Object toJSExport(Object wasmExport) throws InteropException {
-            JSDynamicObject export = JSOrdinary.create(getContext(), getRealm());
+            JSObject export = JSOrdinary.create(getContext(), getRealm());
             InteropLibrary interop = InteropLibrary.getUncached(wasmExport);
             for (String key : new String[]{"name", "kind"}) {
                 Object value = interop.readMember(wasmExport, key);
@@ -195,7 +194,7 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
         }
 
         private Object toJSImport(Object wasmImport) throws InteropException {
-            JSDynamicObject export = JSOrdinary.create(getContext(), getRealm());
+            JSObject export = JSOrdinary.create(getContext(), getRealm());
             InteropLibrary interop = InteropLibrary.getUncached(wasmImport);
             for (String key : new String[]{"module", "name", "kind"}) {
                 Object value = interop.readMember(wasmImport, key);

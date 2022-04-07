@@ -327,7 +327,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
 
                 Object toJSInstantiatedSource(Object wasmModule, Object jsInstance) {
                     JSRealm realm = getRealm();
-                    JSDynamicObject instantiatedSource = JSOrdinary.create(context, realm);
+                    JSObject instantiatedSource = JSOrdinary.create(context, realm);
                     JSObject.set(instantiatedSource, Strings.MODULE, JSWebAssemblyModule.create(context, realm, wasmModule));
                     JSObject.set(instantiatedSource, Strings.INSTANCE, jsInstance);
                     return instantiatedSource;

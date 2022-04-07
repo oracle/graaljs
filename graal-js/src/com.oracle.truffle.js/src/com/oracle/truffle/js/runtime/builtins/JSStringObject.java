@@ -47,7 +47,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 @ExportLibrary(InteropLibrary.class)
@@ -64,11 +63,11 @@ public final class JSStringObject extends JSNonProxyObject {
         return string;
     }
 
-    public static JSDynamicObject create(Shape shape, TruffleString value) {
+    public static JSStringObject create(Shape shape, TruffleString value) {
         return new JSStringObject(shape, value);
     }
 
-    public static JSDynamicObject create(JSRealm realm, JSObjectFactory factory, TruffleString value) {
+    public static JSStringObject create(JSRealm realm, JSObjectFactory factory, TruffleString value) {
         return factory.initProto(new JSStringObject(factory.getShape(realm), value), realm);
     }
 
