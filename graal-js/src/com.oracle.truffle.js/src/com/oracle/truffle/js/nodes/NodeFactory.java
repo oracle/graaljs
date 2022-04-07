@@ -834,8 +834,10 @@ public class NodeFactory {
         if (linkBody == evalBody) {
             evalRoot = linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection, internalFunctionName);
         } else {
-            linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection, Strings.concat(internalFunctionName, Evaluator.MODULE_LINK_SUFFIX));
-            evalRoot = FunctionRootNode.create(evalBody, null, functionData, sourceSection, Strings.concat(internalFunctionName, Evaluator.MODULE_EVAL_SUFFIX));
+            linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection,
+                            Strings.concat(internalFunctionName, Evaluator.MODULE_LINK_SUFFIX));
+            evalRoot = FunctionRootNode.create(evalBody, JavaScriptRootNode.MODULE_DUMMY_FRAMEDESCRIPTOR, functionData, sourceSection,
+                            Strings.concat(internalFunctionName, Evaluator.MODULE_EVAL_SUFFIX));
         }
 
         // Note: RootNode is used to get the module environment FrameDescriptor.

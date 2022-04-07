@@ -70,6 +70,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.interop.ScopeVariables;
+import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 
 @GenerateWrapper
 @ExportLibrary(NodeLibrary.class)
@@ -422,6 +423,8 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
                 RootNode rootNode = getRootNode();
                 if (rootNode instanceof JavaScriptRootNode && ((JavaScriptRootNode) rootNode).isResumption() && frame.getFrameDescriptor() == rootNode.getFrameDescriptor()) {
                     functionFrame = JSArguments.getResumeExecutionContext(frame.getArguments());
+                } else if (rootNode.getFrameDescriptor() == JavaScriptRootNode.MODULE_DUMMY_FRAMEDESCRIPTOR) {
+                    functionFrame = ((JSModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0)).getEnvironment();
                 } else {
                     functionFrame = frame.materialize();
                 }
