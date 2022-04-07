@@ -49,7 +49,8 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -87,7 +88,7 @@ public class DeclareEvalVariableNode extends StatementNode {
     }
 
     private static boolean isValidDynamicScopeObject(Object dynamicScope) {
-        return dynamicScope instanceof JSDynamicObject && dynamicScope != Undefined.instance && dynamicScope != Null.instance;
+        return dynamicScope instanceof JSObject && JSObjectUtil.getPrototype((JSObject) dynamicScope) == Null.instance;
     }
 
     public Object getName() {
