@@ -1031,9 +1031,6 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
-    "filePath" : "mjsunit/regress/regress-4693.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/regress/regress-475705.js",
     "status" : "PASS",
     "runInIsolation" : true,
