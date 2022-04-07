@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,8 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 
 public abstract class JavaScriptRootNode extends RootNode {
     private static final FrameDescriptor SHARED_EMPTY_FRAMEDESCRIPTOR = new FrameDescriptor();
+    public static final FrameDescriptor MODULE_DUMMY_FRAMEDESCRIPTOR = new FrameDescriptor();
+
     private final SourceSection sourceSection;
 
     protected JavaScriptRootNode() {
