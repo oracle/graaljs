@@ -470,8 +470,8 @@ public class NodeFactory {
 
     // ##### Control nodes
 
-    public SwitchNode createSwitch(JavaScriptNode[] caseExpressions, int[] jumptable, JavaScriptNode[] statements) {
-        return SwitchNode.create(caseExpressions, jumptable, statements);
+    public SwitchNode createSwitch(JavaScriptNode[] declarations, JavaScriptNode[] caseExpressions, int[] jumptable, JavaScriptNode[] statements) {
+        return SwitchNode.create(declarations, caseExpressions, jumptable, statements);
     }
 
     public LoopNode createLoopNode(RepeatingNode repeatingNode) {

@@ -2504,7 +2504,7 @@ public class Parser extends AbstractParser {
                 // B.3.3.2 Changes to GlobalDeclarationInstantiation
                 ParserContextFunctionNode function = lc.getCurrentFunction();
                 Scope varScope = function.getBodyScope();
-                if (!function.isStrict() && scope != varScope && (varScope.isGlobalScope() || !name.equals(ARGUMENTS_NAME))) {
+                if (!function.isStrict() && scope != varScope) {
                     assert !scope.isFunctionBodyScope() && !scope.isFunctionParameterScope();
                     // If we already find a conflicting declaration, we can skip this step.
                     if (varScope.getExistingSymbol(name) == null && !scope.getParent().isLexicallyDeclaredName(name, true, true)) {
@@ -5243,8 +5243,6 @@ public class Parser extends AbstractParser {
             declareVar(scope, varNode);
             if (topLevel) {
                 functionDeclarations.add(varNode);
-            } else if (useBlockScope()) {
-                prependStatement(varNode); // Hoist to beginning of current block
             } else {
                 appendStatement(varNode);
             }
