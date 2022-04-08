@@ -48,7 +48,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
 public class SetFunctionNameNode extends JavaScriptBaseNode {
@@ -73,7 +73,7 @@ public class SetFunctionNameNode extends JavaScriptBaseNode {
         if (prefix != null && !Strings.isEmpty(prefix)) {
             name = concatenate(prefix, name);
         }
-        return setFunctionName((JSDynamicObject) functionValue, name);
+        return setFunctionName((JSFunctionObject) functionValue, name);
     }
 
     @TruffleBoundary
@@ -81,7 +81,7 @@ public class SetFunctionNameNode extends JavaScriptBaseNode {
         return Strings.concatAll(prefix, Strings.SPACE, name);
     }
 
-    private static Object setFunctionName(JSDynamicObject functionValue, TruffleString name) {
+    private static Object setFunctionName(JSFunctionObject functionValue, TruffleString name) {
         PropertyDescriptor propDesc = PropertyDescriptor.createData(name, false, false, true);
         JSRuntime.definePropertyOrThrow(functionValue, JSFunction.NAME, propDesc);
         return functionValue;
