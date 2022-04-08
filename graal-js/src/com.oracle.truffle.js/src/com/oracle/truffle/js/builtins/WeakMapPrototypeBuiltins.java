@@ -171,7 +171,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)", "!isJSProxy(key)"})
+        @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)"})
         protected Object getCached(JSDynamicObject thisObj, JSDynamicObject key,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
                         @Cached("createBinaryProfile()") ConditionProfile hasInvertedProfile) {
@@ -225,7 +225,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)", "!isJSProxy(key)"})
+        @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)"})
         protected Object setCached(JSDynamicObject thisObj, JSDynamicObject key, Object value,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
                         @Cached("createBinaryProfile()") ConditionProfile hasInvertedProfile) {
@@ -274,7 +274,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)", "!isJSProxy(key)"})
+        @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)"})
         protected Object hasCached(JSDynamicObject thisObj, JSDynamicObject key,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
                         @Cached("createBinaryProfile()") ConditionProfile hasInvertedProfile) {
