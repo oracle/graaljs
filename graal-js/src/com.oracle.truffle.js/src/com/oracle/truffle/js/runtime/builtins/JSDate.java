@@ -104,14 +104,14 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     private JSDate() {
     }
 
-    public static void setTimeMillisField(JSDynamicObject obj, double timeMillis) {
+    public static void setTimeMillisField(JSDateObject obj, double timeMillis) {
         assert isJSDate(obj);
-        ((JSDateObject) obj).setTimeMillis(timeMillis);
+        obj.setTimeMillis(timeMillis);
     }
 
-    public static double getTimeMillisField(JSDynamicObject obj) {
+    public static double getTimeMillisField(JSDateObject obj) {
         assert isJSDate(obj);
-        return ((JSDateObject) obj).getTimeMillis();
+        return obj.getTimeMillis();
     }
 
     public static boolean isJSDate(Object obj) {
@@ -555,21 +555,21 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         return Math.floor(d);
     }
 
-    public static JSDynamicObject create(JSContext context, JSRealm realm, double timeMillis) {
+    public static JSDateObject create(JSContext context, JSRealm realm, double timeMillis) {
         JSObjectFactory factory = context.getDateFactory();
-        JSDynamicObject obj = JSDateObject.create(factory.getShape(realm), timeMillis);
+        JSDateObject obj = JSDateObject.create(factory.getShape(realm), timeMillis);
         factory.initProto(obj, realm);
         assert isJSDate(obj);
         return context.trackAllocation(obj);
     }
 
-    public static double setTime(JSDynamicObject thisDate, double time) {
+    public static double setTime(JSDateObject thisDate, double time) {
         double v = timeClip(time);
         setTimeMillisField(thisDate, v);
         return v;
     }
 
-    public static double setMilliseconds(JSDynamicObject thisDate, double ms, boolean isUTC, Node node) {
+    public static double setMilliseconds(JSDateObject thisDate, double ms, boolean isUTC, Node node) {
         double t = localTime(getTimeMillisField(thisDate), isUTC, node);
         double time = makeTime(hourFromTime(t), minFromTime(t), secFromTime(t), ms);
         double u = timeClip(utc(makeDate(day(t), time), isUTC, node));
@@ -577,7 +577,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         return u;
     }
 
-    public static double setSeconds(JSDynamicObject thisDate, double s, double ms, boolean msSpecified, boolean isUTC, Node node) {
+    public static double setSeconds(JSDateObject thisDate, double s, double ms, boolean msSpecified, boolean isUTC, Node node) {
         double t = localTime(getTimeMillisField(thisDate), isUTC, node);
         double milli = msSpecified ? ms : msFromTime(t);
         double date = makeDate(day(t), makeTime(hourFromTime(t), minFromTime(t), s, milli));
@@ -586,7 +586,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         return u;
     }
 
-    public static double setMinutes(JSDynamicObject thisDate, double m, double s, boolean sSpecified, double ms, boolean msSpecified, boolean isUTC, Node node) {
+    public static double setMinutes(JSDateObject thisDate, double m, double s, boolean sSpecified, double ms, boolean msSpecified, boolean isUTC, Node node) {
         double t = localTime(getTimeMillisField(thisDate), isUTC, node);
         double milli = msSpecified ? ms : msFromTime(t);
         double sec = sSpecified ? s : secFromTime(t);
@@ -596,7 +596,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         return u;
     }
 
-    public static double setHours(JSDynamicObject thisDate, double h, double m, boolean mSpecified, double s, boolean sSpecified, double ms, boolean msSpecified, boolean isUTC, Node node) {
+    public static double setHours(JSDateObject thisDate, double h, double m, boolean mSpecified, double s, boolean sSpecified, double ms, boolean msSpecified, boolean isUTC, Node node) {
         double t = localTime(getTimeMillisField(thisDate), isUTC, node);
         double milli = msSpecified ? ms : msFromTime(t);
         double sec = sSpecified ? s : secFromTime(t);
@@ -607,7 +607,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         return u;
     }
 
-    public static double setDate(JSDynamicObject thisDate, double date, boolean isUTC, Node node) {
+    public static double setDate(JSDateObject thisDate, double date, boolean isUTC, Node node) {
         double t = localTime(getTimeMillisField(thisDate), isUTC, node);
         double u;
         if (Double.isNaN(t)) {
@@ -620,7 +620,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         return u;
     }
 
-    public static double setMonth(JSDynamicObject thisDate, double month, double date, boolean dateSpecified, boolean isUTC, Node node) {
+    public static double setMonth(JSDateObject thisDate, double month, double date, boolean dateSpecified, boolean isUTC, Node node) {
         double t = localTime(getTimeMillisField(thisDate), isUTC, node);
         double newDate;
         if (Double.isNaN(t)) {
@@ -633,7 +633,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         return newDate;
     }
 
-    public static double setFullYear(JSDynamicObject thisDate, double year, double month, boolean monthSpecified, double date, boolean dateSpecified, boolean isUTC, Node node) {
+    public static double setFullYear(JSDateObject thisDate, double year, double month, boolean monthSpecified, double date, boolean dateSpecified, boolean isUTC, Node node) {
         double timeFieldValue = getTimeMillisField(thisDate);
         double t = Double.isNaN(timeFieldValue) ? 0 : localTime(timeFieldValue, isUTC, node);
         double dt = dateSpecified ? date : dateFromTime(t);
@@ -644,7 +644,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         return u;
     }
 
-    public static double setYear(JSDynamicObject thisDate, double year, Node node) {
+    public static double setYear(JSDateObject thisDate, double year, Node node) {
         double t = getTimeMillisField(thisDate);
         t = Double.isNaN(t) ? 0 : localTime(t, node); // cf. B.2.5, clause 1
         if (Double.isNaN(year)) {
@@ -694,23 +694,23 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         return isUTC ? time : utc(time, node);
     }
 
-    public static boolean isValidDate(JSDynamicObject date) {
-        return isJSDate(date) && !Double.isNaN(getTimeMillisField(date));
+    public static boolean isValidDate(JSDateObject date) {
+        return !Double.isNaN(getTimeMillisField(date));
     }
 
     @TruffleBoundary
-    public static Instant asInstant(JSDynamicObject date) {
+    public static Instant asInstant(JSDateObject date) {
         assert isValidDate(date);
         return Instant.ofEpochMilli((long) getTimeMillisField(date));
     }
 
     @TruffleBoundary
-    public static LocalDate asLocalDate(JSDynamicObject date, JSRealm realm) {
+    public static LocalDate asLocalDate(JSDateObject date, JSRealm realm) {
         return LocalDate.from(asInstant(date).atZone(realm.getLocalTimeZoneId()));
     }
 
     @TruffleBoundary
-    public static LocalTime asLocalTime(JSDynamicObject date, JSRealm realm) {
+    public static LocalTime asLocalTime(JSDateObject date, JSRealm realm) {
         return LocalTime.from(asInstant(date).atZone(realm.getLocalTimeZoneId()));
     }
 
@@ -731,7 +731,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     @TruffleBoundary
     @Override
     public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        double time = getTimeMillisField(obj);
+        double time = getTimeMillisField((JSDateObject) obj);
         TruffleString formattedDate;
         if (isTimeValid(time)) {
             formattedDate = toISOStringIntl(time, JSRealm.get(null));

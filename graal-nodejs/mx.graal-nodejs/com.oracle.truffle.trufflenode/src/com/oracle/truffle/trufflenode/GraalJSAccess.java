@@ -221,6 +221,7 @@ import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
+import com.oracle.truffle.js.runtime.builtins.JSDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -1620,7 +1621,7 @@ public final class GraalJSAccess {
     }
 
     public double dateValueOf(Object date) {
-        return JSDate.getTimeMillisField((JSDynamicObject) date);
+        return JSDate.getTimeMillisField((JSDateObject) date);
     }
 
     private enum TimeZoneDetection {

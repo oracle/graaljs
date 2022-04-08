@@ -65,6 +65,7 @@ import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
+import com.oracle.truffle.js.runtime.builtins.JSDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
@@ -330,7 +331,7 @@ public class Serializer {
 
     private void writeDate(JSDynamicObject date) {
         assert JSDate.isJSDate(date);
-        writeDouble(JSDate.getTimeMillisField(date));
+        writeDouble(JSDate.getTimeMillisField((JSDateObject) date));
     }
 
     private void writeJSBoolean(JSDynamicObject bool) {

@@ -214,6 +214,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
+import com.oracle.truffle.js.runtime.builtins.JSDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
@@ -1052,7 +1053,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         private double getDateValue(Object arg0, InteropLibrary interop) {
             if (getContext().getEcmaScriptVersion() >= 6) {
                 if (isDateProfile.profile(JSDate.isJSDate(arg0))) {
-                    return JSDate.getTimeMillisField((JSDynamicObject) arg0);
+                    return JSDate.getTimeMillisField((JSDateObject) arg0);
                 } else if (interop.isInstant(arg0)) {
                     return JSDate.getDateValueFromInstant(arg0, interop);
                 }
