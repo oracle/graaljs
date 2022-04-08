@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
@@ -50,7 +51,7 @@ public interface AsyncHandlerRootNode {
     /**
      * Extract the stack trace element and the promise associated with this handler, both optional.
      */
-    AsyncStackTraceInfo getAsyncStackTraceInfo(JSDynamicObject handlerFunction);
+    AsyncStackTraceInfo getAsyncStackTraceInfo(JSFunctionObject handlerFunction);
 
     final class AsyncStackTraceInfo {
         public final JSDynamicObject promise;

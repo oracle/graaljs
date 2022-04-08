@@ -176,7 +176,7 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
             }
 
             @Override
-            public AsyncStackTraceInfo getAsyncStackTraceInfo(JSDynamicObject handlerFunction) {
+            public AsyncStackTraceInfo getAsyncStackTraceInfo(JSFunctionObject handlerFunction) {
                 assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
                 ResolveElementArgs resolveArgs = (ResolveElementArgs) JSObjectUtil.getHiddenProperty(handlerFunction, PerformPromiseAllNode.RESOLVE_ELEMENT_ARGS_KEY);
                 int promiseIndex = resolveArgs.index;

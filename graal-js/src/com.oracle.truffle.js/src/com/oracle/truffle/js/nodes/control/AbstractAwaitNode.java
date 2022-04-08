@@ -294,7 +294,7 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
         }
 
         @Override
-        public AsyncStackTraceInfo getAsyncStackTraceInfo(JSDynamicObject handlerFunction) {
+        public AsyncStackTraceInfo getAsyncStackTraceInfo(JSFunctionObject handlerFunction) {
             assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
             RootCallTarget asyncTarget = (RootCallTarget) JSObjectUtil.getHiddenProperty(handlerFunction, ASYNC_TARGET);
             if (asyncTarget.getRootNode() instanceof AsyncRootNode) {
@@ -381,7 +381,7 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
         } while (nextPromise != null);
     }
 
-    public static List<TruffleStackTraceElement> findAsyncStackFramesFromHandler(JSDynamicObject handlerFunction) {
+    public static List<TruffleStackTraceElement> findAsyncStackFramesFromHandler(JSFunctionObject handlerFunction) {
         List<TruffleStackTraceElement> stackTrace = new ArrayList<>(4);
         RootNode rootNode = ((RootCallTarget) JSFunction.getCallTarget(handlerFunction)).getRootNode();
         if (rootNode instanceof AsyncHandlerRootNode) {

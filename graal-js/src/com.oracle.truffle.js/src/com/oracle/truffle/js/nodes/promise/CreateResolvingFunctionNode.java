@@ -222,7 +222,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             }
 
             @Override
-            public AsyncStackTraceInfo getAsyncStackTraceInfo(JSDynamicObject handlerFunction) {
+            public AsyncStackTraceInfo getAsyncStackTraceInfo(JSFunctionObject handlerFunction) {
                 assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
                 JSDynamicObject promise = (JSDynamicObject) JSObjectUtil.getHiddenProperty(handlerFunction, PROMISE_KEY);
                 return new AsyncStackTraceInfo(promise, null);
@@ -292,7 +292,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             }
 
             @Override
-            public AsyncStackTraceInfo getAsyncStackTraceInfo(JSDynamicObject handlerFunction) {
+            public AsyncStackTraceInfo getAsyncStackTraceInfo(JSFunctionObject handlerFunction) {
                 assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
                 JSDynamicObject promise = (JSDynamicObject) JSObjectUtil.getHiddenProperty(handlerFunction, PROMISE_KEY);
                 return new AsyncStackTraceInfo(promise, null);
