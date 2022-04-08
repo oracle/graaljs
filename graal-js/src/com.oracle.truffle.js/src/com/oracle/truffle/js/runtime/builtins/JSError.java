@@ -150,9 +150,9 @@ public final class JSError extends JSNonProxy {
         JSObjectUtil.putDataProperty(obj, MESSAGE, message, MESSAGE_ATTRIBUTES);
     }
 
-    public static JSObject create(JSErrorType errorType, JSRealm realm, Object message) {
+    public static JSErrorObject create(JSErrorType errorType, JSRealm realm, Object message) {
         assert Strings.isTString(message) || message == Undefined.instance;
-        JSObject obj = createErrorObject(realm.getContext(), realm, errorType);
+        JSErrorObject obj = createErrorObject(realm.getContext(), realm, errorType);
         String msg;
         if (message == Undefined.instance) {
             msg = null;
@@ -165,19 +165,19 @@ public final class JSError extends JSNonProxy {
         return obj;
     }
 
-    public static JSObject createFromJSException(JSException exception, JSRealm realm, String message) {
+    public static JSErrorObject createFromJSException(JSException exception, JSRealm realm, String message) {
         Objects.requireNonNull(message);
         JSContext context = realm.getContext();
         JSErrorType errorType = exception.getErrorType();
-        JSObject obj = createErrorObject(context, realm, errorType);
+        JSErrorObject obj = createErrorObject(context, realm, errorType);
         setMessage(obj, Strings.fromJavaString(message));
         setException(realm, obj, exception, context.isOptionNashornCompatibilityMode());
         return obj;
     }
 
     @TruffleBoundary
-    public static JSObject createAggregateError(JSRealm realm, Object errors, String msg) {
-        JSObject errorObj = createErrorObject(realm.getContext(), realm, JSErrorType.AggregateError);
+    public static JSErrorObject createAggregateError(JSRealm realm, Object errors, String msg) {
+        JSErrorObject errorObj = createErrorObject(realm.getContext(), realm, JSErrorType.AggregateError);
         if (msg != null) {
             setMessage(errorObj, Strings.fromJavaString(msg));
         }

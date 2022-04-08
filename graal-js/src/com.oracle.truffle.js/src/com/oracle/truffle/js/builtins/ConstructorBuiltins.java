@@ -2362,7 +2362,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached("create()") BranchProfile growProfile) {
             JSContext context = getContext();
             JSRealm realm = getRealm();
-            JSObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
+            JSErrorObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
             swapPrototype(errorObj, newTarget);
 
             TruffleString message;

@@ -75,6 +75,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -329,7 +330,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
         }
 
         @TruffleBoundary
-        private static JSDynamicObject createErrorFromJSException(JSContext context, JSRealm realm, JSErrorType errorType) {
+        private static JSErrorObject createErrorFromJSException(JSContext context, JSRealm realm, JSErrorType errorType) {
             return JSError.createErrorObject(context, realm, errorType);
         }
     }
