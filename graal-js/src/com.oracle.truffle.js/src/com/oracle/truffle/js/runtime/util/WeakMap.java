@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -85,8 +86,17 @@ public class WeakMap implements Map<JSDynamicObject, Object> {
         return invertedMap;
     }
 
-    private static Map<WeakMap, Object> newInvertedMap() {
+    @TruffleBoundary
+    public static Map<WeakMap, Object> newInvertedMap() {
         return new WeakHashMap<>();
+    }
+
+    @TruffleBoundary
+    public Map<WeakMap, Object> newInvertedMapWithEntry(JSDynamicObject key, Object value) {
+        assert getInvertedMap(key) == null;
+        Map<WeakMap, Object> map = new WeakHashMap<>();
+        map.put(this, value);
+        return map;
     }
 
     @Override

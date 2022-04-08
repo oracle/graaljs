@@ -228,6 +228,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)"})
         protected Object setCached(JSDynamicObject thisObj, JSDynamicObject key, Object value,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
+                        @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedSetter,
                         @Cached("createBinaryProfile()") ConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
             Object inverted = getInvertedMap(key, invertedGetter);
@@ -235,7 +236,8 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                 WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
                 mapPut(map, invertedMap, value);
             } else {
-                Boundaries.mapPut(map, key, value);
+                inverted = map.newInvertedMapWithEntry(key, value);
+                invertedSetter.put(key, WeakMap.INVERTED_WEAK_MAP_KEY, inverted);
             }
             return thisObj;
         }
