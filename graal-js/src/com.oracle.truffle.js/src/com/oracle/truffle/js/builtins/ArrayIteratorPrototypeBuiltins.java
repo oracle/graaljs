@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -139,7 +140,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             int itemKind = getIterationKind(iterator);
             long length;
             if (isTypedArrayProfile.profile(JSArrayBufferView.isJSArrayBufferView(array))) {
-                JSDynamicObject typedArray = (JSDynamicObject) array;
+                JSTypedArrayObject typedArray = (JSTypedArrayObject) array;
                 if (JSArrayBufferView.hasDetachedBuffer(typedArray, getContext())) {
                     errorBranch.enter();
                     throw Errors.createTypeError("Cannot perform Array Iterator.prototype.next on a detached ArrayBuffer");

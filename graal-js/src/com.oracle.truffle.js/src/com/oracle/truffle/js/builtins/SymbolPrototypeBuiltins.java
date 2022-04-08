@@ -53,7 +53,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSSymbolObject;
 
 /**
  * Contains builtins for Symbol.prototype.
@@ -118,7 +118,7 @@ public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         protected TruffleString toString(Object thisObj) {
             if (isSymbolObjectProfile.profile(JSSymbol.isJSSymbol(thisObj))) {
-                return JSSymbol.getSymbolData((JSDynamicObject) thisObj).toTString();
+                return JSSymbol.getSymbolData((JSSymbolObject) thisObj).toTString();
             } else if (isPrimitiveSymbolProfile.profile(thisObj instanceof Symbol)) {
                 return ((Symbol) thisObj).toTString();
             } else {
@@ -138,7 +138,7 @@ public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         protected Symbol valueOf(Object thisObj) {
             if (isSymbolObjectProfile.profile(JSSymbol.isJSSymbol(thisObj))) {
-                return JSSymbol.getSymbolData((JSDynamicObject) thisObj);
+                return JSSymbol.getSymbolData((JSSymbolObject) thisObj);
             } else if (isPrimitiveSymbolProfile.profile(thisObj instanceof Symbol)) {
                 return (Symbol) thisObj;
             } else {
@@ -160,7 +160,7 @@ public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (isSymbolProfile.profile(thisObj instanceof Symbol)) {
                 return (Symbol) thisObj;
             } else if (isSymbolObjectProfile.profile(JSSymbol.isJSSymbol(thisObj))) {
-                return JSSymbol.getSymbolData((JSDynamicObject) thisObj);
+                return JSSymbol.getSymbolData((JSSymbolObject) thisObj);
             } else {
                 throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
             }

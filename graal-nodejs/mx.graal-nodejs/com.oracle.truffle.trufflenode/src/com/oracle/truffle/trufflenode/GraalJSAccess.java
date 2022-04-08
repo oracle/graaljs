@@ -2522,17 +2522,20 @@ public final class GraalJSAccess {
         }
         GraalJSException truffleException = (GraalJSException) throwable;
         Object exceptionObject = truffleException.getErrorObjectEager(jsRealm);
-        if (JSRuntime.isObject(exceptionObject) && JSError.getException((JSDynamicObject) exceptionObject) == null) {
-            JSObjectUtil.putHiddenProperty((JSDynamicObject) exceptionObject, JSError.EXCEPTION_PROPERTY_NAME, truffleException);
-        }
-        // Patch stack property of SyntaxErrors so that it looks like the one from V8
-        Matcher matcher = messageSyntaxErrorMatcher(exception);
-        if (matcher != null) {
-            TruffleString stack = JSRuntime.toString(JSObject.get((JSDynamicObject) exceptionObject, JSError.STACK_NAME));
-            if (Strings.startsWith(stack, Strings.fromJavaString(truffleException.getMessage()))) {
-                TruffleString message = Strings.fromJavaString(matcher.group(SYNTAX_ERROR_MESSAGE_GROUP));
-                stack = Strings.concatAll(SYNTAX_ERROR_COLON_SPC, message, Strings.lazySubstring(stack, truffleException.getMessage().length()));
-                JSObject.set((JSDynamicObject) exceptionObject, JSError.STACK_NAME, stack);
+        if (JSRuntime.isObject(exceptionObject)) {
+            JSObject errorObject = (JSObject) exceptionObject;
+            if (JSError.getException(errorObject) == null) {
+                JSObjectUtil.putHiddenProperty(errorObject, JSError.EXCEPTION_PROPERTY_NAME, truffleException);
+            }
+            // Patch stack property of SyntaxErrors so that it looks like the one from V8
+            Matcher matcher = messageSyntaxErrorMatcher(exception);
+            if (matcher != null) {
+                TruffleString stack = JSRuntime.toString(JSObject.get(errorObject, JSError.STACK_NAME));
+                if (Strings.startsWith(stack, Strings.fromJavaString(truffleException.getMessage()))) {
+                    TruffleString message = Strings.fromJavaString(matcher.group(SYNTAX_ERROR_MESSAGE_GROUP));
+                    stack = Strings.concatAll(SYNTAX_ERROR_COLON_SPC, message, Strings.lazySubstring(stack, truffleException.getMessage().length()));
+                    JSObject.set(errorObject, JSError.STACK_NAME, stack);
+                }
             }
         }
         return exceptionObject;

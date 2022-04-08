@@ -90,7 +90,7 @@ public final class ErrorFunctionBuiltins extends JSBuiltinsContainer.Lambda {
                 errorProfile.enter();
                 throw Errors.createTypeError("invalid_argument");
             }
-            JSDynamicObject obj = (JSDynamicObject) object;
+            JSObject obj = (JSObject) object;
             if (!JSObject.isExtensible(obj)) {
                 errorProfile.enter();
                 throw Errors.createTypeError("Cannot define property:stack, object is not extensible.");

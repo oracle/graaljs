@@ -2016,7 +2016,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long itemCount = insertCount;
             boolean isJSArray = JSArray.isJSArray(thisObj);
             if (isJSArray) {
-                JSDynamicObject dynObj = (JSDynamicObject) thisObj;
+                JSArrayObject dynObj = (JSArrayObject) thisObj;
                 ScriptArray arrayType = arrayGetArrayType(dynObj);
                 spliceJSArray.execute(dynObj, len, actualStart, actualDeleteCount, itemCount, arrayType, this);
             } else if (JSDynamicObject.isJSDynamicObject(thisObj)) {

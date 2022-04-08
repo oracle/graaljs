@@ -147,7 +147,7 @@ public final class UserScriptException extends GraalJSException {
     private static TruffleString getMessage(Object exc) {
         if (JSRuntime.isObject(exc)) {
             // try to get the constructor name, and then the message
-            JSDynamicObject errorObj = (JSDynamicObject) exc;
+            JSObject errorObj = (JSObject) exc;
             JSDynamicObject prototype = JSObject.getPrototype(errorObj);
             if (prototype != Null.instance) {
                 Object constructor = JSDynamicObject.getOrDefault(prototype, JSObject.CONSTRUCTOR, null);

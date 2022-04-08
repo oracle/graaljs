@@ -124,7 +124,7 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
                     if (JSSet.isJSSet(obj)) {
-                        return JSSet.getSetSize((JSDynamicObject) obj);
+                        return JSSet.getSetSize((JSSetObject) obj);
                     } else {
                         errorBranch.enter();
                         throw Errors.createTypeErrorSetExpected();

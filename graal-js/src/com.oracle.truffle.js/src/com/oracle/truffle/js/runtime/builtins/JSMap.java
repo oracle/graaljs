@@ -107,7 +107,7 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
                     if (JSMap.isJSMap(obj)) {
-                        return JSMap.getMapSize((JSDynamicObject) obj);
+                        return JSMap.getMapSize((JSMapObject) obj);
                     } else {
                         errorBranch.enter();
                         throw Errors.createTypeErrorMapExpected();

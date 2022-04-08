@@ -49,6 +49,7 @@ import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -82,7 +83,7 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
 
         if (!JSConfig.EagerStackTrace && context.isOptionAsyncStackTraces() && JSError.isJSError(reason)) {
             // Materialize lazy stack trace before clearing promise reactions.
-            materializeLazyStackTrace((JSDynamicObject) reason);
+            materializeLazyStackTrace((JSErrorObject) reason);
         }
 
         Object reactions = getPromiseRejectReactions.getValue(promise);
@@ -97,7 +98,7 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private static void materializeLazyStackTrace(JSDynamicObject error) {
+    private static void materializeLazyStackTrace(JSErrorObject error) {
         assert JSError.isJSError(error);
         GraalJSException exception = JSError.getException(error);
         if (exception != null) {
