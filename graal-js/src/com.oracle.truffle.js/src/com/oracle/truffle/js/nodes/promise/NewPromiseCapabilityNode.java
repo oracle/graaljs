@@ -95,7 +95,7 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
 
     @TruffleBoundary
     public static PromiseCapabilityRecord createDefault(JSRealm realm) {
-        JSFunctionObject constructor = (JSFunctionObject) realm.getPromiseConstructor();
+        JSFunctionObject constructor = realm.getPromiseConstructor();
         JSContext context = realm.getContext();
         assert JSFunction.isConstructor(constructor);
         PromiseCapabilityRecord promiseCapability = PromiseCapabilityRecord.create(Undefined.instance, Undefined.instance, Undefined.instance);

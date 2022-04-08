@@ -366,7 +366,7 @@ public class JSRealm {
     private final JSDynamicObject throwerFunction;
     private final Accessor throwerAccessor;
 
-    private final JSDynamicObject promiseConstructor;
+    private final JSFunctionObject promiseConstructor;
     private final JSDynamicObject promisePrototype;
     private JSDynamicObject promiseAllFunctionObject;
 
@@ -1612,7 +1612,7 @@ public class JSRealm {
         return thrower;
     }
 
-    public JSDynamicObject getPromiseConstructor() {
+    public JSFunctionObject getPromiseConstructor() {
         return promiseConstructor;
     }
 
