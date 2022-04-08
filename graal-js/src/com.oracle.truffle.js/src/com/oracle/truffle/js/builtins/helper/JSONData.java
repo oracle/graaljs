@@ -44,7 +44,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public class JSONData {
 
@@ -52,11 +51,11 @@ public class JSONData {
     private int indent;
     private final TruffleString gap;
     private final List<Object> propertyList;
-    private final JSDynamicObject replacerFnObj;
+    private final Object replacerFnObj;
 
     private static final int MAX_STACK_SIZE = 1000;
 
-    public JSONData(TruffleString gap, JSDynamicObject replacerFnObj, List<Object> replacerList) {
+    public JSONData(TruffleString gap, Object replacerFnObj, List<Object> replacerList) {
         this.gap = gap;
         this.replacerFnObj = replacerFnObj;
         this.propertyList = replacerList;
@@ -78,7 +77,7 @@ public class JSONData {
         return propertyList;
     }
 
-    public JSDynamicObject getReplacerFnObj() {
+    public Object getReplacerFnObj() {
         return replacerFnObj;
     }
 

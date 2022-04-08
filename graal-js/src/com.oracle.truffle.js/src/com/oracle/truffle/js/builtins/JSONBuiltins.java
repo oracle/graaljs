@@ -151,7 +151,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
             Object unfiltered = parseIntl(toString(text));
             JSObject root = JSOrdinary.create(getContext(), getRealm());
             JSObjectUtil.putDataProperty(getContext(), root, Strings.EMPTY_STRING, unfiltered, JSAttributes.getDefault());
-            return walk((JSDynamicObject) reviver, root, Strings.EMPTY_STRING);
+            return walk(reviver, root, Strings.EMPTY_STRING);
         }
 
         @Specialization(guards = "!isCallable.executeBoolean(reviver)", limit = "1")
@@ -166,10 +166,10 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         }
 
         @TruffleBoundary
-        private Object walk(JSDynamicObject reviverFn, JSDynamicObject holder, Object property) {
+        private Object walk(Object reviverFn, JSObject holder, Object property) {
             Object value = JSObject.get(holder, property);
             if (JSRuntime.isObject(value)) {
-                JSDynamicObject object = (JSDynamicObject) value;
+                JSObject object = (JSObject) value;
                 if (isArray(object)) {
                     int len = (int) JSRuntime.toLength(JSObject.get(object, JSArray.LENGTH));
                     for (int i = 0; i < len; i++) {
@@ -237,7 +237,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         }
 
         @Specialization(guards = "isCallable(replacerFn)")
-        protected Object stringify(Object value, JSDynamicObject replacerFn, Object spaceParam) {
+        protected Object stringify(Object value, Object replacerFn, Object spaceParam) {
             assert JSRuntime.isCallable(replacerFn);
             return stringifyIntl(value, spaceParam, replacerFn, null);
         }
@@ -293,7 +293,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
             return stringifyIntl(value, spaceParam, null, null);
         }
 
-        private Object stringifyIntl(Object value, Object spaceParam, JSDynamicObject replacerFnObj, List<Object> replacerList) {
+        private Object stringifyIntl(Object value, Object spaceParam, Object replacerFnObj, List<Object> replacerList) {
             final TruffleString gap = spaceIsUndefinedProfile.profile(spaceParam == Undefined.instance) ? Strings.EMPTY_STRING : getGap(spaceParam);
 
             JSDynamicObject wrapper = JSOrdinary.create(getContext(), getRealm());
