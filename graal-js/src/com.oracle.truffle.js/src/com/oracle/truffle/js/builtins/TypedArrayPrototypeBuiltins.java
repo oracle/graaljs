@@ -280,7 +280,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
          * @return subarray TypedArray
          */
         @Specialization(guards = "isJSArrayBufferView(thisObj)")
-        protected JSDynamicObject subarray(JSDynamicObject thisObj, int begin, int end,
+        protected JSTypedArrayObject subarray(JSDynamicObject thisObj, int begin, int end,
                         @Cached("createIdentityProfile()") ValueProfile arrayTypeProfile) {
             TypedArray array = arrayTypeProfile.profile(typedArrayGetArrayType(thisObj));
             int length = (int) array.length(thisObj);
@@ -290,7 +290,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = "isJSArrayBufferView(thisObj)")
-        protected JSDynamicObject subarray(JSDynamicObject thisObj, Object begin0, Object end0,
+        protected JSTypedArrayObject subarray(JSDynamicObject thisObj, Object begin0, Object end0,
                         @Cached("createIdentityProfile()") ValueProfile arrayTypeProfile,
                         @Cached("createBinaryProfile()") ConditionProfile negativeBegin,
                         @Cached("createBinaryProfile()") ConditionProfile negativeEnd,
@@ -309,11 +309,11 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSArrayBufferView(thisObj)")
-        protected JSDynamicObject subarrayGeneric(Object thisObj, Object begin0, Object end0) {
+        protected JSTypedArrayObject subarrayGeneric(Object thisObj, Object begin0, Object end0) {
             throw Errors.createTypeErrorArrayBufferViewExpected();
         }
 
-        protected JSDynamicObject subarrayImpl(JSDynamicObject thisObj, TypedArray arrayType, int begin, int end) {
+        protected JSTypedArrayObject subarrayImpl(JSDynamicObject thisObj, TypedArray arrayType, int begin, int end) {
             assert arrayType == JSArrayBufferView.typedArrayGetArrayType(thisObj);
             int offset = JSArrayBufferView.typedArrayGetOffset(thisObj);
             JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(thisObj);

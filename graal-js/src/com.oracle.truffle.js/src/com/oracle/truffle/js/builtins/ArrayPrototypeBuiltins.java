@@ -507,7 +507,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        protected final JSDynamicObject typedArraySpeciesCreate(JSDynamicObject thisObj, Object... args) {
+        protected final JSTypedArrayObject typedArraySpeciesCreate(JSDynamicObject thisObj, Object... args) {
             JSDynamicObject constr = speciesConstructor(thisObj, getDefaultConstructor(thisObj));
             return typedArrayCreate(constr, args);
         }
@@ -515,23 +515,24 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         /**
          * 22.2.4.6 TypedArrayCreate().
          */
-        public final JSDynamicObject typedArrayCreate(JSDynamicObject constr, Object... args) {
-            Object newTypedArray = construct(constr, args);
-            if (!JSArrayBufferView.isJSArrayBufferView(newTypedArray)) {
+        public final JSTypedArrayObject typedArrayCreate(JSDynamicObject constr, Object... args) {
+            Object newObject = construct(constr, args);
+            if (!JSArrayBufferView.isJSArrayBufferView(newObject)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorArrayBufferViewExpected();
             }
-            if (JSArrayBufferView.hasDetachedBuffer((JSDynamicObject) newTypedArray, context)) {
+            JSTypedArrayObject newTypedArray = (JSTypedArrayObject) newObject;
+            if (JSArrayBufferView.hasDetachedBuffer(newTypedArray, context)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorDetachedBuffer();
             }
             if (args.length == 1 && JSRuntime.isNumber(args[0])) {
-                if (JSArrayBufferView.typedArrayGetLength((JSDynamicObject) newTypedArray) < JSRuntime.doubleValue((Number) args[0])) {
+                if (JSArrayBufferView.typedArrayGetLength(newTypedArray) < JSRuntime.doubleValue((Number) args[0])) {
                     errorBranch.enter();
                     throw Errors.createTypeError("invalid TypedArray created");
                 }
             }
-            return (JSDynamicObject) newTypedArray;
+            return newTypedArray;
         }
 
         /**
@@ -2331,15 +2332,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private JSDynamicObject getTypedResult(JSDynamicObject thisJSObj, JSDynamicObject resultArray) {
+        private JSTypedArrayObject getTypedResult(JSDynamicObject thisJSObj, JSDynamicObject resultArray) {
             long resultLen = arrayGetLength(resultArray);
 
-            Object obj = getArraySpeciesConstructorNode().typedArraySpeciesCreate(thisJSObj, JSRuntime.longToIntOrDouble(resultLen));
-            if (!JSDynamicObject.isJSDynamicObject(obj)) {
-                errorBranch.enter();
-                throw Errors.createTypeErrorNotAnObject(obj);
-            }
-            JSDynamicObject typedResult = (JSDynamicObject) obj;
+            JSTypedArrayObject typedResult = getArraySpeciesConstructorNode().typedArraySpeciesCreate(thisJSObj, JSRuntime.longToIntOrDouble(resultLen));
             TypedArray typedArray = arrayTypeProfile.profile(JSArrayBufferView.typedArrayGetArrayType(typedResult));
             ScriptArray array = resultArrayTypeProfile.profile(arrayGetArrayType(resultArray));
             for (long i = 0; i < resultLen; i++) {

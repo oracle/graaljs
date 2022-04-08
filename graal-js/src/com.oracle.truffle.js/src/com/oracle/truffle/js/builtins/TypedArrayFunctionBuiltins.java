@@ -107,7 +107,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
                 throw Errors.createTypeErrorNotAConstructor(thisObj, getContext());
             }
             int len = args.length;
-            JSDynamicObject newObj = getArraySpeciesConstructorNode().typedArrayCreate((JSDynamicObject) thisObj, len);
+            JSTypedArrayObject newObj = getArraySpeciesConstructorNode().typedArrayCreate((JSDynamicObject) thisObj, len);
             int k = 0;
             while (k < len) {
                 Object kValue = args[k];
@@ -153,7 +153,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
                 values.add(nextValue, growProfile);
             }
             int len = values.size();
-            JSDynamicObject obj = getArraySpeciesConstructorNode().typedArrayCreate((JSDynamicObject) thisObj, len);
+            JSTypedArrayObject obj = getArraySpeciesConstructorNode().typedArrayCreate((JSDynamicObject) thisObj, len);
             for (int k = 0; k < len; k++) {
                 Object mapped = values.get(k);
                 if (mapping) {
