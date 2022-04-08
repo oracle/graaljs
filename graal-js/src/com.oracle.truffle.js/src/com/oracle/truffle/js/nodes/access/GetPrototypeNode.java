@@ -126,7 +126,7 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
         return JSObject.getPrototype(obj, jsclassProfile);
     }
 
-    @Specialization(guards = "!isDynamicObject(obj)")
+    @Specialization(guards = "!isJSDynamicObject(obj)")
     static JSDynamicObject doNotObject(@SuppressWarnings("unused") Object obj) {
         return Null.instance;
     }

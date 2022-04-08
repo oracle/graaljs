@@ -151,10 +151,6 @@ public final class JSGuards {
         return value == Null.instance;
     }
 
-    public static boolean isDynamicObject(Object value) {
-        return JSDynamicObject.isJSDynamicObject(value);
-    }
-
     public static boolean isJSFunction(Object value) {
         return JSFunction.isJSFunction(value);
     }

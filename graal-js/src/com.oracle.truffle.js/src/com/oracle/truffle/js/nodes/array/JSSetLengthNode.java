@@ -94,7 +94,7 @@ public abstract class JSSetLengthNode extends JavaScriptBaseNode {
         return length;
     }
 
-    @Specialization(guards = "!isDynamicObject(object)")
+    @Specialization(guards = "!isJSDynamicObject(object)")
     protected static Object setLengthForeign(@SuppressWarnings("unused") Object object, Object length) {
         // there is no SET_SIZE message. Let's assume WRITE already has done the job
         return length;
