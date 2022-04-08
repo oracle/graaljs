@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -124,7 +125,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @Override
-    public JSDynamicObject execute(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         return executeWithName(frame, null);
     }
 
@@ -140,13 +141,13 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @Override
-    public JSDynamicObject executeWithName(VirtualFrame frame, Object className) {
+    public Object executeWithName(VirtualFrame frame, Object className) {
         return executeWithName(frame, className, null, -1);
     }
 
-    private JSDynamicObject executeWithName(VirtualFrame frame, Object className, ClassDefinitionResumptionRecord resumptionRecord, int stateSlot) {
+    private JSFunctionObject executeWithName(VirtualFrame frame, Object className, ClassDefinitionResumptionRecord resumptionRecord, int stateSlot) {
         JSDynamicObject proto;
-        JSDynamicObject constructor;
+        JSFunctionObject constructor;
         Object[][] instanceFields;
         Object[][] staticElements;
         int instanceFieldIndex;
@@ -243,8 +244,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @ExplodeLoop
-    private void initializeMembers(VirtualFrame frame, JSDynamicObject proto, JSDynamicObject constructor, Object[][] instanceFields, Object[][] staticElements, int startIndex, int instanceFieldIdx,
-                    int staticElementIdx, int stateSlot, JSRealm realm) {
+    private void initializeMembers(VirtualFrame frame, JSDynamicObject proto, JSFunctionObject constructor, Object[][] instanceFields, Object[][] staticElements,
+                    int startIndex, int instanceFieldIdx, int staticElementIdx, int stateSlot, JSRealm realm) {
         /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
         int instanceFieldIndex = instanceFieldIdx;
         int staticElementIndex = staticElementIdx;
@@ -301,7 +302,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
 
     static class ClassDefinitionResumptionRecord {
         final JSDynamicObject proto;
-        final JSDynamicObject constructor;
+        final JSFunctionObject constructor;
         final Object[][] instanceFields;
         final Object[][] staticElements;
         final int instanceFieldIndex;
@@ -310,7 +311,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
 
         ClassDefinitionResumptionRecord(
                         JSDynamicObject proto,
-                        JSDynamicObject constructor,
+                        JSFunctionObject constructor,
                         Object[][] instanceFields,
                         Object[][] staticElements,
                         int instanceFieldIndex,
