@@ -51,6 +51,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
+import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -471,7 +472,7 @@ public final class JSGuards {
         return i.fitsInLong() && JSRuntime.isArrayIndex(i.longValue());
     }
 
-    public static boolean isArgumentsDisconnected(JSDynamicObject argumentsArray) {
+    public static boolean isArgumentsDisconnected(JSArgumentsObject argumentsArray) {
         return JSArgumentsArray.hasDisconnectedIndices(argumentsArray);
     }
 
