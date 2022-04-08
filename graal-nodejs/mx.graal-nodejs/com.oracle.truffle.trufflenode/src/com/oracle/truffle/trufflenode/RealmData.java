@@ -44,6 +44,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
@@ -53,13 +54,13 @@ public final class RealmData {
 
     private Object securityToken;
     private final Map<Integer, Object> embedderData = new HashMap<>();
-    private final Map<Integer, JSDynamicObject> functionTemplateObjects = new HashMap<>();
+    private final Map<Integer, JSFunctionObject> functionTemplateObjects = new HashMap<>();
 
-    private JSDynamicObject nativeUtf8Write;
-    private JSDynamicObject nativeUtf8Slice;
+    private JSFunctionObject nativeUtf8Write;
+    private JSFunctionObject nativeUtf8Slice;
     private JSDynamicObject resolverFactory;
     private JSDynamicObject extrasBindingObject;
-    private JSDynamicObject arrayBufferGetContentsFunction;
+    private JSFunctionObject arrayBufferGetContentsFunction;
 
     private final GraalJSAccess graalJSAccess;
 
@@ -75,19 +76,19 @@ public final class RealmData {
         return securityToken;
     }
 
-    public JSDynamicObject getNativeUtf8Write() {
+    public JSFunctionObject getNativeUtf8Write() {
         return nativeUtf8Write;
     }
 
-    public void setNativeUtf8Write(JSDynamicObject nativeUtf8Write) {
+    public void setNativeUtf8Write(JSFunctionObject nativeUtf8Write) {
         this.nativeUtf8Write = nativeUtf8Write;
     }
 
-    public JSDynamicObject getNativeUtf8Slice() {
+    public JSFunctionObject getNativeUtf8Slice() {
         return nativeUtf8Slice;
     }
 
-    public void setNativeUtf8Slice(JSDynamicObject nativeUtf8Slice) {
+    public void setNativeUtf8Slice(JSFunctionObject nativeUtf8Slice) {
         this.nativeUtf8Slice = nativeUtf8Slice;
     }
 
@@ -99,12 +100,12 @@ public final class RealmData {
         return embedderData.get(index);
     }
 
-    public void setFunctionTemplateObject(int index, JSDynamicObject functionObject) {
+    public void setFunctionTemplateObject(int index, JSFunctionObject functionObject) {
         functionTemplateObjects.put(index, functionObject);
     }
 
     @TruffleBoundary
-    public JSDynamicObject getFunctionTemplateObject(int index) {
+    public JSFunctionObject getFunctionTemplateObject(int index) {
         return functionTemplateObjects.get(index);
     }
 
@@ -124,11 +125,11 @@ public final class RealmData {
         return extrasBindingObject;
     }
 
-    public JSDynamicObject getArrayBufferGetContentsFunction() {
+    public JSFunctionObject getArrayBufferGetContentsFunction() {
         return arrayBufferGetContentsFunction;
     }
 
-    public void setArrayBufferGetContentsFunction(JSDynamicObject arrayBufferGetContentsFunction) {
+    public void setArrayBufferGetContentsFunction(JSFunctionObject arrayBufferGetContentsFunction) {
         this.arrayBufferGetContentsFunction = arrayBufferGetContentsFunction;
     }
 

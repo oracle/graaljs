@@ -49,7 +49,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
@@ -86,7 +86,7 @@ public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
 
         if (accessor.hasSignature()) {
             FunctionTemplate signature = accessor.getSignature();
-            JSDynamicObject functionObject = signature.getFunctionObject(getRealm());
+            JSFunctionObject functionObject = signature.getFunctionObject(getRealm());
             if (functionObject != null) {
                 Object functionPrototype = prototypePropertyGetNode.getValue(functionObject);
                 Object instancePrototype = getPrototypeNode.execute(arguments[0]);

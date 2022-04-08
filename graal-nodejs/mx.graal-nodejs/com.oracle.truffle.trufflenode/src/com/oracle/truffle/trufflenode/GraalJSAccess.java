@@ -1364,7 +1364,7 @@ public final class GraalJSAccess {
         }
 
         RealmData realmEmbedderData = getRealmEmbedderData(mainJSRealm);
-        JSDynamicObject function = realmEmbedderData.getArrayBufferGetContentsFunction();
+        JSFunctionObject function = realmEmbedderData.getArrayBufferGetContentsFunction();
         if (function == null) {
             function = JSFunction.create(mainJSRealm, getContextEmbedderData(mainJSContext).getOrCreateFunctionData(
                             ContextData.FunctionKey.ArrayBufferGetContents, GraalJSAccess::createInteropBufferGetContents));

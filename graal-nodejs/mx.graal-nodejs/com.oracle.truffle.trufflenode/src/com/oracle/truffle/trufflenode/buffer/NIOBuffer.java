@@ -50,6 +50,7 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -91,8 +92,8 @@ public final class NIOBuffer extends JSNonProxy {
             public Object execute(VirtualFrame frame) {
                 Object[] args = frame.getArguments();
                 assert args.length == 4;
-                JSDynamicObject nativeUtf8Write = (JSDynamicObject) args[2];
-                JSDynamicObject nativeUtf8Slice = (JSDynamicObject) args[3];
+                JSFunctionObject nativeUtf8Write = (JSFunctionObject) args[2];
+                JSFunctionObject nativeUtf8Slice = (JSFunctionObject) args[3];
                 RealmData embedderData = GraalJSAccess.getRealmEmbedderData(getRealm());
                 embedderData.setNativeUtf8Write(nativeUtf8Write);
                 embedderData.setNativeUtf8Slice(nativeUtf8Slice);

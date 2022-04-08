@@ -47,7 +47,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 /**
@@ -70,7 +70,7 @@ public final class FunctionTemplate {
     private TruffleString className = Strings.EMPTY_STRING;
     private boolean readOnlyPrototype;
     private JSFunctionData functionData;
-    private JSDynamicObject functionObj;
+    private JSFunctionObject functionObj;
     private final boolean singleFunctionTemplate;
 
     public FunctionTemplate(int id, long functionPointer, Object additionalData, FunctionTemplate signature, int length, boolean isConstructor, boolean singleFunctionTemplate) {
@@ -105,7 +105,7 @@ public final class FunctionTemplate {
         return functionData;
     }
 
-    public void setFunctionObject(JSRealm realm, JSDynamicObject functionObj) {
+    public void setFunctionObject(JSRealm realm, JSFunctionObject functionObj) {
         if (singleFunctionTemplate) {
             this.functionObj = functionObj;
         } else {
@@ -113,7 +113,7 @@ public final class FunctionTemplate {
         }
     }
 
-    public JSDynamicObject getFunctionObject(JSRealm realm) {
+    public JSFunctionObject getFunctionObject(JSRealm realm) {
         return singleFunctionTemplate ? functionObj : GraalJSAccess.getRealmEmbedderData(realm).getFunctionTemplateObject(id);
     }
 
