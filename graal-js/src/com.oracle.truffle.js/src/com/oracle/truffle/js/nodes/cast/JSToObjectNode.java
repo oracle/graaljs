@@ -249,8 +249,6 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
             this.toObjectNode = toObjectNode;
         }
 
-        public abstract JSDynamicObject executeDynamicObject(Object thisObj);
-
         /**
          * This factory method forces the creation of an JSObjectCastNode; in contrast to
          * {@code create} it does not check the child and try to omit unnecessary cast nodes.
