@@ -274,14 +274,6 @@ public final class JSGuards {
         return operand instanceof Double;
     }
 
-    /**
-     * Guard used to ensure that the parameter is a JSObject containing a JSNumber, that hosts an
-     * Integer.
-     */
-    public static boolean isJSNumberInteger(JSDynamicObject thisObj) {
-        return JSNumber.valueOf(thisObj) instanceof Integer;
-    }
-
     public static boolean isString(Object operand) {
         return operand instanceof TruffleString;
     }

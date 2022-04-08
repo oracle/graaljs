@@ -75,6 +75,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSNumberObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -184,9 +185,17 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return radix == Undefined.instance || (radix instanceof Integer && ((Integer) radix) == 10);
         }
 
+        /**
+         * Guard used to ensure that the parameter is a JSObject containing a JSNumber, that hosts
+         * an Integer.
+         */
+        public static boolean isJSNumberInteger(JSNumberObject thisObj) {
+            return JSNumber.valueOf(thisObj) instanceof Integer;
+        }
+
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isJSNumber(thisObj)", "isJSNumberInteger(thisObj)", "isRadix10(radix)"})
-        protected Object toStringIntRadix10(JSDynamicObject thisObj, Object radix) {
+        @Specialization(guards = {"isJSNumberInteger(thisObj)", "isRadix10(radix)"})
+        protected Object toStringIntRadix10(JSNumberObject thisObj, Object radix) {
             Integer i = (Integer) getNumberValue(thisObj);
             return Strings.fromInt(i.intValue());
         }
