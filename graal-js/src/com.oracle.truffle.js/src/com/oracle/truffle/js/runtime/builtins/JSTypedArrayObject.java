@@ -57,7 +57,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -117,7 +116,7 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
                     @CachedLibrary("this") InteropLibrary self,
                     @Cached(value = "create(language(self).getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Cached ExportValueNode exportNode) throws InvalidArrayIndexException, UnsupportedMessageException {
-        JSDynamicObject target = this;
+        var target = this;
         if (index < 0 || index >= self.getArraySize(this)) {
             throw InvalidArrayIndexException.create(index);
         }
@@ -146,7 +145,7 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
                     @Cached ImportValueNode castValueNode,
                     @Cached(value = "createCachedInterop()", uncached = "getUncachedWrite()") WriteElementNode writeNode,
                     @CachedLibrary("this") InteropLibrary thisLibrary) throws InvalidArrayIndexException, UnsupportedMessageException {
-        JSDynamicObject target = this;
+        var target = this;
         if (index < 0 || index >= thisLibrary.getArraySize(this)) {
             throw InvalidArrayIndexException.create(index);
         }
