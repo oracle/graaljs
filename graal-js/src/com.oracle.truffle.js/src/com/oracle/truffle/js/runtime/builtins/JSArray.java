@@ -170,7 +170,6 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         JSObjectFactory factory = context.getArrayFactory();
         JSArrayObject obj = JSArrayObject.create(factory.getShape(realm), arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
         factory.initProto(obj, realm);
-        assert isJSArray(obj);
         return context.trackAllocation(obj);
     }
 

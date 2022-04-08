@@ -192,7 +192,6 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         JSObjectFactory factory = context.getSegmenterFactory();
         JSSegmenterObject obj = new JSSegmenterObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
-        assert isJSSegmenter(obj);
         return context.trackAllocation(obj);
     }
 

@@ -129,7 +129,6 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
         JSObjectFactory factory = context.getRelativeTimeFormatFactory();
         JSRelativeTimeFormatObject obj = new JSRelativeTimeFormatObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
-        assert isJSRelativeTimeFormat(obj);
         return context.trackAllocation(obj);
     }
 

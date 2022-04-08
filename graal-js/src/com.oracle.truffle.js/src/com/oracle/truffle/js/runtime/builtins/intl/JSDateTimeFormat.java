@@ -163,7 +163,6 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         JSObjectFactory factory = context.getDateTimeFormatFactory();
         JSDateTimeFormatObject obj = new JSDateTimeFormatObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
-        assert isJSDateTimeFormat(obj);
         return context.trackAllocation(obj);
     }
 

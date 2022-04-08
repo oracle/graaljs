@@ -366,8 +366,6 @@ public final class JSArrayBufferView extends JSNonProxy {
 
         JSTypedArrayObject obj = JSTypedArrayObject.create(objectFactory.getShape(realm), arrayType, (JSArrayBufferObject) arrayBuffer, length, offset);
         objectFactory.initProto(obj, prototype);
-        assert JSArrayBuffer.isJSAbstractBuffer(arrayBuffer);
-        assert isJSArrayBufferView(obj);
         return context.trackAllocation(obj);
     }
 

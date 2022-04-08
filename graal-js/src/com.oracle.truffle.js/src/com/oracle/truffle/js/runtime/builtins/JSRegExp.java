@@ -201,7 +201,6 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         JSObjectFactory groupsFactory = computeGroupsFactory(ctx, compiledRegex);
         JSRegExpObject obj = create(ctx, realm, compiledRegex, groupsFactory);
         JSObjectUtil.putDataProperty(ctx, obj, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
-        assert isJSRegExp(obj);
         return obj;
     }
 
@@ -217,7 +216,6 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
      */
     public static JSRegExpObject create(JSContext context, JSRealm realm, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
         JSRegExpObject regExp = JSRegExpObject.create(realm, context.getRegExpFactory(), compiledRegex, groupsFactory, legacyFeaturesEnabled);
-        assert isJSRegExp(regExp);
         return context.trackAllocation(regExp);
     }
 

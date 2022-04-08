@@ -559,7 +559,6 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         JSObjectFactory factory = context.getDateFactory();
         JSDateObject obj = JSDateObject.create(factory.getShape(realm), timeMillis);
         factory.initProto(obj, realm);
-        assert isJSDate(obj);
         return context.trackAllocation(obj);
     }
 

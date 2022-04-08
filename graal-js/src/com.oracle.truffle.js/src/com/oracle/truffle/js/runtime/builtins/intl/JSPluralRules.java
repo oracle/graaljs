@@ -121,7 +121,6 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         JSObjectFactory factory = context.getPluralRulesFactory();
         JSPluralRulesObject obj = new JSPluralRulesObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
-        assert isJSPluralRules(obj);
         return context.trackAllocation(obj);
     }
 

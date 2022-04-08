@@ -141,7 +141,6 @@ public final class JSError extends JSNonProxy {
         JSObjectFactory factory = context.getErrorFactory(errorType);
         JSErrorObject obj = JSErrorObject.create(realm, factory);
         factory.initProto(obj, realm);
-        assert isJSError(obj);
         return context.trackAllocation(obj);
     }
 

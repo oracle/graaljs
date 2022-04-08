@@ -92,8 +92,6 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
 
         JSObjectFactory factory = context.getDataViewFactory();
         JSDynamicObject dataView = JSDataViewObject.create(realm, factory, (JSArrayBufferObject) arrayBuffer, length, offset);
-        assert JSArrayBuffer.isJSAbstractBuffer(arrayBuffer);
-        assert isJSDataView(dataView);
         return context.trackAllocation(dataView);
     }
 

@@ -233,7 +233,6 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
         JSObjectFactory factory = context.getCollatorFactory();
         JSCollatorObject obj = new JSCollatorObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
-        assert isJSCollator(obj);
         return context.trackAllocation(obj);
     }
 

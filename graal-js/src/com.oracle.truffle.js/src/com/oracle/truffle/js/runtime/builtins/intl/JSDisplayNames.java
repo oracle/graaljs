@@ -118,7 +118,6 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
         JSObjectFactory factory = context.getDisplayNamesFactory();
         JSDisplayNamesObject obj = new JSDisplayNamesObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
-        assert isJSDisplayNames(obj);
         return obj;
     }
 

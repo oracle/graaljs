@@ -85,7 +85,6 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
     public static JSSetObject create(JSContext context, JSRealm realm) {
         JSObjectFactory factory = context.getSetFactory();
         JSSetObject obj = factory.initProto(new JSSetObject(factory.getShape(realm), new JSHashMap()), realm);
-        assert isJSSet(obj);
         return context.trackAllocation(obj);
     }
 

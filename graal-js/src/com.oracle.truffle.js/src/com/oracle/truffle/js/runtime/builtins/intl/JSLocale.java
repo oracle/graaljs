@@ -136,7 +136,6 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         JSObjectFactory factory = context.getLocaleFactory();
         JSLocaleObject obj = new JSLocaleObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
-        assert isJSLocale(obj);
         return obj;
     }
 

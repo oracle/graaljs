@@ -210,7 +210,6 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         JSObjectFactory factory = context.getNumberFormatFactory();
         JSNumberFormatObject obj = new JSNumberFormatObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
-        assert isJSNumberFormat(obj);
         return context.trackAllocation(obj);
     }
 

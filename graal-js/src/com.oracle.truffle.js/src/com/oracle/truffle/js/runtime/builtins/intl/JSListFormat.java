@@ -122,7 +122,6 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
         JSObjectFactory factory = context.getListFormatFactory();
         JSListFormatObject obj = new JSListFormatObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
-        assert isJSListFormat(obj);
         return context.trackAllocation(obj);
     }
 
