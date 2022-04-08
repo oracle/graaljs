@@ -373,6 +373,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
     }
 
+    @ImportStatic({JSObject.class})
     public abstract static class GetBuiltinToStringTagNode extends JavaScriptBaseNode {
 
         public abstract TruffleString execute(Object object);
@@ -384,7 +385,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("unused")
         @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "5")
         protected static TruffleString cached(JSDynamicObject object,
-                        @Cached("getJSClassChecked(object)") JSClass cachedClass) {
+                        @Cached("getJSClass(object)") JSClass cachedClass) {
             return cachedClass.getBuiltinToStringTag(object);
         }
 

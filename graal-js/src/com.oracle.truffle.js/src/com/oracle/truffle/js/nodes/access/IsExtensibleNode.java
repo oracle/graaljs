@@ -76,7 +76,7 @@ public abstract class IsExtensibleNode extends JavaScriptBaseNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedJSClass.usesOrdinaryIsExtensible()", "cachedJSClass.isInstance(object)"}, limit = "1", replaces = "doCachedShape")
     protected static boolean doCachedJSClass(JSDynamicObject object,
-                    @Cached("getJSClassChecked(object)") JSClass cachedJSClass,
+                    @Cached("getJSClass(object.getShape())") JSClass cachedJSClass,
                     @Cached("createBinaryProfile()") @Shared("resultProfile") ConditionProfile resultProfile) {
         return resultProfile.profile(JSShape.isExtensible(object.getShape()));
     }

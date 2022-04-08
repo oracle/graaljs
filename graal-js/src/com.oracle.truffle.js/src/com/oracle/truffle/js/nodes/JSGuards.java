@@ -482,14 +482,6 @@ public final class JSGuards {
         return null;
     }
 
-    public static JSClass getJSClassChecked(JSDynamicObject object) {
-        if (JSDynamicObject.isJSDynamicObject(object)) {
-            return JSObject.getJSClass(object);
-        } else {
-            return null;
-        }
-    }
-
     public static JSClass getJSClassIfObject(JSDynamicObject object) {
         if (isJSObject(object)) {
             return JSObject.getJSClass(object);
