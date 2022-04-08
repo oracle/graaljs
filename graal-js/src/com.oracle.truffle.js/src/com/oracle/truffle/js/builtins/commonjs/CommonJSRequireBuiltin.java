@@ -70,6 +70,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
@@ -242,7 +243,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
                 JSFunctionObject parse = (JSFunctionObject) realm.getJsonParseFunctionObject();
                 assert source != null;
                 TruffleString jsonString = Strings.fromJavaString(source.getCharacters().toString());
-                Object jsonObj = JSFunction.call(JSArguments.create(parse, parse, jsonString));
+                Object jsonObj = JSFunction.call(JSArguments.create(Undefined.instance, parse, jsonString));
                 if (JSDynamicObject.isJSDynamicObject(jsonObj)) {
                     return (JSDynamicObject) jsonObj;
                 }
