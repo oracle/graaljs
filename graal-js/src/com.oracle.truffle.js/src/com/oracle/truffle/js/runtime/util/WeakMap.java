@@ -52,9 +52,10 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
 /**
- * JavaScript WeakMap.
+ * JavaScript WeakMap that emulates ephemeron semantics by storing the value in the key itself
+ * (i.e., in a hidden property within the key DynamicObject).
  */
-public class WeakMap implements Map<JSDynamicObject, Object> {
+public final class WeakMap implements Map<JSDynamicObject, Object> {
     public static final HiddenKey INVERTED_WEAK_MAP_KEY = new HiddenKey("InvertedWeakMap");
 
     public WeakMap() {
