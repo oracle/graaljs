@@ -44,15 +44,15 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class JSConstructor {
 
-    private final JSDynamicObject constructor;
+    private final JSFunctionObject constructor;
     private final JSDynamicObject prototype;
 
-    public JSConstructor(JSDynamicObject constructor, JSDynamicObject prototype) {
+    public JSConstructor(JSFunctionObject constructor, JSDynamicObject prototype) {
         this.constructor = constructor;
         this.prototype = prototype;
     }
 
-    public JSDynamicObject getFunctionObject() {
+    public JSFunctionObject getFunctionObject() {
         return constructor;
     }
 
