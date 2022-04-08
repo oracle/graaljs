@@ -81,7 +81,6 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
     @SuppressWarnings("unchecked")
     public static Map<Object, Object> getInternalWeakMap(JSDynamicObject obj) {
         assert isJSWeakSet(obj);
-        // return (Map<JSDynamicObject, Object>) WEAKSET_PROPERTY.get(obj, isJSWeakSet(obj));
         return ((JSWeakSetObject) obj).getWeakHashMap();
     }
 
