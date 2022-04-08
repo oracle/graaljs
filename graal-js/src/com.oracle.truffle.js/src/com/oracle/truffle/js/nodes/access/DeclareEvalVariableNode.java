@@ -72,7 +72,7 @@ public class DeclareEvalVariableNode extends StatementNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        JSDynamicObject dynamicScope = (JSDynamicObject) dynamicScopeNode.execute(frame);
+        Object dynamicScope = dynamicScopeNode.execute(frame);
         if (dynamicScope == Undefined.instance) {
             // NB: dynamic scope object must not have a prototype (visible to user code)
             dynamicScope = JSOrdinary.createWithNullPrototype(context);
@@ -86,8 +86,8 @@ public class DeclareEvalVariableNode extends StatementNode {
         return EMPTY;
     }
 
-    private static boolean isValidDynamicScopeObject(JSDynamicObject dynamicScope) {
-        return dynamicScope != Undefined.instance && dynamicScope != Null.instance && dynamicScope != null;
+    private static boolean isValidDynamicScopeObject(Object dynamicScope) {
+        return dynamicScope instanceof JSDynamicObject && dynamicScope != Undefined.instance && dynamicScope != Null.instance;
     }
 
     public Object getName() {
