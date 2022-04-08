@@ -110,7 +110,7 @@ public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Fallback
-        public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
+        public Object throwTypeError(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeErrorTypeXExpected(JSListFormat.CLASS_NAME);
         }
     }
@@ -130,7 +130,7 @@ public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Fallback
         @SuppressWarnings("unused")
-        public void throwTypeError(Object bummer, Object value) {
+        public Object throwTypeError(Object bummer, Object value) {
             throw Errors.createTypeErrorTypeXExpected(JSListFormat.CLASS_NAME);
         }
     }
@@ -150,7 +150,7 @@ public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Fallback
         @SuppressWarnings("unused")
-        public void throwTypeError(Object bummer, Object value) {
+        public Object throwTypeError(Object bummer, Object value) {
             throw Errors.createTypeErrorTypeXExpected(JSListFormat.CLASS_NAME);
         }
     }

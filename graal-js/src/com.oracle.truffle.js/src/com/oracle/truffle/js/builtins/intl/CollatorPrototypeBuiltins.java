@@ -97,7 +97,7 @@ public final class CollatorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Fallback
-        public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
+        public Object throwTypeError(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeError("Collator object expected.");
         }
     }

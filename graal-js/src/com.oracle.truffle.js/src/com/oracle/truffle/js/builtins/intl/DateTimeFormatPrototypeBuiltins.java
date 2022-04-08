@@ -130,7 +130,7 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
         }
 
         @Fallback
-        public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
+        public Object throwTypeError(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeErrorTypeXExpected(JSDateTimeFormat.CLASS_NAME);
         }
     }
@@ -148,7 +148,7 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
 
         @Fallback
         @SuppressWarnings("unused")
-        public void throwTypeError(Object bummer, Object value) {
+        public Object throwTypeError(Object bummer, Object value) {
             throw Errors.createTypeErrorTypeXExpected(JSDateTimeFormat.CLASS_NAME);
         }
     }
@@ -181,7 +181,7 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
 
         @Fallback
         @SuppressWarnings("unused")
-        public String throwTypeError(Object bummer, Object startDate, Object endDate) {
+        public Object throwTypeError(Object bummer, Object startDate, Object endDate) {
             throw Errors.createTypeErrorTypeXExpected(JSDateTimeFormat.CLASS_NAME);
         }
     }

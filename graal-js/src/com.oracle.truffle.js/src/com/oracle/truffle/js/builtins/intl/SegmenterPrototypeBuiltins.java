@@ -104,7 +104,7 @@ public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization(guards = "!isJSSegmenter(bummer)")
-        public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
+        public Object doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeErrorSegmenterExpected();
         }
     }
@@ -124,7 +124,7 @@ public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization(guards = "!isJSSegmenter(bummer)")
         @SuppressWarnings("unused")
-        public void doOther(Object bummer, Object value) {
+        public Object doOther(Object bummer, Object value) {
             throw Errors.createTypeErrorSegmenterExpected();
         }
     }

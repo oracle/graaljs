@@ -147,7 +147,7 @@ public final class SegmentsPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSegments(bummer)")
-        public void doOther(Object bummer, Object index) {
+        public Object doOther(Object bummer, Object index) {
             throw Errors.createTypeErrorSegmentsExpected();
         }
     }
@@ -168,7 +168,7 @@ public final class SegmentsPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "!isJSSegments(bummer)")
         @SuppressWarnings("unused")
-        public void doOther(Object bummer) {
+        public Object doOther(Object bummer) {
             throw Errors.createTypeErrorSegmentsExpected();
         }
     }
