@@ -47,7 +47,6 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Implementation of ToLength (ES6 7.1.15).
@@ -91,7 +90,7 @@ public abstract class JSToLengthNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isUndefined(value)")
-    protected static long doUndefined(@SuppressWarnings("unused") JSDynamicObject value) {
+    protected static long doUndefined(@SuppressWarnings("unused") Object value) {
         return 0;
     }
 

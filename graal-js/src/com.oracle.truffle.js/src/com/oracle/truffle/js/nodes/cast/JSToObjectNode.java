@@ -196,7 +196,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isCheckForNullOrUndefined()", "isNullOrUndefined(object)"})
-    protected JSDynamicObject doNullOrUndefined(JSDynamicObject object) {
+    protected JSDynamicObject doNullOrUndefined(Object object) {
         throw createTypeError(object);
     }
 
