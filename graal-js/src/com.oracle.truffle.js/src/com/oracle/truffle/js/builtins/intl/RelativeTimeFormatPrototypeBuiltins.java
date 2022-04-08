@@ -57,7 +57,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormatObject;
 
 public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<RelativeTimeFormatPrototypeBuiltins.RelativeTimeFormatPrototype> {
 
@@ -104,8 +104,8 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSRelativeTimeFormat(relativeTimeFormat)")
-        public Object doResolvedOptions(JSDynamicObject relativeTimeFormat) {
+        @Specialization
+        public Object doResolvedOptions(JSRelativeTimeFormatObject relativeTimeFormat) {
             return JSRelativeTimeFormat.resolvedOptions(getContext(), getRealm(), relativeTimeFormat);
         }
 
@@ -121,8 +121,8 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSRelativeTimeFormat(relativeTimeFormat)")
-        public TruffleString doFormat(JSDynamicObject relativeTimeFormat, Object value, Object unit,
+        @Specialization
+        public TruffleString doFormat(JSRelativeTimeFormatObject relativeTimeFormat, Object value, Object unit,
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("create()") JSToNumberNode toNumberNode) {
             return JSRelativeTimeFormat.format(relativeTimeFormat, JSRuntime.doubleValue(toNumberNode.executeNumber(value)), Strings.toJavaString(toStringNode.executeString(unit)));
@@ -141,8 +141,8 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSRelativeTimeFormat(relativeTimeFormat)"})
-        public Object doFormatToParts(JSDynamicObject relativeTimeFormat, Object value, Object unit,
+        @Specialization
+        public Object doFormatToParts(JSRelativeTimeFormatObject relativeTimeFormat, Object value, Object unit,
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("create()") JSToNumberNode toNumberNode) {
             double amount = JSRuntime.doubleValue(toNumberNode.executeNumber(value));

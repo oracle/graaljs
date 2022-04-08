@@ -70,6 +70,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -154,9 +155,8 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.performPromiseOpNode = performPromiseOp;
         }
 
-        @Specialization(guards = "isJSObject(thisObj)")
-        protected JSDynamicObject doObject(JSDynamicObject thisObj, Object iterable) {
-            JSDynamicObject constructor = thisObj;
+        @Specialization
+        protected Object doObject(JSObject constructor, Object iterable) {
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(constructor);
             Object promiseResolve;
             IteratorRecord iteratorRecord;

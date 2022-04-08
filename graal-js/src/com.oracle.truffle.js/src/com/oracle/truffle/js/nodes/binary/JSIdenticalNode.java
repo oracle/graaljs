@@ -67,7 +67,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @NodeInfo(shortName = "===")
@@ -189,13 +189,13 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return a == b;
     }
 
-    @Specialization(guards = {"isJSObject(a)"})
-    protected static boolean doJSObjectA(JSDynamicObject a, Object b) {
+    @Specialization
+    protected static boolean doJSObjectA(JSObject a, Object b) {
         return a == b;
     }
 
-    @Specialization(guards = {"isJSObject(b)"})
-    protected static boolean doJSObjectB(Object a, JSDynamicObject b) {
+    @Specialization
+    protected static boolean doJSObjectB(Object a, JSObject b) {
         return a == b;
     }
 

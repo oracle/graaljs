@@ -77,6 +77,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSMapObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -168,8 +169,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSMap(thisObj)")
-        protected static JSDynamicObject doMap(JSDynamicObject thisObj) {
+        @Specialization
+        protected static JSDynamicObject doMap(JSMapObject thisObj) {
             JSMap.getInternalMap(thisObj).clear();
             return Undefined.instance;
         }
@@ -224,8 +225,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSMap(thisObj)")
-        protected boolean doMap(JSDynamicObject thisObj, Object key) {
+        @Specialization
+        protected boolean doMap(JSMapObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
             return JSMap.getInternalMap(thisObj).remove(normalizedKey);
         }
@@ -262,8 +263,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSMap(thisObj)")
-        protected Object doMap(JSDynamicObject thisObj, Object key) {
+        @Specialization
+        protected Object doMap(JSMapObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
             Object value = JSMap.getInternalMap(thisObj).get(normalizedKey);
             return JSRuntime.nullToUndefined(value);
@@ -299,8 +300,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSMap(thisObj)")
-        protected JSDynamicObject doMap(JSDynamicObject thisObj, Object key, Object value) {
+        @Specialization
+        protected JSDynamicObject doMap(JSMapObject thisObj, Object key, Object value) {
             Object normalizedKey = normalize(key);
             JSMap.getInternalMap(thisObj).put(normalizedKey, value);
             return thisObj;
@@ -338,8 +339,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSMap(thisObj)")
-        protected boolean doMap(JSDynamicObject thisObj, Object key) {
+        @Specialization
+        protected boolean doMap(JSMapObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
             return JSMap.getInternalMap(thisObj).has(normalizedKey);
         }
@@ -366,8 +367,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSMap(thisObj)", "isCallable.executeBoolean(callback)"}, limit = "1")
-        protected Object doMap(JSDynamicObject thisObj, Object callback, Object thisArg,
+        @Specialization(guards = {"isCallable.executeBoolean(callback)"}, limit = "1")
+        protected Object doMap(JSMapObject thisObj, Object callback, Object thisArg,
                         @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable,
                         @Cached("createCall()") @Shared("callNode") JSFunctionCallNode callNode) {
             JSHashMap map = JSMap.getInternalMap(thisObj);
@@ -438,8 +439,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             this.setIterationKindNode = PropertySetNode.createSetHidden(JSMap.MAP_ITERATION_KIND_ID, context);
         }
 
-        @Specialization(guards = "isJSMap(map)")
-        protected JSDynamicObject doMap(VirtualFrame frame, JSDynamicObject map) {
+        @Specialization
+        protected JSDynamicObject doMap(VirtualFrame frame, JSMapObject map) {
             JSDynamicObject iterator = createObjectNode.execute(frame, getRealm().getMapIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, map);
             setNextIndexNode.setValue(iterator, JSMap.getInternalMap(map).getEntries());

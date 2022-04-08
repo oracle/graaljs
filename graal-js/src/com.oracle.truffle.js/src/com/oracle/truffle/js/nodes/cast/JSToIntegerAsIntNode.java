@@ -50,7 +50,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * Basically ECMAScript ToInteger, but correct only for values in the int32 range. Used by built-in
@@ -141,8 +141,8 @@ public abstract class JSToIntegerAsIntNode extends JavaScriptBaseNode {
         return nestedToIntegerNode.executeInt(stringToNumberNode.executeString(value));
     }
 
-    @Specialization(guards = "isJSObject(value)")
-    protected int doJSObject(JSDynamicObject value) {
+    @Specialization
+    protected int doJSObject(JSObject value) {
         return JSRuntime.toInt32(getToNumberNode().executeNumber(value));
     }
 

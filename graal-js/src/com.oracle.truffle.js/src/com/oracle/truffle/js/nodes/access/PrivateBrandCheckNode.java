@@ -52,6 +52,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -76,8 +77,8 @@ public abstract class PrivateBrandCheckNode extends JSTargetableNode {
         this.brandNode = brandNode;
     }
 
-    @Specialization(guards = {"isJSObject(target)"}, limit = "3")
-    Object doInstance(JSDynamicObject target, HiddenKey brandKey,
+    @Specialization(limit = "3")
+    Object doInstance(JSObject target, HiddenKey brandKey,
                     @CachedLibrary("target") DynamicObjectLibrary access) {
         if (Properties.containsKey(access, target, brandKey)) {
             return target;
@@ -86,8 +87,8 @@ public abstract class PrivateBrandCheckNode extends JSTargetableNode {
         }
     }
 
-    @Specialization(guards = {"isJSObject(target)"})
-    Object doStatic(JSDynamicObject target, JSDynamicObject brand) {
+    @Specialization
+    Object doStatic(JSObject target, JSDynamicObject brand) {
         if (target == brand) {
             return target;
         } else {

@@ -62,8 +62,10 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -85,8 +87,8 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
         this.context = context;
     }
 
-    @Specialization(guards = {"isJSObject(target)"}, limit = "3")
-    Object doField(JSDynamicObject target, HiddenKey key,
+    @Specialization(limit = "3")
+    Object doField(JSObject target, HiddenKey key,
                     @CachedLibrary("target") DynamicObjectLibrary access,
                     @Cached BranchProfile errorBranch) {
         if (Properties.containsKey(access, target, key)) {
@@ -97,13 +99,13 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
         }
     }
 
-    @Specialization(guards = {"isJSObject(target)", "isJSFunction(method)"})
-    Object doMethod(@SuppressWarnings("unused") JSDynamicObject target, JSDynamicObject method) {
+    @Specialization
+    Object doMethod(@SuppressWarnings("unused") JSObject target, JSFunctionObject method) {
         return method;
     }
 
-    @Specialization(guards = {"isJSObject(target)"})
-    Object doAccessor(JSDynamicObject target, Accessor accessor,
+    @Specialization
+    Object doAccessor(JSObject target, Accessor accessor,
                     @Cached("createCall()") JSFunctionCallNode callNode,
                     @Cached BranchProfile errorBranch) {
         JSDynamicObject getter = accessor.getGetter();

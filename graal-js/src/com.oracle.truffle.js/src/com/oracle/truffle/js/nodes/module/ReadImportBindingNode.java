@@ -57,9 +57,9 @@ import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
 
@@ -122,8 +122,8 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
         return JSFrameUtil.findRequiredFrameSlotIndex(module.getFrameDescriptor(), bindingName);
     }
 
-    @Specialization(guards = "isJSModuleNamespace(namespace)")
-    static Object doNamespace(JSDynamicObject namespace) {
+    @Specialization
+    static Object doNamespace(JSModuleNamespaceObject namespace) {
         return namespace;
     }
 

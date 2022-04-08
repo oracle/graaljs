@@ -57,7 +57,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRulesObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<PluralRulesPrototypeBuiltins.PluralRulesPrototype> {
@@ -113,8 +113,8 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSPluralRules(pluralRules)"})
-        public Object doResolvedOptions(JSDynamicObject pluralRules) {
+        @Specialization
+        public Object doResolvedOptions(JSPluralRulesObject pluralRules) {
             return JSPluralRules.resolvedOptions(getContext(), getRealm(), pluralRules);
         }
 
@@ -130,8 +130,8 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSPluralRules(pluralRules)"})
-        public Object doSelect(JSDynamicObject pluralRules, Object value) {
+        @Specialization
+        public Object doSelect(JSPluralRulesObject pluralRules, Object value) {
             return JSPluralRules.select(pluralRules, value);
         }
 
@@ -148,8 +148,8 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSPluralRules(pluralRules)"})
-        public Object doSelectRange(JSDynamicObject pluralRules, Object start, Object end,
+        @Specialization
+        public Object doSelectRange(JSPluralRulesObject pluralRules, Object start, Object end,
                         @Cached JSToNumberNode startToNumber,
                         @Cached JSToNumberNode endToNumber,
                         @Cached BranchProfile errorBranch) {

@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.intl.JSLocale;
+import com.oracle.truffle.js.runtime.builtins.intl.JSLocaleObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
@@ -99,8 +100,8 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
         return new String[0];
     }
 
-    @Specialization(guards = {"isJSLocale(object)"})
-    protected String[] doLocale(JSDynamicObject object) {
+    @Specialization
+    protected String[] doLocale(JSLocaleObject object) {
         return doJavaString(JSLocale.getInternalState(object).getLocale());
     }
 

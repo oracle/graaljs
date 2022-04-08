@@ -57,7 +57,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSListFormat;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.intl.JSListFormatObject;
 
 public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<ListFormatPrototypeBuiltins.ListFormatPrototype> {
 
@@ -104,8 +104,8 @@ public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSListFormat(listFormat)")
-        public Object doResolvedOptions(JSDynamicObject listFormat) {
+        @Specialization
+        public Object doResolvedOptions(JSListFormatObject listFormat) {
             return JSListFormat.resolvedOptions(getContext(), getRealm(), listFormat);
         }
 
@@ -121,8 +121,8 @@ public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSListFormat(listFormat)"})
-        public TruffleString doFormat(JSDynamicObject listFormat, Object value,
+        @Specialization
+        public TruffleString doFormat(JSListFormatObject listFormat, Object value,
                         @Cached("create(getContext())") JSStringListFromIterableNode strListFromIterableNode) {
             List<String> list = strListFromIterableNode.executeIterable(value);
             return JSListFormat.format(listFormat, list);
@@ -141,8 +141,8 @@ public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSListFormat(listFormat)"})
-        public Object doFormatToParts(JSDynamicObject listFormat, Object value,
+        @Specialization
+        public Object doFormatToParts(JSListFormatObject listFormat, Object value,
                         @Cached("create(getContext())") JSStringListFromIterableNode strListFromIterableNode) {
             List<String> list = strListFromIterableNode.executeIterable(value);
             return JSListFormat.formatToParts(getContext(), getRealm(), listFormat, list);

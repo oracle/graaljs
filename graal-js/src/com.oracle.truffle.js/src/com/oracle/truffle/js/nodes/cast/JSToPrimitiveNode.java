@@ -167,8 +167,8 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         return Undefined.instance;
     }
 
-    @Specialization(guards = "isJSObject(object)")
-    protected Object doJSObject(JSDynamicObject object,
+    @Specialization
+    protected Object doJSObject(JSObject object,
                     @Cached("createGetToPrimitive(object)") PropertyNode getToPrimitive,
                     @Cached("create()") IsPrimitiveNode isPrimitive,
                     @Cached("createOrdinaryToPrimitive(object)") OrdinaryToPrimitiveNode ordinaryToPrimitive,

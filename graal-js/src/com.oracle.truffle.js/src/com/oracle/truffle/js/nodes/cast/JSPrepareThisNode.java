@@ -96,8 +96,8 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
         return object;
     }
 
-    @Specialization(guards = "isJSObject(object)", replaces = "doJSObjectCached")
-    protected JSDynamicObject doJSObject(JSDynamicObject object) {
+    @Specialization(replaces = "doJSObjectCached")
+    protected JSObject doJSObject(JSObject object) {
         return object;
     }
 

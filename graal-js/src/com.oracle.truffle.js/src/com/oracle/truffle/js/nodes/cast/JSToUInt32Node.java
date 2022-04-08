@@ -67,7 +67,7 @@ import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public abstract class JSToUInt32Node extends JavaScriptBaseNode {
 
@@ -195,8 +195,8 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         return Strings.ANGLE_BRACKET_CLOSE_3;
     }
 
-    @Specialization(guards = {"isJSObject(value)", "!isUnsignedRightShift() || !hasOverloadedOperators(value)"})
-    protected double doJSObject(JSDynamicObject value,
+    @Specialization(guards = {"!isUnsignedRightShift() || !hasOverloadedOperators(value)"})
+    protected double doJSObject(JSObject value,
                     @Cached("create()") JSToNumberNode toNumberNode) {
         return JSRuntime.toUInt32(toNumberNode.executeNumber(value));
     }

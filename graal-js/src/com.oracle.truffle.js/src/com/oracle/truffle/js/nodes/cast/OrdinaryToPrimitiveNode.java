@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * Implements OrdinaryToPrimitive (O, hint).
@@ -92,8 +93,8 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object object);
 
-    @Specialization(guards = {"isJSObject(object)"})
-    protected Object doObject(JSDynamicObject object) {
+    @Specialization
+    protected Object doObject(JSObject object) {
         if (hint == Hint.String) {
             return doHintString(object);
         } else {
@@ -125,7 +126,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         return OrdinaryToPrimitiveNodeGen.create(context, hint);
     }
 
-    protected Object doHintString(JSDynamicObject object) {
+    private Object doHintString(JSObject object) {
         Object toString = getToString().executeWithTarget(object);
         if (toStringFunctionProfile.profile(isCallableNode.executeBoolean(toString))) {
             Object result = callToStringNode.executeCall(JSArguments.createZeroArg(object, toString));
@@ -145,7 +146,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
     }
 
-    protected Object doHintNumber(JSDynamicObject object) {
+    private Object doHintNumber(JSObject object) {
         assert JSGuards.isJSObject(object);
         Object valueOf = getValueOf().executeWithTarget(object);
         if (valueOfFunctionProfile.profile(isCallableNode.executeBoolean(valueOf))) {
@@ -166,7 +167,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
     }
 
-    protected Object doForeignHintString(Object object, InteropLibrary interop) {
+    private Object doForeignHintString(Object object, InteropLibrary interop) {
         if (interop.hasMembers(object) && interop.isMemberInvocable(object, Strings.toJavaString(Strings.TO_STRING))) {
             Object result;
             try {
@@ -209,7 +210,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
     }
 
-    protected Object doForeignHintNumber(Object object, InteropLibrary interop) {
+    private Object doForeignHintNumber(Object object, InteropLibrary interop) {
         if (interop.hasMembers(object) && interop.isMemberInvocable(object, Strings.toJavaString(Strings.VALUE_OF))) {
             Object result;
             try {

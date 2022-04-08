@@ -60,7 +60,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<DateTimeFormatPrototypeBuiltins.DateTimeFormatPrototype> {
@@ -124,8 +124,8 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSDateTimeFormat(dateTimeFormat)")
-        public Object doResolvedOptions(JSDynamicObject dateTimeFormat) {
+        @Specialization
+        public Object doResolvedOptions(JSDateTimeFormatObject dateTimeFormat) {
             return JSDateTimeFormat.resolvedOptions(getContext(), getRealm(), dateTimeFormat);
         }
 
@@ -141,8 +141,8 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSDateTimeFormat(dateTimeFormat)")
-        public Object doFormatToParts(JSDynamicObject dateTimeFormat, Object value) {
+        @Specialization
+        public Object doFormatToParts(JSDateTimeFormatObject dateTimeFormat, Object value) {
             return JSDateTimeFormat.formatToParts(getContext(), getRealm(), dateTimeFormat, value, null);
         }
 
@@ -159,8 +159,8 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSDateTimeFormat(dateTimeFormat)")
-        public TruffleString doFormatRange(JSDynamicObject dateTimeFormat, Object startDate, Object endDate,
+        @Specialization
+        public TruffleString doFormatRange(JSDateTimeFormatObject dateTimeFormat, Object startDate, Object endDate,
                         @Cached JSToNumberNode startDateToNumberNode,
                         @Cached JSToNumberNode endDateToNumberNode,
                         @Cached BranchProfile errorBranch) {
@@ -192,8 +192,8 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSDateTimeFormat(dateTimeFormat)")
-        public Object doFormatRangeToParts(JSDynamicObject dateTimeFormat, Object startDate, Object endDate,
+        @Specialization
+        public Object doFormatRangeToParts(JSDateTimeFormatObject dateTimeFormat, Object startDate, Object endDate,
                         @Cached JSToNumberNode startDateToNumberNode,
                         @Cached JSToNumberNode endDateToNumberNode,
                         @Cached BranchProfile errorBranch) {

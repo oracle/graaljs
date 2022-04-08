@@ -54,7 +54,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Completion;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -119,8 +119,8 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
             this.callNode = InternalCallNode.create();
         }
 
-        @Specialization(guards = "isJSObject(generator)")
-        protected Object resume(JSDynamicObject generator, Object value) {
+        @Specialization
+        protected Object resume(JSObject generator, Object value) {
             Object generatorTarget = getGeneratorTarget.getValue(generator);
             if (generatorTarget != Undefined.instance) {
                 Object generatorContext = getGeneratorContext.getValue(generator);

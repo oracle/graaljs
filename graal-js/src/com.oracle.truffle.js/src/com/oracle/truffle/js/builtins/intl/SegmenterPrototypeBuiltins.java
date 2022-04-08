@@ -54,7 +54,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenterObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<SegmenterPrototypeBuiltins.SegmenterPrototype> {
 
@@ -98,8 +97,8 @@ public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.Switch
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSSegmenter(segmenter)")
-        public Object doResolvedOptions(JSDynamicObject segmenter) {
+        @Specialization
+        public Object doResolvedOptions(JSSegmenterObject segmenter) {
             return JSSegmenter.resolvedOptions(getContext(), getRealm(), segmenter);
         }
 

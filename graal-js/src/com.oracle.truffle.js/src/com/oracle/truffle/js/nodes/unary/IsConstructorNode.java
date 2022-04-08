@@ -52,7 +52,8 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
 
 /**
  * Represents abstract operation IsConstructor.
@@ -68,13 +69,13 @@ public abstract class IsConstructorNode extends JavaScriptBaseNode {
 
     public abstract boolean executeBoolean(Object operand);
 
-    @Specialization(guards = "isJSFunction(function)")
-    protected static boolean doJSFunction(JSDynamicObject function) {
+    @Specialization
+    protected static boolean doJSFunction(JSFunctionObject function) {
         return JSFunction.isConstructor(function);
     }
 
-    @Specialization(guards = "isJSProxy(proxy)")
-    protected static boolean doJSProxy(JSDynamicObject proxy) {
+    @Specialization
+    protected static boolean doJSProxy(JSProxyObject proxy) {
         return JSRuntime.isConstructorProxy(proxy);
     }
 

@@ -57,7 +57,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSBooleanObject;
 
 /**
  * Contains builtins for {@linkplain JSBoolean}.prototype.
@@ -104,14 +104,14 @@ public final class BooleanPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSBoolean(thisObj)")
-        protected Object toString(JSDynamicObject thisObj) {
+        @Specialization
+        protected Object toString(JSBooleanObject thisObj) {
             return Strings.fromBoolean(JSBoolean.valueOf(thisObj));
         }
 
-        @Specialization(guards = "isBoolean(thisObj)")
-        protected Object toStringPrimitive(Object thisObj) {
-            return JSRuntime.booleanToString((boolean) thisObj);
+        @Specialization
+        protected Object toStringPrimitive(boolean thisObj) {
+            return JSRuntime.booleanToString(thisObj);
         }
 
         @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
@@ -141,14 +141,14 @@ public final class BooleanPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSBoolean(thisObj)")
-        protected boolean valueOf(JSDynamicObject thisObj) {
+        @Specialization
+        protected boolean valueOf(JSBooleanObject thisObj) {
             return JSBoolean.valueOf(thisObj);
         }
 
-        @Specialization(guards = "isBoolean(thisObj)")
-        protected boolean valueOfPrimitive(Object thisObj) {
-            return (boolean) thisObj;
+        @Specialization
+        protected boolean valueOfPrimitive(boolean thisObj) {
+            return thisObj;
         }
 
         @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")

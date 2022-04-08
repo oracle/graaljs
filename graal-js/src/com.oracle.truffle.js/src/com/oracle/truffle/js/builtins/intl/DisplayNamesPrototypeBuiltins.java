@@ -53,7 +53,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNamesObject;
 
 public final class DisplayNamesPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<DisplayNamesPrototypeBuiltins.DisplayNamesPrototype> {
 
@@ -97,8 +97,8 @@ public final class DisplayNamesPrototypeBuiltins extends JSBuiltinsContainer.Swi
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSDisplayNames(displayNames)")
-        public Object doDisplayNames(JSDynamicObject displayNames) {
+        @Specialization
+        public Object doDisplayNames(JSDisplayNamesObject displayNames) {
             return JSDisplayNames.resolvedOptions(getContext(), getRealm(), displayNames);
         }
 
@@ -116,8 +116,8 @@ public final class DisplayNamesPrototypeBuiltins extends JSBuiltinsContainer.Swi
             toStringNode = JSToStringNode.create();
         }
 
-        @Specialization(guards = "isJSDisplayNames(displayNames)")
-        public Object doDisplayNames(JSDynamicObject displayNames, Object code) {
+        @Specialization
+        public Object doDisplayNames(JSDisplayNamesObject displayNames, Object code) {
             TruffleString codeString = toStringNode.executeString(code);
             return JSDisplayNames.of(displayNames, Strings.toJavaString(codeString));
         }

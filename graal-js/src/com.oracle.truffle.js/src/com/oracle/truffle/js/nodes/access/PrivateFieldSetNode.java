@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -84,8 +85,8 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
         this.context = context;
     }
 
-    @Specialization(guards = {"isJSObject(target)"}, limit = "3")
-    Object doField(JSDynamicObject target, HiddenKey key, Object value,
+    @Specialization(limit = "3")
+    Object doField(JSObject target, HiddenKey key, Object value,
                     @CachedLibrary("target") DynamicObjectLibrary access,
                     @Cached BranchProfile errorBranch) {
         if (!Properties.putIfPresent(access, target, key, value)) {
@@ -95,8 +96,8 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
         return value;
     }
 
-    @Specialization(guards = {"isJSObject(target)"})
-    Object doAccessor(JSDynamicObject target, Accessor accessor, Object value,
+    @Specialization
+    Object doAccessor(JSObject target, Accessor accessor, Object value,
                     @Cached("createCall()") JSFunctionCallNode callNode,
                     @Cached BranchProfile errorBranch) {
         JSDynamicObject setter = accessor.getSetter();

@@ -51,7 +51,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * Adds a private field with a private name to a JS object (an instance of a JS class). Throws a
@@ -79,8 +79,8 @@ public abstract class PrivateFieldAddNode extends JavaScriptBaseNode {
      */
     public abstract void execute(Object target, Object key, Object value);
 
-    @Specialization(guards = {"isJSObject(target)"}, limit = "3")
-    void doFieldAdd(JSDynamicObject target, HiddenKey key, Object value,
+    @Specialization(limit = "3")
+    void doFieldAdd(JSObject target, HiddenKey key, Object value,
                     @CachedLibrary("target") DynamicObjectLibrary access) {
         if (!Properties.containsKey(access, target, key)) {
             Properties.putWithFlags(access, target, key, value, JSAttributes.getDefaultNotEnumerable());

@@ -50,7 +50,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.intl.JSCollatorObject;
 
 public final class CollatorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<CollatorPrototypeBuiltins.CollatorPrototype> {
 
@@ -91,13 +91,13 @@ public final class CollatorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSCollator(collator)"})
-        public Object doResolvedOptions(JSDynamicObject collator) {
+        @Specialization
+        public Object doResolvedOptions(JSCollatorObject collator) {
             return JSCollator.resolvedOptions(getContext(), getRealm(), collator);
         }
 
         @Fallback
-        public Object throwTypeError(@SuppressWarnings("unused") Object bummer) {
+        public Object doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeError("Collator object expected.");
         }
     }

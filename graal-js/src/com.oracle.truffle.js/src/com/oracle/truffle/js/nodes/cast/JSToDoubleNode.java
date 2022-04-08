@@ -49,7 +49,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * This implements ECMA 9.3 ToNumber, but always converting the result to a double value.
@@ -103,8 +103,8 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
         return stringToNumberNode.executeString(value);
     }
 
-    @Specialization(guards = "isJSObject(value)")
-    protected double doJSObject(JSDynamicObject value,
+    @Specialization
+    protected double doJSObject(JSObject value,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
         return getToDoubleNode().executeDouble(toPrimitiveNode.execute(value));
     }

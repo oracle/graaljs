@@ -50,7 +50,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * Basically ECMAScript ToInteger, but correct only for values in the safe integer range. Used by
@@ -122,8 +122,8 @@ public abstract class JSToIntegerAsLongNode extends JavaScriptBaseNode {
         return nestedToIntegerNode.executeLong(stringToNumberNode.executeString(value));
     }
 
-    @Specialization(guards = "isJSObject(value)")
-    protected long doJSObject(JSDynamicObject value,
+    @Specialization
+    protected long doJSObject(JSObject value,
                     @Cached("create()") JSToNumberNode toNumberNode) {
         return JSRuntime.toInteger(toNumberNode.executeNumber(value));
     }
