@@ -52,6 +52,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -151,7 +152,7 @@ public final class UserScriptException extends GraalJSException {
             if (prototype != Null.instance) {
                 Object constructor = JSDynamicObject.getOrDefault(prototype, JSObject.CONSTRUCTOR, null);
                 if (JSFunction.isJSFunction(constructor)) {
-                    TruffleString name = JSFunction.getName((JSDynamicObject) constructor);
+                    TruffleString name = JSFunction.getName((JSFunctionObject) constructor);
                     if (!Strings.isEmpty(name)) {
                         Object message = JSDynamicObject.getOrDefault(errorObj, JSError.MESSAGE, null);
                         if (Strings.isTString(message)) {

@@ -152,7 +152,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         JSDynamicObject adaptee = getAdaptee(thisObj);
         Object get = JSObject.get(adaptee, GET);
         if (JSFunction.isJSFunction(get)) {
-            return JSFunction.call((JSDynamicObject) get, thisObj, new Object[]{key});
+            return JSFunction.call((JSFunctionObject) get, thisObj, new Object[]{key});
         }
         return null;
     }
@@ -182,7 +182,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         JSDynamicObject adaptee = getAdaptee(thisObj);
         Object has = JSObject.get(adaptee, HAS);
         if (JSFunction.isJSFunction(has)) {
-            return JSRuntime.toBoolean(JSFunction.call((JSDynamicObject) has, thisObj, new Object[]{key}));
+            return JSRuntime.toBoolean(JSFunction.call((JSFunctionObject) has, thisObj, new Object[]{key}));
         }
         return false;
     }
@@ -200,7 +200,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         Object set = JSObject.get(adaptee, PUT);
         if (JSFunction.isJSFunction(set)) {
             assert JSRuntime.longIsRepresentableAsInt(index);
-            JSFunction.call((JSDynamicObject) set, thisObj, new Object[]{(int) index, value});
+            JSFunction.call((JSFunctionObject) set, thisObj, new Object[]{(int) index, value});
         }
         return true;
     }
@@ -217,7 +217,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         JSDynamicObject adaptee = getAdaptee(thisObj);
         Object set = JSObject.get(adaptee, PUT);
         if (JSFunction.isJSFunction(set)) {
-            JSFunction.call((JSDynamicObject) set, thisObj, new Object[]{key, value});
+            JSFunction.call((JSFunctionObject) set, thisObj, new Object[]{key, value});
         }
         return true;
     }
@@ -233,7 +233,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         JSDynamicObject adaptee = getAdaptee(thisObj);
         Object delete = JSObject.get(adaptee, DELETE);
         if (JSFunction.isJSFunction(delete)) {
-            JSFunction.call((JSDynamicObject) delete, thisObj, new Object[]{index});
+            JSFunction.call((JSFunctionObject) delete, thisObj, new Object[]{index});
         }
         return true;
     }
@@ -249,7 +249,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         JSDynamicObject adaptee = getAdaptee(thisObj);
         Object delete = JSObject.get(adaptee, DELETE);
         if (JSFunction.isJSFunction(delete)) {
-            JSFunction.call((JSDynamicObject) delete, thisObj, new Object[]{key});
+            JSFunction.call((JSFunctionObject) delete, thisObj, new Object[]{key});
         }
         return true;
     }
@@ -275,7 +275,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         JSDynamicObject adaptee = getAdaptee(thisObj);
         Object getIds = JSObject.get(adaptee, GET_IDS);
         if (JSFunction.isJSFunction(getIds)) {
-            Object returnValue = JSFunction.call((JSDynamicObject) getIds, thisObj, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+            Object returnValue = JSFunction.call((JSFunctionObject) getIds, thisObj, JSArguments.EMPTY_ARGUMENTS_ARRAY);
             if (JSRuntime.isObject(returnValue)) {
                 return filterOwnPropertyKeys(JSRuntime.createListFromArrayLikeAllowSymbolString(returnValue), strings, symbols);
             }
@@ -314,7 +314,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         JSDynamicObject adaptee = getAdaptee(store);
         Object call = JSObject.get(adaptee, CALL);
         if (JSFunction.isJSFunction(call)) {
-            return JSFunction.bind(JSFunction.getRealm((JSDynamicObject) call), (JSDynamicObject) call, store, new Object[]{key});
+            return JSFunction.bind(JSFunction.getRealm((JSFunctionObject) call), (JSFunctionObject) call, store, new Object[]{key});
         } else {
             throw createTypeErrorNoSuchFunction(store, key);
         }

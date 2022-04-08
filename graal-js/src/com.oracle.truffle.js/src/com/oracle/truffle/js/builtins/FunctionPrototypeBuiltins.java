@@ -266,7 +266,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
             assert JSFunction.isJSFunction(innerFunction);
 
-            JSDynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), (JSDynamicObject) innerFunction, thisArg, args, proto,
+            JSDynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), (JSFunctionObject) innerFunction, thisArg, args, proto,
                             isConstructorProfile, isAsyncProfile, setProtoProfile, this);
 
             Number length = 0;

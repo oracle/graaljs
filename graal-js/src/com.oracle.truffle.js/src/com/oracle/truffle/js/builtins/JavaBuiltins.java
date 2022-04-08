@@ -93,6 +93,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -608,8 +609,8 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             if (lock != Undefined.instance) {
                 unwrapAndCheckLockObject(lock, realm.getEnv());
             }
-            JSFunctionData synchronizedFunctionData = createSynchronizedWrapper((JSDynamicObject) func);
-            JSDynamicObject synchronizedFunction = JSFunction.create(realm, synchronizedFunctionData);
+            JSFunctionData synchronizedFunctionData = createSynchronizedWrapper((JSFunctionObject) func);
+            JSFunctionObject synchronizedFunction = JSFunction.create(realm, synchronizedFunctionData);
             if (lock != Undefined.instance) {
                 return JSFunction.bind(realm, synchronizedFunction, lock, JSArguments.EMPTY_ARGUMENTS_ARRAY);
             }
@@ -618,7 +619,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         @TruffleBoundary
-        private JSFunctionData createSynchronizedWrapper(JSDynamicObject func) {
+        private JSFunctionData createSynchronizedWrapper(JSFunctionObject func) {
             CallTarget callTarget = new JavaScriptRootNode(getContext().getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {

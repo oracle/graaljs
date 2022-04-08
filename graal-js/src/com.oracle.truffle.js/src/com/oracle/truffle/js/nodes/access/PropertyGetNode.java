@@ -101,6 +101,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -1491,7 +1492,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     Object function = JSObject.get(thisObj, JSObject.NO_SUCH_METHOD_NAME);
                     if (function != Undefined.instance) {
                         if (JSFunction.isJSFunction(function)) {
-                            return callNoSuchHandler(thisObj, (JSDynamicObject) function, false);
+                            return callNoSuchHandler(thisObj, (JSFunctionObject) function, false);
                         } else {
                             return getFallback(defaultValue);
                         }
@@ -1499,13 +1500,13 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 }
                 Object function = JSObject.get(thisObj, JSObject.NO_SUCH_PROPERTY_NAME);
                 if (JSFunction.isJSFunction(function)) {
-                    return callNoSuchHandler(thisObj, (JSDynamicObject) function, true);
+                    return callNoSuchHandler(thisObj, (JSFunctionObject) function, true);
                 }
             }
             return getFallback(defaultValue);
         }
 
-        private Object callNoSuchHandler(JSDynamicObject thisObj, JSDynamicObject function, boolean noSuchProperty) {
+        private Object callNoSuchHandler(JSDynamicObject thisObj, JSFunctionObject function, boolean noSuchProperty) {
             // if accessing a global variable, pass undefined as `this` instead of global object.
             // only matters if callee is strict. cf. Nashorn ScriptObject.noSuch{Property,Method}.
             Object thisObject = isGlobal() ? Undefined.instance : thisObj;
@@ -1639,8 +1640,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            JSDynamicObject functionObj = receiverCheck.getStore(thisObj);
-            assert JSFunction.isJSFunction(functionObj);
+            JSFunctionObject functionObj = (JSFunctionObject) receiverCheck.getStore(thisObj);
             JSDynamicObject constantFun = constantFunction;
             if (constantFun == UNKNOWN_FUN) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1662,7 +1662,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
         }
 
-        private Object getPrototypeNotInitialized(JSDynamicObject functionObj) {
+        private Object getPrototypeNotInitialized(JSFunctionObject functionObj) {
             if (kind == UNKNOWN) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 JSFunctionData functionData = JSFunction.getFunctionData(functionObj);

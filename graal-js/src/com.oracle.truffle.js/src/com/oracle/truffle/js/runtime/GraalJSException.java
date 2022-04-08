@@ -73,6 +73,7 @@ import com.oracle.truffle.js.nodes.promise.PromiseReactionJobNode.PromiseReactio
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -193,7 +194,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
         JSDynamicObject skipFramesUpTo = nashornMode ? Undefined.instance : skipUpTo;
         boolean skippingFrames = JSFunction.isJSFunction(skipFramesUpTo);
         if (skippingFrames && customSkip) {
-            FunctionRootNode.setOmitFromStackTrace(JSFunction.getFunctionData(skipFramesUpTo));
+            FunctionRootNode.setOmitFromStackTrace(JSFunction.getFunctionData((JSFunctionObject) skipFramesUpTo));
         }
         List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(this);
         if (skippingFrames && customSkip) {
@@ -355,7 +356,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
                         Object thisObj = JSArguments.getThisObject(arguments);
                         Object functionObj = JSArguments.getFunctionObject(arguments);
                         if (JSFunction.isJSFunction(functionObj)) {
-                            JSDynamicObject function = (JSDynamicObject) functionObj;
+                            JSFunctionObject function = (JSFunctionObject) functionObj;
                             JSFunctionData functionData = JSFunction.getFunctionData(function);
                             if (functionData.isBuiltin()) {
                                 if (JSFunction.isStrictBuiltin(function, JSRealm.get(null))) {
@@ -401,7 +402,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
 
     }
 
-    private static JSStackTraceElement processJSFrame(RootNode rootNode, Node node, Object thisObj, JSDynamicObject functionObj, boolean inStrictMode, boolean inNashornMode, boolean async,
+    private static JSStackTraceElement processJSFrame(RootNode rootNode, Node node, Object thisObj, JSFunctionObject functionObj, boolean inStrictMode, boolean inNashornMode, boolean async,
                     int promiseIndex) {
         Node callNode = node;
         while (callNode.getSourceSection() == null) {
@@ -738,7 +739,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
             }
 
             JSDynamicObject receiver = (JSDynamicObject) thisObj;
-            JSDynamicObject function = (JSDynamicObject) functionObj;
+            JSFunctionObject function = (JSFunctionObject) functionObj;
             if (functionName != null && !Strings.isEmpty(functionName)) {
                 TruffleString name = findMethodPropertyNameByFunctionName(receiver, functionName, function);
                 if (name != null) {
@@ -748,7 +749,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
             return findMethodPropertyName(receiver, function);
         }
 
-        private static TruffleString findMethodPropertyNameByFunctionName(JSDynamicObject receiver, TruffleString functionName, JSDynamicObject functionObj) {
+        private static TruffleString findMethodPropertyNameByFunctionName(JSDynamicObject receiver, TruffleString functionName, JSFunctionObject functionObj) {
             TruffleString propertyName = functionName;
             boolean accessor = false;
             if (Strings.startsWith(propertyName, Strings.GET_SPC) || Strings.startsWith(propertyName, Strings.SET_SPC)) {
@@ -849,9 +850,9 @@ public abstract class GraalJSException extends AbstractTruffleException {
         public Object getThisOrGlobal() {
             if (global) {
                 if (JSRuntime.isNullOrUndefined(thisObj)) {
-                    return JSFunction.getRealm((JSDynamicObject) functionObj).getGlobalObject();
+                    return JSFunction.getRealm((JSFunctionObject) functionObj).getGlobalObject();
                 } else {
-                    assert thisObj == JSFunction.getRealm((JSDynamicObject) functionObj).getGlobalObject();
+                    assert thisObj == JSFunction.getRealm((JSFunctionObject) functionObj).getGlobalObject();
                     return thisObj;
                 }
             }

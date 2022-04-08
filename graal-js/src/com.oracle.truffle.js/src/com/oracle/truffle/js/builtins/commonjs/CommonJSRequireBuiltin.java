@@ -239,7 +239,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
                 } else {
                     throw fail(Strings.fromJavaString(jsonFile.toString()));
                 }
-                JSDynamicObject parse = (JSDynamicObject) realm.getJsonParseFunctionObject();
+                JSFunctionObject parse = (JSFunctionObject) realm.getJsonParseFunctionObject();
                 assert source != null;
                 TruffleString jsonString = Strings.fromJavaString(source.getCharacters().toString());
                 Object jsonObj = JSFunction.call(JSArguments.create(parse, parse, jsonString));

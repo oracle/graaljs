@@ -67,7 +67,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 
 /**
  * Example instrument tracing all execution events in Graal.js.
@@ -128,7 +128,7 @@ public class FullExecutionTracerInstrument extends TruffleInstrument {
 
                     private String getValueDescription(Object inputValue) {
                         if (JSFunction.isJSFunction(inputValue)) {
-                            return "JSFunction:'" + JSFunction.getName((JSDynamicObject) inputValue) + "'";
+                            return "JSFunction:'" + JSFunction.getName((JSFunctionObject) inputValue) + "'";
                         }
                         return inputValue != null ? inputValue.toString() : "null";
                     }

@@ -225,7 +225,7 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
             if (promiseCapability != null) {
                 return AwaitNode.findAsyncStackFramesFromPromise(promiseCapability.getPromise());
             } else if (JSFunction.isJSFunction(reaction.getHandler())) {
-                return AwaitNode.findAsyncStackFramesFromHandler((JSDynamicObject) reaction.getHandler());
+                return AwaitNode.findAsyncStackFramesFromHandler((JSFunctionObject) reaction.getHandler());
             }
             return null;
         }

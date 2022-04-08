@@ -94,6 +94,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSTestV8;
@@ -343,7 +344,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @Specialization
         protected Object enqueueJob(Object function) {
             if (JSFunction.isJSFunction(function)) {
-                getContext().promiseEnqueueJob(getRealm(), (JSDynamicObject) function);
+                getContext().promiseEnqueueJob(getRealm(), (JSFunctionObject) function);
             }
             return 0;
         }

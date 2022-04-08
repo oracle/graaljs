@@ -182,6 +182,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSMapObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -547,7 +548,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     JSDynamicObject ctorObj = (JSDynamicObject) ctor;
                     if (JSFunction.isJSFunction(ctorObj) && JSFunction.isConstructor(ctorObj)) {
                         JSRealm thisRealm = getRealm();
-                        JSRealm ctorRealm = JSFunction.getRealm(ctorObj);
+                        JSRealm ctorRealm = JSFunction.getRealm((JSFunctionObject) ctorObj);
                         if (thisRealm != ctorRealm) {
                             differentRealm.enter();
                             if (ctorRealm.getArrayConstructor() == ctor) {
@@ -2941,7 +2942,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
                 Object retObj;
                 if (isFunction) {
-                    retObj = JSFunction.call((JSDynamicObject) compFnObj, Undefined.instance, new Object[]{arg0, arg1});
+                    retObj = JSFunction.call((JSFunctionObject) compFnObj, Undefined.instance, new Object[]{arg0, arg1});
                 } else {
                     retObj = JSRuntime.call(compFnObj, Undefined.instance, new Object[]{arg0, arg1});
                 }

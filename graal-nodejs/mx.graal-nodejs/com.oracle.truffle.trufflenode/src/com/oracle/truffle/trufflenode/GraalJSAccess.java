@@ -781,11 +781,11 @@ public final class GraalJSAccess {
     }
 
     public boolean valueIsAsyncFunction(Object object) {
-        return JSFunction.isJSFunction(object) ? JSFunction.getFunctionData((JSDynamicObject) object).isAsync() : false;
+        return JSFunction.isJSFunction(object) ? JSFunction.getFunctionData((JSFunctionObject) object).isAsync() : false;
     }
 
     public boolean valueIsGeneratorFunction(Object object) {
-        return JSFunction.isJSFunction(object) ? JSFunction.getFunctionData((JSDynamicObject) object).isGenerator() : false;
+        return JSFunction.isJSFunction(object) ? JSFunction.getFunctionData((JSFunctionObject) object).isGenerator() : false;
     }
 
     public boolean valueIsGeneratorObject(Object object) {
@@ -1048,7 +1048,7 @@ public final class GraalJSAccess {
             JSDynamicObject dynamicObject = (JSDynamicObject) object;
             Object constructor = JSObject.get(dynamicObject, JSObject.CONSTRUCTOR);
             if (JSFunction.isJSFunction(constructor)) {
-                name = JSFunction.getName((JSDynamicObject) constructor);
+                name = JSFunction.getName((JSFunctionObject) constructor);
             }
         } else {
             InteropLibrary interop = InteropLibrary.getUncached(object);
@@ -1252,11 +1252,10 @@ public final class GraalJSAccess {
     }
 
     public Object objectCreationContext(Object object) {
-        JSDynamicObject dynamicObject = (JSDynamicObject) object;
         if (JSFunction.isJSFunction(object)) {
-            return JSFunction.getRealm(dynamicObject);
+            return JSFunction.getRealm((JSFunctionObject) object);
         } else {
-            return objectCreationContextFromConstructor(dynamicObject);
+            return objectCreationContextFromConstructor((JSDynamicObject) object);
         }
     }
 
@@ -1268,7 +1267,7 @@ public final class GraalJSAccess {
             if (prototype != Null.instance) {
                 Object constructor = JSRuntime.getDataProperty(prototype, JSObject.CONSTRUCTOR);
                 if (JSFunction.isJSFunction(constructor)) {
-                    return JSFunction.getRealm((JSDynamicObject) constructor);
+                    return JSFunction.getRealm((JSFunctionObject) constructor);
                 }
             }
         } else if (JSRuntime.isCallableProxy(object)) {
@@ -1690,14 +1689,14 @@ public final class GraalJSAccess {
     }
 
     public Object functionNewInstance(Object function, Object[] arguments) {
-        JSDynamicObject functionObject = (JSDynamicObject) function;
+        JSFunctionObject functionObject = (JSFunctionObject) function;
         JSFunctionData functionData = JSFunction.getFunctionData(functionObject);
         Object[] callArguments = JSArguments.create(null, function, arguments);
         return functionData.getConstructTarget().call(callArguments);
     }
 
     public void functionSetName(Object function, Object name) {
-        JSDynamicObject functionObject = (JSDynamicObject) function;
+        JSFunctionObject functionObject = (JSFunctionObject) function;
         if (isAuxEngineCacheMode()) {
             objectSet(functionObject, JSFunction.NAME, name);
         } else {
@@ -1707,7 +1706,7 @@ public final class GraalJSAccess {
     }
 
     public Object functionGetName(Object function) {
-        JSDynamicObject functionObject = (JSDynamicObject) function;
+        JSFunctionObject functionObject = (JSFunctionObject) function;
         if (isAuxEngineCacheMode()) {
             return JSRuntime.toString(objectGet(functionObject, JSFunction.NAME));
         } else {
@@ -1763,7 +1762,7 @@ public final class GraalJSAccess {
 
     private static SourceSection functionGetSourceSection(Object function) {
         if (JSFunction.isJSFunction(function)) {
-            CallTarget callTarget = JSFunction.getCallTarget((JSDynamicObject) function);
+            CallTarget callTarget = JSFunction.getCallTarget((JSFunctionObject) function);
             if (callTarget instanceof RootCallTarget) {
                 RootNode rootNode = ((RootCallTarget) callTarget).getRootNode();
                 return rootNode.getSourceSection();
@@ -2273,7 +2272,7 @@ public final class GraalJSAccess {
             JSRealm prevRealm = mainRealm.enterRealm(null, realm);
             try {
                 CallTarget target = realm.getEnv().parsePublic(source, args);
-                JSDynamicObject script = (JSDynamicObject) target.call();
+                JSFunctionObject script = (JSFunctionObject) target.call();
                 function = anyExtension ? JSFunction.call(script, Undefined.instance, extensions) : script;
             } finally {
                 mainRealm.leaveRealm(null, prevRealm);

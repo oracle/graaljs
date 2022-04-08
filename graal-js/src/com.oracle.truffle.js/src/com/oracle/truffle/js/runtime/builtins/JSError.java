@@ -324,7 +324,7 @@ public final class JSError extends JSNonProxy {
         JSDynamicObject error = realm.getErrorConstructor(JSErrorType.Error);
         Object prepareStackTrace = JSObject.get(error, PREPARE_STACK_TRACE_NAME);
         if (JSFunction.isJSFunction(prepareStackTrace)) {
-            return prepareStackWithUserFunction(realm, (JSDynamicObject) prepareStackTrace, errorObj, jsStackTrace);
+            return prepareStackWithUserFunction(realm, (JSFunctionObject) prepareStackTrace, errorObj, jsStackTrace);
         }
         return formatStackTrace(jsStackTrace, errorObj, realm);
     }
@@ -338,7 +338,7 @@ public final class JSError extends JSNonProxy {
         }
     }
 
-    private static Object prepareStackWithUserFunction(JSRealm realm, JSDynamicObject prepareStackTraceFun, JSDynamicObject errorObj, JSStackTraceElement[] stackTrace) {
+    private static Object prepareStackWithUserFunction(JSRealm realm, JSFunctionObject prepareStackTraceFun, JSDynamicObject errorObj, JSStackTraceElement[] stackTrace) {
         return JSFunction.call(prepareStackTraceFun, errorObj, new Object[]{errorObj, toStructuredStackTrace(realm, stackTrace)});
     }
 

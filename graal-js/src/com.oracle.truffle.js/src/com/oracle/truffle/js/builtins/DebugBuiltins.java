@@ -104,6 +104,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -335,7 +336,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @Specialization
         protected Object dumpFunctionTree(Object functionObj) {
             if (JSFunction.isJSFunction(functionObj)) {
-                CallTarget target = JSFunction.getCallTarget((JSDynamicObject) functionObj);
+                CallTarget target = JSFunction.getCallTarget((JSFunctionObject) functionObj);
                 if (target instanceof RootCallTarget) {
                     NodeUtil.printTree(getRealm().getOutputWriter(), ((RootCallTarget) target).getRootNode());
                     return Undefined.instance;

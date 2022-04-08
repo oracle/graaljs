@@ -73,6 +73,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -158,7 +159,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         Object[] args = getAbstractFunctionArguments(frame);
         Object newFunction = JSObject.get(JSAdapter.getAdaptee(target), JSAdapter.NEW);
         if (JSFunction.isJSFunction(newFunction)) {
-            return JSFunction.call((JSDynamicObject) newFunction, target, args);
+            return JSFunction.call((JSFunctionObject) newFunction, target, args);
         } else {
             return Undefined.instance;
         }

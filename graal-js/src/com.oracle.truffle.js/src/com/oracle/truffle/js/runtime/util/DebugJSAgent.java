@@ -57,7 +57,7 @@ import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
@@ -235,7 +235,7 @@ public class DebugJSAgent extends JSAgent {
         public void executeBroadcastCallback() {
             assert jsAgent.debugReceiveBroadcast != null;
             while (incoming.size() > 0) {
-                JSDynamicObject cb = (JSDynamicObject) jsAgent.debugReceiveBroadcast;
+                JSFunctionObject cb = (JSFunctionObject) jsAgent.debugReceiveBroadcast;
                 JSFunction.call(cb, cb, new Object[]{incoming.pop()});
             }
         }

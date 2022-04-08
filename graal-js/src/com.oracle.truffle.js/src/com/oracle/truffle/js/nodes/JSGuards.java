@@ -60,6 +60,7 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -163,7 +164,7 @@ public final class JSGuards {
     }
 
     public static boolean isBoundJSFunction(Object value) {
-        return isJSFunction(value) && JSFunction.isBoundFunction((JSDynamicObject) value);
+        return isJSFunction(value) && JSFunction.isBoundFunction((JSFunctionObject) value);
     }
 
     public static boolean isCallable(Object reviver) {

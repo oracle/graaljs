@@ -72,6 +72,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
@@ -154,7 +155,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             }
         } else {
             // Else, try loading as commonjs built-in module replacement
-            JSDynamicObject require = (JSDynamicObject) realm.getCommonJSRequireFunctionObject();
+            JSFunctionObject require = (JSFunctionObject) realm.getCommonJSRequireFunctionObject();
             // Any exception thrown during module loading will be propagated
             Object maybeModule = JSFunction.call(JSArguments.create(Undefined.instance, require, specifier));
             if (maybeModule == Undefined.instance || !JSDynamicObject.isJSDynamicObject(maybeModule)) {

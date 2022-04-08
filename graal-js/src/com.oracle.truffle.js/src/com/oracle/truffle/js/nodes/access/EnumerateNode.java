@@ -64,6 +64,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.interop.EmptyIterator;
@@ -135,7 +136,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
 
         Object getIds = JSObject.get(adaptee, values ? JSAdapter.GET_VALUES : JSAdapter.GET_IDS);
         if (JSFunction.isJSFunction(getIds)) {
-            Object returnValue = JSFunction.call((JSDynamicObject) getIds, adaptee, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+            Object returnValue = JSFunction.call((JSFunctionObject) getIds, adaptee, JSArguments.EMPTY_ARGUMENTS_ARRAY);
             if (JSRuntime.isObject(returnValue)) {
                 return enumerateCallbackResultNode.execute(returnValue);
             }

@@ -58,7 +58,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
@@ -74,7 +74,7 @@ public class SetBreakPointNode extends JavaScriptRootNode {
             arg0 = JSArguments.getUserArgument(args, 0);
         }
         if (JSFunction.isJSFunction(arg0)) {
-            CallTarget callTarget = JSFunction.getFunctionData((JSDynamicObject) arg0).getCallTarget();
+            CallTarget callTarget = JSFunction.getFunctionData((JSFunctionObject) arg0).getCallTarget();
             if (callTarget instanceof RootCallTarget) {
                 return addBreakPoint((RootCallTarget) callTarget, args);
             }

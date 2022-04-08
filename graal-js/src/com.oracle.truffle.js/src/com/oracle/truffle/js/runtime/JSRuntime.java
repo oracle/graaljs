@@ -79,6 +79,7 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -2506,7 +2507,7 @@ public final class JSRuntime {
      */
     public static Object call(Object fnObj, Object holder, Object[] arguments) {
         if (JSFunction.isJSFunction(fnObj)) {
-            return JSFunction.call((JSDynamicObject) fnObj, holder, arguments);
+            return JSFunction.call((JSFunctionObject) fnObj, holder, arguments);
         } else if (JSProxy.isJSProxy(fnObj)) {
             return JSProxy.call((JSDynamicObject) fnObj, holder, arguments);
         } else if (isForeignObject(fnObj)) {
@@ -2534,7 +2535,7 @@ public final class JSRuntime {
 
     public static Object construct(Object fnObj, Object[] arguments) {
         if (JSFunction.isJSFunction(fnObj)) {
-            return JSFunction.construct((JSDynamicObject) fnObj, arguments);
+            return JSFunction.construct((JSFunctionObject) fnObj, arguments);
         } else if (JSProxy.isJSProxy(fnObj)) {
             return JSProxy.construct((JSDynamicObject) fnObj, arguments);
         } else if (isForeignObject(fnObj)) {
@@ -2629,7 +2630,7 @@ public final class JSRuntime {
             if (prototype != Null.instance) {
                 Object constructor = getDataProperty(prototype, JSObject.CONSTRUCTOR);
                 if (JSFunction.isJSFunction(constructor)) {
-                    return JSFunction.getName((JSDynamicObject) constructor);
+                    return JSFunction.getName((JSFunctionObject) constructor);
                 }
             }
         }
@@ -2724,7 +2725,7 @@ public final class JSRuntime {
     }
 
     public static boolean isGenerator(Object genObj) {
-        if (JSFunction.isJSFunction(genObj) && JSFunction.isGenerator((JSDynamicObject) genObj)) {
+        if (JSFunction.isJSFunction(genObj) && JSFunction.isGenerator((JSFunctionObject) genObj)) {
             return true;
         } else if (JSProxy.isJSProxy(genObj)) {
             return isGeneratorProxy((JSDynamicObject) genObj);

@@ -961,7 +961,7 @@ public final class GraalJSEvaluator implements JSParser {
         }
         if (module.getTopLevelCapability() != null) {
             assert module.getCycleRoot() == module;
-            JSFunction.call((JSDynamicObject) module.getTopLevelCapability().getReject(), Undefined.instance, new Object[]{error});
+            JSFunction.call((JSFunctionObject) module.getTopLevelCapability().getReject(), Undefined.instance, new Object[]{error});
         }
         return Undefined.instance;
     }
