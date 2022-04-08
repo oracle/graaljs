@@ -95,6 +95,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistryObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
@@ -840,7 +841,7 @@ public class JSContext {
     /**
      * ECMA 8.4.1 EnqueueJob.
      */
-    public final void promiseEnqueueJob(JSRealm realm, JSDynamicObject job) {
+    public final void promiseEnqueueJob(JSRealm realm, JSFunctionObject job) {
         invalidatePromiseQueueNotUsedAssumption();
         realm.getAgent().enqueuePromiseJob(job);
     }

@@ -57,6 +57,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistryObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -78,7 +79,7 @@ public abstract class JSAgent implements EcmaAgent {
     /**
      * ECMA 8.4 "PromiseJobs" job queue.
      */
-    private final Deque<JSDynamicObject> promiseJobsQueue;
+    private final Deque<JSFunctionObject> promiseJobsQueue;
 
     /**
      * According to ECMA2017 8.4 the queue of pending jobs (promises reactions) must be processed
@@ -159,7 +160,7 @@ public abstract class JSAgent implements EcmaAgent {
     }
 
     @TruffleBoundary
-    public final void enqueuePromiseJob(JSDynamicObject job) {
+    public final void enqueuePromiseJob(JSFunctionObject job) {
         promiseJobsQueue.push(job);
     }
 
@@ -201,7 +202,7 @@ public abstract class JSAgent implements EcmaAgent {
                     }
                 }
                 if (!promiseJobsQueue.isEmpty()) {
-                    JSDynamicObject nextJob = promiseJobsQueue.pollLast();
+                    JSFunctionObject nextJob = promiseJobsQueue.pollLast();
                     if (JSFunction.isJSFunction(nextJob)) {
                         checkWaiterRecords = true;
                         JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);

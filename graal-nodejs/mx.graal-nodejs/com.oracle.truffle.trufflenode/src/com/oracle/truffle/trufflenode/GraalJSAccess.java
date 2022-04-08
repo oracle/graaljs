@@ -3393,7 +3393,7 @@ public final class GraalJSAccess {
     }
 
     public void isolateEnqueueMicrotask(Object microtask) {
-        agent.enqueuePromiseJob((JSDynamicObject) microtask);
+        agent.enqueuePromiseJob((JSFunctionObject) microtask);
     }
 
     public void isolateSchedulePauseOnNextStatement() {
