@@ -60,21 +60,34 @@ import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
+import com.oracle.truffle.js.runtime.builtins.JSBigIntObject;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
+import com.oracle.truffle.js.runtime.builtins.JSBooleanObject;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
+import com.oracle.truffle.js.runtime.builtins.JSDataViewObject;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSMapObject;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSNumberObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSSetObject;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSStringObject;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -202,7 +215,7 @@ public class Serializer {
             return;
         }
         if (!treatArrayBufferViewsAsHostObjects && JSArrayBufferView.isJSArrayBufferView(object)) {
-            JSDynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer((JSDynamicObject) object);
+            JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer((JSTypedArrayObject) object);
             assignId(arrayBuffer);
             if (JSSharedArrayBuffer.isJSSharedArrayBuffer(arrayBuffer)) {
                 writeJSSharedArrayBuffer(arrayBuffer);
@@ -213,36 +226,36 @@ public class Serializer {
         assignId(object);
         if (JSDate.isJSDate(object)) {
             writeTag(SerializationTag.DATE);
-            writeDate((JSDynamicObject) object);
+            writeDate((JSDateObject) object);
         } else if (JSBoolean.isJSBoolean(object)) {
-            writeJSBoolean((JSDynamicObject) object);
+            writeJSBoolean((JSBooleanObject) object);
         } else if (JSNumber.isJSNumber(object)) {
-            writeJSNumber((JSDynamicObject) object);
+            writeJSNumber((JSNumberObject) object);
         } else if (JSBigInt.isJSBigInt(object)) {
             writeTag(SerializationTag.BIG_INT_OBJECT);
-            writeBigIntContents(JSBigInt.valueOf((JSDynamicObject) object));
+            writeBigIntContents(JSBigInt.valueOf((JSBigIntObject) object));
         } else if (JSString.isJSString(object)) {
-            writeJSString((JSDynamicObject) object);
+            writeJSString((JSStringObject) object);
         } else if (JSRegExp.isJSRegExp(object)) {
-            writeJSRegExp((JSDynamicObject) object);
+            writeJSRegExp((JSRegExpObject) object);
         } else if (JSArrayBuffer.isJSDirectArrayBuffer(object)) {
-            writeJSArrayBuffer((JSDynamicObject) object);
+            writeJSArrayBuffer((JSArrayBufferObject) object);
         } else if (JSSharedArrayBuffer.isJSSharedArrayBuffer(object)) {
-            writeJSSharedArrayBuffer((JSDynamicObject) object);
+            writeJSSharedArrayBuffer((JSArrayBufferObject) object);
         } else if (JSMap.isJSMap(object)) {
-            writeJSMap((JSDynamicObject) object);
+            writeJSMap((JSMapObject) object);
         } else if (JSSet.isJSSet(object)) {
-            writeJSSet((JSDynamicObject) object);
+            writeJSSet((JSSetObject) object);
         } else if (JSArray.isJSArray(object)) {
-            writeJSArray((JSDynamicObject) object);
+            writeJSArray((JSArrayObject) object);
         } else if (JSArrayBufferView.isJSArrayBufferView(object)) {
-            writeJSArrayBufferView((JSDynamicObject) object);
+            writeJSArrayBufferView((JSTypedArrayObject) object);
         } else if (JSDataView.isJSDataView(object)) {
-            writeJSDataView((JSDynamicObject) object);
+            writeJSDataView((JSDataViewObject) object);
         } else if (JSError.isJSError(object)) {
-            writeJSError((JSDynamicObject) object);
+            writeJSError((JSErrorObject) object);
         } else if (JSProxy.isJSProxy(object)) {
-            JSDynamicObject proxy = (JSDynamicObject) object;
+            JSProxyObject proxy = (JSProxyObject) object;
             boolean callable = JSRuntime.isCallableProxy(proxy);
             TruffleString objectStr;
             if (callable) {
@@ -329,32 +342,27 @@ public class Serializer {
         writeBytes(bytes, bytes.length);
     }
 
-    private void writeDate(JSDynamicObject date) {
-        assert JSDate.isJSDate(date);
-        writeDouble(JSDate.getTimeMillisField((JSDateObject) date));
+    private void writeDate(JSDateObject date) {
+        writeDouble(JSDate.getTimeMillisField(date));
     }
 
-    private void writeJSBoolean(JSDynamicObject bool) {
-        assert JSBoolean.isJSBoolean(bool);
+    private void writeJSBoolean(JSBooleanObject bool) {
         writeTag(JSBoolean.valueOf(bool) ? SerializationTag.TRUE_OBJECT : SerializationTag.FALSE_OBJECT);
     }
 
-    private void writeJSNumber(JSDynamicObject number) {
-        assert JSNumber.isJSNumber(number);
+    private void writeJSNumber(JSNumberObject number) {
         double value = JSNumber.valueOf(number).doubleValue();
         writeTag(SerializationTag.NUMBER_OBJECT);
         writeDouble(value);
     }
 
-    private void writeJSString(JSDynamicObject string) {
-        assert JSString.isJSString(string);
+    private void writeJSString(JSStringObject string) {
         TruffleString value = JSString.getString(string);
         writeTag(SerializationTag.STRING_OBJECT);
         writeString(value);
     }
 
-    private void writeJSRegExp(JSDynamicObject regExp) {
-        assert JSRegExp.isJSRegExp(regExp);
+    private void writeJSRegExp(JSRegExpObject regExp) {
         TruffleString pattern = (TruffleString) GraalJSAccess.regexpPattern(regExp);
         int flags = GraalJSAccess.regexpV8Flags(regExp);
         writeTag(SerializationTag.REGEXP);
@@ -362,7 +370,7 @@ public class Serializer {
         writeVarInt(flags);
     }
 
-    private void writeJSArrayBuffer(JSDynamicObject arrayBuffer) {
+    private void writeJSArrayBuffer(JSArrayBufferObject arrayBuffer) {
         assert JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer);
         Integer id = transferMap.get(arrayBuffer);
         if (id == null) {
@@ -380,7 +388,7 @@ public class Serializer {
         }
     }
 
-    private void writeJSSharedArrayBuffer(JSDynamicObject sharedArrayBuffer) {
+    private void writeJSSharedArrayBuffer(JSArrayBufferObject sharedArrayBuffer) {
         int id = NativeAccess.getSharedArrayBufferId(delegate, sharedArrayBuffer);
         writeTag(SerializationTag.SHARED_ARRAY_BUFFER);
         writeVarInt(id);
@@ -412,8 +420,7 @@ public class Serializer {
         }
     }
 
-    private void writeJSMap(JSDynamicObject object) {
-        assert JSMap.isJSMap(object);
+    private void writeJSMap(JSMapObject object) {
         writeTag(SerializationTag.BEGIN_JS_MAP);
         JSHashMap map = JSMap.getInternalMap(object);
         JSHashMap.Cursor cursor = map.getEntries();
@@ -427,8 +434,7 @@ public class Serializer {
         writeVarInt(2 * count);
     }
 
-    private void writeJSSet(JSDynamicObject object) {
-        assert JSSet.isJSSet(object);
+    private void writeJSSet(JSSetObject object) {
         writeTag(SerializationTag.BEGIN_JS_SET);
         JSHashMap map = JSSet.getInternalSet(object);
         JSHashMap.Cursor cursor = map.getEntries();
@@ -441,7 +447,7 @@ public class Serializer {
         writeVarInt(count);
     }
 
-    private void writeJSArray(JSDynamicObject object) {
+    private void writeJSArray(JSArrayObject object) {
         assert JSArray.isJSArray(object);
         long length = JSAbstractArray.arrayGetLength(object);
         List<TruffleString> names = JSObject.enumerableOwnNames(object);
@@ -473,7 +479,7 @@ public class Serializer {
         writeVarInt(length);
     }
 
-    private void writeJSArrayBufferView(JSDynamicObject view) {
+    private void writeJSArrayBufferView(JSTypedArrayObject view) {
         if (treatArrayBufferViewsAsHostObjects) {
             writeHostObject(view);
         } else {
@@ -485,7 +491,7 @@ public class Serializer {
         }
     }
 
-    private void writeJSDataView(JSDynamicObject view) {
+    private void writeJSDataView(JSDataViewObject view) {
         if (treatArrayBufferViewsAsHostObjects) {
             writeTag(SerializationTag.HOST_OBJECT);
             NativeAccess.writeHostObject(delegate, view);
