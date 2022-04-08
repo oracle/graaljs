@@ -48,9 +48,9 @@ import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -125,15 +125,15 @@ public class InitFunctionNode extends JavaScriptBaseNode {
         return new InitFunctionNode(functionData);
     }
 
-    public final JSDynamicObject execute(JSDynamicObject function) {
+    public final JSFunctionObject execute(JSFunctionObject function) {
         return execute(function, functionData.getLength(), functionData.getName());
     }
 
-    public final JSDynamicObject execute(JSDynamicObject function, @SuppressWarnings("hiding") JSFunctionData functionData) {
+    public final JSFunctionObject execute(JSFunctionObject function, @SuppressWarnings("hiding") JSFunctionData functionData) {
         return execute(function, functionData.getLength(), functionData.getName());
     }
 
-    public final JSDynamicObject execute(JSDynamicObject function, int length, TruffleString name) {
+    public final JSFunctionObject execute(JSFunctionObject function, int length, TruffleString name) {
         // setLengthNode.putWithFlags(function, JSFunction.LENGTH, length, lengthFlags);
         Properties.putConstant(setLengthNode, function, JSFunction.LENGTH, JSFunction.LENGTH_PROXY, lengthFlags);
         assert JSFunction.getFunctionData(function).isBound() || length == (int) JSFunction.LENGTH_PROXY.get(function);
