@@ -108,12 +108,12 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
+import com.oracle.truffle.js.runtime.builtins.JSDataViewObject;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.JSExternal;
@@ -143,12 +143,12 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isUndefined(value)")
-    protected static int doUndefined(JSDynamicObject value) {
+    protected static int doUndefined(Object value) {
         return UNDEFINED_VALUE;
     }
 
     @Specialization(guards = "isJSNull(value)")
-    protected static int doNull(JSDynamicObject value) {
+    protected static int doNull(Object value) {
         return NULL_VALUE;
     }
 
@@ -189,47 +189,47 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isJSExternalObject(value)")
-    protected static int doExternalObject(JSDynamicObject value) {
+    protected static int doExternalObject(Object value) {
         return EXTERNAL_OBJECT;
     }
 
     @Specialization(guards = "isJSFunction(value)")
-    protected static int doFunction(JSDynamicObject value) {
+    protected static int doFunction(Object value) {
         return FUNCTION_OBJECT;
     }
 
     @Specialization(guards = "isJSArray(value)")
-    protected static int doArray(JSDynamicObject value) {
+    protected static int doArray(Object value) {
         return ARRAY_OBJECT;
     }
 
     @Specialization(guards = "isJSDate(value)")
-    protected static int doDate(JSDynamicObject value) {
+    protected static int doDate(Object value) {
         return DATE_OBJECT;
     }
 
     @Specialization(guards = "isJSRegExp(value)")
-    protected static int doRegExp(JSDynamicObject value) {
+    protected static int doRegExp(Object value) {
         return REGEXP_OBJECT;
     }
 
     @Specialization(guards = "isJSMap(value)")
-    protected static int doMap(JSDynamicObject value) {
+    protected static int doMap(Object value) {
         return MAP_OBJECT;
     }
 
     @Specialization(guards = "isJSSet(value)")
-    protected static int doSet(JSDynamicObject value) {
+    protected static int doSet(Object value) {
         return SET_OBJECT;
     }
 
     @Specialization(guards = "isJSPromise(value)")
-    protected static int doPromise(JSDynamicObject value) {
+    protected static int doPromise(Object value) {
         return PROMISE_OBJECT;
     }
 
     @Specialization(guards = "isJSProxy(value)")
-    protected static int doProxy(JSDynamicObject value) {
+    protected static int doProxy(Object value) {
         return PROXY_OBJECT;
     }
 
@@ -260,8 +260,8 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
         return identifyType(array);
     }
 
-    @Specialization(guards = {"isJSDataView(value)"})
-    protected final int doDataView(JSDynamicObject value) {
+    @Specialization
+    protected final int doDataView(JSDataViewObject value) {
         if (useSharedBuffer) {
             ByteBuffer sharedBuffer = GraalJSAccess.get(this).getSharedBuffer();
             sharedBuffer.putInt(GraalJSAccess.arrayBufferViewByteLength(context, value));
@@ -321,24 +321,21 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isJSDirectArrayBuffer(value)")
-    protected static int doDirectArrayBuffer(JSDynamicObject value) {
+    protected static int doDirectArrayBuffer(Object value) {
         return DIRECT_ARRAY_BUFFER_OBJECT;
     }
 
     @Specialization(guards = "isJSInteropArrayBuffer(value)")
-    protected static int doInteropArrayBuffer(JSDynamicObject value) {
+    protected static int doInteropArrayBuffer(Object value) {
         return INTEROP_ARRAY_BUFFER_OBJECT;
     }
 
     @Specialization(guards = {"isJSOrdinaryObject(value)"})
-    protected static int doOrdinaryObject(JSDynamicObject value) {
+    protected static int doOrdinaryObject(Object value) {
         return ORDINARY_OBJECT;
     }
 
     @Specialization(guards = {
-                    "isJSObject(value)",
-                    "!isUndefined(value)",
-                    "!isJSNull(value)",
                     "!isJSExternalObject(value)",
                     "!isJSFunction(value)",
                     "!isJSArray(value)",
@@ -351,7 +348,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
                     "!isJSArrayBufferView(value)",
                     "!isJSDataView(value)",
                     "!isJSDirectArrayBuffer(value)"}, replaces = {"doOrdinaryObject"})
-    protected static int doObject(JSDynamicObject value) {
+    protected static int doObject(JSObject value) {
         return ORDINARY_OBJECT;
     }
 
