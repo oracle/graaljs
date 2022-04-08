@@ -396,7 +396,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "!isJSDynamicObject(object)")
-        protected static TruffleString foreign(@SuppressWarnings("unused") JSDynamicObject object) {
+        protected static TruffleString foreign(@SuppressWarnings("unused") Object object) {
             return Strings.UC_FOREIGN;
         }
     }
