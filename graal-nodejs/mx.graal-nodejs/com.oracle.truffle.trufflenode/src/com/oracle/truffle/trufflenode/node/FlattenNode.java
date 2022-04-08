@@ -107,7 +107,7 @@ abstract class FlattenNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization(guards = "isJSDynamicObject(value)")
+    @Specialization
     protected static Object doJSObject(JSDynamicObject value) {
         return value;
     }

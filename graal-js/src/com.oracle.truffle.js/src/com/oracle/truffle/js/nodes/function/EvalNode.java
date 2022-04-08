@@ -223,7 +223,7 @@ public abstract class EvalNode extends JavaScriptNode {
             return source;
         }
 
-        @Specialization(guards = {"isJSDynamicObject(source)"})
+        @Specialization
         protected JSDynamicObject directEvalJSType(JSDynamicObject source) {
             return source;
         }

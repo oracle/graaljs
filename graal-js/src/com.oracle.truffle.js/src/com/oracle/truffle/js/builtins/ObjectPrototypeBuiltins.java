@@ -390,7 +390,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @TruffleBoundary
-        @Specialization(guards = "isJSDynamicObject(object)", replaces = "cached")
+        @Specialization(replaces = "cached")
         protected static TruffleString uncached(JSDynamicObject object) {
             return JSObject.getJSClass(object).getBuiltinToStringTag(object);
         }
