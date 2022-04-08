@@ -77,12 +77,12 @@ public final class MockFileSystem implements FileSystem {
         if (path.isAbsolute()) {
             return path;
         }
-        return parsePath("/" + path.toString());
+        return path.toAbsolutePath();
     }
 
     @Override
     public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
-        Path root = parsePath("/");
+        Path root = Paths.get("/").toAbsolutePath().getRoot();
         Path real = root;
         for (int i = 0; i < path.getNameCount(); i++) {
             Path name = path.getName(i);
