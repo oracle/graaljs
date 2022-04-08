@@ -207,8 +207,8 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "fast path")
-        @Specialization(guards = "isJSFunction(thisFnObj)")
-        protected JSDynamicObject bindFunction(JSDynamicObject thisFnObj, Object thisArg, Object[] args) {
+        @Specialization
+        protected JSDynamicObject bindFunction(JSFunctionObject thisFnObj, Object thisArg, Object[] args) {
             JSDynamicObject proto = getPrototypeNode.execute(thisFnObj);
 
             JSDynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), thisFnObj, thisArg, args, proto,

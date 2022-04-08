@@ -82,6 +82,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.intl.JSLocale;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -196,7 +197,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "isJSLocale(localeObject)")
         public Object doLocale(JSDynamicObject localeObject) {
             String maximizedLocale = JSLocale.getInternalState(localeObject).maximize();
-            return JSFunction.construct(getRealm().getLocaleConstructor(), new Object[]{Strings.fromJavaString(maximizedLocale)});
+            return JSFunction.construct((JSFunctionObject) getRealm().getLocaleConstructor(), new Object[]{Strings.fromJavaString(maximizedLocale)});
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
@@ -214,7 +215,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "isJSLocale(localeObject)")
         public Object doLocale(JSDynamicObject localeObject) {
             String minimizedLocale = JSLocale.getInternalState(localeObject).minimize();
-            return JSFunction.construct(getRealm().getLocaleConstructor(), new Object[]{Strings.fromJavaString(minimizedLocale)});
+            return JSFunction.construct((JSFunctionObject) getRealm().getLocaleConstructor(), new Object[]{Strings.fromJavaString(minimizedLocale)});
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")

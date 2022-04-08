@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
@@ -94,7 +95,7 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
 
     @TruffleBoundary
     public static PromiseCapabilityRecord createDefault(JSRealm realm) {
-        JSDynamicObject constructor = realm.getPromiseConstructor();
+        JSFunctionObject constructor = (JSFunctionObject) realm.getPromiseConstructor();
         JSContext context = realm.getContext();
         assert JSFunction.isConstructor(constructor);
         PromiseCapabilityRecord promiseCapability = PromiseCapabilityRecord.create(Undefined.instance, Undefined.instance, Undefined.instance);

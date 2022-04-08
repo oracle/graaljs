@@ -225,6 +225,10 @@ public final class JSFunction extends JSNonProxy {
         return ((JSFunctionObject) obj).getFunctionData();
     }
 
+    public static JSFunctionData getFunctionData(JSFunctionObject obj) {
+        return obj.getFunctionData();
+    }
+
     private static Object getClassPrototypeField(JSDynamicObject obj) {
         assert isJSFunction(obj);
         return ((JSFunctionObject) obj).getClassPrototype();
@@ -240,10 +244,14 @@ public final class JSFunction extends JSNonProxy {
         return ((JSFunctionObject) obj).getRealm();
     }
 
+    public static JSRealm getRealm(JSFunctionObject obj) {
+        return obj.getRealm();
+    }
+
     /**
      * Version optimized for a single Realm.
      */
-    public static JSRealm getRealm(JSDynamicObject functionObj, JSContext context, Node node) {
+    public static JSRealm getRealm(JSFunctionObject functionObj, JSContext context, Node node) {
         assert isJSFunction(functionObj);
         JSRealm realm;
         if (context.isSingleRealm()) {
@@ -295,7 +303,7 @@ public final class JSFunction extends JSNonProxy {
         return getFunctionData(obj).getName();
     }
 
-    public static Object call(JSDynamicObject functionObject, Object thisObject, Object[] argumentValues) {
+    public static Object call(JSFunctionObject functionObject, Object thisObject, Object[] argumentValues) {
         assert JSFunction.isJSFunction(functionObject);
         assert thisObject != null;
         Object[] arguments = JSArguments.create(thisObject, functionObject, argumentValues);
@@ -305,17 +313,17 @@ public final class JSFunction extends JSNonProxy {
     public static Object call(Object[] jsArguments) {
         assert JSFunction.isJSFunction(JSArguments.getFunctionObject(jsArguments));
         assert JSArguments.getThisObject(jsArguments) != null;
-        return getCallTarget((JSDynamicObject) JSArguments.getFunctionObject(jsArguments)).call(jsArguments);
+        return getCallTarget((JSFunctionObject) JSArguments.getFunctionObject(jsArguments)).call(jsArguments);
     }
 
-    public static Object construct(JSDynamicObject functionObject, Object[] argumentValues) {
+    public static Object construct(JSFunctionObject functionObject, Object[] argumentValues) {
         assert isJSFunction(functionObject) && isConstructor(functionObject);
         Object[] arguments = JSArguments.create(CONSTRUCT, functionObject, argumentValues);
         return getConstructTarget(functionObject).call(arguments);
     }
 
     @TruffleBoundary
-    public static JSDynamicObject bind(JSRealm realm, JSDynamicObject thisFnObj, Object thisArg, Object[] boundArguments) {
+    public static JSDynamicObject bind(JSRealm realm, JSFunctionObject thisFnObj, Object thisArg, Object[] boundArguments) {
         assert JSFunction.isJSFunction(thisFnObj);
         JSContext context = realm.getContext();
         JSDynamicObject proto = JSObject.getPrototype(thisFnObj);
@@ -346,9 +354,8 @@ public final class JSFunction extends JSNonProxy {
         return boundFunction;
     }
 
-    public static JSDynamicObject boundFunctionCreate(JSContext context, JSDynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments, JSDynamicObject proto,
+    public static JSDynamicObject boundFunctionCreate(JSContext context, JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments, JSDynamicObject proto,
                     ConditionProfile isConstructorProfile, ConditionProfile isAsyncProfile, ConditionProfile setProtoProfile, Node node) {
-        assert JSFunction.isJSFunction(boundTargetFunction);
         CompilerAsserts.partialEvaluationConstant(context);
 
         JSFunctionData targetFunctionData = JSFunction.getFunctionData(boundTargetFunction);
