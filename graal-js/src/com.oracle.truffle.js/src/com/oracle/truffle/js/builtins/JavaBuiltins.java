@@ -341,9 +341,9 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             }
 
             final int typesLength;
-            final JSDynamicObject classOverrides;
+            final Object classOverrides;
             if (JSRuntime.isObject(arguments[arguments.length - 1])) {
-                classOverrides = (JSDynamicObject) arguments[arguments.length - 1];
+                classOverrides = arguments[arguments.length - 1];
                 typesLength = arguments.length - 1;
                 if (typesLength == 0) {
                     errorBranch.enter();
