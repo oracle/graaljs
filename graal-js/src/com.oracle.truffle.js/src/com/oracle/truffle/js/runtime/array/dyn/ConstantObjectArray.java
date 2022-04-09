@@ -225,7 +225,7 @@ public final class ConstantObjectArray extends AbstractConstantArray {
      */
     @Override
     public boolean isHolesType() {
-        return true;
+        return holes;
     }
 
     @Override

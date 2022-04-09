@@ -841,7 +841,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     protected static ArrayReadElementCacheNode makeArrayCacheNode(@SuppressWarnings("unused") JSDynamicObject target, ScriptArray array, ArrayReadElementCacheNode next) {
         if (array instanceof ConstantEmptyArray) {
             return new EmptyArrayReadElementCacheNode(array, next);
-        } else if (array instanceof ConstantObjectArray) {
+        } else if (array instanceof ConstantObjectArray && array.isHolesType()) {
             return new ConstantObjectArrayReadElementCacheNode(array, next);
         } else if (array instanceof LazyRegexResultArray) {
             return new LazyRegexResultArrayReadElementCacheNode(array, next);
