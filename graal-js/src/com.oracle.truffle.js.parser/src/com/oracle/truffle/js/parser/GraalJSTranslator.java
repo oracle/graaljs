@@ -1327,7 +1327,38 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     blockNode = factory.createExprBlock(scopeInit.toArray(EMPTY_NODE_ARRAY));
                 }
             } else {
-                blockNode = transformStatements(blockStatements, block.isTerminal(), block.isExpressionBlock() || block.isParameterBlock(), scopeInit);
+                // Move hoistable declaration to the front of the block
+                List<Statement> newBlockStatements = null;
+                for (Statement statement : blockStatements) {
+                    if (statement instanceof VarNode) {
+                        VarNode varNode = (VarNode) statement;
+                        if (varNode.isHoistableDeclaration()) {
+                            if (newBlockStatements == null) {
+                                newBlockStatements = new ArrayList<>();
+                            }
+                            newBlockStatements.add(statement);
+                        }
+                    }
+                }
+                if (newBlockStatements == null) {
+                    // no hoistable declarations
+                    newBlockStatements = blockStatements;
+                } else {
+                    // append other statements
+                    for (Statement statement : blockStatements) {
+                        if (statement instanceof VarNode) {
+                            VarNode varNode = (VarNode) statement;
+                            if (varNode.isHoistableDeclaration()) {
+                                if (annexBBlockToFunctionTransfer(varNode)) {
+                                    newBlockStatements.add(varNode.setFlag(VarNode.IS_ANNEXB_BLOCK_TO_FUNCTION_TRANSFER));
+                                } // else among declarations already
+                                continue;
+                            }
+                        }
+                        newBlockStatements.add(statement);
+                    }
+                }
+                blockNode = transformStatements(newBlockStatements, block.isTerminal(), block.isExpressionBlock() || block.isParameterBlock(), scopeInit);
             }
 
             result = blockEnv.wrapBlockScope(blockNode);
@@ -1340,6 +1371,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         ensureHasSourceSection(result, block);
         return result;
+    }
+
+    private boolean annexBBlockToFunctionTransfer(VarNode varNode) {
+        return context.isOptionAnnexB() && !environment.isStrictMode() && varNode.isFunctionDeclaration();
     }
 
     private boolean allowScopeOptimization() {
@@ -1902,19 +1937,25 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode createVarAssignNode(VarNode varNode, TruffleString varName) {
-        JavaScriptNode rhs = transform(varNode.getAssignmentSource());
-        JavaScriptNode assignment = findScopeVar(varName, false).createWriteNode(rhs);
+        JavaScriptNode assignment = null;
         if (varNode.isBlockScoped() && varNode.isFunctionDeclaration() && context.isOptionAnnexB()) {
             // B.3.3 Block-Level Function Declarations Web Legacy Compatibility Semantics
             FunctionNode fn = lc.getCurrentFunction();
-            if (!fn.isStrict() && !varName.equals(Strings.ARGUMENTS)) {
+            if (!fn.isStrict()) {
                 Symbol symbol = lc.getCurrentScope().getExistingSymbol(varName);
                 if (symbol.isHoistedBlockFunctionDeclaration()) {
-                    assert hasVarSymbol(fn.getVarDeclarationBlock().getScope(), varName) : varName;
-                    assignment = environment.findVar(varName, true, false, true, false, false).withRequired(false).createWriteNode(assignment);
-                    tagExpression(assignment, varNode);
+                    if (varNode.getFlag(VarNode.IS_ANNEXB_BLOCK_TO_FUNCTION_TRANSFER)) {
+                        assert hasVarSymbol(fn.getVarDeclarationBlock().getScope(), varName) : varName;
+                        JavaScriptNode blockScopeValue = findScopeVar(varName, false).createReadNode();
+                        assignment = environment.findVar(varName, true, false, true, false, false).withRequired(false).createWriteNode(blockScopeValue);
+                        tagExpression(assignment, varNode);
+                    }
                 }
             }
+        }
+        if (assignment == null) {
+            JavaScriptNode rhs = transform(varNode.getAssignmentSource());
+            assignment = findScopeVar(varName, false).createWriteNode(rhs);
         }
 
         // class declarations are not statements nor expressions
@@ -3378,6 +3419,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         int size = cases.size() + (switchNode.hasDefaultCase() ? 0 : 1);
         int[] jumptable = new int[size];
         int defaultpos = -1;
+        List<JavaScriptNode> declarationList = new ArrayList<>();
         List<JavaScriptNode> statementList = new ArrayList<>();
         List<JavaScriptNode> caseExprList = new ArrayList<>();
         int lastNonEmptyIndex = -1;
@@ -3393,6 +3435,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 List<Statement> statements = switchCase.getStatements();
                 for (int i = 0; i < statements.size(); i++) {
                     Statement statement = statements.get(i);
+                    if (statement instanceof VarNode) {
+                        VarNode varNode = (VarNode) statement;
+                        if (varNode.isHoistableDeclaration()) {
+                            declarationList.add(transform(statement));
+                            if (annexBBlockToFunctionTransfer(varNode)) {
+                                statement = varNode.setFlag(VarNode.IS_ANNEXB_BLOCK_TO_FUNCTION_TRANSFER);
+                            } else {
+                                continue;
+                            }
+                        }
+                    }
                     JavaScriptNode statementNode = transform(statement);
                     if (currentFunction().returnsLastStatementResult()) {
                         if (!statement.isCompletionValueNeverEmpty()) {
@@ -3413,7 +3466,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         // set default case position to the end
         jumptable[jumptable.length - 1] = defaultpos != -1 ? defaultpos : statementList.size();
-        return factory.createSwitch(caseExprList.toArray(EMPTY_NODE_ARRAY), jumptable, statementList.toArray(EMPTY_NODE_ARRAY));
+        return factory.createSwitch(declarationList.toArray(EMPTY_NODE_ARRAY), caseExprList.toArray(EMPTY_NODE_ARRAY), jumptable, statementList.toArray(EMPTY_NODE_ARRAY));
     }
 
     private JavaScriptNode createSwitchCaseExpr(boolean isSwitchTypeofString, CaseNode switchCase, JavaScriptNode readSwitchVarNode) {

@@ -1,5 +1,9 @@
 {
   "testFiles" : [ {
+    "filePath" : "annexB/language/function-code/block-decl-func-skip-arguments.js",
+    "status" : "FAIL",
+    "comment" : "Off spec test that even does not reflect web reality."
+  }, {
     "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-no-operation.js",
     "status" : "PASS",
     "statusOverrides" : {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,6 +71,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 @NodeInfo(shortName = "switch")
 public final class SwitchNode extends StatementNode implements ResumableNode.WithObjectState {
 
+    @Children private final JavaScriptNode[] declarations;
     @Children private final JavaScriptNode[] caseExpressions;
     @Children private final JavaScriptNode[] statements;
     /**
@@ -82,8 +83,9 @@ public final class SwitchNode extends StatementNode implements ResumableNode.Wit
     @CompilationFinal(dimensions = 1) private final ConditionProfile[] conditionProfiles;
     private final boolean ordered;
 
-    private SwitchNode(JavaScriptNode[] caseExpressions, int[] jumptable, JavaScriptNode[] statements) {
+    private SwitchNode(JavaScriptNode[] declarations, JavaScriptNode[] caseExpressions, int[] jumptable, JavaScriptNode[] statements) {
         assert caseExpressions.length == jumptable.length - 1;
+        this.declarations = declarations;
         this.caseExpressions = caseExpressions;
         this.statements = statements;
         this.jumptable = jumptable;
@@ -110,8 +112,8 @@ public final class SwitchNode extends StatementNode implements ResumableNode.Wit
         return a;
     }
 
-    public static SwitchNode create(JavaScriptNode[] caseExpressions, int[] jumptable, JavaScriptNode[] statements) {
-        return new SwitchNode(caseExpressions, jumptable, statements);
+    public static SwitchNode create(JavaScriptNode[] declarations, JavaScriptNode[] caseExpressions, int[] jumptable, JavaScriptNode[] statements) {
+        return new SwitchNode(declarations, caseExpressions, jumptable, statements);
     }
 
     @Override
@@ -163,7 +165,7 @@ public final class SwitchNode extends StatementNode implements ResumableNode.Wit
                     }
                 }
             }
-            SwitchNode materialized = SwitchNode.create(newCaseExpressions, jumptable, newStatements);
+            SwitchNode materialized = SwitchNode.create(cloneUninitialized(declarations, materializedTags), newCaseExpressions, jumptable, newStatements);
             transferSourceSectionAndTags(this, materialized);
             return materialized;
         } else {
@@ -188,10 +190,18 @@ public final class SwitchNode extends StatementNode implements ResumableNode.Wit
 
     @Override
     public Object execute(VirtualFrame frame) {
+        executeDeclarations(frame);
         if (ordered) {
             return executeOrdered(frame);
         } else {
             return executeDefault(frame);
+        }
+    }
+
+    @ExplodeLoop
+    private void executeDeclarations(VirtualFrame frame) {
+        for (int i = 0; i < declarations.length; i++) {
+            declarations[i].execute(frame);
         }
     }
 
@@ -216,6 +226,7 @@ public final class SwitchNode extends StatementNode implements ResumableNode.Wit
             caseIndex = 0;
             statementIndex = 0;
             resumptionResult = EMPTY;
+            executeDeclarations(frame);
         }
         if (caseIndex >= 0) {
             statementIndex = identifyTargetCase(frame, caseIndex, stateSlot);
@@ -304,7 +315,7 @@ public final class SwitchNode extends StatementNode implements ResumableNode.Wit
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(cloneUninitialized(caseExpressions, materializedTags), jumptable, cloneUninitialized(statements, materializedTags));
+        return create(cloneUninitialized(declarations, materializedTags), cloneUninitialized(caseExpressions, materializedTags), jumptable, cloneUninitialized(statements, materializedTags));
     }
 
     private static class SwitchResumptionRecord {

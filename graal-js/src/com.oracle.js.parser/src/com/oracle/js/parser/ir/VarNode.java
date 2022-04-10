@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,6 +80,13 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
 
     /** Flag synthetic destructuring var node */
     public static final int IS_DESTRUCTURING = 1 << 4;
+
+    /**
+     * Block-scope function declarations are hoisted into the front of the block and later (when the
+     * corresponding function declaration is evaluated at its original position) transferred into
+     * the function scope. This flag corresponds to this transfer.
+     */
+    public static final int IS_ANNEXB_BLOCK_TO_FUNCTION_TRANSFER = 1 << 5;
 
     /**
      * Constructor
