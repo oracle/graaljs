@@ -1100,11 +1100,18 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             long radixVal = 1;
             while (value != 0) {
                 long digit = value % 10;
+                value /= 10;
                 if (digit >= radix) {
-                    return Double.NaN;
+                    if (value == 0) { // first digit is invalid
+                        return Double.NaN;
+                    } else {
+                        // ignore the digits seen so far and try again
+                        result = 0;
+                        radixVal = 1;
+                        continue;
+                    }
                 }
                 result += digit * radixVal;
-                value /= 10;
                 radixVal *= radix;
             }
             if (negative) {
@@ -1121,12 +1128,19 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             double radixVal = 1;
             while (value != 0) {
                 double digit = (value % 10);
-                if (digit >= radix) {
-                    return Double.NaN;
-                }
-                result += digit * radixVal;
                 value -= digit;
                 value /= 10;
+                if (digit >= radix) {
+                    if (value == 0) { // first digit is invalid
+                        return Double.NaN;
+                    } else {
+                        // ignore the digits seen so far and try again
+                        result = 0;
+                        radixVal = 1;
+                        continue;
+                    }
+                }
+                result += digit * radixVal;
                 radixVal *= radix;
             }
             return negative ? -result : result;
