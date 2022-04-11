@@ -1056,7 +1056,7 @@ public final class TemporalUtil {
     public static JSDynamicObject toTemporalCalendar(JSContext ctx, Object temporalCalendarLikeParam) {
         Object temporalCalendarLike = temporalCalendarLikeParam;
         if (JSRuntime.isObject(temporalCalendarLike)) {
-            JSDynamicObject obj = (JSDynamicObject) temporalCalendarLike;
+            JSDynamicObject obj = TemporalUtil.toJSObject(temporalCalendarLike, null);
             if (temporalCalendarLike instanceof TemporalCalendar) {
                 return ((TemporalCalendar) temporalCalendarLike).getCalendar();
             }
@@ -1064,8 +1064,11 @@ public final class TemporalUtil {
                 return obj;
             }
             temporalCalendarLike = JSObject.get(obj, CALENDAR);
-            if (JSRuntime.isObject(temporalCalendarLike) && !JSObject.hasProperty((JSDynamicObject) temporalCalendarLike, CALENDAR)) {
-                return (JSDynamicObject) temporalCalendarLike;
+            if (JSRuntime.isObject(temporalCalendarLike)) {
+                JSDynamicObject tclObj = TemporalUtil.toJSObject(temporalCalendarLike, null);
+                if (!JSObject.hasProperty(tclObj, CALENDAR)) {
+                    return tclObj;
+                }
             }
         }
         TruffleString identifier = JSRuntime.toString(temporalCalendarLike);
@@ -1155,15 +1158,18 @@ public final class TemporalUtil {
     public static JSDynamicObject toTemporalTimeZone(JSContext ctx, Object temporalTimeZoneLikeParam) {
         Object temporalTimeZoneLike = temporalTimeZoneLikeParam;
         if (JSRuntime.isObject(temporalTimeZoneLike)) {
-            JSDynamicObject tzObj = (JSDynamicObject) temporalTimeZoneLike;
+            JSDynamicObject tzObj = TemporalUtil.toJSObject(temporalTimeZoneLike, null);
             if (isTemporalZonedDateTime(tzObj)) {
                 return ((JSTemporalZonedDateTimeObject) tzObj).getTimeZone();
             } else if (!JSObject.hasProperty(tzObj, TIME_ZONE)) {
                 return tzObj;
             }
             temporalTimeZoneLike = JSObject.get(tzObj, TIME_ZONE);
-            if (JSRuntime.isObject(temporalTimeZoneLike) && !JSObject.hasProperty((JSDynamicObject) temporalTimeZoneLike, TIME_ZONE)) {
-                return (JSDynamicObject) temporalTimeZoneLike;
+            if (JSRuntime.isObject(temporalTimeZoneLike)) {
+                tzObj = TemporalUtil.toJSObject(temporalTimeZoneLike, null);
+                if (!JSObject.hasProperty(tzObj, TIME_ZONE)) {
+                    return tzObj;
+                }
             }
         }
         TruffleString identifier = JSRuntime.toString(temporalTimeZoneLike);
@@ -1656,7 +1662,7 @@ public final class TemporalUtil {
         throw Errors.createTypeError("unknown property");
     }
 
-    public static JSDynamicObject calendarMergeFields(JSContext ctx, EnumerableOwnPropertyNamesNode namesNode, JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject additionalFields) {
+    public static JSDynamicObject calendarMergeFields(JSContext ctx, EnumerableOwnPropertyNamesNode namesNode, BranchProfile errorBranch, JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject additionalFields) {
         Object mergeFields = JSObject.getMethod(calendar, TemporalConstants.MERGE_FIELDS);
         if (mergeFields == Undefined.instance) {
             return defaultMergeFields(ctx, namesNode, fields, additionalFields);
@@ -1665,7 +1671,7 @@ public final class TemporalUtil {
         if (!JSRuntime.isObject(result)) {
             throw TemporalErrors.createTypeErrorObjectExpected();
         }
-        return (JSDynamicObject) result;
+        return TemporalUtil.toJSObject(result, errorBranch);
     }
 
     @TruffleBoundary
@@ -2030,6 +2036,18 @@ public final class TemporalUtil {
             return (JSDynamicObject) obj;
         } else {
             throw Errors.createTypeErrorNotAnObject(obj);
+        }
+    }
+
+    //TODO (GR-32375) for interop support, this needs to detect and convert foreign temporal values
+    public static JSDynamicObject toJSObject(Object item, BranchProfile errorBranch) {
+        if (item instanceof JSDynamicObject) {
+            return (JSDynamicObject) item;
+        } else {
+            if (errorBranch != null) {
+                errorBranch.enter();
+            }
+            throw Errors.createTypeError("Interop types not supported in Temporal");
         }
     }
 

@@ -393,7 +393,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 return JSOrdinary.createWithNullPrototype(getContext());
             }
             if (isObject(options)) {
-                return (JSDynamicObject) options;
+                return TemporalUtil.toJSObject(options, errorBranch);
             }
             errorBranch.enter();
             throw TemporalErrors.createTypeErrorOptions();
@@ -523,23 +523,24 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 errorBranch.enter();
                 throw Errors.createTypeError("Object expected");
             }
-            TemporalUtil.rejectTemporalCalendarType((JSDynamicObject) temporalDateLike, errorBranch);
-            Object calendarProperty = JSObject.get((JSDynamicObject) temporalDateLike, CALENDAR);
+            JSDynamicObject temporalDateLikeObject = TemporalUtil.toJSObject(temporalDateLike, errorBranch);
+            TemporalUtil.rejectTemporalCalendarType(temporalDateLikeObject, errorBranch);
+            Object calendarProperty = JSObject.get(temporalDateLikeObject, CALENDAR);
             if (calendarProperty != Undefined.instance) {
                 errorBranch.enter();
                 throw TemporalErrors.createTypeErrorUnexpectedCalendar();
             }
-            Object timeZoneProperty = JSObject.get((JSDynamicObject) temporalDateLike, TIME_ZONE);
+            Object timeZoneProperty = JSObject.get(temporalDateLikeObject, TIME_ZONE);
             if (timeZoneProperty != Undefined.instance) {
                 errorBranch.enter();
                 throw TemporalErrors.createTypeErrorUnexpectedTimeZone();
             }
             JSDynamicObject calendar = temporalDate.getCalendar();
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDMMCY);
-            JSDynamicObject partialDate = TemporalUtil.preparePartialTemporalFields(getContext(), (JSDynamicObject) temporalDateLike, fieldNames);
+            JSDynamicObject partialDate = TemporalUtil.preparePartialTemporalFields(getContext(), temporalDateLikeObject, fieldNames);
             JSDynamicObject options = getOptionsObject(optParam);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), temporalDate, fieldNames, TemporalUtil.listEmpty);
-            fields = TemporalUtil.calendarMergeFields(getContext(), nameNode, calendar, fields, partialDate);
+            fields = TemporalUtil.calendarMergeFields(getContext(), nameNode, errorBranch, calendar, fields, partialDate);
             fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.listEmpty);
             return dateFromFieldsNode.executeDynamicObject(calendar, fields, options);
         }
@@ -632,7 +633,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, null, false, isObjectNode, toNumber);
             JSDynamicObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, options, largestUnit);
-            JSTemporalDurationObject result = TemporalUtil.calendarDateUntil(temporalDate.getCalendar(), (JSDynamicObject) thisObj, other, untilOptions);
+            JSTemporalDurationObject result = TemporalUtil.calendarDateUntil(temporalDate.getCalendar(), temporalDate, other, untilOptions);
 
             if ((Unit.DAY != smallestUnit) || (roundingIncrement != 1)) {
                 JSTemporalDurationRecord result2 = roundDurationNode.execute(result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), 0, 0, 0,
@@ -800,7 +801,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             Object temporalTime;
             JSTemporalPlainDateTimeObject temporalDateTime;
             if (isObject(item)) {
-                JSDynamicObject itemObj = (JSDynamicObject) item;
+                JSDynamicObject itemObj = TemporalUtil.toJSObject(item, errorBranch);
                 Object timeZoneLike = JSObject.get(itemObj, TIME_ZONE);
                 if (timeZoneIsUndefined.profile(timeZoneLike == Undefined.instance)) {
                     timeZone = (JSTemporalTimeZoneObject) toTemporalTimeZone.executeDynamicObject(item);

@@ -56,6 +56,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
@@ -85,23 +86,23 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
         return ToTemporalDateNodeGen.create(context);
     }
 
-    public abstract JSDynamicObject executeDynamicObject(Object value, JSDynamicObject options);
+    public abstract JSTemporalPlainDateObject executeDynamicObject(Object value, JSDynamicObject options);
 
     @Specialization
-    public JSDynamicObject toTemporalDate(Object itemParam, JSDynamicObject optionsParam,
-                    @Cached("create()") IsObjectNode isObjectNode,
-                    @Cached("create()") JSToStringNode toStringNode,
-                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
-                    @Cached TemporalGetOptionNode getOptionNode,
-                    @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
-                    @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode,
-                    @Cached("create(ctx)") TemporalDateFromFieldsNode dateFromFieldsNode) {
+    public JSTemporalPlainDateObject toTemporalDate(Object itemParam, JSDynamicObject optionsParam,
+                                                    @Cached("create()") IsObjectNode isObjectNode,
+                                                    @Cached("create()") JSToStringNode toStringNode,
+                                                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
+                                                    @Cached TemporalGetOptionNode getOptionNode,
+                                                    @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
+                                                    @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode,
+                                                    @Cached("create(ctx)") TemporalDateFromFieldsNode dateFromFieldsNode) {
         assert optionsParam != null;
         JSDynamicObject options = (optionsParam == Undefined.instance) ? JSOrdinary.createWithNullPrototype(ctx) : optionsParam;
         if (isObjectProfile.profile(isObjectNode.executeBoolean(itemParam))) {
             JSDynamicObject item = (JSDynamicObject) itemParam;
             if (isPlainDateProfile.profile(JSTemporalPlainDate.isJSTemporalPlainDate(item))) {
-                return item;
+                return (JSTemporalPlainDateObject) item;
             } else if (isZonedDateTimeProfile.profile(JSTemporalZonedDateTime.isJSTemporalZonedDateTime(item))) {
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
                 JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, getRealm(), zdt.getNanoseconds());

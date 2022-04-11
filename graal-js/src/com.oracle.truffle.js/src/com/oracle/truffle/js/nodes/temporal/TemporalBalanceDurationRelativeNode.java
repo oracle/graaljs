@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
 
@@ -51,7 +50,6 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -62,7 +60,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalRelativeDateRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
@@ -74,7 +71,6 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
 public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBaseNode {
 
     protected final JSContext ctx;
-    @Child private PropertyGetNode getCalendarNode;
     @Child private JSFunctionCallNode callDateAddNode;
     @Child private GetMethodNode getMethodDateAddNode;
     @Child private JSFunctionCallNode callDateUntilNode;
@@ -113,9 +109,8 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
         JSDynamicObject oneYear = JSTemporalDuration.createTemporalDuration(ctx, sign, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         JSDynamicObject oneMonth = JSTemporalDuration.createTemporalDuration(ctx, 0, sign, 0, 0, 0, 0, 0, 0, 0, 0);
         JSDynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(ctx, 0, 0, sign, 0, 0, 0, 0, 0, 0, 0);
-        JSDynamicObject relativeTo = toTemporalDateNode.executeDynamicObject(relTo, Undefined.instance);
-        assert JSObject.hasProperty(relativeTo, CALENDAR);
-        JSDynamicObject calendar = getCalendar(relativeTo);
+        JSTemporalPlainDateObject relativeTo = toTemporalDateNode.executeDynamicObject(relTo, Undefined.instance);
+        JSDynamicObject calendar = relativeTo.getCalendar();
         if (unitIsYear.profile(largestUnit == TemporalUtil.Unit.YEAR)) {
             return getUnitYear(years, months, weeks, days, sign, oneYear, oneMonth, relativeTo, calendar);
         } else if (unitIsMonth.profile(largestUnit == TemporalUtil.Unit.MONTH)) {
@@ -211,14 +206,6 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
             oneWeekDays = moveResult.getDays();
         }
         return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
-    }
-
-    private JSDynamicObject getCalendar(JSDynamicObject obj) {
-        if (getCalendarNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.getCalendarNode = insert(PropertyGetNode.create(CALENDAR, ctx));
-        }
-        return TemporalUtil.toDynamicObject(getCalendarNode.getValue(obj));
     }
 
     protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options, Object dateAdd) {

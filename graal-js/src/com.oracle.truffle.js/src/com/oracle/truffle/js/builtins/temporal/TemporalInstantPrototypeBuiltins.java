@@ -418,7 +418,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 errorBranch.enter();
                 throw Errors.createTypeError("object expected");
             }
-            JSDynamicObject itemObj = (JSDynamicObject) item;
+            JSDynamicObject itemObj = TemporalUtil.toJSObject(item, errorBranch);
             Object calendarLike = JSObject.get(itemObj, TemporalConstants.CALENDAR);
             if (calendarLike == Undefined.instance) {
                 errorBranch.enter();
@@ -447,7 +447,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
             Object item = itemParam;
             if (isObject(item)) {
-                JSDynamicObject itemObj = (JSDynamicObject) item;
+                JSDynamicObject itemObj = TemporalUtil.toJSObject(item, errorBranch);
                 Object timeZoneProperty = JSObject.get(itemObj, TIME_ZONE);
                 if (timeZoneProperty != Undefined.instance) {
                     item = timeZoneProperty;

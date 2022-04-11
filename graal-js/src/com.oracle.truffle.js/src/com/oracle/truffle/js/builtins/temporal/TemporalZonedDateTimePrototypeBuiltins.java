@@ -531,7 +531,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 errorBranch.enter();
                 throw Errors.createTypeError("object expected");
             }
-            JSDynamicObject temporalZDTLike = (JSDynamicObject) temporalZonedDateTimeLike;
+            JSDynamicObject temporalZDTLike = TemporalUtil.toJSObject(temporalZonedDateTimeLike, errorBranch);
             TemporalUtil.rejectTemporalCalendarType(temporalZDTLike, errorBranch);
             Object calendarProperty = JSObject.get(temporalZDTLike, CALENDAR);
             if (calendarProperty != Undefined.instance) {
@@ -553,7 +553,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSDynamicObject timeZone = zonedDateTime.getTimeZone();
             Boundaries.listAdd(fieldNames, TIME_ZONE);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), zonedDateTime, fieldNames, TemporalUtil.listTimeZoneOffset);
-            fields = TemporalUtil.calendarMergeFields(getContext(), namesNode, calendar, fields, partialZonedDateTime);
+            fields = TemporalUtil.calendarMergeFields(getContext(), namesNode, errorBranch, calendar, fields, partialZonedDateTime);
             fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.listTimeZone);
             Object offsetString = JSObject.get(fields, OFFSET);
             JSTemporalDateTimeRecord dateTimeResult = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options, getOptionNode, dateFromFieldsNode);

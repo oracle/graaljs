@@ -118,7 +118,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             return Undefined.instance;
         }
         JSTemporalDateTimeRecord result;
-        Object timeZone = Undefined.instance;
+        JSDynamicObject timeZone = Undefined.instance;
         JSDynamicObject calendar;
         Object offset;
         TemporalUtil.OffsetBehaviour offsetBehaviour = TemporalUtil.OffsetBehaviour.OPTION;
@@ -140,9 +140,9 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             JSObjectUtil.putDataProperty(ctx, dateOptions, OVERFLOW, CONSTRAIN);
             result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, dateOptions, getOptionNode, dateFromFieldsNode);
             offset = getOffsetNode.getValue(valueObj);
-            timeZone = getTimeZoneNode.getValue(valueObj);
-            if (timeZone != Undefined.instance) {
-                timeZone = toTemporalTimeZone(timeZone);
+            Object timeZoneTemp = getTimeZoneNode.getValue(valueObj);
+            if (timeZoneTemp != Undefined.instance) {
+                timeZone = toTemporalTimeZone(timeZoneTemp);
             }
             if (offset == Undefined.instance) {
                 offsetBehaviour = TemporalUtil.OffsetBehaviour.WALL;
@@ -175,7 +175,6 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
         }
         assert timeZone != null;
         if (timeZoneAvailable.profile(timeZone != Undefined.instance)) {
-            JSDynamicObject timeZoneObj = TemporalUtil.toDynamicObject(timeZone);
             Object offsetNs = 0;
             if (offsetBehaviour == TemporalUtil.OffsetBehaviour.OPTION) {
                 offsetNs = TemporalUtil.parseTimeZoneOffsetString(toStringNode.executeString(offset));
@@ -184,9 +183,9 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             }
             BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, getRealm(),
                             result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
-                            result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNs, timeZoneObj, TemporalUtil.Disambiguation.COMPATIBLE, TemporalUtil.OffsetOption.REJECT,
+                            result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNs, timeZone, TemporalUtil.Disambiguation.COMPATIBLE, TemporalUtil.OffsetOption.REJECT,
                             matchBehaviour);
-            return JSTemporalZonedDateTime.create(ctx, getRealm(), epochNanoseconds, timeZoneObj, calendar);
+            return JSTemporalZonedDateTime.create(ctx, getRealm(), epochNanoseconds, timeZone, calendar);
         }
         return JSTemporalPlainDate.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar, errorBranch);
     }
