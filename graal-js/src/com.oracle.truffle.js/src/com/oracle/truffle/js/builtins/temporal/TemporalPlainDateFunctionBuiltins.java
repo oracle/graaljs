@@ -105,7 +105,7 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
                 JSTemporalPlainDateObject dtItem = (JSTemporalPlainDateObject) item;
                 toTemporalOverflow(options);
                 return JSTemporalPlainDate.create(getContext(),
-                                dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(), dtItem.getCalendar());
+                                dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(), dtItem.getCalendar(), errorBranch);
             }
             return toTemporalDate.executeDynamicObject(item, options);
         }

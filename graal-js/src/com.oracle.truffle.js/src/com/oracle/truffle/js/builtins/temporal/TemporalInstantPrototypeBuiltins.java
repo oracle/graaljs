@@ -73,6 +73,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.ToLimitedTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -87,6 +88,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
@@ -195,11 +197,11 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             switch (property) {
                 // roundTowardsZero is a no-op for BigIntegers
                 case epochSeconds:
-                    return ns.divide(BigInteger.valueOf(1_000_000_000L)).doubleValue();
+                    return ns.divide(TemporalUtil.BI_10_POW_9).doubleValue();
                 case epochMilliseconds:
-                    return ns.divide(BigInteger.valueOf(1_000_000L)).doubleValue();
+                    return ns.divide(TemporalUtil.BI_10_POW_6).doubleValue();
                 case epochMicroseconds:
-                    return new BigInt(ns.divide(BigInteger.valueOf(1_000L)));
+                    return new BigInt(ns.divide(TemporalUtil.BI_1000));
                 case epochNanoseconds:
                     return instant.getNanoseconds();
             }
@@ -222,9 +224,9 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         public DynamicObject add(Object thisObj, Object temporalDurationLike,
-                        @Cached("create()") JSToStringNode toString) {
+                        @Cached("create(getContext())") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
-            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listPluralYMWD, isObjectNode, toString);
+            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listPluralYMWD);
             BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
             return JSTemporalInstant.create(getContext(), ns);
@@ -239,9 +241,9 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         public DynamicObject subtract(Object thisObj, Object temporalDurationLike,
-                        @Cached("create()") JSToStringNode toString) {
+                        @Cached("create(getContext())") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
-            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listPluralYMWD, isObjectNode, toString);
+            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listPluralYMWD);
             BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(),
                             -duration.getMilliseconds(), -duration.getMicroseconds(), -duration.getNanoseconds());
             return JSTemporalInstant.create(getContext(), ns);
@@ -279,7 +281,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             BigInteger roundedNs = TemporalUtil.differenceInstant(one, two, roundingIncrement, smallestUnit, roundingMode);
             JSTemporalDurationRecord result = TemporalUtil.balanceDuration(getContext(), namesNode, 0, 0, 0, 0, 0, 0, roundedNs, largestUnit, Undefined.instance);
             return JSTemporalDuration.createTemporalDuration(getContext(), 0, 0, 0, 0, result.getHours(), result.getMinutes(), result.getSeconds(),
-                            result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
+                            result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), errorBranch);
         }
     }
 
@@ -405,7 +407,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        protected Object toZonedDateTime(Object thisObj, Object item,
+        protected DynamicObject toZonedDateTime(Object thisObj, Object item,
                         @Cached("create(getContext())") ToTemporalCalendarNode toTemporalCalendar,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
@@ -426,7 +428,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 throw TemporalErrors.createTypeErrorTemporalTimeZoneExpected();
             }
             DynamicObject timeZone = toTemporalTimeZone.executeDynamicObject(timeZoneLike);
-            return TemporalUtil.createTemporalZonedDateTime(getContext(), instant.getNanoseconds(), timeZone, calendar);
+            return JSTemporalZonedDateTime.create(getContext(), getRealm(), instant.getNanoseconds(), timeZone, calendar);
         }
     }
 
@@ -449,8 +451,8 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 }
             }
             DynamicObject timeZone = toTemporalTimeZone.executeDynamicObject(item);
-            DynamicObject calendar = TemporalUtil.getISO8601Calendar(getContext(), getRealm());
-            return TemporalUtil.createTemporalZonedDateTime(getContext(), instant.getNanoseconds(), timeZone, calendar);
+            DynamicObject calendar = TemporalUtil.getISO8601Calendar(getContext(), getRealm(), errorBranch);
+            return JSTemporalZonedDateTime.create(getContext(), getRealm(), instant.getNanoseconds(), timeZone, calendar);
         }
     }
 

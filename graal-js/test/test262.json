@@ -1861,6 +1861,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-02-23"
   }, {
+    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/toString/calendarname-always.js",
+    "status" : "FAIL",
+    "comment" : "new failures after spec update, should be fixed in future test262 version"
+  }, {
     "filePath" : "built-ins/Temporal/PlainTime/compare/argument-string-time-designator-required-for-disambiguation.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-02-23"
@@ -1908,6 +1912,10 @@
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/calendar-arguments.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/toString/calendarname-always.js",
+    "status" : "FAIL",
+    "comment" : "new failures after spec update, should be fixed in future test262 version"
   }, {
     "filePath" : "built-ins/Temporal/TimeZone/from/timezone-string-multiple-offsets.js",
     "status" : "FAIL",

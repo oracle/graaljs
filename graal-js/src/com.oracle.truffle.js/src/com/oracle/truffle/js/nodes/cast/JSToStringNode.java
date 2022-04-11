@@ -45,6 +45,7 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -143,8 +144,8 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isJSDynamicObject(value)", replaces = "doUndefined")
     protected TruffleString doJSObject(DynamicObject value,
-                    @Cached("createHintString()") JSToPrimitiveNode toPrimitiveHintStringNode,
-                    @Cached JSToStringNode toStringNode) {
+                    @Shared("toPrimitiveHintStringNode") @Cached("createHintString()") JSToPrimitiveNode toPrimitiveHintStringNode,
+                    @Shared("toStringNode") @Cached JSToStringNode toStringNode) {
         return (undefinedToEmpty && (value == Undefined.instance)) ? Strings.EMPTY_STRING : toStringNode.executeString(toPrimitiveHintStringNode.execute(value));
     }
 
@@ -160,8 +161,8 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isForeignObject(object)"})
     protected TruffleString doTruffleObject(Object object,
-                    @Cached("createHintString()") JSToPrimitiveNode toPrimitiveNode,
-                    @Cached JSToStringNode toStringNode) {
+                    @Shared("toPrimitiveHintStringNode") @Cached("createHintString()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared("toStringNode") @Cached JSToStringNode toStringNode) {
         return toStringNode.executeString(toPrimitiveNode.execute(object));
     }
 

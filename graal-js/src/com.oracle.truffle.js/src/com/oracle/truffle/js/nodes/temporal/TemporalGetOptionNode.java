@@ -83,7 +83,7 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
     @Specialization
     protected Object getOption(DynamicObject options, TruffleString property, OptionType types, List<?> values, Object fallback,
                     @Cached BranchProfile errorBranch,
-                    @Cached("createBinaryProfile()") ConditionProfile isFallbackProfile,
+                    @Cached ConditionProfile isFallbackProfile,
                     @Cached JSToBooleanNode toBooleanNode,
                     @Cached(uncached = "createEmptyToString()") JSToStringNode toStringNode,
                     @Cached(uncached = "createEmptyToNumber()") JSToNumberNode toNumberNode) {
@@ -108,6 +108,7 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
             // workaround as long as JSToStringNode cannot have an uncached version
             value = toNumberNode == null ? JSRuntime.toNumber(value) : toNumberNode.executeNumber(value);
             if (JSRuntime.isNaN(value)) {
+                errorBranch.enter();
                 throw TemporalErrors.createRangeErrorNumberIsNaN();
             }
         } else if (type.allowsString()) {

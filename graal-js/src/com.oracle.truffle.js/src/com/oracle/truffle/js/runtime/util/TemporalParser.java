@@ -68,13 +68,14 @@ public final class TemporalParser {
     private static final String patternTimeZoneNumericUTCOffset = "^([+\\-\\u2212])(\\d\\d):?((\\d\\d):?(?:(\\d\\d)(?:[\\.,]([\\d]*)?)?)?)?";
     private static final String patternDateSpecYearMonth = "^([+\\-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)";
     private static final String patternDateSpecMonthDay = "^(?:\\-\\-)?(\\d\\d)[\\-]?(\\d\\d)";
-    private static final String patternTimeZoneIANAName = "^([A-Za-z_]+(/[A-Za-z\\-_]+)*)";
+    private static final String patternTimeZoneIANANameComponent = "^([A-Za-z_]+(/[A-Za-z\\-_]+)*)";
 
     private final JSContext context;
 
     private static final TruffleString UC_T = Strings.constant("T");
     private static final TruffleString T = Strings.constant("t");
     private static final TruffleString U_CA_EQUALS = Strings.constant("u-ca=");
+    private static final TruffleString ETC_GMT = Strings.constant("Etc/GMT");
 
     private final TruffleString input;
     private TruffleString rest;
@@ -312,7 +313,28 @@ public final class TemporalParser {
     }
 
     private boolean parseTimeZoneIANAName() {
-        Matcher matcher = createMatch(patternTimeZoneIANAName, rest);
+        TruffleString ianaName = rest;
+
+        // Etc/GMT
+        if (Strings.startsWith(rest, ETC_GMT)) {
+            move(Strings.length(ETC_GMT));
+            if (Strings.charAt(rest, 0) == '+' || Strings.charAt(rest, 0) == '-') {
+                move(1);
+                try {
+                    int unpaddedHour = rest.parseIntUncached();
+                    if (0 <= unpaddedHour && unpaddedHour <= 23) {
+                        this.timeZoneIANAName = ianaName;
+                        return true;
+                    }
+                } catch (TruffleString.NumberFormatException e) {
+                    // parsingError, intentionally left blank
+                }
+            }
+        }
+
+        reset();
+        // TimeZoneIANANameTail
+        Matcher matcher = createMatch(patternTimeZoneIANANameComponent, rest);
         if (matcher.matches()) {
             this.timeZoneIANAName = group(rest, matcher, 1);
 

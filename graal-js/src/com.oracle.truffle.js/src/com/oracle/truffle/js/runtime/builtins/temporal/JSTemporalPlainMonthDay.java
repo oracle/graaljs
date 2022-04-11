@@ -43,19 +43,15 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
-
-import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltins;
-import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -64,11 +60,8 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
@@ -82,19 +75,21 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("PlainMonthDay.prototype");
     public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.PlainYearMonth");
 
-    public static DynamicObject create(JSContext context, int isoMonth, int isoDay, DynamicObject calendar, int referenceISOYear) {
+    public static JSTemporalPlainMonthDayObject create(JSContext context, int isoMonth, int isoDay, DynamicObject calendar, int referenceISOYear, BranchProfile errorBranch) {
         if (!TemporalUtil.validateISODate(referenceISOYear, isoMonth, isoDay)) {
+            errorBranch.enter();
             throw TemporalErrors.createRangeErrorMonthDayOutsideRange();
         }
         if (referenceISOYear < -271821 || 275760 < referenceISOYear) {
             // referenceISOYear is not checked in spec (but in polyfill); open bug listed in #1502
+            errorBranch.enter();
             throw TemporalErrors.createRangeErrorMonthDayOutsideRange();
         }
         JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalPlainMonthDayFactory();
         DynamicObject obj = factory.initProto(new JSTemporalPlainMonthDayObject(factory.getShape(realm), isoMonth,
                         isoDay, calendar, referenceISOYear), realm);
-        return context.trackAllocation(obj);
+        return (JSTemporalPlainMonthDayObject) context.trackAllocation(obj);
     }
 
     @Override
@@ -142,60 +137,13 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
     }
 
     @TruffleBoundary
-    public static DynamicObject toTemporalMonthDay(Object item, DynamicObject optParam, JSContext ctx, JSRealm realm) {
-        DynamicObject options = optParam;
-        if (optParam == Undefined.instance) {
-            options = JSOrdinary.createWithNullPrototype(ctx);
-        }
-        int referenceISOYear = 1972;
-        if (JSRuntime.isObject(item)) {
-            DynamicObject itemObj = (DynamicObject) item;
-            if (JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(itemObj)) {
-                return itemObj;
-            }
-            DynamicObject calendar = null;
-            boolean calendarAbsent = false;
-            if (JSTemporalPlainDate.isJSTemporalPlainDate(itemObj) || JSTemporalPlainDateTime.isJSTemporalPlainDateTime(itemObj) || JSTemporalPlainTime.isJSTemporalPlainTime(itemObj) ||
-                            JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(itemObj) || TemporalUtil.isTemporalZonedDateTime(itemObj)) {
-                assert itemObj instanceof TemporalCalendar; // basically, that's above line's check,
-                calendar = ((TemporalCalendar) itemObj).getCalendar();
-                calendarAbsent = false;
-            } else {
-                Object calendarObj = JSObject.get(itemObj, CALENDAR);
-                calendarAbsent = (calendarObj == Undefined.instance);
-                calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, realm, calendarObj);
-            }
-            List<TruffleString> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.listDMMCY);
-            DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.listEmpty);
-
-            Object month = JSObject.get(fields, MONTH);
-            Object monthCode = JSObject.get(fields, MONTH_CODE);
-            Object year = JSObject.get(fields, YEAR);
-            if (calendarAbsent && month != Undefined.instance && monthCode == Undefined.instance && year == Undefined.instance) {
-                TemporalUtil.createDataPropertyOrThrow(ctx, fields, YEAR, referenceISOYear);
-            }
-            return TemporalUtil.monthDayFromFields(calendar, fields, options);
-        }
-        TemporalUtil.toTemporalOverflow(options, TemporalGetOptionNode.getUncached());
-        TruffleString string = JSRuntime.toString(item);
-        JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalMonthDayString(string);
-        DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, realm, result.getCalendar());
-        if (result.getYear() == Integer.MIN_VALUE) {
-            return JSTemporalPlainMonthDay.create(ctx, result.getMonth(), result.getDay(), calendar, referenceISOYear);
-        }
-        DynamicObject result2 = JSTemporalPlainMonthDay.create(ctx, result.getMonth(), result.getDay(), calendar, referenceISOYear);
-        DynamicObject canonicalMonthDayOptions = JSOrdinary.createWithNullPrototype(ctx);
-        return TemporalUtil.monthDayFromFields(calendar, result2, canonicalMonthDayOptions);
-    }
-
-    @TruffleBoundary
     public static TruffleString temporalMonthDayToString(JSTemporalPlainMonthDayObject md, ShowCalendar showCalendar) {
         TruffleString monthString = Strings.format("%1$02d", md.getMonth());
         TruffleString dayString = Strings.format("%1$02d", md.getDay());
 
         TruffleString calendarID = JSRuntime.toString(md.getCalendar());
         TruffleString result = Strings.format("%s-%s", monthString, dayString);
-        if (!ISO8601.equals(calendarID)) {
+        if (showCalendar == ShowCalendar.ALWAYS || !ISO8601.equals(calendarID)) {
             TruffleString year = TemporalUtil.padISOYear(md.getYear());
             result = Strings.format("%s-%s", year, result);
         }

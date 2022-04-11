@@ -104,11 +104,11 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) itemObj;
                 JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, zdt.getNanoseconds());
                 JSTemporalPlainDateTimeObject plainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, zdt.getTimeZone(), instant, zdt.getCalendar());
-                return TemporalUtil.createTemporalTime(ctx, plainDateTime.getHour(), plainDateTime.getMinute(),
-                                plainDateTime.getSecond(), plainDateTime.getMillisecond(), plainDateTime.getMicrosecond(), plainDateTime.getNanosecond());
+                return JSTemporalPlainTime.create(ctx, plainDateTime.getHour(), plainDateTime.getMinute(),
+                                plainDateTime.getSecond(), plainDateTime.getMillisecond(), plainDateTime.getMicrosecond(), plainDateTime.getNanosecond(), errorBranch);
             } else if (isPlainDateTimeProfile.profile(JSTemporalPlainDateTime.isJSTemporalPlainDateTime(itemObj))) {
                 JSTemporalPlainDateTimeObject dt = (JSTemporalPlainDateTimeObject) itemObj;
-                return TemporalUtil.createTemporalTime(ctx, dt.getHour(), dt.getMinute(), dt.getSecond(), dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond());
+                return JSTemporalPlainTime.create(ctx, dt.getHour(), dt.getMinute(), dt.getSecond(), dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(), errorBranch);
             }
             DynamicObject calendar = getTemporalCalendarNode.executeDynamicObject(itemObj);
             if (!toStringNode.executeString(calendar).equals(TemporalConstants.ISO8601)) {
@@ -127,6 +127,6 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
             result2 = JSTemporalDurationRecord.create(result);
         }
         return JSTemporalPlainTime.create(ctx, dtoi(result2.getHours()), dtoi(result2.getMinutes()), dtoi(result2.getSeconds()), dtoi(result2.getMilliseconds()), dtoi(result2.getMicroseconds()),
-                        dtoi(result2.getNanoseconds()));
+                        dtoi(result2.getNanoseconds()), errorBranch);
     }
 }

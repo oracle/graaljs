@@ -45,8 +45,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.temporal.TemporalUnbalanceDurationRelativeNode;
+import com.oracle.truffle.js.nodes.temporal.ToRelativeTemporalObjectNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
@@ -97,16 +99,16 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        protected Object from(Object item,
-                        @Cached("create()") JSToStringNode toString) {
+        protected DynamicObject from(Object item,
+                        @Cached("create(getContext())") ToTemporalDurationNode toTemporalDurationNode) {
             if (isObject(item) && JSTemporalDuration.isJSTemporalDuration(item)) {
                 JSTemporalDurationObject duration = (JSTemporalDurationObject) item;
                 return JSTemporalDuration.createTemporalDuration(getContext(), duration.getYears(),
                                 duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
                                 duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
-                                duration.getMicroseconds(), duration.getNanoseconds());
+                                duration.getMicroseconds(), duration.getNanoseconds(), errorBranch);
             }
-            return JSTemporalDuration.toTemporalDuration(item, getContext(), isObjectNode, toString);
+            return toTemporalDurationNode.executeDynamicObject(item);
         }
     }
 
@@ -118,30 +120,26 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected int compare(Object oneParam, Object twoParam, Object optionsParam,
-                        @Cached("create()") JSToStringNode toString) {
-            JSTemporalDurationObject one = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(oneParam, getContext(), isObjectNode, toString);
-            JSTemporalDurationObject two = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObjectNode, toString);
+                        @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
+                        @Cached("create(getContext())") TemporalUnbalanceDurationRelativeNode unbalanceDurationRelativeNode,
+                        @Cached("create(getContext())") ToTemporalDurationNode toTemporalDurationNode) {
+            JSTemporalDurationObject one = (JSTemporalDurationObject) toTemporalDurationNode.executeDynamicObject(oneParam);
+            JSTemporalDurationObject two = (JSTemporalDurationObject) toTemporalDurationNode.executeDynamicObject(twoParam);
             DynamicObject options = getOptionsObject(optionsParam);
-            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), getRealm(), options);
+            DynamicObject relativeTo = toRelativeTemporalObjectNode.execute(options);
             double shift1 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
                             one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),
-                            one.getHours(), one.getMinutes(), one.getSeconds(),
-                            one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds());
+                            0, 0, 0, 0, 0, 0);
             double shift2 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
                             two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(),
-                            two.getHours(), two.getMinutes(), two.getSeconds(),
-                            two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds());
+                            0, 0, 0, 0, 0, 0);
             double days1;
             double days2;
             if (one.getYears() != 0 || two.getYears() != 0 ||
                             one.getMonths() != 0 || two.getMonths() != 0 ||
                             one.getWeeks() != 0 || two.getWeeks() != 0) {
-                JSTemporalDurationRecord balanceResult1 = TemporalUtil.unbalanceDurationRelative(
-                                getContext(), getRealm(), one.getYears(), one.getMonths(), one.getWeeks(),
-                                one.getDays(), Unit.DAY, relativeTo);
-                JSTemporalDurationRecord balanceResult2 = TemporalUtil.unbalanceDurationRelative(
-                                getContext(), getRealm(), two.getYears(), two.getMonths(), two.getWeeks(),
-                                two.getDays(), Unit.DAY, relativeTo);
+                JSTemporalDurationRecord balanceResult1 = unbalanceDurationRelativeNode.execute(one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(), Unit.DAY, relativeTo);
+                JSTemporalDurationRecord balanceResult2 = unbalanceDurationRelativeNode.execute(two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(), Unit.DAY, relativeTo);
                 days1 = balanceResult1.getDays();
                 days2 = balanceResult2.getDays();
             } else {

@@ -44,6 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -114,8 +115,8 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isJSObject(value)")
     protected Number doJSObject(DynamicObject value,
-                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
-                    @Cached JSToNumberNode toNumberNode) {
+                    @Shared("toPrimitiveHintNumberNode") @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared("toNumberNode") @Cached JSToNumberNode toNumberNode) {
         return toNumberNode.executeNumber(toPrimitiveNode.execute(value));
     }
 
@@ -131,8 +132,8 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isForeignObject(value)")
     protected Number doForeignObject(Object value,
-                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
-                    @Cached JSToNumberNode toNumberNode) {
+                    @Shared("toPrimitiveHintNumberNode") @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared("toNumberNode") @Cached JSToNumberNode toNumberNode) {
         return toNumberNode.executeNumber(toPrimitiveNode.execute(value));
     }
 

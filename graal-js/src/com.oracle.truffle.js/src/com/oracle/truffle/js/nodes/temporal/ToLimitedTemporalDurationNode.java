@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,71 +40,65 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalCalendar;
-import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
+import java.util.List;
+
 /**
- * Implementation of GetTemporalCalendarWithISODefault() operation.
+ * Implementation of ToLimitedTemporalDuration() operation.
  */
-public abstract class GetTemporalCalendarWithISODefaultNode extends JavaScriptBaseNode {
+public abstract class ToLimitedTemporalDurationNode extends JavaScriptBaseNode {
 
-    private final ConditionProfile isCalendarProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isNullishProfile = ConditionProfile.createBinaryProfile();
+    protected final JSContext ctx;
+    private final ConditionProfile isObjectProfile = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile hasDisallowedFields = ConditionProfile.createBinaryProfile();
+    private final BranchProfile errorBranch = BranchProfile.create();
 
-    private final JSContext ctx;
-    @Child protected PropertyGetNode getCalendarNode;
-    @Child protected ToTemporalCalendarNode toTemporalCalendarNode;
-
-    protected GetTemporalCalendarWithISODefaultNode(JSContext context) {
+    protected ToLimitedTemporalDurationNode(JSContext context) {
         this.ctx = context;
     }
 
-    public static GetTemporalCalendarWithISODefaultNode create(JSContext context) {
-        return GetTemporalCalendarWithISODefaultNodeGen.create(context);
+    public static ToLimitedTemporalDurationNode create(JSContext context) {
+        return ToLimitedTemporalDurationNodeGen.create(context);
     }
 
-    public abstract DynamicObject executeDynamicObject(Object temporalTimeZoneLike);
+    public abstract JSTemporalDurationRecord executeDynamicObject(Object temporalDurationLike, List<TruffleString> disallowedFields);
 
     @Specialization
-    protected DynamicObject getTemporalCalendarWithISODefault(Object item,
-                    @Cached BranchProfile errorBranch) {
-        if (isCalendarProfile.profile(item instanceof TemporalCalendar)) {
-            return ((TemporalCalendar) item).getCalendar();
+    protected JSTemporalDurationRecord toLimitedTemporalDuration(Object temporalDurationLike, List<TruffleString> disallowedFields,
+                    @Cached("create()") IsObjectNode isObjectNode,
+                    @Cached("create()") JSToStringNode toStringNode) {
+        JSTemporalDurationRecord d;
+        if (isObjectProfile.profile(!isObjectNode.executeBoolean(temporalDurationLike))) {
+            TruffleString str = toStringNode.executeString(temporalDurationLike);
+            d = JSTemporalDuration.parseTemporalDurationString(str);
         } else {
-            Object calendar = getCalendar((DynamicObject) item);
-            assert calendar != null;
-            if (isNullishProfile.profile(calendar == Undefined.instance)) {
-                return TemporalUtil.getISO8601Calendar(ctx, getRealm(), errorBranch);
-            } else {
-                return toTemporalCalendar(calendar);
+            d = JSTemporalDuration.toTemporalDurationRecord((DynamicObject) temporalDurationLike);
+        }
+
+        if (hasDisallowedFields.profile(disallowedFields != TemporalUtil.listEmpty)) {
+            for (TemporalUtil.UnitPlural unit : TemporalUtil.DURATION_PROPERTIES) {
+                double value = TemporalUtil.getPropertyFromRecord(d, unit);
+                if (value > 0 && Boundaries.listContains(disallowedFields, unit.toTruffleString())) {
+                    errorBranch.enter();
+                    throw TemporalErrors.createRangeErrorDisallowedField(unit.toTruffleString());
+                }
             }
         }
-    }
-
-    private DynamicObject toTemporalCalendar(Object obj) {
-        if (toTemporalCalendarNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toTemporalCalendarNode = insert(ToTemporalCalendarNode.create(ctx));
-        }
-        return toTemporalCalendarNode.executeDynamicObject(obj);
-    }
-
-    private Object getCalendar(DynamicObject obj) {
-        if (getCalendarNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            getCalendarNode = insert(PropertyGetNode.create(TemporalConstants.CALENDAR, false, ctx));
-        }
-        return getCalendarNode.getValue(obj);
+        return d;
     }
 }

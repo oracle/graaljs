@@ -58,6 +58,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins;
@@ -143,18 +144,34 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         return obj instanceof JSTemporalPlainDateObject;
     }
 
-    public static DynamicObject create(JSContext context, int year, int month, int day, DynamicObject calendar) {
+    public static JSTemporalPlainDateObject create(JSContext context, int year, int month, int day, DynamicObject calendar, BranchProfile errorBranch) {
+        if (!TemporalUtil.validateISODate(year, month, day)) {
+            errorBranch.enter();
+            throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
+        }
+        if (!TemporalUtil.isoDateTimeWithinLimits(year, month, day, 12, 0, 0, 0, 0, 0)) {
+            errorBranch.enter();
+            throw TemporalErrors.createRangeErrorDateOutsideRange();
+        }
+        return createIntl(context, year, month, day, calendar);
+    }
+
+    public static JSTemporalPlainDateObject create(JSContext context, int year, int month, int day, DynamicObject calendar) {
         if (!TemporalUtil.validateISODate(year, month, day)) {
             throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
         }
         if (!TemporalUtil.isoDateTimeWithinLimits(year, month, day, 12, 0, 0, 0, 0, 0)) {
             throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
+        return createIntl(context, year, month, day, calendar);
+    }
+
+    private static JSTemporalPlainDateObject createIntl(JSContext context, int year, int month, int day, DynamicObject calendar) {
         JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalPlainDateFactory();
         DynamicObject object = factory.initProto(new JSTemporalPlainDateObject(factory.getShape(realm),
                         year, month, day, calendar), realm);
-        return context.trackAllocation(object);
+        return (JSTemporalPlainDateObject) context.trackAllocation(object);
     }
 
     // 3.5.5

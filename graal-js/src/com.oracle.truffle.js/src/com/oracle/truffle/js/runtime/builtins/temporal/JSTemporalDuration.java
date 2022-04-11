@@ -63,13 +63,12 @@ import java.util.regex.Pattern;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltins;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -101,11 +100,26 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     public static JSTemporalDurationObject createTemporalDuration(JSContext context, double years, double months, double weeks, double days, double hours,
-                    double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
-        if (!TemporalUtil.validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
+                    double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds, BranchProfile errorBranch) {
+        if (!TemporalUtil.isValidDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
                         nanoseconds)) {
-            throw Errors.createRangeError("Given duration outside range.");
+            errorBranch.enter();
+            throw TemporalErrors.createTypeErrorDurationOutsideRange();
         }
+        return createIntl(context, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+    }
+
+    public static JSTemporalDurationObject createTemporalDuration(JSContext context, double years, double months, double weeks, double days, double hours,
+                    double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
+        if (!TemporalUtil.isValidDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
+                        nanoseconds)) {
+            throw TemporalErrors.createTypeErrorDurationOutsideRange();
+        }
+        return createIntl(context, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+    }
+
+    private static JSTemporalDurationObject createIntl(JSContext context, double years, double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds,
+                    double microseconds, double nanoseconds) {
         JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalDurationFactory();
         JSTemporalDurationObject obj = factory.initProto(new JSTemporalDurationObject(factory.getShape(realm),
@@ -173,22 +187,6 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     // region Abstract methods
-    // 7.2.1
-    public static DynamicObject toTemporalDuration(Object item, JSContext ctx, IsObjectNode isObject, JSToStringNode toString) {
-        JSTemporalDurationRecord result;
-        if (isObject.executeBoolean(item)) {
-            if (isJSTemporalDuration(item)) {
-                return (DynamicObject) item;
-            }
-            result = toTemporalDurationRecord((DynamicObject) item);
-        } else {
-            TruffleString string = toString.executeString(item);
-            result = parseTemporalDurationString(string);
-        }
-        return createTemporalDuration(ctx, result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(),
-                        result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
-    }
-
     @TruffleBoundary
     public static JSTemporalDurationRecord parseTemporalDurationString(TruffleString string) {
         long yearsMV = 0;
@@ -268,13 +266,13 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 assert !Strings.contains(fSeconds, '.'); // substring(1) handled above
                 TruffleString fSecondsDigits = fSeconds;
                 int fSecondsScale = Strings.length(fSecondsDigits);
-                millisecondsMV = TemporalUtil.bd_1000.multiply(BigDecimal.valueOf(TemporalUtil.toIntegerOrInfinity(fSecondsDigits).longValue())).divide(
-                                TemporalUtil.bd_10.pow(fSecondsScale));
+                millisecondsMV = TemporalUtil.BD_1000.multiply(BigDecimal.valueOf(TemporalUtil.toIntegerOrInfinity(fSecondsDigits).longValue())).divide(
+                                TemporalUtil.BD_10.pow(fSecondsScale));
             } else {
-                millisecondsMV = new BigDecimal(secondsMV).remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.bd_1000, TemporalUtil.mc_20_floor);
+                millisecondsMV = new BigDecimal(secondsMV).remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.BD_1000, TemporalUtil.mc_20_floor);
             }
-            microsecondsMV = millisecondsMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.bd_1000);
-            nanosecondsMV = microsecondsMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.bd_1000);
+            microsecondsMV = millisecondsMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.BD_1000);
+            nanosecondsMV = microsecondsMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.BD_1000);
 
             int factor = (sign.equals(Strings.SYMBOL_MINUS) || sign.equals(Strings.UNICODE_MINUS_SIGN)) ? -1 : 1;
 
@@ -395,7 +393,10 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         if (!any) {
             throw Errors.createTypeError("Given duration like object has no duration properties.");
         }
-        return JSTemporalDurationRecord.createWeeks(year, month, week, day, hour, minute, second, millis, micros, nanos);
+        if (!TemporalUtil.isValidDuration(year, month, week, day, hour, minute, second, millis, micros, nanos)) {
+            throw TemporalErrors.createTypeErrorDurationOutsideRange();
+        }
+        return TemporalUtil.createDurationRecord(year, month, week, day, hour, minute, second, millis, micros, nanos);
     }
 
     @TruffleBoundary
@@ -423,15 +424,15 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     @TruffleBoundary
     private static TruffleString temporalDurationToStringIntl(BigInteger yearsP, BigInteger monthsP, BigInteger weeksP, BigInteger daysP, BigInteger hoursP, BigInteger minutesP, BigInteger secondsP,
                     BigInteger millisecondsP, BigInteger microsecondsP, BigInteger nanosecondsP, Object precision, int sign, boolean condition) {
-        BigInteger[] res = nanosecondsP.divideAndRemainder(TemporalUtil.bi_1000);
+        BigInteger[] res = nanosecondsP.divideAndRemainder(TemporalUtil.BI_1000);
         BigInteger microseconds = microsecondsP.add(res[0]);
         BigInteger nanoseconds = res[1];
 
-        res = microseconds.divideAndRemainder(TemporalUtil.bi_1000);
+        res = microseconds.divideAndRemainder(TemporalUtil.BI_1000);
         BigInteger milliseconds = millisecondsP.add(res[0]);
         microseconds = res[1];
 
-        res = milliseconds.divideAndRemainder(TemporalUtil.bi_1000);
+        res = milliseconds.divideAndRemainder(TemporalUtil.BI_1000);
         BigInteger seconds = secondsP.add(res[0]);
         milliseconds = res[1];
 
