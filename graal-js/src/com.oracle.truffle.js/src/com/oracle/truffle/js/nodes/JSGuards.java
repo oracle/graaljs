@@ -49,6 +49,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.JSAbstractArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
@@ -473,7 +474,7 @@ public final class JSGuards {
     }
 
     public static boolean isArgumentsDisconnected(JSArgumentsObject argumentsArray) {
-        return JSArgumentsArray.hasDisconnectedIndices(argumentsArray);
+        return JSAbstractArgumentsArray.hasDisconnectedIndices(argumentsArray);
     }
 
     public static Class<? extends Number> getJavaNumberClass(Object value) {

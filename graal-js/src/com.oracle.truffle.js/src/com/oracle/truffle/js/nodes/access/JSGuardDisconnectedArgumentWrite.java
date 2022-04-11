@@ -55,6 +55,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
+import com.oracle.truffle.js.runtime.builtins.JSAbstractArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 
@@ -97,8 +98,8 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
     public Object doObject(JSArgumentsObject argumentsArray, Object value,
                     @Cached("createBinaryProfile()") @Shared("unconnected") ConditionProfile unconnected) {
         assert JSArgumentsArray.isJSArgumentsObject(argumentsArray);
-        if (unconnected.profile(argumentIndex >= JSArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
-            JSArgumentsArray.disconnectIndex(argumentsArray, argumentIndex, value);
+        if (unconnected.profile(argumentIndex >= JSAbstractArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
+            JSAbstractArgumentsArray.disconnectIndex(argumentsArray, argumentIndex, value);
         } else {
             writeArgumentsElementNode.executeWithTargetAndIndexAndValue(argumentsArray, argumentIndex, value);
         }
@@ -110,10 +111,10 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
                     @Cached("createBinaryProfile()") ConditionProfile wasDisconnected,
                     @Cached("createBinaryProfile()") @Shared("unconnected") ConditionProfile unconnected) {
         assert JSArgumentsArray.isJSArgumentsObject(argumentsArray);
-        if (wasDisconnected.profile(JSArgumentsArray.wasIndexDisconnected(argumentsArray, argumentIndex))) {
-            JSArgumentsArray.setDisconnectedIndexValue(argumentsArray, argumentIndex, value);
-        } else if (unconnected.profile(argumentIndex >= JSArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
-            JSArgumentsArray.disconnectIndex(argumentsArray, argumentIndex, value);
+        if (wasDisconnected.profile(JSAbstractArgumentsArray.wasIndexDisconnected(argumentsArray, argumentIndex))) {
+            JSAbstractArgumentsArray.setDisconnectedIndexValue(argumentsArray, argumentIndex, value);
+        } else if (unconnected.profile(argumentIndex >= JSAbstractArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
+            JSAbstractArgumentsArray.disconnectIndex(argumentsArray, argumentIndex, value);
         } else {
             writeArgumentsElementNode.executeWithTargetAndIndexAndValue(argumentsArray, argumentIndex, value);
         }
