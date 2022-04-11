@@ -70,13 +70,13 @@ public class GlobalBuiltinTest extends JSTest {
         assertEquals(-9, testHelper.run("parseInt(-11,8)"));
         assertEquals(9, testHelper.run("parseInt(11,8)"));
         assertEquals(15, testHelper.run("parseInt(17,8)"));
-        assertEquals(Double.NaN, testHelper.run("parseInt(18,8)"));
+        assertEquals(Double.NaN, testHelper.run("parseInt(918,8)"));
 
         // radix conversion, double input
         assertEquals(-9, testHelper.run("parseInt(-11.1415,8)"));
         assertEquals(9, testHelper.run("parseInt(11.1415,8)"));
         assertEquals(15, testHelper.run("parseInt(17.777,8)"));
-        assertEquals(Double.NaN, testHelper.run("parseInt(18.777,8)"));
+        assertEquals(Double.NaN, testHelper.run("parseInt(918.777,8)"));
 
         // hex start
         assertEquals(255, testHelper.run("parseInt('0xFF')"));
