@@ -42,10 +42,8 @@ package com.oracle.truffle.js.builtins.commonjs;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.IntStream;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
@@ -56,6 +54,7 @@ import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
@@ -65,7 +64,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-final class CommonJSResolution {
+public final class CommonJSResolution {
 
     public static final String NODE_MODULES = "node_modules";
     public static final TruffleString PACKAGE_JSON = Strings.constant("package.json");
@@ -73,60 +72,11 @@ final class CommonJSResolution {
     public static final TruffleString INDEX_JSON = Strings.constant("index.json");
     public static final TruffleString INDEX_NODE = Strings.constant("index.node");
 
-    /** Known node core modules. Array must be sorted! */
-    public static final TruffleString[] CORE_MODULES = new TruffleString[]{
-                    Strings.constant("assert"),
-                    Strings.constant("async_hooks"),
-                    Strings.constant("buffer"),
-                    Strings.constant("child_process"),
-                    Strings.constant("cluster"),
-                    Strings.constant("console"),
-                    Strings.constant("constants"),
-                    Strings.constant("crypto"),
-                    Strings.constant("dgram"),
-                    Strings.constant("diagnostics_channel"),
-                    Strings.constant("dns"),
-                    Strings.constant("domain"),
-                    Strings.constant("events"),
-                    Strings.constant("fs"),
-                    Strings.constant("http"),
-                    Strings.constant("http2"),
-                    Strings.constant("https"),
-                    Strings.constant("inspector"),
-                    Strings.constant("module"),
-                    Strings.constant("net"),
-                    Strings.constant("os"),
-                    Strings.constant("path"),
-                    Strings.constant("perf_hooks"),
-                    Strings.constant("process"),
-                    Strings.constant("punycode"),
-                    Strings.constant("querystring"),
-                    Strings.constant("readline"),
-                    Strings.constant("repl"),
-                    Strings.constant("stream"),
-                    Strings.constant("string_decoder"),
-                    Strings.constant("sys"),
-                    Strings.constant("timers"),
-                    Strings.constant("tls"),
-                    Strings.constant("trace_events"),
-                    Strings.constant("tty"),
-                    Strings.constant("url"),
-                    Strings.constant("util"),
-                    Strings.constant("v8"),
-                    Strings.constant("vm"),
-                    Strings.constant("wasi"),
-                    Strings.constant("worker_threads"),
-                    Strings.constant("zlib")};
-
-    static {
-        assert IntStream.range(0, CORE_MODULES.length - 1).allMatch(i -> Strings.compareTo(CORE_MODULES[i], CORE_MODULES[i + 1]) <= 0);
-    }
-
     private CommonJSResolution() {
     }
 
-    static boolean isCoreModule(TruffleString moduleIdentifier) {
-        return Arrays.binarySearch(CORE_MODULES, moduleIdentifier, Strings::compareTo) >= 0;
+    public static boolean hasCoreModuleReplacement(JSContext context, TruffleString moduleIdentifier) {
+        return context.getContextOptions().getCommonJSRequireBuiltins().containsKey(Strings.toJavaString(moduleIdentifier));
     }
 
     static String getCurrentFileNameFromStack() {

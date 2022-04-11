@@ -163,8 +163,6 @@ Map<String, String> options = new HashMap<>();
 options.put("js.commonjs-require", "true");
 // (optional) folder where the NPM modules to be loaded are located.
 options.put("js.commonjs-require-cwd", "/path/to/root/folder");
-// (optional) initialization script to pre-define globals.
-options.put("js.commonjs-global-properties", "./globals.js");
 // (optional) Node.js built-in replacements as a comma separated list.
 options.put("js.commonjs-core-modules-replacements",
             "buffer:buffer/," +
@@ -181,7 +179,7 @@ Value module = cx.eval("js", "require('some-module');");
 
 The `"js.commonjs-require-cwd"` option can be used to specify the main folder where NPM packages have been installed.
 As an example, this can be the folder where the `npm install` command was executed, or the folder containing your main `node_modules` folder.
-Any NPM module will be resolved relative to that folder, including the `"js.commonjs-global-properties"` file and any built-in replacement specified using `"js.commonjs-core-modules-replacements"`.
+Any NPM module will be resolved relative to that folder, including any built-in replacement specified using `"js.commonjs-core-modules-replacements"`.
 
 ##### Differences with Node.js built-in `require()` function
 
@@ -213,17 +211,12 @@ As the code suggests, the option instructs the GraalVM JavaScript runtime to loa
 
 An NPM module or a JavaScript application might expect certain global properties to be defined in the global scope.
 For example, applications or modules might expect the `Buffer` global symbol to be defined in the JavaScript global object.
-The option `js.commonjs-global-properties` can be used to pre-initialize such global symbols using the `Context` API.
-The option can be used in the following way:
-```java
-options.put("js.commonjs-global-properties", "./globals.js");
-```
-Once specified, the file `globals.js` will be loaded at context creation time. That is, before any JavaScript source execution.
-An example `globals.js` file might perform the following initialization steps:
+To this end, the application user code can use `globalThis` to patch the application's global scope:
 ```java
 // define an empty object called 'process'
-globalThis.process = {}
+globalThis.process = {};
 // define the 'Buffer' global symbol
 globalThis.Buffer = require('some-buffer-implementation').Buffer;
+// import another module that might use 'Buffer'
+require('another-module');
 ```
-The file will be executed at context creation time, and `Buffer` will be available as a global symbol in all new `Context` instances.

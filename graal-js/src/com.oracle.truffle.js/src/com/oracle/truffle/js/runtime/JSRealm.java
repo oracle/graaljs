@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime;
 
 import static com.oracle.truffle.api.CompilerDirectives.SLOWPATH_PROBABILITY;
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
 
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -318,7 +317,6 @@ public class JSRealm {
     private Object reflectApplyFunctionObject;
     private Object reflectConstructFunctionObject;
     private Object commonJSRequireFunctionObject;
-    private Map<String, Object> commonJSPreLoadedBuiltins;
     private Object jsonParseFunctionObject;
 
     private final JSFunctionObject arrayBufferConstructor;
@@ -1814,27 +1812,6 @@ public class JSRealm {
             JSDynamicObject exportsGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.globalExportsGetter.getName());
             JSObject.defineOwnProperty(getGlobalObject(), Strings.EXPORTS_PROPERTY_NAME, PropertyDescriptor.createAccessor(exportsGetter, Undefined.instance, false, false));
             this.commonJSRequireFunctionObject = requireFunction;
-            // Load an (optional) bootstrap module. Can be used to define global properties (e.g.,
-            // Node.js builtin mock-ups).
-            String commonJSRequireGlobals = getContext().getContextOptions().getCommonJSRequireGlobals();
-            if (commonJSRequireGlobals != null && !commonJSRequireGlobals.isEmpty()) {
-                // `require()` the module. Result is discarded and exceptions are propagated.
-                JSFunction.call(JSArguments.create(commonJSRequireFunctionObject, commonJSRequireFunctionObject, Strings.fromJavaString(commonJSRequireGlobals)));
-            }
-            // Configure an (optional) mapping from reserved module names (e.g., 'buffer') to
-            // arbitrary Npm modules. Can be used to provide user-specific implementations of the JS
-            // builtins.
-            Map<String, String> commonJSRequireBuiltins = getContext().getContextOptions().getCommonJSRequireBuiltins();
-            this.commonJSPreLoadedBuiltins = new HashMap<>();
-            for (Map.Entry<String, String> entry : commonJSRequireBuiltins.entrySet()) {
-                String builtinModule = entry.getValue();
-                // ES Modules are handled by the default module loader if used.
-                if (builtinModule.endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
-                    continue;
-                }
-                Object loadedModule = JSFunction.call(JSArguments.create(commonJSRequireFunctionObject, commonJSRequireFunctionObject, Strings.fromJavaString(builtinModule)));
-                this.commonJSPreLoadedBuiltins.put(entry.getKey(), loadedModule);
-            }
         }
     }
 

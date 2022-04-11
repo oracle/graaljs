@@ -42,7 +42,7 @@ package com.oracle.truffle.js.builtins.commonjs;
 
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSRequireBuiltin.log;
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.getNodeModulesPaths;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.isCoreModule;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.hasCoreModuleReplacement;
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.joinPaths;
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.loadAsFile;
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.loadIndex;
@@ -110,11 +110,15 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
     public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest) {
         TruffleString specifier = moduleRequest.getSpecifier();
         log("IMPORT resolve ", specifier);
-        if (isCoreModule(specifier)) {
-            return loadCoreModule(referencingModule, moduleRequest);
+        if (hasCoreModuleReplacement(realm.getContext(), specifier)) {
+            return loadCoreModuleReplacement(referencingModule, moduleRequest);
         }
         try {
             TruffleFile file = resolveURL(referencingModule, specifier);
+            if (file == null) {
+                // Could not load as ESM. Try loading as Commonjs default.
+                return tryLoadingAsCommonjsModule(moduleRequest.getSpecifier());
+            }
             return loadModuleFromUrl(referencingModule, moduleRequest, file, Strings.fromJavaString(file.getPath()));
         } catch (IOException e) {
             log("IMPORT resolve ", specifier, " FAILED ", e.getMessage());
@@ -122,7 +126,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         }
     }
 
-    private JSModuleRecord loadCoreModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest) {
+    private JSModuleRecord loadCoreModuleReplacement(ScriptOrModule referencingModule, ModuleRequest moduleRequest) {
         TruffleString specifier = moduleRequest.getSpecifier();
         log("IMPORT resolve built-in ", specifier);
         JSModuleRecord existingModule = moduleMap.get(specifier);
@@ -155,29 +159,42 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             }
         } else {
             // Else, try loading as commonjs built-in module replacement
-            JSFunctionObject require = (JSFunctionObject) realm.getCommonJSRequireFunctionObject();
-            // Any exception thrown during module loading will be propagated
-            Object maybeModule = JSFunction.call(JSArguments.create(Undefined.instance, require, specifier));
-            if (maybeModule == Undefined.instance || !JSDynamicObject.isJSDynamicObject(maybeModule)) {
-                throw fail(Strings.fromJavaString("Failed to load built-in ES module: " + specifier));
-            }
-            JSDynamicObject module = (JSDynamicObject) maybeModule;
-            // Wrap any exported symbol in an ES module.
-            List<TruffleString> exportedValues = JSObject.enumerableOwnNames(module);
-            TruffleStringBuilder moduleBody = Strings.builderCreate();
-            Strings.builderAppend(moduleBody, "const builtinModule = require('");
-            Strings.builderAppend(moduleBody, specifier);
-            Strings.builderAppend(moduleBody, "');\n");
-            for (TruffleString s : exportedValues) {
-                Strings.builderAppend(moduleBody, "export const ");
-                Strings.builderAppend(moduleBody, s);
-                Strings.builderAppend(moduleBody, " = builtinModule.");
-                Strings.builderAppend(moduleBody, s);
-                Strings.builderAppend(moduleBody, ";\n");
-            }
-            Strings.builderAppend(moduleBody, "export default builtinModule;");
-            src = Source.newBuilder(ID, Strings.builderToJavaString(moduleBody), specifier + "-internal.mjs").build();
+            return tryLoadingAsCommonjsModule(moduleRequest.getSpecifier());
         }
+        JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, src);
+        JSModuleRecord record = new JSModuleRecord(parsedModule, this);
+        moduleMap.put(specifier, record);
+        return record;
+    }
+
+    private JSModuleRecord tryLoadingAsCommonjsModule(TruffleString specifier) {
+        JSModuleRecord existingModule = moduleMap.get(specifier);
+        if (existingModule != null) {
+            log("IMPORT resolve built-in from cache ", specifier);
+            return existingModule;
+        }
+        JSFunctionObject require = (JSFunctionObject) realm.getCommonJSRequireFunctionObject();
+        // Any exception thrown during module loading will be propagated
+        Object maybeModule = JSFunction.call(JSArguments.create(Undefined.instance, require, specifier));
+        if (maybeModule == Undefined.instance || !JSDynamicObject.isJSDynamicObject(maybeModule)) {
+            throw fail(Strings.fromJavaString("Failed to load built-in ES module: " + specifier));
+        }
+        JSDynamicObject module = (JSDynamicObject) maybeModule;
+        // Wrap any exported symbol in an ES module.
+        List<TruffleString> exportedValues = JSObject.enumerableOwnNames(module);
+        TruffleStringBuilder moduleBody = Strings.builderCreate();
+        Strings.builderAppend(moduleBody, "const builtinModule = require('");
+        Strings.builderAppend(moduleBody, specifier);
+        Strings.builderAppend(moduleBody, "');\n");
+        for (TruffleString s : exportedValues) {
+            Strings.builderAppend(moduleBody, "export const ");
+            Strings.builderAppend(moduleBody, s);
+            Strings.builderAppend(moduleBody, " = builtinModule.");
+            Strings.builderAppend(moduleBody, s);
+            Strings.builderAppend(moduleBody, ";\n");
+        }
+        Strings.builderAppend(moduleBody, "export default builtinModule;");
+        Source src = Source.newBuilder(ID, Strings.builderToJavaString(moduleBody), specifier + "-internal.mjs").build();
         JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, src);
         JSModuleRecord record = new JSModuleRecord(parsedModule, this);
         moduleMap.put(specifier, record);
@@ -216,7 +233,10 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             // 5.2 Set resolvedURL the result of PACKAGE_RESOLVE(specifier, parentURL).
             resolvedUrl = packageResolve(specifier, referencingModule);
         }
-        assert resolvedUrl != null;
+        if (resolvedUrl == null) {
+            // package was not found: will try loading as Commonjs module instead
+            return null;
+        }
         // 6. If resolvedURL contains any percent encodings of "/" or "\" ("%2f" and "%5C"
         // respectively), then
         if (resolvedUrl.toString().toUpperCase().contains("%2F") || resolvedUrl.toString().toUpperCase().contains("%5C")) {
@@ -323,7 +343,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         if (maybeFile.exists()) {
             return maybeFile;
         }
-        throw fail(packageSpecifier);
+        return null;
     }
 
     @TruffleBoundary

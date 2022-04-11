@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,7 +84,7 @@ public class CommonJSWithCustomFsTest {
         fs.denyAll();
         Value doesCatch = ctx.eval(Source.create("js", src));
         Value execute = doesCatch.execute();
-        assertEquals("got exception: TypeError: Cannot load CommonJS module: 'does.not.exist': Not allowed by this FileSystem.", execute.asString());
+        assertEquals("got exception: TypeError: Cannot load module: 'does.not.exist': Not allowed by this FileSystem.", execute.asString());
     }
 
     @Test

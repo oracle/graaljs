@@ -316,10 +316,6 @@ public final class JSContextOptions {
                         }
                     }));
 
-    public static final String COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME = JS_OPTION_PREFIX + "commonjs-global-properties";
-    @Option(name = COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME, category = OptionCategory.USER, usageSyntax = "<packageName>", help = "Npm package used to populate Node.js global object.") //
-    public static final OptionKey<String> COMMONJS_REQUIRE_GLOBAL_PROPERTIES = new OptionKey<>("");
-
     public static final String GRAAL_BUILTIN_NAME = JS_OPTION_PREFIX + "graal-builtin";
     @Option(name = GRAAL_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Graal' global property.") //
     public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
@@ -941,11 +937,6 @@ public final class JSContextOptions {
     public Map<String, String> getCommonJSRequireBuiltins() {
         CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
         return COMMONJS_CORE_MODULES_REPLACEMENTS.getValue(optionValues);
-    }
-
-    public String getCommonJSRequireGlobals() {
-        CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
-        return COMMONJS_REQUIRE_GLOBAL_PROPERTIES.getValue(optionValues);
     }
 
     public String getRequireCwd() {
