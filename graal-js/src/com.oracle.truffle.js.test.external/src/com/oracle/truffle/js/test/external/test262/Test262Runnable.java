@@ -182,6 +182,7 @@ public class Test262Runnable extends TestRunnable {
                     "__setter__",
                     "align-detached-buffer-semantics-with-web-reality",
                     "array-find-from-last",
+                    "array-grouping",
                     "arrow-function",
                     "async-functions",
                     "async-iteration",
@@ -256,6 +257,7 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.Locale-info",
                     "Intl.NumberFormat-v3",
                     "array-find-from-last",
+                    "array-grouping",
     }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
