@@ -70,10 +70,6 @@ public abstract class ExportResolution {
         return false;
     }
 
-    public boolean isResolved() {
-        return false;
-    }
-
     @TruffleBoundary
     public JSModuleRecord getModule() {
         throw new UnsupportedOperationException();
@@ -82,11 +78,6 @@ public abstract class ExportResolution {
     @TruffleBoundary
     public String getBindingName() {
         throw new UnsupportedOperationException();
-    }
-
-    @SuppressWarnings("cast")
-    public final ExportResolution asResolved() {
-        return (Resolved) this;
     }
 
     public static ExportResolution resolved(JSModuleRecord module, String bindingName) {
@@ -126,11 +117,6 @@ public abstract class ExportResolution {
         @Override
         public boolean isNamespace() {
             return bindingName.equals(Module.NAMESPACE_EXPORT_BINDING_NAME);
-        }
-
-        @Override
-        public boolean isResolved() {
-            return true;
         }
 
         @Override
