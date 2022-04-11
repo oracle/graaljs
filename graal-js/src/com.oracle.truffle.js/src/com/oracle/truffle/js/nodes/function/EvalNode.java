@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -76,6 +75,7 @@ import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class EvalNode extends JavaScriptNode {
@@ -223,8 +223,8 @@ public abstract class EvalNode extends JavaScriptNode {
             return source;
         }
 
-        @Specialization(guards = {"isJSDynamicObject(source)"})
-        protected DynamicObject directEvalJSType(DynamicObject source) {
+        @Specialization
+        protected JSDynamicObject directEvalJSType(JSDynamicObject source) {
             return source;
         }
 

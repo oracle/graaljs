@@ -60,7 +60,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -82,6 +81,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -501,7 +501,7 @@ public final class ScopeVariables implements TruffleObject {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    DynamicObject scope = (DynamicObject) getDynamicScope.execute(frame);
+                    JSDynamicObject scope = (JSDynamicObject) getDynamicScope.execute(frame);
                     if (!JSRuntime.isObject(scope)) {
                         return Undefined.instance;
                     }
@@ -536,7 +536,7 @@ public final class ScopeVariables implements TruffleObject {
 
                 @Override
                 public void executeWrite(VirtualFrame frame, Object value) {
-                    DynamicObject scope = (DynamicObject) getDynamicScope.execute(frame);
+                    JSDynamicObject scope = (JSDynamicObject) getDynamicScope.execute(frame);
                     if (!JSRuntime.isObject(scope)) {
                         return;
                     }
@@ -600,7 +600,7 @@ public final class ScopeVariables implements TruffleObject {
                 if (ScopeFrameNode.PARENT_SCOPE_IDENTIFIER.equals(slotName)) {
                     parentSlot = slot;
                 } else if (ScopeFrameNode.EVAL_SCOPE_IDENTIFIER.equals(slotName)) {
-                    DynamicObject evalScope = (DynamicObject) targetFrame.getObject(slot);
+                    JSDynamicObject evalScope = (JSDynamicObject) targetFrame.getObject(slot);
                     if (JSRuntime.isObject(evalScope)) {
                         if (DynamicObjectLibrary.getUncached().containsKey(evalScope, member)) {
                             return new DynamicScopeResolvedSlot(member, slot, frameLevel, effectiveScopeLevel, frameDescriptor);
@@ -755,7 +755,7 @@ public final class ScopeVariables implements TruffleObject {
         // => try to avoid returning undefined in the latter case
         Object function = JSArguments.getFunctionObject(args);
         if (JSFunction.isJSFunction(function)) {
-            DynamicObject jsFunction = (DynamicObject) function;
+            JSDynamicObject jsFunction = (JSDynamicObject) function;
             return isArrowFunctionWithThisCaptured(jsFunction) ? JSFunction.getLexicalThis(jsFunction) : thisFromArguments(args);
         }
         return Undefined.instance;
@@ -764,7 +764,7 @@ public final class ScopeVariables implements TruffleObject {
     static Object thisFromArguments(Object[] args) {
         Object thisObject = JSArguments.getThisObject(args);
         Object function = JSArguments.getFunctionObject(args);
-        if (JSFunction.isJSFunction(function) && !JSFunction.isStrict((DynamicObject) function)) {
+        if (JSFunction.isJSFunction(function) && !JSFunction.isStrict((JSDynamicObject) function)) {
             JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
             if (thisObject == Undefined.instance || thisObject == Null.instance) {
                 thisObject = realm.getGlobalObject();
@@ -775,7 +775,7 @@ public final class ScopeVariables implements TruffleObject {
         return thisObject;
     }
 
-    private static boolean isArrowFunctionWithThisCaptured(DynamicObject function) {
+    private static boolean isArrowFunctionWithThisCaptured(JSDynamicObject function) {
         return !JSFunction.isConstructor(function) && JSFunction.isClassPrototypeInitialized(function);
     }
 

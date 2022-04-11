@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,11 +47,11 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Deletes an index from a JS array. Does not shrink the array.
@@ -72,10 +72,10 @@ public abstract class JSArrayDeleteIndexNode extends JavaScriptBaseNode {
         return JSArrayDeleteIndexNodeGen.create(context, strict);
     }
 
-    public abstract boolean execute(DynamicObject array, ScriptArray arrayType, long index);
+    public abstract boolean execute(JSDynamicObject array, ScriptArray arrayType, long index);
 
     @Specialization(guards = {"cachedArrayType.isInstance(arrayType)"}, limit = "5")
-    protected boolean doCached(DynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long index,
+    protected boolean doCached(JSDynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long index,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType) {
         assert JSArray.isJSFastArray(array);
         if (cachedArrayType.canDeleteElement(array, index, strict)) {
@@ -88,7 +88,7 @@ public abstract class JSArrayDeleteIndexNode extends JavaScriptBaseNode {
 
     @TruffleBoundary
     @Specialization(replaces = {"doCached"})
-    protected boolean doUncached(DynamicObject array, ScriptArray arrayType, long index) {
+    protected boolean doUncached(JSDynamicObject array, ScriptArray arrayType, long index) {
         return doCached(array, arrayType, index, arrayType);
     }
 }

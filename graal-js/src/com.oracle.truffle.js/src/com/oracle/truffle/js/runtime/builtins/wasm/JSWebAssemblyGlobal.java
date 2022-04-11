@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -64,10 +63,13 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -86,7 +88,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
@@ -95,9 +97,9 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WebAssemblyGlobalPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putAccessorProperty(ctx, prototype, VALUE, createValueGetterFunction(realm), createValueSetterFunction(realm), JSAttributes.configurableEnumerableWritable());
@@ -106,12 +108,12 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getWebAssemblyGlobalPrototype();
     }
 
     @Override
-    public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext ctx, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
     }
 
@@ -131,7 +133,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
         return context.trackAllocation(object);
     }
 
-    private static DynamicObject createValueGetterFunction(JSRealm realm) {
+    private static JSFunctionObject createValueGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyGlobalGetValue, (c) -> {
             CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
@@ -162,7 +164,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
         return JSFunction.create(realm, getterData);
     }
 
-    private static DynamicObject createValueSetterFunction(JSRealm realm) {
+    private static JSFunctionObject createValueSetterFunction(JSRealm realm) {
         JSFunctionData setterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyGlobalSetValue, (c) -> {
             CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();

@@ -45,7 +45,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
@@ -78,100 +77,100 @@ public abstract class JSClass {
      * 9.1.1 [[GetPrototypeOf]] ().
      */
     @TruffleBoundary
-    public abstract JSDynamicObject getPrototypeOf(DynamicObject thisObj);
+    public abstract JSDynamicObject getPrototypeOf(JSDynamicObject thisObj);
 
     /**
      * 9.1.2 [[SetPrototypeOf]] (V).
      */
     @TruffleBoundary
-    public abstract boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype);
+    public abstract boolean setPrototypeOf(JSDynamicObject thisObj, JSDynamicObject newPrototype);
 
     /**
      * 9.1.3 [[IsExtensible]] ().
      */
     @TruffleBoundary
-    public abstract boolean isExtensible(DynamicObject thisObj);
+    public abstract boolean isExtensible(JSDynamicObject thisObj);
 
     /**
      * 9.1.4 [[PreventExtensions]] ().
      */
     @TruffleBoundary
-    public abstract boolean preventExtensions(DynamicObject thisObj, boolean doThrow);
+    public abstract boolean preventExtensions(JSDynamicObject thisObj, boolean doThrow);
 
     /**
      * 9.1.5 [[GetOwnProperty]] (P).
      */
     @TruffleBoundary
-    public abstract PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key);
+    public abstract PropertyDescriptor getOwnProperty(JSDynamicObject thisObj, Object key);
 
     /**
      * 9.1.6 [[DefineOwnProperty]] (P, Desc).
      */
     @TruffleBoundary
-    public abstract boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor value, boolean doThrow);
+    public abstract boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor value, boolean doThrow);
 
     /**
      * 9.1.7 [[HasProperty]] (P).
      */
     @TruffleBoundary
-    public abstract boolean hasProperty(DynamicObject thisObj, Object key);
+    public abstract boolean hasProperty(JSDynamicObject thisObj, Object key);
 
     @TruffleBoundary
-    public abstract boolean hasProperty(DynamicObject thisObj, long index);
+    public abstract boolean hasProperty(JSDynamicObject thisObj, long index);
 
     @TruffleBoundary
-    public abstract boolean hasOwnProperty(DynamicObject thisObj, Object key);
+    public abstract boolean hasOwnProperty(JSDynamicObject thisObj, Object key);
 
     @TruffleBoundary
-    public abstract boolean hasOwnProperty(DynamicObject thisObj, long index);
+    public abstract boolean hasOwnProperty(JSDynamicObject thisObj, long index);
 
     /**
      * 9.1.8 [[Get]] (P, Receiver).
      */
-    public final Object get(DynamicObject thisObj, Object key) {
+    public final Object get(JSDynamicObject thisObj, Object key) {
         Object value = getHelper(thisObj, thisObj, key, null);
         assert !(value instanceof String);
         return JSRuntime.nullToUndefined(value);
     }
 
-    public Object get(DynamicObject thisObj, long index) {
+    public Object get(JSDynamicObject thisObj, long index) {
         Object value = getHelper(thisObj, thisObj, index, null);
         assert !(value instanceof String);
         return JSRuntime.nullToUndefined(value);
     }
 
     @TruffleBoundary
-    public abstract Object getHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode);
+    public abstract Object getHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode);
 
     @TruffleBoundary
-    public abstract Object getHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode);
+    public abstract Object getHelper(JSDynamicObject store, Object thisObj, long index, Node encapsulatingNode);
 
     @TruffleBoundary
-    public abstract Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode);
+    public abstract Object getOwnHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode);
 
     @TruffleBoundary
-    public abstract Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode);
+    public abstract Object getOwnHelper(JSDynamicObject store, Object thisObj, long index, Node encapsulatingNode);
 
     @TruffleBoundary
-    public abstract Object getMethodHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode);
+    public abstract Object getMethodHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode);
 
     /**
      * 9.1.9 [[Set]] (P, V, Receiver).
      */
     @TruffleBoundary
-    public abstract boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode);
+    public abstract boolean set(JSDynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode);
 
     @TruffleBoundary
-    public abstract boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode);
+    public abstract boolean set(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode);
 
     /**
      * 9.1.10 [[Delete]] (P).
      */
     @TruffleBoundary
-    public abstract boolean delete(DynamicObject thisObj, Object key, boolean isStrict);
+    public abstract boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict);
 
     @TruffleBoundary
-    public abstract boolean delete(DynamicObject thisObj, long index, boolean isStrict);
+    public abstract boolean delete(JSDynamicObject thisObj, long index, boolean isStrict);
 
     /**
      * 9.1.12 [[OwnPropertyKeys]]().
@@ -181,7 +180,7 @@ public abstract class JSClass {
      *
      * @return a List of the keys of all own properties of that object
      */
-    public final List<Object> ownPropertyKeys(DynamicObject obj) {
+    public final List<Object> ownPropertyKeys(JSDynamicObject obj) {
         return getOwnPropertyKeys(obj, true, true);
     }
 
@@ -191,7 +190,7 @@ public abstract class JSClass {
      * @return a List of the keys of all own properties of that object with the specified types
      */
     @TruffleBoundary
-    public abstract List<Object> getOwnPropertyKeys(DynamicObject obj, boolean strings, boolean symbols);
+    public abstract List<Object> getOwnPropertyKeys(JSDynamicObject obj, boolean strings, boolean symbols);
 
     @TruffleBoundary
     public static List<Object> filterOwnPropertyKeys(List<Object> ownPropertyKeys, boolean strings, boolean symbols) {
@@ -212,7 +211,7 @@ public abstract class JSClass {
      * If true, {@link #ownPropertyKeys} and {@link JSShape#getProperties} enumerate the same keys.
      */
     @TruffleBoundary
-    public abstract boolean hasOnlyShapeProperties(DynamicObject obj);
+    public abstract boolean hasOnlyShapeProperties(JSDynamicObject obj);
 
     /**
      * The [[Class]] internal property.
@@ -223,7 +222,7 @@ public abstract class JSClass {
      * @param object object to be used
      */
     @TruffleBoundary
-    public abstract TruffleString getClassName(DynamicObject object);
+    public abstract TruffleString getClassName(JSDynamicObject object);
 
     @Override
     @TruffleBoundary
@@ -237,10 +236,10 @@ public abstract class JSClass {
      * For ES5, if follows 15.2.4.2 Object.prototype.toString(), basically: "[object " + [[Class]] +
      * "]".
      *
-     * @see #getBuiltinToStringTag(DynamicObject)
+     * @see #getBuiltinToStringTag(JSDynamicObject)
      */
     @TruffleBoundary
-    public TruffleString defaultToString(DynamicObject object) {
+    public TruffleString defaultToString(JSDynamicObject object) {
         JSContext context = JSObject.getJSContext(object);
         if (context.getEcmaScriptVersion() <= 5) {
             return formatToString(getClassName(object));
@@ -249,7 +248,7 @@ public abstract class JSClass {
         return formatToString(result);
     }
 
-    protected TruffleString getToStringTag(DynamicObject object) {
+    protected TruffleString getToStringTag(JSDynamicObject object) {
         TruffleString result = getBuiltinToStringTag(object);
         if (JSRuntime.isObject(object)) {
             Object toStringTag = JSObject.get(object, Symbol.SYMBOL_TO_STRING_TAG);
@@ -265,15 +264,15 @@ public abstract class JSClass {
      *
      * @param object object to be used
      * @return "Object" by default
-     * @see #defaultToString(DynamicObject)
+     * @see #defaultToString(JSDynamicObject)
      */
     @TruffleBoundary
-    public TruffleString getBuiltinToStringTag(DynamicObject object) {
+    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
         return getClassName(object);
     }
 
     /**
-     * Formats {@link #defaultToString(DynamicObject)}, by default returns "[object ...]".
+     * Formats {@link #defaultToString(JSDynamicObject)}, by default returns "[object ...]".
      *
      * @param object object to be used
      * @return "[object ...]" by default
@@ -290,9 +289,9 @@ public abstract class JSClass {
      * @param depth current nesting depth
      */
     @TruffleBoundary
-    public abstract TruffleString toDisplayStringImpl(DynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth);
+    public abstract TruffleString toDisplayStringImpl(JSDynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth);
 
-    public final boolean isInstance(DynamicObject object) {
+    public final boolean isInstance(JSDynamicObject object) {
         return isInstance(object, this);
     }
 
@@ -301,10 +300,10 @@ public abstract class JSClass {
     }
 
     public static boolean isInstance(Object object, JSClass jsclass) {
-        return JSDynamicObject.isJSDynamicObject(object) && isInstance((DynamicObject) object, jsclass);
+        return JSDynamicObject.isJSDynamicObject(object) && isInstance((JSDynamicObject) object, jsclass);
     }
 
-    public static boolean isInstance(DynamicObject object, JSClass jsclass) {
+    public static boolean isInstance(JSDynamicObject object, JSClass jsclass) {
         return object.getShape().getDynamicType() == jsclass;
     }
 
@@ -312,12 +311,12 @@ public abstract class JSClass {
      * ES2015 7.3.15 TestIntegrityLevel(O, level).
      */
     @TruffleBoundary
-    public boolean testIntegrityLevel(DynamicObject obj, boolean frozen) {
+    public boolean testIntegrityLevel(JSDynamicObject obj, boolean frozen) {
         return testIntegrityLevelDefault(obj, frozen);
     }
 
     @TruffleBoundary
-    protected final boolean testIntegrityLevelDefault(DynamicObject obj, boolean frozen) {
+    protected final boolean testIntegrityLevelDefault(JSDynamicObject obj, boolean frozen) {
         assert JSRuntime.isObject(obj);
         boolean status = isExtensible(obj);
         if (status) {
@@ -359,12 +358,12 @@ public abstract class JSClass {
      * ES2015 7.3.14 SetIntegrityLevel(O, level).
      */
     @TruffleBoundary
-    public boolean setIntegrityLevel(DynamicObject obj, boolean freeze, boolean doThrow) {
+    public boolean setIntegrityLevel(JSDynamicObject obj, boolean freeze, boolean doThrow) {
         return setIntegrityLevelDefault(obj, freeze, doThrow);
     }
 
     @TruffleBoundary
-    private boolean setIntegrityLevelDefault(DynamicObject obj, boolean freeze, boolean doThrow) {
+    private boolean setIntegrityLevelDefault(JSDynamicObject obj, boolean freeze, boolean doThrow) {
         assert JSRuntime.isObject(obj);
         if (!preventExtensions(obj, doThrow)) {
             return false;
@@ -394,7 +393,7 @@ public abstract class JSClass {
     }
 
     @SuppressWarnings("unused")
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         throw Errors.shouldNotReachHere(getClass().getName());
     }
 
@@ -404,7 +403,7 @@ public abstract class JSClass {
      *
      * @see PrototypeSupplier#getIntrinsicDefaultProto
      */
-    public DynamicObject getIntrinsicDefaultProto(@SuppressWarnings("unused") JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(@SuppressWarnings("unused") JSRealm realm) {
         throw Errors.shouldNotReachHere(getClass().getName());
     }
 

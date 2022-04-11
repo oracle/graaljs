@@ -52,7 +52,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
@@ -69,6 +68,7 @@ import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -116,13 +116,13 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     public static final class LazyRegexResultIndexProxyProperty extends PropertyProxy {
 
         @Override
-        public Object get(DynamicObject object) {
+        public Object get(JSDynamicObject object) {
             return TRegexUtil.InvokeGetGroupBoundariesMethodNode.getUncached().execute(arrayGetRegexResult(object, DynamicObjectLibrary.getUncached()), TRegexUtil.Props.RegexResult.GET_START, 0);
         }
 
         @TruffleBoundary
         @Override
-        public boolean set(DynamicObject object, Object value) {
+        public boolean set(JSDynamicObject object, Object value) {
             JSObjectUtil.defineDataProperty(object, JSRegExp.INDEX, value, JSAttributes.getDefault());
             return true;
         }
@@ -148,7 +148,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         private final TRegexMaterializeResultNode materializeNode = TRegexMaterializeResultNode.getUncached();
 
         @Override
-        public Object get(DynamicObject object) {
+        public Object get(JSDynamicObject object) {
             JSRegExpGroupsObject groups = (JSRegExpGroupsObject) object;
             Object regexResult = groups.getRegexResult();
             if (isIndicesObject.profile(groups.isIndices())) {
@@ -160,7 +160,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         }
 
         @Override
-        public boolean set(DynamicObject object, Object value) {
+        public boolean set(JSDynamicObject object, Object value) {
             JSObjectUtil.defineDataProperty(object, groupName, value, JSAttributes.getDefault());
             return true;
         }
@@ -169,22 +169,22 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     private JSRegExp() {
     }
 
-    public static Object getCompiledRegex(DynamicObject thisObj) {
+    public static Object getCompiledRegex(JSDynamicObject thisObj) {
         assert isJSRegExp(thisObj);
         return ((JSRegExpObject) thisObj).getCompiledRegex();
     }
 
-    public static JSObjectFactory getGroupsFactory(DynamicObject thisObj) {
+    public static JSObjectFactory getGroupsFactory(JSDynamicObject thisObj) {
         assert isJSRegExp(thisObj);
         return ((JSRegExpObject) thisObj).getGroupsFactory();
     }
 
-    public static Object getRealm(DynamicObject thisObj) {
+    public static Object getRealm(JSDynamicObject thisObj) {
         assert isJSRegExp(thisObj);
         return ((JSRegExpObject) thisObj).getRealm();
     }
 
-    public static boolean getLegacyFeaturesEnabled(DynamicObject thisObj) {
+    public static boolean getLegacyFeaturesEnabled(JSDynamicObject thisObj) {
         assert isJSRegExp(thisObj);
         return ((JSRegExpObject) thisObj).getLegacyFeaturesEnabled();
     }
@@ -197,18 +197,17 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
      * {@link TruffleBoundary} in cases when your regular expression has no named capture groups,
      * consider using the {@code com.oracle.truffle.js.nodes.intl.CreateRegExpNode}.
      */
-    public static DynamicObject create(JSContext ctx, JSRealm realm, Object compiledRegex) {
+    public static JSRegExpObject create(JSContext ctx, JSRealm realm, Object compiledRegex) {
         JSObjectFactory groupsFactory = computeGroupsFactory(ctx, compiledRegex);
-        DynamicObject obj = create(ctx, realm, compiledRegex, groupsFactory);
+        JSRegExpObject obj = create(ctx, realm, compiledRegex, groupsFactory);
         JSObjectUtil.putDataProperty(ctx, obj, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
-        assert isJSRegExp(obj);
         return obj;
     }
 
     /**
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
-    public static DynamicObject create(JSContext context, JSRealm realm, Object compiledRegex, JSObjectFactory groupsFactory) {
+    public static JSRegExpObject create(JSContext context, JSRealm realm, Object compiledRegex, JSObjectFactory groupsFactory) {
         return create(context, realm, compiledRegex, groupsFactory, true);
     }
 
@@ -217,22 +216,21 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
      */
     public static JSRegExpObject create(JSContext context, JSRealm realm, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
         JSRegExpObject regExp = JSRegExpObject.create(realm, context.getRegExpFactory(), compiledRegex, groupsFactory, legacyFeaturesEnabled);
-        assert isJSRegExp(regExp);
         return context.trackAllocation(regExp);
     }
 
-    private static void initialize(JSContext ctx, DynamicObject regExp, Object regex) {
+    private static void initialize(JSContext ctx, JSDynamicObject regExp, Object regex) {
         ((JSRegExpObject) regExp).setCompiledRegex(regex);
         ((JSRegExpObject) regExp).setGroupsFactory(computeGroupsFactory(ctx, regex));
     }
 
-    public static void updateCompilation(JSContext ctx, DynamicObject thisObj, Object regex) {
+    public static void updateCompilation(JSContext ctx, JSDynamicObject thisObj, Object regex) {
         assert isJSRegExp(thisObj) && regex != null;
         initialize(ctx, thisObj, regex);
     }
 
-    public static DynamicObject createGroupsObject(JSContext context, JSRealm realm, JSObjectFactory groupsFactory, Object regexResult, TruffleString input, boolean isIndices) {
-        DynamicObject obj = JSRegExpGroupsObject.create(realm, groupsFactory, regexResult, input, isIndices);
+    public static JSDynamicObject createGroupsObject(JSContext context, JSRealm realm, JSObjectFactory groupsFactory, Object regexResult, TruffleString input, boolean isIndices) {
+        JSDynamicObject obj = JSRegExpGroupsObject.create(realm, groupsFactory, regexResult, input, isIndices);
         return context.trackAllocation(obj);
     }
 
@@ -284,7 +282,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
      * Example: <code>/ab*c/gi</code>
      */
     @TruffleBoundary
-    public static TruffleString prototypeToString(DynamicObject thisObj) {
+    public static TruffleString prototypeToString(JSDynamicObject thisObj) {
         Object regex = getCompiledRegex(thisObj);
         InteropReadStringMemberNode readString = TRegexUtil.InteropReadStringMemberNode.getUncached();
         TruffleString pattern = readString.execute(regex, TRegexUtil.Props.CompiledRegex.PATTERN);
@@ -301,9 +299,9 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype;
+        JSDynamicObject prototype;
         if (ctx.getEcmaScriptVersion() < 6) {
             Shape shape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
             prototype = JSRegExpObject.create(shape, es5GetEmptyRegexEarly(realm), realm);
@@ -334,7 +332,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         return prototype;
     }
 
-    private static void putRegExpPropertyAccessor(JSRealm realm, DynamicObject prototype, TruffleString name) {
+    private static void putRegExpPropertyAccessor(JSRealm realm, JSDynamicObject prototype, TruffleString name) {
         JSObjectUtil.putBuiltinAccessorProperty(prototype, name, realm.lookupAccessor(RegExpPrototypeBuiltins.RegExpPrototypeGetterBuiltins.BUILTINS, name));
     }
 
@@ -343,7 +341,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     }
 
     @Override
-    public Shape makeInitialShape(JSContext ctx, DynamicObject thisObj) {
+    public Shape makeInitialShape(JSContext ctx, JSDynamicObject thisObj) {
         return JSObjectUtil.getProtoChildShape(thisObj, INSTANCE, ctx);
     }
 
@@ -353,7 +351,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     }
 
     @Override
-    public void fillConstructor(JSRealm realm, DynamicObject constructor) {
+    public void fillConstructor(JSRealm realm, JSDynamicObject constructor) {
         putConstructorSpeciesGetter(realm, constructor);
     }
 
@@ -367,18 +365,18 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public TruffleString getBuiltinToStringTag(DynamicObject object) {
+    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
         return getClassName(object);
     }
 
     @Override
     @TruffleBoundary
-    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return Strings.concatAll(BRACKET_REG_EXP_SPC, prototypeToString(obj), Strings.BRACKET_CLOSE);
         } else {
@@ -387,7 +385,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getRegExpPrototype();
     }
 

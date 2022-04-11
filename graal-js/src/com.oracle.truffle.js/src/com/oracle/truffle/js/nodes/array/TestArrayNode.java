@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,10 +42,10 @@ package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public abstract class TestArrayNode extends JavaScriptBaseNode {
@@ -63,7 +63,7 @@ public abstract class TestArrayNode extends JavaScriptBaseNode {
         this.test = test;
     }
 
-    protected static ScriptArray getArrayType(DynamicObject target) {
+    protected static ScriptArray getArrayType(JSDynamicObject target) {
         return JSObject.getArray(target);
     }
 
@@ -79,10 +79,10 @@ public abstract class TestArrayNode extends JavaScriptBaseNode {
         return create(Test.IsSealed);
     }
 
-    public abstract boolean executeBoolean(DynamicObject target);
+    public abstract boolean executeBoolean(JSDynamicObject target);
 
     @Specialization(guards = {"arrayType.isInstance(getArrayType(target))"}, limit = "MAX_TYPE_COUNT")
-    protected final boolean doCached(DynamicObject target,
+    protected final boolean doCached(JSDynamicObject target,
                     @Cached("getArrayType(target)") ScriptArray arrayType) {
         if (test == Test.HasHoles) {
             return arrayType.hasHoles(target);
@@ -94,7 +94,7 @@ public abstract class TestArrayNode extends JavaScriptBaseNode {
     }
 
     @Specialization(replaces = "doCached")
-    protected final boolean doUncached(DynamicObject target) {
+    protected final boolean doUncached(JSDynamicObject target) {
         ScriptArray arrayType = getArrayType(target);
         return doCached(target, arrayType);
     }

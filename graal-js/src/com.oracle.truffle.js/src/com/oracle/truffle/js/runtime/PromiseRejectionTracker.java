@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Promise rejection tracker is invoked when a promise is rejected without any handler or when a
@@ -50,34 +50,34 @@ public interface PromiseRejectionTracker {
 
     /**
      * Invoked when a promise is rejected without any handler.
-     * 
+     *
      * @param promise rejected promise.
      * @param value reason of the rejection.
      */
-    void promiseRejected(DynamicObject promise, Object value);
+    void promiseRejected(JSDynamicObject promise, Object value);
 
     /**
      * Invoked when a handler is added to a rejected promise for the first time.
-     * 
+     *
      * @param promise rejected promise.
      */
-    void promiseRejectionHandled(DynamicObject promise);
+    void promiseRejectionHandled(JSDynamicObject promise);
 
     /**
      * Invoked when an already resolved promise is rejected.
-     * 
+     *
      * @param promise rejected promise.
      * @param value reason of the rejection.
      */
-    void promiseRejectedAfterResolved(DynamicObject promise, Object value);
+    void promiseRejectedAfterResolved(JSDynamicObject promise, Object value);
 
     /**
      * Invoked when an already resolved promise is resolved.
-     * 
+     *
      * @param promise resolved promise.
      * @param value promise resolution.
      */
-    void promiseResolvedAfterResolved(DynamicObject promise, Object value);
+    void promiseResolvedAfterResolved(JSDynamicObject promise, Object value);
 
     /**
      * Invoked when the engine has executed all promise reaction jobs.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,7 @@ package com.oracle.truffle.js.nodes.promise;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Provides access to the promise of async functions.
@@ -54,7 +54,7 @@ public interface AsyncRootNode {
     int ASYNC_FRAME_INDEX = 2;
     int STACK_TRACE_INDEX = 3;
 
-    DynamicObject getAsyncFunctionPromise(Frame asyncFrame);
+    JSDynamicObject getAsyncFunctionPromise(Frame asyncFrame);
 
     static Object[] createAsyncContext(CallTarget resumeTarget, Object generatorObjectOrPromiseCapability, MaterializedFrame asyncFrame) {
         return new Object[]{resumeTarget, generatorObjectOrPromiseCapability, asyncFrame, null};

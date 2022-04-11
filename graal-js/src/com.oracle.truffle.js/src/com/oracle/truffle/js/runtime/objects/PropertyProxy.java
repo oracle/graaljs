@@ -40,13 +40,11 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import com.oracle.truffle.api.object.DynamicObject;
-
 public abstract class PropertyProxy {
 
-    public abstract Object get(DynamicObject store);
+    public abstract Object get(JSDynamicObject store);
 
-    public boolean set(@SuppressWarnings("unused") DynamicObject store, @SuppressWarnings("unused") Object value) {
+    public boolean set(@SuppressWarnings("unused") JSDynamicObject store, @SuppressWarnings("unused") Object value) {
         return true;
     }
 }

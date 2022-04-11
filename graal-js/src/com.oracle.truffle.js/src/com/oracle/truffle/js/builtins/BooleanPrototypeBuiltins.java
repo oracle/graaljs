@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.BooleanPrototypeBuiltinsFactory.JSBooleanToStringNodeGen;
 import com.oracle.truffle.js.builtins.BooleanPrototypeBuiltinsFactory.JSBooleanValueOfNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -58,6 +57,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
+import com.oracle.truffle.js.runtime.builtins.JSBooleanObject;
 
 /**
  * Contains builtins for {@linkplain JSBoolean}.prototype.
@@ -104,14 +104,14 @@ public final class BooleanPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSBoolean(thisObj)")
-        protected Object toString(DynamicObject thisObj) {
+        @Specialization
+        protected Object toString(JSBooleanObject thisObj) {
             return Strings.fromBoolean(JSBoolean.valueOf(thisObj));
         }
 
-        @Specialization(guards = "isBoolean(thisObj)")
-        protected Object toStringPrimitive(Object thisObj) {
-            return JSRuntime.booleanToString((boolean) thisObj);
+        @Specialization
+        protected Object toStringPrimitive(boolean thisObj) {
+            return JSRuntime.booleanToString(thisObj);
         }
 
         @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
@@ -141,14 +141,14 @@ public final class BooleanPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSBoolean(thisObj)")
-        protected boolean valueOf(DynamicObject thisObj) {
+        @Specialization
+        protected boolean valueOf(JSBooleanObject thisObj) {
             return JSBoolean.valueOf(thisObj);
         }
 
-        @Specialization(guards = "isBoolean(thisObj)")
-        protected boolean valueOfPrimitive(Object thisObj) {
-            return (boolean) thisObj;
+        @Specialization
+        protected boolean valueOfPrimitive(boolean thisObj) {
+            return thisObj;
         }
 
         @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")

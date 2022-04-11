@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,13 +42,13 @@ package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
 
@@ -70,10 +70,10 @@ public class PromiseResolveThenableNode extends JavaScriptBaseNode {
         return new PromiseResolveThenableNode(context);
     }
 
-    public Object execute(DynamicObject promiseToResolve, Object thenable, Object then) {
-        Pair<DynamicObject, DynamicObject> resolvingFunctions = createResolvingFunctions.execute(promiseToResolve);
-        DynamicObject resolve = resolvingFunctions.getFirst();
-        DynamicObject reject = resolvingFunctions.getSecond();
+    public Object execute(JSDynamicObject promiseToResolve, Object thenable, Object then) {
+        Pair<JSDynamicObject, JSDynamicObject> resolvingFunctions = createResolvingFunctions.execute(promiseToResolve);
+        JSDynamicObject resolve = resolvingFunctions.getFirst();
+        JSDynamicObject reject = resolvingFunctions.getSecond();
         try {
             return callResolveNode.executeCall(JSArguments.create(thenable, then, resolve, reject));
         } catch (Throwable ex) {

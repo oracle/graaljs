@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.objects;
 import java.util.StringJoiner;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 
 /**
  * Objects of this type are used by the defineProperty() and defineProperties() builtin functions.
@@ -106,7 +105,7 @@ public final class PropertyDescriptor {
         return desc;
     }
 
-    public static PropertyDescriptor createAccessor(DynamicObject getter, DynamicObject setter) {
+    public static PropertyDescriptor createAccessor(JSDynamicObject getter, JSDynamicObject setter) {
         PropertyDescriptor desc = new PropertyDescriptor();
         if (setter != null) {
             desc.setSet(setter);
@@ -117,14 +116,14 @@ public final class PropertyDescriptor {
         return desc;
     }
 
-    public static PropertyDescriptor createAccessor(DynamicObject getter, DynamicObject setter, int attributes) {
+    public static PropertyDescriptor createAccessor(JSDynamicObject getter, JSDynamicObject setter, int attributes) {
         PropertyDescriptor desc = createAccessor(getter, setter);
         desc.setEnumerable(JSAttributes.isEnumerable(attributes));
         desc.setConfigurable(JSAttributes.isConfigurable(attributes));
         return desc;
     }
 
-    public static PropertyDescriptor createAccessor(DynamicObject getter, DynamicObject setter, boolean isEnumerable, boolean isConfigurable) {
+    public static PropertyDescriptor createAccessor(JSDynamicObject getter, JSDynamicObject setter, boolean isEnumerable, boolean isConfigurable) {
         PropertyDescriptor desc = createAccessor(getter, setter);
         desc.setEnumerable(isEnumerable);
         desc.setConfigurable(isConfigurable);
@@ -150,7 +149,7 @@ public final class PropertyDescriptor {
         return ((Accessor) data).getGetter();
     }
 
-    public void setGet(DynamicObject get) {
+    public void setGet(JSDynamicObject get) {
         if (data instanceof Accessor) {
             data = new Accessor(get, ((Accessor) data).getSetter());
         } else {
@@ -166,7 +165,7 @@ public final class PropertyDescriptor {
         return ((Accessor) data).getSetter();
     }
 
-    public void setSet(DynamicObject set) {
+    public void setSet(JSDynamicObject set) {
         if (data instanceof Accessor) {
             data = new Accessor(((Accessor) data).getGetter(), set);
         } else {

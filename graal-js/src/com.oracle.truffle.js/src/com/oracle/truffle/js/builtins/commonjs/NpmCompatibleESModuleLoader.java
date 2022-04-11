@@ -61,7 +61,6 @@ import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
@@ -73,6 +72,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
@@ -155,13 +155,13 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             }
         } else {
             // Else, try loading as commonjs built-in module replacement
-            DynamicObject require = (DynamicObject) realm.getCommonJSRequireFunctionObject();
+            JSFunctionObject require = (JSFunctionObject) realm.getCommonJSRequireFunctionObject();
             // Any exception thrown during module loading will be propagated
             Object maybeModule = JSFunction.call(JSArguments.create(Undefined.instance, require, specifier));
             if (maybeModule == Undefined.instance || !JSDynamicObject.isJSDynamicObject(maybeModule)) {
                 throw fail(Strings.fromJavaString("Failed to load built-in ES module: " + specifier));
             }
-            DynamicObject module = (DynamicObject) maybeModule;
+            JSDynamicObject module = (JSDynamicObject) maybeModule;
             // Wrap any exported symbol in an ES module.
             List<TruffleString> exportedValues = JSObject.enumerableOwnNames(module);
             TruffleStringBuilder moduleBody = Strings.builderCreate();
@@ -298,7 +298,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             TruffleFile moduleFolder = joinPaths(env, modulePath, packageSpecifier);
             TruffleFile packageJson = joinPaths(env, moduleFolder, PACKAGE_JSON);
             if (CommonJSResolution.fileExists(packageJson)) {
-                DynamicObject jsonObj = loadJsonObject(packageJson, realm);
+                JSDynamicObject jsonObj = loadJsonObject(packageJson, realm);
                 if (JSDynamicObject.isJSDynamicObject(jsonObj)) {
                     Object main = JSObject.get(jsonObj, PACKAGE_JSON_MAIN_PROPERTY_NAME);
                     Object type = JSObject.get(jsonObj, PACKAGE_JSON_TYPE_PROPERTY_NAME);

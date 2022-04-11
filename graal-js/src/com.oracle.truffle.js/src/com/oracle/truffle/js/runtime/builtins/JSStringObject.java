@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -64,11 +63,11 @@ public final class JSStringObject extends JSNonProxyObject {
         return string;
     }
 
-    public static DynamicObject create(Shape shape, TruffleString value) {
+    public static JSStringObject create(Shape shape, TruffleString value) {
         return new JSStringObject(shape, value);
     }
 
-    public static DynamicObject create(JSRealm realm, JSObjectFactory factory, TruffleString value) {
+    public static JSStringObject create(JSRealm realm, JSObjectFactory factory, TruffleString value) {
         return factory.initProto(new JSStringObject(factory.getShape(realm), value), realm);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
@@ -63,6 +62,7 @@ import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * This node implements the behavior of 9.5 ToInt32. Not to confuse with 9.4 ToInteger, etc.
@@ -220,8 +220,8 @@ public abstract class JSToInt32Node extends JSUnaryNode {
         return Strings.SYMBOL_PIPE;
     }
 
-    @Specialization(guards = {"isJSObject(value)", "!isBitwiseOr() || !hasOverloadedOperators(value)"})
-    protected int doJSObject(DynamicObject value,
+    @Specialization(guards = {"!isBitwiseOr() || !hasOverloadedOperators(value)"})
+    protected int doJSObject(JSObject value,
                     @Cached("create()") JSToDoubleNode toDoubleNode) {
         return doubleToInt32(toDoubleNode.executeDouble(value));
     }

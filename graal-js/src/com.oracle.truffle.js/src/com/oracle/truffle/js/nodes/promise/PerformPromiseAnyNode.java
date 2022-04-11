@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -66,8 +65,11 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -111,7 +113,7 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
     }
 
     @Override
-    public DynamicObject execute(IteratorRecord iteratorRecord, DynamicObject constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve) {
+    public JSDynamicObject execute(IteratorRecord iteratorRecord, JSDynamicObject constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve) {
         assert JSRuntime.isConstructor(constructor);
         assert JSRuntime.isCallable(promiseResolve);
         SimpleArrayList<Object> errors = new SimpleArrayList<>(10);
@@ -122,7 +124,7 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
                 iteratorRecord.setDone(true);
                 remainingElementsCount.value--;
                 if (remainingElementsCount.value == 0) {
-                    DynamicObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors.toArray());
+                    JSDynamicObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors.toArray());
                     throw Errors.createAggregateError(errorsArray, this);
                 }
                 return resultCapability.getPromise();
@@ -131,15 +133,15 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
             errors.add(Undefined.instance, growProfile);
             Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, promiseResolve, nextValue));
             Object resolveElement = createResolveElementFunction(index, errors, resultCapability, remainingElementsCount);
-            DynamicObject rejectElement = createRejectElementFunction(index, errors, resultCapability, remainingElementsCount);
+            JSFunctionObject rejectElement = createRejectElementFunction(index, errors, resultCapability, remainingElementsCount);
             remainingElementsCount.value++;
             callThen.executeCall(JSArguments.create(nextPromise, getThen.getValue(nextPromise), resolveElement, rejectElement));
         }
     }
 
-    protected DynamicObject createRejectElementFunction(int index, SimpleArrayList<Object> errors, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
+    protected JSFunctionObject createRejectElementFunction(int index, SimpleArrayList<Object> errors, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseAnyRejectElement, (c) -> createRejectElementFunctionImpl(c));
-        DynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSFunctionObject function = JSFunction.create(getRealm(), functionData);
         setArgs.setValue(function, new RejectElementArgs(index, errors, resultCapability, remainingElementsCount));
         return function;
     }
@@ -159,7 +161,7 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
                 RejectElementArgs args = (RejectElementArgs) getArgs.getValue(functionObject);
                 if (args.alreadyCalled) {
                     return Undefined.instance;
@@ -169,18 +171,18 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
                 args.errors.set(args.index, error);
                 args.remainingElements.value--;
                 if (args.remainingElements.value == 0) {
-                    DynamicObject aggregateErrorObject = createAggregateError(args.errors.toArray());
+                    JSDynamicObject aggregateErrorObject = createAggregateError(args.errors.toArray());
                     return callReject.executeCall(JSArguments.createOneArg(Undefined.instance, args.capability.getReject(), aggregateErrorObject));
                 }
                 return Undefined.instance;
             }
 
-            private DynamicObject createAggregateError(Object[] errors) {
+            private JSDynamicObject createAggregateError(Object[] errors) {
                 int stackTraceLimit = stackTraceLimitNode.executeInt();
                 JSRealm realm = getRealm();
-                DynamicObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors);
-                DynamicObject aggregateErrorObject = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
-                DynamicObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);
+                JSDynamicObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors);
+                JSObject aggregateErrorObject = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
+                JSDynamicObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);
                 GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, null, aggregateErrorObject, realm, stackTraceLimit, errorFunction, false);
                 initErrorObjectNode.execute(aggregateErrorObject, exception, null, errorsArray);
                 return aggregateErrorObject;

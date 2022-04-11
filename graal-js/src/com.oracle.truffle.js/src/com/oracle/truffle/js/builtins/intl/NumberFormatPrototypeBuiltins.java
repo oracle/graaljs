@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins.intl;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
@@ -59,6 +58,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormatObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<NumberFormatPrototypeBuiltins.NumberFormatPrototype> {
@@ -122,13 +122,13 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSNumberFormat(numberFormat)"})
-        public Object doResolvedOptions(DynamicObject numberFormat) {
+        @Specialization
+        public Object doResolvedOptions(JSNumberFormatObject numberFormat) {
             return JSNumberFormat.resolvedOptions(getContext(), getRealm(), numberFormat);
         }
 
         @Fallback
-        public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
+        public Object throwTypeError(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeErrorTypeXExpected(JSNumberFormat.CLASS_NAME);
         }
     }
@@ -139,14 +139,14 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSNumberFormat(numberFormat)"})
-        public Object doFormatToParts(DynamicObject numberFormat, Object value) {
+        @Specialization
+        public Object doFormatToParts(JSNumberFormatObject numberFormat, Object value) {
             return JSNumberFormat.formatToParts(getContext(), getRealm(), numberFormat, value);
         }
 
         @Fallback
         @SuppressWarnings("unused")
-        public void throwTypeError(Object bummer, Object value) {
+        public Object throwTypeError(Object bummer, Object value) {
             throw Errors.createTypeErrorTypeXExpected(JSNumberFormat.CLASS_NAME);
         }
     }
@@ -157,8 +157,8 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSNumberFormat(numberFormat)"})
-        public TruffleString doFormatRange(DynamicObject numberFormat, Object start, Object end,
+        @Specialization
+        public TruffleString doFormatRange(JSNumberFormatObject numberFormat, Object start, Object end,
                         @Cached("create(true)") ToIntlMathematicalValue startToIntlMVNode,
                         @Cached("create(true)") ToIntlMathematicalValue endToIntlMVNode,
                         @Cached BranchProfile errorBranch) {
@@ -173,7 +173,7 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
 
         @Fallback
         @SuppressWarnings("unused")
-        public void throwTypeError(Object bummer, Object start, Object end) {
+        public Object throwTypeError(Object bummer, Object start, Object end) {
             throw Errors.createTypeErrorTypeXExpected(JSNumberFormat.CLASS_NAME);
         }
     }
@@ -184,8 +184,8 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSNumberFormat(numberFormat)"})
-        public Object doFormatRangeToParts(DynamicObject numberFormat, Object start, Object end,
+        @Specialization
+        public Object doFormatRangeToParts(JSNumberFormatObject numberFormat, Object start, Object end,
                         @Cached("create(true)") ToIntlMathematicalValue startToIntlMVNode,
                         @Cached("create(true)") ToIntlMathematicalValue endToIntlMVNode,
                         @Cached BranchProfile errorBranch) {
@@ -200,7 +200,7 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
 
         @Fallback
         @SuppressWarnings("unused")
-        public void throwTypeError(Object bummer, Object start, Object end) {
+        public Object throwTypeError(Object bummer, Object start, Object end) {
             throw Errors.createTypeErrorTypeXExpected(JSNumberFormat.CLASS_NAME);
         }
     }

@@ -50,7 +50,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -81,6 +80,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
@@ -207,11 +207,11 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "fast path")
-        @Specialization(guards = "isJSFunction(thisFnObj)")
-        protected DynamicObject bindFunction(DynamicObject thisFnObj, Object thisArg, Object[] args) {
-            DynamicObject proto = getPrototypeNode.execute(thisFnObj);
+        @Specialization
+        protected JSDynamicObject bindFunction(JSFunctionObject thisFnObj, Object thisArg, Object[] args) {
+            JSDynamicObject proto = getPrototypeNode.execute(thisFnObj);
 
-            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), thisFnObj, thisArg, args, proto,
+            JSDynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), thisFnObj, thisArg, args, proto,
                             isConstructorProfile, isAsyncProfile, setProtoProfile, this);
 
             Number length = 0;
@@ -250,8 +250,8 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @TruffleBoundary
         @Specialization(guards = {"isJSProxy(thisObj)"})
-        protected DynamicObject bindProxy(DynamicObject thisObj, Object thisArg, Object[] args) {
-            final DynamicObject proto = JSObject.getPrototype(thisObj);
+        protected JSDynamicObject bindProxy(JSDynamicObject thisObj, Object thisArg, Object[] args) {
+            final JSDynamicObject proto = JSObject.getPrototype(thisObj);
 
             final Object target = JSProxy.getTarget(thisObj);
             Object innerFunction = target;
@@ -259,14 +259,14 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 if (JSFunction.isJSFunction(innerFunction)) {
                     break;
                 } else if (JSProxy.isJSProxy(innerFunction)) {
-                    innerFunction = JSProxy.getTarget((DynamicObject) innerFunction);
+                    innerFunction = JSProxy.getTarget((JSDynamicObject) innerFunction);
                 } else {
                     throw Errors.createTypeErrorNotAFunction(thisObj);
                 }
             }
             assert JSFunction.isJSFunction(innerFunction);
 
-            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), (DynamicObject) innerFunction, thisArg, args, proto,
+            JSDynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), (JSFunctionObject) innerFunction, thisArg, args, proto,
                             isConstructorProfile, isAsyncProfile, setProtoProfile, this);
 
             Number length = 0;
@@ -293,7 +293,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSFunction(thisObj)", "!isJSProxy(thisObj)"})
-        protected DynamicObject bindError(Object thisObj, Object thisArg, Object[] arg) {
+        protected JSDynamicObject bindError(Object thisObj, Object thisArg, Object[] arg) {
             throw Errors.createTypeErrorNotAFunction(thisObj);
         }
 
@@ -314,17 +314,17 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             super(context, builtin);
         }
 
-        protected boolean isBoundTarget(DynamicObject fnObj) {
+        protected boolean isBoundTarget(JSDynamicObject fnObj) {
             return JSFunction.isBoundFunction(fnObj);
         }
 
         @Specialization(guards = {"isJSFunction(fnObj)", "!isBoundTarget(fnObj)"})
-        protected TruffleString toStringDefault(DynamicObject fnObj) {
+        protected TruffleString toStringDefault(JSDynamicObject fnObj) {
             return toStringDefaultTarget(fnObj);
         }
 
         @Specialization(guards = {"isJSFunction(fnObj)", "isBoundTarget(fnObj)"})
-        protected TruffleString toStringBound(DynamicObject fnObj) {
+        protected TruffleString toStringBound(JSDynamicObject fnObj) {
             if (getContext().isOptionV8CompatibilityMode()) {
                 return Strings.FUNCTION_NATIVE_CODE;
             } else {
@@ -377,7 +377,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @TruffleBoundary
-        private static TruffleString toStringDefaultTarget(DynamicObject fnObj) {
+        private static TruffleString toStringDefaultTarget(JSDynamicObject fnObj) {
             CallTarget ct = JSFunction.getCallTarget(fnObj);
             if (!(ct instanceof RootCallTarget)) {
                 return Strings.fromJavaString(ct.toString());
@@ -407,7 +407,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = "isJSFunction(function)")
-        protected Object applyFunction(DynamicObject function, Object target, Object args) {
+        protected Object applyFunction(JSDynamicObject function, Object target, Object args) {
             return apply(function, target, args);
         }
 

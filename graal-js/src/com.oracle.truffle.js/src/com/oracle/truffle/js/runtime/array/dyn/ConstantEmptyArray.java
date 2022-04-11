@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.js.runtime.array.dyn;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class ConstantEmptyArray extends AbstractConstantEmptyArray {
     private static final ConstantEmptyArray EMPTY_ARRAY = new ConstantEmptyArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
@@ -56,19 +56,19 @@ public final class ConstantEmptyArray extends AbstractConstantEmptyArray {
     }
 
     @Override
-    public ScriptArray setLengthImpl(DynamicObject object, long length, ProfileHolder profile) {
+    public ScriptArray setLengthImpl(JSDynamicObject object, long length, ProfileHolder profile) {
         setCapacity(object, length);
         return this;
     }
 
     @Override
-    public ScriptArray removeRangeImpl(DynamicObject object, long start, long end) {
+    public ScriptArray removeRangeImpl(JSDynamicObject object, long start, long end) {
         setCapacity(object, getCapacity(object) - (end - start));
         return this;
     }
 
     @Override
-    public ScriptArray addRangeImpl(DynamicObject object, long offset, int size) {
+    public ScriptArray addRangeImpl(JSDynamicObject object, long offset, int size) {
         setCapacity(object, getCapacity(object) + size);
         return this;
     }

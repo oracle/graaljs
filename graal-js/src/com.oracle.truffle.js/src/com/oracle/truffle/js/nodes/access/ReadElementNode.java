@@ -61,7 +61,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -511,7 +510,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @ExplodeLoop
-        protected final Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext root) {
+        protected final Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext root) {
             for (ArrayReadElementCacheNode c = arrayReadElementNode; c != null; c = c.arrayCacheNext) {
                 boolean guard = c.guard(target, array);
                 if (guard) {
@@ -524,7 +523,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @ExplodeLoop
-        protected final int executeArrayGetInt(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext root)
+        protected final int executeArrayGetInt(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext root)
                         throws UnexpectedResultException {
             for (ArrayReadElementCacheNode c = arrayReadElementNode; c != null; c = c.arrayCacheNext) {
                 boolean guard = c.guard(target, array);
@@ -538,7 +537,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @ExplodeLoop
-        protected final double executeArrayGetDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext root)
+        protected final double executeArrayGetDouble(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext root)
                         throws UnexpectedResultException {
             for (ArrayReadElementCacheNode c = arrayReadElementNode; c != null; c = c.arrayCacheNext) {
                 boolean guard = c.guard(target, array);
@@ -551,7 +550,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return specialization.executeArrayGetDouble(target, array, index, receiver, defaultValue, root);
         }
 
-        private ArrayReadElementCacheNode specialize(DynamicObject target, ScriptArray array) {
+        private ArrayReadElementCacheNode specialize(JSDynamicObject target, ScriptArray array) {
             CompilerAsserts.neverPartOfCompilation();
             Lock lock = getLock();
             lock.lock();
@@ -577,7 +576,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        private static ArrayReadElementCacheNode purgeStaleCacheEntries(ArrayReadElementCacheNode head, DynamicObject target) {
+        private static ArrayReadElementCacheNode purgeStaleCacheEntries(ArrayReadElementCacheNode head, JSDynamicObject target) {
             if (JSConfig.TrackArrayAllocationSites && head != null && JSArray.isJSArray(target)) {
                 ArrayAllocationSite allocationSite = JSAbstractArray.arrayGetAllocationSite(target);
                 if (allocationSite != null && allocationSite.getInitialArrayType() != null) {
@@ -647,7 +646,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            DynamicObject targetObject = (DynamicObject) target;
+            JSDynamicObject targetObject = (JSDynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
                 ScriptArray array = JSObject.getArray(targetObject);
@@ -672,13 +671,13 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return toArrayIndexNode.execute(index);
         }
 
-        private Object readNonArrayObjectIndex(DynamicObject targetObject, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
+        private Object readNonArrayObjectIndex(JSDynamicObject targetObject, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
             return getNonArrayNode().execute(targetObject, index, receiver, defaultValue, root);
         }
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
-            DynamicObject targetObject = (DynamicObject) target;
+            JSDynamicObject targetObject = (JSDynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
                 ScriptArray array = JSObject.getArray(targetObject);
@@ -694,7 +693,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
-            DynamicObject targetObject = (DynamicObject) target;
+            JSDynamicObject targetObject = (JSDynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
                 ScriptArray array = JSObject.getArray(targetObject);
@@ -710,7 +709,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected int executeWithTargetAndIndexUncheckedInt(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
-            DynamicObject targetObject = (DynamicObject) target;
+            JSDynamicObject targetObject = (JSDynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
                 ScriptArray array = JSObject.getArray(targetObject);
@@ -729,7 +728,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected int executeWithTargetAndIndexUncheckedInt(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
-            DynamicObject targetObject = (DynamicObject) target;
+            JSDynamicObject targetObject = (JSDynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
                 ScriptArray array = JSObject.getArray(targetObject);
@@ -746,7 +745,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected double executeWithTargetAndIndexUncheckedDouble(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
-            DynamicObject targetObject = (DynamicObject) target;
+            JSDynamicObject targetObject = (JSDynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
                 ScriptArray array = JSObject.getArray(targetObject);
@@ -765,7 +764,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected double executeWithTargetAndIndexUncheckedDouble(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
-            DynamicObject targetObject = (DynamicObject) target;
+            JSDynamicObject targetObject = (JSDynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
                 ScriptArray array = JSObject.getArray(targetObject);
@@ -785,7 +784,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return isObjectNode.executeBoolean(target);
         }
 
-        private Object getProperty(DynamicObject targetObject, Object objIndex, Object receiver, Object defaultValue) {
+        private Object getProperty(JSDynamicObject targetObject, Object objIndex, Object receiver, Object defaultValue) {
             return JSObject.getOrDefault(targetObject, objIndex, receiver, defaultValue, jsclassProfile, this);
         }
 
@@ -805,7 +804,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         JSObjectReadElementNonArrayTypeCacheNode() {
         }
 
-        public Object execute(DynamicObject targetObject, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
+        public Object execute(JSDynamicObject targetObject, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
             if (getPropertyCachedNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getPropertyCachedNode = insert(CachedGetPropertyNode.create(root.context));
@@ -839,7 +838,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    protected static ArrayReadElementCacheNode makeArrayCacheNode(@SuppressWarnings("unused") DynamicObject target, ScriptArray array, ArrayReadElementCacheNode next) {
+    protected static ArrayReadElementCacheNode makeArrayCacheNode(@SuppressWarnings("unused") JSDynamicObject target, ScriptArray array, ArrayReadElementCacheNode next) {
         if (array instanceof ConstantEmptyArray) {
             return new EmptyArrayReadElementCacheNode(array, next);
         } else if (array instanceof ConstantObjectArray) {
@@ -886,14 +885,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             this.arrayCacheNext = next;
         }
 
-        protected abstract Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context);
+        protected abstract Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context);
 
-        protected int executeArrayGetInt(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
+        protected int executeArrayGetInt(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             return JSTypesGen.expectInteger(executeArrayGet(target, array, index, receiver, defaultValue, context));
         }
 
-        protected double executeArrayGetDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
+        protected double executeArrayGetDouble(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             return JSTypesGen.expectDouble(executeArrayGet(target, array, index, receiver, defaultValue, context));
         }
@@ -925,7 +924,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return arrayType;
         }
 
-        protected Object readOutOfBounds(DynamicObject target, long index, Object receiver, Object defaultValue, JSContext context) {
+        protected Object readOutOfBounds(JSDynamicObject target, long index, Object receiver, Object defaultValue, JSContext context) {
             if (needGetProperty.profile(needsSlowGet(target, context))) {
                 return JSObject.getOrDefault(target, index, receiver, defaultValue, outOfBoundsClassProfile, this);
             } else {
@@ -933,7 +932,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        private static boolean needsSlowGet(DynamicObject target, JSContext context) {
+        private static boolean needsSlowGet(JSDynamicObject target, JSContext context) {
             return !context.getArrayPrototypeNoElementsAssumption().isValid() || (!context.getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(target)) ||
                             (!context.getFastArgumentsObjectAssumption().isValid() && JSSlowArgumentsArray.isJSSlowArgumentsObject(target));
         }
@@ -947,7 +946,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+        protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             return JSObject.getOrDefault(target, index, receiver, defaultValue, classProfile, this);
         }
     }
@@ -959,7 +958,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+        protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             AbstractConstantArray constantArray = (AbstractConstantArray) cast(array);
             if (inBounds.profile(constantArray.hasElement(target, index))) {
                 return constantArray.getElementInBounds(target, (int) index);
@@ -976,7 +975,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+        protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             return readOutOfBounds(target, index, receiver, defaultValue, context);
         }
     }
@@ -990,7 +989,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+        protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             ConstantObjectArray constantObjectArray = (ConstantObjectArray) cast(array);
             if (inBounds.profile(constantObjectArray.isInBoundsFast(target, index))) {
                 Object value = ConstantObjectArray.getElementInBoundsDirect(target, (int) index);
@@ -1026,7 +1025,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+        protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             LazyRegexResultArray lazyRegexResultArray = (LazyRegexResultArray) array;
             if (inBounds.profile(lazyRegexResultArray.hasElement(target, (int) index))) {
                 return LazyRegexResultArray.materializeGroup(context, getMaterializeResultNode(), target, (int) index, lazyRegexResultNode, lazyRegexResultOriginalInputNode);
@@ -1052,7 +1051,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+        protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             LazyRegexResultIndicesArray lazyRegexResultIndicesArray = (LazyRegexResultIndicesArray) array;
             if (inBounds.profile(lazyRegexResultIndicesArray.hasElement(target, (int) index))) {
                 return LazyRegexResultIndicesArray.materializeGroup(context, getResultAccessor(), target, (int) index);
@@ -1071,7 +1070,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+        protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             LazyArray lazyRegexResultArray = (LazyArray) array;
             int intIndex = (int) index;
             if (inBounds.profile(lazyRegexResultArray.hasElement(target, intIndex))) {
@@ -1089,7 +1088,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+        protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             AbstractWritableArray writableArray = (AbstractWritableArray) cast(array);
             if (inBounds.profile(writableArray.isInBoundsFast(target, index))) {
                 return writableArray.getInBoundsFast(target, (int) index);
@@ -1099,7 +1098,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected int executeArrayGetInt(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
+        protected int executeArrayGetInt(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             AbstractWritableArray writableArray = (AbstractWritableArray) cast(array);
             if (inBounds.profile(writableArray.isInBoundsFast(target, index))) {
@@ -1110,7 +1109,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected double executeArrayGetDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
+        protected double executeArrayGetDouble(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             AbstractWritableArray writableArray = (AbstractWritableArray) cast(array);
             if (inBounds.profile(writableArray.isInBoundsFast(target, index))) {
@@ -1129,7 +1128,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+        protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             HolesIntArray holesIntArray = (HolesIntArray) cast(array);
             if (inBounds.profile(holesIntArray.isInBoundsFast(target, index))) {
                 int value = holesIntArray.getInBoundsFastInt(target, (int) index);
@@ -1149,7 +1148,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+        protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             HolesDoubleArray holesDoubleArray = (HolesDoubleArray) cast(array);
             if (inBounds.profile(holesDoubleArray.isInBoundsFast(target, index))) {
                 double value = holesDoubleArray.getInBoundsFastDouble(target, (int) index);
@@ -1169,10 +1168,10 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+        protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             HolesJSObjectArray holesArray = (HolesJSObjectArray) cast(array);
             if (inBounds.profile(holesArray.isInBoundsFast(target, index))) {
-                DynamicObject value = holesArray.getInBoundsFastJSObject(target, (int) index);
+                JSDynamicObject value = holesArray.getInBoundsFastJSObject(target, (int) index);
                 if (holeProfile.profile(!HolesJSObjectArray.isHoleValue(value))) {
                     return value;
                 }
@@ -1189,7 +1188,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+        protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             HolesObjectArray holesArray = (HolesObjectArray) cast(array);
             if (inBounds.profile(holesArray.isInBoundsFast(target, index))) {
                 Object value = holesArray.getInBoundsFastObject(target, (int) index);
@@ -1218,7 +1217,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+        protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(typedArray.hasElement(target, index))) {
                 return typedArray.getInt(target, (int) index, interop);
@@ -1228,7 +1227,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected int executeArrayGetInt(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
+        protected int executeArrayGetInt(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(typedArray.hasElement(target, index))) {
@@ -1240,7 +1239,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected double executeArrayGetDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
+        protected double executeArrayGetDouble(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(typedArray.hasElement(target, index))) {
@@ -1260,7 +1259,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+        protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(typedArray.hasElement(target, index))) {
                 int intValue = typedArray.getInt(target, (int) index, interop);
@@ -1275,7 +1274,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected int executeArrayGetInt(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
+        protected int executeArrayGetInt(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(typedArray.hasElement(target, index))) {
@@ -1293,7 +1292,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected double executeArrayGetDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
+        protected double executeArrayGetDouble(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(typedArray.hasElement(target, index))) {
@@ -1312,7 +1311,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+        protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             TypedArray.TypedFloatArray typedArray = (TypedArray.TypedFloatArray) cast(array);
             if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(typedArray.hasElement(target, index))) {
                 return typedArray.getDouble(target, (int) index, interop);
@@ -1322,7 +1321,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected double executeArrayGetDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
+        protected double executeArrayGetDouble(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             TypedArray.TypedFloatArray typedArray = (TypedArray.TypedFloatArray) cast(array);
             if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(typedArray.hasElement(target, index))) {
@@ -1341,7 +1340,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+        protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             TypedArray.TypedBigIntArray typedArray = (TypedArray.TypedBigIntArray) cast(array);
             if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(typedArray.hasElement(target, index))) {
                 return typedArray.getBigInt(target, (int) index, interop);
@@ -1670,7 +1669,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     this.readFromPrototypeNode = insert(ReadElementNode.create(context));
                     this.foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
                 }
-                DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(truffleObject);
+                JSDynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(truffleObject);
                 return readFromPrototypeNode.executeWithTargetAndIndex(prototype, key);
             } else {
                 return Undefined.instance;

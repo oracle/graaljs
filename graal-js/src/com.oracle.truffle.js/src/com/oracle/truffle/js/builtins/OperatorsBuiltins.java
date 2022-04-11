@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
@@ -89,6 +88,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -118,11 +118,11 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
      * perform the check.
      */
     @SuppressWarnings("unused")
-    public static boolean overloadedOperatorsAllowed(DynamicObject arg) {
+    public static boolean overloadedOperatorsAllowed(JSDynamicObject arg) {
         return true;
     }
 
-    public static void checkOverloadedOperatorsAllowed(DynamicObject arg, Node originatingNode) {
+    public static void checkOverloadedOperatorsAllowed(JSDynamicObject arg, Node originatingNode) {
         if (!overloadedOperatorsAllowed(arg)) {
             throw Errors.createTypeError("use of overloaded operators is not enabled by a `with operators from` clause", originatingNode);
         }
@@ -149,10 +149,10 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         }
 
         @Specialization
-        protected DynamicObject doOperators(VirtualFrame frame, Object table, Object... extraTables) {
-            DynamicObject prototype = createPrototypeNode.execute(frame);
+        protected JSDynamicObject doOperators(VirtualFrame frame, Object table, Object... extraTables) {
+            JSDynamicObject prototype = createPrototypeNode.execute(frame);
             OperatorSet operatorSet = constructOperatorSetNode.execute(table, extraTables);
-            DynamicObject constructor = createConstructor(operatorSet);
+            JSDynamicObject constructor = createConstructor(operatorSet);
             JSFunction.setClassPrototype(constructor, prototype);
             setConstructorNode.executeVoid(prototype, constructor);
             setOperatorDefinitionsNode.setValue(constructor, operatorSet);
@@ -160,7 +160,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         }
 
         @TruffleBoundary
-        private DynamicObject createConstructor(OperatorSet operatorSet) {
+        private JSDynamicObject createConstructor(OperatorSet operatorSet) {
             CallTarget callTarget = new JavaScriptRootNode() {
                 @Child private PropertyNode getPrototypeNode = PropertyNode.createProperty(getContext(), null, JSObject.PROTOTYPE);
                 @Child private CreateOverloadedOperatorsObjectNode createOverloadedOperatorsObjectNode = CreateOverloadedOperatorsObjectNode.create(getContext(), operatorSet);
@@ -318,7 +318,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                     if (!isJSConstructor(leftType)) {
                         throw Errors.createTypeError("the left: value must be an ECMAScript constructor", this);
                     }
-                    OperatorSet leftSet = getOperatorSetOfClass(getRealm(), (DynamicObject) leftType);
+                    OperatorSet leftSet = getOperatorSetOfClass(getRealm(), (JSDynamicObject) leftType);
                     if (leftSet == null) {
                         throw Errors.createTypeError(Boundaries.stringFormat("the left: value %s must be a class with operators overloaded", getClassName(leftType)), this);
                     }
@@ -332,7 +332,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                                 throw Errors.createTypeError(Boundaries.stringFormat("the operator %s may not be overloaded on the provided type %s", operator, getClassName(leftType), this));
                             }
                             if (!Boundaries.economicMapContainsKey(rightOperatorDefinitions, operator)) {
-                                Boundaries.economicMapPut(rightOperatorDefinitions, operator, new DynamicObject[operatorCounter]);
+                                Boundaries.economicMapPut(rightOperatorDefinitions, operator, new JSDynamicObject[operatorCounter]);
                             }
                             Boundaries.economicMapGet(rightOperatorDefinitions, operator)[leftSet.getOperatorCounter()] = operatorImplementation;
                         }
@@ -345,7 +345,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                     if (!isJSConstructor(rightType)) {
                         throw Errors.createTypeError("the right: value must be an ECMAScript constructor", this);
                     }
-                    OperatorSet rightSet = getOperatorSetOfClass(getRealm(), (DynamicObject) rightType);
+                    OperatorSet rightSet = getOperatorSetOfClass(getRealm(), (JSDynamicObject) rightType);
                     if (rightSet == null) {
                         throw Errors.createTypeError(Boundaries.stringFormat("the right: value %s must be a class with operators overloaded", getClassName(rightType)), this);
                     }
@@ -359,7 +359,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                                 throw Errors.createTypeError(Boundaries.stringFormat("the operator %s may not be overloaded on the provided type %s", operator, getClassName(rightType), this));
                             }
                             if (!Boundaries.economicMapContainsKey(leftOperatorDefinitions, operator)) {
-                                Boundaries.economicMapPut(leftOperatorDefinitions, operator, new DynamicObject[operatorCounter]);
+                                Boundaries.economicMapPut(leftOperatorDefinitions, operator, new JSDynamicObject[operatorCounter]);
                             }
                             Boundaries.economicMapGet(leftOperatorDefinitions, operator)[rightSet.getOperatorCounter()] = operatorImplementation;
                         }
@@ -372,7 +372,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             return new OperatorSet(operatorCounter, selfOperatorDefinitions, leftOperatorDefinitions, rightOperatorDefinitions, openOperators);
         }
 
-        protected OperatorSet getOperatorSetOfClass(JSRealm realm, DynamicObject constructor) {
+        protected OperatorSet getOperatorSetOfClass(JSRealm realm, JSDynamicObject constructor) {
             if (constructor == realm.getNumberConstructor()) {
                 return OperatorSet.NUMBER_OPERATOR_SET;
             } else if (constructor == realm.getBigIntConstructor()) {
@@ -456,7 +456,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             return typeIsJSObjectNode.executeBoolean(type) && typeIsConstructorNode.executeBoolean(type);
         }
 
-        protected boolean hasOperatorDefinitions(DynamicObject constructor) {
+        protected boolean hasOperatorDefinitions(JSDynamicObject constructor) {
             if (hasOperatorDefinitionsNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 hasOperatorDefinitionsNode = insert(HasPropertyCacheNode.create(OPERATOR_DEFINITIONS_ID, getContext(), true));
@@ -464,7 +464,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             return hasOperatorDefinitionsNode.hasProperty(constructor);
         }
 
-        protected DynamicObject getSuperclass(DynamicObject constructor) {
+        protected JSDynamicObject getSuperclass(JSDynamicObject constructor) {
             if (getSuperclassNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getSuperclassNode = insert(GetPrototypeNode.create());
@@ -472,7 +472,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             return getSuperclassNode.execute(constructor);
         }
 
-        protected OperatorSet getOperatorDefinitions(DynamicObject constructor) {
+        protected OperatorSet getOperatorDefinitions(JSDynamicObject constructor) {
             if (getOperatorDefinitionsNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getOperatorDefinitionsNode = insert(PropertyGetNode.createGetHidden(OPERATOR_DEFINITIONS_ID, getContext()));
@@ -480,8 +480,8 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             return (OperatorSet) getOperatorDefinitionsNode.getValue(constructor);
         }
 
-        protected OperatorSet findOperatorDefinitions(DynamicObject arg) {
-            DynamicObject constructor = arg;
+        protected OperatorSet findOperatorDefinitions(JSDynamicObject arg) {
+            JSDynamicObject constructor = arg;
             while (constructor != Null.instance && !hasOperatorDefinitions(constructor)) {
                 constructor = getSuperclass(constructor);
             }

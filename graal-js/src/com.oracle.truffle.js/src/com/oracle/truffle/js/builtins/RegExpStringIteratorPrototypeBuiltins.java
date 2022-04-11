@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.RegExpPrototypeSymbolOperation;
@@ -62,6 +61,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -126,7 +126,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
         }
 
         @Specialization(guards = "isRegExpStringIterator(iterator)")
-        protected DynamicObject doRegExpStringIterator(VirtualFrame frame, DynamicObject iterator) {
+        protected JSDynamicObject doRegExpStringIterator(VirtualFrame frame, JSDynamicObject iterator) {
 
             boolean done;
             try {
@@ -150,7 +150,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
             }
 
             // JSRegExpExecIntlNode supports DynamicObjects only
-            Object match = regexExecIntl((DynamicObject) regex, string);
+            Object match = regexExecIntl((JSDynamicObject) regex, string);
 
             if (noMatchProfile.profile(match == Null.instance)) {
                 getSetDoneNode().setValueBoolean(iterator, true);
@@ -173,7 +173,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         @SuppressWarnings("unused")
         @Fallback
-        protected DynamicObject doIncompatibleReceiver(Object iterator) {
+        protected JSDynamicObject doIncompatibleReceiver(Object iterator) {
             throw Errors.createTypeError("not a RegExp String Iterator");
         }
 

@@ -50,7 +50,6 @@ import java.util.stream.IntStream;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
@@ -61,8 +60,10 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 final class CommonJSResolution {
 
@@ -297,7 +298,7 @@ final class CommonJSResolution {
         TruffleLanguage.Env env = realm.getEnv();
         TruffleFile packageJson = joinPaths(env, modulePath, PACKAGE_JSON);
         if (fileExists(packageJson)) {
-            DynamicObject jsonObj = loadJsonObject(packageJson, realm);
+            JSDynamicObject jsonObj = loadJsonObject(packageJson, realm);
             if (JSDynamicObject.isJSDynamicObject(jsonObj)) {
                 Object main = JSObject.get(jsonObj, Strings.PACKAGE_JSON_MAIN_PROPERTY_NAME);
                 if (!Strings.isTString(main)) {
@@ -317,7 +318,7 @@ final class CommonJSResolution {
         return null;
     }
 
-    public static DynamicObject loadJsonObject(TruffleFile jsonFile, JSRealm realm) {
+    public static JSDynamicObject loadJsonObject(TruffleFile jsonFile, JSRealm realm) {
         try {
             if (fileExists(jsonFile)) {
                 Source source = null;
@@ -328,11 +329,11 @@ final class CommonJSResolution {
                 if (source == null) {
                     return null;
                 }
-                DynamicObject parse = (DynamicObject) realm.getJsonParseFunctionObject();
+                JSFunctionObject parse = (JSFunctionObject) realm.getJsonParseFunctionObject();
                 TruffleString jsonString = Strings.fromJavaString(source.getCharacters().toString());
-                Object jsonObj = JSFunction.call(JSArguments.create(parse, parse, jsonString));
+                Object jsonObj = JSFunction.call(JSArguments.create(Undefined.instance, parse, jsonString));
                 if (JSDynamicObject.isJSDynamicObject(jsonObj)) {
-                    return (DynamicObject) jsonObj;
+                    return (JSDynamicObject) jsonObj;
                 }
             }
             return null;

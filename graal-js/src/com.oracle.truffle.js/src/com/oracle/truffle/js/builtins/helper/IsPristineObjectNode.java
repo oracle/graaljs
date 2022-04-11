@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
@@ -57,6 +56,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Helper node for optimization of built-in functions. Some built-in functions, like
@@ -109,22 +109,22 @@ public abstract class IsPristineObjectNode extends JavaScriptBaseNode {
                         JSRegExp.STICKY);
     }
 
-    public abstract boolean execute(DynamicObject object);
+    public abstract boolean execute(JSDynamicObject object);
 
     @Specialization(guards = {"cachedShape.check(object)"}, assumptions = "getPropertyFinalAssumptions()")
-    boolean doCached(@SuppressWarnings("unused") DynamicObject object,
+    boolean doCached(@SuppressWarnings("unused") JSDynamicObject object,
                     @Cached("object.getShape()") @SuppressWarnings("unused") Shape cachedShape,
                     @Cached("isInstanceAndDoesNotOverwriteProps(cachedShape)") boolean isInstanceAndDoesNotOverwriteProps) {
         return isInstanceAndDoesNotOverwriteProps && prototypeShapeUnchanged(object);
     }
 
     @Specialization(assumptions = "getPropertyFinalAssumptions()", replaces = "doCached")
-    boolean doDynamic(DynamicObject object) {
+    boolean doDynamic(JSDynamicObject object) {
         return isInstanceAndDoesNotOverwriteProps(object.getShape()) && prototypeShapeUnchanged(object);
     }
 
     @Specialization
-    boolean doAssumptionsInvalid(@SuppressWarnings("unused") DynamicObject object) {
+    boolean doAssumptionsInvalid(@SuppressWarnings("unused") JSDynamicObject object) {
         return false;
     }
 
@@ -132,7 +132,7 @@ public abstract class IsPristineObjectNode extends JavaScriptBaseNode {
         return propertyFinalAssumptions;
     }
 
-    private boolean prototypeShapeUnchanged(DynamicObject object) {
+    private boolean prototypeShapeUnchanged(JSDynamicObject object) {
         return getPrototypeNode.execute(object).getShape() == initialPrototypeShape;
     }
 

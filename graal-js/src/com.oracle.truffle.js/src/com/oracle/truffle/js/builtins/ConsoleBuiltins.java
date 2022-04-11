@@ -45,7 +45,6 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ConsoleBuiltinsFactory.JSConsoleAssertNodeGen;
 import com.oracle.truffle.js.builtins.ConsoleBuiltinsFactory.JSConsoleClearNodeGen;
@@ -67,6 +66,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -171,7 +171,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
         }
 
         @Specialization
-        protected DynamicObject assertImpl(Object... data) {
+        protected JSDynamicObject assertImpl(Object... data) {
             boolean result = data.length > 0 ? toBooleanNode.executeBoolean(data[0]) : false;
             if (!result) {
                 Object[] arr = new Object[data.length > 0 ? data.length : 1];
@@ -193,7 +193,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
 
         @Specialization
         @TruffleBoundary
-        protected DynamicObject clear() {
+        protected JSDynamicObject clear() {
             PrintWriter writer = getRealm().getOutputWriter();
             writer.append("\033[H\033[2J");
             writer.flush();
@@ -212,7 +212,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
 
         @Specialization
         @TruffleBoundary
-        protected DynamicObject count(Object label) {
+        protected JSDynamicObject count(Object label) {
             TruffleString key = label == Undefined.instance ? Strings.DEFAULT : toStringNode.executeString(label);
             int count = 0;
             JSConsoleUtil console = getConsoleUtil();
@@ -244,7 +244,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
 
         @Specialization
         @TruffleBoundary
-        protected DynamicObject count(Object label) {
+        protected JSDynamicObject count(Object label) {
             Object key = label == Undefined.instance ? Strings.DEFAULT : toStringNode.executeString(label);
             getConsoleUtil().getCountMap().remove(key);
             return Undefined.instance;
@@ -264,7 +264,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
 
         @Specialization
         @TruffleBoundary
-        protected DynamicObject group(Object[] label) {
+        protected JSDynamicObject group(Object[] label) {
             if (label.length > 0) {
                 printNode.executeObjectArray(label);
             }
@@ -282,7 +282,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
 
         @Specialization
         @TruffleBoundary
-        protected DynamicObject groupEnd() {
+        protected JSDynamicObject groupEnd() {
             getConsoleUtil().decConsoleIndentation();
             return Undefined.instance;
         }
@@ -298,7 +298,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
 
         @Specialization
         @TruffleBoundary
-        protected DynamicObject time(Object label) {
+        protected JSDynamicObject time(Object label) {
             TruffleString key = label == Undefined.instance ? Strings.DEFAULT : toStringNode.executeString(label);
             getConsoleUtil().getTimeMap().put(key, getRealm().currentTimeMillis());
             return Undefined.instance;
@@ -317,7 +317,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
 
         @Specialization
         @TruffleBoundary
-        protected DynamicObject timeEnd(Object label) {
+        protected JSDynamicObject timeEnd(Object label) {
             TruffleString key = label == Undefined.instance ? Strings.DEFAULT : toStringNode.executeString(label);
             Map<TruffleString, Long> timeMap = getConsoleUtil().getTimeMap();
             if (timeMap.containsKey(key)) {
@@ -343,7 +343,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
 
         @Specialization
         @TruffleBoundary
-        protected DynamicObject timeLog(Object... data) {
+        protected JSDynamicObject timeLog(Object... data) {
             TruffleString key = data.length == 0 || data[0] == Undefined.instance ? Strings.DEFAULT : toStringNode.executeString(data[0]);
             Map<TruffleString, Long> timeMap = getConsoleUtil().getTimeMap();
             if (timeMap.containsKey(key)) {

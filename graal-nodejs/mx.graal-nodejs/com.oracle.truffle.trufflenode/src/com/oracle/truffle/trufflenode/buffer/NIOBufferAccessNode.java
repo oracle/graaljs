@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import java.nio.charset.StandardCharsets;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNode;
 import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -55,8 +54,10 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.trufflenode.node.ArrayBufferGetContentsNode;
 
@@ -72,13 +73,13 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
         this.getLenNode = ArrayBufferViewGetByteLengthNodeGen.create(context);
     }
 
-    protected static DynamicObject getArrayBuffer(DynamicObject target) {
+    protected static JSArrayBufferObject getArrayBuffer(JSDynamicObject target) {
         assert JSArrayBufferView.isJSArrayBufferView(target) : "Target object must be a JSArrayBufferView";
-        DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
+        JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         return arrayBuffer;
     }
 
-    protected static ByteBuffer getDirectByteBuffer(DynamicObject arrayBuffer) {
+    protected static ByteBuffer getDirectByteBuffer(JSDynamicObject arrayBuffer) {
         if (JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer)) {
             return JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
         } else if (JSSharedArrayBuffer.isJSSharedArrayBuffer(arrayBuffer)) {
@@ -88,28 +89,28 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
         }
     }
 
-    protected int getOffset(DynamicObject target) {
+    protected int getOffset(JSDynamicObject target) {
         int byteOffset = JSArrayBufferView.getByteOffset(target, getContext());
         return byteOffset;
     }
 
-    protected int getLength(DynamicObject target) {
+    protected int getLength(JSDynamicObject target) {
         return getLenNode.executeInt(target);
     }
 
     @TruffleBoundary
     protected void outOfBoundsFail() {
         JSException exception = Errors.createRangeError("out of range index");
-        DynamicObject errorObject = (DynamicObject) exception.getErrorObjectEager(getRealm());
+        JSDynamicObject errorObject = (JSDynamicObject) exception.getErrorObjectEager(getRealm());
         JSObject.set(errorObject, "code", "ERR_BUFFER_OUT_OF_BOUNDS");
         throw exception;
     }
 
-    protected static boolean accept(DynamicObject target) {
+    protected static boolean accept(JSDynamicObject target) {
         return JSArrayBufferView.isJSArrayBufferView(target);
     }
 
-    protected final ByteBuffer interopArrayBufferGetContents(DynamicObject arrayBuffer) {
+    protected final ByteBuffer interopArrayBufferGetContents(JSDynamicObject arrayBuffer) {
         if (interopArrayBufferGetContents == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             interopArrayBufferGetContents = insert(ArrayBufferGetContentsNode.create());

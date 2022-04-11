@@ -44,11 +44,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import com.oracle.truffle.js.runtime.Strings;
 import org.junit.Test;
 
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.test.JSTest;
@@ -84,7 +84,7 @@ public class TestHelperTest extends JSTest {
 
     @Test
     public void testTestHelperArray() {
-        DynamicObject arr = testHelper.runJSArray("[1,2,3]");
+        JSDynamicObject arr = testHelper.runJSArray("[1,2,3]");
         assertTrue(JSArray.isJSArray(arr));
         Object[] javaArr = JSObject.getArray(arr).toArray(arr);
         assertEquals(3, javaArr.length);

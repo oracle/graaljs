@@ -40,9 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
+import java.util.List;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -53,10 +54,9 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-
-import java.util.List;
 
 /**
  * Implementation of ToLimitedTemporalDuration() operation.
@@ -87,7 +87,7 @@ public abstract class ToLimitedTemporalDurationNode extends JavaScriptBaseNode {
             TruffleString str = toStringNode.executeString(temporalDurationLike);
             d = JSTemporalDuration.parseTemporalDurationString(str);
         } else {
-            d = JSTemporalDuration.toTemporalDurationRecord((DynamicObject) temporalDurationLike);
+            d = JSTemporalDuration.toTemporalDurationRecord((JSDynamicObject) temporalDurationLike);
         }
 
         if (hasDisallowedFields.profile(disallowedFields != TemporalUtil.listEmpty)) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -98,7 +97,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             if (isSimpleShapeCheck) {
                 Shape shape = receiverCheck.getShape();
                 if (isDynamicObject(thisObj, shape)) {
-                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    JSDynamicObject jsobj = castDynamicObject(thisObj, shape);
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
@@ -200,7 +199,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
 
         @Override
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
-            return JSObject.hasOwnProperty((DynamicObject) thisObj, root.getKey());
+            return JSObject.hasOwnProperty((JSDynamicObject) thisObj, root.getKey());
         }
     }
 
@@ -221,7 +220,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         @Override
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
             Object key = root.getKey();
-            DynamicObject store = receiverCheck.getStore(thisObj);
+            JSDynamicObject store = receiverCheck.getStore(thisObj);
             if (hasOwnProperty) {
                 return getOwnPropertyNode.execute(store, key) != null;
             } else {
@@ -240,9 +239,9 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
             Object key = root.getKey();
             if (root.isOwnProperty()) {
-                return JSObject.hasOwnProperty((DynamicObject) thisObj, key);
+                return JSObject.hasOwnProperty((JSDynamicObject) thisObj, key);
             } else {
-                return JSObject.hasProperty((DynamicObject) thisObj, key);
+                return JSObject.hasProperty((JSDynamicObject) thisObj, key);
             }
         }
     }
@@ -262,9 +261,9 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             if (JSDynamicObject.isJSDynamicObject(thisObj)) {
                 Object key = root.getKey();
                 if (root.isOwnProperty()) {
-                    return JSObject.hasOwnProperty((DynamicObject) thisObj, key, jsclassProfile);
+                    return JSObject.hasOwnProperty((JSDynamicObject) thisObj, key, jsclassProfile);
                 } else {
-                    return JSObject.hasProperty((DynamicObject) thisObj, key, jsclassProfile);
+                    return JSObject.hasProperty((JSDynamicObject) thisObj, key, jsclassProfile);
                 }
             } else {
                 assert JSRuntime.isForeignObject(thisObj);

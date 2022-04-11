@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -48,6 +47,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -76,7 +76,7 @@ public class IteratorCloseNode extends JavaScriptBaseNode {
         return new IteratorCloseNode(context, iteratorNode);
     }
 
-    public final void executeVoid(DynamicObject iterator) {
+    public final void executeVoid(JSDynamicObject iterator) {
         Object returnMethod = getReturnNode.executeWithTarget(iterator);
         if (returnMethod != Undefined.instance) {
             Object innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
@@ -86,12 +86,12 @@ public class IteratorCloseNode extends JavaScriptBaseNode {
         }
     }
 
-    public final Object execute(DynamicObject iterator, Object value) {
+    public final Object execute(JSDynamicObject iterator, Object value) {
         executeVoid(iterator);
         return value;
     }
 
-    public final void executeAbrupt(DynamicObject iterator) {
+    public final void executeAbrupt(JSDynamicObject iterator) {
         try {
             Object returnMethod = getReturnNode.executeWithTarget(iterator);
             if (returnMethod != Undefined.instance) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.intl;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode.CreateObjectWithPrototypeNode;
@@ -53,6 +52,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
@@ -77,23 +77,23 @@ public abstract class ToDateTimeOptionsNode extends JavaScriptBaseNode {
         this.context = context;
     }
 
-    public abstract DynamicObject execute(Object opts, String required, String defaults);
+    public abstract JSDynamicObject execute(Object opts, String required, String defaults);
 
     @SuppressWarnings("unused")
     @Specialization(guards = "isUndefined(opts)")
-    public DynamicObject fromUndefined(Object opts, String required, String defaults) {
+    public JSDynamicObject fromUndefined(Object opts, String required, String defaults) {
         return setDefaultsIfNeeded(JSOrdinary.createWithNullPrototype(getContext()), required, defaults);
     }
 
     @Specialization(guards = "!isUndefined(opts)")
-    public DynamicObject fromOtherThenUndefined(Object opts, String required, String defaults,
+    public JSDynamicObject fromOtherThenUndefined(Object opts, String required, String defaults,
                     @Cached("createOrdinaryWithPrototype(context)") CreateObjectWithPrototypeNode createObjectNode) {
-        DynamicObject options = createObjectNode.execute(toDynamicObject(opts));
+        JSDynamicObject options = createObjectNode.execute(toDynamicObject(opts));
         return setDefaultsIfNeeded(options, required, defaults);
     }
 
     // from step 4 (Let needDefaults be true)
-    private static DynamicObject setDefaultsIfNeeded(DynamicObject options, String required, String defaults) {
+    private static JSDynamicObject setDefaultsIfNeeded(JSDynamicObject options, String required, String defaults) {
         boolean needDefaults = true;
         if (required != null) {
             if (DATE.equals(required) || ANY.equals(required)) {
@@ -136,11 +136,11 @@ public abstract class ToDateTimeOptionsNode extends JavaScriptBaseNode {
         return options;
     }
 
-    private DynamicObject toDynamicObject(Object o) {
+    private JSDynamicObject toDynamicObject(Object o) {
         if (toObjectNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
         }
-        return (DynamicObject) toObjectNode.execute(o);
+        return (JSDynamicObject) toObjectNode.execute(o);
     }
 }

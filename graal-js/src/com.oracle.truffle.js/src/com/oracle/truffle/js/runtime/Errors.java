@@ -46,11 +46,11 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -71,7 +71,7 @@ public final class Errors {
     public static JSException createAggregateError(Object errors, TruffleString message, Node originatingNode) {
         JSContext context = JavaScriptLanguage.get(originatingNode).getJSContext();
         JSRealm realm = JSRealm.get(originatingNode);
-        DynamicObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
+        JSErrorObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
         JSError.setMessage(errorObj, message);
         JSObjectUtil.putDataProperty(context, errorObj, JSError.ERRORS_NAME, errors, JSError.ERRORS_ATTRIBUTES);
         JSException exception = JSException.create(JSErrorType.AggregateError, Strings.toJavaString(message), errorObj, realm);
@@ -83,7 +83,7 @@ public final class Errors {
     public static JSException createAggregateError(Object errors, Node originatingNode) {
         JSContext context = JavaScriptLanguage.get(originatingNode).getJSContext();
         JSRealm realm = JSRealm.get(originatingNode);
-        DynamicObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
+        JSErrorObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
         JSObjectUtil.putDataProperty(context, errorObj, JSError.ERRORS_NAME, errors, JSError.ERRORS_ATTRIBUTES);
         JSException exception = JSException.create(JSErrorType.AggregateError, null, errorObj, realm);
         JSError.setException(realm, errorObj, exception, false);
@@ -369,7 +369,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCannotSetProto(DynamicObject thisObj, DynamicObject proto) {
+    public static JSException createTypeErrorCannotSetProto(JSDynamicObject thisObj, JSDynamicObject proto) {
         if (!JSNonProxy.checkProtoCycle(thisObj, proto)) {
             if (JSObject.getJSContext(thisObj).isOptionNashornCompatibilityMode()) {
                 return Errors.createTypeError("Cannot create__proto__ cycle for " + JSObject.defaultToString(thisObj));
@@ -412,7 +412,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorNotExtensible(DynamicObject thisObj, Object key) {
+    public static JSException createTypeErrorNotExtensible(JSDynamicObject thisObj, Object key) {
         return Errors.createTypeError("Cannot add new property " + keyToString(key) + " to non-extensible " + JSObject.defaultToString(thisObj));
     }
 
@@ -423,7 +423,7 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorConstReassignment(Object key, Object thisObj, Node originatingNode) {
-        if (JSDynamicObject.isJSDynamicObject(thisObj) && JSObject.getJSContext((DynamicObject) thisObj).isOptionV8CompatibilityMode()) {
+        if (JSDynamicObject.isJSDynamicObject(thisObj) && JSObject.getJSContext((JSDynamicObject) thisObj).isOptionV8CompatibilityMode()) {
             throw Errors.createTypeError("Assignment to constant variable.", originatingNode);
         }
         throw Errors.createTypeError("Assignment to constant \"" + key + "\"", originatingNode);
@@ -474,7 +474,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCannotSetAccessorProperty(Object key, DynamicObject store) {
+    public static JSException createTypeErrorCannotSetAccessorProperty(Object key, JSDynamicObject store) {
         assert JSRuntime.isPropertyKey(key);
         JavaScriptLanguage language = JavaScriptLanguage.get(null);
         String message = language.getJSContext().isOptionNashornCompatibilityMode()
@@ -484,7 +484,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCannotGetAccessorProperty(Object key, DynamicObject store, Node originatingNode) {
+    public static JSException createTypeErrorCannotGetAccessorProperty(Object key, JSDynamicObject store, Node originatingNode) {
         assert JSRuntime.isPropertyKey(key);
         return createTypeError(String.format("Cannot get property %s of %s which has only a setter", key, JSObject.defaultToString(store)), originatingNode);
     }

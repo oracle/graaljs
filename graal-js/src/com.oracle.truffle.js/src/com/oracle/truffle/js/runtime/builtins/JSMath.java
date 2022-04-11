@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.math.MathBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 /**
@@ -58,9 +58,9 @@ public final class JSMath {
     private JSMath() {
     }
 
-    public static DynamicObject create(JSRealm realm) {
+    public static JSObject create(JSRealm realm) {
         JSContext ctx = realm.getContext();
-        DynamicObject obj = JSOrdinary.createInit(realm);
+        JSObject obj = JSOrdinary.createInit(realm);
         JSObjectUtil.putToStringTag(obj, CLASS_NAME);
 
         JSObjectUtil.putDataProperty(ctx, obj, Strings.E, Math.E);

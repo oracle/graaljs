@@ -55,7 +55,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeUtil;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.source.Source;
@@ -105,6 +104,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -280,9 +280,9 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             if (obj instanceof Symbol) {
                 return Null.instance;
             } else if (JSDynamicObject.isJSDynamicObject(obj)) {
-                DynamicObject jsObj = (DynamicObject) obj;
+                JSDynamicObject jsObj = (JSDynamicObject) obj;
                 if (JSObjectUtil.hasHiddenProperty(jsObj, JSRuntime.ITERATED_OBJECT_ID)) {
-                    DynamicObject iteratedObj = (DynamicObject) JSObjectUtil.getHiddenProperty(jsObj, JSRuntime.ITERATED_OBJECT_ID);
+                    JSDynamicObject iteratedObj = (JSDynamicObject) JSObjectUtil.getHiddenProperty(jsObj, JSRuntime.ITERATED_OBJECT_ID);
                     return Strings.concat(JSObject.getClassName(iteratedObj), SPC_ITERATOR);
                 } else if (JSObjectUtil.hasHiddenProperty(jsObj, JSFunction.GENERATOR_STATE_ID)) {
                     return GENERATOR;
@@ -306,8 +306,8 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @TruffleBoundary
         @Specialization
         protected static Object shape(Object obj) {
-            if (obj instanceof DynamicObject) {
-                return Strings.fromJavaString(((DynamicObject) obj).getShape().toString());
+            if (obj instanceof JSDynamicObject) {
+                return Strings.fromJavaString(((JSDynamicObject) obj).getShape().toString());
             }
             return Undefined.instance;
         }
@@ -336,7 +336,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @Specialization
         protected Object dumpFunctionTree(Object functionObj) {
             if (JSFunction.isJSFunction(functionObj)) {
-                CallTarget target = JSFunction.getCallTarget((DynamicObject) functionObj);
+                CallTarget target = JSFunction.getCallTarget((JSFunctionObject) functionObj);
                 if (target instanceof RootCallTarget) {
                     NodeUtil.printTree(getRealm().getOutputWriter(), ((RootCallTarget) target).getRootNode());
                     return Undefined.instance;
@@ -355,14 +355,14 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
         @TruffleBoundary
         @Specialization
-        protected Object printObject(DynamicObject object, Object level0) {
+        protected Object printObject(JSDynamicObject object, Object level0) {
             int level = level0 == Undefined.instance ? 1 : JSRuntime.toInt32(level0);
             getRealm().getOutputWriter().println(debugPrint(object, 0, level));
             return Undefined.instance;
         }
 
         @TruffleBoundary
-        protected TruffleString debugPrint(DynamicObject object, int level, int levelStop) {
+        protected TruffleString debugPrint(JSDynamicObject object, int level, int levelStop) {
             List<TruffleString> properties = JSObject.enumerableOwnNames(object);
             TruffleStringBuilder sb = Strings.builderCreate(properties.size() * 10);
             Strings.builderAppend(sb, "{\n");
@@ -377,12 +377,12 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                     if (JSDynamicObject.isJSDynamicObject(value)) {
                         if ((JSGuards.isJSOrdinaryObject(value) || JSGlobal.isJSGlobalObject(value)) && !key.equals(JSObject.CONSTRUCTOR)) {
                             if (level < levelStop && !key.equals(JSObject.CONSTRUCTOR)) {
-                                value = debugPrint((DynamicObject) value, level + 1, levelStop);
+                                value = debugPrint((JSDynamicObject) value, level + 1, levelStop);
                             } else {
                                 value = Strings.EMPTY_OBJECT_DOTS;
                             }
                         } else {
-                            value = JSObject.getJSClass((DynamicObject) value);
+                            value = JSObject.getJSClass((JSDynamicObject) value);
                         }
                     }
                     Strings.builderAppend(sb, Strings.COLON_SPACE);
@@ -424,7 +424,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
         @TruffleBoundary
         @Specialization(guards = "isJSFunction(function)")
-        protected Object printSourceAttribution(DynamicObject function) {
+        protected Object printSourceAttribution(JSDynamicObject function) {
             CallTarget callTarget = JSFunction.getCallTarget(function);
             if (callTarget instanceof RootCallTarget) {
                 return Strings.fromJavaString(NodeUtil.printSourceAttributionTree(((RootCallTarget) callTarget).getRootNode()));
@@ -451,7 +451,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             if (!(JSDynamicObject.isJSDynamicObject(array)) || !(JSObject.hasArray(array))) {
                 return NOT_AN_ARRAY;
             }
-            return Strings.fromJavaString(JSObject.getArray((DynamicObject) array).getClass().getSimpleName());
+            return Strings.fromJavaString(JSObject.getArray((JSDynamicObject) array).getClass().getSimpleName());
         }
     }
 
@@ -538,7 +538,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         protected boolean isHolesArray(Object arr) {
             Object obj = toObjectNode.execute(arr);
             if (isArray.profile(JSArray.isJSArray(obj))) {
-                DynamicObject dynObj = (DynamicObject) obj;
+                JSDynamicObject dynObj = (JSDynamicObject) obj;
                 return arrayType.profile(JSObject.getArray(dynObj)).hasHoles(dynObj);
             } else {
                 return false;
@@ -577,7 +577,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @Specialization
         protected TruffleString loadModule(Object nameObj, Object modulesSourceMapObj) {
             TruffleString name = JSRuntime.toString(nameObj);
-            DynamicObject modulesSourceMap = (DynamicObject) modulesSourceMapObj;
+            JSDynamicObject modulesSourceMap = (JSDynamicObject) modulesSourceMapObj;
             Evaluator evaluator = getContext().getEvaluator();
             JSModuleLoader moduleLoader = new JSModuleLoader() {
                 private final Map<TruffleString, JSModuleRecord> moduleMap = new HashMap<>();
@@ -619,7 +619,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @TruffleBoundary
         @Specialization
         protected Object systemProperties() {
-            DynamicObject result = JSOrdinary.create(getContext(), getRealm());
+            JSDynamicObject result = JSOrdinary.create(getContext(), getRealm());
             for (Map.Entry<Object, Object> entry : System.getProperties().entrySet()) {
                 Object key = entry.getKey();
                 Object value = entry.getValue();
@@ -657,7 +657,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             if (!(JSArrayBuffer.isJSHeapArrayBuffer(obj) || JSArrayBuffer.isJSDirectArrayBuffer(obj) || JSArrayBuffer.isJSInteropArrayBuffer(obj))) {
                 throw Errors.createTypeError("ArrayBuffer expected");
             }
-            JSArrayBuffer.detachArrayBuffer((DynamicObject) obj);
+            JSArrayBuffer.detachArrayBuffer((JSDynamicObject) obj);
             return Undefined.instance;
         }
     }

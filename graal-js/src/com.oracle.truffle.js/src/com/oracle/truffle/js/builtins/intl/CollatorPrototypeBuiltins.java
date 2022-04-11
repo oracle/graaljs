@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins.intl;
 
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.CollatorPrototypeBuiltinsFactory.JSCollatorResolvedOptionsNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -51,6 +50,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
+import com.oracle.truffle.js.runtime.builtins.intl.JSCollatorObject;
 
 public final class CollatorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<CollatorPrototypeBuiltins.CollatorPrototype> {
 
@@ -91,13 +91,13 @@ public final class CollatorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSCollator(collator)"})
-        public Object doResolvedOptions(DynamicObject collator) {
+        @Specialization
+        public Object doResolvedOptions(JSCollatorObject collator) {
             return JSCollator.resolvedOptions(getContext(), getRealm(), collator);
         }
 
         @Fallback
-        public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
+        public Object doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeError("Collator object expected.");
         }
     }

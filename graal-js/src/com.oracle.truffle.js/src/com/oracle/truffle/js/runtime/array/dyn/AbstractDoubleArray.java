@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,10 +46,10 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArr
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class AbstractDoubleArray extends AbstractWritableArray {
 
@@ -58,14 +58,14 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
     }
 
     @Override
-    AbstractWritableArray sameTypeHolesArray(DynamicObject object, int length, Object array, long indexOffset, int arrayOffset, int usedLength, int holeCount) {
+    AbstractWritableArray sameTypeHolesArray(JSDynamicObject object, int length, Object array, long indexOffset, int arrayOffset, int usedLength, int holeCount) {
         return HolesDoubleArray.makeHolesDoubleArray(object, length, (double[]) array, indexOffset, arrayOffset, usedLength, holeCount, integrityLevel);
     }
 
-    public abstract void setInBoundsFast(DynamicObject object, int index, double value);
+    public abstract void setInBoundsFast(JSDynamicObject object, int index, double value);
 
     @Override
-    public final ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
+    public final ScriptArray setElementImpl(JSDynamicObject object, long index, Object value, boolean strict) {
         assert index >= 0;
         if (injectBranchProbability(FASTPATH_PROBABILITY, (value instanceof Integer || value instanceof Double) && isSupported(object, (int) index))) {
             double doubleValue = JSRuntime.doubleValue((Number) value);
@@ -77,7 +77,7 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
         }
     }
 
-    private ScriptArray rewrite(DynamicObject object, long index, Object value) {
+    private ScriptArray rewrite(JSDynamicObject object, long index, Object value) {
         if (value instanceof Integer || value instanceof Double) {
             if (isSupportedContiguous(object, index)) {
                 return toContiguous(object, index, value);
@@ -92,19 +92,19 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
     }
 
     @Override
-    public Object getInBoundsFast(DynamicObject object, int index) {
+    public Object getInBoundsFast(JSDynamicObject object, int index) {
         return getInBoundsFastDouble(object, index);
     }
 
     @Override
-    public abstract double getInBoundsFastDouble(DynamicObject object, int index);
+    public abstract double getInBoundsFastDouble(JSDynamicObject object, int index);
 
     @Override
     int getArrayLength(Object array) {
         return ((double[]) array).length;
     }
 
-    protected static double[] getArray(DynamicObject object) {
+    protected static double[] getArray(JSDynamicObject object) {
         Object array = arrayGetArray(object);
         if (array.getClass() == double[].class) {
             return (double[]) array;
@@ -113,14 +113,14 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
         }
     }
 
-    public final void setInBounds(DynamicObject object, int index, double value, ProfileHolder profile) {
+    public final void setInBounds(JSDynamicObject object, int index, double value, ProfileHolder profile) {
         getArray(object)[prepareInBounds(object, index, profile)] = value;
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBounds", index, value);
         }
     }
 
-    public final void setSupported(DynamicObject object, int index, double value, ProfileHolder profile) {
+    public final void setSupported(JSDynamicObject object, int index, double value, ProfileHolder profile) {
         int preparedIndex = prepareSupported(object, index, profile);
         getArray(object)[preparedIndex] = value;
         if (JSConfig.TraceArrayWrites) {
@@ -137,42 +137,42 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
     }
 
     @Override
-    protected final void setHoleValue(DynamicObject object, int preparedIndex) {
+    protected final void setHoleValue(JSDynamicObject object, int preparedIndex) {
         getArray(object)[preparedIndex] = HolesDoubleArray.HOLE_VALUE_DOUBLE;
     }
 
     @Override
-    protected final boolean isHolePrepared(DynamicObject object, int preparedIndex) {
+    protected final boolean isHolePrepared(JSDynamicObject object, int preparedIndex) {
         return HolesDoubleArray.isHoleValue(getArray(object)[preparedIndex]);
     }
 
     @Override
-    protected final int getArrayCapacity(DynamicObject object) {
+    protected final int getArrayCapacity(JSDynamicObject object) {
         return getArray(object).length;
     }
 
     @Override
-    protected final void resizeArray(DynamicObject object, int newCapacity, int oldCapacity, int offset) {
+    protected final void resizeArray(JSDynamicObject object, int newCapacity, int oldCapacity, int offset) {
         double[] newArray = new double[newCapacity];
         System.arraycopy(getArray(object), 0, newArray, offset, oldCapacity);
         arraySetArray(object, newArray);
     }
 
     @Override
-    public abstract AbstractDoubleArray toHoles(DynamicObject object, long index, Object value);
+    public abstract AbstractDoubleArray toHoles(JSDynamicObject object, long index, Object value);
 
     @Override
-    public final AbstractWritableArray toDouble(DynamicObject object, long index, double value) {
+    public final AbstractWritableArray toDouble(JSDynamicObject object, long index, double value) {
         return this;
     }
 
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+    public ScriptArray deleteElementImpl(JSDynamicObject object, long index, boolean strict) {
         return toHoles(object, index, HolesDoubleArray.HOLE_VALUE).deleteElementImpl(object, index, strict);
     }
 
     @Override
-    protected final void moveRangePrepared(DynamicObject object, int src, int dst, int len) {
+    protected final void moveRangePrepared(JSDynamicObject object, int src, int dst, int len) {
         double[] array = getArray(object);
         System.arraycopy(array, src, array, dst, len);
     }
@@ -183,7 +183,7 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
     }
 
     @Override
-    public Object cloneArray(DynamicObject object) {
+    public Object cloneArray(JSDynamicObject object) {
         return getArray(object).clone();
     }
 

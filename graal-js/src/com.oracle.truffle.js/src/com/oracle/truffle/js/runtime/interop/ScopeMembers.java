@@ -59,7 +59,6 @@ import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -74,6 +73,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Dead;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 @ExportLibrary(InteropLibrary.class)
 final class ScopeMembers implements TruffleObject {
@@ -146,7 +146,7 @@ final class ScopeMembers implements TruffleObject {
                     if (ScopeFrameNode.PARENT_SCOPE_IDENTIFIER.equals(slotName)) {
                         parentSlot = slot;
                     } else if (ScopeFrameNode.EVAL_SCOPE_IDENTIFIER.equals(slotName)) {
-                        DynamicObject evalScope = (DynamicObject) targetFrame.getObject(slot);
+                        JSDynamicObject evalScope = (JSDynamicObject) targetFrame.getObject(slot);
                         DynamicObjectLibrary objLib = DynamicObjectLibrary.getUncached();
                         for (Object key : objLib.getKeyArray(evalScope)) {
                             if (key instanceof TruffleString) {

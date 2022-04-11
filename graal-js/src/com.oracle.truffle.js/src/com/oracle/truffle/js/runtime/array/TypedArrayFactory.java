@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.array;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -82,6 +81,7 @@ import com.oracle.truffle.js.runtime.array.TypedArray.Uint32Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.Uint8Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.Uint8ClampedArray;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public enum TypedArrayFactory implements PrototypeSupplier {
     Int8Array(TypedArray.INT8_BYTES_PER_ELEMENT) {
@@ -280,7 +280,7 @@ public enum TypedArrayFactory implements PrototypeSupplier {
     abstract TypedArray instantiateArrayType(byte bufferType, boolean offset);
 
     @Override
-    public final DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public final JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getArrayBufferViewPrototype(this);
     }
 

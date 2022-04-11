@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -64,18 +63,18 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
         this.context = context;
     }
 
-    protected static boolean hasHoles(DynamicObject object) {
+    protected static boolean hasHoles(JSDynamicObject object) {
         return JSObject.getArray(object).hasHoles(object);
     }
 
-    protected static ScriptArray getArrayType(DynamicObject object) {
+    protected static ScriptArray getArrayType(JSDynamicObject object) {
         return JSObject.getArray(object);
     }
 
     /**
      * Workaround for GR-830: Cached values are initialized before guards are evaluated.
      */
-    protected static ScriptArray getArrayTypeIfArray(DynamicObject object, boolean isArray) {
+    protected static ScriptArray getArrayTypeIfArray(JSDynamicObject object, boolean isArray) {
         if (!isArray) {
             return null;
         }
@@ -85,14 +84,14 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
     protected final boolean isSuitableForEnumBasedProcessingUsingOwnKeys(Object object, long length) {
         return length > JSConfig.BigArrayThreshold && !JSArrayBufferView.isJSArrayBufferView(object) && !JSProxy.isJSProxy(object) &&
                         ((JSArray.isJSArray(object) && context.getArrayPrototypeNoElementsAssumption().isValid()) || !JSDynamicObject.isJSDynamicObject(object) ||
-                                        JSObject.getPrototype((DynamicObject) object) == Null.instance);
+                                        JSObject.getPrototype((JSDynamicObject) object) == Null.instance);
     }
 
     protected static final boolean isSuitableForEnumBasedProcessing(Object object, long length) {
         if (length <= JSConfig.BigArrayThreshold || !JSDynamicObject.isJSDynamicObject(object)) {
             return false;
         }
-        DynamicObject chainObject = (DynamicObject) object;
+        JSDynamicObject chainObject = (JSDynamicObject) object;
         do {
             if (JSArrayBufferView.isJSArrayBufferView(chainObject) || JSProxy.isJSProxy(chainObject)) {
                 return false;
@@ -105,7 +104,7 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
     /**
      * @param object dummy parameter to force evaluation of the guard by the DSL
      */
-    protected final boolean hasPrototypeElements(DynamicObject object) {
+    protected final boolean hasPrototypeElements(JSDynamicObject object) {
         return !context.getArrayPrototypeNoElementsAssumption().isValid();
     }
 
@@ -117,7 +116,7 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
         return isArrayNode.execute(obj);
     }
 
-    protected static boolean isSupportedArray(DynamicObject object) {
+    protected static boolean isSupportedArray(JSDynamicObject object) {
         return JSArray.isJSFastArray(object) || JSArgumentsArray.isJSFastArgumentsObject(object) || JSArrayBufferView.isJSArrayBufferView(object);
     }
 }

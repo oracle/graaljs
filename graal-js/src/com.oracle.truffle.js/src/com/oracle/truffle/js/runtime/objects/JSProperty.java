@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import static com.oracle.truffle.js.runtime.objects.JSAttributes.NOT_WRITABLE;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -89,7 +88,7 @@ public class JSProperty {
      * @param store the store that this property's value resides in
      * @return the value assigned to this property
      */
-    public static Object getValue(Property property, DynamicObject store, Object thisObj, Node encapsulatingNode) {
+    public static Object getValue(Property property, JSDynamicObject store, Object thisObj, Node encapsulatingNode) {
         Object value = property.getLocation().get(store, false);
         if (isAccessor(property)) {
             return getValueAccessor(thisObj, value, encapsulatingNode);
@@ -102,7 +101,7 @@ public class JSProperty {
     }
 
     private static Object getValueAccessor(Object thisObj, Object value, Node encapsulatingNode) {
-        DynamicObject getter = ((Accessor) value).getGetter();
+        JSDynamicObject getter = ((Accessor) value).getGetter();
         if (getter != Undefined.instance) {
             return JSRuntime.call(getter, thisObj, JSArguments.EMPTY_ARGUMENTS_ARRAY, encapsulatingNode);
         } else {
@@ -118,7 +117,7 @@ public class JSProperty {
      * @param value the value to assign to this property
      * @param isStrict whether the set is in a strict mode function
      */
-    public static boolean setValue(Property property, DynamicObject store, Object thisObj, Object value, boolean isStrict, Node encapsulatingNode) {
+    public static boolean setValue(Property property, JSDynamicObject store, Object thisObj, Object value, boolean isStrict, Node encapsulatingNode) {
         if (isAccessor(property)) {
             return setValueAccessor(property, store, thisObj, value, isStrict, encapsulatingNode);
         } else {
@@ -141,8 +140,8 @@ public class JSProperty {
         }
     }
 
-    private static boolean setValueAccessor(Property property, DynamicObject store, Object thisObj, Object value, boolean isStrict, Node encapsulatingNode) {
-        DynamicObject setter = ((Accessor) JSDynamicObject.getOrNull(store, property.getKey())).getSetter();
+    private static boolean setValueAccessor(Property property, JSDynamicObject store, Object thisObj, Object value, boolean isStrict, Node encapsulatingNode) {
+        JSDynamicObject setter = ((Accessor) JSDynamicObject.getOrNull(store, property.getKey())).getSetter();
         if (setter != Undefined.instance) {
             JSRuntime.call(setter, thisObj, new Object[]{value}, encapsulatingNode);
             return true;
@@ -153,7 +152,7 @@ public class JSProperty {
         }
     }
 
-    private static boolean setValueProxy(Property property, DynamicObject store, Object thisObj, Object value, boolean isStrict) {
+    private static boolean setValueProxy(Property property, JSDynamicObject store, Object thisObj, Object value, boolean isStrict) {
         boolean ret = ((PropertyProxy) JSDynamicObject.getOrNull(store, property.getKey())).set(store, value);
         if (!ret && isStrict) {
             throw Errors.createTypeErrorNotWritableProperty(property.getKey(), thisObj);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,13 +43,14 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -72,10 +73,10 @@ public abstract class FromPropertyDescriptorNode extends JavaScriptBaseNode {
         return FromPropertyDescriptorNodeGen.getUncached();
     }
 
-    public abstract DynamicObject execute(PropertyDescriptor desc, JSContext context);
+    public abstract JSDynamicObject execute(PropertyDescriptor desc, JSContext context);
 
     @Specialization
-    final DynamicObject toJSObject(PropertyDescriptor desc, JSContext context,
+    final JSDynamicObject toJSObject(PropertyDescriptor desc, JSContext context,
                     @CachedLibrary(limit = "SHAPE_LIMIT") DynamicObjectLibrary putValueNode,
                     @CachedLibrary(limit = "SHAPE_LIMIT") DynamicObjectLibrary putWritableNode,
                     @CachedLibrary(limit = "SHAPE_LIMIT") DynamicObjectLibrary putGetNode,
@@ -86,7 +87,7 @@ public abstract class FromPropertyDescriptorNode extends JavaScriptBaseNode {
             return Undefined.instance;
         }
 
-        DynamicObject obj = JSOrdinary.create(context, getRealm());
+        JSObject obj = JSOrdinary.create(context, getRealm());
         if (desc.hasValue()) {
             Properties.put(putValueNode, obj, JSAttributes.VALUE, desc.getValue());
         }

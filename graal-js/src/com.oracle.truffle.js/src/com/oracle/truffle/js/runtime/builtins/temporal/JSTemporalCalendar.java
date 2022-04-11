@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ID;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -53,9 +52,12 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -72,14 +74,14 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     private JSTemporalCalendar() {
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm, TruffleString id) {
+    public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, TruffleString id) {
         if (!TemporalUtil.isBuiltinCalendar(id)) {
             throw TemporalErrors.createRangeErrorCalendarNotSupported();
         }
         return createIntl(context, realm != null ? realm : JSRealm.get(null), id);
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm, TruffleString id, BranchProfile errorBranch) {
+    public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, TruffleString id, BranchProfile errorBranch) {
         if (!TemporalUtil.isBuiltinCalendar(id)) {
             errorBranch.enter();
             throw TemporalErrors.createRangeErrorCalendarNotSupported();
@@ -87,14 +89,14 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
         return createIntl(context, realm, id);
     }
 
-    private static DynamicObject createIntl(JSContext context, JSRealm realm, TruffleString id) {
+    private static JSTemporalCalendarObject createIntl(JSContext context, JSRealm realm, TruffleString id) {
         JSObjectFactory factory = context.getTemporalCalendarFactory();
-        DynamicObject obj = factory.initProto(new JSTemporalCalendarObject(factory.getShape(realm), id), realm);
+        JSTemporalCalendarObject obj = factory.initProto(new JSTemporalCalendarObject(factory.getShape(realm), id), realm);
         return context.trackAllocation(obj);
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return TO_STRING_TAG;
     }
 
@@ -104,9 +106,9 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
 
         JSObjectUtil.putBuiltinAccessorProperty(prototype, ID, realm.lookupAccessor(TemporalCalendarPrototypeBuiltins.BUILTINS, ID));
@@ -117,13 +119,13 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSTemporalCalendar.INSTANCE, context);
         return initialShape;
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getTemporalCalendarPrototype();
     }
 

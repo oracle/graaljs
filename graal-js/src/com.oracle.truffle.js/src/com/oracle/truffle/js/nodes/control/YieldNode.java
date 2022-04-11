@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
@@ -52,6 +51,7 @@ import com.oracle.truffle.js.nodes.control.YieldResultNode.ExceptionYieldResultN
 import com.oracle.truffle.js.nodes.control.YieldResultNode.FrameYieldResultNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.Completion;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public class YieldNode extends AbstractYieldNode implements ResumableNode.WithIntState {
 
@@ -79,7 +79,7 @@ public class YieldNode extends AbstractYieldNode implements ResumableNode.WithIn
         int index = getStateAsInt(frame, stateSlot);
         if (index == 0) {
             Object value = expression.execute(frame);
-            DynamicObject iterNextObj = createIterResultObjectNode.execute(frame, value, false);
+            JSDynamicObject iterNextObj = createIterResultObjectNode.execute(frame, value, false);
             setStateAsInt(frame, stateSlot, 1);
             return generatorYield(frame, iterNextObj);
         } else {

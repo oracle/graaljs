@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,14 +51,15 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.WaiterRecord;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistryObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -78,7 +79,7 @@ public abstract class JSAgent implements EcmaAgent {
     /**
      * ECMA 8.4 "PromiseJobs" job queue.
      */
-    private final Deque<DynamicObject> promiseJobsQueue;
+    private final Deque<JSFunctionObject> promiseJobsQueue;
 
     /**
      * According to ECMA2017 8.4 the queue of pending jobs (promises reactions) must be processed
@@ -140,26 +141,26 @@ public abstract class JSAgent implements EcmaAgent {
         wl.unlock();
     }
 
-    public void atomicSectionEnter(DynamicObject target) {
+    public void atomicSectionEnter(JSDynamicObject target) {
         assert !inAtomicSection;
         assert JSArrayBufferView.isJSArrayBufferView(target);
-        DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
+        JSDynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
         waiterList.lock();
         inAtomicSection = true;
     }
 
-    public void atomicSectionLeave(DynamicObject target) {
+    public void atomicSectionLeave(JSDynamicObject target) {
         assert inAtomicSection;
         assert JSArrayBufferView.isJSArrayBufferView(target);
-        DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
+        JSDynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
         inAtomicSection = false;
         waiterList.unlock();
     }
 
     @TruffleBoundary
-    public final void enqueuePromiseJob(DynamicObject job) {
+    public final void enqueuePromiseJob(JSFunctionObject job) {
         promiseJobsQueue.push(job);
     }
 
@@ -194,14 +195,14 @@ public abstract class JSAgent implements EcmaAgent {
                         criticalSectionLeave(wl);
                     }
                     if (isReadyToResolve) {
-                        DynamicObject resolve = (DynamicObject) wr.getPromiseCapability().getResolve();
+                        JSDynamicObject resolve = (JSDynamicObject) wr.getPromiseCapability().getResolve();
                         assert JSFunction.isJSFunction(resolve);
                         Object result = wr.getResult();
                         JSFunction.call(JSArguments.createOneArg(Undefined.instance, resolve, result));
                     }
                 }
                 if (!promiseJobsQueue.isEmpty()) {
-                    DynamicObject nextJob = promiseJobsQueue.pollLast();
+                    JSFunctionObject nextJob = promiseJobsQueue.pollLast();
                     if (JSFunction.isJSFunction(nextJob)) {
                         checkWaiterRecords = true;
                         JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);

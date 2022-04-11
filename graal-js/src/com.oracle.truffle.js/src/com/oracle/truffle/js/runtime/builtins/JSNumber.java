@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.NumberFunctionBuiltins;
@@ -52,6 +51,8 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
@@ -70,26 +71,25 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
     private JSNumber() {
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm, Number value) {
-        DynamicObject obj = JSNumberObject.create(realm, context.getNumberFactory(), value);
-        assert isJSNumber(obj);
+    public static JSNumberObject create(JSContext context, JSRealm realm, Number value) {
+        JSNumberObject obj = JSNumberObject.create(realm, context.getNumberFactory(), value);
         return context.trackAllocation(obj);
     }
 
-    private static Number getNumberField(DynamicObject obj) {
+    private static Number getNumberField(JSDynamicObject obj) {
         assert isJSNumber(obj);
         return ((JSNumberObject) obj).getNumber();
     }
 
-    public static Number valueOf(DynamicObject obj) {
+    public static Number valueOf(JSDynamicObject obj) {
         return getNumberField(obj);
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext context = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
-        DynamicObject numberPrototype = JSNumberObject.create(protoShape, 0);
+        JSObject numberPrototype = JSNumberObject.create(protoShape, 0);
         JSObjectUtil.setOrVerifyPrototype(context, numberPrototype, realm.getObjectPrototype());
 
         JSObjectUtil.putConstructorProperty(context, numberPrototype, ctor);
@@ -98,13 +98,13 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         return initialShape;
     }
 
     @Override
-    public void fillConstructor(JSRealm realm, DynamicObject constructor) {
+    public void fillConstructor(JSRealm realm, JSDynamicObject constructor) {
         WithFunctions.super.fillConstructor(realm, constructor);
 
         JSContext context = realm.getContext();
@@ -134,18 +134,18 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public TruffleString getBuiltinToStringTag(DynamicObject object) {
+    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
         return getClassName(object);
     }
 
     @TruffleBoundary
     @Override
-    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return super.toDisplayStringImpl(obj, allowSideEffects, format, depth);
         } else {
@@ -156,7 +156,7 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getNumberPrototype();
     }
 }

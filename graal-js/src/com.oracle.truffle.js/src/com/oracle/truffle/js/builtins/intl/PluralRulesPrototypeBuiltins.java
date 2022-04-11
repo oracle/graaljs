@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins.intl;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.PluralRulesPrototypeBuiltinsFactory.JSPluralRulesResolvedOptionsNodeGen;
@@ -58,6 +57,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
+import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRulesObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<PluralRulesPrototypeBuiltins.PluralRulesPrototype> {
@@ -113,13 +113,13 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSPluralRules(pluralRules)"})
-        public Object doResolvedOptions(DynamicObject pluralRules) {
+        @Specialization
+        public Object doResolvedOptions(JSPluralRulesObject pluralRules) {
             return JSPluralRules.resolvedOptions(getContext(), getRealm(), pluralRules);
         }
 
         @Fallback
-        public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
+        public Object throwTypeError(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeErrorTypeXExpected(JSPluralRules.CLASS_NAME);
         }
     }
@@ -130,14 +130,14 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSPluralRules(pluralRules)"})
-        public Object doSelect(DynamicObject pluralRules, Object value) {
+        @Specialization
+        public Object doSelect(JSPluralRulesObject pluralRules, Object value) {
             return JSPluralRules.select(pluralRules, value);
         }
 
         @Fallback
         @SuppressWarnings("unused")
-        public void throwTypeError(Object bummer, Object value) {
+        public Object throwTypeError(Object bummer, Object value) {
             throw Errors.createTypeErrorTypeXExpected(JSPluralRules.CLASS_NAME);
         }
     }
@@ -148,8 +148,8 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSPluralRules(pluralRules)"})
-        public Object doSelectRange(DynamicObject pluralRules, Object start, Object end,
+        @Specialization
+        public Object doSelectRange(JSPluralRulesObject pluralRules, Object start, Object end,
                         @Cached JSToNumberNode startToNumber,
                         @Cached JSToNumberNode endToNumber,
                         @Cached BranchProfile errorBranch) {
@@ -168,7 +168,7 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Fallback
         @SuppressWarnings("unused")
-        public void throwTypeError(Object bummer, Object start, Object end) {
+        public Object throwTypeError(Object bummer, Object start, Object end) {
             throw Errors.createTypeErrorTypeXExpected(JSPluralRules.CLASS_NAME);
         }
     }

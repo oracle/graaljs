@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,12 @@ package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
 import com.oracle.truffle.js.nodes.array.ArrayLengthNode.ArrayLengthWriteNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class JSSetLengthNode extends JavaScriptBaseNode {
     private final JSContext context;
@@ -74,27 +74,27 @@ public abstract class JSSetLengthNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isArray(object)")
-    protected static int setArrayLength(DynamicObject object, int length,
+    protected static int setArrayLength(JSDynamicObject object, int length,
                     @Cached("create(isStrict)") ArrayLengthWriteNode arrayLengthWriteNode) {
         arrayLengthWriteNode.executeVoid(object, length);
         return length;
     }
 
     @Specialization
-    protected static int setIntLength(DynamicObject object, int length,
+    protected static int setIntLength(JSDynamicObject object, int length,
                     @Cached("createWritePropertyNode()") WritePropertyNode setLengthProperty) {
         setLengthProperty.executeIntWithValue(object, length);
         return length;
     }
 
     @Specialization(replaces = "setIntLength")
-    protected static Object setLength(DynamicObject object, Object length,
+    protected static Object setLength(JSDynamicObject object, Object length,
                     @Cached("createWritePropertyNode()") WritePropertyNode setLengthProperty) {
         setLengthProperty.executeWithValue(object, length);
         return length;
     }
 
-    @Specialization(guards = "!isDynamicObject(object)")
+    @Specialization(guards = "!isJSDynamicObject(object)")
     protected static Object setLengthForeign(@SuppressWarnings("unused") Object object, Object length) {
         // there is no SET_SIZE message. Let's assume WRITE already has done the job
         return length;

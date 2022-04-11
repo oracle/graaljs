@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -49,6 +48,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -70,10 +70,10 @@ public abstract class TemporalYearMonthFromFieldsNode extends JavaScriptBaseNode
         return TemporalYearMonthFromFieldsNodeGen.create(ctx);
     }
 
-    public abstract JSTemporalPlainYearMonthObject execute(DynamicObject calendar, DynamicObject fields, DynamicObject options);
+    public abstract JSTemporalPlainYearMonthObject execute(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options);
 
     @Specialization
-    protected JSTemporalPlainYearMonthObject yearMonthFromFields(DynamicObject calendar, DynamicObject fields, DynamicObject options) {
+    protected JSTemporalPlainYearMonthObject yearMonthFromFields(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options) {
         assert options != null;
         Object fn = getMethodYearMonthFromFieldsNode.executeWithTarget(calendar);
         Object yearMonth = callYearMonthFromFieldsNode.executeCall(JSArguments.create(calendar, fn, fields, options));

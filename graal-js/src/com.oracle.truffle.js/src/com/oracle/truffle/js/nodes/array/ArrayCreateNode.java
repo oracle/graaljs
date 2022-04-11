@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,12 @@ package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 
 /**
  * Represents abstract operation ArrayCreate (length).
@@ -65,20 +65,20 @@ public abstract class ArrayCreateNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isValidArrayLength(length)", "length <= MAX_VALUE"})
-    protected DynamicObject doDefault(long length) {
+    protected JSArrayObject doDefault(long length) {
         return JSArray.createEmptyChecked(context, getRealm(), length);
     }
 
     @Specialization(guards = {"isValidArrayLength(length)", "length > MAX_VALUE"})
-    protected DynamicObject doLargeLength(long length) {
+    protected JSArrayObject doLargeLength(long length) {
         return JSArray.createSparseArray(context, getRealm(), length);
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = "!isValidArrayLength(length)")
-    protected DynamicObject doInvalidLength(long length) {
+    protected JSArrayObject doInvalidLength(long length) {
         throw Errors.createRangeErrorInvalidArrayLength();
     }
 
-    public abstract DynamicObject execute(long length);
+    public abstract JSArrayObject execute(long length);
 }

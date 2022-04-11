@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,12 +43,12 @@ package com.oracle.truffle.js.nodes.intl;
 import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNode {
@@ -75,20 +75,20 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
         this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.KEY_NUMBERING_SYSTEM, null, null);
     }
 
-    public abstract DynamicObject executeInit(DynamicObject collator, Object locales, Object options);
+    public abstract JSDynamicObject executeInit(JSDynamicObject collator, Object locales, Object options);
 
     public static InitializeRelativeTimeFormatNode createInitalizeRelativeTimeFormatNode(JSContext context) {
         return InitializeRelativeTimeFormatNodeGen.create(context);
     }
 
     @Specialization
-    public DynamicObject initializeRelativeTimeFormat(DynamicObject relativeTimeFormatObj, Object localesArg, Object optionsArg) {
+    public JSDynamicObject initializeRelativeTimeFormat(JSDynamicObject relativeTimeFormatObj, Object localesArg, Object optionsArg) {
         try {
 
             JSRelativeTimeFormat.InternalState state = JSRelativeTimeFormat.getInternalState(relativeTimeFormatObj);
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-            DynamicObject options = coerceOptionsToObjectNode.execute(optionsArg);
+            JSDynamicObject options = coerceOptionsToObjectNode.execute(optionsArg);
 
             getLocaleMatcherOption.executeValue(options);
             String numberingSystem = getNumberingSystemOption.executeValue(options);

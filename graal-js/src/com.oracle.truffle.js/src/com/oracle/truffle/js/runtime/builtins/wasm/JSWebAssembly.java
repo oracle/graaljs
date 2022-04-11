@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins.wasm;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyBuiltins;
@@ -51,6 +50,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSWebAssembly {
@@ -62,8 +62,8 @@ public final class JSWebAssembly {
     private JSWebAssembly() {
     }
 
-    public static DynamicObject create(JSRealm realm) {
-        DynamicObject webAssembly = JSOrdinary.createInit(realm);
+    public static JSObject create(JSRealm realm) {
+        JSObject webAssembly = JSOrdinary.createInit(realm);
         JSObjectUtil.putToStringTag(webAssembly, CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(realm, webAssembly, WebAssemblyBuiltins.BUILTINS);
         return webAssembly;
@@ -73,7 +73,7 @@ public final class JSWebAssembly {
         return JSDynamicObject.isJSDynamicObject(function) && JSObjectUtil.hasHiddenProperty((JSDynamicObject) function, FUNCTION_ADDRESS);
     }
 
-    public static Object getExportedFunction(DynamicObject function) {
+    public static Object getExportedFunction(JSDynamicObject function) {
         assert isExportedFunction(function);
         return JSObjectUtil.getHiddenProperty(function, JSWebAssembly.FUNCTION_ADDRESS);
     }

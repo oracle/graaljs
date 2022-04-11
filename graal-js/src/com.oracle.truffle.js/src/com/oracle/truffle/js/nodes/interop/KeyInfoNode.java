@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -58,6 +57,7 @@ import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.Accessor;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -82,10 +82,10 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
     KeyInfoNode() {
     }
 
-    public abstract boolean execute(DynamicObject receiver, String key, int query);
+    public abstract boolean execute(JSDynamicObject receiver, String key, int query);
 
     @Specialization(guards = {"!isJSProxy(target)", "property != null"}, limit = "2")
-    static boolean cachedOwnProperty(DynamicObject target, String key, int query,
+    static boolean cachedOwnProperty(JSDynamicObject target, String key, int query,
                     @CachedLibrary("target") DynamicObjectLibrary objectLibrary,
                     @Bind("objectLibrary.getProperty(target, key)") Property property,
                     @Cached IsCallableNode isCallable,
@@ -136,7 +136,7 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
     }
 
     @Specialization(replaces = "cachedOwnProperty")
-    static boolean member(DynamicObject target, String key, int query,
+    static boolean member(JSDynamicObject target, String key, int query,
                     @Cached GetPrototypeNode getPrototype,
                     @Cached IsCallableNode isCallable,
                     @Cached IsExtensibleNode isExtensible,
@@ -144,7 +144,7 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
         TruffleString tStringKey = Strings.fromJavaString(fromJavaStringNode, key);
         PropertyDescriptor desc = null;
         boolean isProxy = false;
-        for (DynamicObject proto = target; proto != Null.instance; proto = getPrototype.execute(proto)) {
+        for (JSDynamicObject proto = target; proto != Null.instance; proto = getPrototype.execute(proto)) {
             desc = JSObject.getOwnProperty(proto, tStringKey);
             if (JSProxy.isJSProxy(proto)) {
                 isProxy = true;

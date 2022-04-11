@@ -267,7 +267,6 @@ public final class Strings extends ParserStrings {
     public static final TruffleString UNSCOPABLES = constant("unscopables");
 
     public static final TruffleString UC_ARRAY = constant("Array");
-    public static final TruffleString UC_FOREIGN = constant("Foreign");
     public static final TruffleString UC_OBJECT = constant("Object");
 
     public static final TruffleString CAPS_ID = constant("ID");

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.WeakSetPrototypeBuiltins;
@@ -53,6 +52,8 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
@@ -65,10 +66,9 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
     private JSWeakSet() {
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm) {
+    public static JSWeakSetObject create(JSContext context, JSRealm realm) {
         JSObjectFactory factory = context.getWeakSetFactory();
-        DynamicObject obj = factory.initProto(new JSWeakSetObject(factory.getShape(realm), newWeakHashMap()), realm);
-        assert isJSWeakSet(obj);
+        JSWeakSetObject obj = factory.initProto(new JSWeakSetObject(factory.getShape(realm), newWeakHashMap()), realm);
         return context.trackAllocation(obj);
     }
 
@@ -78,16 +78,15 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
     }
 
     @SuppressWarnings("unchecked")
-    public static Map<Object, Object> getInternalWeakMap(DynamicObject obj) {
+    public static Map<Object, Object> getInternalWeakMap(JSDynamicObject obj) {
         assert isJSWeakSet(obj);
-        // return (Map<DynamicObject, Object>) WEAKSET_PROPERTY.get(obj, isJSWeakSet(obj));
         return ((JSWeakSetObject) obj).getWeakHashMap();
     }
 
     @Override
-    public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WeakSetPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
@@ -95,7 +94,7 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSWeakSet.INSTANCE, context);
         return initialShape;
     }
@@ -110,13 +109,13 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
     @Override
     @TruffleBoundary
-    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return Strings.addBrackets(getClassName());
         } else {
@@ -129,7 +128,7 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getWeakSetPrototype();
     }
 }

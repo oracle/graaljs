@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.util;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -73,7 +72,7 @@ public final class DefinePropertyUtil {
      * Implementation of OrdinaryDefineOwnProperty as defined in ECMAScript 2015, 9.1.6.1.
      */
     @TruffleBoundary
-    public static boolean ordinaryDefineOwnProperty(DynamicObject thisObj, Object propertyKey, PropertyDescriptor descriptor, boolean doThrow) {
+    public static boolean ordinaryDefineOwnProperty(JSDynamicObject thisObj, Object propertyKey, PropertyDescriptor descriptor, boolean doThrow) {
         PropertyDescriptor current = JSObject.getOwnProperty(thisObj, propertyKey);
         return validateAndApplyPropertyDescriptor(thisObj, propertyKey, JSObject.isExtensible(thisObj), descriptor, current, doThrow);
     }
@@ -92,7 +91,7 @@ public final class DefinePropertyUtil {
     /**
      * Implementation of ValidateAndApplyPropertyDescriptor as defined in ECMAScript 2015, 9.1.6.3.
      */
-    private static boolean validateAndApplyPropertyDescriptor(DynamicObject thisObj, Object propertyKey, boolean extensible, PropertyDescriptor descriptor, PropertyDescriptor current,
+    private static boolean validateAndApplyPropertyDescriptor(JSDynamicObject thisObj, Object propertyKey, boolean extensible, PropertyDescriptor descriptor, PropertyDescriptor current,
                     boolean doThrow) {
         CompilerAsserts.neverPartOfCompilation();
         if (current == null) {
@@ -108,7 +107,7 @@ public final class DefinePropertyUtil {
         }
     }
 
-    public static Property getPropertyByKey(DynamicObject thisObj, Object key) {
+    public static Property getPropertyByKey(JSDynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
         return thisObj.getShape().getProperty(key);
     }
@@ -117,8 +116,8 @@ public final class DefinePropertyUtil {
      * Implementing 8.12.9 [[DefineOwnProperty]], section "5"ff (an existing property is changed).
      *
      */
-    private static boolean definePropertyExisting(DynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow, PropertyDescriptor currentDesc) {
-        DynamicObject obj = thisObj;
+    private static boolean definePropertyExisting(JSDynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow, PropertyDescriptor currentDesc) {
+        JSDynamicObject obj = thisObj;
         boolean currentEnumerable = currentDesc.getEnumerable();
         boolean currentConfigurable = currentDesc.getConfigurable();
         boolean currentWritable = currentDesc.getWritable();
@@ -289,7 +288,7 @@ public final class DefinePropertyUtil {
      *
      * @return whether the operation was successful
      */
-    private static boolean definePropertyNew(DynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow) {
+    private static boolean definePropertyNew(JSDynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow) {
         boolean enumerable = descriptor.getIfHasEnumerable(false);
         boolean configurable = descriptor.getIfHasConfigurable(false);
 
@@ -301,7 +300,7 @@ public final class DefinePropertyUtil {
         }
     }
 
-    private static boolean definePropertyNewAccessor(DynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow, boolean enumerable, boolean configurable, JSContext context) {
+    private static boolean definePropertyNewAccessor(JSDynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow, boolean enumerable, boolean configurable, JSContext context) {
         Accessor accessor = getAccessorFromDescriptor(descriptor, doThrow);
         if (accessor == null) {
             assert !doThrow; // should have thrown
@@ -311,7 +310,7 @@ public final class DefinePropertyUtil {
         return true;
     }
 
-    private static boolean definePropertyNewData(DynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean enumerable, boolean configurable, JSContext context) {
+    private static boolean definePropertyNewData(JSDynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean enumerable, boolean configurable, JSContext context) {
         boolean writable = descriptor.getIfHasWritable(false);
 
         int attributes = JSAttributes.fromConfigurableEnumerableWritable(configurable, enumerable, writable);
@@ -341,7 +340,7 @@ public final class DefinePropertyUtil {
             return null;
         }
 
-        return new Accessor((DynamicObject) descriptor.getGet(), (DynamicObject) descriptor.getSet());
+        return new Accessor((JSDynamicObject) descriptor.getGet(), (JSDynamicObject) descriptor.getSet());
     }
 
     public static boolean reject(boolean doThrow, String message) {

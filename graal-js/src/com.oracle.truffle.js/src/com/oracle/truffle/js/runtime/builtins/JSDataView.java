@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltins;
@@ -54,6 +53,8 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -81,25 +82,23 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
     private JSDataView() {
     }
 
-    public static DynamicObject getArrayBuffer(Object thisObj) {
+    public static JSArrayBufferObject getArrayBuffer(Object thisObj) {
         assert JSDataView.isJSDataView(thisObj);
         return JSDataViewObject.getArrayBuffer(thisObj);
     }
 
-    public static DynamicObject createDataView(JSContext context, JSRealm realm, DynamicObject arrayBuffer, int offset, int length) {
+    public static JSDynamicObject createDataView(JSContext context, JSRealm realm, JSDynamicObject arrayBuffer, int offset, int length) {
         assert offset >= 0 && offset + length <= ((JSArrayBufferObject) arrayBuffer).getByteLength();
 
         JSObjectFactory factory = context.getDataViewFactory();
-        DynamicObject dataView = JSDataViewObject.create(realm, factory, (JSArrayBufferObject) arrayBuffer, length, offset);
-        assert JSArrayBuffer.isJSAbstractBuffer(arrayBuffer);
-        assert isJSDataView(dataView);
+        JSDynamicObject dataView = JSDataViewObject.create(realm, factory, (JSArrayBufferObject) arrayBuffer, length, offset);
         return context.trackAllocation(dataView);
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext context = realm.getContext();
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(context, prototype, ctor);
         putGetters(realm, prototype);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, DataViewPrototypeBuiltins.BUILTINS);
@@ -107,27 +106,27 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
         return prototype;
     }
 
-    private static void putGetters(JSRealm realm, DynamicObject prototype) {
+    private static void putGetters(JSRealm realm, JSObject prototype) {
         putGetter(realm, prototype, BUFFER, BuiltinFunctionKey.DataViewBuffer, view -> getArrayBuffer(view));
         putGetter(realm, prototype, BYTE_LENGTH, BuiltinFunctionKey.DataViewByteLength, view -> typedArrayGetLengthChecked(view));
         putGetter(realm, prototype, BYTE_OFFSET, BuiltinFunctionKey.DataViewByteOffset, view -> typedArrayGetOffsetChecked(view));
     }
 
-    public static int typedArrayGetLengthChecked(DynamicObject thisObj) {
+    public static int typedArrayGetLengthChecked(JSDynamicObject thisObj) {
         if (JSArrayBuffer.isDetachedBuffer(JSDataView.getArrayBuffer(thisObj))) {
             throw Errors.createTypeErrorDetachedBuffer();
         }
         return typedArrayGetLength(thisObj);
     }
 
-    public static int typedArrayGetOffsetChecked(DynamicObject thisObj) {
+    public static int typedArrayGetOffsetChecked(JSDynamicObject thisObj) {
         if (JSArrayBuffer.isDetachedBuffer(JSDataView.getArrayBuffer(thisObj))) {
             throw Errors.createTypeErrorDetachedBuffer();
         }
         return typedArrayGetOffset(thisObj);
     }
 
-    private static void putGetter(JSRealm realm, DynamicObject prototype, TruffleString name, BuiltinFunctionKey key, Function<DynamicObject, Object> function) {
+    private static void putGetter(JSRealm realm, JSObject prototype, TruffleString name, BuiltinFunctionKey key, Function<JSDynamicObject, Object> function) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(key, (c) -> {
             return JSFunctionData.createCallOnly(c, new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Override
@@ -140,12 +139,12 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
                 }
             }.getCallTarget(), 0, Strings.concat(Strings.GET_SPC, name));
         });
-        DynamicObject getter = JSFunction.create(realm, getterData);
+        JSDynamicObject getter = JSFunction.create(realm, getterData);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, name, getter, Undefined.instance);
     }
 
     @Override
-    public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext ctx, JSDynamicObject prototype) {
         Shape childTree = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
         return childTree;
     }
@@ -160,7 +159,7 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
@@ -169,7 +168,7 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getDataViewPrototype();
     }
 }

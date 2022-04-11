@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -61,6 +60,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
@@ -82,24 +82,23 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
     private JSMap() {
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm) {
+    public static JSMapObject create(JSContext context, JSRealm realm) {
         JSObjectFactory factory = context.getMapFactory();
-        DynamicObject obj = factory.initProto(new JSMapObject(factory.getShape(realm), new JSHashMap()), realm);
-        assert isJSMap(obj);
+        JSMapObject obj = factory.initProto(new JSMapObject(factory.getShape(realm), new JSHashMap()), realm);
         return context.trackAllocation(obj);
     }
 
-    public static JSHashMap getInternalMap(DynamicObject obj) {
+    public static JSHashMap getInternalMap(JSDynamicObject obj) {
         assert isJSMap(obj);
         return ((JSMapObject) obj).getMap();
     }
 
-    public static int getMapSize(DynamicObject obj) {
+    public static int getMapSize(JSDynamicObject obj) {
         assert isJSMap(obj);
         return getInternalMap(obj).size();
     }
 
-    private static DynamicObject createSizeGetterFunction(JSRealm realm) {
+    private static JSFunctionObject createSizeGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.MapGetSize, (c) -> {
             CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 private final BranchProfile errorBranch = BranchProfile.create();
@@ -108,7 +107,7 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
                     if (JSMap.isJSMap(obj)) {
-                        return JSMap.getMapSize((DynamicObject) obj);
+                        return JSMap.getMapSize((JSMapObject) obj);
                     } else {
                         errorBranch.enter();
                         throw Errors.createTypeErrorMapExpected();
@@ -117,14 +116,13 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
             }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, Strings.concat(Strings.GET_SPC, SIZE));
         });
-        DynamicObject sizeGetter = JSFunction.create(realm, getterData);
-        return sizeGetter;
+        return JSFunction.create(realm, getterData);
     }
 
     @Override
-    public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         // sets the size just for the prototype
         JSObjectUtil.putBuiltinAccessorProperty(prototype, SIZE, createSizeGetterFunction(realm), Undefined.instance);
@@ -138,7 +136,7 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSMap.INSTANCE, context);
         return initialShape;
     }
@@ -153,13 +151,13 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
     @Override
     @TruffleBoundary
-    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return Strings.concatAll(Strings.BRACKET_OPEN, getClassName(), Strings.BRACKET_CLOSE);
         } else {
@@ -173,7 +171,7 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getMapPrototype();
     }
 

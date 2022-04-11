@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,12 +52,12 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
@@ -235,7 +235,7 @@ public class DebugJSAgent extends JSAgent {
         public void executeBroadcastCallback() {
             assert jsAgent.debugReceiveBroadcast != null;
             while (incoming.size() > 0) {
-                DynamicObject cb = (DynamicObject) jsAgent.debugReceiveBroadcast;
+                JSFunctionObject cb = (JSFunctionObject) jsAgent.debugReceiveBroadcast;
                 JSFunction.call(cb, cb, new Object[]{incoming.pop()});
             }
         }

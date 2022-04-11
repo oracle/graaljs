@@ -45,7 +45,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -56,6 +55,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalCalendar;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -82,16 +82,16 @@ public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
         return ToTemporalCalendarNodeGen.create(context);
     }
 
-    public abstract DynamicObject executeDynamicObject(Object value);
+    public abstract JSDynamicObject executeDynamicObject(Object value);
 
     @Specialization
-    public DynamicObject toTemporalCalendar(Object itemParam,
+    public JSDynamicObject toTemporalCalendar(Object itemParam,
                     @Cached BranchProfile errorBranch,
                     @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToStringNode toStringNode) {
         Object item = itemParam;
         if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
-            DynamicObject itemObj = (DynamicObject) item;
+            JSDynamicObject itemObj = (JSDynamicObject) item;
             if (isCalendarProfile.profile(item instanceof TemporalCalendar)) {
                 return ((TemporalCalendar) item).getCalendar();
             }
@@ -99,8 +99,8 @@ public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
                 return itemObj;
             }
             item = getCalendarProperty(itemObj);
-            if (hasCalendar2Profile.profile(isObjectNode.executeBoolean(item) && !JSObject.hasProperty((DynamicObject) item, CALENDAR))) {
-                return (DynamicObject) item;
+            if (hasCalendar2Profile.profile(isObjectNode.executeBoolean(item) && !JSObject.hasProperty((JSDynamicObject) item, CALENDAR))) {
+                return (JSDynamicObject) item;
             }
         }
         TruffleString identifier = toStringNode.executeString(item);
@@ -114,7 +114,7 @@ public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
         return JSTemporalCalendar.create(context, getRealm(), identifier, errorBranch);
     }
 
-    private Object getCalendarProperty(DynamicObject obj) {
+    private Object getCalendarProperty(JSDynamicObject obj) {
         if (getCalendarPropertyNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getCalendarPropertyNode = insert(PropertyGetNode.create(CALENDAR, false, context));

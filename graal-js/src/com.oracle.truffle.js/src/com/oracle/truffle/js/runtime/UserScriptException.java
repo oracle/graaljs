@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,11 +48,11 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -76,7 +76,7 @@ public final class UserScriptException extends GraalJSException {
     }
 
     @TruffleBoundary
-    public static UserScriptException createCapture(Object exceptionObject, Node originatingNode, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean customSkip) {
+    public static UserScriptException createCapture(Object exceptionObject, Node originatingNode, int stackTraceLimit, JSDynamicObject skipFramesUpTo, boolean customSkip) {
         return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, stackTraceLimit), true, skipFramesUpTo, customSkip);
     }
 
@@ -147,12 +147,12 @@ public final class UserScriptException extends GraalJSException {
     private static TruffleString getMessage(Object exc) {
         if (JSRuntime.isObject(exc)) {
             // try to get the constructor name, and then the message
-            DynamicObject errorObj = (DynamicObject) exc;
-            DynamicObject prototype = JSObject.getPrototype(errorObj);
+            JSObject errorObj = (JSObject) exc;
+            JSDynamicObject prototype = JSObject.getPrototype(errorObj);
             if (prototype != Null.instance) {
                 Object constructor = JSDynamicObject.getOrDefault(prototype, JSObject.CONSTRUCTOR, null);
                 if (JSFunction.isJSFunction(constructor)) {
-                    TruffleString name = JSFunction.getName((DynamicObject) constructor);
+                    TruffleString name = JSFunction.getName((JSFunctionObject) constructor);
                     if (!Strings.isEmpty(name)) {
                         Object message = JSDynamicObject.getOrDefault(errorObj, JSError.MESSAGE, null);
                         if (Strings.isTString(message)) {

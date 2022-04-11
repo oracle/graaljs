@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -63,18 +62,18 @@ public final class JSGlobal extends JSNonProxy {
     private JSGlobal() {
     }
 
-    public static DynamicObject create(JSRealm realm, DynamicObject objectPrototype) {
+    public static JSObject create(JSRealm realm, JSDynamicObject objectPrototype) {
         CompilerAsserts.neverPartOfCompilation();
         JSContext context = realm.getContext();
         JSObjectFactory factory = context.getGlobalObjectFactory();
-        DynamicObject global = new JSGlobalObject(factory.getShape(realm));
+        JSObject global = new JSGlobalObject(factory.getShape(realm));
         factory.initProto(global, objectPrototype);
 
         JSObjectUtil.putToStringTag(global, CLASS_NAME);
         return global;
     }
 
-    public static Shape makeGlobalObjectShape(JSContext context, DynamicObject objectPrototype) {
+    public static Shape makeGlobalObjectShape(JSContext context, JSDynamicObject objectPrototype) {
         // keep a separate shape tree for the global object in order not to pollute user objects
         boolean singleContext = !context.isMultiContext();
         Shape globalObjectShape = JSShape.newBuilder(context, JSGlobal.INSTANCE, singleContext ? objectPrototype : null).propertyAssumptions(singleContext).build();
@@ -84,27 +83,27 @@ public final class JSGlobal extends JSNonProxy {
         return globalObjectShape;
     }
 
-    public static DynamicObject createGlobalScope(JSContext context) {
+    public static JSObject createGlobalScope(JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
         return new JSGlobalObject(context.getGlobalScopeShape());
     }
 
     public static boolean isJSGlobalObject(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSGlobalObject((DynamicObject) obj);
+        return JSDynamicObject.isJSDynamicObject(obj) && isJSGlobalObject((JSDynamicObject) obj);
     }
 
-    public static boolean isJSGlobalObject(DynamicObject obj) {
+    public static boolean isJSGlobalObject(JSDynamicObject obj) {
         return isInstance(obj, INSTANCE);
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return CLASS_NAME;
     }
 
     @TruffleBoundary
     @Override
-    public boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype) {
+    public boolean setPrototypeOf(JSDynamicObject thisObj, JSDynamicObject newPrototype) {
         if (JSObject.getPrototype(thisObj) == newPrototype) {
             return true;
         }

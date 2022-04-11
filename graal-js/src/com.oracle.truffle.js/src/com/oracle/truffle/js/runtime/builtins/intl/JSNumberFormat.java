@@ -78,7 +78,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -104,11 +103,14 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
@@ -138,14 +140,14 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject numberFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject numberFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, numberFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberFormatPrototype, NumberFormatPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putBuiltinAccessorProperty(numberFormatPrototype, Strings.FORMAT, createFormatFunctionGetter(realm, ctx), Undefined.instance);
@@ -194,7 +196,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     @Override
-    public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext ctx, JSDynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
         return initialShape;
     }
@@ -203,12 +205,11 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         return INSTANCE.createConstructorAndPrototype(realm, NumberFormatFunctionBuiltins.BUILTINS);
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm) {
+    public static JSNumberFormatObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getNumberFormatFactory();
         JSNumberFormatObject obj = new JSNumberFormatObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
-        assert isJSNumberFormat(obj);
         return context.trackAllocation(obj);
     }
 
@@ -490,19 +491,19 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     @TruffleBoundary
-    public static TruffleString format(DynamicObject numberFormatObj, Object n) {
+    public static TruffleString format(JSDynamicObject numberFormatObj, Object n) {
         InternalState state = getInternalState(numberFormatObj);
         Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
         return Strings.fromJavaString(formattedValue(state, x).toString());
     }
 
     @TruffleBoundary
-    public static TruffleString formatMV(DynamicObject numberFormatObj, Number mv) {
+    public static TruffleString formatMV(JSDynamicObject numberFormatObj, Number mv) {
         InternalState state = getInternalState(numberFormatObj);
         return Strings.fromJavaString(formattedValue(state, mv).toString());
     }
 
-    private static FormattedNumberRange formatRangeImpl(DynamicObject numberFormatObj, Number x, Number y) {
+    private static FormattedNumberRange formatRangeImpl(JSDynamicObject numberFormatObj, Number x, Number y) {
         boolean rangeError = false;
         if (JSRuntime.isNaN(x) || JSRuntime.isNaN(y)) {
             rangeError = true;
@@ -549,12 +550,12 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     @TruffleBoundary
-    public static TruffleString formatRange(DynamicObject numberFormatObj, Number x, Number y) {
+    public static TruffleString formatRange(JSDynamicObject numberFormatObj, Number x, Number y) {
         return Strings.fromJavaString(formatRangeImpl(numberFormatObj, x, y).toString());
     }
 
     @TruffleBoundary
-    public static DynamicObject formatRangeToParts(JSContext context, JSRealm realm, DynamicObject numberFormatObj, Number x, Number y) {
+    public static JSDynamicObject formatRangeToParts(JSContext context, JSRealm realm, JSDynamicObject numberFormatObj, Number x, Number y) {
         FormattedNumberRange formattedRange = formatRangeImpl(numberFormatObj, x, y);
         String formattedString = formattedRange.toString();
 
@@ -647,18 +648,18 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     @TruffleBoundary
-    public static DynamicObject formatToParts(JSContext context, JSRealm realm, DynamicObject numberFormatObj, Object n) {
+    public static JSDynamicObject formatToParts(JSContext context, JSRealm realm, JSDynamicObject numberFormatObj, Object n) {
         InternalState state = getInternalState(numberFormatObj);
         Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
         FormattedValue formattedValue = formattedValue(state, x);
         AttributedCharacterIterator fit = formattedValue.toCharacterIterator();
         String formatted = formattedValue.toString();
-        List<DynamicObject> resultParts = innerFormatToParts(context, realm, fit, x.doubleValue(), formatted, null, IntlUtil.PERCENT.equals(state.getStyle()));
+        List<JSDynamicObject> resultParts = innerFormatToParts(context, realm, fit, x.doubleValue(), formatted, null, IntlUtil.PERCENT.equals(state.getStyle()));
         return JSArray.createConstant(context, realm, resultParts.toArray());
     }
 
-    static List<DynamicObject> innerFormatToParts(JSContext context, JSRealm realm, AttributedCharacterIterator iterator, double value, String formattedValue, String unit, boolean stylePercent) {
-        List<DynamicObject> resultParts = new ArrayList<>();
+    static List<JSDynamicObject> innerFormatToParts(JSContext context, JSRealm realm, AttributedCharacterIterator iterator, double value, String formattedValue, String unit, boolean stylePercent) {
+        List<JSDynamicObject> resultParts = new ArrayList<>();
         int i = iterator.getBeginIndex();
         while (i < iterator.getEndIndex()) {
             iterator.setIndex(i);
@@ -736,13 +737,13 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         private Integer maximumSignificantDigits;
         private String roundingType;
 
-        DynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
-            DynamicObject resolvedOptions = JSOrdinary.create(context, realm);
+        JSDynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
+            JSDynamicObject resolvedOptions = JSOrdinary.create(context, realm);
             fillResolvedOptions(context, realm, resolvedOptions);
             return resolvedOptions;
         }
 
-        void fillResolvedOptions(JSContext context, @SuppressWarnings("unused") JSRealm realm, DynamicObject result) {
+        void fillResolvedOptions(JSContext context, @SuppressWarnings("unused") JSRealm realm, JSDynamicObject result) {
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_MINIMUM_INTEGER_DIGITS, minimumIntegerDigits, JSAttributes.getDefault());
             if (minimumFractionDigits != null) {
                 JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_MINIMUM_FRACTION_DIGITS, minimumFractionDigits, JSAttributes.getDefault());
@@ -903,10 +904,10 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         private int roundingIncrement;
         private String trailingZeroDisplay;
 
-        DynamicObject boundFormatFunction;
+        JSDynamicObject boundFormatFunction;
 
         @Override
-        void fillResolvedOptions(JSContext context, JSRealm realm, DynamicObject result) {
+        void fillResolvedOptions(JSContext context, JSRealm realm, JSDynamicObject result) {
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(getLocale()), JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_NUMBERING_SYSTEM, Strings.fromJavaString(getNumberingSystem()), JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
@@ -1088,12 +1089,12 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     @TruffleBoundary
-    public static DynamicObject resolvedOptions(JSContext context, JSRealm realm, DynamicObject numberFormatObj) {
+    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject numberFormatObj) {
         InternalState state = getInternalState(numberFormatObj);
         return state.toResolvedOptionsObject(context, realm);
     }
 
-    public static InternalState getInternalState(DynamicObject obj) {
+    public static InternalState getInternalState(JSDynamicObject obj) {
         assert isJSNumberFormat(obj);
         return ((JSNumberFormatObject) obj).getInternalState();
     }
@@ -1111,7 +1112,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
                 if (isJSNumberFormat(numberFormatObj)) {
 
-                    InternalState state = getInternalState((DynamicObject) numberFormatObj);
+                    InternalState state = getInternalState((JSDynamicObject) numberFormatObj);
 
                     if (state == null) {
                         errorBranch.enter();
@@ -1120,7 +1121,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
                     if (state.boundFormatFunction == null) {
                         JSFunctionData formatFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.NumberFormatFormat, c -> createFormatFunctionData(c));
-                        DynamicObject formatFn = JSFunction.create(getRealm(), formatFunctionData);
+                        JSDynamicObject formatFn = JSFunction.create(getRealm(), formatFunctionData);
                         setBoundObjectNode.setValue(formatFn, numberFormatObj);
                         state.boundFormatFunction = formatFn;
                     }
@@ -1141,7 +1142,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
-                DynamicObject thisObj = (DynamicObject) getBoundObjectNode.getValue(JSArguments.getFunctionObject(arguments));
+                JSDynamicObject thisObj = (JSDynamicObject) getBoundObjectNode.getValue(JSArguments.getFunctionObject(arguments));
                 assert isJSNumberFormat(thisObj);
                 Object n = JSArguments.getUserArgumentCount(arguments) > 0 ? JSArguments.getUserArgument(arguments, 0) : Undefined.instance;
                 return formatMV(thisObj, toIntlMVValueNode.executeNumber(n));
@@ -1149,7 +1150,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         }.getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
-    private static DynamicObject createFormatFunctionGetter(JSRealm realm, JSContext context) {
+    private static JSDynamicObject createFormatFunctionGetter(JSRealm realm, JSContext context) {
         JSFunctionData fd = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.NumberFormatGetFormat, (c) -> {
             CallTarget ct = createGetFormatCallTarget(context);
             return JSFunctionData.create(context, ct, ct, 0, GET_FORMAT_NAME, false, false, false, true);
@@ -1158,7 +1159,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getNumberFormatPrototype();
     }
 }

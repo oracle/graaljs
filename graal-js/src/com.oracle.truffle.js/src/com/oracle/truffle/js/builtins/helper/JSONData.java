@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins.helper;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 
 public class JSONData {
@@ -52,11 +51,11 @@ public class JSONData {
     private int indent;
     private final TruffleString gap;
     private final List<Object> propertyList;
-    private final DynamicObject replacerFnObj;
+    private final Object replacerFnObj;
 
     private static final int MAX_STACK_SIZE = 1000;
 
-    public JSONData(TruffleString gap, DynamicObject replacerFnObj, List<Object> replacerList) {
+    public JSONData(TruffleString gap, Object replacerFnObj, List<Object> replacerList) {
         this.gap = gap;
         this.replacerFnObj = replacerFnObj;
         this.propertyList = replacerList;
@@ -78,7 +77,7 @@ public class JSONData {
         return propertyList;
     }
 
-    public DynamicObject getReplacerFnObj() {
+    public Object getReplacerFnObj() {
         return replacerFnObj;
     }
 

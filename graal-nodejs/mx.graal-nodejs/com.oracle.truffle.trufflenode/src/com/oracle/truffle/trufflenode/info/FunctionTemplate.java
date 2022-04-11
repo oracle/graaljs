@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,12 @@ package com.oracle.truffle.trufflenode.info;
 
 import java.util.Objects;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 /**
@@ -70,7 +70,7 @@ public final class FunctionTemplate {
     private TruffleString className = Strings.EMPTY_STRING;
     private boolean readOnlyPrototype;
     private JSFunctionData functionData;
-    private DynamicObject functionObj;
+    private JSFunctionObject functionObj;
     private final boolean singleFunctionTemplate;
 
     public FunctionTemplate(int id, long functionPointer, Object additionalData, FunctionTemplate signature, int length, boolean isConstructor, boolean singleFunctionTemplate) {
@@ -105,7 +105,7 @@ public final class FunctionTemplate {
         return functionData;
     }
 
-    public void setFunctionObject(JSRealm realm, DynamicObject functionObj) {
+    public void setFunctionObject(JSRealm realm, JSFunctionObject functionObj) {
         if (singleFunctionTemplate) {
             this.functionObj = functionObj;
         } else {
@@ -113,7 +113,7 @@ public final class FunctionTemplate {
         }
     }
 
-    public DynamicObject getFunctionObject(JSRealm realm) {
+    public JSFunctionObject getFunctionObject(JSRealm realm) {
         return singleFunctionTemplate ? functionObj : GraalJSAccess.getRealmEmbedderData(realm).getFunctionTemplateObject(id);
     }
 

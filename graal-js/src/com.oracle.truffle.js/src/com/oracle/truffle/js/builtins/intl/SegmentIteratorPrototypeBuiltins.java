@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.SegmentIteratorPrototypeBuiltinsFactory.SegmentIteratorNextNodeGen;
@@ -56,8 +55,9 @@ import com.oracle.truffle.js.nodes.intl.CreateSegmentDataObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmentIteratorObject;
+import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -105,7 +105,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        protected DynamicObject doSegmentIterator(VirtualFrame frame, JSSegmentIteratorObject iteratorObj,
+        protected JSDynamicObject doSegmentIterator(VirtualFrame frame, JSSegmentIteratorObject iteratorObj,
                         @Cached("create(getContext())") CreateSegmentDataObjectNode createNextValueNode) {
             JSSegmenter.IteratorState iterator = iteratorObj.getIteratorState();
             TruffleString iteratedString = iterator.getIteratedString();
@@ -126,7 +126,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization(guards = "!isJSSegmentIterator(iterator)")
-        protected DynamicObject doIncompatibleReceiver(@SuppressWarnings("unused") Object iterator) {
+        protected JSDynamicObject doIncompatibleReceiver(@SuppressWarnings("unused") Object iterator) {
             throw Errors.createTypeErrorTypeXExpected(JSSegmenter.ITERATOR_CLASS_NAME);
         }
 

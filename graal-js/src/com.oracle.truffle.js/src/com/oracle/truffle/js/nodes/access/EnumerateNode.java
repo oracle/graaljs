@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -65,11 +64,13 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.interop.EmptyIterator;
 import com.oracle.truffle.js.runtime.interop.InteropArrayIndexIterator;
 import com.oracle.truffle.js.runtime.interop.InteropMemberIterator;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.ForInIterator;
 
@@ -107,9 +108,9 @@ public abstract class EnumerateNode extends JavaScriptNode {
     }
 
     @Override
-    public abstract DynamicObject execute(VirtualFrame frame);
+    public abstract JSDynamicObject execute(VirtualFrame frame);
 
-    public abstract DynamicObject execute(Object iteratedObject);
+    public abstract JSDynamicObject execute(Object iteratedObject);
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
@@ -117,7 +118,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
     }
 
     @Specialization(guards = {"isJSDynamicObject(iteratedObject)", "!isJSAdapter(iteratedObject)"})
-    protected DynamicObject doEnumerateObject(DynamicObject iteratedObject,
+    protected JSDynamicObject doEnumerateObject(JSDynamicObject iteratedObject,
                     @Cached("createBinaryProfile()") ConditionProfile isObject) {
         if (isObject.profile(JSRuntime.isObject(iteratedObject))) {
             return newForInIterator(iteratedObject);
@@ -128,14 +129,14 @@ public abstract class EnumerateNode extends JavaScriptNode {
     }
 
     @Specialization(guards = "isJSAdapter(iteratedObject)")
-    protected DynamicObject doEnumerateJSAdapter(DynamicObject iteratedObject,
+    protected JSDynamicObject doEnumerateJSAdapter(JSDynamicObject iteratedObject,
                     @Cached("createValues()") EnumerateNode enumerateCallbackResultNode) {
-        DynamicObject adaptee = JSAdapter.getAdaptee(iteratedObject);
+        JSDynamicObject adaptee = JSAdapter.getAdaptee(iteratedObject);
         assert JSRuntime.isObject(adaptee);
 
         Object getIds = JSObject.get(adaptee, values ? JSAdapter.GET_VALUES : JSAdapter.GET_IDS);
         if (JSFunction.isJSFunction(getIds)) {
-            Object returnValue = JSFunction.call((DynamicObject) getIds, adaptee, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+            Object returnValue = JSFunction.call((JSFunctionObject) getIds, adaptee, JSArguments.EMPTY_ARGUMENTS_ARRAY);
             if (JSRuntime.isObject(returnValue)) {
                 return enumerateCallbackResultNode.execute(returnValue);
             }
@@ -148,7 +149,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
     }
 
     @Specialization(guards = {"isForeignObject(iteratedObject)"}, limit = "InteropLibraryLimit")
-    protected DynamicObject doEnumerateTruffleObject(Object iteratedObject,
+    protected JSDynamicObject doEnumerateTruffleObject(Object iteratedObject,
                     @CachedLibrary("iteratedObject") InteropLibrary interop,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keysInterop,
                     @Cached BranchProfile notIterable) {
@@ -194,36 +195,36 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return newEmptyIterator();
     }
 
-    private DynamicObject enumerateString(TruffleString string) {
+    private JSDynamicObject enumerateString(TruffleString string) {
         return newForInIterator(JSString.create(context, getRealm(), string));
     }
 
-    private DynamicObject newEmptyIterator() {
+    private JSDynamicObject newEmptyIterator() {
         return newEnumerateIterator(EmptyIterator.create());
     }
 
-    private DynamicObject newEnumerateIterator(Object iterator) {
+    private JSDynamicObject newEnumerateIterator(Object iterator) {
         if (setEnumerateIteratorNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             setEnumerateIteratorNode = insert(PropertySetNode.createSetHidden(JSRuntime.ENUMERATE_ITERATOR_ID, context));
         }
-        DynamicObject obj = JSOrdinary.create(context, context.getEnumerateIteratorFactory(), getRealm());
+        JSObject obj = JSOrdinary.create(context, context.getEnumerateIteratorFactory(), getRealm());
         setEnumerateIteratorNode.setValue(obj, iterator);
         return obj;
     }
 
-    private DynamicObject newForInIterator(DynamicObject obj) {
+    private JSDynamicObject newForInIterator(JSDynamicObject obj) {
         if (setForInIteratorNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             setForInIteratorNode = insert(PropertySetNode.createSetHidden(JSRuntime.FOR_IN_ITERATOR_ID, context));
         }
-        DynamicObject iteratorObj = JSOrdinary.create(context, context.getForInIteratorFactory(), getRealm());
+        JSDynamicObject iteratorObj = JSOrdinary.create(context, context.getForInIteratorFactory(), getRealm());
         setForInIteratorNode.setValue(iteratorObj, new ForInIterator(obj, values));
         return iteratorObj;
     }
 
     @Specialization(guards = {"!isJSObject(iteratedObject)", "!isForeignObject(iteratedObject)"})
-    protected DynamicObject doNonObject(Object iteratedObject,
+    protected JSDynamicObject doNonObject(Object iteratedObject,
                     @Cached("createToObjectNoCheck(context)") JSToObjectNode toObjectNode,
                     @Cached("copyRecursive()") EnumerateNode enumerateNode) {
         return enumerateNode.execute(toObjectNode.execute(iteratedObject));

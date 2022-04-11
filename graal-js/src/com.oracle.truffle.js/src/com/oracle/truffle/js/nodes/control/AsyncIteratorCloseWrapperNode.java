@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ControlFlowException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -105,7 +104,7 @@ public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements 
             } catch (ControlFlowException e) {
                 exitBranch.enter();
                 IteratorRecord iteratorRecord = getIteratorRecord(frame);
-                DynamicObject iterator = iteratorRecord.getIterator();
+                JSDynamicObject iterator = iteratorRecord.getIterator();
                 Object returnMethod = getReturnNode.executeWithTarget(iterator);
                 if (returnMethod != Undefined.instance) {
                     innerResult = getReturnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
@@ -118,7 +117,7 @@ public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements 
                 if (TryCatchNode.shouldCatch(e, exceptions())) {
                     throwBranch.enter();
                     IteratorRecord iteratorRecord = getIteratorRecord(frame);
-                    DynamicObject iterator = iteratorRecord.getIterator();
+                    JSDynamicObject iterator = iteratorRecord.getIterator();
                     try {
                         Object returnMethod = getReturnNode.executeWithTarget(iterator);
                         if (returnMethod != Undefined.instance) {
@@ -137,7 +136,7 @@ public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements 
                 return result;
             } else {
                 notDoneBranch.enter();
-                DynamicObject iterator = iteratorRecord.getIterator();
+                JSDynamicObject iterator = iteratorRecord.getIterator();
                 Object returnMethod = getReturnNode.executeWithTarget(iterator);
                 if (returnMethod != Undefined.instance) {
                     innerResult = getReturnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));

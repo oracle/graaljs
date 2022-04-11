@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.ibm.icu.text.BreakIterator;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.SegmentsPrototypeBuiltinsFactory.SegmentsContainingNodeGen;
@@ -147,7 +146,7 @@ public final class SegmentsPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSegments(bummer)")
-        public void doOther(Object bummer, Object index) {
+        public Object doOther(Object bummer, Object index) {
             throw Errors.createTypeErrorSegmentsExpected();
         }
     }
@@ -168,7 +167,7 @@ public final class SegmentsPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "!isJSSegments(bummer)")
         @SuppressWarnings("unused")
-        public void doOther(Object bummer) {
+        public Object doOther(Object bummer) {
             throw Errors.createTypeErrorSegmentsExpected();
         }
     }
@@ -184,8 +183,7 @@ public final class SegmentsPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return new CreateSegmentIteratorNode(context);
         }
 
-        public DynamicObject execute(DynamicObject segmenter, TruffleString value) {
-            assert JSSegmenter.isJSSegmenter(segmenter);
+        public Object execute(JSSegmenterObject segmenter, TruffleString value) {
             return JSSegmenter.createSegmentIterator(context, getRealm(), segmenter, value);
         }
     }

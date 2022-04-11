@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,9 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
     static final JSSlowArgumentsArray INSTANCE = new JSSlowArgumentsArray();
@@ -54,7 +54,7 @@ public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
 
     @TruffleBoundary
     @Override
-    public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
         if (isSealedOrFrozen(thisObj)) {
             return true;
         }
@@ -78,24 +78,24 @@ public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
         return wasDeleted;
     }
 
-    private static boolean isSealedOrFrozen(DynamicObject thisObj) {
+    private static boolean isSealedOrFrozen(JSDynamicObject thisObj) {
         ScriptArray array = arrayGetArrayType(thisObj);
         return array.isSealed() || array.isFrozen();
     }
 
-    public static boolean isJSSlowArgumentsObject(DynamicObject obj) {
+    public static boolean isJSSlowArgumentsObject(JSDynamicObject obj) {
         return isInstance(obj, INSTANCE);
     }
 
     @Override
-    protected DynamicObject makeSlowArray(DynamicObject thisObj) {
+    protected JSDynamicObject makeSlowArray(JSDynamicObject thisObj) {
         assert JSSlowArgumentsArray.isJSSlowArgumentsObject(thisObj);
         return thisObj;
     }
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    public boolean set(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         Object indexAsString = Strings.fromLong(index);
         if (JSOrdinary.INSTANCE.hasOwnProperty(thisObj, indexAsString)) {
             return ordinarySet(thisObj, indexAsString, value, receiver, isStrict, encapsulatingNode);
@@ -105,7 +105,7 @@ public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
+    public Object getOwnHelper(JSDynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
         Object indexAsString = Strings.fromLong(index);
         if (JSOrdinary.INSTANCE.hasOwnProperty(store, indexAsString)) {
             return JSOrdinary.INSTANCE.getOwnHelper(store, thisObj, indexAsString, encapsulatingNode);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltinsFactory.JSFinalizationRegistryCleanupSomeNodeGen;
 import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltinsFactory.JSFinalizationRegistryRegisterNodeGen;
@@ -57,6 +56,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistryObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -126,7 +126,7 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
         }
 
         @Specialization
-        protected DynamicObject register(JSFinalizationRegistryObject thisObj, Object target, Object holdings, Object unregisterTokenArg) {
+        protected JSDynamicObject register(JSFinalizationRegistryObject thisObj, Object target, Object holdings, Object unregisterTokenArg) {
             if (!isObjectNode.executeBoolean(target)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("FinalizationRegistry.prototype.register: target must be an object");
@@ -148,7 +148,7 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSFinalizationRegistry(thisObj)")
-        protected static DynamicObject notFinalizationRegistry(@SuppressWarnings("unused") Object thisObj, Object target, Object holdings, Object unregisterToken) {
+        protected static JSDynamicObject notFinalizationRegistry(@SuppressWarnings("unused") Object thisObj, Object target, Object holdings, Object unregisterToken) {
             throw Errors.createTypeErrorFinalizationRegistryExpected();
         }
     }
@@ -191,7 +191,7 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
         }
 
         @Specialization
-        protected DynamicObject cleanupSome(JSFinalizationRegistryObject thisObj, Object callback) {
+        protected JSDynamicObject cleanupSome(JSFinalizationRegistryObject thisObj, Object callback) {
             if (callback != Undefined.instance && !isCallableNode.executeBoolean(callback)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("FinalizationRegistry: cleanup must be callable");
@@ -202,7 +202,7 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSFinalizationRegistry(thisObj)")
-        protected static DynamicObject notFinalizationRegistry(@SuppressWarnings("unused") Object thisObj, Object callback) {
+        protected static JSDynamicObject notFinalizationRegistry(@SuppressWarnings("unused") Object thisObj, Object callback) {
             throw Errors.createTypeErrorFinalizationRegistryExpected();
         }
     }

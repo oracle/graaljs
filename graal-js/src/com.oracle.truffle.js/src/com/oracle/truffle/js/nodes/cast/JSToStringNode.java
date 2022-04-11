@@ -48,7 +48,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -59,6 +58,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -142,8 +142,8 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         return doubleToStringNode.executeString(d);
     }
 
-    @Specialization(guards = "isJSDynamicObject(value)", replaces = "doUndefined")
-    protected TruffleString doJSObject(DynamicObject value,
+    @Specialization(replaces = "doUndefined")
+    protected TruffleString doJSObject(JSDynamicObject value,
                     @Shared("toPrimitiveHintStringNode") @Cached("createHintString()") JSToPrimitiveNode toPrimitiveHintStringNode,
                     @Shared("toStringNode") @Cached JSToStringNode toStringNode) {
         return (undefinedToEmpty && (value == Undefined.instance)) ? Strings.EMPTY_STRING : toStringNode.executeString(toPrimitiveHintStringNode.execute(value));

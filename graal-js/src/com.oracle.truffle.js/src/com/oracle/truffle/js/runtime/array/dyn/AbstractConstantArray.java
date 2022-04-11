@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.array.dyn;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -54,7 +53,7 @@ public abstract class AbstractConstantArray extends DynamicArray {
     }
 
     @Override
-    public final ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
+    public final ScriptArray setElementImpl(JSDynamicObject object, long index, Object value, boolean strict) {
         if (index <= Integer.MAX_VALUE) {
             if (value instanceof Integer) {
                 return createWriteableInt(object, index, (int) value, ProfileHolder.empty()).setElementImpl(object, index, value, strict);
@@ -69,7 +68,7 @@ public abstract class AbstractConstantArray extends DynamicArray {
     }
 
     @Override
-    public final Object getElement(DynamicObject object, long index) {
+    public final Object getElement(JSDynamicObject object, long index) {
         if (isInBoundsFast(object, index)) {
             return getElementInBounds(object, (int) index);
         } else {
@@ -78,30 +77,30 @@ public abstract class AbstractConstantArray extends DynamicArray {
     }
 
     @Override
-    public final Object getElementInBounds(DynamicObject object, long index) {
+    public final Object getElementInBounds(JSDynamicObject object, long index) {
         assert isInBoundsFast(object, index);
         return getElementInBounds(object, (int) index);
     }
 
-    public abstract Object getElementInBounds(DynamicObject object, int index);
+    public abstract Object getElementInBounds(JSDynamicObject object, int index);
 
     @Override
-    public final long length(DynamicObject object) {
+    public final long length(JSDynamicObject object) {
         return lengthInt(object);
     }
 
     @Override
-    public long firstElementIndex(DynamicObject object) {
+    public long firstElementIndex(JSDynamicObject object) {
         return 0;
     }
 
     @Override
-    public long lastElementIndex(DynamicObject object) {
+    public long lastElementIndex(JSDynamicObject object) {
         return length(object) - 1;
     }
 
     @Override
-    public long nextElementIndex(DynamicObject object, long index) {
+    public long nextElementIndex(JSDynamicObject object, long index) {
         if (index >= lastElementIndex(object)) {
             return JSRuntime.MAX_SAFE_INTEGER_LONG;
         }
@@ -109,7 +108,7 @@ public abstract class AbstractConstantArray extends DynamicArray {
     }
 
     @Override
-    public long previousElementIndex(DynamicObject object, long index) {
+    public long previousElementIndex(JSDynamicObject object, long index) {
         return index - 1;
     }
 
@@ -117,17 +116,17 @@ public abstract class AbstractConstantArray extends DynamicArray {
      * Returns true if the index can be written using inBoundsFast access mode.
      */
     @Override
-    public final boolean isInBoundsFast(DynamicObject object, long index) {
+    public final boolean isInBoundsFast(JSDynamicObject object, long index) {
         return firstElementIndex(object) <= index && index <= lastElementIndex(object);
     }
 
-    public abstract AbstractWritableArray createWriteableDouble(DynamicObject object, long index, double value, ProfileHolder profile);
+    public abstract AbstractWritableArray createWriteableDouble(JSDynamicObject object, long index, double value, ProfileHolder profile);
 
-    public abstract AbstractWritableArray createWriteableInt(DynamicObject object, long index, int value, ProfileHolder profile);
+    public abstract AbstractWritableArray createWriteableInt(JSDynamicObject object, long index, int value, ProfileHolder profile);
 
-    public abstract AbstractWritableArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile);
+    public abstract AbstractWritableArray createWriteableObject(JSDynamicObject object, long index, Object value, ProfileHolder profile);
 
-    public abstract AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, JSDynamicObject value, ProfileHolder profile);
+    public abstract AbstractWritableArray createWriteableJSObject(JSDynamicObject object, long index, JSDynamicObject value, ProfileHolder profile);
 
     protected interface CreateWritableProfileAccess extends ProfileAccess {
         default boolean lengthZero(ProfileHolder profile, boolean condition) {
@@ -155,7 +154,7 @@ public abstract class AbstractConstantArray extends DynamicArray {
     }
 
     @Override
-    public boolean hasHoles(DynamicObject object) {
+    public boolean hasHoles(JSDynamicObject object) {
         return false;
     }
 }

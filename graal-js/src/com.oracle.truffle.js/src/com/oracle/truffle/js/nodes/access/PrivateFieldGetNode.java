@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -63,7 +62,10 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Accessor;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -85,8 +87,8 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
         this.context = context;
     }
 
-    @Specialization(guards = {"isJSObject(target)"}, limit = "3")
-    Object doField(DynamicObject target, HiddenKey key,
+    @Specialization(limit = "3")
+    Object doField(JSObject target, HiddenKey key,
                     @CachedLibrary("target") DynamicObjectLibrary access,
                     @Cached BranchProfile errorBranch) {
         if (Properties.containsKey(access, target, key)) {
@@ -97,16 +99,16 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
         }
     }
 
-    @Specialization(guards = {"isJSObject(target)", "isJSFunction(method)"})
-    Object doMethod(@SuppressWarnings("unused") DynamicObject target, DynamicObject method) {
+    @Specialization
+    Object doMethod(@SuppressWarnings("unused") JSObject target, JSFunctionObject method) {
         return method;
     }
 
-    @Specialization(guards = {"isJSObject(target)"})
-    Object doAccessor(DynamicObject target, Accessor accessor,
+    @Specialization
+    Object doAccessor(JSObject target, Accessor accessor,
                     @Cached("createCall()") JSFunctionCallNode callNode,
                     @Cached BranchProfile errorBranch) {
-        DynamicObject getter = accessor.getGetter();
+        JSDynamicObject getter = accessor.getGetter();
         if (getter == Undefined.instance) {
             errorBranch.enter();
             throw Errors.createTypeErrorCannotGetAccessorProperty(keyAsString(), target, this);

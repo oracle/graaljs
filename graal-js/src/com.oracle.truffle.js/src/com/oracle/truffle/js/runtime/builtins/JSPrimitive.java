@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,11 +45,11 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -59,7 +59,7 @@ public abstract class JSPrimitive extends JSNonProxy implements PrototypeSupplie
 
     @TruffleBoundary
     @Override
-    public final Object getHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+    public final Object getHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         assert this == JSNumber.INSTANCE || this == JSString.INSTANCE || this == JSBoolean.INSTANCE || this == JSBigInt.INSTANCE;
 
         Object propertyValue = super.getHelper(store, thisObj, key, encapsulatingNode);
@@ -91,7 +91,7 @@ public abstract class JSPrimitive extends JSNonProxy implements PrototypeSupplie
 
     @TruffleBoundary
     @Override
-    public Object getMethodHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+    public Object getMethodHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         if (Strings.isTString(key) && allowJavaMembersFor(thisObj)) {
             JSContext context = JSObject.getJSContext(store);
             if (context.isOptionNashornCompatibilityMode()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -56,6 +55,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -116,7 +116,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
     }
 
     // DSL would not re-read the value if we queried the variable!
-    protected boolean wasExecuted(@SuppressWarnings("unused") DynamicObject obj) {
+    protected boolean wasExecuted(@SuppressWarnings("unused") JSDynamicObject obj) {
         return wasExecuted;
     }
 
@@ -125,14 +125,14 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
      * nodes.
      */
     @Specialization(guards = {"!wasExecuted(obj)", "isJSObject(obj)"})
-    protected Object nonSpecialized(DynamicObject obj) {
+    protected Object nonSpecialized(JSDynamicObject obj) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         wasExecuted = true;
         return JSRuntime.toPropertyDescriptor(obj);
     }
 
     @Specialization(guards = {"wasExecuted(obj)", "isJSObject(obj)"})
-    protected Object doDefault(DynamicObject obj,
+    protected Object doDefault(JSDynamicObject obj,
                     @Cached("create()") BranchProfile hasGetBranch,
                     @Cached("create()") BranchProfile hasSetBranch,
                     @Cached("create()") BranchProfile hasEnumerableBranch,
@@ -174,7 +174,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
                 errorBranch.enter();
                 throw Errors.createTypeError("Getter must be a function");
             }
-            desc.setGet((DynamicObject) getter);
+            desc.setGet((JSDynamicObject) getter);
         }
         // 8.
         boolean hasSet = hasSetNode.hasProperty(obj);
@@ -185,7 +185,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
                 errorBranch.enter();
                 throw Errors.createTypeError("Setter must be a function");
             }
-            desc.setSet((DynamicObject) setter);
+            desc.setSet((JSDynamicObject) setter);
         }
         // 9.
         if ((hasGet || hasSet) && (hasValue || hasWritable)) {
@@ -195,7 +195,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         return desc;
     }
 
-    private Object getSet(DynamicObject obj) {
+    private Object getSet(JSDynamicObject obj) {
         if (getSetNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getSetNode = insert(PropertyGetNode.create(JSAttributes.SET, false, context));
@@ -203,7 +203,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         return getSetNode.getValue(obj);
     }
 
-    private Object getGet(DynamicObject obj) {
+    private Object getGet(JSDynamicObject obj) {
         if (getGetNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getGetNode = insert(PropertyGetNode.create(JSAttributes.GET, false, context));
@@ -211,7 +211,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         return getGetNode.getValue(obj);
     }
 
-    private Object getValue(DynamicObject obj) {
+    private Object getValue(JSDynamicObject obj) {
         if (getValueNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getValueNode = insert(PropertyGetNode.create(JSAttributes.VALUE, false, context));
@@ -219,7 +219,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         return getValueNode.getValue(obj);
     }
 
-    private boolean getWritableValue(DynamicObject obj) {
+    private boolean getWritableValue(JSDynamicObject obj) {
         if (getWritableNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getWritableNode = insert(PropertyGetNode.create(JSAttributes.WRITABLE, false, context));
@@ -227,7 +227,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         return toBoolean(getWritableNode.getValue(obj));
     }
 
-    private boolean getConfigurableValue(DynamicObject obj) {
+    private boolean getConfigurableValue(JSDynamicObject obj) {
         if (getConfigurableNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getConfigurableNode = insert(PropertyGetNode.create(JSAttributes.CONFIGURABLE, false, context));
@@ -235,7 +235,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         return toBoolean(getConfigurableNode.getValue(obj));
     }
 
-    private boolean getEnumerableValue(DynamicObject obj) {
+    private boolean getEnumerableValue(JSDynamicObject obj) {
         if (getEnumerableNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getEnumerableNode = insert(PropertyGetNode.create(JSAttributes.ENUMERABLE, false, context));

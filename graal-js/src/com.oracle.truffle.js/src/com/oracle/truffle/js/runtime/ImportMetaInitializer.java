@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 
 /**
@@ -55,6 +55,6 @@ public interface ImportMetaInitializer {
      * @param importMeta newly created {@code importMeta} object.
      * @param module owner of the {@code importMeta} object.
      */
-    void initializeImportMeta(DynamicObject importMeta, JSModuleRecord module);
+    void initializeImportMeta(JSDynamicObject importMeta, JSModuleRecord module);
 
 }

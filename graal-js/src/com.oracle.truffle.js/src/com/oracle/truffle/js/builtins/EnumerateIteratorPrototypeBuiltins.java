@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.EnumerateIteratorPrototypeBuiltinsFactory.EnumerateNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
@@ -61,6 +60,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -113,7 +113,7 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
         }
 
         @Specialization
-        public DynamicObject execute(VirtualFrame frame, Object target,
+        public JSDynamicObject execute(VirtualFrame frame, Object target,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             Object iterator = getIteratorNode.getValue(target);
             if (iterator == Undefined.instance) {

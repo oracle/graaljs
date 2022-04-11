@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Boundaries;
@@ -64,6 +63,7 @@ import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -89,7 +89,7 @@ public final class JSModuleNamespace extends JSNonProxy {
      *
      * The Module Record whose exports this namespace exposes.
      */
-    public static JSModuleRecord getModule(DynamicObject obj) {
+    public static JSModuleRecord getModule(JSDynamicObject obj) {
         assert isJSModuleNamespace(obj);
         return ((JSModuleNamespaceObject) obj).getModule();
     }
@@ -101,15 +101,14 @@ public final class JSModuleNamespace extends JSNonProxy {
      * object. The list is ordered as if an Array of those String values had been sorted using
      * Array.prototype.sort using SortCompare as comparefn.
      */
-    public static Map<TruffleString, ExportResolution> getExports(DynamicObject obj) {
+    public static Map<TruffleString, ExportResolution> getExports(JSDynamicObject obj) {
         assert isJSModuleNamespace(obj);
         return ((JSModuleNamespaceObject) obj).getExports();
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm, JSModuleRecord module, Map<TruffleString, ExportResolution> exports) {
+    public static JSModuleNamespaceObject create(JSContext context, JSRealm realm, JSModuleRecord module, Map<TruffleString, ExportResolution> exports) {
         JSObjectFactory factory = context.getModuleNamespaceFactory();
-        DynamicObject obj = JSModuleNamespaceObject.create(realm, factory, module, exports);
-        assert isJSModuleNamespace(obj);
+        JSModuleNamespaceObject obj = JSModuleNamespaceObject.create(realm, factory, module, exports);
         assert !JSObject.isExtensible(obj);
         return context.trackAllocation(obj);
     }
@@ -131,19 +130,19 @@ public final class JSModuleNamespace extends JSNonProxy {
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return CLASS_NAME;
     }
 
     @Override
     @TruffleBoundary
-    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return Strings.addBrackets(CLASS_NAME);
     }
 
     @Override
     @TruffleBoundary
-    public Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+    public Object getOwnHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         if (!Strings.isTString(key)) {
             return super.getOwnHelper(store, thisObj, key, encapsulatingNode);
         }
@@ -177,7 +176,7 @@ public final class JSModuleNamespace extends JSNonProxy {
     }
 
     @Override
-    public boolean hasProperty(DynamicObject thisObj, Object key) {
+    public boolean hasProperty(JSDynamicObject thisObj, Object key) {
         if (!Strings.isTString(key)) {
             return super.hasProperty(thisObj, key);
         }
@@ -187,7 +186,7 @@ public final class JSModuleNamespace extends JSNonProxy {
 
     @Override
     @TruffleBoundary
-    public boolean hasOwnProperty(DynamicObject thisObj, Object key) {
+    public boolean hasOwnProperty(JSDynamicObject thisObj, Object key) {
         if (!Strings.isTString(key)) {
             return super.hasOwnProperty(thisObj, key);
         }
@@ -203,12 +202,12 @@ public final class JSModuleNamespace extends JSNonProxy {
     }
 
     @Override
-    public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
         return true;
     }
 
     @Override
-    public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
         if (!Strings.isTString(key)) {
             return super.delete(thisObj, key, isStrict);
         }
@@ -224,12 +223,12 @@ public final class JSModuleNamespace extends JSNonProxy {
     }
 
     @Override
-    public boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype) {
+    public boolean setPrototypeOf(JSDynamicObject thisObj, JSDynamicObject newPrototype) {
         return newPrototype == Null.instance;
     }
 
     @Override
-    public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
+    public boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
         if (!Strings.isTString(key)) {
             return super.defineOwnProperty(thisObj, key, desc, doThrow);
         }
@@ -243,7 +242,7 @@ public final class JSModuleNamespace extends JSNonProxy {
 
     @Override
     @TruffleBoundary
-    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
+    public PropertyDescriptor getOwnProperty(JSDynamicObject thisObj, Object key) {
         if (!Strings.isTString(key)) {
             return super.getOwnProperty(thisObj, key);
         }
@@ -263,7 +262,7 @@ public final class JSModuleNamespace extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
+    public List<Object> getOwnPropertyKeys(JSDynamicObject thisObj, boolean strings, boolean symbols) {
         List<Object> symbolKeys = symbols ? symbolKeys(thisObj) : Collections.emptyList();
         if (!strings) {
             return symbolKeys;
@@ -276,14 +275,14 @@ public final class JSModuleNamespace extends JSNonProxy {
         return keys;
     }
 
-    private static List<Object> symbolKeys(DynamicObject thisObj) {
+    private static List<Object> symbolKeys(JSDynamicObject thisObj) {
         // Module Namespace objects only have symbol keys in their shapes.
         return thisObj.getShape().getKeyList();
     }
 
     @Override
     @TruffleBoundary
-    public boolean setIntegrityLevel(DynamicObject obj, boolean freeze, boolean doThrow) {
+    public boolean setIntegrityLevel(JSDynamicObject obj, boolean freeze, boolean doThrow) {
         if (freeze) {
             Map<TruffleString, ExportResolution> exports = getExports(obj);
             if (!exports.isEmpty()) {
@@ -306,7 +305,7 @@ public final class JSModuleNamespace extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    public boolean set(JSDynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         if (isStrict) {
             throw Errors.createTypeErrorNotExtensible(thisObj, key);
         }
@@ -315,7 +314,7 @@ public final class JSModuleNamespace extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    public boolean set(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         if (isStrict) {
             throw Errors.createTypeErrorNotExtensible(thisObj, Strings.fromLong(index));
         }

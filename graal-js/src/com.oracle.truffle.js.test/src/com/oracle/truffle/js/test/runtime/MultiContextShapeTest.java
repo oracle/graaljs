@@ -43,15 +43,15 @@ package com.oracle.truffle.js.test.runtime;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertSame;
 
-import com.oracle.truffle.js.runtime.Strings;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.test.JSTest;
 
@@ -98,7 +98,7 @@ public class MultiContextShapeTest {
             for (int i = 0; i < 2; i++) {
                 try (Context c = JSTest.newContextBuilder().engine(engine).build()) {
                     Value object = c.eval(ID, source);
-                    DynamicObject jsobject = unwrapJSObject(c, object);
+                    JSDynamicObject jsobject = unwrapJSObject(c, object);
                     Shape objShape = jsobject.getShape();
                     if (lastShape != null) {
                         assertSame(lastShape, objShape);
@@ -109,10 +109,10 @@ public class MultiContextShapeTest {
         }
     }
 
-    private static DynamicObject unwrapJSObject(Context c, Value value) {
+    private static JSDynamicObject unwrapJSObject(Context c, Value value) {
         final String key = "_testObject";
         c.getBindings(ID).putMember(key, value);
-        return (DynamicObject) JSObject.get(JavaScriptLanguage.getJSRealm(c).getGlobalObject(), Strings.fromJavaString(key));
+        return (JSDynamicObject) JSObject.get(JavaScriptLanguage.getJSRealm(c).getGlobalObject(), Strings.fromJavaString(key));
     }
 
 }

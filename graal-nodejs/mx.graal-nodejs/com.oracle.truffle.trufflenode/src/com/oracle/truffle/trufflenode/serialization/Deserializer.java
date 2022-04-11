@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -74,6 +73,7 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -99,7 +99,7 @@ public class Deserializer {
     /** Maps ID of a deserialized object to the object itself. */
     private Map<Integer, Object> objectMap = new HashMap<>();
     /** Maps transfer ID to the transferred object. */
-    private Map<Integer, DynamicObject> transferMap = new HashMap<>();
+    private Map<Integer, JSDynamicObject> transferMap = new HashMap<>();
     /** Cache for the last VM-level communication channel. */
     private JavaMessagePortData messagePortCache = null;
 
@@ -303,22 +303,22 @@ public class Deserializer {
         return TruffleString.fromByteArrayUncached(bytes, encoding, false).switchEncodingUncached(TruffleString.Encoding.UTF_16);
     }
 
-    private DynamicObject readDate(JSContext context, JSRealm realm) {
+    private JSDynamicObject readDate(JSContext context, JSRealm realm) {
         double millis = readDouble();
         return assignId(JSDate.create(context, realm, millis));
     }
 
-    private DynamicObject readJSNumber(JSContext context, JSRealm realm) {
+    private JSDynamicObject readJSNumber(JSContext context, JSRealm realm) {
         double value = readDouble();
         return assignId(JSNumber.create(context, realm, value));
     }
 
-    private DynamicObject readJSBigInt(JSContext context, JSRealm realm) {
+    private JSDynamicObject readJSBigInt(JSContext context, JSRealm realm) {
         BigInt value = readBigInt();
         return assignId(JSBigInt.create(context, realm, value));
     }
 
-    private DynamicObject readJSString(JSContext context, JSRealm realm) {
+    private JSDynamicObject readJSString(JSContext context, JSRealm realm) {
         TruffleString value = readString();
         return assignId(JSString.create(context, realm, value));
     }
@@ -329,9 +329,9 @@ public class Deserializer {
         return assignId(GraalJSAccess.regexpCreate(context, realm, pattern, flags));
     }
 
-    private DynamicObject readJSArrayBuffer(JSContext context, JSRealm realm) {
+    private JSDynamicObject readJSArrayBuffer(JSContext context, JSRealm realm) {
         int byteLength = readVarInt();
-        DynamicObject arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(context, realm, byteLength);
+        JSDynamicObject arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(context, realm, byteLength);
         ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
         for (int i = 0; i < byteLength; i++) {
             byteBuffer.put(i, buffer.get());
@@ -340,8 +340,8 @@ public class Deserializer {
         return (peekTag() == SerializationTag.ARRAY_BUFFER_VIEW) ? readJSArrayBufferView(context, realm, arrayBuffer) : arrayBuffer;
     }
 
-    private DynamicObject readJSObject(JSContext context, JSRealm realm) {
-        DynamicObject object = JSOrdinary.create(context, realm);
+    private JSDynamicObject readJSObject(JSContext context, JSRealm realm) {
+        JSDynamicObject object = JSOrdinary.create(context, realm);
         assignId(object);
         int read = readJSObjectProperties(realm, object, SerializationTag.END_JS_OBJECT);
         int expected = readVarInt();
@@ -351,7 +351,7 @@ public class Deserializer {
         return object;
     }
 
-    private int readJSObjectProperties(JSRealm realm, DynamicObject object, SerializationTag endTag) {
+    private int readJSObjectProperties(JSRealm realm, JSDynamicObject object, SerializationTag endTag) {
         SerializationTag tag;
         int count = 0;
         while ((tag = readTag()) != endTag) {
@@ -363,8 +363,8 @@ public class Deserializer {
         return count;
     }
 
-    private DynamicObject readJSMap(JSContext context, JSRealm realm) {
-        DynamicObject object = JSMap.create(context, realm);
+    private JSDynamicObject readJSMap(JSContext context, JSRealm realm) {
+        JSDynamicObject object = JSMap.create(context, realm);
         JSHashMap internalMap = JSMap.getInternalMap(object);
         assignId(object);
         SerializationTag tag;
@@ -382,8 +382,8 @@ public class Deserializer {
         return object;
     }
 
-    private DynamicObject readJSSet(JSContext context, JSRealm realm) {
-        DynamicObject object = JSSet.create(context, realm);
+    private JSDynamicObject readJSSet(JSContext context, JSRealm realm) {
+        JSDynamicObject object = JSSet.create(context, realm);
         JSHashMap internalMap = JSSet.getInternalSet(object);
         assignId(object);
         SerializationTag tag;
@@ -400,10 +400,10 @@ public class Deserializer {
         return object;
     }
 
-    private DynamicObject readDenseArray(JSContext context, JSRealm realm) {
+    private JSDynamicObject readDenseArray(JSContext context, JSRealm realm) {
         int length = readVarInt();
         Object[] elements = new Object[length];
-        DynamicObject array = JSArray.createConstantObjectArray(context, realm, elements);
+        JSDynamicObject array = JSArray.createConstantObjectArray(context, realm, elements);
         assignId(array);
         List<Integer> holes = new ArrayList<>();
         for (int i = 0; i < length; i++) {
@@ -429,9 +429,9 @@ public class Deserializer {
         return array;
     }
 
-    private DynamicObject readSparseArray(JSContext context, JSRealm realm) {
+    private JSDynamicObject readSparseArray(JSContext context, JSRealm realm) {
         long length = readVarLong();
-        DynamicObject array = JSArray.createSparseArray(context, realm, length);
+        JSDynamicObject array = JSArray.createSparseArray(context, realm, length);
         assignId(array);
         int read = readJSObjectProperties(realm, array, SerializationTag.END_SPARSE_JS_ARRAY);
         int expected = readVarInt();
@@ -445,14 +445,14 @@ public class Deserializer {
         return array;
     }
 
-    private DynamicObject readJSArrayBufferView(JSContext context, JSRealm realm, DynamicObject arrayBuffer) {
+    private JSDynamicObject readJSArrayBufferView(JSContext context, JSRealm realm, JSDynamicObject arrayBuffer) {
         assert JSArrayBuffer.isJSDirectOrSharedArrayBuffer(arrayBuffer);
         SerializationTag arrayBufferViewTag = readTag();
         assert arrayBufferViewTag == SerializationTag.ARRAY_BUFFER_VIEW;
         ArrayBufferViewTag tag = readArrayBufferViewTag();
         int offset = readVarInt();
         int byteLength = readVarInt();
-        DynamicObject view;
+        JSDynamicObject view;
         if (tag == ArrayBufferViewTag.DATA_VIEW) {
             view = JSDataView.createDataView(context, realm, arrayBuffer, offset, byteLength);
         } else {
@@ -514,7 +514,7 @@ public class Deserializer {
                     break;
             }
         }
-        DynamicObject error = JSError.create(errorType, realm, message);
+        JSDynamicObject error = JSError.create(errorType, realm, message);
         assignId(error);
         JSObject.set(error, JSError.STACK_NAME, stack);
         return error;
@@ -524,13 +524,13 @@ public class Deserializer {
         return assignId(NativeAccess.readHostObject(delegate));
     }
 
-    public void transferArrayBuffer(int id, DynamicObject arrayBuffer) {
+    public void transferArrayBuffer(int id, JSDynamicObject arrayBuffer) {
         transferMap.put(id, arrayBuffer);
     }
 
-    public DynamicObject readTransferredJSArrayBuffer(JSContext context, JSRealm realm) {
+    public JSDynamicObject readTransferredJSArrayBuffer(JSContext context, JSRealm realm) {
         int id = readVarInt();
-        DynamicObject arrayBuffer = transferMap.get(id);
+        JSDynamicObject arrayBuffer = transferMap.get(id);
         if (arrayBuffer == null) {
             throw Errors.createError("Invalid transfer id " + id);
         }
@@ -543,7 +543,7 @@ public class Deserializer {
         Object sharedArrayBuffer = NativeAccess.getSharedArrayBufferFromId(delegate, id);
         assert JSSharedArrayBuffer.isJSSharedArrayBuffer(sharedArrayBuffer);
         assignId(sharedArrayBuffer);
-        return (peekTag() == SerializationTag.ARRAY_BUFFER_VIEW) ? readJSArrayBufferView(context, realm, (DynamicObject) sharedArrayBuffer) : sharedArrayBuffer;
+        return (peekTag() == SerializationTag.ARRAY_BUFFER_VIEW) ? readJSArrayBufferView(context, realm, (JSDynamicObject) sharedArrayBuffer) : sharedArrayBuffer;
     }
 
     public Object readSharedJavaObject(JSRealm realm) {

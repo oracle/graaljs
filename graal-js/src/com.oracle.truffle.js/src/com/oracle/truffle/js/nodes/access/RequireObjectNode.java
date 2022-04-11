@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,11 +46,11 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class RequireObjectNode extends JavaScriptNode {
     protected static final int MAX_SHAPE_COUNT = 1;
@@ -64,7 +64,7 @@ public abstract class RequireObjectNode extends JavaScriptNode {
     public abstract Object execute(Object obj);
 
     @Specialization(guards = "cachedShape.check(object)", limit = "MAX_SHAPE_COUNT")
-    protected static Object doObjectShape(DynamicObject object,
+    protected static Object doObjectShape(JSDynamicObject object,
                     @SuppressWarnings("unused") @Cached("object.getShape()") Shape cachedShape,
                     @Cached("isJSObject(object)") boolean cachedResult) {
         return requireObject(object, cachedResult);

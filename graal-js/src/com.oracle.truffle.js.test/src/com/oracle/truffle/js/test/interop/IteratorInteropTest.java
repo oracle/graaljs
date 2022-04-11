@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,8 +58,8 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.test.JSTest;
 
 public class IteratorInteropTest {
@@ -193,7 +193,7 @@ public class IteratorInteropTest {
             context.eval(ID, "a = [41, 42, 43]");
 
             context.enter();
-            DynamicObject globalObject = JavaScriptLanguage.getJSRealm(context).getGlobalObject();
+            JSDynamicObject globalObject = JavaScriptLanguage.getJSRealm(context).getGlobalObject();
             Object iterable = InteropLibrary.getUncached(globalObject).readMember(globalObject, "a");
             Object iterator = InteropLibrary.getUncached(iterable).getIterator(iterable);
             Object nextElement;

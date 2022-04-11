@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
@@ -66,8 +65,10 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -112,7 +113,7 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
     }
 
     @Override
-    public DynamicObject execute(IteratorRecord iteratorRecord, DynamicObject constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve) {
+    public JSDynamicObject execute(IteratorRecord iteratorRecord, JSDynamicObject constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve) {
         assert JSRuntime.isConstructor(constructor);
         assert JSRuntime.isCallable(promiseResolve);
         SimpleArrayList<Object> values = new SimpleArrayList<>(10);
@@ -123,7 +124,7 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
                 iteratorRecord.setDone(true);
                 remainingElementsCount.value--;
                 if (remainingElementsCount.value == 0) {
-                    DynamicObject valuesArray = JSArray.createConstantObjectArray(context, getRealm(), values.toArray());
+                    JSDynamicObject valuesArray = JSArray.createConstantObjectArray(context, getRealm(), values.toArray());
                     callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, resultCapability.getResolve(), valuesArray));
                 }
                 return resultCapability.getPromise();
@@ -131,16 +132,16 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
             Object nextValue = iteratorValueOrSetDone(iteratorRecord, next);
             values.add(Undefined.instance, growProfile);
             Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, promiseResolve, nextValue));
-            DynamicObject resolveElement = createResolveElementFunction(index, values, resultCapability, remainingElementsCount);
+            JSFunctionObject resolveElement = createResolveElementFunction(index, values, resultCapability, remainingElementsCount);
             Object rejectElement = createRejectElementFunction(index, values, resultCapability, remainingElementsCount);
             remainingElementsCount.value++;
             callThen.executeCall(JSArguments.create(nextPromise, getThen.getValue(nextPromise), resolveElement, rejectElement));
         }
     }
 
-    protected DynamicObject createResolveElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
+    protected JSFunctionObject createResolveElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseAllResolveElement, (c) -> createResolveElementFunctionImpl(c));
-        DynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSFunctionObject function = JSFunction.create(getRealm(), functionData);
         setArgs.setValue(function, new ResolveElementArgs(index, values, resultCapability, remainingElementsCount));
         return function;
     }
@@ -158,7 +159,7 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
                 ResolveElementArgs args = (ResolveElementArgs) getArgs.getValue(functionObject);
                 if (args.alreadyCalled) {
                     return Undefined.instance;
@@ -168,20 +169,20 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
                 args.values.set(args.index, value);
                 args.remainingElements.value--;
                 if (args.remainingElements.value == 0) {
-                    DynamicObject valuesArray = JSArray.createConstantObjectArray(context, getRealm(), args.values.toArray());
+                    JSDynamicObject valuesArray = JSArray.createConstantObjectArray(context, getRealm(), args.values.toArray());
                     return callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, args.capability.getResolve(), valuesArray));
                 }
                 return Undefined.instance;
             }
 
             @Override
-            public AsyncStackTraceInfo getAsyncStackTraceInfo(DynamicObject handlerFunction) {
+            public AsyncStackTraceInfo getAsyncStackTraceInfo(JSFunctionObject handlerFunction) {
                 assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
                 ResolveElementArgs resolveArgs = (ResolveElementArgs) JSObjectUtil.getHiddenProperty(handlerFunction, PerformPromiseAllNode.RESOLVE_ELEMENT_ARGS_KEY);
                 int promiseIndex = resolveArgs.index;
                 JSRealm realm = JSFunction.getRealm(handlerFunction);
                 TruffleStackTraceElement asyncStackTraceElement = createPromiseAllStackTraceElement(promiseIndex, realm);
-                DynamicObject resultPromise = resolveArgs.capability.getPromise();
+                JSDynamicObject resultPromise = resolveArgs.capability.getPromise();
                 return new AsyncStackTraceInfo(resultPromise, asyncStackTraceElement);
             }
         }

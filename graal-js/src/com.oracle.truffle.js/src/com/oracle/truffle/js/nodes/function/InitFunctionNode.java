@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -49,6 +48,7 @@ import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -125,15 +125,15 @@ public class InitFunctionNode extends JavaScriptBaseNode {
         return new InitFunctionNode(functionData);
     }
 
-    public final DynamicObject execute(DynamicObject function) {
+    public final JSFunctionObject execute(JSFunctionObject function) {
         return execute(function, functionData.getLength(), functionData.getName());
     }
 
-    public final DynamicObject execute(DynamicObject function, @SuppressWarnings("hiding") JSFunctionData functionData) {
+    public final JSFunctionObject execute(JSFunctionObject function, @SuppressWarnings("hiding") JSFunctionData functionData) {
         return execute(function, functionData.getLength(), functionData.getName());
     }
 
-    public final DynamicObject execute(DynamicObject function, int length, TruffleString name) {
+    public final JSFunctionObject execute(JSFunctionObject function, int length, TruffleString name) {
         // setLengthNode.putWithFlags(function, JSFunction.LENGTH, length, lengthFlags);
         Properties.putConstant(setLengthNode, function, JSFunction.LENGTH, JSFunction.LENGTH_PROXY, lengthFlags);
         assert JSFunction.getFunctionData(function).isBound() || length == (int) JSFunction.LENGTH_PROXY.get(function);

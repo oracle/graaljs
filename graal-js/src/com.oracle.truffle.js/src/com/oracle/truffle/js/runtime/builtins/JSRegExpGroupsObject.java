@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -77,7 +76,7 @@ public final class JSRegExpGroupsObject extends JSNonProxyObject implements JSCo
         return JSOrdinary.CLASS_NAME;
     }
 
-    public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Object regexResult, TruffleString input, boolean isIndices) {
+    public static JSObject create(JSRealm realm, JSObjectFactory factory, Object regexResult, TruffleString input, boolean isIndices) {
         return factory.initProto(new JSRegExpGroupsObject(factory.getShape(realm), regexResult, input, isIndices), realm);
     }
 

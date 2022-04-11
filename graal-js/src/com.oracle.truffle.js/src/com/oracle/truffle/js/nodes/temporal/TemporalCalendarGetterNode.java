@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -53,6 +52,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -77,9 +77,9 @@ public abstract class TemporalCalendarGetterNode extends JavaScriptBaseNode {
         return TemporalCalendarGetterNodeGen.create(ctx);
     }
 
-    public abstract Object execute(DynamicObject calendar, DynamicObject dateLike, TruffleString name);
+    public abstract Object execute(JSDynamicObject calendar, JSDynamicObject dateLike, TruffleString name);
 
-    public final Number executeInteger(DynamicObject calendar, DynamicObject dateLike, TruffleString name) {
+    public final Number executeInteger(JSDynamicObject calendar, JSDynamicObject dateLike, TruffleString name) {
         if (toIntegerThrowOnInfinityNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toIntegerThrowOnInfinityNode = insert(JSToIntegerThrowOnInfinityNode.create());
@@ -87,7 +87,7 @@ public abstract class TemporalCalendarGetterNode extends JavaScriptBaseNode {
         return (Number) toIntegerThrowOnInfinityNode.execute(execute(calendar, dateLike, name));
     }
 
-    public final TruffleString executeString(DynamicObject calendar, DynamicObject dateLike, TruffleString name) {
+    public final TruffleString executeString(JSDynamicObject calendar, JSDynamicObject dateLike, TruffleString name) {
         if (toStringNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toStringNode = insert(JSToStringNode.create());
@@ -96,7 +96,7 @@ public abstract class TemporalCalendarGetterNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected Object calendarGetter(DynamicObject calendar, DynamicObject dateLike, TruffleString name) {
+    protected Object calendarGetter(JSDynamicObject calendar, JSDynamicObject dateLike, TruffleString name) {
         Object fn = getMethod(calendar, name);
         Object result = callNode.executeCall(JSArguments.create(calendar, fn, dateLike));
 
@@ -107,7 +107,7 @@ public abstract class TemporalCalendarGetterNode extends JavaScriptBaseNode {
         return result;
     }
 
-    private Object getMethod(DynamicObject calendar, TruffleString name) {
+    private Object getMethod(JSDynamicObject calendar, TruffleString name) {
         if (getMethodNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.getMethodNode = insert(GetMethodNode.create(ctx, name));

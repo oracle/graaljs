@@ -46,7 +46,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.UTC;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -56,6 +55,7 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -84,23 +84,23 @@ public abstract class ToTemporalTimeZoneNode extends JavaScriptBaseNode {
         return ToTemporalTimeZoneNodeGen.create(context);
     }
 
-    public abstract DynamicObject executeDynamicObject(Object temporalTimeZoneLike);
+    public abstract JSDynamicObject executeDynamicObject(Object temporalTimeZoneLike);
 
     @Specialization
-    protected DynamicObject toTemporalTimeZone(Object temporalTimeZoneLikeParam,
+    protected JSDynamicObject toTemporalTimeZone(Object temporalTimeZoneLikeParam,
                     @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToStringNode toStringNode) {
         Object temporalTimeZoneLike = temporalTimeZoneLikeParam;
         if (isObjectProfile.profile(isObjectNode.executeBoolean(temporalTimeZoneLike))) {
-            DynamicObject tzObj = (DynamicObject) temporalTimeZoneLike;
+            JSDynamicObject tzObj = (JSDynamicObject) temporalTimeZoneLike;
             if (isTimeZoneProfile.profile(TemporalUtil.isTemporalZonedDateTime(tzObj))) {
-                return (DynamicObject) getTimeZone(tzObj);
+                return (JSDynamicObject) getTimeZone(tzObj);
             } else if (hasProperty1Profile.profile(!JSObject.hasProperty(tzObj, TIME_ZONE))) {
                 return tzObj;
             }
             temporalTimeZoneLike = getTimeZone(tzObj);
-            if (hasProperty2Profile.profile(isObjectNode.executeBoolean(temporalTimeZoneLike) && !JSObject.hasProperty((DynamicObject) temporalTimeZoneLike, TIME_ZONE))) {
-                return (DynamicObject) temporalTimeZoneLike;
+            if (hasProperty2Profile.profile(isObjectNode.executeBoolean(temporalTimeZoneLike) && !JSObject.hasProperty((JSDynamicObject) temporalTimeZoneLike, TIME_ZONE))) {
+                return (JSDynamicObject) temporalTimeZoneLike;
             }
         }
         TruffleString identifier = toStringNode.executeString(temporalTimeZoneLike);
@@ -126,7 +126,7 @@ public abstract class ToTemporalTimeZoneNode extends JavaScriptBaseNode {
         return TemporalUtil.createTemporalTimeZone(ctx, parseResult.getOffsetString());
     }
 
-    private Object getTimeZone(DynamicObject obj) {
+    private Object getTimeZone(JSDynamicObject obj) {
         if (getTimeZoneNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getTimeZoneNode = insert(PropertyGetNode.create(TIME_ZONE, false, ctx));

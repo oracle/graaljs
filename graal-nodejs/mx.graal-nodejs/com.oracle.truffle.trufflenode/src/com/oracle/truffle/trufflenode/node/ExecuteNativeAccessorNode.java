@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.trufflenode.node;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -50,6 +49,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
@@ -86,7 +86,7 @@ public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
 
         if (accessor.hasSignature()) {
             FunctionTemplate signature = accessor.getSignature();
-            DynamicObject functionObject = signature.getFunctionObject(getRealm());
+            JSFunctionObject functionObject = signature.getFunctionObject(getRealm());
             if (functionObject != null) {
                 Object functionPrototype = prototypePropertyGetNode.getValue(functionObject);
                 Object instancePrototype = getPrototypeNode.execute(arguments[0]);

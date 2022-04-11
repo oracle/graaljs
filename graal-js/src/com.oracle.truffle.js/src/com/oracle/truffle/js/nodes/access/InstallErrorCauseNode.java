@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public class InstallErrorCauseNode extends JavaScriptBaseNode {
@@ -59,7 +59,7 @@ public class InstallErrorCauseNode extends JavaScriptBaseNode {
         this.isObjectNode = IsObjectNode.create();
     }
 
-    public void executeVoid(DynamicObject error, Object options) {
+    public void executeVoid(JSDynamicObject error, Object options) {
         assert JSObject.isJSObject(error);
         if (isObjectNode.executeBoolean(options) && hasPropertyNode.hasProperty(options)) {
             Object cause = getPropertyNode.getValue(options);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -99,7 +98,7 @@ abstract class GlobalScopeTDZCheckNode extends GlobalScopeNode {
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"scope.getShape() == cachedShape"}, assumptions = {"cachedShape.getValidAssumption()"}, limit = "context.getPropertyCacheLimit()")
-    final Object doCached(DynamicObject scope,
+    final Object doCached(JSDynamicObject scope,
                     @Cached("scope.getShape()") Shape cachedShape,
                     @Cached("isDead(cachedShape)") boolean dead) {
         assert dead == (JSDynamicObject.getOrNull(scope, varName) == Dead.instance());

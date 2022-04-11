@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -70,7 +69,7 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
     GetPrototypeNode() {
     }
 
-    public abstract JSDynamicObject execute(DynamicObject obj);
+    public abstract JSDynamicObject execute(JSDynamicObject obj);
 
     public abstract JSDynamicObject execute(Object obj);
 
@@ -109,7 +108,7 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"obj.getShape() == shape", "prototypeLocation != null"}, limit = "MAX_SHAPE_COUNT")
-    static JSDynamicObject doCachedShape(DynamicObject obj,
+    static JSDynamicObject doCachedShape(JSDynamicObject obj,
                     @Cached("obj.getShape()") Shape shape,
                     @Cached("getPrototypeLocation(shape)") Location prototypeLocation) {
         assert !JSGuards.isJSProxy(obj);
@@ -117,17 +116,17 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "!isJSProxy(obj)", replaces = "doCachedShape")
-    static JSDynamicObject doGeneric(DynamicObject obj) {
+    static JSDynamicObject doGeneric(JSDynamicObject obj) {
         return JSObjectUtil.getPrototype(obj);
     }
 
     @Specialization(guards = "isJSProxy(obj)")
-    static JSDynamicObject doProxy(DynamicObject obj,
+    static JSDynamicObject doProxy(JSDynamicObject obj,
                     @Cached("create()") JSClassProfile jsclassProfile) {
         return JSObject.getPrototype(obj, jsclassProfile);
     }
 
-    @Specialization(guards = "!isDynamicObject(obj)")
+    @Specialization(guards = "!isJSDynamicObject(obj)")
     static JSDynamicObject doNotObject(@SuppressWarnings("unused") Object obj) {
         return Null.instance;
     }

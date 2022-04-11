@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -62,7 +61,7 @@ public abstract class HasHiddenKeyCacheNode extends JavaScriptBaseNode {
     public abstract boolean executeHasHiddenKey(Object object);
 
     @Specialization(guards = {"cachedShape.check(object)"}, assumptions = {"cachedShape.getValidAssumption()"}, limit = "cacheLimit")
-    protected static boolean doCached(@SuppressWarnings("unused") DynamicObject object,
+    protected static boolean doCached(@SuppressWarnings("unused") JSDynamicObject object,
                     @SuppressWarnings("unused") @Cached("object.getShape()") Shape cachedShape,
                     @Cached("doUncached(object)") boolean hasOwnProperty,
                     @SuppressWarnings("unused") @Cached("getPropertyCacheLimit()") int cacheLimit) {
@@ -74,7 +73,7 @@ public abstract class HasHiddenKeyCacheNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isJSObject(object)", replaces = {"doCached"})
-    protected final boolean doUncached(DynamicObject object) {
+    protected final boolean doUncached(JSDynamicObject object) {
         return JSDynamicObject.hasProperty(object, key);
     }
 

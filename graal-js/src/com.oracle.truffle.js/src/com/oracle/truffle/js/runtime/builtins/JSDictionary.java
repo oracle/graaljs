@@ -52,7 +52,6 @@ import org.graalvm.collections.MapCursor;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
@@ -95,20 +94,20 @@ public final class JSDictionary extends JSNonProxy {
     }
 
     public static boolean isJSDictionaryObject(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSDictionaryObject((DynamicObject) obj);
+        return JSDynamicObject.isJSDynamicObject(obj) && isJSDictionaryObject((JSDynamicObject) obj);
     }
 
-    public static boolean isJSDictionaryObject(DynamicObject obj) {
+    public static boolean isJSDictionaryObject(JSDynamicObject obj) {
         return isInstance(obj, INSTANCE);
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return Strings.UC_OBJECT;
     }
 
     @Override
-    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return defaultToString(obj);
     }
 
@@ -117,7 +116,7 @@ public final class JSDictionary extends JSNonProxy {
      */
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+    public Object getOwnHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
         PropertyDescriptor desc = getHashMap(store).get(key);
         if (desc != null) {
@@ -129,7 +128,7 @@ public final class JSDictionary extends JSNonProxy {
 
     public static Object getValue(PropertyDescriptor property, Object receiver, Node encapsulatingNode) {
         if (property.isAccessorDescriptor()) {
-            DynamicObject getter = (DynamicObject) property.getGet();
+            JSDynamicObject getter = (JSDynamicObject) property.getGet();
             if (getter != Undefined.instance) {
                 return JSRuntime.call(getter, receiver, JSArguments.EMPTY_ARGUMENTS_ARRAY, encapsulatingNode);
             } else {
@@ -143,7 +142,7 @@ public final class JSDictionary extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
+    public List<Object> getOwnPropertyKeys(JSDynamicObject thisObj, boolean strings, boolean symbols) {
         assert isJSDictionaryObject(thisObj);
         List<Object> keys = ordinaryOwnPropertyKeysSlow(thisObj, strings, symbols);
         for (Object key : getHashMap(thisObj).getKeys()) {
@@ -159,7 +158,7 @@ public final class JSDictionary extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
         assert JSRuntime.isPropertyKey(key);
         EconomicMap<Object, PropertyDescriptor> hashMap = getHashMap(thisObj);
         PropertyDescriptor desc = hashMap.get(key);
@@ -177,13 +176,13 @@ public final class JSDictionary extends JSNonProxy {
     }
 
     @Override
-    public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
         return delete(thisObj, Strings.fromLong(index), isStrict);
     }
 
     @TruffleBoundary
     @Override
-    public boolean hasOwnProperty(DynamicObject thisObj, Object key) {
+    public boolean hasOwnProperty(JSDynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
         if (getHashMap(thisObj).containsKey(key)) {
             return true;
@@ -193,19 +192,19 @@ public final class JSDictionary extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    public boolean set(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         Object key = Strings.fromLong(index);
         return dictionaryObjectSet(thisObj, key, value, receiver, isStrict, encapsulatingNode);
     }
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    public boolean set(JSDynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
         return dictionaryObjectSet(thisObj, key, value, receiver, isStrict, encapsulatingNode);
     }
 
-    protected static boolean dictionaryObjectSet(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    protected static boolean dictionaryObjectSet(JSDynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
         if (receiver != thisObj) {
             return ordinarySetWithReceiver(thisObj, key, value, receiver, isStrict, encapsulatingNode);
@@ -221,9 +220,9 @@ public final class JSDictionary extends JSNonProxy {
         return setPropertySlow(thisObj, key, value, receiver, isStrict, false, encapsulatingNode);
     }
 
-    private static boolean setValue(Object key, PropertyDescriptor property, DynamicObject store, Object thisObj, Object value, boolean isStrict, Node encapsulatingNode) {
+    private static boolean setValue(Object key, PropertyDescriptor property, JSDynamicObject store, Object thisObj, Object value, boolean isStrict, Node encapsulatingNode) {
         if (property.isAccessorDescriptor()) {
-            DynamicObject setter = (DynamicObject) property.getSet();
+            JSDynamicObject setter = (JSDynamicObject) property.getSet();
             if (setter != Undefined.instance) {
                 JSRuntime.call(setter, thisObj, new Object[]{value}, encapsulatingNode);
                 return true;
@@ -248,7 +247,7 @@ public final class JSDictionary extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
+    public PropertyDescriptor getOwnProperty(JSDynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
         PropertyDescriptor prop = getHashMap(thisObj).get(key);
         if (prop != null) {
@@ -259,7 +258,7 @@ public final class JSDictionary extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
+    public boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
         assert JSRuntime.isPropertyKey(key);
         if (!hasOwnProperty(thisObj, key) && JSObject.isExtensible(thisObj)) {
             getHashMap(thisObj).put(key, desc);
@@ -273,12 +272,12 @@ public final class JSDictionary extends JSNonProxy {
     }
 
     @SuppressWarnings("unchecked")
-    static EconomicMap<Object, PropertyDescriptor> getHashMap(DynamicObject obj) {
+    static EconomicMap<Object, PropertyDescriptor> getHashMap(JSDynamicObject obj) {
         assert JSDictionary.isJSDictionaryObject(obj);
         return (EconomicMap<Object, PropertyDescriptor>) JSDynamicObject.getOrNull(obj, HASHMAP_PROPERTY_NAME);
     }
 
-    public static void makeDictionaryObject(DynamicObject obj, String reason) {
+    public static void makeDictionaryObject(JSDynamicObject obj, String reason) {
         CompilerAsserts.neverPartOfCompilation();
         assert JSConfig.DictionaryObject;
         if (!JSOrdinary.isJSOrdinaryObject(obj)) {
@@ -331,12 +330,12 @@ public final class JSDictionary extends JSNonProxy {
         assert isJSDictionaryObject(obj) && obj.getShape().getProperty(HASHMAP_PROPERTY_NAME) != null;
     }
 
-    private static Shape makeEmptyShapeForNewType(JSContext context, Shape currentShape, JSClass jsclass, DynamicObject fromObject) {
+    private static Shape makeEmptyShapeForNewType(JSContext context, Shape currentShape, JSClass jsclass, JSDynamicObject fromObject) {
         Property prototypeProperty = JSShape.getPrototypeProperty(currentShape);
         if (!prototypeProperty.getLocation().isConstant()) {
             return context.makeEmptyShapeWithPrototypeInObject(jsclass);
         } else {
-            DynamicObject prototype = JSObjectUtil.getPrototype(fromObject);
+            JSDynamicObject prototype = JSObjectUtil.getPrototype(fromObject);
             if (prototype == Null.instance) {
                 return context.makeEmptyShapeWithNullPrototype(jsclass);
             } else {
@@ -358,7 +357,7 @@ public final class JSDictionary extends JSNonProxy {
         return desc;
     }
 
-    private static void makeOrdinaryObject(DynamicObject obj, String reason) {
+    private static void makeOrdinaryObject(JSDynamicObject obj, String reason) {
         CompilerAsserts.neverPartOfCompilation();
         if (JSConfig.TraceDictionaryObject) {
             System.out.printf("transitioning from dictionary object to ordinary object: %s\n", reason);
@@ -408,21 +407,21 @@ public final class JSDictionary extends JSNonProxy {
                 assert !(value instanceof Accessor || value instanceof PropertyProxy);
                 JSObjectUtil.defineDataProperty(obj, key, value, desc.getFlags());
             } else {
-                JSObjectUtil.defineAccessorProperty(obj, key, new Accessor((DynamicObject) desc.getGet(), (DynamicObject) desc.getSet()), desc.getFlags());
+                JSObjectUtil.defineAccessorProperty(obj, key, new Accessor((JSDynamicObject) desc.getGet(), (JSDynamicObject) desc.getSet()), desc.getFlags());
             }
         }
 
         assert JSOrdinary.isJSOrdinaryObject(obj) && obj.getShape().getProperty(HASHMAP_PROPERTY_NAME) == null;
     }
 
-    public static Shape makeDictionaryShape(JSContext context, DynamicObject prototype) {
+    public static Shape makeDictionaryShape(JSContext context, JSDynamicObject prototype) {
         assert prototype != Null.instance;
         return JSObjectUtil.getProtoChildShape(prototype, JSDictionary.INSTANCE, context);
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm) {
+    public static JSDynamicObject create(JSContext context, JSRealm realm) {
         JSObjectFactory factory = context.getDictionaryObjectFactory();
-        DynamicObject obj = JSOrdinaryObject.create(factory.getShape(realm));
+        JSDynamicObject obj = JSOrdinaryObject.create(factory.getShape(realm));
         factory.initProto(obj, realm);
         JSObjectUtil.putHiddenProperty(obj, HASHMAP_PROPERTY_NAME, newHashMap());
         return context.trackAllocation(obj);

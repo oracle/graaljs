@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
@@ -60,7 +59,10 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
@@ -76,12 +78,12 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
         this.toInt = JSToIntegerAsIntNode.create();
     }
 
-    private DynamicObject getNativeUtf8Write() {
+    private JSFunctionObject getNativeUtf8Write() {
         return GraalJSAccess.getRealmEmbedderData(getRealm()).getNativeUtf8Write();
     }
 
     @Specialization(guards = "accept(target)")
-    public Object write(DynamicObject target, TruffleString str, int destOffset, int bytes) {
+    public Object write(JSDynamicObject target, TruffleString str, int destOffset, int bytes) {
         try {
             return doWrite(target, str, destOffset, bytes);
         } catch (CharacterCodingException e) {
@@ -90,7 +92,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     }
 
     @Specialization(guards = {"accept(target)", "isUndefined(bytes)"})
-    public Object writeDefaultOffset(DynamicObject target, TruffleString str, int destOffset, Object bytes) {
+    public Object writeDefaultOffset(JSDynamicObject target, TruffleString str, int destOffset, Object bytes) {
         try {
             return doWrite(target, str, destOffset, getBytes(str).length);
         } catch (CharacterCodingException e) {
@@ -99,7 +101,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     }
 
     @Specialization(guards = {"accept(target)", "isUndefined(destOffset)", "isUndefined(bytes)"})
-    public Object writeDefaultValues(DynamicObject target, TruffleString str, Object destOffset, Object bytes) {
+    public Object writeDefaultValues(JSDynamicObject target, TruffleString str, Object destOffset, Object bytes) {
         try {
             return doWrite(target, str, 0, getBytes(str).length);
         } catch (CharacterCodingException e) {
@@ -108,7 +110,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     }
 
     @Specialization(guards = "accept(target)")
-    public Object write(DynamicObject target, TruffleString str, double destOffset, double bytes) {
+    public Object write(JSDynamicObject target, TruffleString str, double destOffset, double bytes) {
         try {
             return doWrite(target, str, toInt.executeInt(destOffset), toInt.executeInt(bytes));
         } catch (CharacterCodingException e) {
@@ -117,7 +119,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     }
 
     @Specialization
-    public Object writeDefault(DynamicObject target, Object str, Object destOffset, Object bytes) {
+    public Object writeDefault(JSDynamicObject target, Object str, Object destOffset, Object bytes) {
         return JSFunction.call(getNativeUtf8Write(), target, new Object[]{str, destOffset, bytes});
     }
 
@@ -127,13 +129,13 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
         throw Errors.createTypeErrorArrayBufferViewExpected();
     }
 
-    private Object doNativeFallback(DynamicObject target, TruffleString str, Object destOffset, Object bytes) {
+    private Object doNativeFallback(JSDynamicObject target, TruffleString str, Object destOffset, Object bytes) {
         nativePath.enter();
         return JSFunction.call(getNativeUtf8Write(), target, new Object[]{str, destOffset, bytes});
     }
 
-    private int doWrite(DynamicObject target, TruffleString str, int destOffset, int bytes) throws CharacterCodingException {
-        DynamicObject arrayBuffer = getArrayBuffer(target);
+    private int doWrite(JSDynamicObject target, TruffleString str, int destOffset, int bytes) throws CharacterCodingException {
+        JSArrayBufferObject arrayBuffer = getArrayBuffer(target);
         int bufferOffset = getOffset(target);
         int bufferLen = getLength(target);
 

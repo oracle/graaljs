@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -57,6 +56,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * This implements ECMA 9.3 ToNumber.
@@ -113,8 +113,8 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
         return JSRuntime.doubleToNarrowestNumber(doubleValue);
     }
 
-    @Specialization(guards = "isJSObject(value)")
-    protected Number doJSObject(DynamicObject value,
+    @Specialization
+    protected Number doJSObject(JSObject value,
                     @Shared("toPrimitiveHintNumberNode") @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("toNumberNode") @Cached JSToNumberNode toNumberNode) {
         return toNumberNode.executeNumber(toPrimitiveNode.execute(value));

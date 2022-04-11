@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,13 +46,13 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -85,7 +85,7 @@ public abstract class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode
 
     @Override
     public final void executeVoid(VirtualFrame frame, JSContext context, JSRealm realm) {
-        DynamicObject globalScope = realm.getGlobalScope();
+        JSDynamicObject globalScope = realm.getGlobalScope();
         assert !JSObject.hasOwnProperty(globalScope, varName); // checked in advance
         assert JSObject.isExtensible(globalScope);
         executeVoid(globalScope, context);
@@ -97,16 +97,16 @@ public abstract class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode
         return isConst ? (JSAttributes.notConfigurableEnumerableWritable() | JSProperty.CONST) : JSAttributes.notConfigurableEnumerableWritable();
     }
 
-    protected abstract void executeVoid(DynamicObject globalScope, JSContext context);
+    protected abstract void executeVoid(JSDynamicObject globalScope, JSContext context);
 
     @Specialization(guards = {"context.getPropertyCacheLimit() > 0"})
-    protected void doCached(DynamicObject globalScope, @SuppressWarnings("unused") JSContext context,
+    protected void doCached(JSDynamicObject globalScope, @SuppressWarnings("unused") JSContext context,
                     @Cached("makeDefineOwnPropertyCache(context)") PropertySetNode cache) {
         cache.setValue(globalScope, Dead.instance());
     }
 
     @Specialization(replaces = {"doCached"})
-    protected void doUncached(DynamicObject globalScope, JSContext context) {
+    protected void doUncached(JSDynamicObject globalScope, JSContext context) {
         JSObjectUtil.putDeclaredDataProperty(context, globalScope, varName, Dead.instance(), getAttributeFlags());
     }
 

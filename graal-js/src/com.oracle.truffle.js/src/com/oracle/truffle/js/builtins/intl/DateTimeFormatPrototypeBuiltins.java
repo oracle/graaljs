@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins.intl;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
@@ -61,6 +60,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<DateTimeFormatPrototypeBuiltins.DateTimeFormatPrototype> {
@@ -124,13 +124,13 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSDateTimeFormat(dateTimeFormat)")
-        public Object doResolvedOptions(DynamicObject dateTimeFormat) {
+        @Specialization
+        public Object doResolvedOptions(JSDateTimeFormatObject dateTimeFormat) {
             return JSDateTimeFormat.resolvedOptions(getContext(), getRealm(), dateTimeFormat);
         }
 
         @Fallback
-        public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
+        public Object throwTypeError(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeErrorTypeXExpected(JSDateTimeFormat.CLASS_NAME);
         }
     }
@@ -141,14 +141,14 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSDateTimeFormat(dateTimeFormat)")
-        public Object doFormatToParts(DynamicObject dateTimeFormat, Object value) {
+        @Specialization
+        public Object doFormatToParts(JSDateTimeFormatObject dateTimeFormat, Object value) {
             return JSDateTimeFormat.formatToParts(getContext(), getRealm(), dateTimeFormat, value, null);
         }
 
         @Fallback
         @SuppressWarnings("unused")
-        public void throwTypeError(Object bummer, Object value) {
+        public Object throwTypeError(Object bummer, Object value) {
             throw Errors.createTypeErrorTypeXExpected(JSDateTimeFormat.CLASS_NAME);
         }
     }
@@ -159,8 +159,8 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSDateTimeFormat(dateTimeFormat)")
-        public TruffleString doFormatRange(DynamicObject dateTimeFormat, Object startDate, Object endDate,
+        @Specialization
+        public TruffleString doFormatRange(JSDateTimeFormatObject dateTimeFormat, Object startDate, Object endDate,
                         @Cached JSToNumberNode startDateToNumberNode,
                         @Cached JSToNumberNode endDateToNumberNode,
                         @Cached BranchProfile errorBranch) {
@@ -181,7 +181,7 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
 
         @Fallback
         @SuppressWarnings("unused")
-        public String throwTypeError(Object bummer, Object startDate, Object endDate) {
+        public Object throwTypeError(Object bummer, Object startDate, Object endDate) {
             throw Errors.createTypeErrorTypeXExpected(JSDateTimeFormat.CLASS_NAME);
         }
     }
@@ -192,8 +192,8 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSDateTimeFormat(dateTimeFormat)")
-        public Object doFormatRangeToParts(DynamicObject dateTimeFormat, Object startDate, Object endDate,
+        @Specialization
+        public Object doFormatRangeToParts(JSDateTimeFormatObject dateTimeFormat, Object startDate, Object endDate,
                         @Cached JSToNumberNode startDateToNumberNode,
                         @Cached JSToNumberNode endDateToNumberNode,
                         @Cached BranchProfile errorBranch) {

@@ -44,12 +44,12 @@ import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
@@ -107,7 +107,7 @@ public interface Evaluator {
 
     Object moduleEvaluation(JSRealm realm, JSModuleRecord moduleRecord);
 
-    DynamicObject getModuleNamespace(JSModuleRecord moduleRecord);
+    JSDynamicObject getModuleNamespace(JSModuleRecord moduleRecord);
 
     ExportResolution resolveExport(JSModuleRecord moduleRecord, TruffleString exportName);
 

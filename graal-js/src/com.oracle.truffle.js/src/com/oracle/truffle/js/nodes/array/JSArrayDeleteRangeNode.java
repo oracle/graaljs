@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,11 +44,11 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Deletes a range of indices from a JS array. Does not shrink the array.
@@ -69,10 +69,10 @@ public abstract class JSArrayDeleteRangeNode extends JavaScriptBaseNode {
         return JSArrayDeleteRangeNodeGen.create(context, orThrow);
     }
 
-    public abstract void execute(DynamicObject array, ScriptArray arrayType, long start, long end);
+    public abstract void execute(JSDynamicObject array, ScriptArray arrayType, long start, long end);
 
     @Specialization(guards = {"cachedArrayType.isInstance(arrayType)", "!cachedArrayType.isHolesType()"}, limit = "5")
-    protected void denseArray(DynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long start, long end,
+    protected void denseArray(JSDynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long start, long end,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType,
                     @Cached("create(orThrow, context)") DeletePropertyNode deletePropertyNode) {
         for (long i = start; i < end; i++) {
@@ -81,7 +81,7 @@ public abstract class JSArrayDeleteRangeNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"cachedArrayType.isInstance(arrayType)", "cachedArrayType.isHolesType()"}, limit = "5")
-    protected void sparseArray(DynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long start, long end,
+    protected void sparseArray(JSDynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long start, long end,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType,
                     @Cached("create(orThrow, context)") DeletePropertyNode deletePropertyNode,
                     @Cached("create(context)") JSArrayNextElementIndexNode nextElementIndexNode) {
@@ -93,7 +93,7 @@ public abstract class JSArrayDeleteRangeNode extends JavaScriptBaseNode {
     }
 
     @Specialization(replaces = {"denseArray", "sparseArray"})
-    protected void doUncached(DynamicObject array, ScriptArray arrayType, long start, long end,
+    protected void doUncached(JSDynamicObject array, ScriptArray arrayType, long start, long end,
                     @Cached("create(orThrow, context)") DeletePropertyNode deletePropertyNode,
                     @Cached("create(context)") JSArrayNextElementIndexNode nextElementIndexNode) {
         if (arrayType.isHolesType()) {

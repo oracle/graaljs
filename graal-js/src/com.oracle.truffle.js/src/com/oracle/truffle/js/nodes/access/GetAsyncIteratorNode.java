@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.util.Set;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -57,6 +56,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -85,7 +85,7 @@ public abstract class GetAsyncIteratorNode extends GetIteratorNode {
         if (asyncToSync.profile(method == Undefined.instance)) {
             Object syncMethod = getIteratorMethodNode().executeWithTarget(iteratedObject);
             IteratorRecord syncIteratorRecord = getIterator(iteratedObject, syncMethod, isCallableNode, methodCallNode, isObjectNode);
-            DynamicObject asyncIterator = createAsyncFromSyncIterator(syncIteratorRecord);
+            JSObject asyncIterator = createAsyncFromSyncIterator(syncIteratorRecord);
             return IteratorRecord.create(asyncIterator, getNextMethodNode.getValue(asyncIterator), false);
         }
         return getIterator(iteratedObject, method, isCallableNode, methodCallNode, isObjectNode);
@@ -96,12 +96,12 @@ public abstract class GetAsyncIteratorNode extends GetIteratorNode {
         return GetAsyncIteratorNodeGen.create(context, cloneUninitialized(objectNode, materializedTags));
     }
 
-    private DynamicObject createAsyncFromSyncIterator(IteratorRecord syncIteratorRecord) {
-        DynamicObject syncIterator = syncIteratorRecord.getIterator();
+    private JSObject createAsyncFromSyncIterator(IteratorRecord syncIteratorRecord) {
+        JSDynamicObject syncIterator = syncIteratorRecord.getIterator();
         if (!JSDynamicObject.isJSDynamicObject(syncIterator)) {
             throw Errors.createTypeErrorNotAnObject(syncIterator, this);
         }
-        DynamicObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory(), getRealm());
+        JSObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory(), getRealm());
         setState.setValue(obj, syncIteratorRecord);
         return obj;
     }

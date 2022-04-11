@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -58,6 +57,8 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -78,21 +79,20 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
     private JSSymbol() {
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm, Symbol symbol) {
-        DynamicObject mapObj = JSSymbolObject.create(realm, context.getSymbolFactory(), symbol);
-        assert isJSSymbol(mapObj);
+    public static JSSymbolObject create(JSContext context, JSRealm realm, Symbol symbol) {
+        JSSymbolObject mapObj = JSSymbolObject.create(realm, context.getSymbolFactory(), symbol);
         return context.trackAllocation(mapObj);
     }
 
-    public static Symbol getSymbolData(DynamicObject symbolWrapper) {
+    public static Symbol getSymbolData(JSDynamicObject symbolWrapper) {
         assert JSSymbol.isJSSymbol(symbolWrapper);
         return ((JSSymbolObject) symbolWrapper).getSymbol();
     }
 
     @Override
-    public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, SymbolPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
@@ -103,7 +103,7 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSSymbol.INSTANCE, context);
         return initialShape;
     }
@@ -112,7 +112,7 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
         return INSTANCE.createConstructorAndPrototype(realm, SymbolFunctionBuiltins.BUILTINS);
     }
 
-    private static DynamicObject createDescriptionGetterFunction(JSRealm realm) {
+    private static JSDynamicObject createDescriptionGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.SymbolGetDescription, (c) -> {
             CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 private final ConditionProfile isSymbolProfile = ConditionProfile.createBinaryProfile();
@@ -124,7 +124,7 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
                     if (isSymbolProfile.profile(obj instanceof Symbol)) {
                         return ((Symbol) obj).getDescription();
                     } else if (isJSSymbolProfile.profile(isJSSymbol(obj))) {
-                        return JSSymbol.getSymbolData((DynamicObject) obj).getDescription();
+                        return JSSymbol.getSymbolData((JSDynamicObject) obj).getDescription();
                     } else {
                         throw Errors.createTypeErrorSymbolExpected();
                     }
@@ -142,13 +142,13 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
     @Override
     @TruffleBoundary
-    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return Strings.addBrackets(CLASS_NAME);
     }
 
@@ -157,7 +157,7 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getSymbolPrototype();
     }
 

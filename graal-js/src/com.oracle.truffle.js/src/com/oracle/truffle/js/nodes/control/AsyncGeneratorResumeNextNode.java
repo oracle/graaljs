@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.util.ArrayDeque;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -67,9 +66,11 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.AsyncGeneratorState;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
 import com.oracle.truffle.js.runtime.objects.Completion;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -107,7 +108,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unchecked")
-    public final Object execute(VirtualFrame frame, DynamicObject generator) {
+    public final Object execute(VirtualFrame frame, JSDynamicObject generator) {
         for (;;) {
             AsyncGeneratorState state = (AsyncGeneratorState) getGeneratorStateNode.getValue(generator);
             assert state != AsyncGeneratorState.Executing;
@@ -128,9 +129,9 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
                     if (next.isReturn()) {
                         enterReturnBranch();
                         setGeneratorStateNode.setValue(generator, AsyncGeneratorState.AwaitingReturn);
-                        DynamicObject promise = promiseResolve(next.getCompletionValue());
-                        DynamicObject onFulfilled = createAsyncGeneratorReturnProcessorFulfilledFunction(generator);
-                        DynamicObject onRejected = createAsyncGeneratorReturnProcessorRejectedFunction(generator);
+                        JSDynamicObject promise = promiseResolve(next.getCompletionValue());
+                        JSFunctionObject onFulfilled = createAsyncGeneratorReturnProcessorFulfilledFunction(generator);
+                        JSFunctionObject onRejected = createAsyncGeneratorReturnProcessorRejectedFunction(generator);
                         PromiseCapabilityRecord throwawayCapability = newThrowawayCapability();
                         performPromiseThenNode.execute(promise, onFulfilled, onRejected, throwawayCapability);
                         return Undefined.instance;
@@ -153,7 +154,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
         }
     }
 
-    private DynamicObject promiseResolve(Object value) {
+    private JSDynamicObject promiseResolve(Object value) {
         if (context.usePromiseResolve()) {
             if (promiseResolveNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -171,7 +172,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
         }
     }
 
-    protected Object performResumeNext(@SuppressWarnings("unused") DynamicObject generator, Completion completion) {
+    protected Object performResumeNext(@SuppressWarnings("unused") JSDynamicObject generator, Completion completion) {
         return completion;
     }
 
@@ -188,7 +189,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected Object performResumeNext(DynamicObject generator, Completion completion) {
+        protected Object performResumeNext(JSDynamicObject generator, Completion completion) {
             CallTarget generatorTarget = (CallTarget) getGeneratorTarget.getValue(generator);
             Object generatorContext = getGeneratorContext.getValue(generator);
             callNode.execute(generatorTarget, JSArguments.createResumeArguments(generatorContext, generator, completion));
@@ -233,9 +234,9 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
         }
     }
 
-    private DynamicObject createAsyncGeneratorReturnProcessorFulfilledFunction(DynamicObject generator) {
+    private JSFunctionObject createAsyncGeneratorReturnProcessorFulfilledFunction(JSDynamicObject generator) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncGeneratorReturnFulfilled, (c) -> createAsyncGeneratorReturnProcessorFulfilledImpl(c));
-        DynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSFunctionObject function = JSFunction.create(getRealm(), functionData);
         setGeneratorNode.setValue(function, generator);
         return function;
     }
@@ -249,8 +250,8 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                DynamicObject generatorObject = (DynamicObject) getGenerator.getValue(functionObject);
+                JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                JSDynamicObject generatorObject = (JSDynamicObject) getGenerator.getValue(functionObject);
                 setGeneratorState.setValue(generatorObject, AsyncGeneratorState.Completed);
                 Object value = valueNode.execute(frame);
                 return asyncGeneratorResolveNode.execute(frame, generatorObject, value, true);
@@ -259,9 +260,9 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
         return JSFunctionData.createCallOnly(context, new AsyncGeneratorReturnFulfilledRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
-    private DynamicObject createAsyncGeneratorReturnProcessorRejectedFunction(DynamicObject generator) {
+    private JSFunctionObject createAsyncGeneratorReturnProcessorRejectedFunction(JSDynamicObject generator) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncGeneratorReturnRejected, (c) -> createAsyncGeneratorReturnProcessorRejectedImpl(c));
-        DynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSFunctionObject function = JSFunction.create(getRealm(), functionData);
         setGeneratorNode.setValue(function, generator);
         return function;
     }
@@ -275,8 +276,8 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                DynamicObject generatorObject = (DynamicObject) getGenerator.getValue(functionObject);
+                JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                JSDynamicObject generatorObject = (JSDynamicObject) getGenerator.getValue(functionObject);
                 setGeneratorState.setValue(generatorObject, AsyncGeneratorState.Completed);
                 Object reason = reasonNode.execute(frame);
                 return asyncGeneratorRejectNode.execute(frame, generatorObject, reason);

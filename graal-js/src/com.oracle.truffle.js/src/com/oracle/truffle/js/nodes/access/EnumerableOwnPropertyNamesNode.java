@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
@@ -57,6 +56,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -93,10 +93,10 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
         return EnumerableOwnPropertyNamesNodeGen.create(context, true, true);
     }
 
-    public abstract UnmodifiableArrayList<? extends Object> execute(DynamicObject obj);
+    public abstract UnmodifiableArrayList<? extends Object> execute(JSDynamicObject obj);
 
     @Specialization
-    protected UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(DynamicObject thisObj,
+    protected UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(JSDynamicObject thisObj,
                     @Cached JSClassProfile jsclassProfile,
                     @Cached ListSizeNode listSize,
                     @Cached ListGetNode listGet,
@@ -134,7 +134,7 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
         }
     }
 
-    protected PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
+    protected PropertyDescriptor getOwnProperty(JSDynamicObject thisObj, Object key) {
         if (getOwnPropertyNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getOwnPropertyNode = insert(JSGetOwnPropertyNode.create(values, true, false, false, false));

@@ -50,7 +50,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectApplyNodeGen;
@@ -197,7 +196,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
 
         @Specialization(guards = "isJSFunction(target)")
-        protected final Object applyFunction(DynamicObject target, Object thisArgument, Object argumentsList) {
+        protected final Object applyFunction(JSDynamicObject target, Object thisArgument, Object argumentsList) {
             return apply(target, thisArgument, argumentsList);
         }
 
@@ -282,7 +281,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             ensureJSObject(target);
             Object key = toPropertyKeyNode.execute(propertyKey);
             PropertyDescriptor descriptor = (PropertyDescriptor) toPropertyDescriptorNode.execute(attributes);
-            return JSObject.defineOwnProperty((DynamicObject) target, key, descriptor);
+            return JSObject.defineOwnProperty((JSDynamicObject) target, key, descriptor);
         }
     }
 
@@ -296,7 +295,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
 
         @Specialization(guards = "isJSObject(target)")
-        protected boolean doObject(DynamicObject target, Object propertyKey,
+        protected boolean doObject(JSDynamicObject target, Object propertyKey,
                         @Cached("create()") JSClassProfile classProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             return JSObject.delete(target, key, false, classProfile);
@@ -342,7 +341,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
 
         @Specialization(guards = "isJSObject(target)")
-        protected Object doObject(DynamicObject target, Object propertyKey, Object[] optionalArgs,
+        protected Object doObject(JSDynamicObject target, Object propertyKey, Object[] optionalArgs,
                         @Cached("create()") JSClassProfile classProfile) {
             Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
             Object key = toPropertyKeyNode.execute(propertyKey);
@@ -375,13 +374,13 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
 
         @Specialization
-        protected DynamicObject reflectGetOwnPropertyDescriptor(Object target, Object key,
+        protected JSDynamicObject reflectGetOwnPropertyDescriptor(Object target, Object key,
                         @Cached JSToPropertyKeyNode toPropertyKeyNode,
                         @Cached JSGetOwnPropertyNode getOwnPropertyNode,
                         @Cached FromPropertyDescriptorNode fromPropertyDescriptorNode) {
             ensureJSObject(target);
             Object propertyKey = toPropertyKeyNode.execute(key);
-            PropertyDescriptor desc = getOwnPropertyNode.execute((DynamicObject) target, propertyKey);
+            PropertyDescriptor desc = getOwnPropertyNode.execute((JSDynamicObject) target, propertyKey);
             return fromPropertyDescriptorNode.execute(desc, getContext());
         }
     }
@@ -395,7 +394,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         @Specialization
         protected Object reflectGetPrototypeOf(Object target) {
             ensureJSObject(target);
-            return JSObject.getPrototype((DynamicObject) target);
+            return JSObject.getPrototype((JSDynamicObject) target);
         }
     }
 
@@ -409,7 +408,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
 
         @Specialization(guards = "isJSObject(target)")
-        protected Object doObject(DynamicObject target, Object propertyKey,
+        protected Object doObject(JSDynamicObject target, Object propertyKey,
                         @Cached("create()") JSClassProfile jsclassProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             return JSObject.hasProperty(target, key, jsclassProfile);
@@ -448,7 +447,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         protected boolean reflectIsExtensible(Object target,
                         @Cached IsExtensibleNode isExtensibleNode) {
             ensureJSObject(target);
-            return isExtensibleNode.executeBoolean((DynamicObject) target);
+            return isExtensibleNode.executeBoolean((JSDynamicObject) target);
         }
     }
 
@@ -460,10 +459,10 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
 
         @Specialization(guards = "isJSObject(target)")
-        protected DynamicObject reflectOwnKeys(Object target,
+        protected JSDynamicObject reflectOwnKeys(Object target,
                         @Cached JSClassProfile jsclassProfile,
                         @Cached ListSizeNode listSize) {
-            List<Object> list = JSObject.ownPropertyKeys((DynamicObject) target, jsclassProfile);
+            List<Object> list = JSObject.ownPropertyKeys((JSDynamicObject) target, jsclassProfile);
             return JSArray.createLazyArray(getContext(), getRealm(), list, listSize.execute(list));
         }
 
@@ -497,7 +496,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         @Specialization
         protected boolean reflectPreventExtensions(Object target) {
             ensureJSObject(target);
-            return JSObject.preventExtensions((DynamicObject) target);
+            return JSObject.preventExtensions((JSDynamicObject) target);
         }
     }
 
@@ -511,7 +510,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
 
         @Specialization(guards = {"isJSObject(target)"})
-        protected boolean reflectSet(DynamicObject target, Object propertyKey, Object value, Object[] optionalArgs,
+        protected boolean reflectSet(JSDynamicObject target, Object propertyKey, Object value, Object[] optionalArgs,
                         @Cached JSClassProfile jsclassProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
@@ -550,7 +549,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             if (!(JSDynamicObject.isJSDynamicObject(proto) || proto == Null.instance) || proto == Undefined.instance) {
                 throw Errors.createTypeErrorInvalidPrototype(proto);
             }
-            return JSObject.setPrototype((DynamicObject) target, (DynamicObject) proto);
+            return JSObject.setPrototype((JSDynamicObject) target, (JSDynamicObject) proto);
         }
     }
 }

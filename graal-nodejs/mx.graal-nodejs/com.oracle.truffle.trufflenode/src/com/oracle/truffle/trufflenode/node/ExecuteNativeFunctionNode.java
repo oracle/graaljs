@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
@@ -62,6 +61,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
@@ -121,7 +121,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+        JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
         FunctionTemplate functionTemplate = (FunctionTemplate) getFunctionTemplateNode.getValue(functionObject);
 
         JSRealm realm = JSFunction.getRealm(functionObject);
@@ -138,7 +138,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
         if (isNew) {
             ObjectTemplate instanceTemplate = functionTemplate.getInstanceTemplate();
             boolean hasPropertyHandler = instanceTemplate.hasPropertyHandler();
-            DynamicObject thisDynamicObject = (DynamicObject) thisObject;
+            JSDynamicObject thisDynamicObject = (JSDynamicObject) thisObject;
             objectTemplateInstantiate(frame, thisDynamicObject, realm, instanceTemplate, graalAccess);
             if (hasPropertyHandler) {
                 thisObject = graalAccess.propertyHandlerInstantiate(context, realm, instanceTemplate, thisDynamicObject, false);
@@ -227,7 +227,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
         return graalAccess.correctReturnValue(result);
     }
 
-    private void objectTemplateInstantiate(VirtualFrame frame, DynamicObject thisObject, JSRealm realm, ObjectTemplate instanceTemplate, GraalJSAccess graalAccess) {
+    private void objectTemplateInstantiate(VirtualFrame frame, JSDynamicObject thisObject, JSRealm realm, ObjectTemplate instanceTemplate, GraalJSAccess graalAccess) {
         if (USE_TEMPLATE_NODES && !context.isMultiContext()) {
             if (instanceTemplateNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -240,7 +240,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
         }
     }
 
-    private void setConstructorTemplate(DynamicObject thisObject, FunctionTemplate functionTemplate) {
+    private void setConstructorTemplate(JSDynamicObject thisObject, FunctionTemplate functionTemplate) {
         if (USE_TEMPLATE_NODES) {
             if (setConstructorTemplateNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -252,7 +252,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
         }
     }
 
-    private Object getConstructorTemplate(DynamicObject thisObject) {
+    private Object getConstructorTemplate(JSDynamicObject thisObject) {
         if (USE_TEMPLATE_NODES) {
             if (getConstructorTemplateNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -266,7 +266,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     }
 
     private void checkConstructorTemplate(Object thisObject, FunctionTemplate signature) {
-        FunctionTemplate constructorTemplate = thisObject instanceof DynamicObject ? (FunctionTemplate) getConstructorTemplate((DynamicObject) thisObject) : null;
+        FunctionTemplate constructorTemplate = thisObject instanceof JSDynamicObject ? (FunctionTemplate) getConstructorTemplate((JSDynamicObject) thisObject) : null;
         while (constructorTemplate != signature && constructorTemplate != null) {
             constructorTemplate = constructorTemplate.getParent();
         }

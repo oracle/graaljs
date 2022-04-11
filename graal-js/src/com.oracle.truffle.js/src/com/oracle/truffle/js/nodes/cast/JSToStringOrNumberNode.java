@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -50,6 +49,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * This node is intended to be used only by comparison operators.
@@ -91,8 +91,8 @@ public abstract class JSToStringOrNumberNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization(guards = "isJSObject(value)")
-    protected double doJSObject(DynamicObject value,
+    @Specialization
+    protected double doJSObject(JSObject value,
                     @Cached("create()") JSToDoubleNode toDoubleNode) {
         return toDoubleNode.executeDouble(value);
     }

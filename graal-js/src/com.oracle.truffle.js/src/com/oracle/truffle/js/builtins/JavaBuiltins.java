@@ -57,7 +57,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaAddToClasspathNodeGen;
@@ -94,6 +93,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -341,9 +341,9 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             }
 
             final int typesLength;
-            final DynamicObject classOverrides;
+            final Object classOverrides;
             if (JSRuntime.isObject(arguments[arguments.length - 1])) {
-                classOverrides = (DynamicObject) arguments[arguments.length - 1];
+                classOverrides = arguments[arguments.length - 1];
                 typesLength = arguments.length - 1;
                 if (typesLength == 0) {
                     errorBranch.enter();
@@ -388,7 +388,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         @Specialization
-        protected DynamicObject from(Object javaArray,
+        protected JSDynamicObject from(Object javaArray,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                         @Cached ImportValueNode importValueNode,
                         @Cached("createCachedInterop()") WriteElementNode writeNode,
@@ -402,7 +402,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                     if (size < 0 || size >= Integer.MAX_VALUE) {
                         throw Errors.createRangeErrorInvalidArrayLength();
                     }
-                    DynamicObject jsArray = JSArray.createEmptyChecked(getContext(), realm, size);
+                    JSDynamicObject jsArray = JSArray.createEmptyChecked(getContext(), realm, size);
                     for (int i = 0; i < size; i++) {
                         Object element = importValueNode.executeWithTarget(interop.readArrayElement(javaArray, i));
                         writeNode.executeWithTargetAndIndexAndValue(jsArray, i, element);
@@ -609,8 +609,8 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             if (lock != Undefined.instance) {
                 unwrapAndCheckLockObject(lock, realm.getEnv());
             }
-            JSFunctionData synchronizedFunctionData = createSynchronizedWrapper((DynamicObject) func);
-            DynamicObject synchronizedFunction = JSFunction.create(realm, synchronizedFunctionData);
+            JSFunctionData synchronizedFunctionData = createSynchronizedWrapper((JSFunctionObject) func);
+            JSFunctionObject synchronizedFunction = JSFunction.create(realm, synchronizedFunctionData);
             if (lock != Undefined.instance) {
                 return JSFunction.bind(realm, synchronizedFunction, lock, JSArguments.EMPTY_ARGUMENTS_ARRAY);
             }
@@ -619,7 +619,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         @TruffleBoundary
-        private JSFunctionData createSynchronizedWrapper(DynamicObject func) {
+        private JSFunctionData createSynchronizedWrapper(JSFunctionObject func) {
             CallTarget callTarget = new JavaScriptRootNode(getContext().getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {

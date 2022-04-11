@@ -46,7 +46,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -58,9 +57,12 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -75,7 +77,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("PlainMonthDay.prototype");
     public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.PlainYearMonth");
 
-    public static JSTemporalPlainMonthDayObject create(JSContext context, int isoMonth, int isoDay, DynamicObject calendar, int referenceISOYear, BranchProfile errorBranch) {
+    public static JSTemporalPlainMonthDayObject create(JSContext context, int isoMonth, int isoDay, JSDynamicObject calendar, int referenceISOYear, BranchProfile errorBranch) {
         if (!TemporalUtil.validateISODate(referenceISOYear, isoMonth, isoDay)) {
             errorBranch.enter();
             throw TemporalErrors.createRangeErrorMonthDayOutsideRange();
@@ -87,13 +89,13 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
         }
         JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalPlainMonthDayFactory();
-        DynamicObject obj = factory.initProto(new JSTemporalPlainMonthDayObject(factory.getShape(realm), isoMonth,
+        JSTemporalPlainMonthDayObject obj = factory.initProto(new JSTemporalPlainMonthDayObject(factory.getShape(realm), isoMonth,
                         isoDay, calendar, referenceISOYear), realm);
-        return (JSTemporalPlainMonthDayObject) context.trackAllocation(obj);
+        return context.trackAllocation(obj);
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return TO_STRING_TAG;
     }
 
@@ -103,9 +105,9 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
 
         JSObjectUtil.putBuiltinAccessorProperty(prototype, CALENDAR, realm.lookupAccessor(TemporalPlainMonthDayPrototypeBuiltins.BUILTINS, CALENDAR));
@@ -119,12 +121,12 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, JSTemporalPlainMonthDay.INSTANCE, context);
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getTemporalPlainMonthDayPrototype();
     }
 

@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -75,14 +74,14 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
 
     @SuppressWarnings("unused")
     @Specialization(assumptions = {"assumption"})
-    static boolean doAbsent(DynamicObject scope,
+    static boolean doAbsent(JSDynamicObject scope,
                     @Cached("getAbsentPropertyAssumption(scope.getShape())") Assumption assumption) {
         return false;
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"scope.getShape() == cachedShape"}, assumptions = {"cachedShape.getValidAssumption()"}, limit = "cacheLimit", replaces = "doAbsent")
-    final boolean doCached(DynamicObject scope,
+    final boolean doCached(JSDynamicObject scope,
                     @Cached("scope.getShape()") Shape cachedShape,
                     @Cached("cachedShape.hasProperty(varName)") boolean exists,
                     @Cached("isDead(cachedShape)") boolean dead,
@@ -103,7 +102,7 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
     }
 
     @Specialization(replaces = "doCached")
-    final boolean doUncached(DynamicObject scope,
+    final boolean doUncached(JSDynamicObject scope,
                     @Cached("create()") BranchProfile errorBranch) {
         Property property = scope.getShape().getProperty(varName);
         if (property != null) {

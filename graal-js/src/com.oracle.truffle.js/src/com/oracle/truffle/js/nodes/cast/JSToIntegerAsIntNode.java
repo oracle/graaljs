@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.cast;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -51,6 +50,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * Basically ECMAScript ToInteger, but correct only for values in the int32 range. Used by built-in
@@ -141,8 +141,8 @@ public abstract class JSToIntegerAsIntNode extends JavaScriptBaseNode {
         return nestedToIntegerNode.executeInt(stringToNumberNode.executeString(value));
     }
 
-    @Specialization(guards = "isJSObject(value)")
-    protected int doJSObject(DynamicObject value) {
+    @Specialization
+    protected int doJSObject(JSObject value) {
         return JSRuntime.toInt32(getToNumberNode().executeNumber(value));
     }
 

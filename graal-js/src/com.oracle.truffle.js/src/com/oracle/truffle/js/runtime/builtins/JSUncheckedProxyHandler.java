@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public class JSUncheckedProxyHandler extends JSNonProxy implements PrototypeSupplier {
@@ -53,7 +53,7 @@ public class JSUncheckedProxyHandler extends JSNonProxy implements PrototypeSupp
     public static final TruffleString CLASS_NAME = Strings.constant("UncheckedProxyHandler");
     public static final JSUncheckedProxyHandler INSTANCE = new JSUncheckedProxyHandler();
 
-    public static DynamicObject create(JSContext context, JSRealm realm) {
+    public static JSDynamicObject create(JSContext context, JSRealm realm) {
         JSObjectFactory factory = context.getUncheckedProxyHandlerFactory();
         JSUncheckedProxyHandlerObject obj = new JSUncheckedProxyHandlerObject(factory.getShape(realm));
         factory.initProto(obj, realm);
@@ -61,17 +61,17 @@ public class JSUncheckedProxyHandler extends JSNonProxy implements PrototypeSupp
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return CLASS_NAME;
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getObjectPrototype();
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         return initialShape;
     }

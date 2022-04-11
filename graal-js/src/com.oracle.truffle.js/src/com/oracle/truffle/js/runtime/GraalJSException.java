@@ -61,7 +61,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -74,6 +73,7 @@ import com.oracle.truffle.js.nodes.promise.PromiseReactionJobNode.PromiseReactio
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -112,7 +112,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
         this.jsStackTrace = stackTraceLimit == 0 ? EMPTY_STACK_TRACE : null;
     }
 
-    protected static <T extends GraalJSException> T fillInStackTrace(T exception, boolean capture, DynamicObject skipFramesUpTo, boolean customSkip) {
+    protected static <T extends GraalJSException> T fillInStackTrace(T exception, boolean capture, JSDynamicObject skipFramesUpTo, boolean customSkip) {
         exception.fillInStackTrace(capture, skipFramesUpTo, customSkip);
         return exception;
     }
@@ -122,7 +122,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
         return exception;
     }
 
-    protected final GraalJSException fillInStackTrace(boolean capture, DynamicObject skipFramesUpTo, boolean customSkip) {
+    protected final GraalJSException fillInStackTrace(boolean capture, JSDynamicObject skipFramesUpTo, boolean customSkip) {
         // We can only skip frames when capturing eagerly.
         assert capture || skipFramesUpTo == Undefined.instance;
         assert jsStackTrace == (stackTraceLimit == 0 ? EMPTY_STACK_TRACE : null);
@@ -186,15 +186,15 @@ public abstract class GraalJSException extends AbstractTruffleException {
     }
 
     @TruffleBoundary
-    private JSStackTraceElement[] getJSStackTrace(DynamicObject skipUpTo, boolean customSkip) {
+    private JSStackTraceElement[] getJSStackTrace(JSDynamicObject skipUpTo, boolean customSkip) {
         assert stackTraceLimit > 0;
         JSContext context = JavaScriptLanguage.getCurrentLanguage().getJSContext();
         boolean nashornMode = context.isOptionNashornCompatibilityMode();
         // Nashorn does not support skipping of frames
-        DynamicObject skipFramesUpTo = nashornMode ? Undefined.instance : skipUpTo;
+        JSDynamicObject skipFramesUpTo = nashornMode ? Undefined.instance : skipUpTo;
         boolean skippingFrames = JSFunction.isJSFunction(skipFramesUpTo);
         if (skippingFrames && customSkip) {
-            FunctionRootNode.setOmitFromStackTrace(JSFunction.getFunctionData(skipFramesUpTo));
+            FunctionRootNode.setOmitFromStackTrace(JSFunction.getFunctionData((JSFunctionObject) skipFramesUpTo));
         }
         List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(this);
         if (skippingFrames && customSkip) {
@@ -274,7 +274,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
         private final List<JSStackTraceElement> stackTrace = new ArrayList<>();
         private final Node originatingNode;
         private final int stackTraceLimit;
-        private final DynamicObject skipFramesUpTo;
+        private final JSDynamicObject skipFramesUpTo;
         private final boolean inNashornMode;
 
         private boolean inStrictMode;
@@ -282,7 +282,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
         private boolean first = true;
         boolean async;
 
-        FrameVisitorImpl(Node originatingNode, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean nashornMode) {
+        FrameVisitorImpl(Node originatingNode, int stackTraceLimit, JSDynamicObject skipFramesUpTo, boolean nashornMode) {
             this.originatingNode = originatingNode;
             this.stackTraceLimit = stackTraceLimit;
             this.skipFramesUpTo = skipFramesUpTo;
@@ -356,7 +356,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
                         Object thisObj = JSArguments.getThisObject(arguments);
                         Object functionObj = JSArguments.getFunctionObject(arguments);
                         if (JSFunction.isJSFunction(functionObj)) {
-                            DynamicObject function = (DynamicObject) functionObj;
+                            JSFunctionObject function = (JSFunctionObject) functionObj;
                             JSFunctionData functionData = JSFunction.getFunctionData(function);
                             if (functionData.isBuiltin()) {
                                 if (JSFunction.isStrictBuiltin(function, JSRealm.get(null))) {
@@ -402,7 +402,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
 
     }
 
-    private static JSStackTraceElement processJSFrame(RootNode rootNode, Node node, Object thisObj, DynamicObject functionObj, boolean inStrictMode, boolean inNashornMode, boolean async,
+    private static JSStackTraceElement processJSFrame(RootNode rootNode, Node node, Object thisObj, JSFunctionObject functionObj, boolean inStrictMode, boolean inNashornMode, boolean async,
                     int promiseIndex) {
         Node callNode = node;
         while (callNode.getSourceSection() == null) {
@@ -683,7 +683,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
                     return getFunctionName();
                 } else if (!JSRuntime.isNullOrUndefined(thisObject) && !global) {
                     if (JSDynamicObject.isJSDynamicObject(thisObject)) {
-                        return JSRuntime.getConstructorName((DynamicObject) thisObject);
+                        return JSRuntime.getConstructorName((JSDynamicObject) thisObject);
                     } else if (JSRuntime.isJSPrimitive(thisObject)) {
                         return getPrimitiveConstructorName(thisObject);
                     }
@@ -695,18 +695,18 @@ public abstract class GraalJSException extends AbstractTruffleException {
         @TruffleBoundary
         public TruffleString getFunctionName() {
             if (JSFunction.isJSFunction(functionObj)) {
-                TruffleString dynamicName = findFunctionName((DynamicObject) functionObj);
+                TruffleString dynamicName = findFunctionName((JSDynamicObject) functionObj);
                 // The default name of dynamic functions is "anonymous" as per the spec.
                 // Yet, in V8 stack traces it is "eval" unless overwritten.
                 if (dynamicName != null && !Strings.isEmpty(dynamicName) &&
-                                (!isEval() || !Strings.equals(Strings.DYNAMIC_FUNCTION_NAME, dynamicName) || !JSObject.getJSContext((DynamicObject) functionObj).isOptionV8CompatibilityMode())) {
+                                (!isEval() || !Strings.equals(Strings.DYNAMIC_FUNCTION_NAME, dynamicName) || !JSObject.getJSContext((JSDynamicObject) functionObj).isOptionV8CompatibilityMode())) {
                     return dynamicName;
                 }
             }
             return functionName;
         }
 
-        private static TruffleString findFunctionName(DynamicObject functionObj) {
+        private static TruffleString findFunctionName(JSDynamicObject functionObj) {
             assert JSFunction.isJSFunction(functionObj);
             PropertyDescriptor desc = JSObject.getOwnProperty(functionObj, JSFunction.NAME);
             if (desc != null) {
@@ -738,8 +738,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
                 return null;
             }
 
-            DynamicObject receiver = (DynamicObject) thisObj;
-            DynamicObject function = (DynamicObject) functionObj;
+            JSDynamicObject receiver = (JSDynamicObject) thisObj;
+            JSFunctionObject function = (JSFunctionObject) functionObj;
             if (functionName != null && !Strings.isEmpty(functionName)) {
                 TruffleString name = findMethodPropertyNameByFunctionName(receiver, functionName, function);
                 if (name != null) {
@@ -749,7 +749,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
             return findMethodPropertyName(receiver, function);
         }
 
-        private static TruffleString findMethodPropertyNameByFunctionName(DynamicObject receiver, TruffleString functionName, DynamicObject functionObj) {
+        private static TruffleString findMethodPropertyNameByFunctionName(JSDynamicObject receiver, TruffleString functionName, JSFunctionObject functionObj) {
             TruffleString propertyName = functionName;
             boolean accessor = false;
             if (Strings.startsWith(propertyName, Strings.GET_SPC) || Strings.startsWith(propertyName, Strings.SET_SPC)) {
@@ -759,7 +759,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
             if (propertyName.isEmpty()) {
                 return null;
             }
-            for (DynamicObject current = receiver; current != Null.instance && !JSProxy.isJSProxy(current); current = JSObject.getPrototype(current)) {
+            for (JSDynamicObject current = receiver; current != Null.instance && !JSProxy.isJSProxy(current); current = JSObject.getPrototype(current)) {
                 PropertyDescriptor desc = JSObject.getOwnProperty(current, propertyName);
                 if (desc != null) {
                     if (desc.isAccessorDescriptor() == accessor && (desc.getValue() == functionObj || desc.getGet() == functionObj || desc.getSet() == functionObj)) {
@@ -771,9 +771,9 @@ public abstract class GraalJSException extends AbstractTruffleException {
             return null;
         }
 
-        private static TruffleString findMethodPropertyName(DynamicObject receiver, DynamicObject functionObj) {
+        private static TruffleString findMethodPropertyName(JSDynamicObject receiver, JSDynamicObject functionObj) {
             TruffleString name = null;
-            for (DynamicObject current = receiver; current != Null.instance && !JSProxy.isJSProxy(current); current = JSObject.getPrototype(current)) {
+            for (JSDynamicObject current = receiver; current != Null.instance && !JSProxy.isJSProxy(current); current = JSObject.getPrototype(current)) {
                 for (TruffleString key : JSObject.enumerableOwnNames(current)) {
                     PropertyDescriptor desc = JSObject.getOwnProperty(current, key);
                     if (desc.getValue() == functionObj || desc.getGet() == functionObj || desc.getSet() == functionObj) {
@@ -850,9 +850,9 @@ public abstract class GraalJSException extends AbstractTruffleException {
         public Object getThisOrGlobal() {
             if (global) {
                 if (JSRuntime.isNullOrUndefined(thisObj)) {
-                    return JSFunction.getRealm((DynamicObject) functionObj).getGlobalObject();
+                    return JSFunction.getRealm((JSFunctionObject) functionObj).getGlobalObject();
                 } else {
-                    assert thisObj == JSFunction.getRealm((DynamicObject) functionObj).getGlobalObject();
+                    assert thisObj == JSFunction.getRealm((JSFunctionObject) functionObj).getGlobalObject();
                     return thisObj;
                 }
             }
@@ -872,7 +872,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
             if (thisObj == JSFunction.CONSTRUCT) {
                 return true;
             } else if (!JSRuntime.isNullOrUndefined(thisObj) && JSDynamicObject.isJSDynamicObject(thisObj)) {
-                Object constructor = JSRuntime.getDataProperty((DynamicObject) thisObj, JSObject.CONSTRUCTOR);
+                Object constructor = JSRuntime.getDataProperty((JSDynamicObject) thisObj, JSObject.CONSTRUCTOR);
                 return constructor != null && constructor == functionObj;
             }
             return false;

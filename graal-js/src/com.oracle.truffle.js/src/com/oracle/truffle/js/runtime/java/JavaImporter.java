@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
@@ -54,9 +53,12 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JavaImporter extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
@@ -73,7 +75,7 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
@@ -82,11 +84,10 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
         return Strings.toJavaString(CLASS_NAME);
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm, Object[] value) {
+    public static JavaImporterObject create(JSContext context, JSRealm realm, Object[] value) {
         JSObjectFactory factory = context.getJavaImporterFactory();
         JavaImporterObject obj = new JavaImporterObject(factory.getShape(realm), value);
         factory.initProto(obj, realm);
-        assert isJavaImporter(obj);
         return context.trackAllocation(obj);
     }
 
@@ -95,13 +96,13 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     }
 
     @Override
-    public boolean hasOwnProperty(DynamicObject thisObj, Object name) {
+    public boolean hasOwnProperty(JSDynamicObject thisObj, Object name) {
         return getOwnHelper(thisObj, thisObj, name, null) != null;
     }
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+    public Object getOwnHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         if (key instanceof TruffleString) {
             TruffleString name = (TruffleString) key;
             Object[] imports = getImports(store);
@@ -129,27 +130,27 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
         return null;
     }
 
-    public static Object[] getImports(DynamicObject importer) {
+    public static Object[] getImports(JSDynamicObject importer) {
         assert JavaImporter.isJavaImporter(importer);
         return ((JavaImporterObject) importer).getImports();
     }
 
     @Override
-    public TruffleString toDisplayStringImpl(DynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return Strings.addBrackets(getClassName());
     }
 
     @Override
-    public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSContext context = realm.getContext();
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         JSObjectUtil.putConstructorProperty(context, prototype, ctor);
         return prototype;
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, instance(), context);
         return initialShape;
     }
@@ -163,7 +164,7 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getJavaImporterPrototype();
     }
 }

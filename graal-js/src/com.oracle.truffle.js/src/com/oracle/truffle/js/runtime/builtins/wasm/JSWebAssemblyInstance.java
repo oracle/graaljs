@@ -40,18 +40,16 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -78,6 +76,7 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -97,7 +96,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
@@ -106,9 +105,9 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
         JSObjectUtil.putAccessorProperty(ctx, prototype, EXPORTS, createExportsGetterFunction(realm), Undefined.instance, JSAttributes.configurableEnumerableWritable());
         JSObjectUtil.putToStringTag(prototype, WEB_ASSEMBLY_INSTANCE);
@@ -116,12 +115,12 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getWebAssemblyInstancePrototype();
     }
 
     @Override
-    public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext ctx, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
     }
 
@@ -137,7 +136,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         return context.trackAllocation(object);
     }
 
-    private static DynamicObject createExportsGetterFunction(JSRealm realm) {
+    private static JSFunctionObject createExportsGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyInstanceGetExports, (c) -> {
             CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 private final BranchProfile errorBranch = BranchProfile.create();
@@ -159,8 +158,8 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         return JSFunction.create(realm, getterData);
     }
 
-    private static Object createExportsObject(JSContext context, JSRealm realm, Object wasmInstance, Object wasmModule) {
-        DynamicObject exports = JSOrdinary.createWithNullPrototype(context);
+    private static JSObject createExportsObject(JSContext context, JSRealm realm, Object wasmInstance, Object wasmModule) {
+        JSObject exports = JSOrdinary.createWithNullPrototype(context);
         try {
             Object exportsFunction = realm.getWASMModuleExports();
             Object exportsInfo = InteropLibrary.getUncached(exportsFunction).execute(exportsFunction, wasmModule);
@@ -272,7 +271,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         }.getCallTarget();
 
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, callTarget, argCount, name);
-        DynamicObject result = JSFunction.create(realm, functionData);
+        JSFunctionObject result = JSFunction.create(realm, functionData);
         JSObjectUtil.putHiddenProperty(result, JSWebAssembly.FUNCTION_ADDRESS, export);
         JSWebAssembly.setEmbedderData(realm, export, result);
         return result;
@@ -281,7 +280,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     @CompilerDirectives.TruffleBoundary
     public static Object transformImportObject(JSContext context, JSRealm realm, Object wasmModule, Object importObject) {
         try {
-            DynamicObject transformedImportObject = JSOrdinary.create(context, realm);
+            JSDynamicObject transformedImportObject = JSOrdinary.create(context, realm);
 
             Object importsFn = realm.getWASMModuleImports();
             Object imports = InteropLibrary.getUncached(importsFn).execute(importsFn, wasmModule);
@@ -308,7 +307,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         throw Errors.createLinkError("Imported value is not callable");
                     }
                     if (JSWebAssembly.isExportedFunction(value)) {
-                        wasmValue = JSWebAssembly.getExportedFunction((DynamicObject) value);
+                        wasmValue = JSWebAssembly.getExportedFunction((JSDynamicObject) value);
                     } else {
                         TruffleString typeInfo = asTString(descriptorInterop.readMember(descriptor, "type"));
                         wasmValue = createHostFunction(context, value, typeInfo);
@@ -355,9 +354,9 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     }
                 }
 
-                DynamicObject transformedModule;
+                JSDynamicObject transformedModule;
                 if (JSObject.hasOwnProperty(transformedImportObject, module)) {
-                    transformedModule = (DynamicObject) JSObject.get(transformedImportObject, module);
+                    transformedModule = (JSDynamicObject) JSObject.get(transformedImportObject, module);
                 } else {
                     transformedModule = JSOrdinary.create(context, realm);
                     JSObject.set(transformedImportObject, module, transformedModule);

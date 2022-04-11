@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -63,6 +62,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
@@ -104,7 +104,7 @@ public class ThrowNode extends StatementNode {
     public Object execute(VirtualFrame frame) {
         Object exceptionObject = exceptionNode.execute(frame);
         if (isError.profile(JSError.isJSError(exceptionObject))) {
-            DynamicObject jsobject = (DynamicObject) exceptionObject;
+            JSDynamicObject jsobject = (JSDynamicObject) exceptionObject;
             if (context.isOptionNashornCompatibilityMode()) {
                 setLineAndColumnNumber(jsobject);
             }
@@ -130,7 +130,7 @@ public class ThrowNode extends StatementNode {
         }
     }
 
-    private GraalJSException getException(DynamicObject errorObj) {
+    private GraalJSException getException(JSDynamicObject errorObj) {
         if (getErrorNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getErrorNode = insert(PropertyGetNode.create(JSError.EXCEPTION_PROPERTY_NAME, JSObject.getJSContext(errorObj)));
@@ -150,7 +150,7 @@ public class ThrowNode extends StatementNode {
     }
 
     @TruffleBoundary
-    private void setLineAndColumnNumber(DynamicObject jsobject) {
+    private void setLineAndColumnNumber(JSDynamicObject jsobject) {
         if (hasSourceSection()) {
             SourceSection sourceSection = getSourceSection();
             JSError.setLineNumber(context, jsobject, sourceSection.getStartLine());

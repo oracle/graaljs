@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 
 public abstract class PerformPromiseCombinatorNode extends JavaScriptBaseNode {
@@ -59,7 +59,7 @@ public abstract class PerformPromiseCombinatorNode extends JavaScriptBaseNode {
         this.iteratorValue = IteratorValueNode.create(context);
     }
 
-    public abstract DynamicObject execute(IteratorRecord iteratorRecord, DynamicObject constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve);
+    public abstract JSDynamicObject execute(IteratorRecord iteratorRecord, JSDynamicObject constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve);
 
     /**
      * Let next be IteratorStep(iteratorRecord). If next is an abrupt completion, set

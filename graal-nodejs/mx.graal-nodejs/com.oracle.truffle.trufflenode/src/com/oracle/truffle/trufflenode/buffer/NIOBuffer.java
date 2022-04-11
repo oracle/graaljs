@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.trufflenode.buffer;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -51,8 +50,11 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.RealmData;
@@ -69,15 +71,15 @@ public final class NIOBuffer extends JSNonProxy {
     }
 
     @TruffleBoundary
-    private static DynamicObject create(JSRealm realm) {
+    private static JSObject create(JSRealm realm) {
         JSContext context = realm.getContext();
-        DynamicObject obj = JSOrdinary.createWithNullPrototype(context);
+        JSObject obj = JSOrdinary.createWithNullPrototype(context);
         JSObjectUtil.putFunctionsFromContainer(realm, obj, NIO_BUFFER_BUILTINS);
         return obj;
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return CLASS_NAME;
     }
 
@@ -90,8 +92,8 @@ public final class NIOBuffer extends JSNonProxy {
             public Object execute(VirtualFrame frame) {
                 Object[] args = frame.getArguments();
                 assert args.length == 4;
-                DynamicObject nativeUtf8Write = (DynamicObject) args[2];
-                DynamicObject nativeUtf8Slice = (DynamicObject) args[3];
+                JSFunctionObject nativeUtf8Write = (JSFunctionObject) args[2];
+                JSFunctionObject nativeUtf8Slice = (JSFunctionObject) args[3];
                 RealmData embedderData = GraalJSAccess.getRealmEmbedderData(getRealm());
                 embedderData.setNativeUtf8Write(nativeUtf8Write);
                 embedderData.setNativeUtf8Slice(nativeUtf8Slice);

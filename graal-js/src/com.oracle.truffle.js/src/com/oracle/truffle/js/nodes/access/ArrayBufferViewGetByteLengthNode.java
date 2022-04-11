@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,12 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Optimization over JSArrayBufferView.getByteLength to have a valueProfile on the TypedArray,
@@ -61,39 +61,39 @@ public abstract class ArrayBufferViewGetByteLengthNode extends JavaScriptBaseNod
         this.context = context;
     }
 
-    public abstract int executeInt(DynamicObject obj);
+    public abstract int executeInt(JSDynamicObject obj);
 
     public static ArrayBufferViewGetByteLengthNode create(JSContext context) {
         return ArrayBufferViewGetByteLengthNodeGen.create(context);
     }
 
     @Specialization(guards = {"isJSArrayBufferView(obj)", "hasDetachedBuffer(obj)"})
-    protected int getByteLengthDetached(@SuppressWarnings("unused") DynamicObject obj) {
+    protected int getByteLengthDetached(@SuppressWarnings("unused") JSDynamicObject obj) {
         return 0;
     }
 
     @Specialization(guards = {"isJSArrayBufferView(obj)", "!hasDetachedBuffer(obj)", "cachedArray == getArrayType(obj)"})
-    protected int getByteLength(DynamicObject obj,
+    protected int getByteLength(JSDynamicObject obj,
                     @Cached("getArrayType(obj)") TypedArray cachedArray) {
         return cachedArray.lengthInt(obj) * cachedArray.bytesPerElement();
     }
 
     @Specialization(guards = {"isJSArrayBufferView(obj)", "!hasDetachedBuffer(obj)"}, replaces = "getByteLength")
-    protected int getByteLengthOverLimit(DynamicObject obj) {
+    protected int getByteLengthOverLimit(JSDynamicObject obj) {
         TypedArray typedArray = getArrayType(obj);
         return typedArray.lengthInt(obj) * typedArray.bytesPerElement();
     }
 
     @Specialization(guards = "!isJSArrayBufferView(obj)")
-    protected int getByteLengthNoObj(@SuppressWarnings("unused") DynamicObject obj) {
+    protected int getByteLengthNoObj(@SuppressWarnings("unused") JSDynamicObject obj) {
         throw Errors.createTypeErrorArrayBufferViewExpected();
     }
 
-    protected static TypedArray getArrayType(DynamicObject obj) {
+    protected static TypedArray getArrayType(JSDynamicObject obj) {
         return JSArrayBufferView.typedArrayGetArrayType(obj);
     }
 
-    protected boolean hasDetachedBuffer(DynamicObject object) {
+    protected boolean hasDetachedBuffer(JSDynamicObject object) {
         return JSArrayBufferView.hasDetachedBuffer(object, context);
     }
 

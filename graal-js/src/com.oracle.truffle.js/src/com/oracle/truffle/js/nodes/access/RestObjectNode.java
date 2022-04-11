@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,11 +46,11 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectArrayNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class RestObjectNode extends JavaScriptNode {
     @Child @Executed protected JavaScriptNode targetNode;
@@ -75,18 +75,18 @@ public abstract class RestObjectNode extends JavaScriptNode {
 
     @SuppressWarnings("unused")
     @Specialization(guards = "isNullOrUndefined(source)")
-    protected static DynamicObject doNullOrUndefined(DynamicObject restObj, Object source) {
+    protected static JSDynamicObject doNullOrUndefined(JSDynamicObject restObj, Object source) {
         return restObj;
     }
 
     @Specialization(guards = {"isJSObject(source)"})
-    protected final DynamicObject copyDataProperties(DynamicObject restObj, DynamicObject source) {
+    protected final JSDynamicObject copyDataProperties(JSDynamicObject restObj, JSDynamicObject source) {
         copyDataPropertiesNode.execute(restObj, source);
         return restObj;
     }
 
     @Specialization(guards = {"!isJSDynamicObject(source)"})
-    protected final Object doOther(DynamicObject restObj, Object source,
+    protected final Object doOther(JSDynamicObject restObj, Object source,
                     @Cached("createToObjectNoCheck(context)") JSToObjectNode toObjectNode) {
         Object from = toObjectNode.execute(source);
         copyDataPropertiesNode.execute(restObj, from);
@@ -116,18 +116,18 @@ abstract class RestObjectWithExcludedNode extends JavaScriptNode {
 
     @SuppressWarnings("unused")
     @Specialization(guards = "isNullOrUndefined(source)")
-    protected static DynamicObject doNullOrUndefined(DynamicObject restObj, Object source, Object[] excludedItems) {
+    protected static JSDynamicObject doNullOrUndefined(JSDynamicObject restObj, Object source, Object[] excludedItems) {
         return restObj;
     }
 
     @Specialization(guards = {"isJSObject(source)"})
-    protected final DynamicObject copyDataProperties(DynamicObject restObj, DynamicObject source, Object[] excludedItems) {
+    protected final JSDynamicObject copyDataProperties(JSDynamicObject restObj, JSDynamicObject source, Object[] excludedItems) {
         copyDataPropertiesNode.execute(restObj, source, excludedItems);
         return restObj;
     }
 
     @Specialization(guards = {"!isJSDynamicObject(source)"})
-    protected final Object doOther(DynamicObject restObj, Object source, Object[] excludedItems,
+    protected final Object doOther(JSDynamicObject restObj, Object source, Object[] excludedItems,
                     @Cached("createToObjectNoCheck(context)") JSToObjectNode toObjectNode) {
         Object from = toObjectNode.execute(source);
         copyDataPropertiesNode.execute(restObj, from, excludedItems);

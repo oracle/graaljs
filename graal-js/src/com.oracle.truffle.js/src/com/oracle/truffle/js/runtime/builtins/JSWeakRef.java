@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.lang.ref.WeakReference;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.WeakRefPrototypeBuiltins;
@@ -50,6 +49,8 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
@@ -62,25 +63,24 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
     private JSWeakRef() {
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm, Object referent) {
+    public static JSWeakRefObject create(JSContext context, JSRealm realm, Object referent) {
         TruffleWeakReference<Object> weakReference = new TruffleWeakReference<>(referent);
         JSObjectFactory factory = context.getWeakRefFactory();
-        DynamicObject obj = factory.initProto(new JSWeakRefObject(factory.getShape(realm), weakReference), realm);
-        assert isJSWeakRef(obj);
+        JSWeakRefObject obj = factory.initProto(new JSWeakRefObject(factory.getShape(realm), weakReference), realm);
         // Used for KeepDuringJob(target) in the specification
         context.addWeakRefTargetToSet(referent);
         return context.trackAllocation(obj);
     }
 
-    public static TruffleWeakReference<?> getInternalWeakRef(DynamicObject obj) {
+    public static TruffleWeakReference<?> getInternalWeakRef(JSDynamicObject obj) {
         assert isJSWeakRef(obj);
         return ((JSWeakRefObject) obj).getWeakReference();
     }
 
     @Override
-    public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WeakRefPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
@@ -88,7 +88,7 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSWeakRef.INSTANCE, context);
         return initialShape;
     }
@@ -103,12 +103,12 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return Strings.addBrackets(getClassName());
     }
 
@@ -117,7 +117,7 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getWeakRefPrototype();
     }
 

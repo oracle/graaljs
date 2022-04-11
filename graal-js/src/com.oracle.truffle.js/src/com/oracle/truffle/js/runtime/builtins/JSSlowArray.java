@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
@@ -69,21 +68,21 @@ public final class JSSlowArray extends JSAbstractArray {
     }
 
     public static boolean isJSSlowArray(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSSlowArray((DynamicObject) obj);
+        return JSDynamicObject.isJSDynamicObject(obj) && isJSSlowArray((JSDynamicObject) obj);
     }
 
-    public static boolean isJSSlowArray(DynamicObject obj) {
+    public static boolean isJSSlowArray(JSDynamicObject obj) {
         return isInstance(obj, INSTANCE);
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return CLASS_NAME;
     }
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
+    public Object getOwnHelper(JSDynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
         Object indexAsString = Strings.fromLong(index);
         if (JSOrdinary.INSTANCE.hasOwnProperty(store, indexAsString)) {
             return JSOrdinary.INSTANCE.getOwnHelper(store, thisObj, indexAsString, encapsulatingNode);
@@ -93,7 +92,7 @@ public final class JSSlowArray extends JSAbstractArray {
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    public boolean set(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         Object indexAsString = Strings.fromLong(index);
         if (JSOrdinary.INSTANCE.hasOwnProperty(thisObj, indexAsString)) {
             return ordinarySet(thisObj, indexAsString, value, receiver, isStrict, encapsulatingNode);
@@ -103,7 +102,7 @@ public final class JSSlowArray extends JSAbstractArray {
 
     @TruffleBoundary
     @Override
-    public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
         ScriptArray array = arrayAccess().getArrayType(thisObj);
         if (array.hasElement(thisObj, index)) {
             ScriptArray arrayType = arrayGetArrayType(thisObj);
@@ -119,7 +118,7 @@ public final class JSSlowArray extends JSAbstractArray {
     }
 
     @Override
-    protected DynamicObject makeSlowArray(DynamicObject thisObj) {
+    protected JSDynamicObject makeSlowArray(JSDynamicObject thisObj) {
         assert JSSlowArray.isJSSlowArray(thisObj);
         return thisObj;
     }
@@ -131,7 +130,7 @@ public final class JSSlowArray extends JSAbstractArray {
      * @return whether the operation was successful
      */
     @Override
-    protected boolean defineOwnPropertyIndex(DynamicObject thisObj, TruffleString name, PropertyDescriptor descriptor, boolean doThrow) {
+    protected boolean defineOwnPropertyIndex(JSDynamicObject thisObj, TruffleString name, PropertyDescriptor descriptor, boolean doThrow) {
         assert Strings.isTString(name);
         long index = JSRuntime.toUInt32(name);
         if (index >= getLength(thisObj)) {
@@ -168,7 +167,7 @@ public final class JSSlowArray extends JSAbstractArray {
         return true;
     }
 
-    private static boolean jsDefineProperty(DynamicObject thisObj, long index, PropertyDescriptor descriptor, boolean doThrow) {
+    private static boolean jsDefineProperty(JSDynamicObject thisObj, long index, PropertyDescriptor descriptor, boolean doThrow) {
         ScriptArray internalArray = arrayAccess().getArrayType(thisObj);
         boolean copyValue = (internalArray.hasElement(thisObj, index) && (!descriptor.hasValue() && !descriptor.hasGet()));
         boolean succeed = DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, Strings.fromLong(index), descriptor, doThrow);
@@ -180,7 +179,7 @@ public final class JSSlowArray extends JSAbstractArray {
 
     @TruffleBoundary
     @Override
-    public boolean setLength(DynamicObject thisObj, long length, boolean doThrow) {
+    public boolean setLength(JSDynamicObject thisObj, long length, boolean doThrow) {
         if (testIntegrityLevel(thisObj, true)) {
             throw Errors.createTypeError("cannot set length of a frozen array");
         }

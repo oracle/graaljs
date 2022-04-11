@@ -51,13 +51,13 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
@@ -122,8 +122,8 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
         return JSFrameUtil.findRequiredFrameSlotIndex(module.getFrameDescriptor(), bindingName);
     }
 
-    @Specialization(guards = "isJSModuleNamespace(namespace)")
-    static Object doNamespace(DynamicObject namespace) {
+    @Specialization
+    static Object doNamespace(JSModuleNamespaceObject namespace) {
         return namespace;
     }
 

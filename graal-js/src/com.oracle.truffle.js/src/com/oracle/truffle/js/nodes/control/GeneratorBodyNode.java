@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
@@ -73,6 +72,7 @@ import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.GeneratorState;
 import com.oracle.truffle.js.runtime.objects.Completion;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class GeneratorBodyNode extends JavaScriptNode {
@@ -106,7 +106,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         protected Object executeInRealm(VirtualFrame frame) {
             Object[] arguments = frame.getArguments();
             VirtualFrame generatorFrame = JSArguments.getResumeExecutionContext(arguments);
-            DynamicObject generatorObject = (DynamicObject) JSArguments.getResumeGeneratorOrPromiseCapability(arguments);
+            JSDynamicObject generatorObject = (JSDynamicObject) JSArguments.getResumeGeneratorOrPromiseCapability(arguments);
             Completion.Type completionType = JSArguments.getResumeCompletionType(arguments);
             Object value = JSArguments.getResumeCompletionValue(arguments);
             GeneratorState generatorState = generatorValidate(generatorObject);
@@ -154,7 +154,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
             }
         }
 
-        private GeneratorState generatorValidate(DynamicObject generatorObject) {
+        private GeneratorState generatorValidate(JSDynamicObject generatorObject) {
             Object generatorState = getGeneratorState.getValue(generatorObject);
             if (generatorState == Undefined.instance) {
                 errorBranch.enter();
@@ -238,14 +238,14 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         // 14.4.11 Runtime Semantics: GeneratorBody : EvaluateBody
         // Let G be OrdinaryCreateFromConstructor(functionObject, "%GeneratorPrototype%",
         // <<[[GeneratorState]], [[GeneratorContext]]>>).
-        DynamicObject generatorObject = createGeneratorObject.execute(frame, JSFrameUtil.getFunctionObject(frame));
+        JSDynamicObject generatorObject = createGeneratorObject.execute(frame, JSFrameUtil.getFunctionObject(frame));
 
         generatorStart(frame, generatorObject);
 
         return generatorObject;
     }
 
-    private void generatorStart(VirtualFrame frame, DynamicObject generatorObject) {
+    private void generatorStart(VirtualFrame frame, JSDynamicObject generatorObject) {
         setGeneratorState.setValue(generatorObject, GeneratorState.SuspendedStart);
         setGeneratorContext.setValue(generatorObject, frame.materialize());
         setGeneratorTarget.setValue(generatorObject, generatorCallTarget);

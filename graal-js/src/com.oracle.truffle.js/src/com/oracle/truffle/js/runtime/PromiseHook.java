@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Provides information about the life-cycle of promises.
@@ -71,7 +71,7 @@ public interface PromiseHook {
 
     /**
      * Invoked for each important change in the life-cycle of a promise.
-     * 
+     *
      * @param changeType type of the change: {@link #TYPE_INIT}, {@link #TYPE_RESOLVE},
      *            {@link #TYPE_BEFORE} or {@link #TYPE_AFTER}.
      * @param promise promise being changed.
@@ -79,6 +79,6 @@ public interface PromiseHook {
      *            type) by {@code Promise.then/race/all} or {@code AsyncFunctionAwait}. The parent
      *            promise is {@code undefined} in all other cases.
      */
-    void promiseChanged(int changeType, DynamicObject promise, DynamicObject parentPromise);
+    void promiseChanged(int changeType, JSDynamicObject promise, JSDynamicObject parentPromise);
 
 }

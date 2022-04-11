@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,43 +44,43 @@ import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.CompilableFunction;
 
 public class GetPrototypeFromConstructorNode extends JavaScriptNode {
-    private final CompilableFunction<JSRealm, DynamicObject> intrinsicDefaultProto;
+    private final CompilableFunction<JSRealm, JSDynamicObject> intrinsicDefaultProto;
     @Child private JavaScriptNode constructorNode;
     @Child private PropertyGetNode getPrototypeNode;
     @Child private IsJSObjectNode isObjectNode;
 
-    protected GetPrototypeFromConstructorNode(JSContext context, JavaScriptNode constructorNode, CompilableFunction<JSRealm, DynamicObject> intrinsicDefaultProto) {
+    protected GetPrototypeFromConstructorNode(JSContext context, JavaScriptNode constructorNode, CompilableFunction<JSRealm, JSDynamicObject> intrinsicDefaultProto) {
         this.constructorNode = constructorNode;
         this.intrinsicDefaultProto = intrinsicDefaultProto;
         this.getPrototypeNode = PropertyGetNode.create(JSObject.PROTOTYPE, false, context);
         this.isObjectNode = IsJSObjectNode.create();
     }
 
-    public static GetPrototypeFromConstructorNode create(JSContext context, JavaScriptNode constructorNode, CompilableFunction<JSRealm, DynamicObject> intrinsicDefaultProto) {
+    public static GetPrototypeFromConstructorNode create(JSContext context, JavaScriptNode constructorNode, CompilableFunction<JSRealm, JSDynamicObject> intrinsicDefaultProto) {
         return new GetPrototypeFromConstructorNode(context, constructorNode, intrinsicDefaultProto);
     }
 
     @Override
-    public DynamicObject execute(VirtualFrame frame) {
+    public JSDynamicObject execute(VirtualFrame frame) {
         Object constructor = constructorNode.execute(frame);
-        return executeWithConstructor((DynamicObject) constructor);
+        return executeWithConstructor((JSDynamicObject) constructor);
     }
 
-    public DynamicObject executeWithConstructor(DynamicObject constructor) {
+    public JSDynamicObject executeWithConstructor(JSDynamicObject constructor) {
         assert JSRuntime.isCallable(constructor);
         Object proto = getPrototypeNode.getValue(constructor);
         if (isObjectNode.executeBoolean(proto)) {
             assert JSRuntime.isObject(proto);
-            return (DynamicObject) proto;
+            return (JSDynamicObject) proto;
         } else {
             JSRealm realm = JSRuntime.getFunctionRealm(constructor, getRealm());
             return intrinsicDefaultProto.apply(realm);
@@ -89,7 +89,7 @@ public class GetPrototypeFromConstructorNode extends JavaScriptNode {
 
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == DynamicObject.class;
+        return clazz == JSDynamicObject.class;
     }
 
     @Override

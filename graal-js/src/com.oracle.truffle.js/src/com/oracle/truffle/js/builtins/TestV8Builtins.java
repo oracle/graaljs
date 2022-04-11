@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNameNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNodeGen;
@@ -95,10 +94,13 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -342,7 +344,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @Specialization
         protected Object enqueueJob(Object function) {
             if (JSFunction.isJSFunction(function)) {
-                getContext().promiseEnqueueJob(getRealm(), (DynamicObject) function);
+                getContext().promiseEnqueueJob(getRealm(), (JSFunctionObject) function);
             }
             return 0;
         }
@@ -362,9 +364,9 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         }
 
         @Specialization(guards = "isJSObject(syncIterator)")
-        protected Object createAsyncFromSyncIterator(DynamicObject syncIterator) {
+        protected Object createAsyncFromSyncIterator(JSDynamicObject syncIterator) {
             JSContext context = getContext();
-            DynamicObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory(), getRealm());
+            JSObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory(), getRealm());
             IteratorRecord syncIteratorRecord = IteratorRecord.create(syncIterator, getNextMethodNode.getValue(syncIterator), false);
             setState.setValue(obj, syncIteratorRecord);
             return obj;
@@ -443,11 +445,11 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
             super(context, builtin);
         }
 
-        protected DynamicObject ensureSharedArray(Object maybeTarget) {
+        protected JSDynamicObject ensureSharedArray(Object maybeTarget) {
             if (JSArrayBufferView.isJSArrayBufferView(maybeTarget)) {
-                DynamicObject buffer = JSArrayBufferView.getArrayBuffer((DynamicObject) maybeTarget);
+                JSDynamicObject buffer = JSArrayBufferView.getArrayBuffer((JSDynamicObject) maybeTarget);
                 if (JSSharedArrayBuffer.isJSSharedArrayBuffer(buffer)) {
-                    return (DynamicObject) maybeTarget;
+                    return (JSDynamicObject) maybeTarget;
                 }
             }
             throw createTypeErrorNotSharedArray();
@@ -463,7 +465,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
             return Errors.createRangeError("Range error with index : " + idx);
         }
 
-        protected static int validateAtomicAccess(DynamicObject target, long convertedIndex, Object originalIndex) {
+        protected static int validateAtomicAccess(JSDynamicObject target, long convertedIndex, Object originalIndex) {
             int length = JSArrayBufferView.typedArrayGetLength(target);
             assert convertedIndex >= 0;
             if (convertedIndex >= length) {
@@ -483,7 +485,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @Specialization
         protected Object numWaiters(Object maybeTarget, Object index,
                         @Cached("create()") JSToIndexNode toIndexNode) {
-            DynamicObject target = ensureSharedArray(maybeTarget);
+            JSDynamicObject target = ensureSharedArray(maybeTarget);
             int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             JSAgent agent = getRealm().getAgent();
             JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), agent, target, i);
@@ -501,7 +503,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @Specialization
         protected Object numUnresolvedAsyncPromises(Object maybeTarget, Object index,
                         @Cached("create()") JSToIndexNode toIndexNode) {
-            DynamicObject target = ensureSharedArray(maybeTarget);
+            JSDynamicObject target = ensureSharedArray(maybeTarget);
             int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             JSAgent agent = getRealm().getAgent();
             JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), agent, target, i);

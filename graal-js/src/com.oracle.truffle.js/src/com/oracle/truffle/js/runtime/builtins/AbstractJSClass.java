@@ -45,7 +45,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Strings;
@@ -57,82 +56,82 @@ public abstract class AbstractJSClass extends JSClass {
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, Object name, Node encapsulatingNode) {
+    public Object getOwnHelper(JSDynamicObject store, Object thisObj, Object name, Node encapsulatingNode) {
         throw Errors.createTypeErrorCannotGetProperty(JavaScriptLanguage.getCurrentLanguage().getJSContext(), name, thisObj, false, encapsulatingNode);
     }
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
+    public Object getOwnHelper(JSDynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
         throw Errors.createTypeErrorCannotGetProperty(JavaScriptLanguage.getCurrentLanguage().getJSContext(), Strings.fromLong(index), thisObj, false, encapsulatingNode);
     }
 
     @Override
-    public Object getMethodHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+    public Object getMethodHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         return getHelper(store, thisObj, key, encapsulatingNode);
     }
 
     @Override
-    public Object getHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+    public Object getHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         return getOwnHelper(store, thisObj, key, encapsulatingNode);
     }
 
     @Override
-    public Object getHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
+    public Object getHelper(JSDynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
         return getOwnHelper(store, thisObj, index, encapsulatingNode);
     }
 
     @Override
-    public boolean hasOwnProperty(DynamicObject thisObj, Object key) {
+    public boolean hasOwnProperty(JSDynamicObject thisObj, Object key) {
         throw Errors.createTypeErrorNotAnObject(thisObj);
     }
 
     @Override
-    public boolean hasOwnProperty(DynamicObject thisObj, long index) {
+    public boolean hasOwnProperty(JSDynamicObject thisObj, long index) {
         throw Errors.createTypeErrorNotAnObject(thisObj);
     }
 
     @Override
-    public boolean hasProperty(DynamicObject thisObj, Object key) {
+    public boolean hasProperty(JSDynamicObject thisObj, Object key) {
         return hasOwnProperty(thisObj, key);
     }
 
     @Override
-    public boolean hasProperty(DynamicObject thisObj, long index) {
+    public boolean hasProperty(JSDynamicObject thisObj, long index) {
         return hasOwnProperty(thisObj, index);
     }
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    public boolean set(JSDynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         throw Errors.createTypeErrorCannotSetProperty(key, thisObj, encapsulatingNode);
     }
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    public boolean set(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         throw Errors.createTypeErrorCannotSetProperty(Strings.fromLong(index), thisObj, encapsulatingNode);
     }
 
     @TruffleBoundary
     @Override
-    public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
         throw Errors.createTypeErrorCannotDeletePropertyOf(key, thisObj);
     }
 
     @TruffleBoundary
     @Override
-    public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
         throw Errors.createTypeErrorCannotDeletePropertyOf(Strings.fromLong(index), thisObj);
     }
 
     @Override
-    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
+    public List<Object> getOwnPropertyKeys(JSDynamicObject thisObj, boolean strings, boolean symbols) {
         return Collections.emptyList();
     }
 
     @Override
-    public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
+    public boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
         if (doThrow) {
             throw Errors.createTypeErrorCannotSetProperty(key, thisObj, null);
         }
@@ -140,17 +139,17 @@ public abstract class AbstractJSClass extends JSClass {
     }
 
     @Override
-    public boolean preventExtensions(DynamicObject thisObj, boolean doThrow) {
+    public boolean preventExtensions(JSDynamicObject thisObj, boolean doThrow) {
         throw Errors.createTypeErrorNotAnObject(thisObj);
     }
 
     @Override
-    public boolean isExtensible(DynamicObject thisObj) {
+    public boolean isExtensible(JSDynamicObject thisObj) {
         throw Errors.createTypeErrorNotAnObject(thisObj);
     }
 
     @Override
-    public boolean hasOnlyShapeProperties(DynamicObject obj) {
+    public boolean hasOnlyShapeProperties(JSDynamicObject obj) {
         return false;
     }
 
@@ -165,17 +164,17 @@ public abstract class AbstractJSClass extends JSClass {
     }
 
     @Override
-    public JSDynamicObject getPrototypeOf(DynamicObject thisObj) {
+    public JSDynamicObject getPrototypeOf(JSDynamicObject thisObj) {
         return Null.instance;
     }
 
     @Override
-    public boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype) {
+    public boolean setPrototypeOf(JSDynamicObject thisObj, JSDynamicObject newPrototype) {
         return true;
     }
 
     @Override
-    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
+    public PropertyDescriptor getOwnProperty(JSDynamicObject thisObj, Object key) {
         throw Errors.createTypeErrorNotAnObject(thisObj);
     }
 }

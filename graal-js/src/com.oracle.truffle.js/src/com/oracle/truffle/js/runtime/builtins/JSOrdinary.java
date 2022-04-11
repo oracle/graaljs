@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -70,7 +69,7 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Object.prototype");
 
     public static final JSOrdinary INSTANCE = new JSOrdinary();
-    public static final CompilableBiFunction<JSContext, DynamicObject, Shape> SHAPE_SUPPLIER = (ctx, proto) -> JSObjectUtil.getProtoChildShape(proto, INSTANCE, ctx);
+    public static final CompilableBiFunction<JSContext, JSDynamicObject, Shape> SHAPE_SUPPLIER = (ctx, proto) -> JSObjectUtil.getProtoChildShape(proto, INSTANCE, ctx);
 
     public static final JSOrdinary BARE_INSTANCE = new JSOrdinary();
     public static final JSOrdinary INTERNAL_FIELD_INSTANCE = new JSOrdinary();
@@ -79,33 +78,33 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
     private JSOrdinary() {
     }
 
-    public static DynamicObject create(JSContext context, JSObjectFactory factory, JSRealm realm) {
+    public static JSObject create(JSContext context, JSObjectFactory factory, JSRealm realm) {
         return createWithRealm(context, factory, realm);
     }
 
-    public static DynamicObject createWithRealm(JSContext context, JSObjectFactory factory, JSRealm realm) {
-        DynamicObject obj = JSOrdinaryObject.create(factory.getShape(realm));
+    public static JSObject createWithRealm(JSContext context, JSObjectFactory factory, JSRealm realm) {
+        JSObject obj = JSOrdinaryObject.create(factory.getShape(realm));
         factory.initProto(obj, realm);
         return context.trackAllocation(obj);
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm) {
+    public static JSObject create(JSContext context, JSRealm realm) {
         return createWithRealm(context, context.getOrdinaryObjectFactory(), realm);
     }
 
     @TruffleBoundary
-    public static DynamicObject createWithPrototype(DynamicObject prototype, JSContext context) {
+    public static JSObject createWithPrototype(JSDynamicObject prototype, JSContext context) {
         return createWithPrototype(prototype, context, INSTANCE);
     }
 
-    public static DynamicObject createWithNullPrototype(JSContext context) {
+    public static JSObject createWithNullPrototype(JSContext context) {
         return context.trackAllocation(JSOrdinaryObject.create(context.getEmptyShapeNullPrototype()));
     }
 
     @TruffleBoundary
-    public static DynamicObject createWithPrototype(DynamicObject prototype, JSContext context, JSOrdinary instanceLayout) {
+    public static JSObject createWithPrototype(JSDynamicObject prototype, JSContext context, JSOrdinary instanceLayout) {
         assert JSObjectUtil.isValidPrototype(prototype);
-        DynamicObject obj;
+        JSObject obj;
         if (prototype == Null.instance) {
             obj = JSOrdinaryObject.create(context.makeEmptyShapeWithNullPrototype(instanceLayout));
         } else if (!context.isMultiContext()) {
@@ -117,7 +116,7 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
         return context.trackAllocation(obj);
     }
 
-    public static DynamicObject createInitWithInstancePrototype(DynamicObject prototype, JSContext context) {
+    public static JSObject createInitWithInstancePrototype(JSDynamicObject prototype, JSContext context) {
         assert JSObjectUtil.isValidPrototype(prototype);
         Shape shape = context.getEmptyShapePrototypeInObject();
         JSOrdinaryObject obj = JSOrdinaryObject.create(shape);
@@ -125,28 +124,28 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
         return obj;
     }
 
-    private static void setProtoSlow(DynamicObject obj, DynamicObject prototype) {
+    private static void setProtoSlow(JSObject obj, JSDynamicObject prototype) {
         JSObjectUtil.putHiddenProperty(obj, JSObject.HIDDEN_PROTO, prototype);
     }
 
-    public static DynamicObject createWithoutPrototype(JSContext context) {
+    public static JSObject createWithoutPrototype(JSContext context) {
         Shape shape = context.getEmptyShapePrototypeInObject();
-        DynamicObject obj = create(context, shape);
+        JSObject obj = create(context, shape);
         // prototype is set in caller
         return obj;
     }
 
-    public static DynamicObject create(JSContext context, Shape shape) {
+    public static JSObject create(JSContext context, Shape shape) {
         assert JSShape.getJSClass(shape) instanceof JSOrdinary;
         return context.trackAllocation(JSOrdinaryObject.create(shape));
     }
 
-    public static DynamicObject createInit(JSRealm realm) {
+    public static JSObject createInit(JSRealm realm) {
         CompilerAsserts.neverPartOfCompilation();
         return createInit(realm, realm.getObjectPrototype());
     }
 
-    public static DynamicObject createInit(JSRealm realm, DynamicObject prototype) {
+    public static JSObject createInit(JSRealm realm, JSDynamicObject prototype) {
         CompilerAsserts.neverPartOfCompilation();
         assert JSObjectUtil.isValidPrototype(prototype);
         JSContext context = realm.getContext();
@@ -157,22 +156,22 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
         }
     }
 
-    public static DynamicObject createWithNullPrototypeInit(JSContext context) {
+    public static JSObject createWithNullPrototypeInit(JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
         return JSOrdinaryObject.create(context.getEmptyShapeNullPrototype());
     }
 
     public static boolean isJSOrdinaryObject(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSOrdinaryObject((DynamicObject) obj);
+        return JSDynamicObject.isJSDynamicObject(obj) && isJSOrdinaryObject((JSDynamicObject) obj);
     }
 
-    public static boolean isJSOrdinaryObject(DynamicObject obj) {
+    public static boolean isJSOrdinaryObject(JSDynamicObject obj) {
         return isInstance(obj, INSTANCE);
     }
 
     @Override
     @TruffleBoundary
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         JSContext context = JSObject.getJSContext(object);
         if (context.getEcmaScriptVersion() <= 5) {
             Object toStringTag = get(object, Symbol.SYMBOL_TO_STRING_TAG);
@@ -185,7 +184,7 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
 
     @TruffleBoundary
     @Override
-    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
@@ -195,23 +194,23 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
 
     @TruffleBoundary
     @Override
-    public Object get(DynamicObject thisObj, long index) {
+    public Object get(JSDynamicObject thisObj, long index) {
         // convert index only once
         return get(thisObj, Strings.fromLong(index));
     }
 
     @Override
-    public boolean hasOnlyShapeProperties(DynamicObject obj) {
+    public boolean hasOnlyShapeProperties(JSDynamicObject obj) {
         return true;
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getObjectPrototype();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.util.EnumSet;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetDateNodeGen;
@@ -98,7 +97,9 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
+import com.oracle.truffle.js.runtime.builtins.JSDateObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
@@ -326,9 +327,9 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         /**
          * Coerce to Date or throw TypeError. Must be the first statement (evaluation order!).
          */
-        protected final DynamicObject asDate(Object object) {
+        protected final JSDateObject asDate(Object object) {
             if (isDate.profile(JSDate.isJSDate(object))) {
-                return (DynamicObject) object;
+                return (JSDateObject) object;
             } else {
                 throw Errors.createTypeErrorNotADate();
             }
@@ -336,7 +337,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         protected final double asDateMillis(Object thisDate) {
             if (isDate.profile(JSDate.isJSDate(thisDate))) {
-                return JSDate.getTimeMillisField((DynamicObject) thisDate);
+                return JSDate.getTimeMillisField((JSDateObject) thisDate);
             }
             InteropLibrary interop = interopLibrary;
             if (interop == null) {
@@ -357,8 +358,8 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
         }
 
-        protected DynamicObject createDateTimeFormat(InitializeDateTimeFormatNode initDateTimeFormatNode, Object locales, Object options) {
-            DynamicObject dateTimeFormatObj = JSDateTimeFormat.create(getContext(), getRealm());
+        protected JSDynamicObject createDateTimeFormat(InitializeDateTimeFormatNode initDateTimeFormatNode, Object locales, Object options) {
+            JSDynamicObject dateTimeFormatObj = JSDateTimeFormat.create(getContext(), getRealm());
             initDateTimeFormatNode.executeInit(dateTimeFormatObj, locales, options);
             return dateTimeFormatObj;
         }
@@ -423,7 +424,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            DynamicObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
+            JSDynamicObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
             return JSDateTimeFormat.format(formatter, t);
         }
     }
@@ -491,7 +492,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            DynamicObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
+            JSDynamicObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
             return JSDateTimeFormat.format(formatter, t);
         }
     }
@@ -527,7 +528,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            DynamicObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
+            JSDynamicObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
             return JSDateTimeFormat.format(formatter, t);
         }
     }
@@ -750,7 +751,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Specialization
         protected double setFullYear(Object thisDate, Object[] args) {
-            DynamicObject asDate = asDate(thisDate);
+            JSDateObject asDate = asDate(thisDate);
             double iYear = toDouble(JSRuntime.getArgOrUndefined(args, 0));
             double iMonth = toDouble(JSRuntime.getArgOrUndefined(args, 1));
             double iDay = toDouble(JSRuntime.getArgOrUndefined(args, 2));
@@ -766,7 +767,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Specialization
         protected double setMonth(Object thisDate, Object[] args) {
-            DynamicObject date = asDate(thisDate);
+            JSDateObject date = asDate(thisDate);
             double month = toDouble(JSRuntime.getArgOrUndefined(args, 0));
             double date2 = toDouble(JSRuntime.getArgOrUndefined(args, 1));
             return JSDate.setMonth(date, month, date2, args.length >= 2, isUTC, this);
@@ -781,7 +782,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Specialization
         protected double setHours(Object thisDate, Object[] args) {
-            DynamicObject date = asDate(thisDate);
+            JSDateObject date = asDate(thisDate);
             double hour = toDouble(JSRuntime.getArgOrUndefined(args, 0));
             double min = toDouble(JSRuntime.getArgOrUndefined(args, 1));
             double sec = toDouble(JSRuntime.getArgOrUndefined(args, 2));
@@ -798,7 +799,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Specialization
         protected double doOperation(Object thisDate, Object[] args) {
-            DynamicObject date = asDate(thisDate);
+            JSDateObject date = asDate(thisDate);
             double min = toDouble(JSRuntime.getArgOrUndefined(args, 0));
             double sec = toDouble(JSRuntime.getArgOrUndefined(args, 1));
             double ms = toDouble(JSRuntime.getArgOrUndefined(args, 2));
@@ -814,7 +815,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Specialization
         protected double setSeconds(Object thisDate, Object[] args) {
-            DynamicObject date = asDate(thisDate);
+            JSDateObject date = asDate(thisDate);
             double sec = toDouble(JSRuntime.getArgOrUndefined(args, 0));
             double ms = toDouble(JSRuntime.getArgOrUndefined(args, 1));
             return JSDate.setSeconds(date, sec, ms, args.length >= 2, isUTC, this);
@@ -862,7 +863,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Specialization
         protected Object toJSON(Object thisDate, @SuppressWarnings("unused") Object key) {
-            DynamicObject o = toJSObject(thisDate);
+            JSDynamicObject o = toJSObject(thisDate);
             Object tv = toPrimitiveNode.execute(o);
             if (JSRuntime.isNumber(tv)) {
                 double d = JSRuntime.doubleValue(((Number) tv));

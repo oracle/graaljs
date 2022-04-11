@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -70,12 +69,13 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
  * Implementation of ECMA 9.9 "ToObject" as Truffle node.
  *
- * thing a generic value to be converted to a DynamicObject or TruffleObject
+ * thing a generic value to be converted to a JSDynamicObject or TruffleObject
  */
 @ImportStatic({CompilerDirectives.class, JSConfig.class})
 public abstract class JSToObjectNode extends JavaScriptBaseNode {
@@ -135,37 +135,37 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected DynamicObject doBoolean(boolean value) {
+    protected JSDynamicObject doBoolean(boolean value) {
         return JSBoolean.create(context, getRealm(), value);
     }
 
     @Specialization
-    protected DynamicObject doString(TruffleString value) {
+    protected JSDynamicObject doString(TruffleString value) {
         return JSString.create(getContext(), getRealm(), value);
     }
 
     @Specialization
-    protected DynamicObject doInt(int value) {
+    protected JSDynamicObject doInt(int value) {
         return JSNumber.create(getContext(), getRealm(), value);
     }
 
     @Specialization
-    protected DynamicObject doDouble(double value) {
+    protected JSDynamicObject doDouble(double value) {
         return JSNumber.create(getContext(), getRealm(), value);
     }
 
     @Specialization
-    protected DynamicObject doBigInt(BigInt value) {
+    protected JSDynamicObject doBigInt(BigInt value) {
         return JSBigInt.create(getContext(), getRealm(), value);
     }
 
     @Specialization(guards = "isJavaNumber(value)")
-    protected DynamicObject doNumber(Object value) {
+    protected JSDynamicObject doNumber(Object value) {
         return JSNumber.create(getContext(), getRealm(), (Number) value);
     }
 
     @Specialization
-    protected DynamicObject doSymbol(Symbol value) {
+    protected JSDynamicObject doSymbol(Symbol value) {
         return JSSymbol.create(getContext(), getRealm(), value);
     }
 
@@ -196,7 +196,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isCheckForNullOrUndefined()", "isNullOrUndefined(object)"})
-    protected DynamicObject doNullOrUndefined(DynamicObject object) {
+    protected JSDynamicObject doNullOrUndefined(Object object) {
         throw createTypeError(object);
     }
 
@@ -248,8 +248,6 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
             super(operand);
             this.toObjectNode = toObjectNode;
         }
-
-        public abstract DynamicObject executeDynamicObject(Object thisObj);
 
         /**
          * This factory method forces the creation of an JSObjectCastNode; in contrast to

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.ByteLengthGetterNodeGen;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.JSArrayBufferSliceNodeGen;
@@ -66,6 +65,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -256,13 +256,13 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
          * @return sliced ArrayBuffer
          */
         @Specialization(guards = "isJSHeapArrayBuffer(thisObj)")
-        protected DynamicObject sliceIntInt(DynamicObject thisObj, int begin, int end) {
+        protected JSDynamicObject sliceIntInt(JSDynamicObject thisObj, int begin, int end) {
             byte[] byteArray = JSArrayBuffer.getByteArray(thisObj);
             int clampedBegin = clampIndex(begin, 0, byteArray.length);
             int clampedEnd = clampIndex(end, clampedBegin, byteArray.length);
             int newLen = Math.max(clampedEnd - clampedBegin, 0);
 
-            DynamicObject resObj = constructNewArrayBuffer(thisObj, newLen);
+            JSDynamicObject resObj = constructNewArrayBuffer(thisObj, newLen);
             checkErrors(resObj, thisObj, newLen, false);
 
             byte[] newByteArray = JSArrayBuffer.getByteArray(resObj);
@@ -270,10 +270,10 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             return resObj;
         }
 
-        private DynamicObject constructNewArrayBuffer(DynamicObject thisObj, int newLen) {
-            DynamicObject defaultConstructor = getRealm().getArrayBufferConstructor();
-            DynamicObject constr = getArraySpeciesConstructorNode().speciesConstructor(thisObj, defaultConstructor);
-            return (DynamicObject) getArraySpeciesConstructorNode().construct(constr, newLen);
+        private JSDynamicObject constructNewArrayBuffer(JSDynamicObject thisObj, int newLen) {
+            JSDynamicObject defaultConstructor = getRealm().getArrayBufferConstructor();
+            JSDynamicObject constr = getArraySpeciesConstructorNode().speciesConstructor(thisObj, defaultConstructor);
+            return (JSDynamicObject) getArraySpeciesConstructorNode().construct(constr, newLen);
         }
 
         private void checkErrors(Object resObj, Object thisObj, int newLen, boolean direct) {
@@ -302,7 +302,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization(guards = "isJSHeapArrayBuffer(thisObj)", replaces = "sliceIntInt")
-        protected DynamicObject slice(DynamicObject thisObj, Object begin0, Object end0) {
+        protected JSDynamicObject slice(JSDynamicObject thisObj, Object begin0, Object end0) {
             int len = JSArrayBuffer.getByteArray(thisObj).length;
             int begin = getStart(begin0, len);
             int finalEnd = getEnd(end0, len);
@@ -310,14 +310,14 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization(guards = "isJSDirectArrayBuffer(thisObj)")
-        protected DynamicObject sliceDirectIntInt(DynamicObject thisObj, int begin, int end) {
+        protected JSDynamicObject sliceDirectIntInt(JSDynamicObject thisObj, int begin, int end) {
             ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(thisObj);
             int byteLength = JSArrayBuffer.getDirectByteLength(thisObj);
             int clampedBegin = clampIndex(begin, 0, byteLength);
             int clampedEnd = clampIndex(end, clampedBegin, byteLength);
             int newLen = clampedEnd - clampedBegin;
 
-            DynamicObject resObj = constructNewArrayBuffer(thisObj, newLen);
+            JSDynamicObject resObj = constructNewArrayBuffer(thisObj, newLen);
             checkErrors(resObj, thisObj, newLen, true);
 
             ByteBuffer resBuffer = JSArrayBuffer.getDirectByteBuffer(resObj);
@@ -326,7 +326,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization(guards = "isJSDirectArrayBuffer(thisObj)", replaces = "sliceDirectIntInt")
-        protected DynamicObject sliceDirect(DynamicObject thisObj, Object begin0, Object end0) {
+        protected JSDynamicObject sliceDirect(JSDynamicObject thisObj, Object begin0, Object end0) {
             int len = JSArrayBuffer.getDirectByteLength(thisObj);
             int begin = getStart(begin0, len);
             int end = getEnd(end0, len);
@@ -334,7 +334,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization(guards = "isJSInteropArrayBuffer(thisObj)")
-        protected Object sliceInterop(DynamicObject thisObj, Object begin0, Object end0,
+        protected Object sliceInterop(JSDynamicObject thisObj, Object begin0, Object end0,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("srcBufferLib") InteropLibrary srcBufferLib,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("dstBufferLib") InteropLibrary dstBufferLib) {
             Object interopBuffer = JSArrayBuffer.getInteropBuffer(thisObj);
@@ -371,7 +371,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Fallback
-        protected static DynamicObject error(Object thisObj, @SuppressWarnings("unused") Object begin0, @SuppressWarnings("unused") Object end0) {
+        protected static JSDynamicObject error(Object thisObj, @SuppressWarnings("unused") Object begin0, @SuppressWarnings("unused") Object end0) {
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
 

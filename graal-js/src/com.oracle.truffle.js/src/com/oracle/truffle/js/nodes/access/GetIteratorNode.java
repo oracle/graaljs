@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,6 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -62,6 +61,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
@@ -119,7 +119,7 @@ public abstract class GetIteratorNode extends JavaScriptNode {
                     JavaScriptBaseNode origin) {
         Object iterator = methodCallNode.executeCall(JSArguments.createZeroArg(iteratedObject, method));
         if (isObjectNode.executeBoolean(iterator)) {
-            return IteratorRecord.create((DynamicObject) iterator, getNextMethodNode.getValue(iterator), false);
+            return IteratorRecord.create((JSDynamicObject) iterator, getNextMethodNode.getValue(iterator), false);
         } else {
             throw Errors.createTypeErrorNotAnObject(iterator, origin);
         }

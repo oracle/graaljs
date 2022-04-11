@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.array.ArrayLengthNodeFactory.ArrayLengthReadNodeGen;
@@ -60,6 +59,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBase;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 @ImportStatic(ScriptArray.class)
@@ -70,7 +70,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
     protected ArrayLengthNode() {
     }
 
-    protected static ScriptArray getArrayType(DynamicObject target) {
+    protected static ScriptArray getArrayType(JSDynamicObject target) {
         return JSObject.getArray(target);
     }
 
@@ -80,11 +80,11 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             return ArrayLengthReadNodeGen.create();
         }
 
-        public abstract int executeInt(DynamicObject target) throws UnexpectedResultException;
+        public abstract int executeInt(JSDynamicObject target) throws UnexpectedResultException;
 
-        public abstract Object executeObject(DynamicObject target);
+        public abstract Object executeObject(JSDynamicObject target);
 
-        public final double executeDouble(DynamicObject target) {
+        public final double executeDouble(JSDynamicObject target) {
             Object result = executeObject(target);
             if (result instanceof Integer) {
                 return (int) result;
@@ -136,7 +136,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             return SetArrayLengthOrDeleteNodeGen.create(strict);
         }
 
-        public abstract void executeVoid(DynamicObject array, int length);
+        public abstract void executeVoid(JSDynamicObject array, int length);
     }
 
     public abstract static class SetArrayLengthNode extends ArrayLengthWriteNode {
@@ -147,7 +147,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = {"arrayType.isInstance(getArrayType(arrayObj))"}, limit = "MAX_TYPE_COUNT")
-        protected void doCached(DynamicObject arrayObj, int length,
+        protected void doCached(JSDynamicObject arrayObj, int length,
                         @Cached("getArrayType(arrayObj)") ScriptArray arrayType,
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
@@ -159,7 +159,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         }
 
         @Specialization(replaces = "doCached")
-        protected void doGeneric(DynamicObject arrayObj, int length,
+        protected void doGeneric(JSDynamicObject arrayObj, int length,
                         @Cached("createBinaryProfile()") ConditionProfile sealedProfile,
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
@@ -171,7 +171,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             arraySetArrayType(arrayObj, arrayType.setLength(arrayObj, length, strict, setLengthProfile));
         }
 
-        private void setLengthSealed(DynamicObject arrayObj, int length, ScriptArray arrayType, ScriptArray.ProfileHolder setLengthProfile) {
+        private void setLengthSealed(JSDynamicObject arrayObj, int length, ScriptArray arrayType, ScriptArray.ProfileHolder setLengthProfile) {
             long minLength = arrayType.lastElementIndex(arrayObj) + 1;
             if (length < minLength) {
                 ScriptArray array = arrayType.setLength(arrayObj, minLength, strict, setLengthProfile);
@@ -191,7 +191,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = {"arrayType.isInstance(getArrayType(arrayObj))"}, limit = "MAX_TYPE_COUNT")
-        protected void doCached(DynamicObject arrayObj, int length,
+        protected void doCached(JSDynamicObject arrayObj, int length,
                         @Cached("getArrayType(arrayObj)") ScriptArray arrayType,
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
@@ -203,7 +203,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         }
 
         @Specialization(replaces = "doCached")
-        protected void doGeneric(DynamicObject arrayObj, int length,
+        protected void doGeneric(JSDynamicObject arrayObj, int length,
                         @Cached("createBinaryProfile()") ConditionProfile mustDeleteProfile,
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
@@ -215,7 +215,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             arraySetArrayType(arrayObj, arrayType.setLength(arrayObj, length, strict, setLengthProfile));
         }
 
-        private void deleteAndSetLength(DynamicObject arrayObj, int length, ScriptArray arrayType, ScriptArray.ProfileHolder setLengthProfile) {
+        private void deleteAndSetLength(JSDynamicObject arrayObj, int length, ScriptArray arrayType, ScriptArray.ProfileHolder setLengthProfile) {
             ScriptArray array = arrayType;
             for (int i = array.lengthInt(arrayObj) - 1; i >= length; i--) {
                 if (array.canDeleteElement(arrayObj, i, strict)) {

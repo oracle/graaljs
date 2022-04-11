@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import java.util.MissingResourceException;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -55,6 +54,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.intl.JSLocale;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
@@ -83,20 +83,20 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
         this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.KEY_NUMBERING_SYSTEM, null, null);
     }
 
-    public abstract DynamicObject executeInit(DynamicObject locale, Object tag, Object options);
+    public abstract JSDynamicObject executeInit(JSDynamicObject locale, Object tag, Object options);
 
     public static InitializeLocaleNode createInitalizeLocaleNode(JSContext context) {
         return InitializeLocaleNodeGen.create(context);
     }
 
     @Specialization
-    public DynamicObject initializeLocaleUsingString(DynamicObject localeObject, TruffleString tagArg, Object optionsArg) {
+    public JSDynamicObject initializeLocaleUsingString(JSDynamicObject localeObject, TruffleString tagArg, Object optionsArg) {
         return initializeLocaleUsingJString(localeObject, Strings.toJavaString(tagArg), optionsArg);
     }
 
-    private DynamicObject initializeLocaleUsingJString(DynamicObject localeObject, String tagArg, Object optionsArg) {
+    private JSDynamicObject initializeLocaleUsingJString(JSDynamicObject localeObject, String tagArg, Object optionsArg) {
         try {
-            DynamicObject options = coerceOptionsToObjectNode.execute(optionsArg);
+            JSDynamicObject options = coerceOptionsToObjectNode.execute(optionsArg);
             String tag = applyOptionsToTag(tagArg, options);
             String optCalendar = getCalendarOption.executeValue(options);
             if (optCalendar != null) {
@@ -124,23 +124,23 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isJSLocale(tagArg)")
-    public DynamicObject initializeLocaleUsingLocale(DynamicObject localeObject, DynamicObject tagArg, Object optionsArg) {
+    public JSDynamicObject initializeLocaleUsingLocale(JSDynamicObject localeObject, JSDynamicObject tagArg, Object optionsArg) {
         JSLocale.InternalState state = JSLocale.getInternalState(tagArg);
         return initializeLocaleUsingJString(localeObject, state.getLocale(), optionsArg);
     }
 
     @Specialization(guards = {"isJSObject(tagArg)", "!isJSLocale(tagArg)"})
-    public DynamicObject initializeLocaleUsingObject(DynamicObject localeObject, DynamicObject tagArg, Object optionsArg,
+    public JSDynamicObject initializeLocaleUsingObject(JSDynamicObject localeObject, JSDynamicObject tagArg, Object optionsArg,
                     @Cached("create()") JSToStringNode toStringNode) {
         return initializeLocaleUsingString(localeObject, toStringNode.executeString(tagArg), optionsArg);
     }
 
     @Specialization(guards = {"!isJSObject(tagArg)", "!isString(tagArg)"})
-    public DynamicObject initializeLocaleOther(@SuppressWarnings("unused") DynamicObject localeObject, @SuppressWarnings("unused") Object tagArg, @SuppressWarnings("unused") Object optionsArg) {
+    public JSDynamicObject initializeLocaleOther(@SuppressWarnings("unused") JSDynamicObject localeObject, @SuppressWarnings("unused") Object tagArg, @SuppressWarnings("unused") Object optionsArg) {
         throw Errors.createTypeError("Tag should be a string or an object.");
     }
 
-    private String applyOptionsToTag(String tag, DynamicObject options) {
+    private String applyOptionsToTag(String tag, JSDynamicObject options) {
         String canonicalizedTag = IntlUtil.validateAndCanonicalizeLanguageTag(tag);
         String optLanguage = getLanguageOption.executeValue(options);
         if (optLanguage != null) {

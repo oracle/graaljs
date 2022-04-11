@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -59,6 +58,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
@@ -74,7 +74,7 @@ public class SetBreakPointNode extends JavaScriptRootNode {
             arg0 = JSArguments.getUserArgument(args, 0);
         }
         if (JSFunction.isJSFunction(arg0)) {
-            CallTarget callTarget = JSFunction.getFunctionData((DynamicObject) arg0).getCallTarget();
+            CallTarget callTarget = JSFunction.getFunctionData((JSFunctionObject) arg0).getCallTarget();
             if (callTarget instanceof RootCallTarget) {
                 return addBreakPoint((RootCallTarget) callTarget, args);
             }

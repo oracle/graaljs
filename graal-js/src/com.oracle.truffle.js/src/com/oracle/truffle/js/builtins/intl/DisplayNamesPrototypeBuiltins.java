@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.builtins.intl;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.DisplayNamesPrototypeBuiltinsFactory.JSDisplayNamesOfNodeGen;
@@ -54,6 +53,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNamesObject;
 
 public final class DisplayNamesPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<DisplayNamesPrototypeBuiltins.DisplayNamesPrototype> {
 
@@ -97,8 +97,8 @@ public final class DisplayNamesPrototypeBuiltins extends JSBuiltinsContainer.Swi
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSDisplayNames(displayNames)")
-        public Object doDisplayNames(DynamicObject displayNames) {
+        @Specialization
+        public Object doDisplayNames(JSDisplayNamesObject displayNames) {
             return JSDisplayNames.resolvedOptions(getContext(), getRealm(), displayNames);
         }
 
@@ -116,8 +116,8 @@ public final class DisplayNamesPrototypeBuiltins extends JSBuiltinsContainer.Swi
             toStringNode = JSToStringNode.create();
         }
 
-        @Specialization(guards = "isJSDisplayNames(displayNames)")
-        public Object doDisplayNames(DynamicObject displayNames, Object code) {
+        @Specialization
+        public Object doDisplayNames(JSDisplayNamesObject displayNames, Object code) {
             TruffleString codeString = toStringNode.executeString(code);
             return JSDisplayNames.of(displayNames, Strings.toJavaString(codeString));
         }

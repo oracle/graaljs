@@ -49,7 +49,6 @@ import java.math.BigDecimal;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -65,6 +64,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalNanosecondsDaysRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalRelativeDateRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
@@ -97,13 +97,13 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
 
     public abstract JSTemporalDurationRecord execute(double y, double m, double w, double d, double h, double min,
                     double sec, double milsec, double micsec, double nsec, double increment,
-                    TemporalUtil.Unit unit, TemporalUtil.RoundingMode roundingMode, DynamicObject relTo);
+                    TemporalUtil.Unit unit, TemporalUtil.RoundingMode roundingMode, JSDynamicObject relTo);
 
     // @Cached parameters create unused variable in generated code, see GR-37931
     @Specialization
     protected JSTemporalDurationRecord add(double years, double months, double weeks, double d, double h, double min,
                     double sec, double milsec, double micsec, double nsec, double increment,
-                    TemporalUtil.Unit unit, TemporalUtil.RoundingMode roundingMode, DynamicObject relTo) {
+                    TemporalUtil.Unit unit, TemporalUtil.RoundingMode roundingMode, JSDynamicObject relTo) {
         double days = d;
         double hours = h;
         double minutes = min;
@@ -112,13 +112,13 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         double milliseconds = milsec;
         double nanoseconds = nsec;
 
-        DynamicObject relativeTo = relTo;
+        JSDynamicObject relativeTo = relTo;
         if ((unit == TemporalUtil.Unit.YEAR || unit == TemporalUtil.Unit.MONTH || unit == TemporalUtil.Unit.WEEK) && relativeTo == Undefined.instance) {
             errorBranch.enter();
             throw TemporalErrors.createRangeErrorRelativeToNotUndefined(unit);
         }
-        DynamicObject zonedRelativeTo = Undefined.instance;
-        DynamicObject calendar = Undefined.instance;
+        JSDynamicObject zonedRelativeTo = Undefined.instance;
+        JSDynamicObject calendar = Undefined.instance;
         BigDecimal fractionalSeconds = BigDecimal.ZERO;
 
         if (hasRelativeTo.profile(relativeTo != Undefined.instance)) {
@@ -132,7 +132,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         }
         if (unitYMWD.profile(unit == TemporalUtil.Unit.YEAR || unit == TemporalUtil.Unit.MONTH || unit == TemporalUtil.Unit.WEEK || unit == TemporalUtil.Unit.DAY)) {
             nanoseconds = TemporalUtil.totalDurationNanoseconds(0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0);
-            DynamicObject intermediate = Undefined.instance;
+            JSDynamicObject intermediate = Undefined.instance;
             if (zonedRelativeTo != Undefined.instance) {
                 intermediate = TemporalUtil.moveRelativeZonedDateTime(ctx, zonedRelativeTo, dtol(years), dtol(months), dtol(weeks), dtol(days));
             }
@@ -229,14 +229,14 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
     }
 
     private JSTemporalDurationRecord getUnitWeek(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double months, final double weeksP, final double daysP,
-                    final double hours, final double minutes, final double seconds, final double microseconds, final double milliseconds, final double nanoseconds, DynamicObject relativeToP,
-                    DynamicObject calendar) {
+                    final double hours, final double minutes, final double seconds, final double microseconds, final double milliseconds, final double nanoseconds, JSDynamicObject relativeToP,
+                    JSDynamicObject calendar) {
         double weeks = weeksP;
         double days = daysP;
-        DynamicObject relativeTo = relativeToP;
+        JSDynamicObject relativeTo = relativeToP;
 
         double sign = (days >= 0) ? 1 : -1;
-        DynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(ctx, 0, 0, sign, 0, 0, 0, 0, 0, 0, 0);
+        JSDynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(ctx, 0, 0, sign, 0, 0, 0, 0, 0, 0, 0);
         JSTemporalRelativeDateRecord moveResult = moveRelativeDate(calendar, relativeTo, oneWeek);
         relativeTo = moveResult.getRelativeTo();
         double oneWeekDays = moveResult.getDays();
@@ -254,24 +254,24 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
     }
 
     private JSTemporalDurationRecord getUnitMonth(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double monthsP, final double weeks, final double daysP,
-                    final double hours, final double minutes, final double seconds, final double microseconds, final double milliseconds, final double nanoseconds, DynamicObject relativeToP,
-                    DynamicObject calendar) {
+                    final double hours, final double minutes, final double seconds, final double microseconds, final double milliseconds, final double nanoseconds, JSDynamicObject relativeToP,
+                    JSDynamicObject calendar) {
         double months = monthsP;
         double days = daysP;
-        DynamicObject relativeTo = relativeToP;
+        JSDynamicObject relativeTo = relativeToP;
 
-        DynamicObject yearsMonths = JSTemporalDuration.createTemporalDuration(ctx, years, months, 0, 0, 0, 0, 0, 0, 0, 0);
+        JSDynamicObject yearsMonths = JSTemporalDuration.createTemporalDuration(ctx, years, months, 0, 0, 0, 0, 0, 0, 0, 0);
         Object dateAdd = JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);
-        DynamicObject firstAddOptions = JSOrdinary.createWithNullPrototype(ctx);
-        DynamicObject yearsMonthsLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsMonths, firstAddOptions, dateAdd);
-        DynamicObject yearsMonthsWeeks = JSTemporalDuration.createTemporalDuration(ctx, years, months, weeks, 0, 0, 0, 0, 0, 0, 0);
-        DynamicObject secondAddOptions = JSOrdinary.createWithNullPrototype(ctx);
-        DynamicObject yearsMonthsWeeksLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsMonthsWeeks, secondAddOptions, dateAdd);
+        JSDynamicObject firstAddOptions = JSOrdinary.createWithNullPrototype(ctx);
+        JSDynamicObject yearsMonthsLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsMonths, firstAddOptions, dateAdd);
+        JSDynamicObject yearsMonthsWeeks = JSTemporalDuration.createTemporalDuration(ctx, years, months, weeks, 0, 0, 0, 0, 0, 0, 0);
+        JSDynamicObject secondAddOptions = JSOrdinary.createWithNullPrototype(ctx);
+        JSDynamicObject yearsMonthsWeeksLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsMonthsWeeks, secondAddOptions, dateAdd);
         double weeksInDays = TemporalUtil.daysUntil(yearsMonthsLater, yearsMonthsWeeksLater);
         relativeTo = yearsMonthsLater;
         days = days + weeksInDays;
         double sign = (days >= 0) ? 1 : -1;
-        DynamicObject oneMonth = JSTemporalDuration.createTemporalDuration(ctx, 0, sign, 0, 0, 0, 0, 0, 0, 0, 0);
+        JSDynamicObject oneMonth = JSTemporalDuration.createTemporalDuration(ctx, 0, sign, 0, 0, 0, 0, 0, 0, 0, 0);
         JSTemporalRelativeDateRecord moveResult = moveRelativeDate(calendar, relativeTo, oneMonth);
         relativeTo = moveResult.getRelativeTo();
         double oneMonthDays = moveResult.getDays();
@@ -298,41 +298,41 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
     }
 
     private JSTemporalDurationRecord getUnitYear(final double increment, TemporalUtil.RoundingMode roundingMode, final double yearsP, final double months, final double weeks, final double daysP,
-                    final double hours, final double minutes, final double seconds, final double microseconds, final double milliseconds, final double nanoseconds, DynamicObject relativeToP,
-                    DynamicObject calendar) {
+                    final double hours, final double minutes, final double seconds, final double microseconds, final double milliseconds, final double nanoseconds, JSDynamicObject relativeToP,
+                    JSDynamicObject calendar) {
         double years = yearsP;
         double days = daysP;
-        DynamicObject relativeTo = relativeToP;
+        JSDynamicObject relativeTo = relativeToP;
 
-        DynamicObject yearsDuration = JSTemporalDuration.createTemporalDuration(ctx, years, 0, 0, 0, 0, 0, 0, 0, 0, 0, errorBranch);
+        JSDynamicObject yearsDuration = JSTemporalDuration.createTemporalDuration(ctx, years, 0, 0, 0, 0, 0, 0, 0, 0, 0, errorBranch);
         Object dateAdd = JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);
-        DynamicObject firstAddOptions = JSOrdinary.createWithNullPrototype(ctx);
-        DynamicObject yearsLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsDuration, firstAddOptions, dateAdd);
-        DynamicObject yearsMonthsWeeks = JSTemporalDuration.createTemporalDuration(ctx, years, months, weeks, 0, 0, 0, 0, 0, 0, 0, errorBranch);
+        JSDynamicObject firstAddOptions = JSOrdinary.createWithNullPrototype(ctx);
+        JSDynamicObject yearsLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsDuration, firstAddOptions, dateAdd);
+        JSDynamicObject yearsMonthsWeeks = JSTemporalDuration.createTemporalDuration(ctx, years, months, weeks, 0, 0, 0, 0, 0, 0, 0, errorBranch);
 
-        DynamicObject secondAddOptions = JSOrdinary.createWithNullPrototype(ctx);
-        DynamicObject yearsMonthsWeeksLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsMonthsWeeks, secondAddOptions, dateAdd);
+        JSDynamicObject secondAddOptions = JSOrdinary.createWithNullPrototype(ctx);
+        JSDynamicObject yearsMonthsWeeksLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsMonthsWeeks, secondAddOptions, dateAdd);
         double monthsWeeksInDays = TemporalUtil.daysUntil(yearsLater, yearsMonthsWeeksLater);
         relativeTo = yearsLater;
         days = days + monthsWeeksInDays;
-        DynamicObject daysDuration = JSTemporalDuration.createTemporalDuration(ctx, 0, 0, 0, days, 0, 0, 0, 0, 0, 0, errorBranch);
-        DynamicObject thirdAddOptions = JSOrdinary.createWithNullPrototype(ctx);
-        DynamicObject daysLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, daysDuration, thirdAddOptions, dateAdd);
-        DynamicObject untilOptions = JSOrdinary.createWithNullPrototype(ctx);
+        JSDynamicObject daysDuration = JSTemporalDuration.createTemporalDuration(ctx, 0, 0, 0, days, 0, 0, 0, 0, 0, 0, errorBranch);
+        JSDynamicObject thirdAddOptions = JSOrdinary.createWithNullPrototype(ctx);
+        JSDynamicObject daysLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, daysDuration, thirdAddOptions, dateAdd);
+        JSDynamicObject untilOptions = JSOrdinary.createWithNullPrototype(ctx);
         TemporalUtil.createDataPropertyOrThrow(ctx, untilOptions, LARGEST_UNIT, YEAR);
         JSTemporalDurationObject timePassed = TemporalUtil.calendarDateUntil(calendar, relativeTo, daysLater, untilOptions);
         double yearsPassed = dtol(timePassed.getYears());
         years = years + yearsPassed;
-        DynamicObject oldRelativeTo = relativeTo;
+        JSDynamicObject oldRelativeTo = relativeTo;
 
         yearsDuration = JSTemporalDuration.createTemporalDuration(ctx, yearsPassed, 0, 0, 0, 0, 0, 0, 0, 0, 0, errorBranch);
-        DynamicObject fourthAddOptions = JSOrdinary.createWithNullPrototype(ctx);
+        JSDynamicObject fourthAddOptions = JSOrdinary.createWithNullPrototype(ctx);
         relativeTo = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsDuration, fourthAddOptions, dateAdd);
         double daysPassed = TemporalUtil.daysUntil(oldRelativeTo, relativeTo);
         days = days - daysPassed;
 
         double sign = (days >= 0) ? 1 : -1;
-        DynamicObject oneYear = JSTemporalDuration.createTemporalDuration(ctx, sign, 0, 0, 0, 0, 0, 0, 0, 0, 0, errorBranch);
+        JSDynamicObject oneYear = JSTemporalDuration.createTemporalDuration(ctx, sign, 0, 0, 0, 0, 0, 0, 0, 0, 0, errorBranch);
         JSTemporalRelativeDateRecord moveResult = moveRelativeDate(calendar, relativeTo, oneYear);
 
         double oneYearDays = moveResult.getDays();
@@ -347,7 +347,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         return days + TemporalUtil.bitod(result.getDays().add(result.getNanoseconds().divide(result.getDayLength().abs())));
     }
 
-    private JSTemporalRelativeDateRecord moveRelativeDate(DynamicObject calendar, DynamicObject relativeTo, DynamicObject oneMonth) {
+    private JSTemporalRelativeDateRecord moveRelativeDate(JSDynamicObject calendar, JSDynamicObject relativeTo, JSDynamicObject oneMonth) {
         if (moveRelativeDateNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             moveRelativeDateNode = insert(TemporalMoveRelativeDateNode.create(ctx));

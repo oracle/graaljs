@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,18 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public class JSTemporalZonedDateTimeObject extends JSNonProxyObject implements TemporalCalendar {
 
     private final BigInt nanoseconds; // 6.4. A BigInt value
-    private final DynamicObject timeZone;
-    private final DynamicObject calendar;
+    private final JSDynamicObject timeZone;
+    private final JSDynamicObject calendar;
 
-    protected JSTemporalZonedDateTimeObject(Shape shape, BigInt nanoseconds, DynamicObject timeZone, DynamicObject calendar) {
+    protected JSTemporalZonedDateTimeObject(Shape shape, BigInt nanoseconds, JSDynamicObject timeZone, JSDynamicObject calendar) {
         super(shape);
         this.nanoseconds = nanoseconds;
         this.calendar = calendar;
@@ -63,11 +63,11 @@ public class JSTemporalZonedDateTimeObject extends JSNonProxyObject implements T
     }
 
     @Override
-    public DynamicObject getCalendar() {
+    public JSDynamicObject getCalendar() {
         return calendar;
     }
 
-    public DynamicObject getTimeZone() {
+    public JSDynamicObject getTimeZone() {
         return timeZone;
     }
 }

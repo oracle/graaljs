@@ -45,7 +45,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLen
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResult;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResultOriginalInput;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -67,11 +66,11 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
         super(integrityLevel, cache);
     }
 
-    private static Object[] getArray(DynamicObject object) {
+    private static Object[] getArray(JSDynamicObject object) {
         return (Object[]) arrayGetArray(object);
     }
 
-    public static Object materializeGroup(JSContext context, TRegexUtil.TRegexMaterializeResultNode materializeResultNode, DynamicObject object, int index,
+    public static Object materializeGroup(JSContext context, TRegexUtil.TRegexMaterializeResultNode materializeResultNode, JSDynamicObject object, int index,
                     DynamicObjectLibrary lazyRegexResultNode, DynamicObjectLibrary lazyRegexResultOriginalInputNode) {
         Object[] internalArray = getArray(object);
         if (internalArray[index] == null) {
@@ -81,7 +80,7 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
         return internalArray[index];
     }
 
-    public ScriptArray createWritable(JSContext context, TRegexUtil.TRegexMaterializeResultNode materializeResultNode, DynamicObject object, long index, Object value) {
+    public ScriptArray createWritable(JSContext context, TRegexUtil.TRegexMaterializeResultNode materializeResultNode, JSDynamicObject object, long index, Object value) {
         for (int i = 0; i < lengthInt(object); i++) {
             materializeGroup(context, materializeResultNode, object, i, DynamicObjectLibrary.getUncached(), DynamicObjectLibrary.getUncached());
         }
@@ -94,7 +93,7 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
     }
 
     @Override
-    public Object getElementInBounds(DynamicObject object, int index) {
+    public Object getElementInBounds(JSDynamicObject object, int index) {
         final Object[] internalArray = getArray(object);
         if (internalArray[index] == null) {
             internalArray[index] = TRegexUtil.TRegexMaterializeResultNode.getUncached().materializeGroup(
@@ -105,17 +104,17 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
     }
 
     @Override
-    public boolean hasElement(DynamicObject object, long index) {
+    public boolean hasElement(JSDynamicObject object, long index) {
         return index >= 0 && index < lengthInt(object);
     }
 
     @Override
-    public int lengthInt(DynamicObject object) {
+    public int lengthInt(JSDynamicObject object) {
         return (int) arrayGetLength(object);
     }
 
     @Override
-    public AbstractObjectArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile) {
+    public AbstractObjectArray createWriteableObject(JSDynamicObject object, long index, Object value, ProfileHolder profile) {
         Object[] array = TRegexUtil.TRegexMaterializeResultNode.getUncached().materializeFull(
                         JavaScriptLanguage.get(null).getJSContext(), arrayGetRegexResult(object, DynamicObjectLibrary.getUncached()), lengthInt(object),
                         arrayGetRegexResultOriginalInput(object, DynamicObjectLibrary.getUncached()));
@@ -128,42 +127,42 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractObjectArray createWriteableInt(DynamicObject object, long index, int value, ProfileHolder profile) {
+    public AbstractObjectArray createWriteableInt(JSDynamicObject object, long index, int value, ProfileHolder profile) {
         return createWriteableObject(object, index, value, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableDouble(DynamicObject object, long index, double value, ProfileHolder profile) {
+    public AbstractObjectArray createWriteableDouble(JSDynamicObject object, long index, double value, ProfileHolder profile) {
         return createWriteableObject(object, index, value, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableJSObject(DynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
+    public AbstractObjectArray createWriteableJSObject(JSDynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
         return createWriteableObject(object, index, value, profile);
     }
 
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+    public ScriptArray deleteElementImpl(JSDynamicObject object, long index, boolean strict) {
         return createWriteableObject(object, index, null, ProfileHolder.empty()).deleteElementImpl(object, index, strict);
     }
 
     @Override
-    public ScriptArray setLengthImpl(DynamicObject object, long length, ProfileHolder profile) {
+    public ScriptArray setLengthImpl(JSDynamicObject object, long length, ProfileHolder profile) {
         return createWriteableObject(object, length - 1, null, ProfileHolder.empty()).setLengthImpl(object, length, profile);
     }
 
     @Override
-    public ScriptArray addRangeImpl(DynamicObject object, long offset, int size) {
+    public ScriptArray addRangeImpl(JSDynamicObject object, long offset, int size) {
         return createWriteableObject(object, offset, null, ProfileHolder.empty()).addRangeImpl(object, offset, size);
     }
 
     @Override
-    public ScriptArray removeRangeImpl(DynamicObject object, long start, long end) {
+    public ScriptArray removeRangeImpl(JSDynamicObject object, long start, long end) {
         return createWriteableObject(object, start, null, ProfileHolder.empty()).removeRangeImpl(object, start, end);
     }
 
     @Override
-    public Object cloneArray(DynamicObject object) {
+    public Object cloneArray(JSDynamicObject object) {
         return getArray(object);
     }
 

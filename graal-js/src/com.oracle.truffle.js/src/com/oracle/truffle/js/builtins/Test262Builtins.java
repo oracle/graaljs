@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugTypedArrayDetachBufferNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentBroadcastNodeGen;
@@ -70,6 +69,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTest262;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
@@ -181,7 +181,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
 
         @Specialization
         protected Object createRealm() {
-            DynamicObject newGlobalObj = createChildRealm().getGlobalObject();
+            JSDynamicObject newGlobalObj = createChildRealm().getGlobalObject();
             return JSObject.get(newGlobalObj, JSTest262.GLOBAL_PROPERTY_NAME);
         }
 

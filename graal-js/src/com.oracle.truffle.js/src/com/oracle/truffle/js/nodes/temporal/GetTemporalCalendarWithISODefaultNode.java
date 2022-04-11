@@ -43,13 +43,13 @@ package com.oracle.truffle.js.nodes.temporal;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalCalendar;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -74,15 +74,15 @@ public abstract class GetTemporalCalendarWithISODefaultNode extends JavaScriptBa
         return GetTemporalCalendarWithISODefaultNodeGen.create(context);
     }
 
-    public abstract DynamicObject executeDynamicObject(Object temporalTimeZoneLike);
+    public abstract JSDynamicObject executeDynamicObject(Object temporalTimeZoneLike);
 
     @Specialization
-    protected DynamicObject getTemporalCalendarWithISODefault(Object item,
+    protected JSDynamicObject getTemporalCalendarWithISODefault(Object item,
                     @Cached BranchProfile errorBranch) {
         if (isCalendarProfile.profile(item instanceof TemporalCalendar)) {
             return ((TemporalCalendar) item).getCalendar();
         } else {
-            Object calendar = getCalendar((DynamicObject) item);
+            Object calendar = getCalendar((JSDynamicObject) item);
             assert calendar != null;
             if (isNullishProfile.profile(calendar == Undefined.instance)) {
                 return TemporalUtil.getISO8601Calendar(ctx, getRealm(), errorBranch);
@@ -92,7 +92,7 @@ public abstract class GetTemporalCalendarWithISODefaultNode extends JavaScriptBa
         }
     }
 
-    private DynamicObject toTemporalCalendar(Object obj) {
+    private JSDynamicObject toTemporalCalendar(Object obj) {
         if (toTemporalCalendarNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toTemporalCalendarNode = insert(ToTemporalCalendarNode.create(ctx));
@@ -100,7 +100,7 @@ public abstract class GetTemporalCalendarWithISODefaultNode extends JavaScriptBa
         return toTemporalCalendarNode.executeDynamicObject(obj);
     }
 
-    private Object getCalendar(DynamicObject obj) {
+    private Object getCalendar(JSDynamicObject obj) {
         if (getCalendarNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getCalendarNode = insert(PropertyGetNode.create(TemporalConstants.CALENDAR, false, ctx));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.util.Locale;
 
 import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltins;
@@ -54,9 +53,12 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -81,14 +83,14 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject localePrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject localePrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, localePrototype, ctor);
         JSObjectUtil.putToStringTag(localePrototype, TO_STRING_TAG);
         JSObjectUtil.putFunctionsFromContainer(realm, localePrototype, LocalePrototypeBuiltins.BUILTINS);
@@ -116,12 +118,12 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         return localePrototype;
     }
 
-    private static void putLocalePropertyAccessor(JSRealm realm, DynamicObject prototype, TruffleString name) {
+    private static void putLocalePropertyAccessor(JSRealm realm, JSDynamicObject prototype, TruffleString name) {
         JSObjectUtil.putBuiltinAccessorProperty(prototype, name, realm.lookupAccessor(LocalePrototypeBuiltins.BUILTINS, name));
     }
 
     @Override
-    public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext ctx, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
     }
 
@@ -129,12 +131,11 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         return INSTANCE.createConstructorAndPrototype(realm);
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm) {
+    public static JSLocaleObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getLocaleFactory();
         JSLocaleObject obj = new JSLocaleObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
-        assert isJSLocale(obj);
         return obj;
     }
 
@@ -243,13 +244,13 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         state.numberingSystem = locale.getUnicodeLocaleType("nu");
     }
 
-    public static InternalState getInternalState(DynamicObject localeObject) {
+    public static InternalState getInternalState(JSDynamicObject localeObject) {
         assert isJSLocale(localeObject);
         return ((JSLocaleObject) localeObject).getInternalState();
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getLocalePrototype();
     }
 

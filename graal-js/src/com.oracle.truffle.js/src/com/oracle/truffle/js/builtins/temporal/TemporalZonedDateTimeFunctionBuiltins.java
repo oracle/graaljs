@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
@@ -55,6 +54,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -101,10 +101,10 @@ public class TemporalZonedDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
         }
 
         @Specialization
-        protected DynamicObject from(Object item, Object optionsParam,
+        protected JSDynamicObject from(Object item, Object optionsParam,
                         @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime,
                         @Cached TruffleString.EqualNode equalNode) {
-            DynamicObject options = getOptionsObject(optionsParam);
+            JSDynamicObject options = getOptionsObject(optionsParam);
             if (JSTemporalZonedDateTime.isJSTemporalZonedDateTime(item)) {
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
                 TemporalUtil.toTemporalOverflow(options, getOptionNode());

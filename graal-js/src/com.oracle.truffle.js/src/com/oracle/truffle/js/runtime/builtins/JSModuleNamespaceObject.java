@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.Map;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -83,7 +82,7 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
         return exports;
     }
 
-    public static DynamicObject create(JSRealm realm, JSObjectFactory factory, JSModuleRecord module, Map<TruffleString, ExportResolution> exports) {
+    public static JSModuleNamespaceObject create(JSRealm realm, JSObjectFactory factory, JSModuleRecord module, Map<TruffleString, ExportResolution> exports) {
         return factory.initProto(new JSModuleNamespaceObject(factory.getShape(realm), module, exports), realm);
     }
 

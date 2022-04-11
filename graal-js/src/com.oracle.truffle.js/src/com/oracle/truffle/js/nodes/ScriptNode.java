@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -52,6 +51,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 
 public final class ScriptNode {
 
@@ -82,7 +82,7 @@ public final class ScriptNode {
     }
 
     public Object[] argumentsToRunWithThisObject(JSRealm realm, Object thisObj) {
-        DynamicObject functionObj = JSFunction.create(realm, functionData);
+        JSFunctionObject functionObj = JSFunction.create(realm, functionData);
         return JSArguments.createZeroArg(thisObj, functionObj);
     }
 
@@ -91,12 +91,12 @@ public final class ScriptNode {
     }
 
     public Object[] argumentsToRunWithThisObjectWithArguments(JSRealm realm, Object thisObj, Object[] args) {
-        DynamicObject functionObj = JSFunction.create(realm, functionData);
+        JSFunctionObject functionObj = JSFunction.create(realm, functionData);
         return JSArguments.create(thisObj, functionObj, args);
     }
 
     public Object runEval(IndirectCallNode callNode, JSRealm realm, Object thisObj, MaterializedFrame materializedFrame) {
-        DynamicObject functionObj = JSFunction.create(realm, getFunctionData(), materializedFrame);
+        JSFunctionObject functionObj = JSFunction.create(realm, getFunctionData(), materializedFrame);
         return callNode.call(callTarget, JSArguments.createZeroArg(thisObj, functionObj));
     }
 

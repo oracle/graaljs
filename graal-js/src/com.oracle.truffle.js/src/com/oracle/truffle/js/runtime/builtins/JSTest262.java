@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,13 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.PerformanceBuiltins;
 import com.oracle.truffle.js.builtins.Test262Builtins;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSTest262 {
@@ -57,20 +57,20 @@ public final class JSTest262 {
     private JSTest262() {
     }
 
-    public static DynamicObject create(JSRealm realm) {
-        DynamicObject obj = JSOrdinary.createInit(realm);
+    public static JSObject create(JSRealm realm) {
+        JSObject obj = JSOrdinary.createInit(realm);
         JSObjectUtil.putDataProperty(obj, Strings.CREATE_REALM, realm.lookupFunction(Test262Builtins.BUILTINS, Strings.CREATE_REALM), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(obj, Strings.DETACH_ARRAY_BUFFER, realm.lookupFunction(Test262Builtins.BUILTINS, Strings.DETACH_ARRAY_BUFFER), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(obj, Strings.EVAL_SCRIPT, realm.lookupFunction(Test262Builtins.BUILTINS, Strings.EVAL_SCRIPT), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(obj, Strings.GLOBAL, realm.getGlobalObject(), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(obj, Strings.GC, realm.lookupFunction(Test262Builtins.BUILTINS, Strings.GC), JSAttributes.getDefaultNotEnumerable());
-        DynamicObject agent = createAgent(realm);
+        JSObject agent = createAgent(realm);
         JSObjectUtil.putDataProperty(obj, Strings.AGENT, agent, JSAttributes.getDefaultNotEnumerable());
         return obj;
     }
 
-    private static DynamicObject createAgent(JSRealm realm) {
-        DynamicObject agent = JSOrdinary.createInit(realm);
+    private static JSObject createAgent(JSRealm realm) {
+        JSObject agent = JSOrdinary.createInit(realm);
         JSObjectUtil.putDataProperty(agent, Strings.START, realm.lookupFunction(Test262Builtins.BUILTINS, Strings.AGENT_START), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(agent, Strings.BROADCAST, realm.lookupFunction(Test262Builtins.BUILTINS, Strings.AGENT_BROADCAST), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(agent, Strings.GET_REPORT, realm.lookupFunction(Test262Builtins.BUILTINS, Strings.AGENT_GET_REPORT), JSAttributes.getDefaultNotEnumerable());

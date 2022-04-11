@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins.intl;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.SegmenterPrototypeBuiltinsFactory.JSSegmenterResolvedOptionsNodeGen;
@@ -98,13 +97,13 @@ public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.Switch
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSSegmenter(segmenter)")
-        public Object doResolvedOptions(DynamicObject segmenter) {
+        @Specialization
+        public Object doResolvedOptions(JSSegmenterObject segmenter) {
             return JSSegmenter.resolvedOptions(getContext(), getRealm(), segmenter);
         }
 
         @Specialization(guards = "!isJSSegmenter(bummer)")
-        public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
+        public Object doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeErrorSegmenterExpected();
         }
     }
@@ -124,7 +123,7 @@ public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization(guards = "!isJSSegmenter(bummer)")
         @SuppressWarnings("unused")
-        public void doOther(Object bummer, Object value) {
+        public Object doOther(Object bummer, Object value) {
             throw Errors.createTypeErrorSegmenterExpected();
         }
     }

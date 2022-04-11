@@ -49,7 +49,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -63,6 +62,7 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDictionary;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -94,11 +94,11 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         return new CreateDictionaryObjectNode(context);
     }
 
-    public DynamicObject execute(VirtualFrame frame) {
+    public JSDynamicObject execute(VirtualFrame frame) {
         return executeWithRealm(frame, getRealm());
     }
 
-    public abstract DynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm);
+    public abstract JSDynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm);
 
     protected abstract CreateObjectNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);
 
@@ -112,7 +112,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public DynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
+        public JSDynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
             return JSOrdinary.create(context, getRealm());
         }
 
@@ -130,15 +130,15 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
             this.prototypeExpression = prototypeExpression;
         }
 
-        public abstract DynamicObject execute(VirtualFrame frame, DynamicObject prototype);
+        public abstract JSDynamicObject execute(VirtualFrame frame, JSDynamicObject prototype);
 
-        public final DynamicObject execute(DynamicObject prototype) {
+        public final JSDynamicObject execute(JSDynamicObject prototype) {
             assert prototypeExpression == null;
             return execute(null, prototype);
         }
 
         @Override
-        public final DynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
+        public final JSDynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
             return execute(frame);
         }
 
@@ -160,8 +160,8 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = {"!context.isMultiContext()", "isValidPrototype(cachedPrototype)", "prototype == cachedPrototype"}, limit = "1")
-        final DynamicObject doCachedPrototype(@SuppressWarnings("unused") DynamicObject prototype,
-                        @Cached("prototype") @SuppressWarnings("unused") DynamicObject cachedPrototype,
+        final JSDynamicObject doCachedPrototype(@SuppressWarnings("unused") JSDynamicObject prototype,
+                        @Cached("prototype") @SuppressWarnings("unused") JSDynamicObject cachedPrototype,
                         @Cached("getProtoChildShape(cachedPrototype)") Shape protoChildShape) {
             if (isPromiseObject()) {
                 return JSPromise.create(context, protoChildShape);
@@ -173,27 +173,27 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = {"isOrdinaryObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
-        final DynamicObject doOrdinaryInstancePrototype(DynamicObject prototype,
+        final JSDynamicObject doOrdinaryInstancePrototype(JSDynamicObject prototype,
                         @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode) {
-            DynamicObject object = JSOrdinary.createWithoutPrototype(context);
+            JSDynamicObject object = JSOrdinary.createWithoutPrototype(context);
             Properties.put(setProtoNode, object, JSObject.HIDDEN_PROTO, prototype);
             return object;
         }
 
         @Specialization(guards = {"isPromiseObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
-        final DynamicObject doPromiseInstancePrototype(DynamicObject prototype,
+        final JSDynamicObject doPromiseInstancePrototype(JSDynamicObject prototype,
                         @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode) {
-            DynamicObject object = JSPromise.createWithoutPrototype(context);
+            JSDynamicObject object = JSPromise.createWithoutPrototype(context);
             Properties.put(setProtoNode, object, JSObject.HIDDEN_PROTO, prototype);
             return object;
         }
 
         @Specialization(guards = {"isOrdinaryObject() || isPromiseObject()", "!isValidPrototype(prototype)"})
-        final DynamicObject doNotJSObjectOrNull(@SuppressWarnings("unused") Object prototype) {
+        final JSDynamicObject doNotJSObjectOrNull(@SuppressWarnings("unused") Object prototype) {
             return JSOrdinary.create(context, getRealm());
         }
 
-        final Shape getProtoChildShape(DynamicObject prototype) {
+        final Shape getProtoChildShape(JSDynamicObject prototype) {
             return prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, jsclass, context);
         }
 
@@ -217,7 +217,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public DynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
+        public JSDynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
             return JSDictionary.create(context, getRealm());
         }
 

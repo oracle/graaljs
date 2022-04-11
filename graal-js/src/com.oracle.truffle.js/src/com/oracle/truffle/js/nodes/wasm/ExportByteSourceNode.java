@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.wasm;
 
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -114,7 +113,7 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
     }
 
     private Object exportBuffer(JSArrayBufferObject arrayBuffer, int offset, int length) {
-        DynamicObject buffer = arrayBuffer;
+        JSArrayBufferObject buffer = arrayBuffer;
         if (emptyByteSouceMessage != null && length == 0) {
             throw Errors.createCompileError(emptyByteSouceMessage, this);
         }

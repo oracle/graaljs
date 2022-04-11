@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.SetIteratorPrototypeBuiltinsFactory.SetIteratorNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
@@ -59,6 +58,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
@@ -119,7 +119,7 @@ public final class SetIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization(guards = "isSetIterator(iterator)")
-        protected DynamicObject doSetIterator(VirtualFrame frame, DynamicObject iterator) {
+        protected JSDynamicObject doSetIterator(VirtualFrame frame, JSDynamicObject iterator) {
             Object set = getIteratedObjectNode.getValue(iterator);
             if (detachedProf.profile(set == Undefined.instance)) {
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
@@ -146,7 +146,7 @@ public final class SetIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @SuppressWarnings("unused")
         @Fallback
-        protected DynamicObject doIncompatibleReceiver(Object iterator) {
+        protected JSDynamicObject doIncompatibleReceiver(Object iterator) {
             throw Errors.createTypeError("not a Set Iterator");
         }
 
@@ -155,7 +155,7 @@ public final class SetIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
             return isSetIteratorNode.executeHasHiddenKey(thisObj);
         }
 
-        private int getIterationKind(DynamicObject iterator) {
+        private int getIterationKind(JSDynamicObject iterator) {
             try {
                 return getIterationKindNode.getValueInt(iterator);
             } catch (UnexpectedResultException e) {

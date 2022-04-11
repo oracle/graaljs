@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.BooleanPrototypeBuiltins;
@@ -53,6 +52,8 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
@@ -69,17 +70,16 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
     private JSBoolean() {
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm, boolean value) {
-        DynamicObject obj = JSBooleanObject.create(realm, context.getBooleanFactory(), value);
-        assert isJSBoolean(obj);
+    public static JSBooleanObject create(JSContext context, JSRealm realm, boolean value) {
+        JSBooleanObject obj = JSBooleanObject.create(realm, context.getBooleanFactory(), value);
         return context.trackAllocation(obj);
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
-        DynamicObject booleanPrototype = JSBooleanObject.create(protoShape, false);
+        JSObject booleanPrototype = JSBooleanObject.create(protoShape, false);
         JSObjectUtil.setOrVerifyPrototype(ctx, booleanPrototype, realm.getObjectPrototype());
 
         JSObjectUtil.putConstructorProperty(ctx, booleanPrototype, ctor);
@@ -88,7 +88,7 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         return initialShape;
     }
@@ -97,7 +97,7 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
         return INSTANCE.createConstructorAndPrototype(realm);
     }
 
-    public static boolean valueOf(DynamicObject obj) {
+    public static boolean valueOf(JSDynamicObject obj) {
         assert isJSBoolean(obj);
         return ((JSBooleanObject) obj).getBooleanValue();
     }
@@ -112,12 +112,12 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public TruffleString getBuiltinToStringTag(DynamicObject object) {
+    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
         return getClassName(object);
     }
 
@@ -128,7 +128,7 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
 
     @TruffleBoundary
     @Override
-    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return Strings.concatAll(Strings.BRACKET_BOOLEAN_SPC, Strings.fromBoolean(valueOf(obj)), Strings.BRACKET_CLOSE);
         } else {
@@ -139,7 +139,7 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getBooleanPrototype();
     }
 }

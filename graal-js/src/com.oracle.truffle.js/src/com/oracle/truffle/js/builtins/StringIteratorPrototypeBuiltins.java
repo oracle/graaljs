@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.StringIteratorPrototypeBuiltinsFactory.StringIteratorNextNodeGen;
@@ -60,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -119,7 +119,7 @@ public final class StringIteratorPrototypeBuiltins extends JSBuiltinsContainer.S
         }
 
         @Specialization(guards = "isStringIterator(iterator)")
-        protected DynamicObject doStringIterator(VirtualFrame frame, DynamicObject iterator,
+        protected JSDynamicObject doStringIterator(VirtualFrame frame, JSDynamicObject iterator,
                         @Cached TruffleString.FromCodePointNode fromCodePointNode,
                         @Cached TruffleString.SubstringByteIndexNode substringNode) {
             Object iteratedString = getIteratedObjectNode.getValue(iterator);
@@ -149,7 +149,7 @@ public final class StringIteratorPrototypeBuiltins extends JSBuiltinsContainer.S
 
         @SuppressWarnings("unused")
         @Fallback
-        protected DynamicObject doIncompatibleReceiver(Object iterator) {
+        protected JSDynamicObject doIncompatibleReceiver(Object iterator) {
             throw Errors.createTypeError("not a String Iterator");
         }
 
@@ -158,7 +158,7 @@ public final class StringIteratorPrototypeBuiltins extends JSBuiltinsContainer.S
             return isStringIteratorNode.executeHasHiddenKey(thisObj);
         }
 
-        private int getNextIndex(DynamicObject iterator) {
+        private int getNextIndex(JSDynamicObject iterator) {
             try {
                 return getNextIndexNode.getValueInt(iterator);
             } catch (UnexpectedResultException e) {

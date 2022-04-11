@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.array.dyn;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -49,7 +48,7 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
 
     private static final ContiguousJSObjectArray CONTIGUOUS_JSOBJECT_ARRAY = new ContiguousJSObjectArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
 
-    public static ContiguousJSObjectArray makeContiguousJSObjectArray(DynamicObject object, long length, JSDynamicObject[] array, long indexOffset, int arrayOffset, int usedLength,
+    public static ContiguousJSObjectArray makeContiguousJSObjectArray(JSDynamicObject object, long length, JSDynamicObject[] array, long indexOffset, int arrayOffset, int usedLength,
                     int integrityLevel) {
         ContiguousJSObjectArray arrayType = createContiguousJSObjectArray().setIntegrityLevel(integrityLevel);
         setArrayProperties(object, array, length, usedLength, indexOffset, arrayOffset);
@@ -65,22 +64,22 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
     }
 
     @Override
-    protected int prepareInBounds(DynamicObject object, int index, ProfileHolder profile) {
+    protected int prepareInBounds(JSDynamicObject object, int index, ProfileHolder profile) {
         return prepareInBoundsContiguous(object, index, profile);
     }
 
     @Override
-    protected int prepareSupported(DynamicObject object, int index, ProfileHolder profile) {
+    protected int prepareSupported(JSDynamicObject object, int index, ProfileHolder profile) {
         return prepareSupportedContiguous(object, index, profile);
     }
 
     @Override
-    public boolean isSupported(DynamicObject object, long index) {
+    public boolean isSupported(JSDynamicObject object, long index) {
         return isSupportedContiguous(object, index);
     }
 
     @Override
-    public HolesJSObjectArray toHoles(DynamicObject object, long index, Object value) {
+    public HolesJSObjectArray toHoles(JSDynamicObject object, long index, Object value) {
         JSDynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
@@ -95,7 +94,7 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
     }
 
     @Override
-    public ZeroBasedJSObjectArray toNonContiguous(DynamicObject object, int index, Object value, ProfileHolder profile) {
+    public ZeroBasedJSObjectArray toNonContiguous(JSDynamicObject object, int index, Object value, ProfileHolder profile) {
         setSupported(object, index, (JSDynamicObject) value, profile);
 
         JSDynamicObject[] array = getArray(object);
@@ -109,7 +108,7 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
     }
 
     @Override
-    public ContiguousObjectArray toObject(DynamicObject object, long index, Object value) {
+    public ContiguousObjectArray toObject(JSDynamicObject object, long index, Object value) {
         JSDynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
@@ -125,7 +124,7 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
     }
 
     @Override
-    public ScriptArray removeRangeImpl(DynamicObject object, long start, long end) {
+    public ScriptArray removeRangeImpl(JSDynamicObject object, long start, long end) {
         return removeRangeContiguous(object, start, end);
     }
 

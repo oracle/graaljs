@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import com.ibm.icu.text.DisplayContext;
 import com.ibm.icu.text.LocaleDisplayNames;
 import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.DisplayNamesFunctionBuiltins;
@@ -58,11 +57,14 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
@@ -88,14 +90,14 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
     }
 
     @Override
-    public TruffleString getClassName(DynamicObject object) {
+    public TruffleString getClassName(JSDynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject displayNamesPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject displayNamesPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, displayNamesPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, displayNamesPrototype, DisplayNamesPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(displayNamesPrototype, TO_STRING_TAG);
@@ -103,7 +105,7 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
     }
 
     @Override
-    public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
+    public Shape makeInitialShape(JSContext ctx, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
     }
 
@@ -111,12 +113,11 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
         return INSTANCE.createConstructorAndPrototype(realm, DisplayNamesFunctionBuiltins.BUILTINS);
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm) {
+    public static JSDisplayNamesObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getDisplayNamesFactory();
         JSDisplayNamesObject obj = new JSDisplayNamesObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
-        assert isJSDisplayNames(obj);
         return obj;
     }
 
@@ -130,8 +131,8 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
         DateTimePatternGenerator dateTimePatternGenerator;
         DateTimePatternGenerator.DisplayWidth displayWidth;
 
-        DynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
-            DynamicObject result = JSOrdinary.create(context, realm);
+        JSObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
+            JSObject result = JSOrdinary.create(context, realm);
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_TYPE, Strings.fromJavaString(type), JSAttributes.getDefault());
@@ -224,13 +225,13 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
     }
 
     @TruffleBoundary
-    public static DynamicObject resolvedOptions(JSContext context, JSRealm realm, DynamicObject displayNamesObject) {
+    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject displayNamesObject) {
         InternalState state = getInternalState(displayNamesObject);
         return state.toResolvedOptionsObject(context, realm);
     }
 
     @TruffleBoundary
-    public static Object of(DynamicObject displayNamesObject, String code) {
+    public static Object of(JSDynamicObject displayNamesObject, String code) {
         InternalState state = getInternalState(displayNamesObject);
         String type = state.type;
         LocaleDisplayNames displayNames = state.displayNames;
@@ -270,13 +271,13 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
         return (result == null) ? Undefined.instance : Strings.fromJavaString(result);
     }
 
-    public static InternalState getInternalState(DynamicObject displayNamesObject) {
+    public static InternalState getInternalState(JSDynamicObject displayNamesObject) {
         assert isJSDisplayNames(displayNamesObject);
         return ((JSDisplayNamesObject) displayNamesObject).getInternalState();
     }
 
     @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getDisplayNamesPrototype();
     }
 

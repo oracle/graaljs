@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,18 +44,18 @@ import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.CompilableFunction;
 
 public class OrdinaryCreateFromConstructorNode extends JavaScriptNode {
     @Child private GetPrototypeFromConstructorNode getPrototypeFromConstructorNode;
     @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
 
-    protected OrdinaryCreateFromConstructorNode(JSContext context, JavaScriptNode constructorNode, CompilableFunction<JSRealm, DynamicObject> intrinsicDefaultProto, JSClass jsclass) {
+    protected OrdinaryCreateFromConstructorNode(JSContext context, JavaScriptNode constructorNode, CompilableFunction<JSRealm, JSDynamicObject> intrinsicDefaultProto, JSClass jsclass) {
         this.getPrototypeFromConstructorNode = GetPrototypeFromConstructorNode.create(context, constructorNode, intrinsicDefaultProto);
         this.createObjectNode = CreateObjectNode.createWithPrototype(context, null, jsclass);
     }
@@ -65,28 +65,28 @@ public class OrdinaryCreateFromConstructorNode extends JavaScriptNode {
         this.createObjectNode = createObjectNode;
     }
 
-    public static OrdinaryCreateFromConstructorNode create(JSContext context, JavaScriptNode constructorNode, CompilableFunction<JSRealm, DynamicObject> intrinsicDefaultProto, JSClass jsclass) {
+    public static OrdinaryCreateFromConstructorNode create(JSContext context, JavaScriptNode constructorNode, CompilableFunction<JSRealm, JSDynamicObject> intrinsicDefaultProto, JSClass jsclass) {
         return new OrdinaryCreateFromConstructorNode(context, constructorNode, intrinsicDefaultProto, jsclass);
     }
 
     @Override
-    public DynamicObject execute(VirtualFrame frame) {
-        DynamicObject proto = getPrototypeFromConstructorNode.execute(frame);
+    public JSDynamicObject execute(VirtualFrame frame) {
+        JSDynamicObject proto = getPrototypeFromConstructorNode.execute(frame);
         return executeWithPrototype(frame, proto);
     }
 
-    public DynamicObject executeWithConstructor(VirtualFrame frame, DynamicObject constructor) {
-        DynamicObject proto = getPrototypeFromConstructorNode.executeWithConstructor(constructor);
+    public JSDynamicObject executeWithConstructor(VirtualFrame frame, JSDynamicObject constructor) {
+        JSDynamicObject proto = getPrototypeFromConstructorNode.executeWithConstructor(constructor);
         return executeWithPrototype(frame, proto);
     }
 
-    private DynamicObject executeWithPrototype(VirtualFrame frame, DynamicObject proto) {
+    private JSDynamicObject executeWithPrototype(VirtualFrame frame, JSDynamicObject proto) {
         return createObjectNode.execute(frame, proto);
     }
 
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == DynamicObject.class;
+        return clazz == JSDynamicObject.class;
     }
 
     @Override
