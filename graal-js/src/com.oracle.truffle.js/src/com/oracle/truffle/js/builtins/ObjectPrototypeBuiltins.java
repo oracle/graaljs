@@ -86,6 +86,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -282,7 +283,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return formatCacheNode.execute(name);
         }
 
-        private TruffleString getToStringTag(JSDynamicObject thisObj) {
+        private TruffleString getToStringTag(JSObject thisObj) {
             if (getContext().getEcmaScriptVersion() >= 6) {
                 Object toStringTag = getStringTagNode.getValue(thisObj);
                 if (Strings.isTString(toStringTag)) {
@@ -292,8 +293,8 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return null;
         }
 
-        @Specialization(guards = {"isJSObject(thisObj)", "!isJSProxy(thisObj)"})
-        protected TruffleString doJSObject(JSDynamicObject thisObj,
+        @Specialization(guards = {"!isJSProxy(thisObj)"})
+        protected TruffleString doJSObject(JSObject thisObj,
                         @Shared("builtinTag") @Cached GetBuiltinToStringTagNode getBuiltinToStringTagNode) {
             TruffleString toString = getToStringTag(thisObj);
             if (toString == null) {
@@ -306,8 +307,8 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return formatString(toString);
         }
 
-        @Specialization(guards = "isJSProxy(thisObj)")
-        protected TruffleString doJSProxy(JSDynamicObject thisObj,
+        @Specialization
+        protected TruffleString doJSProxy(JSProxyObject thisObj,
                         @Shared("builtinTag") @Cached("create()") GetBuiltinToStringTagNode getBuiltinToStringTagNode) {
             // builtinTag must be read before tag because the latter may revoke the proxy
             TruffleString builtinTag = getBuiltinToStringTagNode.execute(thisObj);
@@ -376,7 +377,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     @ImportStatic({JSObject.class})
     public abstract static class GetBuiltinToStringTagNode extends JavaScriptBaseNode {
 
-        public abstract TruffleString execute(Object object);
+        public abstract TruffleString execute(JSObject object);
 
         public static GetBuiltinToStringTagNode create() {
             return GetBuiltinToStringTagNodeGen.create();
@@ -384,20 +385,15 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "5")
-        protected static TruffleString cached(JSDynamicObject object,
+        protected static TruffleString cached(JSObject object,
                         @Cached("getJSClass(object)") JSClass cachedClass) {
             return cachedClass.getBuiltinToStringTag(object);
         }
 
         @TruffleBoundary
         @Specialization(replaces = "cached")
-        protected static TruffleString uncached(JSDynamicObject object) {
+        protected static TruffleString uncached(JSObject object) {
             return JSObject.getJSClass(object).getBuiltinToStringTag(object);
-        }
-
-        @Specialization(guards = "!isJSDynamicObject(object)")
-        protected static TruffleString foreign(@SuppressWarnings("unused") Object object) {
-            return Strings.UC_FOREIGN;
         }
     }
 
