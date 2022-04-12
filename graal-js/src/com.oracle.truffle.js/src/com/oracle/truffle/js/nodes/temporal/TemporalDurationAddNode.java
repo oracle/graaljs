@@ -129,11 +129,8 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
             JSDynamicObject dateDuration2 = JSTemporalDuration.createTemporalDuration(ctx, y2, mon2, w2, d2, 0, 0, 0, 0, 0, 0, errorBranch);
 
             Object dateAdd = getMethodDateAddNode.executeWithTarget(calendar);
-            JSDynamicObject firstAddOptions = JSOrdinary.createWithNullPrototype(ctx);
-            JSDynamicObject intermediate = calendarDateAdd(calendar, date, dateDuration1, firstAddOptions, dateAdd);
-
-            JSDynamicObject secondAddOptions = JSOrdinary.createWithNullPrototype(ctx);
-            JSDynamicObject end = calendarDateAdd(calendar, intermediate, dateDuration2, secondAddOptions, dateAdd);
+            JSDynamicObject intermediate = calendarDateAdd(calendar, date, dateDuration1, Undefined.instance, dateAdd);
+            JSDynamicObject end = calendarDateAdd(calendar, intermediate, dateDuration2, Undefined.instance, dateAdd);
 
             TemporalUtil.Unit dateLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(TemporalUtil.Unit.DAY, largestUnit);
 

@@ -58,7 +58,6 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeRecord;
@@ -93,7 +92,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
     public abstract JSDynamicObject executeDynamicObject(Object value, JSDynamicObject options);
 
     @Specialization
-    public JSDynamicObject toTemporalZonedDateTime(Object item, JSDynamicObject optionsParam,
+    public JSDynamicObject toTemporalZonedDateTime(Object item, JSDynamicObject options,
                     @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToStringNode toStringNode,
                     @Cached("create()") TemporalGetOptionNode getOptionNode,
@@ -103,11 +102,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                     @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode,
                     @Cached TruffleString.EqualNode equalNode,
                     @Cached("create(ctx)") TemporalDateFromFieldsNode dateFromFieldsNode) {
-        JSDynamicObject options = optionsParam;
         assert options != null;
-        if (options == Undefined.instance) {
-            options = JSOrdinary.createWithNullPrototype(ctx);
-        }
         JSTemporalDateTimeRecord result;
         TruffleString offsetString = null;
         JSDynamicObject timeZone = null;

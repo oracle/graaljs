@@ -51,7 +51,6 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
@@ -78,7 +77,7 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
     public abstract JSTemporalPlainYearMonthObject executeDynamicObject(Object value, JSDynamicObject options);
 
     @Specialization
-    public JSTemporalPlainYearMonthObject toTemporalYearMonth(Object item, JSDynamicObject optParam,
+    public JSTemporalPlainYearMonthObject toTemporalYearMonth(Object item, JSDynamicObject options,
                     @Cached BranchProfile errorBranch,
                     @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToStringNode toStringNode,
@@ -87,11 +86,7 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached("create(ctx)") TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
                     @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode) {
-        JSDynamicObject options = optParam;
-        assert optParam != null;
-        if (optParam == Undefined.instance) {
-            options = JSOrdinary.createWithNullPrototype(ctx);
-        }
+        assert options != null;
         if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = (JSDynamicObject) item;
             if (JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(itemObj)) {
@@ -109,8 +104,7 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
             JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalYearMonthString(string);
             JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(result.getCalendar());
             JSDynamicObject result2 = JSTemporalPlainYearMonth.create(ctx, result.getYear(), result.getMonth(), calendar, result.getDay(), errorBranch);
-            JSDynamicObject canonicalYearMonthOptions = JSOrdinary.createWithNullPrototype(ctx);
-            return yearMonthFromFieldsNode.execute(calendar, result2, canonicalYearMonthOptions);
+            return yearMonthFromFieldsNode.execute(calendar, result2, Undefined.instance);
         }
     }
 }

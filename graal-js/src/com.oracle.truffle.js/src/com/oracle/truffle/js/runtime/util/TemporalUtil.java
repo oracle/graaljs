@@ -1134,7 +1134,6 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-
     public static JSTemporalDateTimeRecord parseTemporalTimeString(TruffleString string) {
         JSTemporalDateTimeRecord result = parseISODateTime(string, true, true);
         if (result.hasCalendar()) {
@@ -1786,12 +1785,8 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static JSTemporalDurationRecord differenceISODateTime(JSContext ctx, EnumerableOwnPropertyNamesNode namesNode, int y1, int mon1, int d1, int h1, int min1, int s1,
                     int ms1, int mus1, int ns1, int y2, int mon2, int d2, int h2, int min2, int s2, int ms2,
-                    int mus2, int ns2, JSDynamicObject calendar, Unit largestUnit, JSDynamicObject optionsParam) {
-        JSDynamicObject options = optionsParam;
-        assert optionsParam != null;
-        if (optionsParam == Undefined.instance) {
-            options = JSOrdinary.createWithNullPrototypeInit(ctx);
-        }
+                    int mus2, int ns2, JSDynamicObject calendar, Unit largestUnit, JSDynamicObject options) {
+        assert options != null;
         JSTemporalDurationRecord timeDifference = differenceTime(h1, min1, s1, ms1, mus1, ns1, h2, min2, s2, ms2, mus2, ns2);
 
         int timeSign = durationSign(0, 0, 0, timeDifference.getDays(), timeDifference.getHours(), timeDifference.getMinutes(), timeDifference.getSeconds(),
@@ -2199,16 +2194,17 @@ public final class TemporalUtil {
         return Unit.NANOSECOND;
     }
 
-    public static JSDynamicObject toPartialDuration(JSDynamicObject temporalDurationLike, JSContext ctx, IsObjectNode isObjectNode, JSToIntegerWithoutRoundingNode toInt, BranchProfile errorBranch) {
+    public static JSDynamicObject toPartialDuration(Object temporalDurationLike, JSContext ctx, IsObjectNode isObjectNode, JSToIntegerWithoutRoundingNode toInt, BranchProfile errorBranch) {
         if (!isObjectNode.executeBoolean(temporalDurationLike)) {
             errorBranch.enter();
             throw Errors.createTypeError("Given duration like is not a object.");
         }
+        JSDynamicObject temporalDurationLikeObj = toJSObject(temporalDurationLike, errorBranch);
         JSRealm realm = JSRealm.get(null);
         JSDynamicObject result = JSOrdinary.create(ctx, realm);
         boolean any = false;
         for (UnitPlural unit : DURATION_PROPERTIES) {
-            Object value = JSObject.get(temporalDurationLike, unit.toTruffleString());
+            Object value = JSObject.get(temporalDurationLikeObj, unit.toTruffleString());
             if (value != Undefined.instance) {
                 any = true;
                 JSObjectUtil.putDataProperty(ctx, result, unit.toTruffleString(), toInt.executeDouble(value));
@@ -2219,14 +2215,6 @@ public final class TemporalUtil {
             throw Errors.createTypeError("Given duration like object has no duration properties.");
         }
         return result;
-    }
-
-    // 7.5.15
-    public static JSTemporalRelativeDateRecord moveRelativeDate(JSContext ctx, JSDynamicObject calendar, JSDynamicObject relativeTo, JSDynamicObject duration) {
-        JSDynamicObject options = JSOrdinary.createWithNullPrototype(ctx);
-        JSTemporalPlainDateObject newDate = calendarDateAdd(calendar, relativeTo, duration, options, Undefined.instance);
-        long days = daysUntil(relativeTo, newDate);
-        return JSTemporalRelativeDateRecord.create(newDate, days);
     }
 
     @TruffleBoundary

@@ -270,7 +270,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected JSDynamicObject with(Object thisObj, JSDynamicObject temporalDurationLike,
+        protected JSDynamicObject with(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") JSToIntegerWithoutRoundingNode toInt) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             JSDynamicObject durationLike = TemporalUtil.toPartialDuration(temporalDurationLike,

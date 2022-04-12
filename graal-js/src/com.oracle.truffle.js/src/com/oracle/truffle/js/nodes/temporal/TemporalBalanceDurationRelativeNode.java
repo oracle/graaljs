@@ -60,6 +60,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalRelativeDateRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
@@ -148,13 +149,12 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
         }
 
         Object dateAdd = getDateAdd(calendar);
-        JSDynamicObject options = JSOrdinary.createWithNullPrototype(ctx);
-        JSDynamicObject newRelativeTo = calendarDateAdd(calendar, relativeTo, oneYear, options, dateAdd);
+        JSDynamicObject newRelativeTo = calendarDateAdd(calendar, relativeTo, oneYear, Undefined.instance, dateAdd);
 
         Object dateUntil = getDateUntil(calendar);
-        options = JSOrdinary.createWithNullPrototype(ctx);
-        JSObjectUtil.putDataProperty(ctx, options, TemporalConstants.LARGEST_UNIT, MONTH);
-        JSTemporalDurationObject untilResult = calendarDateUntil(calendar, relativeTo, newRelativeTo, options, dateUntil);
+        JSObject untilOptions = JSOrdinary.createWithNullPrototype(ctx);
+        JSObjectUtil.putDataProperty(ctx, untilOptions, TemporalConstants.LARGEST_UNIT, MONTH);
+        JSTemporalDurationObject untilResult = calendarDateUntil(calendar, relativeTo, newRelativeTo, untilOptions, dateUntil);
 
         long oneYearMonths = dtol(untilResult.getMonths());
         while (Math.abs(months) >= Math.abs((oneYearMonths))) {
@@ -162,11 +162,10 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
             years = years + sign;
             relativeTo = newRelativeTo;
 
-            options = JSOrdinary.createWithNullPrototype(ctx);
-            newRelativeTo = calendarDateAdd(calendar, relativeTo, oneYear, options, dateAdd);
-            options = JSOrdinary.createWithNullPrototype(ctx);
-            JSObjectUtil.putDataProperty(ctx, options, TemporalConstants.LARGEST_UNIT, MONTH);
-            untilResult = calendarDateUntil(calendar, relativeTo, newRelativeTo, options, dateUntil);
+            newRelativeTo = calendarDateAdd(calendar, relativeTo, oneYear, Undefined.instance, dateAdd);
+            untilOptions = JSOrdinary.createWithNullPrototype(ctx);
+            JSObjectUtil.putDataProperty(ctx, untilOptions, TemporalConstants.LARGEST_UNIT, MONTH);
+            untilResult = calendarDateUntil(calendar, relativeTo, newRelativeTo, untilOptions, dateUntil);
             oneYearMonths = dtol(untilResult.getMonths());
         }
         return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);

@@ -262,11 +262,9 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
 
         JSDynamicObject yearsMonths = JSTemporalDuration.createTemporalDuration(ctx, years, months, 0, 0, 0, 0, 0, 0, 0, 0);
         Object dateAdd = JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);
-        JSDynamicObject firstAddOptions = JSOrdinary.createWithNullPrototype(ctx);
-        JSDynamicObject yearsMonthsLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsMonths, firstAddOptions, dateAdd);
+        JSDynamicObject yearsMonthsLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsMonths, Undefined.instance, dateAdd);
         JSDynamicObject yearsMonthsWeeks = JSTemporalDuration.createTemporalDuration(ctx, years, months, weeks, 0, 0, 0, 0, 0, 0, 0);
-        JSDynamicObject secondAddOptions = JSOrdinary.createWithNullPrototype(ctx);
-        JSDynamicObject yearsMonthsWeeksLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsMonthsWeeks, secondAddOptions, dateAdd);
+        JSDynamicObject yearsMonthsWeeksLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsMonthsWeeks, Undefined.instance, dateAdd);
         double weeksInDays = TemporalUtil.daysUntil(yearsMonthsLater, yearsMonthsWeeksLater);
         relativeTo = yearsMonthsLater;
         days = days + weeksInDays;
@@ -306,18 +304,15 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
 
         JSDynamicObject yearsDuration = JSTemporalDuration.createTemporalDuration(ctx, years, 0, 0, 0, 0, 0, 0, 0, 0, 0, errorBranch);
         Object dateAdd = JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);
-        JSDynamicObject firstAddOptions = JSOrdinary.createWithNullPrototype(ctx);
-        JSDynamicObject yearsLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsDuration, firstAddOptions, dateAdd);
+        JSDynamicObject yearsLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsDuration, Undefined.instance, dateAdd);
         JSDynamicObject yearsMonthsWeeks = JSTemporalDuration.createTemporalDuration(ctx, years, months, weeks, 0, 0, 0, 0, 0, 0, 0, errorBranch);
 
-        JSDynamicObject secondAddOptions = JSOrdinary.createWithNullPrototype(ctx);
-        JSDynamicObject yearsMonthsWeeksLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsMonthsWeeks, secondAddOptions, dateAdd);
+        JSDynamicObject yearsMonthsWeeksLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsMonthsWeeks, Undefined.instance, dateAdd);
         double monthsWeeksInDays = TemporalUtil.daysUntil(yearsLater, yearsMonthsWeeksLater);
         relativeTo = yearsLater;
         days = days + monthsWeeksInDays;
         JSDynamicObject daysDuration = JSTemporalDuration.createTemporalDuration(ctx, 0, 0, 0, days, 0, 0, 0, 0, 0, 0, errorBranch);
-        JSDynamicObject thirdAddOptions = JSOrdinary.createWithNullPrototype(ctx);
-        JSDynamicObject daysLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, daysDuration, thirdAddOptions, dateAdd);
+        JSDynamicObject daysLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, daysDuration, Undefined.instance, dateAdd);
         JSDynamicObject untilOptions = JSOrdinary.createWithNullPrototype(ctx);
         TemporalUtil.createDataPropertyOrThrow(ctx, untilOptions, LARGEST_UNIT, YEAR);
         JSTemporalDurationObject timePassed = TemporalUtil.calendarDateUntil(calendar, relativeTo, daysLater, untilOptions);
@@ -326,8 +321,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         JSDynamicObject oldRelativeTo = relativeTo;
 
         yearsDuration = JSTemporalDuration.createTemporalDuration(ctx, yearsPassed, 0, 0, 0, 0, 0, 0, 0, 0, 0, errorBranch);
-        JSDynamicObject fourthAddOptions = JSOrdinary.createWithNullPrototype(ctx);
-        relativeTo = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsDuration, fourthAddOptions, dateAdd);
+        relativeTo = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsDuration, Undefined.instance, dateAdd);
         double daysPassed = TemporalUtil.daysUntil(oldRelativeTo, relativeTo);
         days = days - daysPassed;
 
