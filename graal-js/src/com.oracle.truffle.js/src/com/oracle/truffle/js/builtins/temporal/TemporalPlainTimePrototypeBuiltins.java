@@ -336,7 +336,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             }
             JSDynamicObject partialTime = JSTemporalPlainTime.toPartialTime(timeLikeObj, isObjectNode, toIntThrows, getContext());
             JSDynamicObject normalizedOptions = getOptionsObject(options);
-            Overflow overflow = toTemporalOverflow(normalizedOptions);
+            Overflow overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, getOptionNode());
             int hour;
             int minute;
             int second;

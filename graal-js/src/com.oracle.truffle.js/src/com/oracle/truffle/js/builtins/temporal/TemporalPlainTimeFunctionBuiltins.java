@@ -101,7 +101,7 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
         protected Object from(Object item, Object options,
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime) {
             JSDynamicObject normalizedOptions = getOptionsObject(options);
-            Overflow overflow = toTemporalOverflow(normalizedOptions);
+            Overflow overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, getOptionNode());
             if (isObject(item) && JSTemporalPlainTime.isJSTemporalPlainTime(item)) {
                 JSTemporalPlainTimeObject timeItem = (JSTemporalPlainTimeObject) item;
                 return JSTemporalPlainTime.create(getContext(),

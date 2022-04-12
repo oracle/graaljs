@@ -443,12 +443,6 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             return TemporalUtil.toUnit(unit, equalNode);
         }
 
-        // 13.8
-        protected Overflow toTemporalOverflow(JSDynamicObject options) {
-            TruffleString result = (TruffleString) getOption(options, OVERFLOW, TemporalUtil.OptionType.STRING, TemporalUtil.listConstrainReject, CONSTRAIN);
-            return TemporalUtil.toOverflow(result);
-        }
-
         protected RoundingMode toTemporalRoundingMode(JSDynamicObject options, TruffleString fallback, TruffleString.EqualNode equalNode) {
             return TemporalUtil.toRoundingMode((TruffleString) getOption(options, ROUNDING_MODE, TemporalUtil.OptionType.STRING, TemporalUtil.listRoundingMode, fallback), equalNode);
         }

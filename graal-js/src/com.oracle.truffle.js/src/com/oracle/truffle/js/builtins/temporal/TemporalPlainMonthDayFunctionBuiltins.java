@@ -52,6 +52,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalPlainMonthDayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainMonthDayFunctionBuiltins.TemporalPlainMonthDayFunction> {
 
@@ -98,7 +99,7 @@ public class TemporalPlainMonthDayFunctionBuiltins extends JSBuiltinsContainer.S
             JSDynamicObject options = getOptionsObject(optParam);
             if (isObject(item) && JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(item)) {
                 JSTemporalPlainMonthDayObject pmd = (JSTemporalPlainMonthDayObject) item;
-                toTemporalOverflow(options);
+                TemporalUtil.toTemporalOverflow(options, getOptionNode());
                 return JSTemporalPlainMonthDay.create(getContext(), pmd.getMonth(), pmd.getDay(), pmd.getCalendar(), pmd.getYear(), errorBranch);
             }
             return toTemporalMonthDayNode.executeDynamicObject(item, options);

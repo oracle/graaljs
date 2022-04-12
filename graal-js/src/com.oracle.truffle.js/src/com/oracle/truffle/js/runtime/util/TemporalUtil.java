@@ -1265,6 +1265,9 @@ public final class TemporalUtil {
     }
 
     public static Overflow toTemporalOverflow(JSDynamicObject options, TemporalGetOptionNode getOptionNode) {
+        if (options == Undefined.instance) {
+            return Overflow.CONSTRAIN;
+        }
         TruffleString result = (TruffleString) getOptionNode.execute(options, OVERFLOW, OptionType.STRING, listConstrainReject, CONSTRAIN);
         return toOverflow(result);
     }
@@ -2840,11 +2843,18 @@ public final class TemporalUtil {
     }
 
     public static Disambiguation toTemporalDisambiguation(JSDynamicObject options, TemporalGetOptionNode getOptionNode, TruffleString.EqualNode equalNode) {
+        if (options == Undefined.instance) {
+            return Disambiguation.COMPATIBLE;
+        }
         return toDisambiguation((TruffleString) getOptionNode.execute(options, DISAMBIGUATION, OptionType.STRING, listDisambiguation, COMPATIBLE), equalNode);
     }
 
     public static OffsetOption toTemporalOffset(JSDynamicObject options, TruffleString fallback, TemporalGetOptionNode getOptionNode, TruffleString.EqualNode equalNode) {
-        return toOffsetOption((TruffleString) getOptionNode.execute(options, OFFSET, OptionType.STRING, listOffset, fallback), equalNode);
+        TruffleString result = fallback;
+        if (options != Undefined.instance) {
+            result = (TruffleString) getOptionNode.execute(options, OFFSET, OptionType.STRING, listOffset, fallback);
+        }
+        return toOffsetOption(result, equalNode);
     }
 
     public static TruffleString toShowTimeZoneNameOption(JSDynamicObject options, TemporalGetOptionNode getOptionNode) {
