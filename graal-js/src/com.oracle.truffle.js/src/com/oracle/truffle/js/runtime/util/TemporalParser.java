@@ -108,6 +108,12 @@ public final class TemporalParser {
         this.input = input;
     }
 
+    public JSTemporalParserRecord parseTemporalDateString() {
+        // TemporalDateString => CalendarDateTime
+        JSTemporalParserRecord rec = parseCalendarDateTime();
+        return rec;
+    }
+
     public JSTemporalParserRecord parseISODateTime() {
         JSTemporalParserRecord rec;
 
@@ -223,10 +229,16 @@ public final class TemporalParser {
     }
 
     private boolean parseTimeSpecSeparator() {
+        int posBackup = pos;
+        TruffleString restBackup = rest;
+
         if (!tryParseDateTimeSeparator()) {
             return false;
         }
         if (!tryParseTimeSpec()) {
+            //we found a separator, but no time.
+            pos = posBackup;
+            rest = restBackup;
             return false;
         }
         return true;

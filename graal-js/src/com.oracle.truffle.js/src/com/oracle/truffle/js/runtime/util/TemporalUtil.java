@@ -232,6 +232,7 @@ public final class TemporalUtil {
     private static final BigInt lowerEpochNSLimit = upperEpochNSLimit.negate();
 
     // 8.64* 10^21 + 8.64 * 10^13; roughly 273,000 years
+    private static final BigInteger isoOutsideTimeUpperBound = new BigInteger("9990000000000000000000");
     private static final BigInteger isoTimeUpperBound = new BigInteger("8640000086400000000000");
     private static final BigInteger isoTimeLowerBound = isoTimeUpperBound.negate();
     private static final int isoTimeBoundYears = 270000;
@@ -580,49 +581,52 @@ public final class TemporalUtil {
             if (timeExpected && (rec.getHour() == Long.MIN_VALUE)) {
                 throw Errors.createRangeError("cannot parse the ISO date time string");
             }
-
-            TruffleString fraction = rec.getFraction();
-            if (fraction == null) {
-                fraction = ZEROS;
-            } else {
-                fraction = Strings.concat(fraction, ZEROS);
-            }
-
-            if (rec.getYear() == 0 && (Strings.indexOf(string, TemporalConstants.MINUS_000000) >= 0 || Strings.indexOf(string, TemporalConstants.UNICODE_MINUS_SIGN_000000) >= 0)) {
-                throw TemporalErrors.createRangeErrorInvalidPlainDateTime();
-            }
-
-            int y = rec.getYear() == Long.MIN_VALUE ? 0 : ltoi(rec.getYear());
-            int m = rec.getMonth() == Long.MIN_VALUE ? 1 : ltoi(rec.getMonth());
-            int d = rec.getDay() == Long.MIN_VALUE ? 1 : ltoi(rec.getDay());
-            int h = rec.getHour() == Long.MIN_VALUE ? 0 : ltoi(rec.getHour());
-            int min = rec.getMinute() == Long.MIN_VALUE ? 0 : ltoi(rec.getMinute());
-            int s = rec.getSecond() == Long.MIN_VALUE ? 0 : ltoi(rec.getSecond());
-            int ms = 0;
-            int mus = 0;
-            int ns = 0;
-            try {
-                ms = (int) Strings.parseLong(Strings.lazySubstring(fraction, 0, 3));
-                mus = (int) Strings.parseLong(Strings.lazySubstring(fraction, 3, 3));
-                ns = (int) Strings.parseLong(Strings.lazySubstring(fraction, 6, 3));
-            } catch (TruffleString.NumberFormatException e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
-
-            if (s == 60) {
-                s = 59;
-            }
-
-            if (!isValidISODate(y, m, d)) {
-                throw TemporalErrors.createRangeErrorDateOutsideRange();
-            }
-            if (!isValidTime(h, min, s, ms, mus, ns)) {
-                throw TemporalErrors.createRangeErrorTimeOutsideRange();
-            }
-
-            return JSTemporalDateTimeRecord.createCalendar(y, m, d, h, min, s, ms, mus, ns, rec.getCalendar());
+            return parseISODateTimeIntl(string, rec);
         }
         throw Errors.createRangeError("cannot parse the ISO date time string");
+    }
+
+    private static JSTemporalDateTimeRecord parseISODateTimeIntl(TruffleString string, JSTemporalParserRecord rec) {
+        TruffleString fraction = rec.getFraction();
+        if (fraction == null) {
+            fraction = ZEROS;
+        } else {
+            fraction = Strings.concat(fraction, ZEROS);
+        }
+
+        if (rec.getYear() == 0 && (Strings.indexOf(string, TemporalConstants.MINUS_000000) >= 0 || Strings.indexOf(string, TemporalConstants.UNICODE_MINUS_SIGN_000000) >= 0)) {
+            throw TemporalErrors.createRangeErrorInvalidPlainDateTime();
+        }
+
+        int y = rec.getYear() == Long.MIN_VALUE ? 0 : ltoi(rec.getYear());
+        int m = rec.getMonth() == Long.MIN_VALUE ? 1 : ltoi(rec.getMonth());
+        int d = rec.getDay() == Long.MIN_VALUE ? 1 : ltoi(rec.getDay());
+        int h = rec.getHour() == Long.MIN_VALUE ? 0 : ltoi(rec.getHour());
+        int min = rec.getMinute() == Long.MIN_VALUE ? 0 : ltoi(rec.getMinute());
+        int s = rec.getSecond() == Long.MIN_VALUE ? 0 : ltoi(rec.getSecond());
+        int ms = 0;
+        int mus = 0;
+        int ns = 0;
+        try {
+            ms = (int) Strings.parseLong(Strings.lazySubstring(fraction, 0, 3));
+            mus = (int) Strings.parseLong(Strings.lazySubstring(fraction, 3, 3));
+            ns = (int) Strings.parseLong(Strings.lazySubstring(fraction, 6, 3));
+        } catch (TruffleString.NumberFormatException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
+
+        if (s == 60) {
+            s = 59;
+        }
+
+        if (!isValidISODate(y, m, d)) {
+            throw TemporalErrors.createRangeErrorDateOutsideRange();
+        }
+        if (!isValidTime(h, min, s, ms, mus, ns)) {
+            throw TemporalErrors.createRangeErrorTimeOutsideRange();
+        }
+
+        return JSTemporalDateTimeRecord.createCalendar(y, m, d, h, min, s, ms, mus, ns, rec.getCalendar());
     }
 
     public static void validateTemporalUnitRange(Unit largestUnit, Unit smallestUnit) {
@@ -1118,7 +1122,14 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static JSTemporalDateTimeRecord parseTemporalDateString(TruffleString string) {
         // TODO 2. If isoString does not satisfy the syntax of a TemporalDateTimeString (see 13.39)
-        JSTemporalDateTimeRecord result = parseISODateTime(string, true, false);
+        JSTemporalParserRecord rec = (new TemporalParser(string)).parseTemporalDateString();
+        if (rec == null) {
+            throw Errors.createRangeError("cannot parse the date string");
+        }
+        if (rec.getZ()) {
+            throw TemporalErrors.createRangeErrorUnexpectedUTCDesignator();
+        }
+        JSTemporalDateTimeRecord result = parseISODateTimeIntl(string, rec);
         return JSTemporalDateTimeRecord.createCalendar(result.getYear(), result.getMonth(), result.getDay(), 0, 0, 0, 0, 0, 0, result.getCalendar());
     }
 
@@ -1251,6 +1262,9 @@ public final class TemporalUtil {
         double date = JSDate.makeDay(year, month - 1, day);
         double time = JSDate.makeTime(hour, minute, second, millisecond);
         double ms = JSDate.makeDate(date, time);
+        if (Double.isNaN(ms)) {
+            throw TemporalErrors.createRangeErrorDateOutsideRange();
+        }
         assert isFinite(ms);
 
         BigInteger bi = BigInteger.valueOf((long) ms).multiply(BI_10_POW_6);
@@ -1273,7 +1287,7 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static Overflow toOverflow(TruffleString result) {
+    private static Overflow toOverflow(TruffleString result) {
         if (CONSTRAIN.equals(result)) {
             return Overflow.CONSTRAIN;
         } else if (TemporalConstants.REJECT.equals(result)) {

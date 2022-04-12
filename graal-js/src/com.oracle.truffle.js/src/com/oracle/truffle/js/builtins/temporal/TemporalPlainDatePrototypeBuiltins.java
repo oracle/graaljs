@@ -42,10 +42,8 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.CONSTRAIN;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.LARGEST_UNIT;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.OVERFLOW;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ROUNDING_MODE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SMALLEST_UNIT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
@@ -125,7 +123,6 @@ import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Disambiguation;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.OptionType;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;

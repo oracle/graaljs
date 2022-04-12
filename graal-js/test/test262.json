@@ -1749,15 +1749,7 @@
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "built-ins/Temporal/Calendar/prototype/dateAdd/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/dateAdd/calendar-datefromfields-called-with-options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
-    "filePath" : "built-ins/Temporal/Calendar/prototype/dateUntil/argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
   }, {
@@ -1765,15 +1757,7 @@
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
   }, {
-    "filePath" : "built-ins/Temporal/Calendar/prototype/day/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/day/calendar-datefromfields-called-with-options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
-    "filePath" : "built-ins/Temporal/Calendar/prototype/dayOfWeek/argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
   }, {
@@ -1781,15 +1765,7 @@
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
   }, {
-    "filePath" : "built-ins/Temporal/Calendar/prototype/dayOfYear/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/dayOfYear/calendar-datefromfields-called-with-options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
-    "filePath" : "built-ins/Temporal/Calendar/prototype/daysInMonth/argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
   }, {
@@ -1797,15 +1773,7 @@
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
   }, {
-    "filePath" : "built-ins/Temporal/Calendar/prototype/daysInWeek/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/daysInWeek/calendar-datefromfields-called-with-options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
-    "filePath" : "built-ins/Temporal/Calendar/prototype/daysInYear/argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
   }, {
@@ -1813,15 +1781,7 @@
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
   }, {
-    "filePath" : "built-ins/Temporal/Calendar/prototype/inLeapYear/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/inLeapYear/calendar-datefromfields-called-with-options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
-    "filePath" : "built-ins/Temporal/Calendar/prototype/month/argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
   }, {
@@ -1829,15 +1789,7 @@
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
   }, {
-    "filePath" : "built-ins/Temporal/Calendar/prototype/monthCode/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/monthCode/calendar-datefromfields-called-with-options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
-    "filePath" : "built-ins/Temporal/Calendar/prototype/monthsInYear/argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
   }, {
@@ -1845,15 +1797,7 @@
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
   }, {
-    "filePath" : "built-ins/Temporal/Calendar/prototype/weekOfYear/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/weekOfYear/calendar-datefromfields-called-with-options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
-    "filePath" : "built-ins/Temporal/Calendar/prototype/year/argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
   }, {
@@ -1973,15 +1917,7 @@
     "status" : "FAIL",
     "comment" : "ParseTemporalTimeZoneString reads TimeZoneIANAName but the offset in brackets lands in TimeZoneUTCOffsetName"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/compare/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
     "filePath" : "built-ins/Temporal/PlainDate/compare/calendar-datefromfields-called-with-options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/from/argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
   }, {
@@ -1989,15 +1925,7 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/equals/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/equals/calendar-datefromfields-called-with-options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/since/argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
   }, {
@@ -2021,10 +1949,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-01-25"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/until/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/until/calendar-datefromfields-called-with-options-undefined.js",
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
@@ -2036,10 +1960,6 @@
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toZonedDateTime/timezone-string-multiple-offsets.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-01-25"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withPlainDate/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withPlainDate/argument-string-iso-calendar.js",
     "status" : "FAIL",
@@ -2085,15 +2005,7 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-02-23"
   }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/toPlainDateTime/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/toPlainDateTime/calendar-datefromfields-called-with-options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/toZonedDateTime/argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
   }, {
@@ -2248,10 +2160,6 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/offset-property-sub-minute.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainDate/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainDate/calendar-datefromfields-called-with-options-undefined.js",
     "status" : "FAIL",
