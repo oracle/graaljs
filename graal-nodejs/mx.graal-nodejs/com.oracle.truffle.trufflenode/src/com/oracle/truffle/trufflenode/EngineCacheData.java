@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,12 +41,17 @@
 package com.oracle.truffle.trufflenode;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.trufflenode.info.Accessor;
 import com.oracle.truffle.trufflenode.info.FunctionTemplate;
@@ -54,12 +59,14 @@ import com.oracle.truffle.trufflenode.info.ObjectTemplate;
 import com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode;
 
 public final class EngineCacheData {
+    private static final int MaxSingletonSymbolsCacheSize = 64;
 
     private final JSContext context;
     private final ConcurrentHashMap<FunctionTemplate.Descriptor, JSFunctionData> persistedTemplatesFunctionData;
     private final ConcurrentHashMap<Accessor.Descriptor, JSFunctionData> persistedAccessorsFunctionData;
     private final ConcurrentHashMap<ObjectTemplate.Descriptor, JSFunctionData> persistedNativePropertyHandlerData;
     private final ConcurrentHashMap<SyntheticModuleDescriptor, JSFunctionData> persistedSyntheticModulesData;
+    private final Map<TruffleString, SingletonSymbolUsageDescriptor> cachedSingletonSymbols;
 
     public EngineCacheData(JSContext context) {
         this.context = context;
@@ -67,6 +74,7 @@ public final class EngineCacheData {
         this.persistedAccessorsFunctionData = new ConcurrentHashMap<>();
         this.persistedNativePropertyHandlerData = new ConcurrentHashMap<>();
         this.persistedSyntheticModulesData = new ConcurrentHashMap<>();
+        this.cachedSingletonSymbols = new HashMap<>();
     }
 
     public JSFunctionData getOrCreateFunctionDataFromTemplate(FunctionTemplate template, Function<JSContext, JSFunctionData> factory) {
@@ -89,6 +97,20 @@ public final class EngineCacheData {
     public JSFunctionData getOrCreateSyntheticModuleData(TruffleString moduleName, Object[] exportNames, Function<JSContext, JSFunctionData> factory) {
         SyntheticModuleDescriptor descriptor = new SyntheticModuleDescriptor(moduleName, exportNames);
         return persistedSyntheticModulesData.computeIfAbsent(descriptor, d -> factory.apply(context));
+    }
+
+    @TruffleBoundary
+    public Object createOrUseCachedSingleton(TruffleString name) {
+        if (context.isMultiContext() && JSConfig.UseSingletonSymbols) {
+            if (cachedSingletonSymbols.size() < MaxSingletonSymbolsCacheSize) {
+                SingletonSymbolUsageDescriptor descriptor = cachedSingletonSymbols.computeIfAbsent(name, key -> new SingletonSymbolUsageDescriptor(Symbol.create(key)));
+                Symbol newSymbol = descriptor.tryUsingSingleton(context);
+                if (newSymbol != null) {
+                    return newSymbol;
+                }
+            }
+        }
+        return Symbol.create(name);
     }
 
     private static class SyntheticModuleDescriptor {
@@ -118,6 +140,25 @@ public final class EngineCacheData {
             int result = Objects.hash(moduleName);
             result = 31 * result + Arrays.hashCode(exportNames);
             return result;
+        }
+    }
+
+    static class SingletonSymbolUsageDescriptor {
+
+        private final Symbol singleton;
+        private Object symbolUsageMarker;
+
+        SingletonSymbolUsageDescriptor(Symbol symbol) {
+            this.singleton = symbol;
+        }
+
+        public Symbol tryUsingSingleton(JSContext context) {
+            Object currentMarker = context.getSymbolUsageMarker();
+            if (symbolUsageMarker != currentMarker) {
+                symbolUsageMarker = currentMarker;
+                return singleton;
+            }
+            return null;
         }
     }
 }

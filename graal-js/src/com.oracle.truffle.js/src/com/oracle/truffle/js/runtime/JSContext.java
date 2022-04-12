@@ -256,6 +256,21 @@ public class JSContext {
     private static final VarHandle notConstructibleCallTargetVarHandle;
     private static final VarHandle generatorNotConstructibleCallTargetVarHandle;
 
+    // Used to track singleton symbols allocations across aux engine cache runs.
+    private Object symbolUsageMarker = new Object();
+
+    public void resetSymbolUsageMarker() {
+        CompilerAsserts.neverPartOfCompilation();
+        // Symbols that were used exactly once in previous executions, will most-likely
+        // be created one time only when the cache is re-loaded. In this case we can re-use
+        // the Symbol cached in the aux image cache to avoid de-optimizations.
+        this.symbolUsageMarker = new Object();
+    }
+
+    public Object getSymbolUsageMarker() {
+        return symbolUsageMarker;
+    }
+
     public enum BuiltinFunctionKey {
         BoundFunction,
         BoundConstructor,

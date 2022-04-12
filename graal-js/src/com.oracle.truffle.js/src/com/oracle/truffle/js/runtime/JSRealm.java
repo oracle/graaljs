@@ -2374,6 +2374,9 @@ public class JSRealm {
         // Patch the RegExp constructor's static result properties
         addStaticRegexResultProperties();
 
+        // Reset usage metadata for singleton Symbols.
+        getContext().resetSymbolUsageMarker();
+
         return true;
     }
 
