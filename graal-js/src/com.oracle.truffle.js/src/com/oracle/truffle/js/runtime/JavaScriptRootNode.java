@@ -51,7 +51,9 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
 public abstract class JavaScriptRootNode extends RootNode {
-    private static final FrameDescriptor SHARED_EMPTY_FRAMEDESCRIPTOR = new FrameDescriptor();
+    private static final FrameDescriptor SHARED_EMPTY_FRAMEDESCRIPTOR = FrameDescriptor.newBuilder(0).build();
+    public static final FrameDescriptor MODULE_DUMMY_FRAMEDESCRIPTOR = FrameDescriptor.newBuilder(0).build();
+
     private final SourceSection sourceSection;
 
     protected JavaScriptRootNode() {

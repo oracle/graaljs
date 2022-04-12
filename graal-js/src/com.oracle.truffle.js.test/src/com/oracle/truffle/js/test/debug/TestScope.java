@@ -46,13 +46,17 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
@@ -78,6 +82,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
+import com.oracle.truffle.js.test.polyglot.MockFileSystem;
 import com.oracle.truffle.tck.DebuggerTester;
 
 @RunWith(Parameterized.class)
@@ -93,12 +98,15 @@ public class TestScope {
 
     @Parameter(value = 0) public boolean closureOpt;
 
+    private Map<String, String> moduleFiles = new HashMap<>();
+
     @Before
     public void before() {
         Context.Builder contextBuilder = JSTest.newContextBuilder();
         contextBuilder.allowHostAccess(HostAccess.ALL);
         contextBuilder.allowHostClassLookup(s -> true);
         contextBuilder.option(JSContextOptions.SCOPE_OPTIMIZATION_NAME, Boolean.toString(closureOpt));
+        contextBuilder.allowIO(true).fileSystem(new MockFileSystem(moduleFiles));
         tester = new DebuggerTester(contextBuilder);
     }
 
@@ -1041,6 +1049,69 @@ public class TestScope {
                 event.prepareContinue();
             });
         }
+    }
+
+    @Test
+    public void testModuleImports() throws IOException {
+        Source module1 = Source.newBuilder("js", "" +
+                        "import {A, B} from 'module2.mjs';\n" +
+                        "import * as ns from 'module2.mjs';\n" +
+                        "B(A())\n", "module1.mjs").build();
+
+        moduleFiles.put("module2.mjs", "" +
+                        "export function A() { return 42; }\n" +
+                        "export {default as B} from 'module3.mjs';\n");
+        moduleFiles.put("module3.mjs", "" +
+                        "import {A} from 'module2.mjs';\n" +
+                        "function B(a) {\n" +
+                        "return a + 43;\n" +
+                        "}\n" +
+                        "export default B;\n");
+
+        try (DebuggerSession session = tester.startSession()) {
+            session.install(Breakpoint.newBuilder(DebuggerTester.getSourceImpl(module1)).lineIs(3).oneShot().build());
+            session.install(Breakpoint.newBuilder(new File("/module3.mjs").toURI()).lineIs(3).oneShot().build());
+            tester.startEval(module1);
+
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, ":module:eval", 3, "B(A())", new String[]{
+                                "A", "function A() { return 42; }",
+                                "B", "function B(a) {\nreturn a + 43;\n}",
+                                "ns", IGNORE_VALUE});
+
+                DebugStackFrame frame = event.getTopStackFrame();
+                DebugScope dscope = frame.getScope();
+                DebugValue a = dscope.getDeclaredValue("A");
+                assertFalse("Import bindings are read-only", a.isWritable());
+                assertTrue(a.canExecute());
+                assertEquals("module2.mjs", a.getSourceLocation().getSource().getName());
+                DebugValue b = dscope.getDeclaredValue("B");
+                assertFalse("Import bindings are read-only", b.isWritable());
+                assertTrue(b.canExecute());
+                assertEquals("module3.mjs", b.getSourceLocation().getSource().getName());
+                DebugValue ns = dscope.getDeclaredValue("ns");
+                assertFalse("Import bindings are read-only", ns.isWritable());
+                assertEquals(List.of("A", "B"), ns.getProperties().stream().map(DebugValue::getName).collect(Collectors.toList()));
+                assertEquals("[object Module]", frame.eval("Object.prototype.toString.call(ns)").asString());
+
+                event.prepareContinue();
+            });
+
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, "B", 3, "return a + 43;", new String[]{"a", "42"});
+
+                Iterator<DebugStackFrame> framesIterator = event.getStackFrames().iterator();
+                assertEquals(event.getTopStackFrame(), framesIterator.next()); // skip the top one
+                DebugStackFrame callerFrame = framesIterator.next();
+                checkScopes(callerFrame.getScope(), new String[]{
+                                "A", "function A() { return 42; }",
+                                "B", "function B(a) {\nreturn a + 43;\n}",
+                                "ns", IGNORE_VALUE});
+
+                event.prepareContinue();
+            });
+        }
+        assertEquals("85", tester.expectDone());
     }
 
     private static String getScopeReceiver(SuspendedEvent suspendedEvent) {

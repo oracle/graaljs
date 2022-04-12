@@ -55,7 +55,6 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -2831,9 +2830,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.setDoneNode = PropertySetNode.createSetHidden(JSString.REGEXP_ITERATOR_DONE_ID, context);
         }
 
-        public JSDynamicObject createIterator(VirtualFrame frame, Object regex, Object string, Boolean global, Boolean fullUnicode) {
+        public JSDynamicObject createIterator(Object regex, Object string, Boolean global, Boolean fullUnicode) {
             JSDynamicObject regExpStringIteratorPrototype = getRealm().getRegExpStringIteratorPrototype();
-            JSDynamicObject iterator = createObjectNode.execute(frame, regExpStringIteratorPrototype);
+            JSDynamicObject iterator = createObjectNode.execute(regExpStringIteratorPrototype);
             setIteratingRegExpNode.setValue(iterator, regex);
             setIteratedStringNode.setValue(iterator, string);
             setGlobalNode.setValueBoolean(iterator, global);
@@ -2856,18 +2855,18 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isString(thisObj)")
-        protected JSDynamicObject doString(VirtualFrame frame, Object thisObj) {
-            JSDynamicObject iterator = createObjectNode.execute(frame, getRealm().getStringIteratorPrototype());
+        protected JSDynamicObject doString(Object thisObj) {
+            JSDynamicObject iterator = createObjectNode.execute(getRealm().getStringIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, thisObj);
             setNextIndexNode.setValueInt(iterator, 0);
             return iterator;
         }
 
         @Specialization(guards = "!isString(thisObj)")
-        protected JSDynamicObject doCoerce(VirtualFrame frame, Object thisObj,
+        protected JSDynamicObject doCoerce(Object thisObj,
                         @Cached RequireObjectCoercibleNode requireObjectCoercibleNode,
                         @Cached JSToStringNode toStringNode) {
-            return doString(frame, toStringNode.executeString(requireObjectCoercibleNode.execute(thisObj)));
+            return doString(toStringNode.executeString(requireObjectCoercibleNode.execute(thisObj)));
         }
 
     }

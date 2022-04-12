@@ -43,9 +43,9 @@ package com.oracle.truffle.js.nodes.module;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -81,8 +81,7 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
     }
 
     @Specialization(guards = {"frameDescriptor == resolution.getModule().getFrameDescriptor()", "equals(equalNode, bindingName, resolution.getBindingName())"}, limit = "1")
-    static Object doCached(@SuppressWarnings("unused") ExportResolution resolutionParam,
-                    @Bind("resolutionParam.asResolved()") ExportResolution resolution,
+    static Object doCached(ExportResolution.Resolved resolution,
                     @Cached("resolution.getModule().getFrameDescriptor()") @SuppressWarnings("unused") FrameDescriptor frameDescriptor,
                     @Cached("resolution.getBindingName()") @SuppressWarnings("unused") TruffleString bindingName,
                     @Cached("create(frameDescriptor, findImportedSlotIndex(bindingName, resolution.getModule()))") JSReadFrameSlotNode readFrameSlot,
@@ -97,8 +96,7 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
 
     @TruffleBoundary
     @Specialization(replaces = {"doCached"})
-    final Object doUncached(@SuppressWarnings("unused") ExportResolution resolutionParam,
-                    @Bind("resolutionParam.asResolved()") ExportResolution resolution) {
+    final Object doUncached(ExportResolution.Resolved resolution) {
         JSModuleRecord module = resolution.getModule();
         assert module.getStatus().compareTo(Status.Linked) >= 0 : module.getStatus();
         TruffleString bindingName = resolution.getBindingName();
@@ -125,6 +123,13 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
     @Specialization
     static Object doNamespace(JSModuleNamespaceObject namespace) {
         return namespace;
+    }
+
+    @Fallback
+    static Object doUnresolved(@SuppressWarnings("unused") Object uninitialized) {
+        // Note: Should not reach here normally; this is just a safeguard in case the scope is
+        // intercepted before all imports are resolved and the environment is fully initialized.
+        throw Errors.createReferenceError("Unresolved import");
     }
 
     @Override

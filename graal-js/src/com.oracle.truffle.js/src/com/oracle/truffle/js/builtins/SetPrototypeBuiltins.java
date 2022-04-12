@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.CreateSetIteratorNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetAddNodeGen;
@@ -762,8 +761,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization
-        protected JSDynamicObject doSet(VirtualFrame frame, JSSetObject set) {
-            JSDynamicObject iterator = createObjectNode.execute(frame, getRealm().getSetIteratorPrototype());
+        protected JSDynamicObject doSet(JSSetObject set) {
+            JSDynamicObject iterator = createObjectNode.execute(getRealm().getSetIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, set);
             setNextIndexNode.setValue(iterator, JSSet.getInternalSet(set).getEntries());
             setIterationKindNode.setValueInt(iterator, iterationKind);

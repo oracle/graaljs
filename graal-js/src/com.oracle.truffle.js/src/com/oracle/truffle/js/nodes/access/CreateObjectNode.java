@@ -113,7 +113,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @Override
         public JSDynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
-            return JSOrdinary.create(context, getRealm());
+            return JSOrdinary.create(context, realm);
         }
 
         @Override
@@ -130,12 +130,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
             this.prototypeExpression = prototypeExpression;
         }
 
-        public abstract JSDynamicObject execute(VirtualFrame frame, JSDynamicObject prototype);
-
-        public final JSDynamicObject execute(JSDynamicObject prototype) {
-            assert prototypeExpression == null;
-            return execute(null, prototype);
-        }
+        public abstract JSDynamicObject execute(JSDynamicObject prototype);
 
         @Override
         public final JSDynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
@@ -218,7 +213,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @Override
         public JSDynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
-            return JSDictionary.create(context, getRealm());
+            return JSDictionary.create(context, realm);
         }
 
         @Override

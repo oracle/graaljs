@@ -834,34 +834,24 @@ public class NodeFactory {
         if (linkBody == evalBody) {
             evalRoot = linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection, internalFunctionName);
         } else {
-            linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection, Strings.concat(internalFunctionName, Evaluator.MODULE_LINK_SUFFIX));
-            evalRoot = FunctionRootNode.create(evalBody, null, functionData, sourceSection, Strings.concat(internalFunctionName, Evaluator.MODULE_EVAL_SUFFIX));
+            linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection,
+                            Strings.concat(internalFunctionName, Evaluator.MODULE_LINK_SUFFIX));
+            evalRoot = FunctionRootNode.create(evalBody, JavaScriptRootNode.MODULE_DUMMY_FRAMEDESCRIPTOR, functionData, sourceSection,
+                            Strings.concat(internalFunctionName, Evaluator.MODULE_EVAL_SUFFIX));
         }
 
         // Note: RootNode is used to get the module environment FrameDescriptor.
         functionData.setRootNode(linkRoot);
 
-        if (JSConfig.LazyFunctionData) {
-            functionData.setLazyInit(new JSFunctionData.CallTargetInitializer() {
-                @Override
-                public void initializeCallTarget(JSFunctionData function, JSFunctionData.Target target, CallTarget rootTarget) {
-                    initializeModuleCallTargets(function, linkRoot, evalRoot);
-                }
-            });
-        } else {
-            initializeModuleCallTargets(functionData, linkRoot, evalRoot);
-        }
-        return linkRoot;
-    }
-
-    private static void initializeModuleCallTargets(JSFunctionData functionData, FunctionRootNode linkRoot, FunctionRootNode evalRoot) {
         RootCallTarget linkCallTarget = linkRoot.getCallTarget();
         RootCallTarget evalCallTarget = evalRoot.getCallTarget();
         // The [[Construct]] target is used to represent InitializeEnvironment().
         // The [[Call]] target is used to represent ExecuteModule().
         functionData.setCallTarget(evalCallTarget);
         functionData.setConstructTarget(linkCallTarget);
-        functionData.setConstructNewTarget(linkCallTarget);
+        functionData.setConstructNewTarget(linkCallTarget); // unused
+
+        return linkRoot;
     }
 
     public ConstructorRootNode createConstructorRootNode(JSFunctionData functionData, CallTarget callTarget, boolean newTarget) {
