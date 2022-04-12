@@ -187,16 +187,6 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             return Undefined.instance;
         }
 
-        @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)"})
-        protected Object getGeneric(JSDynamicObject thisObj, JSDynamicObject key) {
-            Object value = Boundaries.mapGet(JSWeakMap.getInternalWeakMap(thisObj), key);
-            if (value != null) {
-                return value;
-            } else {
-                return Undefined.instance;
-            }
-        }
-
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSWeakMap(thisObj)", "!isJSObject(key)"})
         protected static Object getNonObjectKey(JSDynamicObject thisObj, Object key) {
@@ -239,12 +229,6 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                 inverted = map.newInvertedMapWithEntry(key, value);
                 invertedSetter.put(key, WeakMap.INVERTED_WEAK_MAP_KEY, inverted);
             }
-            return thisObj;
-        }
-
-        @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)"})
-        protected static JSDynamicObject set(JSDynamicObject thisObj, JSDynamicObject key, Object value) {
-            Boundaries.mapPut(JSWeakMap.getInternalWeakMap(thisObj), key, value);
             return thisObj;
         }
 
@@ -292,11 +276,6 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @TruffleBoundary(allowInlining = true)
         private static boolean mapHas(WeakMap map, WeakHashMap<WeakMap, Object> invertedMap) {
             return invertedMap.containsKey(map);
-        }
-
-        @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)"})
-        protected static boolean has(JSDynamicObject thisObj, JSDynamicObject key) {
-            return Boundaries.mapContainsKey(JSWeakMap.getInternalWeakMap(thisObj), key);
         }
 
         @SuppressWarnings("unused")
