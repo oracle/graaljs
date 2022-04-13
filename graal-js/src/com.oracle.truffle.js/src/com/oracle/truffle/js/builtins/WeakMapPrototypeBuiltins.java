@@ -63,7 +63,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMapObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.WeakMap;
@@ -152,7 +151,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSObject(key)"})
-        protected static Object deleteNonObjectKey(JSWeakMapObject thisObj, Object key) {
+        protected static boolean deleteNonObjectKey(JSWeakMapObject thisObj, Object key) {
             return false;
         }
 
@@ -197,7 +196,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSWeakMap(thisObj)")
-        protected static boolean notWeakMap(Object thisObj, Object key) {
+        protected static Object notWeakMap(Object thisObj, Object key) {
             throw typeErrorWeakMapExpected();
         }
 
@@ -236,13 +235,13 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSObject(key)"})
-        protected static JSDynamicObject setNonObjectKey(JSWeakMapObject thisObj, Object key, Object value) {
+        protected static Object setNonObjectKey(JSWeakMapObject thisObj, Object key, Object value) {
             throw typeErrorKeyIsNotObject();
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSWeakMap(thisObj)")
-        protected static JSDynamicObject notWeakMap(Object thisObj, Object key, Object value) {
+        protected static Object notWeakMap(Object thisObj, Object key, Object value) {
             throw typeErrorWeakMapExpected();
         }
 
@@ -263,7 +262,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization
-        protected Object has(JSWeakMapObject thisObj, JSObject key,
+        protected boolean has(JSWeakMapObject thisObj, JSObject key,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
                         @Cached("createBinaryProfile()") ConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
