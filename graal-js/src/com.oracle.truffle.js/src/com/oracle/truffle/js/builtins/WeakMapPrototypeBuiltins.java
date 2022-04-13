@@ -138,15 +138,24 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
     /**
      * Implementation of the WeakMap.prototype.delete().
      */
-    public abstract static class JSWeakMapDeleteNode extends JSBuiltinNode {
+    @ImportStatic(JSConfig.class)
+    public abstract static class JSWeakMapDeleteNode extends JSWeakMapBaseNode {
 
         public JSWeakMapDeleteNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected static boolean delete(JSWeakMapObject thisObj, JSObject key) {
-            return Boundaries.mapRemove(JSWeakMap.getInternalWeakMap(thisObj), key) != null;
+        protected static boolean delete(JSWeakMapObject thisObj, JSObject key,
+                        @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
+                        @Cached("createBinaryProfile()") ConditionProfile hasInvertedProfile) {
+            WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
+            Object inverted = getInvertedMap(key, invertedGetter);
+            if (hasInvertedProfile.profile(inverted != null)) {
+                WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
+                return Boundaries.mapRemove(invertedMap, map) != null;
+            }
+            return false;
         }
 
         @SuppressWarnings("unused")
