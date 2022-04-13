@@ -189,7 +189,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             Object inverted = getInvertedMap(key, invertedGetter);
             if (hasInvertedProfile.profile(inverted != null)) {
                 WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
-                Object value = mapGet(map, invertedMap);
+                Object value = mapGet(invertedMap, map);
                 if (value != null) {
                     return value;
                 }
@@ -210,7 +210,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @TruffleBoundary(allowInlining = true)
-        private static Object mapGet(WeakMap map, WeakHashMap<WeakMap, Object> invertedMap) {
+        private static Object mapGet(WeakHashMap<WeakMap, Object> invertedMap, WeakMap map) {
             return invertedMap.get(map);
         }
     }
@@ -234,7 +234,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             Object inverted = getInvertedMap(key, invertedGetter);
             if (hasInvertedProfile.profile(inverted != null)) {
                 WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
-                mapPut(map, invertedMap, value);
+                mapPut(invertedMap, map, value);
             } else {
                 inverted = map.newInvertedMapWithEntry(key, value);
                 invertedSetter.put(key, WeakMap.INVERTED_WEAK_MAP_KEY, inverted);
@@ -255,7 +255,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @TruffleBoundary(allowInlining = true)
-        private static Object mapPut(WeakMap map, WeakHashMap<WeakMap, Object> invertedMap, Object value) {
+        private static Object mapPut(WeakHashMap<WeakMap, Object> invertedMap, WeakMap map, Object value) {
             return invertedMap.put(map, value);
         }
     }
@@ -278,13 +278,13 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             Object inverted = getInvertedMap(key, invertedGetter);
             if (hasInvertedProfile.profile(inverted != null)) {
                 WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
-                return mapHas(map, invertedMap);
+                return mapHas(invertedMap, map);
             }
             return false;
         }
 
         @TruffleBoundary(allowInlining = true)
-        private static boolean mapHas(WeakMap map, WeakHashMap<WeakMap, Object> invertedMap) {
+        private static boolean mapHas(WeakHashMap<WeakMap, Object> invertedMap, WeakMap map) {
             return invertedMap.containsKey(map);
         }
 
