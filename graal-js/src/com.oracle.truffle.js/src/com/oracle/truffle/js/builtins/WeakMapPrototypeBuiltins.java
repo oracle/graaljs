@@ -126,7 +126,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        protected static Object getInvertedMap(JSDynamicObject key, DynamicObjectLibrary library) {
+        protected static Object getInvertedMap(JSObject key, DynamicObjectLibrary library) {
             return library.getOrDefault(key, WeakMap.INVERTED_WEAK_MAP_KEY, null);
         }
 

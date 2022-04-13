@@ -48,28 +48,29 @@ import java.util.WeakHashMap;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
 /**
  * JavaScript WeakMap that emulates ephemeron semantics by storing the value in the key itself
- * (i.e., in a hidden property within the key DynamicObject).
+ * (i.e., in a hidden property within the key object).
  */
-public final class WeakMap implements Map<JSDynamicObject, Object> {
+public final class WeakMap implements Map<JSObject, Object> {
     public static final HiddenKey INVERTED_WEAK_MAP_KEY = new HiddenKey("InvertedWeakMap");
 
     public WeakMap() {
     }
 
-    private static JSDynamicObject checkKey(Object key) {
-        if (!(key instanceof JSDynamicObject)) {
-            throw new IllegalArgumentException("key must be instanceof JSDynamicObject");
+    private static JSObject checkKey(Object key) {
+        if (!(key instanceof JSObject)) {
+            throw new IllegalArgumentException("key must be instanceof JSObject");
         }
-        return (JSDynamicObject) key;
+        return (JSObject) key;
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<WeakMap, Object> getInvertedMap(JSDynamicObject k) {
+    private static Map<WeakMap, Object> getInvertedMap(JSObject k) {
         Object invertedMap = JSDynamicObject.getOrNull(k, INVERTED_WEAK_MAP_KEY);
         if (invertedMap != null) {
             return (WeakHashMap<WeakMap, Object>) invertedMap;
@@ -78,7 +79,7 @@ public final class WeakMap implements Map<JSDynamicObject, Object> {
         }
     }
 
-    private static Map<WeakMap, Object> putInvertedMap(JSDynamicObject k) {
+    private static Map<WeakMap, Object> putInvertedMap(JSObject k) {
         Map<WeakMap, Object> invertedMap = newInvertedMap();
         boolean wasExtensible = false;
         assert (wasExtensible = ((JSDynamicObject.getObjectFlags(k) & JSShape.NOT_EXTENSIBLE_FLAG) == 0)) || Boolean.TRUE;
@@ -93,7 +94,7 @@ public final class WeakMap implements Map<JSDynamicObject, Object> {
     }
 
     @TruffleBoundary
-    public Map<WeakMap, Object> newInvertedMapWithEntry(JSDynamicObject key, Object value) {
+    public Map<WeakMap, Object> newInvertedMapWithEntry(JSObject key, Object value) {
         assert getInvertedMap(key) == null;
         Map<WeakMap, Object> map = new WeakHashMap<>();
         map.put(this, value);
@@ -102,21 +103,21 @@ public final class WeakMap implements Map<JSDynamicObject, Object> {
 
     @Override
     public boolean containsKey(Object key) {
-        JSDynamicObject k = checkKey(key);
+        JSObject k = checkKey(key);
         Map<WeakMap, Object> invertedMap = getInvertedMap(k);
         return invertedMap == null ? false : invertedMap.containsKey(this);
     }
 
     @Override
     public Object get(Object key) {
-        JSDynamicObject k = checkKey(key);
+        JSObject k = checkKey(key);
         Map<WeakMap, Object> invertedMap = getInvertedMap(k);
         return invertedMap == null ? null : invertedMap.get(this);
     }
 
     @Override
-    public Object put(JSDynamicObject key, Object value) {
-        JSDynamicObject k = checkKey(key);
+    public Object put(JSObject key, Object value) {
+        JSObject k = checkKey(key);
         Map<WeakMap, Object> invertedMap = getInvertedMap(k);
         if (invertedMap == null) {
             invertedMap = putInvertedMap(k);
@@ -126,13 +127,13 @@ public final class WeakMap implements Map<JSDynamicObject, Object> {
 
     @Override
     public Object remove(Object key) {
-        JSDynamicObject k = checkKey(key);
+        JSObject k = checkKey(key);
         Map<WeakMap, Object> invertedMap = getInvertedMap(k);
         return invertedMap == null ? null : invertedMap.remove(this);
     }
 
     @Override
-    public void putAll(Map<? extends JSDynamicObject, ? extends Object> m) {
+    public void putAll(Map<? extends JSObject, ? extends Object> m) {
         m.forEach(this::put);
     }
 
@@ -157,7 +158,7 @@ public final class WeakMap implements Map<JSDynamicObject, Object> {
     }
 
     @Override
-    public Set<JSDynamicObject> keySet() {
+    public Set<JSObject> keySet() {
         throw unsupported();
     }
 
@@ -167,7 +168,7 @@ public final class WeakMap implements Map<JSDynamicObject, Object> {
     }
 
     @Override
-    public Set<java.util.Map.Entry<JSDynamicObject, Object>> entrySet() {
+    public Set<java.util.Map.Entry<JSObject, Object>> entrySet() {
         throw unsupported();
     }
 
