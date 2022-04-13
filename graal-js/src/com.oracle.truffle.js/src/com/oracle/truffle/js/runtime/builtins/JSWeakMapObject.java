@@ -43,18 +43,18 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.util.Map;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public final class JSWeakMapObject extends JSNonProxyObject {
-    private final Map<JSDynamicObject, Object> weakHashMap;
+    private final Map<JSObject, Object> weakHashMap;
 
-    protected JSWeakMapObject(Shape shape, Map<JSDynamicObject, Object> weakHashMap) {
+    protected JSWeakMapObject(Shape shape, Map<JSObject, Object> weakHashMap) {
         super(shape);
         this.weakHashMap = weakHashMap;
     }
 
-    public Map<JSDynamicObject, Object> getWeakHashMap() {
+    public Map<JSObject, Object> getWeakHashMap() {
         return weakHashMap;
     }
 }

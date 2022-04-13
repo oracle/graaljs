@@ -1392,7 +1392,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     return result;
                 } else {
                     fallbackBranch.enter();
-                    return getFallback(thisObj, root);
+                    return getFallback(defaultValue, root);
                 }
             } else {
                 if (getFromJSObjectNode == null) {
@@ -1403,11 +1403,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
         }
 
-        protected Object getFallback(@SuppressWarnings("unused") JSDynamicObject thisObj, PropertyGetNode root) {
+        protected Object getFallback(Object defaultValue, PropertyGetNode root) {
             if (root.isRequired()) {
                 throw Errors.createReferenceErrorNotDefined(root.getContext(), root.getKey(), this);
             }
-            return Undefined.instance;
+            return defaultValue;
         }
     }
 
