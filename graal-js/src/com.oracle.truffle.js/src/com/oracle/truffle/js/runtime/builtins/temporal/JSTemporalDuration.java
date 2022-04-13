@@ -212,6 +212,11 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         Pattern regex = Pattern.compile("^([\\+\u2212-]?)[Pp](\\d+[Yy])?(\\d+[Mm])?(\\d+[Ww])?(\\d+[Dd])?([Tt]([\\d.]+[Hh])?([\\d.]+[Mm])?([\\d.]+[Ss])?)?$");
         Matcher matcher = regex.matcher(Strings.toJavaString(string));
         if (matcher.matches()) {
+            if (matcher.start(2) < 0 && matcher.start(3) < 0 && matcher.start(4) < 0 && matcher.start(5) < 0 && matcher.start(7) < 0 && matcher.start(8) < 0 && matcher.start(9) < 0) {
+                //neither DurationDate nor DurationTime found.
+                throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
+            }
+
             TruffleString sign = group(string, matcher, 1);
 
             yearsMV = parseDurationIntl(string, matcher, 2);
@@ -319,6 +324,9 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             if (idx >= 0) {
                 TruffleString wholePart = Strings.lazySubstring(numstr, 0, idx);
                 TruffleString fractionalPart = Strings.lazySubstring(numstr, idx + 1);
+                if (Strings.length(fractionalPart) > 9) {
+                    throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
+                }
                 return new Pair<>(wholePart, fractionalPart);
             } else {
                 return new Pair<>(numstr, Strings.EMPTY_STRING);
