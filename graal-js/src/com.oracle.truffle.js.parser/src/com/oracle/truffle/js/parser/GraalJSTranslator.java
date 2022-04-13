@@ -128,6 +128,7 @@ import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberN
 import com.oracle.truffle.js.nodes.access.OptionalChainNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
+import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
 import com.oracle.truffle.js.nodes.access.VarWrapperNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
@@ -2990,7 +2991,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             JavaScriptNode target1;
             JavaScriptNode target2;
-            if (target instanceof RepeatableNode) {
+            if ((elem instanceof JSConstantNode && target instanceof RepeatableNode) || (target instanceof SuperPropertyReferenceNode)) {
+                // Cannot be used for any indexNode and any target RepeatableNode
+                // because there is an invocation of indexNode in between targets
                 target1 = target;
                 target2 = factory.copy(target);
             } else {
