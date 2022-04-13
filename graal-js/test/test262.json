@@ -2265,20 +2265,12 @@
     "status" : "FAIL",
     "comment" : "ParseTemporalTimeZoneString reads TimeZoneIANAName but the offset in brackets lands in TimeZoneUTCOffsetName"
   }, {
-    "filePath" : "built-ins/TypedArray/prototype/set/array-arg-targetbuffer-detached-on-get-src-value-no-throw.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-04-11"
-  }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
     "statusOverrides" : {
       "BIG_ENDIAN" : "FAIL"
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/sort/sort-tonumber.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-04-11"
   }, {
     "filePath" : "built-ins/TypedArrayConstructors/ctors/no-species.js",
     "status" : "FAIL",

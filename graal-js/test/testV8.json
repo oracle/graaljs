@@ -668,6 +668,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
+    "filePath" : "mjsunit/harmony/typedarray-set-length-detach.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, removed by https://github.com/v8/v8/commit/908e7ac767042830fedee4f5b5fd4b8873091b59"
+  }, {
     "filePath" : "mjsunit/harmony/weakrefs/cleanup-on-detached-realm.js",
     "status" : "FAIL",
     "comment" : "Uses Realm.detachGlobal()"
