@@ -177,7 +177,6 @@ import com.oracle.truffle.js.runtime.array.dyn.ConstantDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantIntArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -2852,8 +2851,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             } else {
                 assert isCallable(compare);
                 hasCompareFnBranch.enter();
-                JSDynamicObject arrayBufferObj = isTypedArrayImplementation && JSArrayBufferView.isJSArrayBufferView(thisObj) ? JSArrayBufferView.getArrayBuffer((JSDynamicObject) thisObj) : null;
-                return new SortComparator(compare, arrayBufferObj);
+                return new SortComparator(compare);
             }
         }
 
@@ -2921,12 +2919,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private class SortComparator implements Comparator<Object> {
             private final Object compFnObj;
-            private final JSDynamicObject arrayBufferObj;
             private final boolean isFunction;
 
-            SortComparator(Object compFnObj, JSDynamicObject arrayBufferObj) {
+            SortComparator(Object compFnObj) {
                 this.compFnObj = compFnObj;
-                this.arrayBufferObj = arrayBufferObj;
                 this.isFunction = JSFunction.isJSFunction(compFnObj);
             }
 
@@ -2946,14 +2942,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 } else {
                     retObj = JSRuntime.call(compFnObj, Undefined.instance, new Object[]{arg0, arg1});
                 }
-                int res = convertResult(retObj);
-                if (isTypedArrayImplementation) {
-                    if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBufferObj)) {
-                        errorBranch.enter();
-                        throw Errors.createTypeErrorDetachedBuffer();
-                    }
-                }
-                return res;
+                return convertResult(retObj);
             }
 
             private int convertResult(Object retObj) {
