@@ -50,7 +50,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 
 /**
  * JavaScript WeakMap that emulates ephemeron semantics by storing the value in the key itself
@@ -81,10 +80,7 @@ public final class WeakMap implements Map<JSObject, Object> {
 
     private static Map<WeakMap, Object> putInvertedMap(JSObject k) {
         Map<WeakMap, Object> invertedMap = newInvertedMap();
-        boolean wasExtensible = false;
-        assert (wasExtensible = ((JSDynamicObject.getObjectFlags(k) & JSShape.NOT_EXTENSIBLE_FLAG) == 0)) || Boolean.TRUE;
         JSObjectUtil.putHiddenProperty(k, INVERTED_WEAK_MAP_KEY, invertedMap);
-        assert wasExtensible == ((JSDynamicObject.getObjectFlags(k) & JSShape.NOT_EXTENSIBLE_FLAG) == 0);
         return invertedMap;
     }
 
