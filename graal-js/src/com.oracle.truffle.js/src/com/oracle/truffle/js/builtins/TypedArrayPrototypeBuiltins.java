@@ -352,6 +352,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Child private JSToObjectNode toObjectNode;
         @Child private JSGetLengthNode getLengthNode;
         @Child private InteropLibrary interopLibrary;
+        @Child private JSToNumberNode toNumberNode;
+        @Child private JSToBigIntNode toBigIntNode;
 
         /**
          * void set(TypedArray array, optional unsigned long offset).
@@ -429,6 +431,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             rangeCheck(0, srcLength, offset, targetArray.length(thisObj));
 
             boolean isJSObject = JSDynamicObject.isJSDynamicObject(src);
+            boolean isBigInt = JSArrayBufferView.isBigIntArrayBufferView(thisObj);
             for (int i = 0, j = offset; i < srcLength; i++, j++) {
                 Object value;
                 if (srcIsJSObject.profile(isJSObject)) {
@@ -436,10 +439,29 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 } else {
                     value = JSInteropUtil.readArrayElementOrDefault(src, i, Undefined.instance);
                 }
-                checkHasDetachedBuffer(thisObj);
-                targetArray.setElement(thisObj, j, value, false);
+                // IntegerIndexedElementSet
+                Object numValue = isBigInt ? toBigInt(value) : toNumber(value);
+                if (!JSArrayBufferView.hasDetachedBuffer(thisObj, getContext())) {
+                    targetArray.setElement(thisObj, j, numValue, false);
+                }
                 TruffleSafepoint.poll(this);
             }
+        }
+
+        protected Object toNumber(Object value) {
+            if (toNumberNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toNumberNode = insert(JSToNumberNode.create());
+            }
+            return toNumberNode.execute(value);
+        }
+
+        protected Object toBigInt(Object value) {
+            if (toBigIntNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toBigIntNode = insert(JSToBigIntNode.create());
+            }
+            return toBigIntNode.execute(value);
         }
 
         private void setArrayBufferView(JSDynamicObject targetView, JSDynamicObject sourceView, int offset) {
