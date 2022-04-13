@@ -1757,10 +1757,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/from/argument-string.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-string-datetime.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
