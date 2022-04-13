@@ -70,12 +70,7 @@ public final class WeakMap implements Map<JSObject, Object> {
 
     @SuppressWarnings("unchecked")
     private static Map<WeakMap, Object> getInvertedMap(JSObject k) {
-        Object invertedMap = JSDynamicObject.getOrNull(k, INVERTED_WEAK_MAP_KEY);
-        if (invertedMap != null) {
-            return (WeakHashMap<WeakMap, Object>) invertedMap;
-        } else {
-            return null;
-        }
+        return (Map<WeakMap, Object>) JSDynamicObject.getOrNull(k, INVERTED_WEAK_MAP_KEY);
     }
 
     private static Map<WeakMap, Object> putInvertedMap(JSObject k) {
