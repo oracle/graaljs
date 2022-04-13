@@ -1881,14 +1881,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-02-23"
   }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/since/roundingmode-ceil.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/since/roundingmode-floor.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
-  }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/toZonedDateTime/timezone-string-multiple-offsets.js",
     "status" : "FAIL",
     "comment" : "ParseTemporalTimeZoneString reads TimeZoneIANAName but the offset in brackets lands in TimeZoneUTCOffsetName"
