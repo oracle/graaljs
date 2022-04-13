@@ -93,7 +93,7 @@ public abstract class ToLimitedTemporalDurationNode extends JavaScriptBaseNode {
         if (hasDisallowedFields.profile(disallowedFields != TemporalUtil.listEmpty)) {
             for (TemporalUtil.UnitPlural unit : TemporalUtil.DURATION_PROPERTIES) {
                 double value = TemporalUtil.getPropertyFromRecord(d, unit);
-                if (value > 0 && Boundaries.listContains(disallowedFields, unit.toTruffleString())) {
+                if (value != 0 && Boundaries.listContains(disallowedFields, unit.toTruffleString())) {
                     errorBranch.enter();
                     throw TemporalErrors.createRangeErrorDisallowedField(unit.toTruffleString());
                 }

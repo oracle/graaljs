@@ -1817,14 +1817,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/add/disallowed-duration-units.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/subtract/disallowed-duration-units.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/toZonedDateTime/timezone-string-multiple-offsets.js",
     "status" : "FAIL",
     "comment" : "ParseTemporalTimeZoneString reads TimeZoneIANAName but the offset in brackets lands in TimeZoneUTCOffsetName"
