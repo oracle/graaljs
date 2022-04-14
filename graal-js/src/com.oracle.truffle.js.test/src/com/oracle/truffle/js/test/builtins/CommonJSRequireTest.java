@@ -67,7 +67,6 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 
 import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CWD_NAME;
 import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_CORE_MODULES_REPLACEMENTS_NAME;
-import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME;
 import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
 import static com.oracle.truffle.js.runtime.JSContextOptions.ECMASCRIPT_VERSION_NAME;
 import static com.oracle.truffle.js.runtime.JSContextOptions.GLOBAL_PROPERTY_NAME;
@@ -86,6 +85,10 @@ public class CommonJSRequireTest {
     }
 
     private static Context testContext(OutputStream out, OutputStream err, Map<String, String> options) {
+        return testContextBuilder(out, err, options).build();
+    }
+
+    private static Context.Builder testContextBuilder(OutputStream out, OutputStream err, Map<String, String> options) {
         return JSTest.newContextBuilder().//
                         allowPolyglotAccess(PolyglotAccess.ALL).//
                         allowHostAccess(HostAccess.ALL).//
@@ -93,8 +96,7 @@ public class CommonJSRequireTest {
                         allowHostClassLookup((s) -> true).//
                         options(options).out(out).//
                         err(err).//
-                        allowIO(true).//
-                        build();
+                        allowIO(true);
     }
 
     private static Context testContext(Path tempFolder, OutputStream out, OutputStream err) {
@@ -322,22 +324,22 @@ public class CommonJSRequireTest {
 
     @Test
     public void unknownModule() {
-        assertThrows("require('unknown')", "TypeError: Cannot load CommonJS module: 'unknown'");
+        assertThrows("require('unknown')", "TypeError: Cannot load module: 'unknown'");
     }
 
     @Test
     public void unknownFile() {
-        assertThrows("require('./unknown')", "TypeError: Cannot load CommonJS module: './unknown'");
+        assertThrows("require('./unknown')", "TypeError: Cannot load module: './unknown'");
     }
 
     @Test
     public void unknownFileWithExt() {
-        assertThrows("require('./unknown.js')", "TypeError: Cannot load CommonJS module: './unknown.js'");
+        assertThrows("require('./unknown.js')", "TypeError: Cannot load module: './unknown.js'");
     }
 
     @Test
     public void unknownAbsolute() {
-        assertThrows("require('/path/to/unknown.js')", "TypeError: Cannot load CommonJS module: '/path/to/unknown.js'");
+        assertThrows("require('/path/to/unknown.js')", "TypeError: Cannot load module: '/path/to/unknown.js'");
     }
 
     @Test
@@ -426,6 +428,20 @@ public class CommonJSRequireTest {
     }
 
     @Test
+    public void testLocalCwd() {
+        Map<String, String> options = new HashMap<>();
+        options.put(COMMONJS_REQUIRE_NAME, "true");
+        options.put(COMMONJS_REQUIRE_CWD_NAME, ".");
+        Context.Builder builder = testContextBuilder(System.out, System.err, options).currentWorkingDirectory(getTestRootFolder());
+        try (Context cx = builder.build()) {
+            Value foo1 = cx.eval("js", "require('./module.js').foo");
+            Assert.assertEquals(42, foo1.asInt());
+            Value foo2 = cx.eval("js", "require('./module').foo");
+            Assert.assertEquals(42, foo2.asInt());
+        }
+    }
+
+    @Test
     public void testResolve() throws IOException {
         Path root = getTestRootFolder();
         Path testCase = Paths.get(root.normalize().toString(), "foo", "bar", "foo.js");
@@ -447,6 +463,19 @@ public class CommonJSRequireTest {
         try (Context cx = testContext(options)) {
             Value js = cx.eval(ID, "require('path').foo + require('fs').foo;");
             Assert.assertEquals(84, js.asInt());
+        }
+    }
+
+    @Test
+    public void testNotNodeBuiltin() {
+        Path root = getTestRootFolder();
+        Map<String, String> options = new HashMap<>();
+        options.put(COMMONJS_REQUIRE_NAME, "true");
+        options.put(COMMONJS_REQUIRE_CWD_NAME, root.toAbsolutePath().toString());
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "not-a-nodejs-builtin:./module.js");
+        try (Context cx = testContext(options)) {
+            Value js = cx.eval("js", "require('not-a-nodejs-builtin').foo;");
+            Assert.assertEquals(42, js.asInt());
         }
     }
 
@@ -503,11 +532,13 @@ public class CommonJSRequireTest {
         options.put(GLOBAL_PROPERTY_NAME, "true");
         options.put(COMMONJS_REQUIRE_NAME, "true");
         options.put(COMMONJS_REQUIRE_CWD_NAME, root.toAbsolutePath().toString());
-        // At context creation, the `test-globals` module will be required.
-        options.put(COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME, "test-globals");
         try (Context cx = testContext(options)) {
+            // Load the `test-globals` module, which will create `process` and `setTimeout`.
+            cx.eval("js", "require('test-globals')");
             Value js = cx.eval(ID, "process.foo;");
             Assert.assertEquals(42, js.asInt());
+            js = cx.eval(ID, "setTimeout();");
+            Assert.assertTrue(js.asDouble() >= 0);
         }
     }
 
@@ -547,7 +578,7 @@ public class CommonJSRequireTest {
             cx.eval(ID, "require('fs').foo;");
             assert false : "Should throw";
         } catch (PolyglotException e) {
-            Assert.assertEquals("TypeError: Cannot load CommonJS module: 'fs'", e.getMessage());
+            Assert.assertEquals("TypeError: Cannot load module: 'fs'", e.getMessage());
         }
     }
 
@@ -558,7 +589,7 @@ public class CommonJSRequireTest {
             cx.eval(ID, "require('').foo;");
             assert false : "Should throw";
         } catch (PolyglotException e) {
-            Assert.assertEquals("TypeError: Cannot load CommonJS module: ''", e.getMessage());
+            Assert.assertEquals("TypeError: Cannot load module: ''", e.getMessage());
         }
     }
 
@@ -713,7 +744,7 @@ public class CommonJSRequireTest {
     @Test
     public void importBuiltinModuleEsNoFs() {
         final String src = "import {whatever} from 'fs'; console.log('should not print!');";
-        final String expectedMessage = "TypeError: Cannot load CommonJS module: 'fs'";
+        final String expectedMessage = "TypeError: Cannot load module: 'fs'";
         Map<String, String> options = getDefaultOptions();
         try {
             runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "", "", options);

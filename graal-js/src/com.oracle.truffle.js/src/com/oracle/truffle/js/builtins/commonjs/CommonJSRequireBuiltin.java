@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.builtins.commonjs;
 
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.isCoreModule;
-
 import java.util.Map;
 import java.util.Objects;
 import java.util.Stack;
@@ -71,6 +69,8 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.hasCoreModuleReplacement;
 
 public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
@@ -147,8 +147,8 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
 
     @TruffleBoundary
     private Object requireImpl(TruffleString moduleIdentifier, TruffleFile entryPath, JSRealm realm) {
-        log("required module '", moduleIdentifier, "'                                core:", isCoreModule(moduleIdentifier), " from path ", entryPath);
-        if (isCoreModule(moduleIdentifier)) {
+        log("required module '", moduleIdentifier, " from path ", entryPath);
+        if (hasCoreModuleReplacement(getContext(), moduleIdentifier)) {
             TruffleString moduleReplacementName = Strings.fromJavaString(getContext().getContextOptions().getCommonJSRequireBuiltins().get(Strings.toJavaString(moduleIdentifier)));
             if (moduleReplacementName != null && !moduleReplacementName.isEmpty()) {
                 return requireImpl(moduleReplacementName, getModuleResolveCurrentWorkingDirectory(getContext(), realm.getEnv()), realm);
@@ -193,11 +193,11 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         // Read the file.
         Source source = sourceFromPath(modulePath.toString(), realm);
         TruffleString filenameBuiltin = Strings.fromJavaString(normalizedPath.toString());
-        if (modulePath.getParent() == null) {
+        if (modulePath.getParent() == null && !modulePath.exists()) {
             throw fail(moduleIdentifier);
         }
         // Create `require` and other builtins for this module.
-        TruffleString dirnameBuiltin = Strings.fromJavaString(modulePath.getParent().getAbsoluteFile().normalize().toString());
+        TruffleString dirnameBuiltin = modulePath.getParent() == null ? Strings.fromJavaString(".") : Strings.fromJavaString(modulePath.getParent().getAbsoluteFile().normalize().toString());
         JSObject exportsBuiltin = createExportsBuiltin(realm);
         JSObject moduleBuiltin = createModuleBuiltin(realm, exportsBuiltin, filenameBuiltin);
         JSObject requireBuiltin = createRequireBuiltin(realm, moduleBuiltin, filenameBuiltin);
@@ -255,11 +255,11 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     }
 
     private static JSException fail(TruffleString moduleIdentifier) {
-        return JSException.create(JSErrorType.TypeError, "Cannot load CommonJS module: '" + moduleIdentifier + "'");
+        return JSException.create(JSErrorType.TypeError, "Cannot load module: '" + moduleIdentifier + "'");
     }
 
     private static JSException fail(TruffleString moduleIdentifier, TruffleString extraMessage) {
-        return JSException.create(JSErrorType.TypeError, "Cannot load CommonJS module: '" + moduleIdentifier + "': " + extraMessage);
+        return JSException.create(JSErrorType.TypeError, "Cannot load module: '" + moduleIdentifier + "': " + extraMessage);
     }
 
     @TruffleBoundary
@@ -320,7 +320,10 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
             if (Strings.isTString(maybeFilename)) {
                 String fileName = Strings.toJavaString(JSRuntime.toStringIsString(maybeFilename));
                 if (isFile(env, fileName)) {
-                    return getParent(env, fileName);
+                    TruffleFile maybeParent = getParent(env, fileName);
+                    if (maybeParent != null) {
+                        return maybeParent;
+                    }
                 }
             }
             // dirname not a string. Use default cwd.
