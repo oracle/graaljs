@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -53,6 +54,9 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBigIntNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
+import com.oracle.truffle.js.nodes.unary.JSNotNode;
+import com.oracle.truffle.js.nodes.unary.JSNotNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -167,5 +171,27 @@ public abstract class JSToBooleanUnaryNode extends JSUnaryNode {
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
         return clazz == boolean.class;
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == UnaryOperationTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(UnaryOperationTag.class)) {
+            JavaScriptNode newOperand = cloneUninitialized(getOperand(), materializedTags);
+            JSNotNode innerNot = JSNotNodeGen.create(newOperand);
+            JSNotNode outerNot = JSNotNodeGen.create(innerNot);
+            transferSourceSectionAddExpressionTag(this, innerNot);
+            transferSourceSectionAndTags(this, outerNot);
+            return outerNot;
+        }
+        return this;
     }
 }
