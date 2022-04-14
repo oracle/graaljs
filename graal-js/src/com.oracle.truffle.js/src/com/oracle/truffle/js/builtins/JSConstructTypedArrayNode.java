@@ -274,10 +274,12 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSArrayBufferView(arrayBufferView)"})
     protected JSDynamicObject doArrayBufferView(JSDynamicObject newTarget, JSDynamicObject arrayBufferView, Object byteOffset0, Object length0) {
+        JSArrayBufferObject srcData = JSArrayBufferView.getArrayBuffer(arrayBufferView);
+        checkDetachedBuffer(srcData);
+
         TypedArray sourceType = JSArrayBufferView.typedArrayGetArrayType(arrayBufferView);
         long length = sourceType.length(arrayBufferView);
 
-        JSArrayBufferObject srcData = JSArrayBufferView.getArrayBuffer(arrayBufferView);
         JSDynamicObject defaultBufferConstructor = getRealm().getArrayBufferConstructor();
         JSDynamicObject bufferConstructor;
         if (JSSharedArrayBuffer.isJSSharedArrayBuffer(srcData)) {
