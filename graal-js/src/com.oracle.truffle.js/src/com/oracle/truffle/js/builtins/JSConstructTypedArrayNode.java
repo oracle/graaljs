@@ -55,7 +55,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
 import com.oracle.truffle.js.builtins.JSConstructTypedArrayNodeGen.IntegerIndexedObjectCreateNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
@@ -87,10 +86,8 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
-import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -103,10 +100,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @Child private JSToIndexNode toIndexNode;
     // for TypedArray(factory)
     @Child private GetPrototypeFromConstructorNode getPrototypeFromConstructorViewNode;
-    // for Buffer
-    @Child private GetPrototypeFromConstructorNode getPrototypeFromConstructorBufferNode;
     @Child private IntegerIndexedObjectCreateNode integerIndexObjectCreateNode;
-    @Child private ArraySpeciesConstructorNode arraySpeciesConstructorNode;
     private final BranchProfile errorBranch = BranchProfile.create();
 
     private final TypedArrayFactory factory;
@@ -139,14 +133,6 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
             getPrototypeFromConstructorViewNode = insert(GetPrototypeFromConstructorNode.create(getContext(), null, realm -> realm.getArrayBufferViewPrototype(factory)));
         }
         return getPrototypeFromConstructorViewNode.executeWithConstructor(newTarget);
-    }
-
-    private JSDynamicObject getPrototypeFromConstructorBuffer(JSDynamicObject newTarget) {
-        if (getPrototypeFromConstructorBufferNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            getPrototypeFromConstructorBufferNode = insert(GetPrototypeFromConstructorNode.create(getContext(), null, JSRealm::getArrayBufferPrototype));
-        }
-        return getPrototypeFromConstructorBufferNode.executeWithConstructor(newTarget);
     }
 
     private JSDynamicObject integerIndexedObjectCreate(JSDynamicObject arrayBuffer, TypedArray typedArray, int offset, int length, JSDynamicObject proto) {
@@ -280,17 +266,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         TypedArray sourceType = JSArrayBufferView.typedArrayGetArrayType(arrayBufferView);
         long length = sourceType.length(arrayBufferView);
 
-        JSDynamicObject defaultBufferConstructor = getRealm().getArrayBufferConstructor();
-        JSDynamicObject bufferConstructor;
-        if (JSSharedArrayBuffer.isJSSharedArrayBuffer(srcData)) {
-            bufferConstructor = defaultBufferConstructor;
-        } else {
-            bufferConstructor = getArraySpeciesConstructorNode().speciesConstructor(srcData, defaultBufferConstructor);
-        }
         JSArrayBufferObject arrayBuffer = createTypedArrayBuffer(length);
-        JSObject.setPrototype(arrayBuffer, getPrototypeFromConstructorBuffer(bufferConstructor));
-
-        checkDetachedBuffer(srcData);
 
         boolean elementTypeIsBig = JSRuntime.isTypedArrayBigIntFactory(factory);
         boolean sourceTypeIsBig = sourceType instanceof TypedArray.TypedBigIntArray;
@@ -307,14 +283,6 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
             typedArray.setElement(result, i, element, false);
         }
         return result;
-    }
-
-    protected ArraySpeciesConstructorNode getArraySpeciesConstructorNode() {
-        if (arraySpeciesConstructorNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            arraySpeciesConstructorNode = insert(ArraySpeciesConstructorNode.create(getContext(), true));
-        }
-        return arraySpeciesConstructorNode;
     }
 
     /**
