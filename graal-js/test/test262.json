@@ -2272,10 +2272,6 @@
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
   }, {
-    "filePath" : "built-ins/TypedArrayConstructors/ctors/no-species.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-04-11"
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
