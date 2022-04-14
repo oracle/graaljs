@@ -483,6 +483,14 @@
     "filePath" : "mjsunit/es6/super.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/es6/typedarray-construct-by-array-like-prototype-element-added.js",
+    "status" : "FAIL",
+    "comment" : "Delegates to a partially obsolete typedarray-construct-by-array-like.js test"
+  }, {
+    "filePath" : "mjsunit/es6/typedarray-construct-by-array-like.js",
+    "status" : "FAIL",
+    "comment" : "Part of the test is obsolete and was removed by https://github.com/v8/v8/commit/1ac9280d509e3d01c8b07c65431d96a21eb7423b"
+  }, {
     "filePath" : "mjsunit/es6/typedarray-construct-offset-not-smi.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
@@ -1185,6 +1193,10 @@
     "filePath" : "mjsunit/regress/regress-821368.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-840106.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, removed by https://github.com/v8/v8/commit/1ac9280d509e3d01c8b07c65431d96a21eb7423b"
   }, {
     "filePath" : "mjsunit/regress/regress-842078.js",
     "status" : "FAIL",
