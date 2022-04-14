@@ -77,7 +77,7 @@ public abstract class JSUnaryNode extends JavaScriptNode {
             if (annotation != null) {
                 String shortName = annotation.shortName();
                 if (!shortName.isEmpty()) {
-                    return "(" + shortName + (shortName.length() == 1 ? "" : " ") + Objects.toString(getOperand().expressionToString(), INTERMEDIATE_VALUE) + ")";
+                    return "(" + shortName + (shortName.length() <= 2 ? "" : " ") + Objects.toString(getOperand().expressionToString(), INTERMEDIATE_VALUE) + ")";
                 }
             }
         }
