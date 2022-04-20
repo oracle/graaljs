@@ -69,6 +69,12 @@ public abstract class JSNotNode extends JSUnaryNode {
             // optimize "!!operand", but retain conversion to boolean if operand != boolean
             JSNotNode childNode = (JSNotNode) operand;
             JavaScriptNode childOperand = childNode.getOperand();
+            if (!childOperand.hasSourceSection() && childNode.hasSourceSection()) {
+                // Expressions like `(x !== y)` are represented as `!(x === y)`, so the source
+                // section and expression tag is on the `!` node. When eliminating `!!`,
+                // we have to transfer those to the retained inner expression node.
+                transferSourceSectionAndTags(childNode, childOperand);
+            }
             if (childOperand.isResultAlwaysOfType(boolean.class)) {
                 return childOperand;
             } else {
