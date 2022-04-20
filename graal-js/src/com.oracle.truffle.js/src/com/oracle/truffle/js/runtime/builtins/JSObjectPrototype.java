@@ -53,7 +53,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
-import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyPrototypeArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -61,7 +60,7 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
 public final class JSObjectPrototype extends JSNonProxy {
 
-    public static final TruffleString CLASS_NAME = Strings.constant("Object");
+    public static final TruffleString CLASS_NAME = Strings.UC_OBJECT;
 
     public static final JSObjectPrototype INSTANCE = new JSObjectPrototype();
     public static final JSBuiltinsContainer BUILTINS = ObjectPrototypeBuiltins.BUILTINS;
@@ -69,12 +68,12 @@ public final class JSObjectPrototype extends JSNonProxy {
     private JSObjectPrototype() {
     }
 
-    public static JSDynamicObject create(JSContext context) {
+    public static JSObjectPrototypeObject create(JSContext context) {
         return create(context.makeEmptyShapeWithNullPrototype(JSObjectPrototype.INSTANCE));
     }
 
     public static boolean isJSObjectPrototype(Object obj) {
-        return obj instanceof Instance;
+        return obj instanceof JSObjectPrototypeObject;
     }
 
     @Override
@@ -214,15 +213,9 @@ public final class JSObjectPrototype extends JSNonProxy {
         return result;
     }
 
-    public static JSDynamicObject create(Shape shape) {
+    public static JSObjectPrototypeObject create(Shape shape) {
         assert JSShape.getJSClassNoCast(shape) == JSObjectPrototype.INSTANCE;
-        return new Instance(shape);
-    }
-
-    public static final class Instance extends JSArrayBase {
-        protected Instance(Shape shape) {
-            super(shape, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray(), ScriptArray.EMPTY_OBJECT_ARRAY, null, 0, 0, 0, 0, 0);
-        }
+        return new JSObjectPrototypeObject(shape);
     }
 
 }
