@@ -4331,7 +4331,7 @@ public class Parser extends AbstractParser {
             } else {
                 propertyValue = detectSpecialProperty(ident);
             }
-            lc.getCurrentScope().addIdentifierReference(ident.getName());
+            addIdentifierReference(ident.getName());
         } else {
             expect(COLON);
 
