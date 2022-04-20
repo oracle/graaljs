@@ -831,15 +831,15 @@ public final class Strings extends ParserStrings {
     }
 
     public static TruffleString lazyTrim(TruffleString s) {
-        int len = length(s);
-        int st = 0;
-        while ((st < len) && (charAt(s, st) <= ' ')) {
-            st++;
+        int end = length(s);
+        int start = 0;
+        while ((start < end) && (charAt(s, start) <= ' ')) {
+            start++;
         }
-        while ((st < len) && (charAt(s, len - 1) <= ' ')) {
-            len--;
+        while ((start < end) && (charAt(s, end - 1) <= ' ')) {
+            end--;
         }
-        return ((st > 0) || (len < length(s))) ? lazySubstring(s, st, len) : s;
+        return ((start > 0) || (end < length(s))) ? lazySubstring(s, start, end - start) : s;
     }
 
     public static long parseLong(TruffleString s) throws TruffleString.NumberFormatException {
