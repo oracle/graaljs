@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,7 +86,14 @@ public abstract class JSUnaryNode extends JavaScriptNode {
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("operator", getClass().getAnnotation(NodeInfo.class).shortName());
+        NodeInfo annotation = getClass().getAnnotation(NodeInfo.class);
+        if (annotation != null) {
+            String shortName = annotation.shortName();
+            if (!shortName.isEmpty()) {
+                return JSTags.createNodeObjectDescriptor("operator", annotation.shortName());
+            }
+        }
+        return null;
     }
 
     @Override
