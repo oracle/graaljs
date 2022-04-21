@@ -35,7 +35,7 @@ local common_json = (import "common.json");
   local common = {
     packages+: {
       'mx': 'HEAD',
-      'python3': '==3.9.9',
+      'python3': '==3.8.10',
       'pip:pylint': '==2.4.4',
       'pip:ninja_syntax': '==1.7.2',
     },
@@ -44,7 +44,7 @@ local common_json = (import "common.json");
       'npm-debug.log', // created on npm errors
     ],
     environment+: {
-      MX_PYTHON: "python3.9",
+      MX_PYTHON: "python3.8",
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
     },
     python_version: "3",
