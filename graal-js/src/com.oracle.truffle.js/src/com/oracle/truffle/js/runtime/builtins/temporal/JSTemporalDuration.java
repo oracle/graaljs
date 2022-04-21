@@ -213,7 +213,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         Matcher matcher = regex.matcher(Strings.toJavaString(string));
         if (matcher.matches()) {
             if (matcher.start(2) < 0 && matcher.start(3) < 0 && matcher.start(4) < 0 && matcher.start(5) < 0 && matcher.start(7) < 0 && matcher.start(8) < 0 && matcher.start(9) < 0) {
-                //neither DurationDate nor DurationTime found.
+                // neither DurationDate nor DurationTime found.
                 throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
             }
 
@@ -321,8 +321,8 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             TruffleString numstr = Strings.lazySubstring(string, start, matcher.end(i) - (start + 1));
 
             int idx = findDecimalSeparator(numstr, 0);
-            if (findDecimalSeparator(numstr,idx+1) >= 0) {
-                //second DecimalSeparator found
+            if (findDecimalSeparator(numstr, idx + 1) >= 0) {
+                // second DecimalSeparator found
                 throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
             }
             if (idx >= 0) {

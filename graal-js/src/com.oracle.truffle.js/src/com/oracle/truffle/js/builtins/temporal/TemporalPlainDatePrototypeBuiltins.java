@@ -567,7 +567,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode) {
             JSTemporalPlainDateObject temporalDate = requireTemporalDate(thisObj);
-            JSTemporalPlainDateObject other = (JSTemporalPlainDateObject) toTemporalDate.executeDynamicObject(otherObj, Undefined.instance);
+            JSTemporalPlainDateObject other = toTemporalDate.executeDynamicObject(otherObj, Undefined.instance);
             if (!TemporalUtil.calendarEquals(temporalDate.getCalendar(), other.getCalendar(), toStringNode)) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
@@ -610,7 +610,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode) {
             JSTemporalPlainDateObject temporalDate = requireTemporalDate(thisObj);
-            JSTemporalPlainDateObject other = (JSTemporalPlainDateObject) toTemporalDate.executeDynamicObject(otherObj, Undefined.instance);
+            JSTemporalPlainDateObject other = toTemporalDate.executeDynamicObject(otherObj, Undefined.instance);
             if (!TemporalUtil.calendarEquals(temporalDate.getCalendar(), other.getCalendar(), toStringNode)) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
@@ -761,7 +761,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
                         @Cached JSToStringNode toStringNode) {
             JSTemporalPlainDateObject temporalDate = requireTemporalDate(thisObj);
-            JSTemporalPlainDateObject other = (JSTemporalPlainDateObject) toTemporalDate.executeDynamicObject(otherParam, Undefined.instance);
+            JSTemporalPlainDateObject other = toTemporalDate.executeDynamicObject(otherParam, Undefined.instance);
             if (temporalDate.getYear() != other.getYear()) {
                 return false;
             }

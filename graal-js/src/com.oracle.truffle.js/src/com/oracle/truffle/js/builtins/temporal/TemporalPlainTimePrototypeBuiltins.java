@@ -597,7 +597,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 errorBranch.enter();
                 throw TemporalErrors.createTypeErrorTemporalDateExpected();
             }
-            JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) toTemporalDate.executeDynamicObject(temporalDateLike, Undefined.instance);
+            JSTemporalPlainDateObject date = toTemporalDate.executeDynamicObject(temporalDateLike, Undefined.instance);
             Object temporalTimeZoneLike = JSObject.get(item, TemporalConstants.TIME_ZONE);
             if (temporalTimeZoneLike == Undefined.instance || temporalTimeZoneLike == null) {
                 errorBranch.enter();

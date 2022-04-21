@@ -121,8 +121,8 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected int compare(Object obj1, Object obj2,
                         @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
-            JSTemporalPlainDateObject one = (JSTemporalPlainDateObject) toTemporalDate.executeDynamicObject(obj1, Undefined.instance);
-            JSTemporalPlainDateObject two = (JSTemporalPlainDateObject) toTemporalDate.executeDynamicObject(obj2, Undefined.instance);
+            JSTemporalPlainDateObject one = toTemporalDate.executeDynamicObject(obj1, Undefined.instance);
+            JSTemporalPlainDateObject two = toTemporalDate.executeDynamicObject(obj2, Undefined.instance);
             return TemporalUtil.compareISODate(
                             one.getYear(), one.getMonth(), one.getDay(),
                             two.getYear(), two.getMonth(), two.getDay());

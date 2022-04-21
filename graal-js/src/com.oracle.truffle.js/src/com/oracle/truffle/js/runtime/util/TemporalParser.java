@@ -235,7 +235,7 @@ public final class TemporalParser {
                 boolean ok = false;
                 // TimeHourNotValidMonth TimeMinute
                 if ((h == 0 || (13 <= h && h <= 23)) && isValidMinute(min)) {
-                    ok=true;
+                    ok = true;
                 }
 
                 // TimeHour TimeMinuteNotValidDay
@@ -259,7 +259,8 @@ public final class TemporalParser {
                 }
             }
 
-            // TimeHour TimeMinute TimeZoneNumericUTCOffsetNotAmbiguousAllowedNegativeHour TimeZoneBracketedAnnotationopt
+            // TimeHour TimeMinute TimeZoneNumericUTCOffsetNotAmbiguousAllowedNegativeHour
+            // TimeZoneBracketedAnnotationopt
             if (tryParseTimeZoneNumericUTCOffset(true)) {
                 tryParseTimeZoneBracketedAnnotation();
                 if (atEnd()) {
@@ -313,15 +314,15 @@ public final class TemporalParser {
         return false;
     }
 
-    private boolean isValidMinute(long min) {
+    private static boolean isValidMinute(long min) {
         return 0 <= min && min <= 59;
     }
 
-    private boolean isValidHour(long h) {
+    private static boolean isValidHour(long h) {
         return 0 <= h && h <= 23;
     }
 
-    private long getNumber(TruffleString s) {
+    private static long getNumber(TruffleString s) {
         try {
             return Strings.parseLong(s);
         } catch (TruffleString.NumberFormatException ex) {
@@ -350,9 +351,9 @@ public final class TemporalParser {
     }
 
     private int parseTwoDigits(int at) {
-        if (Strings.length(rest) >= at+2) {
-            char next0 = Strings.charAt(rest, at+0);
-            char next1 = Strings.charAt(rest, at+1);
+        if (Strings.length(rest) >= at + 2) {
+            char next0 = Strings.charAt(rest, at + 0);
+            char next1 = Strings.charAt(rest, at + 1);
             if (isDigit(next0) && isDigit(next1)) {
                 return toDigit(next0) * 10 + toDigit(next1);
             }
@@ -360,11 +361,11 @@ public final class TemporalParser {
         return -1;
     }
 
-    private boolean isDigit(char c) {
+    private static boolean isDigit(char c) {
         return '0' <= c && c <= '9';
     }
 
-    private int toDigit(char c) {
+    private static int toDigit(char c) {
         assert isDigit(c);
         return c - '0';
     }

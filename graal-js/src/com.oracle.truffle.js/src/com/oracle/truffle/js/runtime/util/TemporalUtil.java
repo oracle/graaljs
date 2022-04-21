@@ -155,7 +155,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayOb
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalRelativeDateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalYearMonthDayRecord;
@@ -232,7 +231,6 @@ public final class TemporalUtil {
     private static final BigInt lowerEpochNSLimit = upperEpochNSLimit.negate();
 
     // 8.64* 10^21 + 8.64 * 10^13; roughly 273,000 years
-    private static final BigInteger isoOutsideTimeUpperBound = new BigInteger("9990000000000000000000");
     private static final BigInteger isoTimeUpperBound = new BigInteger("8640000086400000000000");
     private static final BigInteger isoTimeLowerBound = isoTimeUpperBound.negate();
     private static final int isoTimeBoundYears = 270000;
@@ -1296,7 +1294,8 @@ public final class TemporalUtil {
         throw Errors.shouldNotReachHere("unknown overflow type: " + result);
     }
 
-    public static JSTemporalDateTimeRecord interpretTemporalDateTimeFields(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options, TemporalGetOptionNode getOptionNode, TemporalDateFromFieldsNode dateFromFieldsNode) {
+    public static JSTemporalDateTimeRecord interpretTemporalDateTimeFields(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options, TemporalGetOptionNode getOptionNode,
+                    TemporalDateFromFieldsNode dateFromFieldsNode) {
         JSTemporalDateTimeRecord timeResult = toTemporalTimeRecord(fields);
         JSTemporalPlainDateObject date = dateFromFieldsNode.executeDynamicObject(calendar, fields, options);
         Overflow overflow = toTemporalOverflow(options, getOptionNode);
@@ -1678,7 +1677,8 @@ public final class TemporalUtil {
         throw Errors.createTypeError("unknown property");
     }
 
-    public static JSDynamicObject calendarMergeFields(JSContext ctx, EnumerableOwnPropertyNamesNode namesNode, BranchProfile errorBranch, JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject additionalFields) {
+    public static JSDynamicObject calendarMergeFields(JSContext ctx, EnumerableOwnPropertyNamesNode namesNode, BranchProfile errorBranch, JSDynamicObject calendar, JSDynamicObject fields,
+                    JSDynamicObject additionalFields) {
         Object mergeFields = JSObject.getMethod(calendar, TemporalConstants.MERGE_FIELDS);
         if (mergeFields == Undefined.instance) {
             return defaultMergeFields(ctx, namesNode, fields, additionalFields);
@@ -2051,7 +2051,7 @@ public final class TemporalUtil {
         }
     }
 
-    //TODO (GR-32375) for interop support, this needs to detect and convert foreign temporal values
+    // TODO (GR-32375) for interop support, this needs to detect and convert foreign temporal values
     public static JSDynamicObject toJSObject(Object item, BranchProfile errorBranch) {
         if (item instanceof JSDynamicObject) {
             return (JSDynamicObject) item;
