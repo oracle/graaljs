@@ -461,6 +461,9 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             } else {
                 TruffleString className = toString(toType);
                 javaType = JavaTypeNode.lookupJavaType(className, env);
+                if (javaType == null) {
+                    throw Errors.createTypeErrorClassNotFound(className);
+                }
             }
             if (knownArrayClass || isJavaArrayClass(javaType, env, interop)) {
                 return toArray(jsObj, javaType);
