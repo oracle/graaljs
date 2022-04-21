@@ -3707,7 +3707,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
                 classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
                                 members.toArray(ObjectLiteralMemberNode.EMPTY), writeClassBinding, className,
-                                classNode.getInstanceFieldCount(), classNode.getStaticElementCount(), classNode.hasPrivateInstanceMethods(), currentFunction().getBlockScopeSlot());
+                                classNode.getInstanceFieldCount(), classNode.getStaticElementCount(), classNode.hasPrivateInstanceMethods(), environment.getCurrentBlockScopeSlot());
 
                 if (classNode.hasPrivateMethods()) {
                     // internal constructor binding used for private brand checks.
