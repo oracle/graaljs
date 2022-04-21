@@ -162,9 +162,8 @@ public abstract class Environment {
         declareInternalSlot(FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER);
     }
 
-    public JSFrameSlot declareInternalSlot(Object name) {
-        assert JSFrameSlot.isAllowedIdentifierType(name) : name;
-        return getBlockFrameDescriptor().findOrAddFrameSlot(name);
+    public JSFrameSlot declareInternalSlot(@SuppressWarnings("unused") Object name) {
+        throw unsupported();
     }
 
     public final JavaScriptNode createLocal(JSFrameSlot frameSlot, int frameLevel, int scopeLevel) {
