@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,12 +46,17 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBigIntNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
+import com.oracle.truffle.js.nodes.unary.JSNotNode;
+import com.oracle.truffle.js.nodes.unary.JSNotNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -63,6 +68,7 @@ import com.oracle.truffle.js.runtime.Symbol;
  * @see JSToBooleanNode
  */
 @ImportStatic({JSConfig.class})
+@NodeInfo(shortName = "!!")
 public abstract class JSToBooleanUnaryNode extends JSUnaryNode {
 
     protected JSToBooleanUnaryNode(JavaScriptNode operand) {
@@ -168,7 +174,24 @@ public abstract class JSToBooleanUnaryNode extends JSUnaryNode {
     }
 
     @Override
-    public String expressionToString() {
-        return getOperand().expressionToString();
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == UnaryOperationTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(UnaryOperationTag.class)) {
+            JavaScriptNode newOperand = cloneUninitialized(getOperand(), materializedTags);
+            JSNotNode innerNot = JSNotNodeGen.create(newOperand);
+            JSNotNode outerNot = JSNotNodeGen.create(innerNot);
+            transferSourceSectionAddExpressionTag(this, innerNot);
+            transferSourceSectionAndTags(this, outerNot);
+            return outerNot;
+        }
+        return this;
     }
 }

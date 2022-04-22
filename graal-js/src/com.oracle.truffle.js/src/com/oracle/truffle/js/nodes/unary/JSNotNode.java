@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBooleanNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanUnaryNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -68,8 +69,16 @@ public abstract class JSNotNode extends JSUnaryNode {
             // optimize "!!operand", but retain conversion to boolean if operand != boolean
             JSNotNode childNode = (JSNotNode) operand;
             JavaScriptNode childOperand = childNode.getOperand();
+            if (!childOperand.hasSourceSection() && childNode.hasSourceSection()) {
+                // Expressions like `(x !== y)` are represented as `!(x === y)`, so the source
+                // section and expression tag is on the `!` node. When eliminating `!!`,
+                // we have to transfer those to the retained inner expression node.
+                transferSourceSectionAndTags(childNode, childOperand);
+            }
             if (childOperand.isResultAlwaysOfType(boolean.class)) {
                 return childOperand;
+            } else {
+                return JSToBooleanUnaryNode.create(childOperand);
             }
         } else if (JSConfig.UseSuperOperations && operand instanceof JSConstantBooleanNode) {
             boolean value = (boolean) operand.execute(null);
