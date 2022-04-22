@@ -139,6 +139,12 @@ public final class FunctionEnvironment extends Environment {
         return getFunctionFrameDescriptor().findOrAddFrameSlot(name, FrameSlotKind.Illegal);
     }
 
+    @Override
+    public JSFrameSlot declareInternalSlot(Object name) {
+        assert JSFrameSlot.isAllowedIdentifierType(name) : name;
+        return getFunctionFrameDescriptor().findOrAddFrameSlot(name);
+    }
+
     public JSFrameSlot getReturnSlot() {
         if (returnSlot == null) {
             returnSlot = declareLocalVar(RETURN_SLOT_IDENTIFIER);
