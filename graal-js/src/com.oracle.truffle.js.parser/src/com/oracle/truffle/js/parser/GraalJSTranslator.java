@@ -2092,7 +2092,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             VarRef firstTempVar = environment.createTempVar();
             JSFrameDescriptor iterationBlockFrameDescriptor = environment.getBlockFrameDescriptor();
             RepeatingNode repeatingNode = factory.createForRepeatingNode(test, wrappedBody, modify, iterationBlockFrameDescriptor.toFrameDescriptor(), firstTempVar.createReadNode(),
-                            firstTempVar.createWriteNode(factory.createConstantBoolean(false)), currentFunction().getBlockScopeSlot());
+                            firstTempVar.createWriteNode(factory.createConstantBoolean(false)), environment.getCurrentBlockScopeSlot());
             StatementNode newFor = factory.createFor(factory.createLoopNode(repeatingNode));
             ensureHasSourceSection(newFor, forNode);
             return createBlock(init, firstTempVar.createWriteNode(factory.createConstantBoolean(true)), newFor);
@@ -3707,7 +3707,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
                 classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
                                 members.toArray(ObjectLiteralMemberNode.EMPTY), writeClassBinding, className,
-                                classNode.getInstanceFieldCount(), classNode.getStaticElementCount(), classNode.hasPrivateInstanceMethods(), currentFunction().getBlockScopeSlot());
+                                classNode.getInstanceFieldCount(), classNode.getStaticElementCount(), classNode.hasPrivateInstanceMethods(), environment.getCurrentBlockScopeSlot());
 
                 if (classNode.hasPrivateMethods()) {
                     // internal constructor binding used for private brand checks.
@@ -3824,7 +3824,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 if (newEnv instanceof BlockEnvironment) {
                     BlockEnvironment blockEnv = (BlockEnvironment) newEnv;
                     if (blockEnv.hasScopeFrame()) {
-                        return factory.createBlockScope(block, blockEnv.function().getBlockScopeSlot(), blockEnv.getBlockFrameDescriptor().toFrameDescriptor(),
+                        return factory.createBlockScope(block, blockEnv.getCurrentBlockScopeSlot(), blockEnv.getBlockFrameDescriptor().toFrameDescriptor(),
                                         blockEnv.getParentSlot(), blockEnv.isFunctionBlock(), blockEnv.capturesFunctionFrame(), blockEnv.isGeneratorFunctionBlock(), blockEnv.getScopeLevel() > 1,
                                         blockEnv.getStart(), blockEnv.getEnd());
                     } else if (blockEnv.getStart() < blockEnv.getEnd() && !blockEnv.isFunctionBlock()) {

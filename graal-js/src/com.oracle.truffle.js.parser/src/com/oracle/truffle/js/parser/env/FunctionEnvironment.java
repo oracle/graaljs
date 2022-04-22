@@ -164,14 +164,20 @@ public final class FunctionEnvironment extends Environment {
         return declareLocalVar(YIELD_RESULT_SLOT_IDENTIFIER);
     }
 
-    public JSFrameSlot getOrCreateBlockScopeSlot() {
+    JSFrameSlot getOrCreateBlockScopeSlot() {
         if (blockScopeSlot == null) {
             blockScopeSlot = declareLocalVar(ScopeFrameNode.BLOCK_SCOPE_IDENTIFIER);
         }
         return blockScopeSlot;
     }
 
-    public JSFrameSlot getBlockScopeSlot() {
+    /**
+     * Returns the function's block scope frame slot, or null if it has not been created yet.
+     *
+     * Note: Always use {@link #getCurrentBlockScopeSlot()} to get the block scope slot at the
+     * current location, which may be null also after the slot has been allocated.
+     */
+    JSFrameSlot getBlockScopeSlot() {
         return blockScopeSlot;
     }
 
