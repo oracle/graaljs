@@ -353,7 +353,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         public JSDynamicObject add(Object thisObj, Object temporalDurationLike, Object optParam,
-                        @Cached("create(getContext())") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalPlainDateTimeObject dateTime = requireTemporalDateTime(thisObj);
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
             TemporalUtil.rejectDurationSign(
@@ -508,7 +508,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         public JSDynamicObject subtract(Object thisObj, Object temporalDurationLike, Object optParam,
-                        @Cached("create(getContext())") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalPlainDateTimeObject dateTime = requireTemporalDateTime(thisObj);
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
             TemporalUtil.rejectDurationSign(

@@ -60,6 +60,7 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
@@ -181,11 +182,12 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             } else {
                 offsetNs = Undefined.instance;
             }
-            BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, getRealm(),
+            JSRealm realm = getRealm();
+            BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, realm,
                             result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
                             result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNs, timeZone, TemporalUtil.Disambiguation.COMPATIBLE, TemporalUtil.OffsetOption.REJECT,
                             matchBehaviour);
-            return JSTemporalZonedDateTime.create(ctx, getRealm(), epochNanoseconds, timeZone, calendar);
+            return JSTemporalZonedDateTime.create(ctx, realm, epochNanoseconds, timeZone, calendar);
         }
         return JSTemporalPlainDate.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar, errorBranch);
     }

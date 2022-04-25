@@ -72,6 +72,7 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalInstantNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
@@ -302,22 +303,23 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime) {
             JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
             JSTemporalPlainDateTimeObject dateTime = (JSTemporalPlainDateTimeObject) toTemporalDateTime.executeDynamicObject(dateTimeParam, Undefined.instance);
+            JSRealm realm = getRealm();
             if (timeZone.getNanoseconds() != null) {
                 BigInteger epochNanoseconds = TemporalUtil.getEpochFromISOParts(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(),
                                 dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
-                Object instant = JSTemporalInstant.create(getContext(), getRealm(), new BigInt(epochNanoseconds.subtract(timeZone.getNanoseconds().bigIntegerValue())));
+                Object instant = JSTemporalInstant.create(getContext(), realm, new BigInt(epochNanoseconds.subtract(timeZone.getNanoseconds().bigIntegerValue())));
                 List<Object> list = new ArrayList<>();
                 list.add(instant);
-                return JSRuntime.createArrayFromList(getContext(), getRealm(), list);
+                return JSRuntime.createArrayFromList(getContext(), realm, list);
             }
             List<BigInt> possibleEpochNanoseconds = TemporalUtil.getIANATimeZoneEpochValue(timeZone.getIdentifier(), dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
                             dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
             List<Object> possibleInstants = new ArrayList<>();
             for (BigInt epochNanoseconds : possibleEpochNanoseconds) {
-                JSDynamicObject instant = JSTemporalInstant.create(getContext(), getRealm(), epochNanoseconds);
+                JSDynamicObject instant = JSTemporalInstant.create(getContext(), realm, epochNanoseconds);
                 possibleInstants.add(instant);
             }
-            return JSRuntime.createArrayFromList(getContext(), getRealm(), possibleInstants);
+            return JSRuntime.createArrayFromList(getContext(), realm, possibleInstants);
         }
     }
 

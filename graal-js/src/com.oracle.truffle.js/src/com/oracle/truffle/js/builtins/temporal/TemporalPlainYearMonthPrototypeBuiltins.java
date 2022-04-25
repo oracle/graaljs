@@ -400,7 +400,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         @Specialization
         protected JSDynamicObject add(Object thisObj, Object temporalDurationLike, Object optParam,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
+                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
                         @Cached("create(getContext())") TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
                         @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode,
                         @Cached("create(getContext())") TemporalCalendarGetterNode calendarGetterNode,
@@ -442,7 +442,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         @Specialization
         protected JSDynamicObject subtract(Object thisObj, Object temporalDurationLike, Object optParam,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
+                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
                         @Cached("create(getContext())") TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
                         @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode,
                         @Cached("create(getContext())") TemporalCalendarGetterNode calendarGetterNode,
