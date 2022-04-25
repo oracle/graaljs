@@ -101,7 +101,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                     @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
                     @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode,
                     @Cached TruffleString.EqualNode equalNode,
-                    @Cached("create(ctx)") TemporalDateFromFieldsNode dateFromFieldsNode) {
+                    @Cached("create(ctx)") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         assert options != null;
         JSTemporalDateTimeRecord result;
         TruffleString offsetString = null;

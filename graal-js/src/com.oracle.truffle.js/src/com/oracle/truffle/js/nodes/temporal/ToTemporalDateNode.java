@@ -94,7 +94,7 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
                     @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode,
-                    @Cached("create(ctx)") TemporalDateFromFieldsNode dateFromFieldsNode) {
+                    @Cached("create(ctx)") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         assert options != null;
         if (isObjectProfile.profile(isObjectNode.executeBoolean(itemParam))) {
             JSDynamicObject item = (JSDynamicObject) itemParam;

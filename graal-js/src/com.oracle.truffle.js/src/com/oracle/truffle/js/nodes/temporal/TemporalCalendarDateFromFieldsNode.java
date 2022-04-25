@@ -53,21 +53,21 @@ import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Implementation of dateFromFields() operation.
+ * Implementation of CalendarDateFromFields() operation.
  */
-public abstract class TemporalDateFromFieldsNode extends JavaScriptBaseNode {
+public abstract class TemporalCalendarDateFromFieldsNode extends JavaScriptBaseNode {
 
     private final BranchProfile errorBranch = BranchProfile.create();
     @Child protected PropertyGetNode getDateFromFieldsNode;
     @Child protected JSFunctionCallNode callNode;
 
-    protected TemporalDateFromFieldsNode(JSContext ctx) {
+    protected TemporalCalendarDateFromFieldsNode(JSContext ctx) {
         this.getDateFromFieldsNode = PropertyGetNode.create(TemporalConstants.DATE_FROM_FIELDS, false, ctx);
         this.callNode = JSFunctionCallNode.createCall();
     }
 
-    public static TemporalDateFromFieldsNode create(JSContext context) {
-        return TemporalDateFromFieldsNodeGen.create(context);
+    public static TemporalCalendarDateFromFieldsNode create(JSContext context) {
+        return TemporalCalendarDateFromFieldsNodeGen.create(context);
     }
 
     public abstract JSTemporalPlainDateObject execute(JSDynamicObject calendar, JSDynamicObject fields, Object options);

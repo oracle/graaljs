@@ -121,8 +121,8 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
-import com.oracle.truffle.js.nodes.temporal.TemporalDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalDurationAddNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarNode;
@@ -1295,7 +1295,7 @@ public final class TemporalUtil {
     }
 
     public static JSTemporalDateTimeRecord interpretTemporalDateTimeFields(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options, TemporalGetOptionNode getOptionNode,
-                    TemporalDateFromFieldsNode dateFromFieldsNode) {
+                    TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         JSTemporalDateTimeRecord timeResult = toTemporalTimeRecord(fields);
         JSTemporalPlainDateObject date = dateFromFieldsNode.execute(calendar, fields, options);
         Overflow overflow = toTemporalOverflow(options, getOptionNode);
