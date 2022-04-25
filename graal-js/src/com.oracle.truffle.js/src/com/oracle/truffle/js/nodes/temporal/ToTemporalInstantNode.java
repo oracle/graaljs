@@ -69,7 +69,7 @@ public abstract class ToTemporalInstantNode extends JavaScriptBaseNode {
         return ToTemporalInstantNodeGen.create(context);
     }
 
-    public abstract JSTemporalInstantObject executeDynamicObject(Object value);
+    public abstract JSTemporalInstantObject execute(Object value);
 
     @Specialization
     public JSTemporalInstantObject toTemporalDateTime(Object item,

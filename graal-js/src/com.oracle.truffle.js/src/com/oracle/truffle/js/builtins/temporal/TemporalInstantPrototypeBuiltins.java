@@ -268,7 +268,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
-            JSTemporalInstantObject other = toTemporalInstantNode.executeDynamicObject(otherObj);
+            JSTemporalInstantObject other = toTemporalInstantNode.execute(otherObj);
             JSDynamicObject options = getOptionsObject(optionsParam);
             Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND, equalNode);
             Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.SECOND, smallestUnit);
@@ -346,7 +346,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         public boolean equals(Object thisObj, Object otherObj,
                         @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
-            JSTemporalInstantObject other = toTemporalInstantNode.executeDynamicObject(otherObj);
+            JSTemporalInstantObject other = toTemporalInstantNode.execute(otherObj);
             return instant.getNanoseconds().compareTo(other.getNanoseconds()) == 0;
         }
     }

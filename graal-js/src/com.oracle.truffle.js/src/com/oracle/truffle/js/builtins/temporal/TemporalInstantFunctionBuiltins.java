@@ -123,7 +123,7 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
             if (TemporalUtil.isTemporalInstant(item)) {
                 return JSTemporalInstant.create(getContext(), getRealm(), ((JSTemporalInstantObject) item).getNanoseconds());
             }
-            return toTemporalInstantNode.executeDynamicObject(item);
+            return toTemporalInstantNode.execute(item);
         }
 
     }
@@ -168,8 +168,8 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization
         protected int compare(Object obj1, Object obj2,
                         @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
-            JSTemporalInstantObject one = toTemporalInstantNode.executeDynamicObject(obj1);
-            JSTemporalInstantObject two = toTemporalInstantNode.executeDynamicObject(obj2);
+            JSTemporalInstantObject one = toTemporalInstantNode.execute(obj1);
+            JSTemporalInstantObject two = toTemporalInstantNode.execute(obj2);
             return TemporalUtil.compareEpochNanoseconds(one.getNanoseconds(), two.getNanoseconds());
         }
     }
