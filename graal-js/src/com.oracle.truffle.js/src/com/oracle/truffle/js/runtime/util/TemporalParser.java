@@ -178,11 +178,8 @@ public final class TemporalParser {
             parseTimeZone();
             boolean hasCalendar = parseCalendar();
             if (!hasTimeDesignator && !hasCalendar) {
-                // return null;
-                // ignoring this (almost) implements
-                // TimeSpecWithOptionalTimeZoneNotAmbiguous
-            }
-            if (atEnd()) {
+                //neither of the two first alternatives match
+            } else if (atEnd()) {
                 return result();
             }
         }

@@ -46,6 +46,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.oracle.truffle.js.builtins.PolyglotBuiltins;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -829,10 +830,9 @@ public class TemporalBuiltinsTest extends JSTest {
 
     @Test
     public void testInstant() {
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, "Temporal.Instant.from('1900-01-01T12:00Z').toString();");
-            assertEquals("1900-01-01T12:00:00Z", result.toString());
-        }
+        String code = "var inst = Temporal.Instant.from('1900-01-01T12:00Z').toString(); \n" +
+                        "inst.toString() == '1900-01-01T12:00:00Z';";
+        testTrue(code);
     }
 
     @Test
@@ -931,20 +931,14 @@ public class TemporalBuiltinsTest extends JSTest {
         String code = "const epoch = new Temporal.Instant(0n);\n" +
                         "const str = '1970-01-01T00:02:00.000000000+00:02[+00:01:30.987654321]';\n" +
                         "Temporal.Instant.compare(str, epoch) === 0;";
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, code);
-            Assert.assertEquals(true, result.asBoolean());
-        }
+        testTrue(code);
     }
 
     @Test
     public void testMonthDayParser() {
         String code = "const md = Temporal.PlainMonthDay.from('--12-25');\n" +
                         "md.monthCode === 'M12' && md.day === 25;";
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, code);
-            Assert.assertEquals(true, result.asBoolean());
-        }
+        testTrue(code);
     }
 
     @Test
@@ -984,6 +978,22 @@ public class TemporalBuiltinsTest extends JSTest {
             Assert.fail();
         } catch (PolyglotException ex) {
             Assert.assertTrue(ex.getMessage().contains("malformed Duration"));
+        }
+    }
+
+    @Test
+    public void testPlainTimeParser() {
+        String code = "var pt = Temporal.PlainTime.from('08:44:15.321');\n" +
+                        "pt.hour == 8 && pt.minute == 44 && pt.second = 15.321;";
+        testTrue(code);
+
+        //TODO and test '08:44:15.321    '
+    }
+
+    private static void testTrue(String code) {
+        try (Context ctx = getJSContext()) {
+            Value result = ctx.eval(ID, code);
+            Assert.assertEquals(true, result.asBoolean());
         }
     }
 
