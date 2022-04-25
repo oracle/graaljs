@@ -321,10 +321,6 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             TruffleString numstr = Strings.lazySubstring(string, start, matcher.end(i) - (start + 1));
 
             int idx = findDecimalSeparator(numstr, 0);
-            if (findDecimalSeparator(numstr, idx + 1) >= 0) {
-                // second DecimalSeparator found
-                throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
-            }
             if (idx >= 0) {
                 TruffleString wholePart = Strings.lazySubstring(numstr, 0, idx);
                 TruffleString fractionalPart = Strings.lazySubstring(numstr, idx + 1);
@@ -341,10 +337,22 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
 
     private static int findDecimalSeparator(TruffleString str, int startPos) {
         int idxDot = Strings.indexOf(str, '.', startPos);
+        int idxComma = Strings.indexOf(str, ',', startPos);
         if (idxDot >= 0) {
+            if (idxComma >= 0) {
+                // cannot have both dot and comma in one number string
+                throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
+            }
+            if (Strings.indexOf(str, '.', idxDot + 1) >= 0) {
+                // second dot found
+                throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
+            }
             return idxDot;
         }
-        int idxComma = Strings.indexOf(str, ',', startPos);
+        if (Strings.indexOf(str, ',', idxComma + 1) >= 0) {
+            // second comma found
+            throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
+        }
         return idxComma;
     }
 

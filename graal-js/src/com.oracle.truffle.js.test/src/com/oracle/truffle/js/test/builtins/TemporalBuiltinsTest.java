@@ -445,7 +445,7 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testDurationRound() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = new Temporal.Duration(0, 0, 0, 0, 12, 45, 35, 520, 450, 860);");
-            ctx.eval(ID, "duration = duration.round({ smallestUnit: 'hours' }); print(duration.toString());");
+            ctx.eval(ID, "duration = duration.round({ smallestUnit: 'hours' });");
             validateDuration(ctx, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0);
         }
     }
@@ -940,7 +940,6 @@ public class TemporalBuiltinsTest extends JSTest {
     @Test
     public void testMonthDayParser() {
         String code = "const md = Temporal.PlainMonthDay.from('--12-25');\n" +
-                        "print(md.toString()); print(md.monthCode); print(md.day);\n" +
                         "md.monthCode === 'M12' && md.day === 25;";
         try (Context ctx = getJSContext()) {
             Value result = ctx.eval(ID, code);
@@ -963,6 +962,28 @@ public class TemporalBuiltinsTest extends JSTest {
             Assert.fail();
         } catch (PolyglotException ex) {
             Assert.assertTrue(ex.getMessage().contains("invalid PlainDateTime"));
+        }
+    }
+
+    @Test
+    public void testDurationParserDotComma() {
+        durationParserFail("P1Y1M1W1DT1H1M1.,123456789S");
+        durationParserFail("P1Y1M1W1DT1H1M1,.123456789S");
+        durationParserFail("P1Y1M1W1DT1H1M1..123456789S");
+        durationParserFail("P1Y1M1W1DT1H1M1,,123456789S");
+
+        durationParserFail("P1Y1M1W1DT1H1M1.88,123456789S");
+        durationParserFail("P1Y1M1W1DT1H1M1,88.123456789S");
+        durationParserFail("P1Y1M1W1DT1H1M1.88.123456789S");
+        durationParserFail("P1Y1M1W1DT1H1M1,88,123456789S");
+    }
+
+    private static void durationParserFail(String duration) {
+        try (Context ctx = getJSContext()) {
+            ctx.eval(ID, "Temporal.Duration.from('" + duration + "')");
+            Assert.fail();
+        } catch (PolyglotException ex) {
+            Assert.assertTrue(ex.getMessage().contains("malformed Duration"));
         }
     }
 
