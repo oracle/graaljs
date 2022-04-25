@@ -1058,7 +1058,7 @@ public final class TemporalUtil {
     public static JSDynamicObject toTemporalCalendar(JSContext ctx, Object temporalCalendarLikeParam) {
         Object temporalCalendarLike = temporalCalendarLikeParam;
         if (JSRuntime.isObject(temporalCalendarLike)) {
-            JSDynamicObject obj = TemporalUtil.toJSObject(temporalCalendarLike, null);
+            JSDynamicObject obj = toJSDynamicObject(temporalCalendarLike, null);
             if (temporalCalendarLike instanceof TemporalCalendar) {
                 return ((TemporalCalendar) temporalCalendarLike).getCalendar();
             }
@@ -1067,7 +1067,7 @@ public final class TemporalUtil {
             }
             temporalCalendarLike = JSObject.get(obj, CALENDAR);
             if (JSRuntime.isObject(temporalCalendarLike)) {
-                JSDynamicObject tclObj = TemporalUtil.toJSObject(temporalCalendarLike, null);
+                JSDynamicObject tclObj = toJSDynamicObject(temporalCalendarLike, null);
                 if (!JSObject.hasProperty(tclObj, CALENDAR)) {
                     return tclObj;
                 }
@@ -1166,7 +1166,7 @@ public final class TemporalUtil {
     public static JSDynamicObject toTemporalTimeZone(JSContext ctx, Object temporalTimeZoneLikeParam) {
         Object temporalTimeZoneLike = temporalTimeZoneLikeParam;
         if (JSRuntime.isObject(temporalTimeZoneLike)) {
-            JSDynamicObject tzObj = TemporalUtil.toJSObject(temporalTimeZoneLike, null);
+            JSDynamicObject tzObj = toJSDynamicObject(temporalTimeZoneLike, null);
             if (isTemporalZonedDateTime(tzObj)) {
                 return ((JSTemporalZonedDateTimeObject) tzObj).getTimeZone();
             } else if (!JSObject.hasProperty(tzObj, TIME_ZONE)) {
@@ -1174,7 +1174,7 @@ public final class TemporalUtil {
             }
             temporalTimeZoneLike = JSObject.get(tzObj, TIME_ZONE);
             if (JSRuntime.isObject(temporalTimeZoneLike)) {
-                tzObj = TemporalUtil.toJSObject(temporalTimeZoneLike, null);
+                tzObj = toJSDynamicObject(temporalTimeZoneLike, null);
                 if (!JSObject.hasProperty(tzObj, TIME_ZONE)) {
                     return tzObj;
                 }
@@ -1297,7 +1297,7 @@ public final class TemporalUtil {
     public static JSTemporalDateTimeRecord interpretTemporalDateTimeFields(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options, TemporalGetOptionNode getOptionNode,
                     TemporalDateFromFieldsNode dateFromFieldsNode) {
         JSTemporalDateTimeRecord timeResult = toTemporalTimeRecord(fields);
-        JSTemporalPlainDateObject date = dateFromFieldsNode.executeDynamicObject(calendar, fields, options);
+        JSTemporalPlainDateObject date = dateFromFieldsNode.execute(calendar, fields, options);
         Overflow overflow = toTemporalOverflow(options, getOptionNode);
         JSTemporalDurationRecord timeResult2 = regulateTime(
                         timeResult.getHour(), timeResult.getMinute(), timeResult.getSecond(), timeResult.getMillisecond(), timeResult.getMicrosecond(), timeResult.getNanosecond(),
@@ -1687,7 +1687,7 @@ public final class TemporalUtil {
         if (!JSRuntime.isObject(result)) {
             throw TemporalErrors.createTypeErrorObjectExpected();
         }
-        return TemporalUtil.toJSObject(result, errorBranch);
+        return toJSDynamicObject(result, errorBranch);
     }
 
     @TruffleBoundary
@@ -2052,7 +2052,7 @@ public final class TemporalUtil {
     }
 
     // TODO (GR-32375) for interop support, this needs to detect and convert foreign temporal values
-    public static JSDynamicObject toJSObject(Object item, BranchProfile errorBranch) {
+    public static JSDynamicObject toJSDynamicObject(Object item, BranchProfile errorBranch) {
         if (item instanceof JSDynamicObject) {
             return (JSDynamicObject) item;
         } else {
@@ -2199,7 +2199,7 @@ public final class TemporalUtil {
             errorBranch.enter();
             throw Errors.createTypeError("Given duration like is not a object.");
         }
-        JSDynamicObject temporalDurationLikeObj = toJSObject(temporalDurationLike, errorBranch);
+        JSDynamicObject temporalDurationLikeObj = toJSDynamicObject(temporalDurationLike, errorBranch);
         JSRealm realm = JSRealm.get(null);
         JSDynamicObject result = JSOrdinary.create(ctx, realm);
         boolean any = false;

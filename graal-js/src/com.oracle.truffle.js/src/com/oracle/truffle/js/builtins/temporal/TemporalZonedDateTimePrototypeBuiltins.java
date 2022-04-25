@@ -531,7 +531,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 errorBranch.enter();
                 throw Errors.createTypeError("object expected");
             }
-            JSDynamicObject temporalZDTLike = TemporalUtil.toJSObject(temporalZonedDateTimeLike, errorBranch);
+            JSDynamicObject temporalZDTLike = TemporalUtil.toJSDynamicObject(temporalZonedDateTimeLike, errorBranch);
             TemporalUtil.rejectTemporalCalendarType(temporalZDTLike, errorBranch);
             Object calendarProperty = JSObject.get(temporalZDTLike, CALENDAR);
             if (calendarProperty != Undefined.instance) {

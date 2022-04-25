@@ -246,13 +246,13 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
             List<TruffleString> receiverFieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDMC);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), monthDay, receiverFieldNames, TemporalUtil.listEmpty);
             List<TruffleString> inputFieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listY);
-            JSDynamicObject inputFields = TemporalUtil.prepareTemporalFields(getContext(), TemporalUtil.toJSObject(item, errorBranch), inputFieldNames, TemporalUtil.listEmpty);
+            JSDynamicObject inputFields = TemporalUtil.prepareTemporalFields(getContext(), TemporalUtil.toJSDynamicObject(item, errorBranch), inputFieldNames, TemporalUtil.listEmpty);
             JSDynamicObject mergedFields = TemporalUtil.calendarMergeFields(getContext(), namesNode, errorBranch, calendar, fields, inputFields);
             List<TruffleString> mergedFieldNames = TemporalUtil.listJoinRemoveDuplicates(receiverFieldNames, inputFieldNames);
             mergedFields = TemporalUtil.prepareTemporalFields(getContext(), mergedFields, mergedFieldNames, TemporalUtil.listEmpty);
             JSDynamicObject options = JSOrdinary.createWithNullPrototype(getContext());
             TemporalUtil.createDataPropertyOrThrow(getContext(), options, OVERFLOW, REJECT);
-            return dateFromFieldsNode.executeDynamicObject(calendar, mergedFields, options);
+            return dateFromFieldsNode.execute(calendar, mergedFields, options);
         }
     }
 

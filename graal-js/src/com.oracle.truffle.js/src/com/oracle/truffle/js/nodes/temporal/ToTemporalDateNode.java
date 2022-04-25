@@ -112,7 +112,7 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
             JSDynamicObject calendar = getTemporalCalendarNode.executeDynamicObject(item);
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDMMCY);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.listEmpty);
-            return dateFromFieldsNode.executeDynamicObject(calendar, fields, options);
+            return dateFromFieldsNode.execute(calendar, fields, options);
         }
         TemporalUtil.toTemporalOverflow(options, getOptionNode);
         JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalDateString(toStringNode.executeString(itemParam));

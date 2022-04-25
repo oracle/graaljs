@@ -299,13 +299,13 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             List<TruffleString> receiverFieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listMCY);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), yearMonth, receiverFieldNames, TemporalUtil.listEmpty);
             List<TruffleString> inputFieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listD);
-            JSDynamicObject inputFields = TemporalUtil.prepareTemporalFields(getContext(), TemporalUtil.toJSObject(item, errorBranch), inputFieldNames, TemporalUtil.listEmpty);
+            JSDynamicObject inputFields = TemporalUtil.prepareTemporalFields(getContext(), TemporalUtil.toJSDynamicObject(item, errorBranch), inputFieldNames, TemporalUtil.listEmpty);
             JSDynamicObject mergedFields = TemporalUtil.calendarMergeFields(getContext(), namesNode, errorBranch, calendar, fields, inputFields);
             List<TruffleString> mergedFieldNames = TemporalUtil.listJoinRemoveDuplicates(receiverFieldNames, inputFieldNames);
             mergedFields = TemporalUtil.prepareTemporalFields(getContext(), mergedFields, mergedFieldNames, TemporalUtil.listEmpty);
             JSDynamicObject options = JSOrdinary.createWithNullPrototype(getContext());
             TemporalUtil.createDataPropertyOrThrow(getContext(), options, OVERFLOW, REJECT);
-            return dateFromFieldsNode.executeDynamicObject(calendar, mergedFields, options);
+            return dateFromFieldsNode.execute(calendar, mergedFields, options);
         }
     }
 
@@ -424,7 +424,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                 day = 1;
             }
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.DAY, day);
-            JSDynamicObject date = dateFromFieldsNode.executeDynamicObject(calendar, fields, Undefined.instance);
+            JSDynamicObject date = dateFromFieldsNode.execute(calendar, fields, Undefined.instance);
             JSDynamicObject durationToAdd = JSTemporalDuration.createTemporalDuration(getContext(), duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0,
                             0, 0, 0, 0, 0, errorBranch);
             JSDynamicObject addedDate = TemporalUtil.calendarDateAdd(calendar, date, durationToAdd, options, Undefined.instance);
@@ -467,7 +467,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                 day = 1;
             }
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.DAY, day);
-            JSDynamicObject date = dateFromFieldsNode.executeDynamicObject(calendar, fields, Undefined.instance);
+            JSDynamicObject date = dateFromFieldsNode.execute(calendar, fields, Undefined.instance);
             JSDynamicObject durationToAdd = JSTemporalDuration.createTemporalDuration(getContext(), duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0,
                             0, 0, 0, errorBranch);
             JSDynamicObject addedDate = TemporalUtil.calendarDateAdd(calendar, date, durationToAdd, options, Undefined.instance);
@@ -513,10 +513,10 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listMCY);
             JSDynamicObject otherFields = TemporalUtil.prepareTemporalFields(getContext(), other, fieldNames, TemporalUtil.listEmpty);
             TemporalUtil.createDataPropertyOrThrow(getContext(), otherFields, DAY, 1);
-            JSDynamicObject otherDate = dateFromFieldsNode.executeDynamicObject(calendar, otherFields, Undefined.instance);
+            JSDynamicObject otherDate = dateFromFieldsNode.execute(calendar, otherFields, Undefined.instance);
             JSDynamicObject thisFields = TemporalUtil.prepareTemporalFields(getContext(), ym, fieldNames, TemporalUtil.listEmpty);
             TemporalUtil.createDataPropertyOrThrow(getContext(), thisFields, DAY, 1);
-            JSTemporalPlainDateObject thisDate = dateFromFieldsNode.executeDynamicObject(calendar, thisFields, Undefined.instance);
+            JSTemporalPlainDateObject thisDate = dateFromFieldsNode.execute(calendar, thisFields, Undefined.instance);
             JSDynamicObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, options, largestUnit);
             JSTemporalDurationObject result = TemporalUtil.calendarDateUntil(calendar, thisDate, otherDate, untilOptions, Undefined.instance);
             if (unitIsMonth.profile(Unit.MONTH == smallestUnit && roundingIncrement == 1)) {
@@ -564,10 +564,10 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listMCY);
             JSDynamicObject otherFields = TemporalUtil.prepareTemporalFields(getContext(), other, fieldNames, TemporalUtil.listEmpty);
             TemporalUtil.createDataPropertyOrThrow(getContext(), otherFields, DAY, 1);
-            JSDynamicObject otherDate = dateFromFieldsNode.executeDynamicObject(calendar, otherFields, Undefined.instance);
+            JSDynamicObject otherDate = dateFromFieldsNode.execute(calendar, otherFields, Undefined.instance);
             JSDynamicObject thisFields = TemporalUtil.prepareTemporalFields(getContext(), ym, fieldNames, TemporalUtil.listEmpty);
             TemporalUtil.createDataPropertyOrThrow(getContext(), thisFields, DAY, 1);
-            JSTemporalPlainDateObject thisDate = dateFromFieldsNode.executeDynamicObject(calendar, thisFields, Undefined.instance);
+            JSTemporalPlainDateObject thisDate = dateFromFieldsNode.execute(calendar, thisFields, Undefined.instance);
             JSDynamicObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, options, largestUnit);
             JSTemporalDurationObject result = TemporalUtil.calendarDateUntil(calendar, thisDate, otherDate, untilOptions, Undefined.instance);
             if (unitIsMonth.profile(Unit.MONTH == smallestUnit && roundingIncrement == 1)) {
