@@ -555,17 +555,6 @@ public final class FunctionEnvironment extends Environment {
         return level;
     }
 
-    /**
-     * Returns the number of frame levels to skip to reach the outermost function (module/script).
-     */
-    public int getOutermostFunctionLevel() {
-        int level = 0;
-        for (FunctionEnvironment currentFunction = this; currentFunction.getParentFunction() != null; currentFunction = currentFunction.getParentFunction(), level++) {
-            currentFunction.setNeedsParentFrame(true);
-        }
-        return level;
-    }
-
     public boolean isAsyncFunction() {
         return isAsyncFunction;
     }

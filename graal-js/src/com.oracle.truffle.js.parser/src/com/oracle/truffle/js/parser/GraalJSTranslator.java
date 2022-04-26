@@ -1831,7 +1831,20 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode getActiveModule() {
         assert lc.inModule();
-        return factory.createAccessFrameArgument(currentFunction().getOutermostFunctionLevel(), 0);
+        Environment current = environment;
+        int frameLevel = 0;
+        int scopeLevel = 0;
+        while (current.getParent() != null) {
+            if (current instanceof FunctionEnvironment) {
+                ((FunctionEnvironment) current).setNeedsParentFrame(true);
+                frameLevel++;
+                scopeLevel = 0;
+            } else if (current instanceof BlockEnvironment && current.hasScopeFrame()) {
+                scopeLevel++;
+            }
+            current = current.getParent();
+        }
+        return factory.createAccessFrameArgument(frameLevel, scopeLevel, 0);
     }
 
     private JavaScriptNode getActiveScriptOrModule() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,8 +64,8 @@ public final class AccessFrameArgumentNode extends JavaScriptNode implements Rep
         this.argIndex = argIndex;
     }
 
-    public static JavaScriptNode create(int frameLevel, int argIndex) {
-        return new AccessFrameArgumentNode(ScopeFrameNode.create(frameLevel), argIndex);
+    public static JavaScriptNode create(int frameLevel, int scopeLevel, int argIndex) {
+        return new AccessFrameArgumentNode(ScopeFrameNode.create(frameLevel, scopeLevel, null), argIndex);
     }
 
     @Override
