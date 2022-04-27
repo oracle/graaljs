@@ -156,6 +156,8 @@ public final class ZeroBasedObjectArray extends AbstractObjectArray {
         }
         if (start < usedLength) {
             Arrays.fill(array, (int) (start + Math.max(0, moveLength)), usedLength, null);
+            int newUsedLength = (int) ((moveLength > 0) ? (usedLength - (end - start)) : start);
+            arraySetUsedLength(object, newUsedLength);
         }
         return this;
     }
