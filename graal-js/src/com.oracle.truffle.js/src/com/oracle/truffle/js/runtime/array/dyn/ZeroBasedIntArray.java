@@ -193,6 +193,10 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
         if (moveLength > 0) {
             System.arraycopy(array, (int) end, array, (int) start, (int) moveLength);
         }
+        if (start < usedLength) {
+            int newUsedLength = (int) ((moveLength > 0) ? (usedLength - (end - start)) : start);
+            arraySetUsedLength(object, newUsedLength);
+        }
         return this;
     }
 
