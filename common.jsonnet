@@ -130,10 +130,8 @@ local common_json = (import "common.json");
 
   js_unittest: {
       environment+: {
-          "MX_TEST_RESULTS_PATTERN": "es-XXX.json",
           "MX_TEST_RESULT_TAGS": "js",
       },
-      logs+: ["*/es-*.json", "es-*.json"],
   },
 
   js_unittest_ee: self.js_unittest + {
