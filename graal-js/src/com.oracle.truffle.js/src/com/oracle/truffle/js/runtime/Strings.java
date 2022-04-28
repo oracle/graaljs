@@ -868,7 +868,7 @@ public final class Strings extends ParserStrings {
 
     public static TruffleString fromCodePoint(TruffleString.FromCodePointNode node, int c) {
         assert c >= 0;
-        return node.execute(c, TruffleString.Encoding.UTF_16);
+        return node.execute(c, TruffleString.Encoding.UTF_16, true);
     }
 
     public static TruffleString fromBoolean(boolean b) {
