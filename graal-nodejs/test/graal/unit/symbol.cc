@@ -85,4 +85,8 @@ EXPORT_TO_JS(GetUnscopables) {
     args.GetReturnValue().Set(Symbol::GetUnscopables(args.GetIsolate()));
 }
 
+EXPORT_TO_JS(For) {
+    args.GetReturnValue().Set(Symbol::For(args.GetIsolate(), args[0].As<String>()));
+}
+
 #undef SUITE
