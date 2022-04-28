@@ -1044,7 +1044,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return regularSplitIntl(input, limit, separator, end, parent);
             }
 
-            @TruffleBoundary
             private static Object[] regularSplitIntl(TruffleString input, int limit, TruffleString separator, int endParam, JSStringSplitNode parent) {
                 SimpleArrayList<Object> splits = SimpleArrayList.create(limit);
                 int start = 0;
