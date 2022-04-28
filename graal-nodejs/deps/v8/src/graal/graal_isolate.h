@@ -320,6 +320,7 @@ enum GraalAccessMethod {
     json_stringify,
     symbol_new,
     symbol_name,
+    symbol_for,
     symbol_get_async_iterator,
     symbol_get_has_instance,
     symbol_get_is_concat_spreadable,

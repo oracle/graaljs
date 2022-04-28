@@ -2232,6 +2232,10 @@ namespace v8 {
         return GraalSymbol::GetUnscopables(isolate);
     }
 
+    Local<Symbol> Symbol::For(Isolate* isolate, Local<String> description) {
+        return GraalSymbol::For(isolate, description);
+    }
+
     Local<Private> Private::New(Isolate* isolate, Local<String> name) {
         return reinterpret_cast<Private*> (*name);
     }

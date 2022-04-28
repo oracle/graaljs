@@ -838,6 +838,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::json_stringify, "jsonStringify", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::symbol_new, "symbolNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::symbol_name, "symbolName", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::symbol_for, "symbolFor", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::symbol_get_async_iterator, "symbolGetAsyncIterator", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::symbol_get_has_instance, "symbolGetHasInstance", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::symbol_get_is_concat_spreadable, "symbolGetIsConcatSpreadable", "()Ljava/lang/Object;")
