@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.CreateSetIteratorNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetAddNodeGen;
@@ -336,7 +337,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     Object nextValue = iteratorValueNode.execute(next);
                     call(adder, target, nextValue);
                 }
-            } catch (Exception ex) {
+            } catch (AbstractTruffleException ex) {
                 iteratorError.enter();
                 iteratorCloseAbrupt(iteratorRecord.getIterator());
                 throw ex;
@@ -458,7 +459,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         call(adder, newSet, nextValue);
                     }
                 }
-            } catch (Exception ex) {
+            } catch (AbstractTruffleException ex) {
                 iteratorError.enter();
                 iteratorCloseAbrupt(iteratorRecord.getIterator());
                 throw ex;
@@ -501,7 +502,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     Object nextValue = iteratorValueNode.execute(next);
                     call(remover, newSet, nextValue);
                 }
-            } catch (Exception ex) {
+            } catch (AbstractTruffleException ex) {
                 iteratorError.enter();
                 iteratorCloseAbrupt(iteratorRecord.getIterator());
                 throw ex;
@@ -554,7 +555,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         call(adder, newSet, nextValue);
                     }
                 }
-            } catch (Exception ex) {
+            } catch (AbstractTruffleException ex) {
                 iteratorError.enter();
                 iteratorCloseAbrupt(iteratorRecord.getIterator());
                 throw ex;
@@ -607,7 +608,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         return Boolean.FALSE;
                     }
                 }
-            } catch (Exception ex) {
+            } catch (AbstractTruffleException ex) {
                 iteratorError.enter();
                 iteratorCloseAbrupt(iteratorRecord.getIterator());
                 throw ex;
@@ -652,7 +653,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         return Boolean.FALSE;
                     }
                 }
-            } catch (Exception ex) {
+            } catch (AbstractTruffleException ex) {
                 iteratorError.enter();
                 iteratorCloseAbrupt(iteratorRecord.getIterator());
                 throw ex;
@@ -697,7 +698,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         return Boolean.FALSE;
                     }
                 }
-            } catch (Exception ex) {
+            } catch (AbstractTruffleException ex) {
                 iteratorError.enter();
                 iteratorCloseAbrupt(iteratorRecord.getIterator());
                 throw ex;

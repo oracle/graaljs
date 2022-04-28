@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins.wasm;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -134,12 +135,12 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return tableGrowLib.execute(growFn, wasmTable, deltaInt);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
-            } catch (Throwable throwable) {
+            } catch (AbstractTruffleException ex) {
                 errorBranch.enter();
-                if (TryCatchNode.shouldCatch(throwable)) {
-                    throw Errors.createRangeError(throwable, this);
+                if (TryCatchNode.shouldCatch(ex)) {
+                    throw Errors.createRangeError(ex, this);
                 } else {
-                    throw throwable;
+                    throw ex;
                 }
             }
         }
@@ -178,12 +179,12 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSWebAssemblyInstance.exportFunction(getContext(), realm, fn, funcType);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
-            } catch (Throwable throwable) {
+            } catch (AbstractTruffleException ex) {
                 errorBranch.enter();
-                if (TryCatchNode.shouldCatch(throwable)) {
-                    throw Errors.createRangeError(throwable, this);
+                if (TryCatchNode.shouldCatch(ex)) {
+                    throw Errors.createRangeError(ex, this);
                 } else {
-                    throw throwable;
+                    throw ex;
                 }
             }
         }
@@ -221,12 +222,12 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 tableSetLib.execute(setFn, wasmTable, indexInt, wasmFunction);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
-            } catch (Throwable throwable) {
+            } catch (AbstractTruffleException ex) {
                 errorBranch.enter();
-                if (TryCatchNode.shouldCatch(throwable)) {
-                    throw Errors.createRangeError(throwable, this);
+                if (TryCatchNode.shouldCatch(ex)) {
+                    throw Errors.createRangeError(ex, this);
                 } else {
-                    throw throwable;
+                    throw ex;
                 }
             }
             return Undefined.instance;

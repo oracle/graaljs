@@ -51,6 +51,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -162,7 +163,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
                             assert e.isAwait();
                             return Undefined.instance;
                         }
-                    } catch (Throwable e) {
+                    } catch (AbstractTruffleException e) {
                         if (shouldCatch(e)) {
                             setGeneratorState.setValue(generatorObject, AsyncGeneratorState.Completed);
                             Object reason = getErrorObjectNode.execute(e);
@@ -187,7 +188,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
             }
         }
 
-        private boolean shouldCatch(Throwable exception) {
+        private boolean shouldCatch(AbstractTruffleException exception) {
             if (getErrorObjectNode == null || asyncGeneratorRejectNode == null || exceptions == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));

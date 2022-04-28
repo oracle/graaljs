@@ -51,6 +51,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
@@ -1188,7 +1189,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     Object v = readElementNode.executeWithTargetAndIndex(nextItem, 1);
                     createDataPropertyOnObject(target, k, v);
                 }
-            } catch (Exception ex) {
+            } catch (AbstractTruffleException ex) {
                 errorBranch.enter();
                 iteratorCloseAbrupt(iteratorRecord.getIterator());
                 throw ex;

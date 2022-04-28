@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
@@ -76,7 +77,7 @@ public class PromiseResolveThenableNode extends JavaScriptBaseNode {
         JSDynamicObject reject = resolvingFunctions.getSecond();
         try {
             return callResolveNode.executeCall(JSArguments.create(thenable, then, resolve, reject));
-        } catch (Throwable ex) {
+        } catch (AbstractTruffleException ex) {
             if (shouldCatch(ex)) {
                 return callReject().executeCall(JSArguments.create(Undefined.instance, reject, getErrorObjectNode.execute(ex)));
             } else {
@@ -85,7 +86,7 @@ public class PromiseResolveThenableNode extends JavaScriptBaseNode {
         }
     }
 
-    private boolean shouldCatch(Throwable exception) {
+    private boolean shouldCatch(AbstractTruffleException exception) {
         if (getErrorObjectNode == null || exceptions == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));

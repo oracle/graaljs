@@ -138,45 +138,46 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
 
     @Override
     public final Object execute(VirtualFrame frame) {
+        Throwable throwable;
         try {
             return tryBlock.execute(frame);
         } catch (ControlFlowException cfe) {
             throw cfe;
-        } catch (Throwable ex) {
+        } catch (AbstractTruffleException ex) {
             if (shouldCatch(ex, exceptions())) {
-                return executeCatch(frame, ex);
+                throwable = ex;
             } else {
                 throw ex;
             }
+        } catch (StackOverflowError ste) {
+            throwable = ste;
         }
+        return executeCatch(frame, throwable);
     }
 
     @Override
     public final void executeVoid(VirtualFrame frame) {
+        Throwable throwable;
         try {
             tryBlock.executeVoid(frame);
+            return;
         } catch (ControlFlowException cfe) {
             throw cfe;
-        } catch (Throwable ex) {
+        } catch (AbstractTruffleException ex) {
             if (shouldCatch(ex, exceptions())) {
-                executeCatch(frame, ex);
+                throwable = ex;
             } else {
                 throw ex;
             }
+        } catch (StackOverflowError ste) {
+            throwable = ste;
         }
+        executeCatch(frame, throwable);
     }
 
     public static boolean shouldCatch(Throwable ex, InteropLibrary exceptions) {
-        if (exceptions.isException(ex)) {
-            if (!(ex instanceof AbstractTruffleException)) {
-                return false;
-            }
-            try {
-                ExceptionType exceptionType = exceptions.getExceptionType(ex);
-                return exceptionType != ExceptionType.EXIT && exceptionType != ExceptionType.INTERRUPT;
-            } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(ex, e, "getExceptionType", null);
-            }
+        if (ex instanceof AbstractTruffleException && exceptions.isException(ex)) {
+            return shouldCatch((AbstractTruffleException) ex, exceptions);
         } else if (ex instanceof StackOverflowError) {
             return true;
         } else {
@@ -184,7 +185,19 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
         }
     }
 
-    public static boolean shouldCatch(Throwable ex) {
+    public static boolean shouldCatch(AbstractTruffleException ex, InteropLibrary exceptions) {
+        if (exceptions.isException(ex)) {
+            try {
+                ExceptionType exceptionType = exceptions.getExceptionType(ex);
+                return exceptionType != ExceptionType.EXIT && exceptionType != ExceptionType.INTERRUPT;
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorInteropException(ex, e, "getExceptionType", null);
+            }
+        }
+        return false;
+    }
+
+    public static boolean shouldCatch(AbstractTruffleException ex) {
         return shouldCatch(ex, InteropLibrary.getUncached());
     }
 
@@ -226,23 +239,27 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
     public Object resume(VirtualFrame frame, int stateSlot) {
         Object state = getStateAndReset(frame, stateSlot);
         if (state == Undefined.instance) {
+            Throwable throwable;
             try {
                 return tryBlock.execute(frame);
             } catch (ControlFlowException cfe) {
                 throw cfe;
-            } catch (Throwable ex) {
+            } catch (AbstractTruffleException ex) {
                 if (shouldCatch(ex, exceptions())) {
-                    if (blockScope != null) {
-                        blockScope.appendScopeFrame(frame);
-                    }
-                    if (!prepareCatch(frame, ex)) {
-                        throw JSRuntime.rethrow(ex);
-                    }
-                    // fall through to execute catch block
+                    throwable = ex;
                 } else {
                     throw ex;
                 }
+            } catch (StackOverflowError ste) {
+                throwable = ste;
             }
+            if (blockScope != null) {
+                blockScope.appendScopeFrame(frame);
+            }
+            if (!prepareCatch(frame, throwable)) {
+                throw JSRuntime.rethrow(throwable);
+            }
+            // fall through to execute catch block
         } else {
             if (blockScope != null) {
                 blockScope.setBlockScope(frame, state);

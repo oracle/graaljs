@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -114,7 +115,7 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
                     assert e.isAwait();
                     // no-op: we called await, so we will resume later.
                 }
-            } catch (Throwable e) {
+            } catch (AbstractTruffleException e) {
                 if (promiseCapability != null && shouldCatch(e)) {
                     promiseCapabilityReject(callRejectNode, promiseCapability, getErrorObjectNode.execute(e));
                 } else {
@@ -125,7 +126,7 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
             return Undefined.instance;
         }
 
-        private boolean shouldCatch(Throwable exception) {
+        private boolean shouldCatch(AbstractTruffleException exception) {
             if (getErrorObjectNode == null || callRejectNode == null || exceptions == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));

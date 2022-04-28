@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.control;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -113,7 +114,7 @@ public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements 
                 } else {
                     throw e;
                 }
-            } catch (Throwable e) {
+            } catch (AbstractTruffleException e) {
                 if (TryCatchNode.shouldCatch(e, exceptions())) {
                     throwBranch.enter();
                     IteratorRecord iteratorRecord = getIteratorRecord(frame);
@@ -125,7 +126,10 @@ public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements 
                             completion = Completion.forThrow(e);
                             break await;
                         }
-                    } catch (Exception ex) {
+                    } catch (AbstractTruffleException ex) {
+                        if (!TryCatchNode.shouldCatch(e, exceptions())) {
+                            throw ex;
+                        }
                         // re-throw outer exception below
                     }
                 }

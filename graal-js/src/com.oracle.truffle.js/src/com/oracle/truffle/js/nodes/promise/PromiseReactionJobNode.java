@@ -44,6 +44,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -150,7 +151,7 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                         return Undefined.instance;
                     }
                     fulfill = true;
-                } catch (Throwable ex) {
+                } catch (AbstractTruffleException ex) {
                     if (promiseCapability == null && context.isOptionTopLevelAwait()) {
                         // top-level-await evaluation: throw exception when error is generated but
                         // no capability is found in chain
@@ -175,7 +176,7 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
             return status;
         }
 
-        private boolean shouldCatch(Throwable exception) {
+        private boolean shouldCatch(AbstractTruffleException exception) {
             if (getErrorObjectNode == null || exceptions == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));

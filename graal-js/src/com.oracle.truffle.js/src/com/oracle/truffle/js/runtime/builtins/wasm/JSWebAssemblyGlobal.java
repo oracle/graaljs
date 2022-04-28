@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -192,12 +193,12 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
                             return Undefined.instance;
                         } catch (InteropException ex) {
                             throw Errors.shouldNotReachHere(ex);
-                        } catch (Throwable throwable) {
+                        } catch (AbstractTruffleException ex) {
                             errorBranch.enter();
-                            if (TryCatchNode.shouldCatch(throwable)) {
-                                throw Errors.createTypeError(throwable, this);
+                            if (TryCatchNode.shouldCatch(ex)) {
+                                throw Errors.createTypeError(ex, this);
                             } else {
-                                throw throwable;
+                                throw ex;
                             }
                         }
                     } else {

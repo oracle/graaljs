@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -142,7 +143,7 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
             } catch (YieldException e) {
                 assert e.isAwait();
                 // no-op: we called await, so we will resume later.
-            } catch (Throwable e) {
+            } catch (AbstractTruffleException e) {
                 if (shouldCatch(e)) {
                     promiseCapabilityReject(callRejectNode, promiseCapability, getErrorObjectNode.execute(e));
                 } else {
@@ -157,7 +158,7 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
             return Undefined.instance;
         }
 
-        private boolean shouldCatch(Throwable exception) {
+        private boolean shouldCatch(AbstractTruffleException exception) {
             if (getErrorObjectNode == null || callRejectNode == null || exceptions == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));

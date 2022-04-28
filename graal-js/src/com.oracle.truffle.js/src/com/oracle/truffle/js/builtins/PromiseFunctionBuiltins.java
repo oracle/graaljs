@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseCombinatorNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.RejectNodeGen;
@@ -163,7 +164,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             try {
                 promiseResolve = getPromiseResolve(constructor);
                 iteratorRecord = getIteratorNode.execute(iterable);
-            } catch (Throwable ex) {
+            } catch (AbstractTruffleException ex) {
                 if (shouldCatch(ex)) {
                     return rejectPromise(getErrorObjectNode.execute(ex), promiseCapability);
                 } else {
@@ -172,7 +173,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             try {
                 return performPromiseOpNode.execute(iteratorRecord, constructor, promiseCapability, promiseResolve);
-            } catch (Throwable ex) {
+            } catch (AbstractTruffleException ex) {
                 if (shouldCatch(ex)) {
                     if (!iteratorRecord.isDone()) {
                         iteratorClose(iteratorRecord);
@@ -210,7 +211,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             iteratorCloseNode.executeAbrupt(iteratorRecord.getIterator());
         }
 
-        private boolean shouldCatch(Throwable exception) {
+        private boolean shouldCatch(AbstractTruffleException exception) {
             if (getErrorObjectNode == null || exceptions == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));

@@ -67,6 +67,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -703,7 +704,7 @@ public final class GraalJSEvaluator implements JSParser {
                     JSFunction.call(JSArguments.create(Undefined.instance, capability.getResolve(), Undefined.instance));
                 }
                 assert stack.isEmpty();
-            } catch (Throwable e) {
+            } catch (AbstractTruffleException e) {
                 if (TryCatchNode.shouldCatch(e)) {
                     for (JSModuleRecord m : stack) {
                         assert m.getStatus() == Status.Evaluating;
@@ -721,7 +722,7 @@ public final class GraalJSEvaluator implements JSParser {
         } else {
             try {
                 innerModuleEvaluation(realm, module, stack, 0);
-            } catch (Throwable e) {
+            } catch (AbstractTruffleException e) {
                 if (TryCatchNode.shouldCatch(e)) {
                     for (JSModuleRecord m : stack) {
                         assert m.getStatus() == Status.Evaluating;

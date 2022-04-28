@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -152,7 +153,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 Object then;
                 try {
                     then = getThen(resolution);
-                } catch (Throwable ex) {
+                } catch (AbstractTruffleException ex) {
                     enterErrorBranch();
                     if (TryCatchNode.shouldCatch(ex, exceptions)) {
                         return rejectPromise(promise, ex);
@@ -192,7 +193,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 return getPromiseNode.getValue(functionObject);
             }
 
-            private Object rejectPromise(JSDynamicObject promise, Throwable exception) {
+            private Object rejectPromise(JSDynamicObject promise, AbstractTruffleException exception) {
                 Object error = getErrorObjectNode.execute(exception);
                 return rejectPromiseNode.execute(promise, error);
             }

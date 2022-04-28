@@ -46,6 +46,7 @@ import java.util.Set;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -142,7 +143,7 @@ public class ImportCallNode extends JavaScriptNode {
         TruffleString specifierString;
         try {
             specifierString = toStringNode.executeString(specifier);
-        } catch (Throwable ex) {
+        } catch (AbstractTruffleException ex) {
             if (TryCatchNode.shouldCatch(ex, exceptions())) {
                 return newRejectedPromiseFromException(ex);
             } else {
@@ -165,7 +166,7 @@ public class ImportCallNode extends JavaScriptNode {
         TruffleString specifierString;
         try {
             specifierString = toStringNode.executeString(specifier);
-        } catch (Throwable ex) {
+        } catch (AbstractTruffleException ex) {
             if (TryCatchNode.shouldCatch(ex, exceptions())) {
                 return newRejectedPromiseFromException(ex);
             } else {
@@ -180,7 +181,7 @@ public class ImportCallNode extends JavaScriptNode {
             Object assertionsObj;
             try {
                 assertionsObj = getAssertionsNode.getValue(options);
-            } catch (Throwable ex) {
+            } catch (AbstractTruffleException ex) {
                 if (TryCatchNode.shouldCatch(ex, exceptions())) {
                     return newRejectedPromiseFromException(ex);
                 } else {
@@ -195,7 +196,7 @@ public class ImportCallNode extends JavaScriptNode {
                 UnmodifiableArrayList<? extends Object> keys;
                 try {
                     keys = enumerableOwnPropertyNamesNode.execute(obj);
-                } catch (Throwable ex) {
+                } catch (AbstractTruffleException ex) {
                     if (TryCatchNode.shouldCatch(ex, exceptions())) {
                         return newRejectedPromiseFromException(ex);
                     } else {
@@ -208,7 +209,7 @@ public class ImportCallNode extends JavaScriptNode {
                     Object value;
                     try {
                         value = JSObject.get(obj, key);
-                    } catch (Throwable ex) {
+                    } catch (AbstractTruffleException ex) {
                         if (TryCatchNode.shouldCatch(ex, exceptions())) {
                             return newRejectedPromiseFromException(ex);
                         } else {
@@ -383,7 +384,7 @@ public class ImportCallNode extends JavaScriptNode {
                             callPromiseReaction.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getResolve(), result));
                         }
                     }
-                } catch (Throwable t) {
+                } catch (AbstractTruffleException t) {
                     if (shouldCatch(t)) {
                         Object errorObject = getErrorObjectNode.execute(t);
                         callPromiseReaction.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getReject(), errorObject));
@@ -394,7 +395,7 @@ public class ImportCallNode extends JavaScriptNode {
                 return Undefined.instance;
             }
 
-            private boolean shouldCatch(Throwable exception) {
+            private boolean shouldCatch(AbstractTruffleException exception) {
                 if (getErrorObjectNode == null || exceptions == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));

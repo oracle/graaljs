@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.control;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -86,13 +87,15 @@ public class TryFinallyNode extends StatementNode implements ResumableNode.WithO
             throwable = null;
         } catch (ControlFlowException cfe) {
             throwable = cfe;
-        } catch (Throwable ex) {
+        } catch (AbstractTruffleException ex) {
             if (TryCatchNode.shouldCatch(ex, exceptions())) {
                 throwable = ex;
             } else {
                 // skip finally block
                 throw ex;
             }
+        } catch (StackOverflowError ste) {
+            throwable = ste;
         }
 
         finallyBlock.executeVoid(frame);
@@ -112,13 +115,15 @@ public class TryFinallyNode extends StatementNode implements ResumableNode.WithO
             throwable = null;
         } catch (ControlFlowException cfe) {
             throwable = cfe;
-        } catch (Throwable ex) {
+        } catch (AbstractTruffleException ex) {
             if (TryCatchNode.shouldCatch(ex, exceptions())) {
                 throwable = ex;
             } else {
                 // skip finally block
                 throw ex;
             }
+        } catch (StackOverflowError ste) {
+            throwable = ste;
         }
 
         finallyBlock.executeVoid(frame);
@@ -141,13 +146,15 @@ public class TryFinallyNode extends StatementNode implements ResumableNode.WithO
                 throw e;
             } catch (ControlFlowException cfe) {
                 throwable = cfe;
-            } catch (Throwable ex) {
+            } catch (AbstractTruffleException ex) {
                 if (TryCatchNode.shouldCatch(ex, exceptions())) {
                     throwable = ex;
                 } else {
                     // skip finally block
                     throw ex;
                 }
+            } catch (StackOverflowError ste) {
+                throwable = ste;
             }
         } else {
             // resuming into finally block

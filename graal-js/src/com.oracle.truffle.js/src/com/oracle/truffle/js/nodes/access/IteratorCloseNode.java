@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -90,7 +91,7 @@ public class IteratorCloseNode extends JavaScriptBaseNode {
             if (returnMethod != Undefined.instance) {
                 methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
             }
-        } catch (Exception e) {
+        } catch (AbstractTruffleException e) {
             // re-throw outer exception, see 7.4.6 IteratorClose
         }
     }
