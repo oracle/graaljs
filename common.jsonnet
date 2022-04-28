@@ -32,15 +32,11 @@ local common_json = (import "common.json");
   daily:       {targets+: ['daily']},
   weekly:      {targets+: ['weekly']},
 
-  local python3 = {
-    environment+: {
-      MX_PYTHON: "python3",
-    },
-  },
-
-  local common = python3 + {
+  local common = {
     packages+: {
-      'pip:pylint': '==1.9.3',
+      'mx': 'HEAD',
+      'python3': '==3.8.10',
+      'pip:pylint': '==2.4.4',
       'pip:ninja_syntax': '==1.7.2',
     },
     catch_files+: [
@@ -48,8 +44,10 @@ local common_json = (import "common.json");
       'npm-debug.log', // created on npm errors
     ],
     environment+: {
+      MX_PYTHON: "python3.8",
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
     },
+    python_version: "3",
   },
 
   linux: common + {
@@ -98,19 +96,22 @@ local common_json = (import "common.json");
     capabilities: ['windows', 'amd64'],
   },
 
-  windows_jdk17: self.windows + common_json.devkits["windows-jdk17"] + {
+  windows_jdk17: self.windows + {
+    packages+: common_json.devkits["windows-jdk17"].packages,
     setup+: [
       ['set-export', 'DEVKIT_VERSION', '2019'],
     ],
   },
 
- windows_jdk11: self.windows + common_json.devkits["windows-jdk11"] + {
+ windows_jdk11: self.windows + {
+    packages+: common_json.devkits["windows-jdk11"].packages,
     setup+: [
       ['set-export', 'DEVKIT_VERSION', '2017'],
     ],
   },
 
-  windows_jdk8: self.windows + common_json.devkits["windows-oraclejdk8"] + {
+  windows_jdk8: self.windows + {
+    packages+: common_json.devkits["windows-oraclejdk8"].packages,
     setup+: [
       ['set-export', 'DEVKIT_VERSION', '2017'],
     ],
