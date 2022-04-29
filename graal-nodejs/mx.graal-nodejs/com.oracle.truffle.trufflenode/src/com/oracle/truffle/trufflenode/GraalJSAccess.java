@@ -1693,6 +1693,17 @@ public final class GraalJSAccess {
         return Symbol.SYMBOL_UNSCOPABLES;
     }
 
+    public Object symbolFor(Object description) {
+        TruffleString stringDesc = (TruffleString) description;
+        Map<TruffleString, Symbol> registry = mainJSContext.getSymbolRegistry();
+        Symbol symbol = registry.get(stringDesc);
+        if (symbol == null) {
+            symbol = Symbol.create(stringDesc);
+            registry.put(stringDesc, symbol);
+        }
+        return symbol;
+    }
+
     public Object functionNewInstance(Object function, Object[] arguments) {
         JSFunctionObject functionObject = (JSFunctionObject) function;
         JSFunctionData functionData = JSFunction.getFunctionData(functionObject);

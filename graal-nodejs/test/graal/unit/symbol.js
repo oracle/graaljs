@@ -98,4 +98,21 @@ describe('Symbol', function () {
             assert.strictEqual(module.Symbol_GetUnscopables(), Symbol.unscopables);
         });
     });
+    describe('For', function () {
+        it('should return Symbol', function () {
+            assert.strictEqual(typeof module.Symbol_For('some_description'), 'symbol');
+        });
+        it('should return the same symbol when invoked multiple times', function () {
+            var description = 'another_description';
+            var symbol1 = module.Symbol_For(description);
+            var symbol2 = module.Symbol_For(description);
+            assert.strictEqual(symbol1, symbol2);
+        });
+        it('should return the same symbol as Symbol.for()', function () {
+            var description = 'yet_another_description';
+            var symbol1 = module.Symbol_For(description);
+            var symbol2 = Symbol.for(description);
+            assert.strictEqual(symbol1, symbol2);
+        });
+    });
 });

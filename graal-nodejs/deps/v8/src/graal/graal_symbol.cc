@@ -78,6 +78,15 @@ SYMBOL_GETTER(GetToPrimitive, symbol_get_to_primitive)
 SYMBOL_GETTER(GetToStringTag, symbol_get_to_string_tag)
 SYMBOL_GETTER(GetUnscopables, symbol_get_unscopables)
 
+v8::Local<v8::Symbol> GraalSymbol::For(v8::Isolate* isolate, v8::Local<v8::String> description) {
+    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+    GraalString* graal_description = reinterpret_cast<GraalString*> (*description);
+    jobject java_description = graal_description->GetJavaObject();
+    JNI_CALL(jobject, java_symbol, graal_isolate, GraalAccessMethod::symbol_for, Object, java_description);
+    GraalSymbol* graal_symbol = new GraalSymbol(graal_isolate, java_symbol);
+    return reinterpret_cast<v8::Symbol*> (graal_symbol);
+}
+
 v8::Local<v8::Value> GraalSymbol::Name() const {
     GraalIsolate* graal_isolate = Isolate();
     jobject java_symbol = GetJavaObject();

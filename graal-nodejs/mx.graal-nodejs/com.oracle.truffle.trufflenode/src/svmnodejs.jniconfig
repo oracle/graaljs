@@ -224,6 +224,7 @@
       { "name": "stringUTF8Write" },
       { "name": "stringWrite" },
       { "name": "stringWriteOneByte" },
+      { "name": "symbolFor" },
       { "name": "symbolGetAsyncIterator" },
       { "name": "symbolGetHasInstance" },
       { "name": "symbolGetIsConcatSpreadable" },

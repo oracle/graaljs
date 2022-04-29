@@ -60,6 +60,7 @@ public:
     static v8::Local<v8::Symbol> GetToPrimitive(v8::Isolate* isolate);
     static v8::Local<v8::Symbol> GetToStringTag(v8::Isolate* isolate);
     static v8::Local<v8::Symbol> GetUnscopables(v8::Isolate* isolate);
+    static v8::Local<v8::Symbol> For(v8::Isolate* isolate, v8::Local<v8::String> description);
     v8::Local<v8::Value> Name() const;
     bool IsSymbol() const override;
     bool IsName() const override;
