@@ -175,16 +175,6 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
         executeCatch(frame, throwable);
     }
 
-    public static boolean shouldCatch(Throwable ex, InteropLibrary exceptions) {
-        if (ex instanceof AbstractTruffleException && exceptions.isException(ex)) {
-            return shouldCatch((AbstractTruffleException) ex, exceptions);
-        } else if (ex instanceof StackOverflowError) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
     public static boolean shouldCatch(AbstractTruffleException ex, InteropLibrary exceptions) {
         if (exceptions.isException(ex)) {
             try {
