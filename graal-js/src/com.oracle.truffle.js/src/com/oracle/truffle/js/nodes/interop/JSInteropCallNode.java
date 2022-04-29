@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,11 +50,22 @@ public abstract class JSInteropCallNode extends JavaScriptBaseNode {
     protected JSInteropCallNode() {
     }
 
-    protected static Object[] prepare(Object[] arguments, ImportValueNode importValueNode) {
-        for (int i = 0; i < arguments.length; i++) {
-            arguments[i] = importValueNode.executeWithTarget(arguments[i]);
+    protected static Object[] prepare(Object[] args, ImportValueNode importValueNode) {
+        Object[] newArgs = args;
+        boolean copy = false;
+        for (int i = 0; i < args.length; i++) {
+            Object arg = args[i];
+            Object newArg = importValueNode.executeWithTarget(arg);
+            if (copy) {
+                newArgs[i] = newArg;
+            } else if (newArg != arg) {
+                newArgs = new Object[args.length];
+                System.arraycopy(args, 0, newArgs, 0, i);
+                newArgs[i] = newArg;
+                copy = true;
+            }
         }
-        return arguments;
+        return newArgs;
     }
 
     protected static PropertyGetNode getUncachedProperty() {
