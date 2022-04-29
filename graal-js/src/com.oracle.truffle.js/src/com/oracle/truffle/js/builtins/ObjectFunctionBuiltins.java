@@ -1191,7 +1191,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
             } catch (AbstractTruffleException ex) {
                 errorBranch.enter();
-                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                iteratorCloseAbrupt(iteratorRecord.getIterator(), ex);
                 throw ex;
             }
         }
@@ -1202,12 +1202,14 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             JSRuntime.createDataPropertyOrThrow(thisObject, propertyKey, value);
         }
 
-        private void iteratorCloseAbrupt(JSDynamicObject iterator) {
+        private void iteratorCloseAbrupt(JSDynamicObject iterator, AbstractTruffleException ex) {
             if (iteratorCloseNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
             }
-            iteratorCloseNode.executeAbrupt(iterator);
+            if (iteratorCloseNode.shouldCatch(ex)) {
+                iteratorCloseNode.executeAbrupt(iterator);
+            }
         }
     }
 

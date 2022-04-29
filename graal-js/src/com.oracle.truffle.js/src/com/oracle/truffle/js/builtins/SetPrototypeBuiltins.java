@@ -339,17 +339,19 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 }
             } catch (AbstractTruffleException ex) {
                 iteratorError.enter();
-                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                iteratorCloseAbrupt(iteratorRecord.getIterator(), ex);
                 throw ex;
             }
         }
 
-        protected final void iteratorCloseAbrupt(JSDynamicObject iterator) {
+        protected final void iteratorCloseAbrupt(JSDynamicObject iterator, AbstractTruffleException ex) {
             if (iteratorCloseNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
             }
-            iteratorCloseNode.executeAbrupt(iterator);
+            if (iteratorCloseNode.shouldCatch(ex)) {
+                iteratorCloseNode.executeAbrupt(iterator);
+            }
         }
 
         protected Object call(Object function, Object target, Object... userArguments) {
@@ -461,7 +463,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 }
             } catch (AbstractTruffleException ex) {
                 iteratorError.enter();
-                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                iteratorCloseAbrupt(iteratorRecord.getIterator(), ex);
                 throw ex;
             }
         }
@@ -504,7 +506,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 }
             } catch (AbstractTruffleException ex) {
                 iteratorError.enter();
-                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                iteratorCloseAbrupt(iteratorRecord.getIterator(), ex);
                 throw ex;
             }
         }
@@ -557,7 +559,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 }
             } catch (AbstractTruffleException ex) {
                 iteratorError.enter();
-                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                iteratorCloseAbrupt(iteratorRecord.getIterator(), ex);
                 throw ex;
             }
         }
@@ -610,7 +612,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 }
             } catch (AbstractTruffleException ex) {
                 iteratorError.enter();
-                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                iteratorCloseAbrupt(iteratorRecord.getIterator(), ex);
                 throw ex;
             }
         }
@@ -655,7 +657,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 }
             } catch (AbstractTruffleException ex) {
                 iteratorError.enter();
-                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                iteratorCloseAbrupt(iteratorRecord.getIterator(), ex);
                 throw ex;
             }
         }
@@ -700,7 +702,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 }
             } catch (AbstractTruffleException ex) {
                 iteratorError.enter();
-                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                iteratorCloseAbrupt(iteratorRecord.getIterator(), ex);
                 throw ex;
             }
         }
