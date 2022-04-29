@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,49 +38,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.interop;
+package com.oracle.truffle.js.test.interop;
 
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import static org.junit.Assert.assertEquals;
 
-public abstract class JSInteropCallNode extends JavaScriptBaseNode {
-    protected JSInteropCallNode() {
-    }
+import java.util.Arrays;
+import java.util.List;
 
-    protected static Object[] prepare(Object[] args, ImportValueNode importValueNode) {
-        Object[] newArgs = args;
-        boolean copy = false;
-        for (int i = 0; i < args.length; i++) {
-            Object arg = args[i];
-            Object newArg = importValueNode.executeWithTarget(arg);
-            if (copy) {
-                newArgs[i] = newArg;
-            } else if (newArg != arg) {
-                newArgs = new Object[args.length];
-                System.arraycopy(args, 0, newArgs, 0, i);
-                newArgs[i] = newArg;
-                copy = true;
-            }
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
+import org.junit.Test;
+
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.test.JSTest;
+
+/**
+ * GR-38474: Interop should not mutate the arguments array but copy on write.
+ */
+public class GR38474 {
+    @Test
+    public void interopShouldCopyArgumentsArray() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value function = context.eval(JavaScriptLanguage.ID, "(function(...args) { return args; })");
+            Value constructor = context.eval(JavaScriptLanguage.ID, "(function(...args) { this.args = args; })");
+            Value object = context.eval(JavaScriptLanguage.ID, "({ method(...args) { return args; } })");
+
+            // String arguments are converted to TruffleString.
+            List<Object> expectedArgs = List.of("test1", "test2");
+            Object[] args = new String[]{"test1", "test2"};
+
+            Value result;
+            result = function.execute(args);
+            assertEquals(expectedArgs, Arrays.asList(args));
+            assertEquals(expectedArgs, result.as(List.class));
+            result = constructor.newInstance(args);
+            assertEquals(expectedArgs, Arrays.asList(args));
+            assertEquals(expectedArgs, result.getMember("args").as(List.class));
+            result = object.invokeMember("method", args);
+            assertEquals(expectedArgs, Arrays.asList(args));
+            assertEquals(expectedArgs, result.as(List.class));
         }
-        return newArgs;
-    }
-
-    protected static PropertyGetNode getUncachedProperty() {
-        return null;
-    }
-
-    protected static Object getProperty(JSObject receiver, PropertyGetNode propertyGetNode, Object key, Object defaultValue) {
-        assert JSRuntime.isPropertyKey(key);
-        Object method;
-        if (propertyGetNode == null) {
-            method = JSObject.getOrDefault(receiver, key, receiver, defaultValue);
-        } else {
-            assert JSRuntime.propertyKeyEquals(TruffleString.EqualNode.getUncached(), propertyGetNode.getKey(), key);
-            method = propertyGetNode.getValueOrDefault(receiver, defaultValue);
-        }
-        return method;
     }
 }
