@@ -144,11 +144,7 @@ public class ImportCallNode extends JavaScriptNode {
         try {
             specifierString = toStringNode.executeString(specifier);
         } catch (AbstractTruffleException ex) {
-            if (TryCatchNode.shouldCatch(ex, exceptions())) {
-                return newRejectedPromiseFromException(ex);
-            } else {
-                throw ex;
-            }
+            return rejectPromiseOrRethrow(ex);
         }
         return hostImportModuleDynamically(referencingScriptOrModule, ModuleRequest.create(specifierString), newPromiseCapability());
     }
@@ -167,11 +163,7 @@ public class ImportCallNode extends JavaScriptNode {
         try {
             specifierString = toStringNode.executeString(specifier);
         } catch (AbstractTruffleException ex) {
-            if (TryCatchNode.shouldCatch(ex, exceptions())) {
-                return newRejectedPromiseFromException(ex);
-            } else {
-                throw ex;
-            }
+            return rejectPromiseOrRethrow(ex);
         }
         Map.Entry<TruffleString, TruffleString>[] assertions = null;
         if (options != Undefined.instance) {
@@ -182,11 +174,7 @@ public class ImportCallNode extends JavaScriptNode {
             try {
                 assertionsObj = getAssertionsNode.getValue(options);
             } catch (AbstractTruffleException ex) {
-                if (TryCatchNode.shouldCatch(ex, exceptions())) {
-                    return newRejectedPromiseFromException(ex);
-                } else {
-                    throw ex;
-                }
+                return rejectPromiseOrRethrow(ex);
             }
             if (assertionsObj != Undefined.instance) {
                 if (!JSRuntime.isObject(assertionsObj)) {
@@ -197,11 +185,7 @@ public class ImportCallNode extends JavaScriptNode {
                 try {
                     keys = enumerableOwnPropertyNamesNode.execute(obj);
                 } catch (AbstractTruffleException ex) {
-                    if (TryCatchNode.shouldCatch(ex, exceptions())) {
-                        return newRejectedPromiseFromException(ex);
-                    } else {
-                        throw ex;
-                    }
+                    return rejectPromiseOrRethrow(ex);
                 }
                 assertions = (Map.Entry<TruffleString, TruffleString>[]) new Map.Entry<?, ?>[keys.size()];
                 for (int i = 0; i < keys.size(); i++) {
@@ -210,11 +194,7 @@ public class ImportCallNode extends JavaScriptNode {
                     try {
                         value = JSObject.get(obj, key);
                     } catch (AbstractTruffleException ex) {
-                        if (TryCatchNode.shouldCatch(ex, exceptions())) {
-                            return newRejectedPromiseFromException(ex);
-                        } else {
-                            throw ex;
-                        }
+                        return rejectPromiseOrRethrow(ex);
                     }
                     if (!Strings.isTString(value)) {
                         return rejectPromise(promiseCapability, "Import assertion value must be a string");
@@ -281,6 +261,14 @@ public class ImportCallNode extends JavaScriptNode {
         PromiseCapabilityRecord promiseCapability = newPromiseCapability();
         callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), getErrorObjectNode.execute(ex)));
         return promiseCapability.getPromise();
+    }
+
+    private JSDynamicObject rejectPromiseOrRethrow(AbstractTruffleException ex) {
+        if (TryCatchNode.shouldCatch(ex, exceptions())) {
+            return newRejectedPromiseFromException(ex);
+        } else {
+            throw ex;
+        }
     }
 
     private InteropLibrary exceptions() {
