@@ -169,7 +169,7 @@ public class ImportCallNode extends JavaScriptNode {
         Map.Entry<TruffleString, TruffleString>[] assertions = null;
         if (options != Undefined.instance) {
             if (!JSRuntime.isObject(options)) {
-                return rejectPromise(promiseCapability, "The second argument to import() must be an object");
+                return rejectPromiseWithTypeError(promiseCapability, "The second argument to import() must be an object");
             }
             Object assertionsObj;
             try {
@@ -179,7 +179,7 @@ public class ImportCallNode extends JavaScriptNode {
             }
             if (assertionsObj != Undefined.instance) {
                 if (!JSRuntime.isObject(assertionsObj)) {
-                    return rejectPromise(promiseCapability, "The 'assert' option must be an object");
+                    return rejectPromiseWithTypeError(promiseCapability, "The 'assert' option must be an object");
                 }
                 JSDynamicObject obj = (JSDynamicObject) assertionsObj;
                 UnmodifiableArrayList<? extends Object> keys;
@@ -198,7 +198,7 @@ public class ImportCallNode extends JavaScriptNode {
                         return rejectPromiseOrRethrow(promiseCapability, ex);
                     }
                     if (!Strings.isTString(value)) {
-                        return rejectPromise(promiseCapability, "Import assertion value must be a string");
+                        return rejectPromiseWithTypeError(promiseCapability, "Import assertion value must be a string");
                     }
                     assertions[i] = Boundaries.mapEntry(key, JSRuntime.toStringIsString(value));
                 }
@@ -211,15 +211,6 @@ public class ImportCallNode extends JavaScriptNode {
     @TruffleBoundary
     private static ModuleRequest createModuleRequestWithAssertions(TruffleString specifierString, Map.Entry<TruffleString, TruffleString>[] assertions) {
         return ModuleRequest.create(specifierString, assertions);
-    }
-
-    private Object rejectPromise(PromiseCapabilityRecord promiseCapability, String errorMessage) {
-        if (callRejectNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            callRejectNode = insert(JSFunctionCallNode.createCall());
-        }
-        callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), Errors.createTypeError(errorMessage, this)));
-        return promiseCapability.getPromise();
     }
 
     private Object getActiveScriptOrModule(VirtualFrame frame) {
@@ -278,6 +269,14 @@ public class ImportCallNode extends JavaScriptNode {
             exceptions = e = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
         }
         return e;
+    }
+
+    private Object rejectPromiseWithTypeError(PromiseCapabilityRecord promiseCapability, String errorMessage) {
+        if (callRejectNode == null) {
+            // Just to cut off before createTypeError. Nodes are initialized in rejectPromise().
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
+        return rejectPromise(promiseCapability, Errors.createTypeError(errorMessage, this));
     }
 
     @TruffleBoundary
