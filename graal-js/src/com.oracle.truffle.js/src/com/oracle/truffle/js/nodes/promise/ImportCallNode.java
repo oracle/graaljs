@@ -140,13 +140,14 @@ public class ImportCallNode extends JavaScriptNode {
     }
 
     private Object executeWithoutAssertions(Object referencingScriptOrModule, Object specifier) {
+        PromiseCapabilityRecord promiseCapability = newPromiseCapability();
         TruffleString specifierString;
         try {
             specifierString = toStringNode.executeString(specifier);
         } catch (AbstractTruffleException ex) {
-            return rejectPromiseOrRethrow(ex);
+            return rejectPromiseOrRethrow(promiseCapability, ex);
         }
-        return hostImportModuleDynamically(referencingScriptOrModule, ModuleRequest.create(specifierString), newPromiseCapability());
+        return hostImportModuleDynamically(referencingScriptOrModule, ModuleRequest.create(specifierString), promiseCapability);
     }
 
     @SuppressWarnings("unchecked")
@@ -163,7 +164,7 @@ public class ImportCallNode extends JavaScriptNode {
         try {
             specifierString = toStringNode.executeString(specifier);
         } catch (AbstractTruffleException ex) {
-            return rejectPromiseOrRethrow(ex);
+            return rejectPromiseOrRethrow(promiseCapability, ex);
         }
         Map.Entry<TruffleString, TruffleString>[] assertions = null;
         if (options != Undefined.instance) {
@@ -174,7 +175,7 @@ public class ImportCallNode extends JavaScriptNode {
             try {
                 assertionsObj = getAssertionsNode.getValue(options);
             } catch (AbstractTruffleException ex) {
-                return rejectPromiseOrRethrow(ex);
+                return rejectPromiseOrRethrow(promiseCapability, ex);
             }
             if (assertionsObj != Undefined.instance) {
                 if (!JSRuntime.isObject(assertionsObj)) {
@@ -185,7 +186,7 @@ public class ImportCallNode extends JavaScriptNode {
                 try {
                     keys = enumerableOwnPropertyNamesNode.execute(obj);
                 } catch (AbstractTruffleException ex) {
-                    return rejectPromiseOrRethrow(ex);
+                    return rejectPromiseOrRethrow(promiseCapability, ex);
                 }
                 assertions = (Map.Entry<TruffleString, TruffleString>[]) new Map.Entry<?, ?>[keys.size()];
                 for (int i = 0; i < keys.size(); i++) {
@@ -194,7 +195,7 @@ public class ImportCallNode extends JavaScriptNode {
                     try {
                         value = JSObject.get(obj, key);
                     } catch (AbstractTruffleException ex) {
-                        return rejectPromiseOrRethrow(ex);
+                        return rejectPromiseOrRethrow(promiseCapability, ex);
                     }
                     if (!Strings.isTString(value)) {
                         return rejectPromise(promiseCapability, "Import assertion value must be a string");
@@ -234,7 +235,7 @@ public class ImportCallNode extends JavaScriptNode {
         if (context.hasImportModuleDynamicallyCallbackBeenSet()) {
             JSDynamicObject promise = context.hostImportModuleDynamically(realm, (ScriptOrModule) referencingScriptOrModule, moduleRequest);
             if (promise == null) {
-                return newRejectedPromiseFromException(createTypeErrorCannotImport(moduleRequest.getSpecifier()));
+                return rejectPromise(promiseCapability, createTypeErrorCannotImport(moduleRequest.getSpecifier()));
             }
             assert JSPromise.isJSPromise(promise);
             return promise;
@@ -252,20 +253,19 @@ public class ImportCallNode extends JavaScriptNode {
         return newPromiseCapabilityNode.executeDefault();
     }
 
-    private JSDynamicObject newRejectedPromiseFromException(Throwable ex) {
+    private JSDynamicObject rejectPromise(PromiseCapabilityRecord promiseCapability, AbstractTruffleException ex) {
         if (callRejectNode == null || getErrorObjectNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             callRejectNode = insert(JSFunctionCallNode.createCall());
             getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
         }
-        PromiseCapabilityRecord promiseCapability = newPromiseCapability();
         callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), getErrorObjectNode.execute(ex)));
         return promiseCapability.getPromise();
     }
 
-    private JSDynamicObject rejectPromiseOrRethrow(AbstractTruffleException ex) {
+    private JSDynamicObject rejectPromiseOrRethrow(PromiseCapabilityRecord promiseCapability, AbstractTruffleException ex) {
         if (TryCatchNode.shouldCatch(ex, exceptions())) {
-            return newRejectedPromiseFromException(ex);
+            return rejectPromise(promiseCapability, ex);
         } else {
             throw ex;
         }
