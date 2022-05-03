@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -78,7 +80,7 @@ public final class JSException extends GraalJSException {
         CompilerAsserts.neverPartOfCompilation("JSException constructor");
         this.type = type;
         this.exceptionObj = null;
-        this.realm = realm;
+        this.realm = Objects.requireNonNull(realm);
         this.isIncompleteSource = false;
     }
 
@@ -87,7 +89,7 @@ public final class JSException extends GraalJSException {
         CompilerAsserts.neverPartOfCompilation("JSException constructor");
         this.type = type;
         this.exceptionObj = exceptionObj;
-        this.realm = realm;
+        this.realm = Objects.requireNonNull(realm);
         this.isIncompleteSource = false;
     }
 
@@ -96,7 +98,7 @@ public final class JSException extends GraalJSException {
         CompilerAsserts.neverPartOfCompilation("JSException constructor");
         this.type = type;
         this.exceptionObj = null;
-        this.realm = realm;
+        this.realm = Objects.requireNonNull(realm);
         this.isIncompleteSource = isIncompleteSource;
     }
 
