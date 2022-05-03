@@ -111,10 +111,10 @@ public final class ConstructorRootNode extends JavaScriptRootNode {
         if (getFunctionData().isDerived()) {
             // Note: TypeError/ReferenceError is thrown in caller context/realm.
             if (result != Undefined.instance) {
-                throw Errors.createTypeError("Derived constructors may only return object or undefined");
+                throw Errors.createTypeErrorDerivedConstructorReturnedIllegalType(this);
             } else {
                 // Cannot access this binding because super() has not been called.
-                throw Errors.createReferenceError("this is not defined");
+                throw Errors.createReferenceErrorDerivedConstructorThisNotInitialized(this);
             }
         } else {
             assert thisObject != JSFunction.CONSTRUCT;

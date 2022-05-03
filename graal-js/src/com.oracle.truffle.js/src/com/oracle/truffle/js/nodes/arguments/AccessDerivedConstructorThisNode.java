@@ -68,7 +68,7 @@ public final class AccessDerivedConstructorThisNode extends JavaScriptNode imple
             return thisObj;
         } else {
             errorBranch.enter();
-            throw Errors.createReferenceError("this is not defined");
+            throw Errors.createReferenceErrorDerivedConstructorThisNotInitialized(this);
         }
     }
 

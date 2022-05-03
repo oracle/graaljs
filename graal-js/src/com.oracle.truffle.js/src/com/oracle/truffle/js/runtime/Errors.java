@@ -273,6 +273,16 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createReferenceErrorDerivedConstructorThisNotInitialized(Node originatingNode) {
+        return createReferenceError("Must call super constructor in derived class before accessing 'this' or returning from derived constructor", originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorDerivedConstructorReturnedIllegalType(Node originatingNode) {
+        return createTypeError("Derived constructors may only return object or undefined", originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorNotObjectCoercible(Object value, Node originatingNode) {
         JavaScriptLanguage language = JavaScriptLanguage.get(originatingNode);
         return createTypeErrorNotObjectCoercible(value, originatingNode, language.getJSContext());
