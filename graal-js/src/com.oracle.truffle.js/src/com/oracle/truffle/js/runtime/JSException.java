@@ -70,8 +70,7 @@ public final class JSException extends GraalJSException {
 
     private final JSErrorType type;
     private JSDynamicObject exceptionObj;
-    private JSRealm realm;
-    private boolean useCallerRealm;
+    private final JSRealm realm;
     private final boolean isIncompleteSource;
 
     private JSException(JSErrorType type, String message, Throwable cause, Node originatingNode, JSRealm realm, int stackTraceLimit) {
@@ -200,26 +199,8 @@ public final class JSException extends GraalJSException {
         return jserror;
     }
 
-    public JSException setRealm(JSRealm realm) {
-        if (this.realm == null) {
-            if (useCallerRealm) {
-                // ignore the first set, that is the callee realm!
-                useCallerRealm = false;
-            } else {
-                this.realm = realm;
-            }
-        }
-        return this;
-    }
-
     public JSRealm getRealm() {
         return this.realm;
-    }
-
-    public JSException useCallerRealm() {
-        this.useCallerRealm = true;
-        this.realm = null;
-        return this;
     }
 
     @ExportMessage
