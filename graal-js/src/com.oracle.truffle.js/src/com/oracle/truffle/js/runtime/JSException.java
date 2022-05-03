@@ -182,9 +182,8 @@ public final class JSException extends GraalJSException {
     public Object getErrorObjectEager() {
         JSDynamicObject jserror = exceptionObj;
         if (jserror == null) {
-            JSRealm innerRealm = this.realm != null ? this.realm : JavaScriptLanguage.getCurrentJSRealm();
             String message = getRawMessage();
-            exceptionObj = jserror = JSError.createFromJSException(this, innerRealm, (message == null) ? "" : message);
+            exceptionObj = jserror = JSError.createFromJSException(this, this.realm, (message == null) ? "" : message);
         }
         return jserror;
     }

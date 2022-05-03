@@ -335,14 +335,10 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
         }
 
         private JSErrorObject createErrorFromJSException(JSException exception) {
-            JSErrorObject errorObj;
-            JSRealm realm = exception.getRealm();
-            if (realm == null) {
-                realm = getRealm();
-            }
+            JSRealm errorRealm = exception.getRealm();
             String message = exception.getRawMessage();
             assert message != null;
-            errorObj = newErrorObject(context, realm, exception.getErrorType());
+            JSErrorObject errorObj = newErrorObject(context, errorRealm, exception.getErrorType());
             initErrorObjectNode.execute(errorObj, exception, Strings.fromJavaString(message));
             exception.setErrorObject(errorObj);
             return errorObj;
