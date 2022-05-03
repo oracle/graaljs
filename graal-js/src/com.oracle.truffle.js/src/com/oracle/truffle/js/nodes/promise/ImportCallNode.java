@@ -323,7 +323,7 @@ public class ImportCallNode extends JavaScriptNode {
             }
 
             protected Object finishDynamicImport(JSRealm realm, JSModuleRecord moduleRecord, ScriptOrModule referencingScriptOrModule, ModuleRequest moduleRequest) {
-                context.getEvaluator().moduleInstantiation(realm, moduleRecord);
+                context.getEvaluator().moduleLinking(realm, moduleRecord);
                 context.getEvaluator().moduleEvaluation(realm, moduleRecord);
                 if (moduleRecord.getEvaluationError() != null) {
                     throw JSRuntime.rethrow(moduleRecord.getEvaluationError());
@@ -354,7 +354,7 @@ public class ImportCallNode extends JavaScriptNode {
                     JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, moduleRequest);
                     JSRealm realm = getRealm();
                     if (moduleRecord.hasTLA()) {
-                        context.getEvaluator().moduleInstantiation(realm, moduleRecord);
+                        context.getEvaluator().moduleLinking(realm, moduleRecord);
                         Object innerPromise = context.getEvaluator().moduleEvaluation(realm, moduleRecord);
                         assert JSPromise.isJSPromise(innerPromise);
                         JSDynamicObject resolve = createFinishDynamicImportCapabilityCallback(context, realm, moduleRecord, false);

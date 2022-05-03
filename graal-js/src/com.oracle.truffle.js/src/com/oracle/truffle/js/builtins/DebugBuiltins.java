@@ -604,7 +604,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             };
             JSModuleRecord module = moduleLoader.resolveImportedModule(null, ModuleRequest.create(name));
             JSRealm realm = getRealm();
-            evaluator.moduleInstantiation(realm, module);
+            evaluator.moduleLinking(realm, module);
             evaluator.moduleEvaluation(realm, module);
             return Strings.fromJavaString(String.valueOf(module));
         }

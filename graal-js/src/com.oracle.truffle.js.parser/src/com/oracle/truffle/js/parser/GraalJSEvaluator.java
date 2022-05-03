@@ -284,7 +284,7 @@ public final class GraalJSEvaluator implements JSParser {
         @TruffleBoundary
         private Object evalModule(JSRealm realm) {
             JSModuleRecord moduleRecord = realm.getModuleLoader().loadModule(source, parsedModule);
-            moduleInstantiation(realm, moduleRecord);
+            moduleLinking(realm, moduleRecord);
             Object promise = moduleEvaluation(realm, moduleRecord);
             boolean isAsync = context.isOptionTopLevelAwait() && moduleRecord.isAsyncEvaluation();
             if (isAsync) {
@@ -600,7 +600,7 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public void moduleInstantiation(JSRealm realm, JSModuleRecord moduleRecord) {
+    public void moduleLinking(JSRealm realm, JSModuleRecord moduleRecord) {
         assert moduleRecord.getStatus() != Status.Linking && moduleRecord.getStatus() != Status.Evaluating;
         Deque<JSModuleRecord> stack = new ArrayDeque<>(4);
 
@@ -618,7 +618,7 @@ public final class GraalJSEvaluator implements JSParser {
     private static void handleModuleLinkingError(JSModuleRecord moduleRecord, Deque<JSModuleRecord> stack) {
         for (JSModuleRecord m : stack) {
             assert m.getStatus() == Status.Linking;
-            m.setUninstantiated();
+            m.setUnlinked();
         }
         assert moduleRecord.getStatus() == Status.Unlinked;
     }
@@ -674,7 +674,7 @@ public final class GraalJSEvaluator implements JSParser {
         }
 
         // Initialize the environment by executing the module function.
-        // It will automatically yield when the module is instantiated.
+        // It will automatically yield when the module is linked.
         var moduleFunction = JSFunction.create(realm, moduleRecord.getFunctionData());
         Object[] arguments = JSArguments.create(Undefined.instance, moduleFunction, moduleRecord);
         // The [[Construct]] target of a module is used to initialize the environment.
@@ -762,7 +762,7 @@ public final class GraalJSEvaluator implements JSParser {
         Module module = moduleRecord.getModule();
         for (ModuleRequest requestedModule : module.getRequestedModules()) {
             JSModuleRecord requiredModule = hostResolveImportedModule(moduleRecord, requestedModule);
-            // Note: Instantiate must have completed successfully prior to invoking this method,
+            // Note: Link must have completed successfully prior to invoking this method,
             // so every requested module is guaranteed to resolve successfully.
             index = innerModuleEvaluation(realm, requiredModule, stack, index);
             assert requiredModule.getStatus() == Status.Evaluating || requiredModule.getStatus() == Status.EvaluatingAsync ||
