@@ -40,9 +40,12 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -59,6 +62,7 @@ import com.oracle.truffle.js.nodes.access.IteratorValueNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
+import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -66,8 +70,8 @@ import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -144,6 +148,8 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         @Child protected PropertyGetNode getSyncIteratorRecordNode;
         @Child private PropertySetNode setDoneNode;
+        @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+        @Child private InteropLibrary exceptions;
 
         protected ConditionProfile valuePresenceProfile = ConditionProfile.createBinaryProfile();
 
@@ -168,8 +174,16 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             return thiz != Undefined.instance && getSyncIteratorRecordNode.getValue(thiz) != Undefined.instance;
         }
 
-        protected void promiseCapabilityReject(PromiseCapabilityRecord promiseCapability, GraalJSException exception) {
-            Object result = exception.getErrorObject();
+        protected void promiseCapabilityReject(PromiseCapabilityRecord promiseCapability, AbstractTruffleException exception) {
+            if (getErrorObjectNode == null || exceptions == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
+                exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
+            }
+            if (!TryCatchNode.shouldCatch(exception, exceptions)) {
+                throw exception;
+            }
+            Object result = getErrorObjectNode.execute(exception);
             promiseCapabilityRejectImpl(promiseCapability, result);
         }
 
@@ -189,14 +203,14 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             boolean done;
             try {
                 done = iteratorCompleteNode.execute(result);
-            } catch (GraalJSException e) {
+            } catch (AbstractTruffleException e) {
                 promiseCapabilityReject(promiseCapability, e);
                 return promiseCapability.getPromise();
             }
             Object returnValue;
             try {
                 returnValue = iteratorValueNode.execute(result);
-            } catch (GraalJSException e) {
+            } catch (AbstractTruffleException e) {
                 promiseCapabilityReject(promiseCapability, e);
                 return promiseCapability.getPromise();
             }
@@ -270,7 +284,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 } else {
                     nextResult = iteratorNextNode.execute(syncIteratorRecord, value);
                 }
-            } catch (GraalJSException e) {
+            } catch (AbstractTruffleException e) {
                 promiseCapabilityReject(promiseCapability, e);
                 return promiseCapability.getPromise();
             }
@@ -312,7 +326,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 } else {
                     returnResult = executeReturnMethod.executeCall(JSArguments.create(syncIterator, method, value));
                 }
-            } catch (GraalJSException e) {
+            } catch (AbstractTruffleException e) {
                 promiseCapabilityReject(promiseCapability, e);
                 return promiseCapability.getPromise();
             }
