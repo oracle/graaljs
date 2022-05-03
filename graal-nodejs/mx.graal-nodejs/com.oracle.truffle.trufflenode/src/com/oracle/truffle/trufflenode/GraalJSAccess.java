@@ -2519,13 +2519,12 @@ public final class GraalJSAccess {
             throwable.printStackTrace();
             exit(1);
         }
-        JSRealm jsRealm = (JSRealm) context;
         if (!(throwable instanceof GraalJSException)) {
             isolateInternalErrorCheck(throwable);
             throwable = JSException.create(JSErrorType.Error, throwable.getMessage(), throwable, null);
         }
         GraalJSException truffleException = (GraalJSException) throwable;
-        Object exceptionObject = truffleException.getErrorObjectEager(jsRealm);
+        Object exceptionObject = truffleException.getErrorObjectEager();
         if (JSRuntime.isObject(exceptionObject)) {
             JSObject errorObject = (JSObject) exceptionObject;
             if (JSError.getException(errorObject) == null) {
@@ -3843,7 +3842,7 @@ public final class GraalJSAccess {
         JSModuleRecord record = (JSModuleRecord) module;
         Throwable evaluationError = record.getEvaluationError();
         if (evaluationError instanceof GraalJSException) {
-            return ((GraalJSException) evaluationError).getErrorObjectEager(getCurrentRealm());
+            return ((GraalJSException) evaluationError).getErrorObjectEager();
         }
         return evaluationError;
     }

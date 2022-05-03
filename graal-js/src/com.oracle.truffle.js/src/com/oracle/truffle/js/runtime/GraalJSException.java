@@ -161,13 +161,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
     public abstract Object getErrorObject();
 
     /**
-     * Eager access to the ErrorObject. Use only if you must get a non-null error object. Could
-     * result in an error object from the wrong realm, thus non spec-compliant.
+     * Eager access to the ErrorObject. Use only if you must get a non-null error object.
      */
-    public Object getErrorObjectEager(@SuppressWarnings("unused") JSRealm currentRealm) {
-        return getErrorObject();
-    }
-
     public Object getErrorObjectEager() {
         return getErrorObject();
     }
