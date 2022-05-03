@@ -2524,7 +2524,7 @@ public final class GraalJSAccess {
             throwable = JSException.create(JSErrorType.Error, throwable.getMessage(), throwable, null);
         }
         GraalJSException truffleException = (GraalJSException) throwable;
-        Object exceptionObject = truffleException.getErrorObjectEager();
+        Object exceptionObject = truffleException.getErrorObject();
         if (JSRuntime.isObject(exceptionObject)) {
             JSObject errorObject = (JSObject) exceptionObject;
             if (JSError.getException(errorObject) == null) {
@@ -3842,7 +3842,7 @@ public final class GraalJSAccess {
         JSModuleRecord record = (JSModuleRecord) module;
         Throwable evaluationError = record.getEvaluationError();
         if (evaluationError instanceof GraalJSException) {
-            return ((GraalJSException) evaluationError).getErrorObjectEager();
+            return ((GraalJSException) evaluationError).getErrorObject();
         }
         return evaluationError;
     }

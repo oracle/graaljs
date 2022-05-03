@@ -326,7 +326,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
         }
 
         private Object getOrCreateErrorFromJSException(JSException exception) {
-            JSDynamicObject errorObj = exception.getErrorObject();
+            JSDynamicObject errorObj = exception.getErrorObjectLazy();
             // not thread safe, but should be alright in this case
             if (errorObj == null) {
                 errorObj = createErrorFromJSException(exception);

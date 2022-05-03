@@ -169,7 +169,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
 
         protected void promiseCapabilityReject(PromiseCapabilityRecord promiseCapability, GraalJSException exception) {
-            Object result = exception.getErrorObjectEager();
+            Object result = exception.getErrorObject();
             promiseCapabilityRejectImpl(promiseCapability, result);
         }
 

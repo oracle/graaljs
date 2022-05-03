@@ -158,14 +158,12 @@ public abstract class GraalJSException extends AbstractTruffleException {
     }
 
     /** Could still be null due to lazy initialization. */
-    public abstract Object getErrorObject();
+    public abstract Object getErrorObjectLazy();
 
     /**
      * Eager access to the ErrorObject. Use only if you must get a non-null error object.
      */
-    public Object getErrorObjectEager() {
-        return getErrorObject();
-    }
+    public abstract Object getErrorObject();
 
     public JSStackTraceElement[] getJSStackTrace() {
         if (jsStackTrace != null) {
@@ -557,12 +555,12 @@ public abstract class GraalJSException extends AbstractTruffleException {
             if (receiver == other) {
                 return TriState.TRUE;
             }
-            Object thisObj = receiver.getErrorObject();
+            Object thisObj = receiver.getErrorObjectLazy();
             if (thisObj == null) {
                 // Cannot be identical since this is a lazily allocated Error and receiver != other.
                 return TriState.FALSE;
             }
-            Object otherObj = other.getErrorObject();
+            Object otherObj = other.getErrorObjectLazy();
             if (otherObj == null) {
                 return TriState.FALSE;
             }
@@ -576,7 +574,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
 
         @Specialization
         public static TriState doJSObject(GraalJSException receiver, JSDynamicObject other) {
-            Object thisObj = receiver.getErrorObject();
+            Object thisObj = receiver.getErrorObjectLazy();
             if (thisObj == null) {
                 // Cannot be identical since this is lazily allocated Error.
                 return TriState.FALSE;
@@ -588,7 +586,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
         public static TriState doOther(GraalJSException receiver, Object other,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("thisLib") InteropLibrary thisLib,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("otherLib") InteropLibrary otherLib) {
-            Object thisObj = receiver.getErrorObject();
+            Object thisObj = receiver.getErrorObjectLazy();
             if (thisObj == null) {
                 // The error object cannot be identical since this is a lazily allocated Error.
                 // Note: `other` could still be an identity-preserving wrapper of the receiver,
@@ -612,7 +610,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
     @TruffleBoundary
     public final int identityHashCode(
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary delegateLib) throws UnsupportedMessageException {
-        return delegateLib.identityHashCode(getErrorObjectEager());
+        return delegateLib.identityHashCode(getErrorObject());
     }
 
     public static final class JSStackTraceElement {

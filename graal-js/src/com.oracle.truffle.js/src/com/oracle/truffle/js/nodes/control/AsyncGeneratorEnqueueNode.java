@@ -118,7 +118,7 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
     }
 
     private Object badGeneratorError(PromiseCapabilityRecord promiseCapability) {
-        Object badGeneratorError = Errors.createTypeErrorAsyncGeneratorObjectExpected().getErrorObjectEager();
+        Object badGeneratorError = Errors.createTypeErrorAsyncGeneratorObjectExpected().getErrorObject();
         Object reject = promiseCapability.getReject();
         callPromiseRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, reject, badGeneratorError));
         return promiseCapability.getPromise();

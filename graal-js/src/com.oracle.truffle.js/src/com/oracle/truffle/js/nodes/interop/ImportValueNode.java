@@ -153,7 +153,7 @@ public abstract class ImportValueNode extends JavaScriptBaseNode {
 
     @Specialization
     static Object fromJSException(JSException value) {
-        return value.getErrorObjectEager();
+        return value.getErrorObject();
     }
 
     @Specialization
