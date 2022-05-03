@@ -89,7 +89,6 @@ import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
-import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -99,7 +98,6 @@ import com.oracle.truffle.js.parser.date.DateParser;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -607,13 +605,9 @@ public final class GraalJSEvaluator implements JSParser {
         Deque<JSModuleRecord> stack = new ArrayDeque<>(4);
 
         try {
-            innerModuleInstantiation(realm, moduleRecord, stack, 0);
-        } catch (GraalJSException e) {
-            for (JSModuleRecord m : stack) {
-                assert m.getStatus() == Status.Linking;
-                m.setUninstantiated();
-            }
-            assert moduleRecord.getStatus() == Status.Unlinked;
+            innerModuleLinking(realm, moduleRecord, stack, 0);
+        } catch (AbstractTruffleException e) {
+            handleModuleLinkingError(moduleRecord, stack);
             throw e;
         }
 
@@ -621,7 +615,15 @@ public final class GraalJSEvaluator implements JSParser {
         assert stack.isEmpty();
     }
 
-    private int innerModuleInstantiation(JSRealm realm, JSModuleRecord moduleRecord, Deque<JSModuleRecord> stack, int index0) {
+    private static void handleModuleLinkingError(JSModuleRecord moduleRecord, Deque<JSModuleRecord> stack) {
+        for (JSModuleRecord m : stack) {
+            assert m.getStatus() == Status.Linking;
+            m.setUninstantiated();
+        }
+        assert moduleRecord.getStatus() == Status.Unlinked;
+    }
+
+    private int innerModuleLinking(JSRealm realm, JSModuleRecord moduleRecord, Deque<JSModuleRecord> stack, int index0) {
         int index = index0;
         if (moduleRecord.getStatus() == Status.Linking || moduleRecord.getStatus() == Status.Linked || moduleRecord.getStatus() == Status.EvaluatingAsync ||
                         moduleRecord.getStatus() == Status.Evaluated) {
@@ -637,7 +639,7 @@ public final class GraalJSEvaluator implements JSParser {
         Module module = moduleRecord.getModule();
         for (ModuleRequest requestedModule : module.getRequestedModules()) {
             JSModuleRecord requiredModule = hostResolveImportedModule(moduleRecord, requestedModule);
-            index = innerModuleInstantiation(realm, requiredModule, stack, index);
+            index = innerModuleLinking(realm, requiredModule, stack, index);
             assert requiredModule.getStatus() == Status.Linking || requiredModule.getStatus() == Status.Linked ||
                             requiredModule.getStatus() == Status.EvaluatingAsync || requiredModule.getStatus() == Status.Evaluated : requiredModule.getStatus();
             assert (requiredModule.getStatus() == Status.Linking) == stack.contains(requiredModule);
@@ -705,32 +707,15 @@ public final class GraalJSEvaluator implements JSParser {
                 }
                 assert stack.isEmpty();
             } catch (AbstractTruffleException e) {
-                if (TryCatchNode.shouldCatch(e)) {
-                    for (JSModuleRecord m : stack) {
-                        assert m.getStatus() == Status.Evaluating;
-                        m.setStatus(Status.Evaluated);
-                        m.setEvaluationError(e);
-                    }
-                    assert module.getStatus() == Status.Evaluated && module.getEvaluationError() == e;
-                    throw e;
-                } else {
-                    // Not a JS error: throw
-                    throw e;
-                }
+                handleModuleEvaluationError(module, stack, e);
+                throw e;
             }
             return capability.getPromise();
         } else {
             try {
                 innerModuleEvaluation(realm, module, stack, 0);
             } catch (AbstractTruffleException e) {
-                if (TryCatchNode.shouldCatch(e)) {
-                    for (JSModuleRecord m : stack) {
-                        assert m.getStatus() == Status.Evaluating;
-                        m.setStatus(Status.Evaluated);
-                        m.setEvaluationError(e);
-                    }
-                    assert module.getStatus() == Status.Evaluated && module.getEvaluationError() == e;
-                }
+                handleModuleEvaluationError(module, stack, e);
                 throw e;
             }
             assert module.getStatus() == Status.EvaluatingAsync || module.getStatus() == Status.Evaluated;
@@ -740,6 +725,15 @@ public final class GraalJSEvaluator implements JSParser {
             Object result = module.getExecutionResult();
             return result == null ? Undefined.instance : result;
         }
+    }
+
+    private static void handleModuleEvaluationError(JSModuleRecord module, Deque<JSModuleRecord> stack, AbstractTruffleException e) {
+        for (JSModuleRecord m : stack) {
+            assert m.getStatus() == Status.Evaluating;
+            m.setStatus(Status.Evaluated);
+            m.setEvaluationError(e);
+        }
+        assert module.getStatus() == Status.Evaluated && module.getEvaluationError() == e;
     }
 
     @TruffleBoundary
