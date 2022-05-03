@@ -560,7 +560,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode finishDerivedConstructorBody(FunctionNode function, JavaScriptNode body) {
         JavaScriptNode getThisBinding = (function.hasDirectSuper() || function.hasEval() || function.hasArrowEval()) ? environment.findThisVar().createReadNode() : factory.createConstantUndefined();
-        getThisBinding = checkThisBindingInitialized(getThisBinding);
         return factory.createDerivedConstructorResult(body, getThisBinding);
     }
 

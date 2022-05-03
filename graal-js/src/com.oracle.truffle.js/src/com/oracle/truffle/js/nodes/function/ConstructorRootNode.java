@@ -101,17 +101,26 @@ public final class ConstructorRootNode extends JavaScriptRootNode {
         return thisObject;
     }
 
+    /**
+     * @see ConstructorResultNode#execute
+     */
     private Object filterConstructorResult(Object thisObject, Object result) {
         if (isObject.profile(isObjectNode.executeBoolean(result))) {
             return result;
         }
         // If [[ConstructorKind]] == "base" or result is undefined return this, otherwise throw
-        if (getFunctionData().isDerived() && isNotUndefined.profile(result != Undefined.instance)) {
-            // TypeError is thrown in caller context
-            throw Errors.createTypeError("constructor result not as expected");
+        if (getFunctionData().isDerived()) {
+            // Note: TypeError/ReferenceError is thrown in caller context/realm.
+            if (isNotUndefined.profile(result != Undefined.instance)) {
+                throw Errors.createTypeError("Derived constructors may only return object or undefined");
+            } else {
+                // Cannot access this binding because super() has not been called.
+                throw Errors.createReferenceError("this is not defined");
+            }
+        } else {
+            assert thisObject != JSFunction.CONSTRUCT;
+            return thisObject;
         }
-        assert thisObject != JSFunction.CONSTRUCT;
-        return thisObject;
     }
 
     @Override
