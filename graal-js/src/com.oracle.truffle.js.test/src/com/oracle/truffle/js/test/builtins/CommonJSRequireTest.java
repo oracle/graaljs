@@ -480,6 +480,20 @@ public class CommonJSRequireTest {
     }
 
     @Test
+    public void testReplacementsCwd() {
+        Path root = getTestRootFolder();
+        Map<String, String> options = new HashMap<>();
+        options.put(COMMONJS_REQUIRE_NAME, "true");
+        options.put(COMMONJS_REQUIRE_CWD_NAME, root.toAbsolutePath().toString());
+        // should load `util` relative to cwd. Not other modules named 'util'.
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "util:util/index.js,assert:assert/");
+        try (Context cx = testContext(options)) {
+            Value js = cx.eval(ID, "typeof require('assert').inherits;");
+            Assert.assertEquals("function", js.asString());
+        }
+    }
+
+    @Test
     public void testCustomNodeBuiltinJavaInterop() {
         Path root = getTestRootFolder();
         Map<String, String> options = new HashMap<>();
