@@ -1185,7 +1185,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            return JSObject.get((JSDynamicObject) thisObj, root.getKey());
+            return JSObject.getOrDefault((JSDynamicObject) thisObj, root.getKey(), receiver, defaultValue);
         }
     }
 

@@ -106,24 +106,24 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             } else {
                 if (refPath == null) {
                     if (maybeUri != null) {
-                        moduleFile = realm.getEnv().getPublicTruffleFile(maybeUri).getCanonicalFile();
+                        moduleFile = realm.getEnv().getPublicTruffleFile(maybeUri);
                     } else {
-                        moduleFile = realm.getEnv().getPublicTruffleFile(specifierJavaString).getCanonicalFile();
+                        moduleFile = realm.getEnv().getPublicTruffleFile(specifierJavaString);
                     }
                 } else {
                     TruffleFile refFile = realm.getEnv().getPublicTruffleFile(Strings.toJavaString(refPath));
                     if (maybeUri != null) {
                         String uriFile = realm.getEnv().getPublicTruffleFile(maybeUri).getCanonicalFile().getPath();
-                        moduleFile = refFile.resolveSibling(uriFile).getCanonicalFile();
+                        moduleFile = refFile.resolveSibling(uriFile);
                     } else {
                         if (bareSpecifierDirectLookup(specifier)) {
-                            moduleFile = realm.getEnv().getPublicTruffleFile(specifierJavaString).getCanonicalFile();
+                            moduleFile = realm.getEnv().getPublicTruffleFile(specifierJavaString);
                         } else {
-                            moduleFile = refFile.resolveSibling(specifierJavaString).getCanonicalFile();
+                            moduleFile = refFile.resolveSibling(specifierJavaString);
                         }
                     }
                 }
-                canonicalPath = Strings.fromJavaString(moduleFile.getPath());
+                canonicalPath = null;
             }
             return loadModuleFromUrl(referrer, moduleRequest, moduleFile, canonicalPath);
         } catch (FileSystemException fsex) {
@@ -154,11 +154,32 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         return !(Strings.startsWith(specifier, Strings.SLASH) || Strings.startsWith(specifier, Strings.DOT_SLASH) || Strings.startsWith(specifier, Strings.DOT_DOT_SLASH));
     }
 
-    protected JSModuleRecord loadModuleFromUrl(ScriptOrModule referrer, ModuleRequest moduleRequest, TruffleFile moduleFile, TruffleString canonicalPath) throws IOException {
-        JSModuleRecord existingModule = moduleMap.get(canonicalPath);
+    protected JSModuleRecord loadModuleFromUrl(ScriptOrModule referrer, ModuleRequest moduleRequest, TruffleFile maybeModuleFile, TruffleString maybeCanonicalPath) throws IOException {
+        JSModuleRecord existingModule;
+        TruffleFile moduleFile;
+        TruffleString canonicalPath;
+        if (maybeCanonicalPath == null) {
+            if (!maybeModuleFile.exists()) {
+                // check whether the moduleFile was loaded already (as literal source)
+                // before trying to invoke getCanonicalFile() (which would fail)
+                canonicalPath = Strings.fromJavaString(maybeModuleFile.getPath());
+                existingModule = moduleMap.get(canonicalPath);
+                if (existingModule != null) {
+                    return existingModule;
+                }
+            }
+            moduleFile = maybeModuleFile.getCanonicalFile();
+            canonicalPath = Strings.fromJavaString(moduleFile.getPath());
+        } else {
+            moduleFile = maybeModuleFile;
+            canonicalPath = maybeCanonicalPath;
+        }
+
+        existingModule = moduleMap.get(canonicalPath);
         if (existingModule != null) {
             return existingModule;
         }
+
         Source source = Source.newBuilder(JavaScriptLanguage.ID, moduleFile).name(Strings.toJavaString(moduleRequest.getSpecifier())).mimeType(JavaScriptLanguage.MODULE_MIME_TYPE).build();
         Map<TruffleString, TruffleString> assertions = moduleRequest.getAssertions();
         int moduleType = getModuleType(moduleFile.getName());
