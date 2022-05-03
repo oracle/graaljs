@@ -42,8 +42,10 @@ package com.oracle.truffle.js.nodes.control;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -56,7 +58,6 @@ import com.oracle.truffle.js.nodes.control.ReturnNode.FrameReturnNode;
 import com.oracle.truffle.js.nodes.control.YieldResultNode.ExceptionYieldResultNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -167,6 +168,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
     @Child private GetMethodNode getReturnMethodNode;
     @Child private JSFunctionCallNode callThrowNode;
     @Child private JSFunctionCallNode callReturnNode;
+    private final BranchProfile throwMethodMissingBranch = BranchProfile.create();
 
     protected AsyncGeneratorYieldStarNode(JSContext context, JavaScriptNode expression, int stateSlot,
                     JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readYieldResultNode, ReturnNode returnNode, int iteratorTempSlot) {
@@ -228,13 +230,17 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                              * to terminate the yield* loop. But first we need to give iterator a
                              * chance to clean up.
                              */
+                            throwMethodMissingBranch.enter();
                             // AsyncIteratorClose
                             Object returnMethod = getReturnMethodNode.executeWithTarget(iterator);
                             error: if (returnMethod != Undefined.instance) {
                                 Object returnResult;
                                 try {
                                     returnResult = callReturnNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
-                                } catch (GraalJSException e) {
+                                } catch (AbstractTruffleException e) {
+                                    if (!TryCatchNode.shouldCatch(e)) {
+                                        throw e;
+                                    }
                                     // swallow inner error
                                     break error;
                                 }
@@ -321,6 +327,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                 }
                 // received.[[Type]] is throw, throw method is undefined
                 case throwAwaitReturnResult: {
+                    throwMethodMissingBranch.enter();
                     // AsyncIteratorClose: handle Await(innerResult) throw completion.
                     resumeAwait(frame);
                     throw Errors.createTypeErrorYieldStarThrowMethodMissing(this);
