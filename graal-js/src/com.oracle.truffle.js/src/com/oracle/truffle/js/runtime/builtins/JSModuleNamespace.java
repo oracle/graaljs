@@ -69,7 +69,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 
 /**
@@ -151,7 +150,7 @@ public final class JSModuleNamespace extends JSNonProxy {
         if (binding != null) {
             return getBindingValue(binding);
         } else {
-            return Undefined.instance;
+            return null;
         }
     }
 
