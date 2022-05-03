@@ -53,8 +53,10 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.interop.InteropFunction;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
@@ -150,8 +152,13 @@ public abstract class ImportValueNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    static Object fromJSException(GraalJSException value) {
+    static Object fromJSException(JSException value) {
         return value.getErrorObjectEager();
+    }
+
+    @Specialization
+    static Object fromException(UserScriptException value) {
+        return value.getErrorObject();
     }
 
     @Specialization(guards = {"!isSpecial(value)"})
