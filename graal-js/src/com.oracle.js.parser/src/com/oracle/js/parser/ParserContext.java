@@ -46,7 +46,6 @@ import java.util.NoSuchElementException;
 import com.oracle.js.parser.ir.Block;
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.js.parser.ir.Statement;
-import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * A class that tracks the current lexical context of node visitation as a stack of
@@ -153,7 +152,7 @@ class ParserContext {
      *            returned unconditionally, e.g. a while loop with no label
      * @return closest breakable node
      */
-    public ParserContextBreakableNode getBreakable(final TruffleString labelName) {
+    public ParserContextBreakableNode getBreakable(final String labelName) {
         if (labelName != null) {
             return findLabelledItem(labelName, ParserContextBreakableNode.class);
         } else {
@@ -182,7 +181,7 @@ class ParserContext {
      *            unconditionally, e.g. a while loop with no label
      * @return closest continue target node
      */
-    public ParserContextLoopNode getContinueTo(final TruffleString labelName) {
+    public ParserContextLoopNode getContinueTo(final String labelName) {
         if (labelName != null) {
             return findLabelledItem(labelName, ParserContextLoopNode.class);
         }
@@ -195,7 +194,7 @@ class ParserContext {
      * @param name name of the label
      * @return LabelNode if found, null otherwise
      */
-    public ParserContextLabelNode findLabel(final TruffleString name) {
+    public ParserContextLabelNode findLabel(final String name) {
         for (final Iterator<ParserContextLabelNode> iter = new NodeIterator<>(ParserContextLabelNode.class, getCurrentFunction()); iter.hasNext();) {
             final ParserContextLabelNode next = iter.next();
             if (next.getLabelName().equals(name)) {
@@ -212,7 +211,7 @@ class ParserContext {
      * @param breakableType {@link ParserContextBreakableNode} or {@link ParserContextLoopNode}
      * @return nearest breakable/loop
      */
-    private <T extends ParserContextBreakableNode> T findLabelledItem(final TruffleString labelName, Class<T> breakableType) {
+    private <T extends ParserContextBreakableNode> T findLabelledItem(final String labelName, Class<T> breakableType) {
         T prev = null;
         for (final Iterator<ParserContextNode> iter = new NodeIterator<>(ParserContextNode.class, getCurrentFunction()); iter.hasNext();) {
             final ParserContextNode next = iter.next();

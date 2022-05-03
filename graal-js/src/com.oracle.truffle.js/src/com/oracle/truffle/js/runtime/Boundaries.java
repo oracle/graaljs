@@ -113,17 +113,17 @@ public final class Boundaries {
     }
 
     @TruffleBoundary
-    public static <K, V> boolean mapContainsKey(Map<K, V> map, Object key) {
+    public static <K, V> boolean mapContainsKey(Map<K, V> map, K key) {
         return map.containsKey(key);
     }
 
     @TruffleBoundary
-    public static <K, V> V mapGet(Map<K, V> map, Object key) {
+    public static <K, V> V mapGet(Map<K, V> map, K key) {
         return map.get(key);
     }
 
     @TruffleBoundary
-    public static <K, V> V mapRemove(Map<K, V> map, Object key) {
+    public static <K, V> V mapRemove(Map<K, V> map, K key) {
         return map.remove(key);
     }
 

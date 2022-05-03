@@ -125,8 +125,12 @@ public final class PropertyNode extends Node {
      *
      * @return key name
      */
-    public TruffleString getKeyName() {
+    public String getKeyName() {
         return key instanceof PropertyKey ? ((PropertyKey) key).getPropertyName() : null;
+    }
+
+    public TruffleString getKeyNameTS() {
+        return key instanceof PropertyKey ? ((PropertyKey) key).getPropertyNameTS() : null;
     }
 
     @Override
@@ -313,9 +317,14 @@ public final class PropertyNode extends Node {
         return key instanceof IdentNode && ((IdentNode) key).isPrivate();
     }
 
-    public TruffleString getPrivateName() {
+    public String getPrivateName() {
         assert isPrivate();
         return ((IdentNode) key).getName();
+    }
+
+    public TruffleString getPrivateNameTS() {
+        assert isPrivate();
+        return ((IdentNode) key).getNameTS();
     }
 
     public boolean isAccessor() {

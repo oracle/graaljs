@@ -65,7 +65,7 @@ class ParserContextModuleNode extends ParserContextBaseNode {
     private static final String MSG_EXPORT_NOT_DEFINED = "export.not.defined";
 
     /** Module name. */
-    private final TruffleString name;
+    private final String name;
     private final Scope moduleScope;
     private final AbstractParser parser;
 
@@ -78,15 +78,15 @@ class ParserContextModuleNode extends ParserContextBaseNode {
     private List<ImportNode> imports = new ArrayList<>();
     private List<ExportNode> exports = new ArrayList<>();
 
-    private EconomicMap<TruffleString, ImportEntry> importedLocalNames = EconomicMap.create();
-    private EconomicSet<TruffleString> exportedNames = EconomicSet.create();
+    private EconomicMap<String, ImportEntry> importedLocalNames = EconomicMap.create();
+    private EconomicSet<String> exportedNames = EconomicSet.create();
 
     /**
      * Constructor.
      *
      * @param name name of the module
      */
-    ParserContextModuleNode(final TruffleString name, Scope moduleScope, AbstractParser parser) {
+    ParserContextModuleNode(final String name, Scope moduleScope, AbstractParser parser) {
         this.name = name;
         this.moduleScope = moduleScope;
         this.parser = parser;
@@ -97,7 +97,7 @@ class ParserContextModuleNode extends ParserContextBaseNode {
      *
      * @return name of the module
      */
-    public TruffleString getModuleName() {
+    public String getModuleName() {
         return name;
     }
 
@@ -115,13 +115,13 @@ class ParserContextModuleNode extends ParserContextBaseNode {
 
     public void addImportEntry(ImportEntry importEntry) {
         importEntries.add(importEntry);
-        importedLocalNames.put(importEntry.getLocalName(), importEntry);
+        importedLocalNames.put(importEntry.getLocalName().toJavaStringUncached(), importEntry);
     }
 
     public void addLocalExportEntry(long exportToken, ExportEntry exportEntry) {
         localExportEntries.add(exportEntry);
         addExportedName(exportToken, exportEntry);
-        if (!moduleScope.hasSymbol(exportEntry.getLocalName())) {
+        if (!moduleScope.hasSymbol(exportEntry.getLocalName().toJavaStringUncached())) {
             throw parser.error(AbstractParser.message(MSG_EXPORT_NOT_DEFINED, exportEntry.getLocalName().toJavaStringUncached()), exportToken);
         }
     }
@@ -136,7 +136,7 @@ class ParserContextModuleNode extends ParserContextBaseNode {
     }
 
     private void addExportedName(long exportToken, ExportEntry exportEntry) {
-        if (!exportedNames.add(exportEntry.getExportName())) {
+        if (!exportedNames.add(exportEntry.getExportName().toJavaStringUncached())) {
             throw parser.error(AbstractParser.message(MSG_DUPLICATE_EXPORT, exportEntry.getExportName().toJavaStringUncached()), exportToken);
         }
     }
@@ -147,15 +147,15 @@ class ParserContextModuleNode extends ParserContextBaseNode {
             if (export.getNamedExports() != null) {
                 assert export.getExportIdentifier() == null;
                 for (ExportSpecifierNode s : export.getNamedExports().getExportSpecifiers()) {
-                    TruffleString localName = s.getIdentifier().getName();
+                    TruffleString localName = s.getIdentifier().getNameTS();
                     ExportEntry ee;
                     if (s.getExportIdentifier() != null) {
-                        ee = ExportEntry.exportSpecifier(s.getExportIdentifier().getName(), localName);
+                        ee = ExportEntry.exportSpecifier(s.getExportIdentifier().getNameTS(), localName);
                     } else {
                         ee = ExportEntry.exportSpecifier(localName);
                     }
                     if (export.getFrom() == null) {
-                        ImportEntry ie = importedLocalNames.get(localName);
+                        ImportEntry ie = importedLocalNames.get(localName.toJavaStringUncached());
                         if (ie == null) {
                             addLocalExportEntry(exportToken, ee);
                         } else if (ie.getImportName().equals(Module.STAR_NAME)) {
@@ -175,12 +175,12 @@ class ParserContextModuleNode extends ParserContextBaseNode {
                 if (export.getExportIdentifier() == null) {
                     addStarExportEntry(ExportEntry.exportStarFrom(moduleRequest));
                 } else {
-                    addIndirectExportEntry(exportToken, ExportEntry.exportStarAsNamespaceFrom(export.getExportIdentifier().getName(), moduleRequest));
+                    addIndirectExportEntry(exportToken, ExportEntry.exportStarAsNamespaceFrom(export.getExportIdentifier().getNameTS(), moduleRequest));
                 }
             } else if (export.isDefault()) {
-                addLocalExportEntry(exportToken, ExportEntry.exportDefault(export.getExportIdentifier().getName()));
+                addLocalExportEntry(exportToken, ExportEntry.exportDefault(export.getExportIdentifier().getNameTS()));
             } else {
-                addLocalExportEntry(exportToken, ExportEntry.exportSpecifier(export.getExportIdentifier().getName()));
+                addLocalExportEntry(exportToken, ExportEntry.exportSpecifier(export.getExportIdentifier().getNameTS()));
             }
         }
     }

@@ -42,7 +42,6 @@ package com.oracle.js.parser;
 
 import java.util.Iterator;
 
-import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
@@ -55,7 +54,7 @@ import com.oracle.js.parser.ir.Scope;
 class ParserContextClassNode extends ParserContextBaseNode implements ParserContextScopableNode {
 
     private Scope scope;
-    protected EconomicMap<TruffleString, IdentNode> unresolvedPrivateIdentifiers;
+    protected EconomicMap<String, IdentNode> unresolvedPrivateIdentifiers;
 
     /**
      * Constructs a ParserContextClassNode.
@@ -81,7 +80,7 @@ class ParserContextClassNode extends ParserContextBaseNode implements ParserCont
      * Register a private name usage for resolving.
      */
     void usePrivateName(IdentNode ident) {
-        TruffleString name = ident.getName();
+        String name = ident.getName();
         if (scope.findPrivateName(name)) {
             // Private name has already been declared in this class.
             return;
@@ -98,10 +97,10 @@ class ParserContextClassNode extends ParserContextBaseNode implements ParserCont
 
     IdentNode verifyAllPrivateIdentifiersValid(ParserContext lc) {
         if (unresolvedPrivateIdentifiers != null) {
-            MapCursor<TruffleString, IdentNode> entries = unresolvedPrivateIdentifiers.getEntries();
+            MapCursor<String, IdentNode> entries = unresolvedPrivateIdentifiers.getEntries();
             next: while (entries.advance()) {
                 IdentNode unresolved = entries.getValue();
-                TruffleString name = entries.getKey();
+                String name = entries.getKey();
                 if (scope.findPrivateName(name)) {
                     // found the private name in this or an outer class scope
                     continue next;

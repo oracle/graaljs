@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,7 @@ public class BreakTarget {
 
     private static final BreakTarget DIRECT_BREAK_TARGET = new BreakTarget(null, 0, DirectBreakException.instance);
 
-    protected BreakTarget(Object label, int id, BreakException breakException) {
+    protected BreakTarget(String label, int id, BreakException breakException) {
         this.label = label;
         this.id = id;
         this.breakException = breakException;
@@ -62,7 +62,7 @@ public class BreakTarget {
         return breakException;
     }
 
-    public static BreakTarget forLabel(Object label, int id) {
+    public static BreakTarget forLabel(String label, int id) {
         return new BreakTarget(label, id, new LabelBreakException(id));
     }
 

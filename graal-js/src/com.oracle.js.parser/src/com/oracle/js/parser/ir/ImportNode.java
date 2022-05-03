@@ -112,14 +112,10 @@ public class ImportNode extends Node {
     @SuppressWarnings("unchecked")
     public Node accept(NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterImportNode(this)) {
-            LiteralNode<TruffleString> newModuleSpecifier = moduleSpecifier == null ? null
-                            : (LiteralNode<TruffleString>) moduleSpecifier.accept(visitor);
-            ImportClauseNode newImportClause = importClause == null ? null
-                            : (ImportClauseNode) importClause.accept(visitor);
-            FromNode newFrom = from == null ? null
-                            : (FromNode) from.accept(visitor);
-            return visitor.leaveImportNode(
-                            setModuleSpecifier(newModuleSpecifier).setImportClause(newImportClause).setFrom(newFrom));
+            LiteralNode<TruffleString> newModuleSpecifier = moduleSpecifier == null ? null : (LiteralNode<TruffleString>) moduleSpecifier.accept(visitor);
+            ImportClauseNode newImportClause = importClause == null ? null : (ImportClauseNode) importClause.accept(visitor);
+            FromNode newFrom = from == null ? null : (FromNode) from.accept(visitor);
+            return visitor.leaveImportNode(setModuleSpecifier(newModuleSpecifier).setImportClause(newImportClause).setFrom(newFrom));
         }
 
         return this;

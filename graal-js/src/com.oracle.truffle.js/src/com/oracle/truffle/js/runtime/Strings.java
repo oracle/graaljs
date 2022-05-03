@@ -44,7 +44,6 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Locale;
 
-import com.oracle.js.parser.ParserStrings;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -52,8 +51,9 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 
-public final class Strings extends ParserStrings {
+public final class Strings {
 
+    public static final TruffleString EMPTY_STRING = TruffleString.Encoding.UTF_16.getEmpty();
     public static final TruffleString LINE_SEPARATOR = constant("\n");
 
     /* Numeric */
@@ -99,6 +99,7 @@ public final class Strings extends ParserStrings {
     public static final TruffleString COMMA_NEWLINE = constant(",\n");
     public static final TruffleString COLON = constant(":");
     public static final TruffleString COLON_SPACE = constant(": ");
+    public static final TruffleString DASH = constant("-");
     public static final TruffleString DOUBLE_QUOTE = constant("\"");
     public static final TruffleString DOT = constant(".");
     public static final TruffleString DOT_SLASH = constant("./");
@@ -584,6 +585,12 @@ public final class Strings extends ParserStrings {
         return string instanceof TruffleString;
     }
 
+    public static TruffleString constant(String s) {
+        TruffleString ret = fromJavaString(s);
+        ret.hashCodeUncached(TruffleString.Encoding.UTF_16);
+        return ret;
+    }
+
     public static TruffleString fromJavaString(String str) {
         return fromJavaString(TruffleString.FromJavaStringNode.getUncached(), str);
     }
@@ -602,12 +609,24 @@ public final class Strings extends ParserStrings {
         return fromJavaString(str.toString());
     }
 
+    public static TruffleString fromLong(long longValue) {
+        return fromLong(TruffleString.FromLongNode.getUncached(), longValue);
+    }
+
+    public static TruffleString fromLong(TruffleString.FromLongNode node, long longValue) {
+        return node.execute(longValue, TruffleString.Encoding.UTF_16, true);
+    }
+
     public static TruffleString[] constantArray(String... strings) {
         TruffleString[] ret = new TruffleString[strings.length];
         for (int i = 0; i < strings.length; i++) {
             ret[i] = constant(strings[i]);
         }
         return ret;
+    }
+
+    public static int length(TruffleString s) {
+        return s.byteLength(TruffleString.Encoding.UTF_16) >> 1;
     }
 
     public static boolean isEmpty(TruffleString s) {
@@ -619,9 +638,7 @@ public final class Strings extends ParserStrings {
     }
 
     public static char charAt(TruffleString.ReadCharUTF16Node readRawNode, TruffleString s, int i) {
-        int c = readRawNode.execute(s, i);
-        assert 0 <= c && c <= 0xffff : Integer.toHexString(c);
-        return (char) c;
+        return readRawNode.execute(s, i);
     }
 
     public static int codePointAt(TruffleString.CodePointAtByteIndexNode node, TruffleString s, int i) {
@@ -691,6 +708,30 @@ public final class Strings extends ParserStrings {
         return length == 0 ? Strings.EMPTY_STRING : node.execute(s, fromIndex << 1, length << 1, TruffleString.Encoding.UTF_16, lazy);
     }
 
+    public static boolean startsWith(TruffleString s1, TruffleString s2) {
+        return startsWith(s1, s2, 0);
+    }
+
+    public static boolean startsWith(TruffleString s1, TruffleString s2, int startPos) {
+        return startsWith(TruffleString.RegionEqualByteIndexNode.getUncached(), s1, s2, startPos);
+    }
+
+    public static boolean startsWith(TruffleString.RegionEqualByteIndexNode regionEqualsNode, TruffleString s1, TruffleString s2) {
+        return startsWith(regionEqualsNode, s1, s2, 0);
+    }
+
+    public static boolean startsWith(TruffleString.RegionEqualByteIndexNode regionEqualsNode, TruffleString s1, TruffleString s2, int startPos) {
+        return length(s1) - startPos >= length(s2) && regionEquals(regionEqualsNode, s1, startPos, s2, 0, length(s2));
+    }
+
+    public static boolean regionEquals(TruffleString s1, int offset1, TruffleString s2, int offset2, int length) {
+        return regionEquals(TruffleString.RegionEqualByteIndexNode.getUncached(), s1, offset1, s2, offset2, length);
+    }
+
+    public static boolean regionEquals(TruffleString.RegionEqualByteIndexNode regionEqualsNode, TruffleString s1, int offset1, TruffleString s2, int offset2, int length) {
+        return regionEqualsNode.execute(s1, offset1 << 1, s2, offset2 << 1, length << 1, TruffleString.Encoding.UTF_16);
+    }
+
     public static boolean endsWith(TruffleString s1, TruffleString s2) {
         return endsWith(TruffleString.RegionEqualByteIndexNode.getUncached(), s1, s2);
     }
@@ -701,6 +742,10 @@ public final class Strings extends ParserStrings {
 
     public static boolean contains(TruffleString s, char c) {
         return indexOf(s, c) >= 0;
+    }
+
+    public static int indexOf(TruffleString string, char c) {
+        return string.charIndexOfAnyCharUTF16Uncached(0, length(string), new char[]{c});
     }
 
     public static int indexOfAny(TruffleString s, char... chars) {
@@ -965,6 +1010,14 @@ public final class Strings extends ParserStrings {
 
     public static BigInteger parseBigInteger(TruffleString s, int radix) {
         return new BigInteger(toJavaString(s), radix);
+    }
+
+    public static TruffleStringBuilder builderCreate() {
+        return TruffleStringBuilder.create(TruffleString.Encoding.UTF_16);
+    }
+
+    public static TruffleStringBuilder builderCreate(int capacity) {
+        return TruffleStringBuilder.create(TruffleString.Encoding.UTF_16, capacity << 1);
     }
 
     public static void builderAppend(TruffleStringBuilder sb, char chr) {

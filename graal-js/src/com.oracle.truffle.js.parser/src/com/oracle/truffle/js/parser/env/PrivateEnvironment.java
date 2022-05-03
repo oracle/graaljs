@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.parser.env;
 
 import com.oracle.js.parser.ir.Scope;
+import com.oracle.js.parser.ir.Symbol;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.js.nodes.JSFrameDescriptor;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
@@ -71,8 +72,8 @@ public final class PrivateEnvironment extends DerivedEnvironment {
     }
 
     @Override
-    public void addFrameSlotFromSymbol(com.oracle.js.parser.ir.Symbol symbol) {
-        Object id = JSFrameDescriptor.scopedIdentifier(symbol.getName(), scope);
+    public void addFrameSlotFromSymbol(Symbol symbol) {
+        Object id = JSFrameDescriptor.scopedIdentifier(symbol.getNameTS(), scope);
         assert !getBlockFrameDescriptor().contains(id) : symbol;
         getBlockFrameDescriptor().findOrAddFrameSlot(id, symbol.getFlags(), FrameSlotKind.Illegal);
     }

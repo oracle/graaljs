@@ -75,8 +75,6 @@ import com.oracle.truffle.js.runtime.util.Pair;
 
 public abstract class Environment {
 
-    public static final TruffleString NEW_TARGET_NAME = Strings.constant("new.target");
-
     private final Environment parent;
     private final FunctionEnvironment functionEnvironment;
     protected final NodeFactory factory;
@@ -608,10 +606,6 @@ public abstract class Environment {
         return null;
     }
 
-    public void addFrameSlotsFromScope(Scope scope) {
-        addFrameSlotsFromSymbols(scope.getSymbols());
-    }
-
     public void addFrameSlotsFromSymbols(Iterable<com.oracle.js.parser.ir.Symbol> symbols) {
         addFrameSlotsFromSymbols(symbols, false, null);
     }
@@ -630,10 +624,10 @@ public abstract class Environment {
         }
     }
 
-    public void addFrameSlotFromSymbol(com.oracle.js.parser.ir.Symbol symbol) {
+    public void addFrameSlotFromSymbol(Symbol symbol) {
         // Frame slot may already exist for simple parameters and "arguments".
-        assert !getBlockFrameDescriptor().contains(symbol.getName()) || this instanceof FunctionEnvironment : symbol;
-        getBlockFrameDescriptor().findOrAddFrameSlot(symbol.getName(), symbol.getFlags(), FrameSlotKind.Illegal);
+        assert !getBlockFrameDescriptor().contains(symbol.getNameTS()) || this instanceof FunctionEnvironment : symbol;
+        getBlockFrameDescriptor().findOrAddFrameSlot(symbol.getNameTS(), symbol.getFlags(), FrameSlotKind.Illegal);
     }
 
     public boolean isDynamicallyScoped() {

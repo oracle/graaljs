@@ -147,7 +147,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                     @Cached JSToStringNode toStringNode,
                     @Cached @Shared("equalsNode") TruffleString.EqualNode equalsNode,
                     @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode) {
-        List<Object> result = new ArrayList<>();
+        List<String> result = new ArrayList<>();
         long len;
         try {
             len = interop.getArraySize(object);
@@ -170,7 +170,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                     throw Errors.createTypeError(Boundaries.stringFormat("String or Object expected in locales list, got %s", typeOfKValue));
                 }
                 String lt = Strings.toJavaString(toJavaStringNode, toStringNode.executeString(kValue));
-                Object canonicalizedLt = IntlUtil.validateAndCanonicalizeLanguageTag(lt);
+                String canonicalizedLt = IntlUtil.validateAndCanonicalizeLanguageTag(lt);
                 if (!Boundaries.listContains(result, canonicalizedLt)) {
                     Boundaries.listAdd(result, canonicalizedLt);
                 }

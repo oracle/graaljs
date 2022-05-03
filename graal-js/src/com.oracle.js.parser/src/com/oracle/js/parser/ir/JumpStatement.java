@@ -41,14 +41,12 @@
 
 package com.oracle.js.parser.ir;
 
-import com.oracle.truffle.api.strings.TruffleString;
-
 /**
  * Common base class for jump statements (e.g. {@code break} and {@code continue}).
  */
 public abstract class JumpStatement extends Statement {
 
-    private final TruffleString labelName;
+    private final String labelName;
 
     /**
      * Constructor
@@ -58,7 +56,7 @@ public abstract class JumpStatement extends Statement {
      * @param finish finish
      * @param labelName label name for break or null if none
      */
-    JumpStatement(final int lineNumber, final long token, final int finish, final TruffleString labelName) {
+    JumpStatement(final int lineNumber, final long token, final int finish, final String labelName) {
         super(lineNumber, token, finish);
         this.labelName = labelName;
     }
@@ -83,7 +81,7 @@ public abstract class JumpStatement extends Statement {
      *
      * @return label name, or null if none
      */
-    public TruffleString getLabelName() {
+    public String getLabelName() {
         return labelName;
     }
 

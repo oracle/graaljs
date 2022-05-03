@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.parser;
 
 import java.io.PrintWriter;
+import java.util.List;
 import java.util.function.Function;
 
 import com.oracle.js.parser.ErrorManager;
@@ -50,7 +51,6 @@ import com.oracle.js.parser.Parser;
 import com.oracle.js.parser.ParserException;
 import com.oracle.js.parser.ScriptEnvironment;
 import com.oracle.js.parser.ScriptEnvironment.FunctionStatementBehavior;
-import com.oracle.js.parser.ParserStrings;
 import com.oracle.js.parser.Token;
 import com.oracle.js.parser.TokenType;
 import com.oracle.js.parser.ir.Expression;
@@ -70,7 +70,7 @@ import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 public final class GraalJSParserHelper {
 
     private static final String NEVER_PART_OF_COMPILATION_MESSAGE = "do not parse from compiled code";
-    public static final TruffleString COLON_MODULE = ParserStrings.constant(":module");
+    public static final String COLON_MODULE = ":module";
 
     private GraalJSParserHelper() {
         // should not be constructed
@@ -86,7 +86,7 @@ public final class GraalJSParserHelper {
     }
 
     public static FunctionNode parseScript(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions, boolean eval, boolean evalInFunction,
-                    Scope evalScope, String prologue, String epilogue, TruffleString[] argumentNames) {
+                    Scope evalScope, String prologue, String epilogue, List<String> argumentNames) {
         return parseSource(context, truffleSource, parserOptions, false, eval, evalInFunction, evalScope, prologue, epilogue, argumentNames);
     }
 
@@ -95,7 +95,7 @@ public final class GraalJSParserHelper {
     }
 
     private static FunctionNode parseSource(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions,
-                    boolean parseModule, boolean eval, boolean evalInFunction, Scope evalScope, String prologue, String epilogue, TruffleString[] argumentNames) {
+                    boolean parseModule, boolean eval, boolean evalInFunction, Scope evalScope, String prologue, String epilogue, List<String> argumentNames) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         CharSequence code;
         if (prologue.isEmpty() && epilogue.isEmpty()) {
@@ -164,7 +164,7 @@ public final class GraalJSParserHelper {
                     // validate regular expression
                     if (context.getContextOptions().isValidateRegExpLiterals()) {
                         try {
-                            RegexCompilerInterface.validate(context, regex.getExpression().toJavaStringUncached(), regex.getOptions().toJavaStringUncached(), parserOptions.getEcmaScriptVersion());
+                            RegexCompilerInterface.validate(context, regex.getExpression(), regex.getOptions(), parserOptions.getEcmaScriptVersion());
                         } catch (JSException e) {
                             throw error(e.getRawMessage());
                         }

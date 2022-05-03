@@ -74,8 +74,7 @@ public class FromNode extends Node {
     @SuppressWarnings("unchecked")
     public Node accept(NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterFromNode(this)) {
-            return visitor.leaveFromNode(
-                            setModuleSpecifier((LiteralNode<TruffleString>) moduleSpecifier.accept(visitor)));
+            return visitor.leaveFromNode(setModuleSpecifier((LiteralNode<TruffleString>) moduleSpecifier.accept(visitor)));
         }
 
         return this;

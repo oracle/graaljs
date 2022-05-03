@@ -185,15 +185,15 @@ public class Parser extends AbstractParser {
     /** The arguments variable name. */
     static final TruffleString ARGUMENTS_NAME = ParserStrings.constant("arguments");
     /** The eval function variable name. */
-    private static final TruffleString EVAL_NAME = ParserStrings.constant("eval");
+    private static final String EVAL_NAME = "eval";
     private static final TruffleString CONSTRUCTOR_NAME = ParserStrings.constant("constructor");
-    private static final TruffleString PRIVATE_CONSTRUCTOR_NAME = ParserStrings.constant("#constructor");
-    private static final TruffleString PROTO_NAME = ParserStrings.constant("__proto__");
+    private static final String PRIVATE_CONSTRUCTOR_NAME = "#constructor";
+    private static final String PROTO_NAME = "__proto__";
     static final TruffleString NEW_TARGET_NAME = ParserStrings.constant("new.target");
     private static final TruffleString IMPORT_META_NAME = ParserStrings.constant("import.meta");
-    private static final TruffleString PROTOTYPE_NAME = ParserStrings.constant("prototype");
+    private static final String PROTOTYPE_NAME = "prototype";
     /** Function.prototype.apply method name. */
-    private static final TruffleString APPLY_NAME = ParserStrings.constant("apply");
+    private static final String APPLY_NAME = "apply";
 
     /** EXEC name - special property used by $EXEC API. */
     private static final TruffleString EXEC_NAME = ParserStrings.constant("$EXEC");
@@ -237,12 +237,11 @@ public class Parser extends AbstractParser {
     /** Parsing eval in a function (i.e. not script or module) context. */
     private static final int PARSE_FUNCTION_CONTEXT_EVAL = 1 << 3;
 
-    private static final TruffleString USE_STRICT = ParserStrings.constant("use strict");
+    private static final String USE_STRICT = "use strict";
     private static final TruffleString ARGS = ParserStrings.constant("args");
-    private static final TruffleString GET_SPC = ParserStrings.constant("get ");
-    private static final TruffleString SET_SPC = ParserStrings.constant("set ");
-    private static final TruffleString META = ParserStrings.constant("meta");
-    private static final TruffleString DOT = ParserStrings.constant(".");
+    private static final String GET_SPC = "get ";
+    private static final String SET_SPC = "set ";
+    private static final String META = "meta";
     private static final TruffleString TARGET = ParserStrings.constant("target");
 
     private static final String CONTEXT_ASSIGNMENT_TARGET = "assignment target";
@@ -500,7 +499,7 @@ public class Parser extends AbstractParser {
      *
      * @return function node resulting from successful parse
      */
-    public FunctionNode parse(final TruffleString scriptName, final int startPos, final int len, final int reparseFlags, Scope parentScope, TruffleString[] argumentNames) {
+    public FunctionNode parse(final TruffleString scriptName, final int startPos, final int len, final int reparseFlags, Scope parentScope, List<String> argumentNames) {
         long startTime = PROFILE_PARSING ? System.nanoTime() : 0L;
         try {
             prepareLexer(startPos, len);
@@ -532,7 +531,7 @@ public class Parser extends AbstractParser {
      *
      * @return function node resulting from successful parse
      */
-    public FunctionNode parseModule(final TruffleString moduleName, final int startPos, final int len) {
+    public FunctionNode parseModule(final String moduleName, final int startPos, final int len) {
         boolean oldModule = isModule;
         boolean oldStrictMode = isStrictMode;
         try {
@@ -553,7 +552,7 @@ public class Parser extends AbstractParser {
         }
     }
 
-    public FunctionNode parseModule(final TruffleString moduleName) {
+    public FunctionNode parseModule(final String moduleName) {
         return parseModule(moduleName, 0, source.getLength());
     }
 
@@ -571,7 +570,7 @@ public class Parser extends AbstractParser {
      *
      * @param argumentNames names of arguments assumed by the parsed function node.
      */
-    public FunctionNode parseWithArguments(TruffleString[] argumentNames) {
+    public FunctionNode parseWithArguments(List<String> argumentNames) {
         return parse(PROGRAM_NAME, 0, source.getLength(), 0, null, argumentNames);
     }
 
@@ -617,21 +616,21 @@ public class Parser extends AbstractParser {
             final long functionToken = Token.toDesc(FUNCTION, 0, source.getLength());
             // Set up the function to append elements.
 
-            final IdentNode ident = new IdentNode(functionToken, Token.descPosition(functionToken), PROGRAM_NAME);
+            final IdentNode ident = new IdentNode(functionToken, Token.descPosition(functionToken), lexer.stringIntern(PROGRAM_NAME));
             final int functionFlags = (generator ? FunctionNode.IS_GENERATOR : 0) | (async ? FunctionNode.IS_ASYNC : 0);
             final ParserContextFunctionNode function = createParserContextFunctionNode(ident, functionToken, functionFlags, functionLine, List.of(), 0);
             function.clearFlag(FunctionNode.IS_PROGRAM);
 
             assert lc.getCurrentScope() == null;
             lc.push(function);
-            final ParserContextBlockNode body = newBlock(function.createBodyScope());
+            final ParserContextBlockNode body = newBlock(function.createBodyScope(lexer::stringIntern));
             functionDeclarations = new ArrayList<>();
             try {
                 sourceElements(generator, async, 0);
                 addFunctionDeclarations(function);
             } finally {
                 functionDeclarations = null;
-                function.finishBodyScope();
+                function.finishBodyScope(lexer::stringIntern);
                 restoreBlock(body);
                 lc.pop(function);
             }
@@ -753,7 +752,7 @@ public class Parser extends AbstractParser {
                     final List<IdentNode> parameters, int functionLength, Scope functionTopScope) {
         final ParserContextFunctionNode parentFunction = lc.getCurrentFunction();
 
-        final TruffleString name = ident == null ? ParserStrings.EMPTY_STRING : ident.getName();
+        final TruffleString name = ident == null ? TruffleString.Encoding.UTF_16.getEmpty() : ident.getNameTS();
 
         int flags = functionFlags;
         if (isStrictMode) {
@@ -774,7 +773,7 @@ public class Parser extends AbstractParser {
 
         VarNode varNode = function.verifyHoistedVarDeclarations();
         if (varNode != null) {
-            throw error(ECMAErrors.getMessage(MSG_SYNTAX_ERROR_REDECLARE_VARIABLE, varNode.getName().getName().toJavaStringUncached()), varNode.getToken());
+            throw error(ECMAErrors.getMessage(MSG_SYNTAX_ERROR_REDECLARE_VARIABLE, varNode.getName().getName()), varNode.getToken());
         }
 
         long lastTokenWithDelimiter = Token.withDelimiter(function.getLastToken());
@@ -789,7 +788,7 @@ public class Parser extends AbstractParser {
                         startToken,
                         function.getLastToken(),
                         ident,
-                        function.getName(),
+                        function.getNameTS(),
                         function.getLength(),
                         function.getParameterCount(),
                         function.getParameters(),
@@ -797,7 +796,7 @@ public class Parser extends AbstractParser {
                         body,
                         function.getEndParserState(),
                         function.getModule(),
-                        function.getInternalName());
+                        function.getInternalNameTS());
 
         return functionNode;
     }
@@ -962,7 +961,7 @@ public class Parser extends AbstractParser {
     }
 
     static boolean isArguments(final IdentNode ident) {
-        return isArguments(ident.getName());
+        return isArguments(ident.getNameTS());
     }
 
     /**
@@ -1014,7 +1013,7 @@ public class Parser extends AbstractParser {
 
                     // IsIdentifierRef must be true, so lhs must not be parenthesized.
                     if (!lhs.isParenthesized() && isAnonymousFunctionDefinition(rhsExpr)) {
-                        rhsExpr = setAnonymousFunctionName(rhsExpr, ident.getName());
+                        rhsExpr = setAnonymousFunctionName(rhsExpr, ident.getNameTS());
                     }
 
                     break;
@@ -1140,7 +1139,7 @@ public class Parser extends AbstractParser {
      *      SourceElements?
      * </pre>
      */
-    private FunctionNode program(final TruffleString scriptName, final int parseFlags, final Scope parentScope, final TruffleString[] argumentNames) {
+    private FunctionNode program(final TruffleString scriptName, final int parseFlags, final Scope parentScope, final List<String> argumentNames) {
         // Make a pseudo-token for the script holding its start and length.
         int functionStart = Math.min(Token.descPosition(Token.withDelimiter(token)), finish);
         final long functionToken = Token.toDesc(FUNCTION, functionStart, source.getLength() - functionStart);
@@ -1158,7 +1157,7 @@ public class Parser extends AbstractParser {
                         parameters,
                         parameters.size(),
                         topScope);
-        script.setInternalName(scriptName);
+        script.setInternalName(lexer.stringIntern(scriptName));
 
         lc.push(script);
         final ParserContextBlockNode body = newBlock(topScope);
@@ -1168,7 +1167,7 @@ public class Parser extends AbstractParser {
             addFunctionDeclarations(script);
         } finally {
             functionDeclarations = null;
-            script.finishBodyScope();
+            script.finishBodyScope(lexer::stringIntern);
             restoreBlock(body);
             lc.pop(script);
         }
@@ -1182,7 +1181,7 @@ public class Parser extends AbstractParser {
         return createFunctionNode(script, functionToken, ident, functionLine, programBody);
     }
 
-    private static Scope applyArgumentsToScope(Scope scope, TruffleString[] argumentNames) {
+    private Scope applyArgumentsToScope(Scope scope, List<String> argumentNames) {
         if (argumentNames == null) {
             return scope;
         }
@@ -1191,20 +1190,20 @@ public class Parser extends AbstractParser {
         Scope body = Scope.createFunctionBody(scope);
         // We have to also explicitly put parameters in the top scope, because
         // ParserContextFunctionNode will not do it automatically for script nodes.
-        for (TruffleString argument : argumentNames) {
-            body.putSymbol(new Symbol(argument, Symbol.IS_VAR | Symbol.IS_PARAM));
+        for (String argument : argumentNames) {
+            body.putSymbol(new Symbol(lexer.stringIntern(argument), Symbol.IS_VAR | Symbol.IS_PARAM));
         }
         return body;
     }
 
-    private static List<IdentNode> createFunctionNodeParameters(TruffleString[] argumentNames) {
+    private List<IdentNode> createFunctionNodeParameters(List<String> argumentNames) {
         if (argumentNames == null) {
             return List.of();
         }
         List<IdentNode> list = new ArrayList<>();
-        for (TruffleString argumentName : argumentNames) {
+        for (String argumentName : argumentNames) {
             // Create an artificial IdentNode that is not in the source.
-            list.add(new IdentNode(0, 0, argumentName));
+            list.add(new IdentNode(0, 0, lexer.stringIntern(argumentName)));
         }
         return list;
     }
@@ -1224,12 +1223,11 @@ public class Parser extends AbstractParser {
     }
 
     /**
-     * Directive value or null if statement is not a directive.
+     * Returns {@code true} if {@code stmt} is a {@code "use strict"} directive.
      *
      * @param stmt Statement to be checked
-     * @return Directive value if the given statement is a directive
      */
-    private TruffleString getDirective(final Node stmt) {
+    private static boolean isDirective(final Node stmt) {
         if (stmt instanceof ExpressionStatement) {
             final Node expr = ((ExpressionStatement) stmt).getExpression();
             if (expr instanceof LiteralNode) {
@@ -1237,14 +1235,19 @@ public class Parser extends AbstractParser {
                 final long litToken = lit.getToken();
                 final TokenType tt = Token.descType(litToken);
                 // A directive is either a string or an escape string
-                if (tt == TokenType.STRING || tt == TokenType.ESCSTRING) {
-                    // Make sure that we don't unescape anything. Return as seen in source!
-                    return source.getLazyString(lit.getStart() + 1, Token.descLength(litToken) - 2);
-                }
+                return tt == TokenType.STRING || tt == TokenType.ESCSTRING;
             }
         }
 
-        return null;
+        return false;
+    }
+
+    private boolean isUseStrictDirective(final Node stmt) {
+        assert isDirective(stmt);
+        final Expression exp = ((ExpressionStatement) stmt).getExpression();
+        // A directive is either a string or an escape string
+        // Make sure that we don't unescape anything. Return as seen in source!
+        return source.getContent().regionMatches(exp.getStart() + 1, USE_STRICT, 0, Token.descLength(exp.getToken()) - 2);
     }
 
     /**
@@ -1275,16 +1278,13 @@ public class Parser extends AbstractParser {
                         // skip any debug statement like line number to get actual first line
                         final Statement lastStatement = (elementType == STRING || elementType == ESCSTRING) ? lc.getLastStatement() : null;
 
-                        // get directive prologue, if any
-                        final TruffleString directive = getDirective(lastStatement);
-
                         // If we have seen first non-directive statement,
                         // no more directive statements!
-                        checkDirective = directive != null;
+                        checkDirective = isDirective(lastStatement);
 
                         if (checkDirective) {
                             // handle use strict directive
-                            if (elementType == STRING && USE_STRICT.equals(directive)) {
+                            if (elementType == STRING && isUseStrictDirective(lastStatement)) {
                                 final ParserContextFunctionNode function = lc.getCurrentFunction();
                                 if (!function.isSimpleParameterList()) {
                                     throw error(AbstractParser.message(MSG_USE_STRICT_NON_SIMPLE_PARAM), lastStatement.getToken());
@@ -1676,7 +1676,7 @@ public class Parser extends AbstractParser {
         assert isStrictMode;
         Scope classHeadScope = Scope.createClassHead(lc.getCurrentScope());
         if (className != null) {
-            classHeadScope.putSymbol(new Symbol(className.getName(), Symbol.IS_CONST));
+            classHeadScope.putSymbol(new Symbol(className.getNameTS(), Symbol.IS_CONST));
         }
         ParserContextClassNode classNode = new ParserContextClassNode(classHeadScope);
         lc.push(classNode);
@@ -1703,7 +1703,7 @@ public class Parser extends AbstractParser {
 
             PropertyNode constructor = null;
             List<PropertyNode> classElements = new ArrayList<>();
-            Map<TruffleString, Integer> privateNameToAccessorIndexMap = new HashMap<>();
+            Map<String, Integer> privateNameToAccessorIndexMap = new HashMap<>();
             int instanceFieldCount = 0;
             int staticElementCount = 0;
             boolean hasPrivateMethods = false;
@@ -1765,7 +1765,7 @@ public class Parser extends AbstractParser {
                     if (!classElement.isComputed() && classElement.isAccessor()) {
                         if (classElement.isPrivate()) {
                             // merge private accessor methods
-                            TruffleString privateName = classElement.getPrivateName();
+                            String privateName = classElement.getPrivateName();
                             Integer existing = privateNameToAccessorIndexMap.get(privateName);
                             if (existing == null) {
                                 privateNameToAccessorIndexMap.put(privateName, classElements.size());
@@ -1802,7 +1802,7 @@ public class Parser extends AbstractParser {
                     declarePrivateName(classScope, classElement);
                 }
 
-                if (!classElement.isStatic() && !classElement.isComputed() && classElement.getKeyName().equals(CONSTRUCTOR_NAME)) {
+                if (!classElement.isStatic() && !classElement.isComputed() && classElement.getKeyNameTS().equals(CONSTRUCTOR_NAME)) {
                     assert !classElement.isClassField();
                     if (constructor == null) {
                         constructor = classElement;
@@ -1829,8 +1829,8 @@ public class Parser extends AbstractParser {
                     flags |= FunctionNode.IS_ANONYMOUS;
                 }
                 constructor = constructor.setValue(new FunctionNode(ctor.getSource(), ctor.getLineNumber(), ctor.getToken(), classFinish, classToken, lastToken, className,
-                                className == null ? ParserStrings.EMPTY_STRING : className.getName(),
-                                ctor.getLength(), ctor.getNumOfParams(), ctor.getParameters(), flags, ctor.getBody(), ctor.getEndParserState(), ctor.getModule(), ctor.getInternalName()));
+                                className == null ? TruffleString.Encoding.UTF_16.getEmpty() : className.getNameTS(),
+                                ctor.getLength(), ctor.getNumOfParams(), ctor.getParameters(), flags, ctor.getBody(), ctor.getEndParserState(), ctor.getModule(), ctor.getInternalNameTS()));
             }
 
             IdentNode invalidPrivateIdent = classNode.verifyAllPrivateIdentifiersValid(lc);
@@ -1840,7 +1840,7 @@ public class Parser extends AbstractParser {
 
             if (hasPrivateMethods) {
                 // synthetic binding providing access to the constructor for private brand checks.
-                classScope.putSymbol(new Symbol(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME, Symbol.IS_CONST | Symbol.IS_PRIVATE_NAME | Symbol.HAS_BEEN_DECLARED));
+                classScope.putSymbol(new Symbol(lexer.stringIntern(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME), Symbol.IS_CONST | Symbol.IS_PRIVATE_NAME | Symbol.HAS_BEEN_DECLARED));
             }
 
             classScope.close();
@@ -1862,7 +1862,7 @@ public class Parser extends AbstractParser {
     private IdentNode parsePrivateIdentifier() {
         assert type == TokenType.PRIVATE_IDENT;
         if (!isClassFields() && !isES2021()) {
-            throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType().toJavaStringUncached()));
+            throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType()));
         }
 
         final long identToken = token;
@@ -1890,8 +1890,8 @@ public class Parser extends AbstractParser {
         if (!classElement.isClassField()) {
             privateFlags |= classElement.isAccessor() ? Symbol.IS_PRIVATE_NAME_ACCESSOR : Symbol.IS_PRIVATE_NAME_METHOD;
         }
-        if (!classScope.addPrivateName(classElement.getPrivateName(), privateFlags)) {
-            throw error(ECMAErrors.getMessage(MSG_SYNTAX_ERROR_REDECLARE_VARIABLE, classElement.getPrivateName().toJavaStringUncached()), classElement.getKey().getToken());
+        if (!classScope.addPrivateName(classElement.getPrivateNameTS(), privateFlags)) {
+            throw error(ECMAErrors.getMessage(MSG_SYNTAX_ERROR_REDECLARE_VARIABLE, classElement.getPrivateName()), classElement.getKey().getToken());
         }
     }
 
@@ -1952,8 +1952,8 @@ public class Parser extends AbstractParser {
         final List<IdentNode> parameters;
         final long identToken = Token.recast(classToken, TokenType.IDENT);
         if (derived) {
-            IdentNode superIdent = new IdentNode(identToken, ctorFinish, SUPER.getName()).setIsDirectSuper();
-            IdentNode argsIdent = new IdentNode(identToken, ctorFinish, ARGS).setIsRestParameter();
+            IdentNode superIdent = new IdentNode(identToken, ctorFinish, lexer.stringIntern(SUPER.getNameTS())).setIsDirectSuper();
+            IdentNode argsIdent = new IdentNode(identToken, ctorFinish, lexer.stringIntern(ARGS)).setIsRestParameter();
             Expression spreadArgs = new UnaryNode(Token.recast(classToken, TokenType.SPREAD_ARGUMENT), argsIdent);
             Expression superCall = CallNode.forCall(classLineNumber, classToken, Token.descPosition(classToken), ctorFinish, superIdent, List.of(spreadArgs), false, false, false, false, true);
             statements = List.of(new ExpressionStatement(classLineNumber, classToken, ctorFinish, superCall));
@@ -1966,7 +1966,7 @@ public class Parser extends AbstractParser {
         ParserContextFunctionNode function = createParserContextFunctionNode(className, classToken, functionFlags, classLineNumber, parameters, 0);
         function.setLastToken(lastToken);
 
-        Scope scope = function.createBodyScope();
+        Scope scope = function.createBodyScope(lexer::stringIntern);
         scope.close();
         Block body = new Block(classToken, ctorFinish, Block.IS_BODY, scope, statements);
 
@@ -1976,13 +1976,13 @@ public class Parser extends AbstractParser {
         }
         if (className == null) {
             function.setFlag(FunctionNode.IS_ANONYMOUS);
-            function.setInternalName(CONSTRUCTOR_NAME);
+            function.setInternalName(lexer.stringIntern(CONSTRUCTOR_NAME));
         }
 
         // currently required for all functions, including synthetic ones.
         lc.setCurrentFunctionFlag(FunctionNode.HAS_CLOSURES);
 
-        PropertyNode constructor = new PropertyNode(classToken, ctorFinish, new IdentNode(identToken, ctorFinish, CONSTRUCTOR_NAME),
+        PropertyNode constructor = new PropertyNode(classToken, ctorFinish, new IdentNode(identToken, ctorFinish, lexer.stringIntern(CONSTRUCTOR_NAME)),
                         createFunctionNode(function, classToken, className, classLineNumber, body),
                         null, null, false, false, false, false);
         return constructor;
@@ -1992,7 +1992,7 @@ public class Parser extends AbstractParser {
                     boolean await, TokenType nameTokenType, boolean computed) {
         int flags = FunctionNode.IS_METHOD;
         if (!computed) {
-            final TruffleString name = ((PropertyKey) propertyName).getPropertyName();
+            final String name = ((PropertyKey) propertyName).getPropertyName();
             if (!generator && nameTokenType == GET && type != LPAREN) {
                 PropertyFunction methodDefinition = propertyGetterFunction(startToken, methodLine, yield, await, true);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true, async);
@@ -2002,7 +2002,7 @@ public class Parser extends AbstractParser {
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true, async);
                 return new PropertyNode(startToken, finish, methodDefinition.key, null, null, methodDefinition.functionNode, isStatic, methodDefinition.computed, false, false);
             } else {
-                if (!isStatic && !generator && name.equals(CONSTRUCTOR_NAME)) {
+                if (!isStatic && !generator && name.equals(CONSTRUCTOR_NAME.toJavaStringUncached())) {
                     flags |= FunctionNode.IS_CLASS_CONSTRUCTOR;
                     if (derived) {
                         flags |= FunctionNode.IS_DERIVED_CONSTRUCTOR;
@@ -2020,14 +2020,14 @@ public class Parser extends AbstractParser {
      */
     private void verifyAllowedMethodName(Expression key, boolean isStatic, boolean computed, boolean generator, boolean accessor, boolean async) {
         if (!computed) {
-            final TruffleString name = ((PropertyKey) key).getPropertyName();
-            if (!isStatic && generator && name.equals(CONSTRUCTOR_NAME)) {
+            final String name = ((PropertyKey) key).getPropertyName();
+            if (!isStatic && generator && name.equals(CONSTRUCTOR_NAME.toJavaStringUncached())) {
                 throw error(AbstractParser.message(MSG_GENERATOR_CONSTRUCTOR), key.getToken());
             }
-            if (!isStatic && accessor && name.equals(CONSTRUCTOR_NAME)) {
+            if (!isStatic && accessor && name.equals(CONSTRUCTOR_NAME.toJavaStringUncached())) {
                 throw error(AbstractParser.message(MSG_ACCESSOR_CONSTRUCTOR), key.getToken());
             }
-            if (!isStatic && async && name.equals(CONSTRUCTOR_NAME)) {
+            if (!isStatic && async && name.equals(CONSTRUCTOR_NAME.toJavaStringUncached())) {
                 throw error(AbstractParser.message(MSG_ASYNC_CONSTRUCTOR), key.getToken());
             }
             if (isStatic && name.equals(PROTOTYPE_NAME)) {
@@ -2042,8 +2042,8 @@ public class Parser extends AbstractParser {
     private PropertyNode fieldDefinition(Expression propertyName, boolean isStatic, long startToken, boolean computed) {
         // "constructor" or #constructor is not allowed as an instance field name
         if (!computed && propertyName instanceof PropertyKey) {
-            TruffleString name = ((PropertyKey) propertyName).getPropertyName();
-            if (CONSTRUCTOR_NAME.equals(name) || PRIVATE_CONSTRUCTOR_NAME.equals(name)) {
+            String name = ((PropertyKey) propertyName).getPropertyName();
+            if (CONSTRUCTOR_NAME.toJavaStringUncached().equals(name) || PRIVATE_CONSTRUCTOR_NAME.equals(name)) {
                 throw error(AbstractParser.message(MSG_CONSTRUCTOR_FIELD), startToken);
             }
             if (isStatic && PROTOTYPE_NAME.equals(name)) {
@@ -2069,14 +2069,14 @@ public class Parser extends AbstractParser {
     private Pair<FunctionNode, Boolean> fieldInitializer(int lineNumber, long fieldToken, Expression propertyName, boolean computed) {
         int functionFlags = FunctionNode.IS_METHOD | FunctionNode.IS_CLASS_FIELD_INITIALIZER | FunctionNode.IS_ANONYMOUS;
         ParserContextFunctionNode function = createParserContextFunctionNode(null, fieldToken, functionFlags, lineNumber, List.of(), 0);
-        function.setInternalName(INITIALIZER_FUNCTION_NAME);
+        function.setInternalName(lexer.stringIntern(INITIALIZER_FUNCTION_NAME));
         lc.push(function);
-        ParserContextBlockNode body = newBlock(function.createBodyScope());
+        ParserContextBlockNode body = newBlock(function.createBodyScope(lexer::stringIntern));
         Expression initializer;
         try {
             initializer = assignmentExpression(true, false, false);
         } finally {
-            function.finishBodyScope();
+            function.finishBodyScope(lexer::stringIntern);
             restoreBlock(body);
             lc.propagateFunctionFlags();
             lc.pop(function);
@@ -2089,7 +2089,7 @@ public class Parser extends AbstractParser {
         boolean isAnonymousFunctionDefinition = false;
         if (isAnonymousFunctionDefinition(initializer)) {
             if (!computed && propertyName instanceof PropertyKey) {
-                initializer = setAnonymousFunctionName(initializer, ((PropertyKey) propertyName).getPropertyName());
+                initializer = setAnonymousFunctionName(initializer, ((PropertyKey) propertyName).getPropertyNameTS());
             } else {
                 isAnonymousFunctionDefinition = true;
                 initializer = new UnaryNode(Token.recast(initializer.getToken(), TokenType.NAMEDEVALUATION), initializer);
@@ -2111,7 +2111,7 @@ public class Parser extends AbstractParser {
         assert type == LBRACE;
         int functionFlags = FunctionNode.IS_METHOD | FunctionNode.IS_CLASS_FIELD_INITIALIZER | FunctionNode.IS_ANONYMOUS;
         ParserContextFunctionNode function = createParserContextFunctionNode(null, staticToken, functionFlags, lineNumber, List.of(), 0);
-        function.setInternalName(INITIALIZER_FUNCTION_NAME);
+        function.setInternalName(lexer.stringIntern(INITIALIZER_FUNCTION_NAME));
         lc.push(function);
         Block bodyBlock;
         try {
@@ -2247,11 +2247,11 @@ public class Parser extends AbstractParser {
     }
 
     private static boolean isEscapedIdent(final IdentNode ident) {
-        return ParserStrings.length(ident.getName()) != Token.descLength(ident.getToken());
+        return ident.getName().length() != Token.descLength(ident.getToken());
     }
 
-    private static boolean isReservedWordSequence(final TruffleString name) {
-        TokenType tokenType = TokenLookup.lookupKeyword(name, 0, ParserStrings.length(name));
+    private static boolean isReservedWordSequence(final String name) {
+        TokenType tokenType = TokenLookup.lookupKeyword(name, 0, name.length());
         return (tokenType != IDENT && !tokenType.isContextualKeyword() && !tokenType.isFutureStrict());
     }
 
@@ -2264,7 +2264,7 @@ public class Parser extends AbstractParser {
     private void verifyStrictIdent(final IdentNode ident, final String contextString, final boolean bindingIdentifier) {
         if (isStrictMode) {
             if (!isValidStrictIdent(ident, bindingIdentifier)) {
-                throw error(AbstractParser.message(MSG_STRICT_NAME, ident.getName().toJavaStringUncached(), contextString), ident.getToken());
+                throw error(AbstractParser.message(MSG_STRICT_NAME, ident.getName(), contextString), ident.getToken());
             }
         }
     }
@@ -2275,15 +2275,11 @@ public class Parser extends AbstractParser {
 
     private static boolean isValidStrictIdent(final IdentNode ident, final boolean bindingIdentifier) {
         if (bindingIdentifier) {
-            if (EVAL_NAME.equals(ident.getName()) || ARGUMENTS_NAME.equals(ident.getName())) {
+            if (EVAL_NAME.equals(ident.getName()) || ARGUMENTS_NAME.equals(ident.getNameTS())) {
                 return false;
             }
         }
-
-        if (isFutureStrictName(ident)) {
-            return false;
-        }
-        return true;
+        return !isFutureStrictName(ident);
     }
 
     /**
@@ -2295,7 +2291,7 @@ public class Parser extends AbstractParser {
         if (ident.tokenType().isFutureStrict()) {
             return true;
         } else if (isEscapedIdent(ident)) {
-            TokenType tokenType = TokenLookup.lookupKeyword(ident.getName(), 0, ParserStrings.length(ident.getName()));
+            TokenType tokenType = TokenLookup.lookupKeyword(ident.getName(), 0, ident.getName().length());
             return (tokenType != IDENT && tokenType.isFutureStrict());
         }
         return false;
@@ -2434,7 +2430,7 @@ public class Parser extends AbstractParser {
                 if (isDestructuring) {
                     throw error(AbstractParser.message(MSG_MISSING_DESTRUCTURING_ASSIGNMENT), token);
                 } else if (varType == CONST) {
-                    throw error(AbstractParser.message(MSG_MISSING_CONST_ASSIGNMENT, ((IdentNode) binding).getName().toJavaStringUncached()));
+                    throw error(AbstractParser.message(MSG_MISSING_CONST_ASSIGNMENT, ((IdentNode) binding).getName()));
                 }
                 // else, if we are in a for loop, delay checking until we know the kind of loop
             }
@@ -2452,7 +2448,7 @@ public class Parser extends AbstractParser {
                     forResult.addBinding(binding);
                 }
                 if (isAnonymousFunctionDefinition(init)) {
-                    init = setAnonymousFunctionName(init, ident.getName());
+                    init = setAnonymousFunctionName(init, ident.getNameTS());
                 }
                 final VarNode var = new VarNode(varLine, varToken, sourceOrder, varStart, finish, ident.setIsDeclaredHere(), init, varFlags);
                 appendStatement(var);
@@ -2487,15 +2483,15 @@ public class Parser extends AbstractParser {
     }
 
     private void declareVar(Scope scope, VarNode varNode) {
-        TruffleString name = varNode.getName().getName();
+        String name = varNode.getName().getName();
         if (detectVarNameConflict(scope, varNode)) {
-            throw error(ECMAErrors.getMessage(MSG_SYNTAX_ERROR_REDECLARE_VARIABLE, name.toJavaStringUncached()), varNode.getToken());
+            throw error(ECMAErrors.getMessage(MSG_SYNTAX_ERROR_REDECLARE_VARIABLE, name), varNode.getToken());
         }
         if (varNode.isBlockScoped()) {
             int symbolFlags = varNode.getSymbolFlags() |
                             (scope.isSwitchBlockScope() ? Symbol.IS_DECLARED_IN_SWITCH_BLOCK : 0) |
                             (varNode.isFunctionDeclaration() ? Symbol.IS_BLOCK_FUNCTION_DECLARATION : 0);
-            Symbol existing = scope.putSymbol(new Symbol(name, symbolFlags));
+            Symbol existing = scope.putSymbol(new Symbol(varNode.getName().getNameTS(), symbolFlags));
             assert existing == null || (existing.isBlockFunctionDeclaration() && varNode.isFunctionDeclaration()) : existing;
 
             if (varNode.isFunctionDeclaration() && isAnnexB()) {
@@ -2523,7 +2519,7 @@ public class Parser extends AbstractParser {
             if (function.hasParameterExpressions() && function.getParameterBlock().getScope().hasSymbol(name)) {
                 symbolFlags |= Symbol.IS_VAR_REDECLARED_HERE;
             }
-            varScope.putSymbol(new Symbol(name, symbolFlags));
+            varScope.putSymbol(new Symbol(varNode.getName().getNameTS(), symbolFlags));
 
             /*
              * Hoisted var declarations conflict with any lexical declaration of the same name in
@@ -2544,7 +2540,7 @@ public class Parser extends AbstractParser {
     }
 
     private boolean detectVarNameConflict(Scope scope, VarNode varNode) {
-        TruffleString varName = varNode.getName().getName();
+        String varName = varNode.getName().getName();
         if (varNode.isBlockScoped()) {
             Scope currentScope = scope;
             Symbol existingSymbol = currentScope.getExistingSymbol(varName);
@@ -2606,7 +2602,7 @@ public class Parser extends AbstractParser {
         return ident;
     }
 
-    private void addIdentifierReference(TruffleString name) {
+    private void addIdentifierReference(String name) {
         Scope currentScope = lc.getCurrentScope();
         if (currentScope != null) { // can be null when parsing/verifying a parameter list.
             currentScope.addIdentifierReference(name);
@@ -2915,7 +2911,7 @@ public class Parser extends AbstractParser {
                         // for (init; test; modify) loop
                         if (varDeclList.missingAssignment != null) {
                             if (varDeclList.missingAssignment instanceof IdentNode) {
-                                throw error(AbstractParser.message(MSG_MISSING_CONST_ASSIGNMENT, ((IdentNode) varDeclList.missingAssignment).getName().toJavaStringUncached()));
+                                throw error(AbstractParser.message(MSG_MISSING_CONST_ASSIGNMENT, ((IdentNode) varDeclList.missingAssignment).getName()));
                             } else {
                                 throw error(AbstractParser.message(MSG_MISSING_DESTRUCTURING_ASSIGNMENT), varDeclList.missingAssignment.getToken());
                             }
@@ -3035,10 +3031,7 @@ public class Parser extends AbstractParser {
             verifyStrictIdent(ident, contextString);
             return true;
         } else if (init instanceof AccessNode || init instanceof IndexNode) {
-            if (((BaseNode) init).isOptional()) {
-                return false;
-            }
-            return true;
+            return !((BaseNode) init).isOptional();
         } else if (isDestructuringLhs(init)) {
             verifyDestructuringAssignmentPattern(init, contextString);
             return true;
@@ -3199,7 +3192,7 @@ public class Parser extends AbstractParser {
                 break;
         }
 
-        final TruffleString labelName = labelNode == null ? null : labelNode.getLabelName();
+        final String labelName = labelNode == null ? null : labelNode.getLabelName();
         final ParserContextLoopNode targetNode = lc.getContinueTo(labelName);
 
         if (targetNode == null) {
@@ -3258,7 +3251,7 @@ public class Parser extends AbstractParser {
 
         // either an explicit label - then get its node or just a "break" - get first breakable
         // targetNode is what we are breaking out from.
-        final TruffleString labelName = labelNode == null ? null : labelNode.getLabelName();
+        final String labelName = labelNode == null ? null : labelNode.getLabelName();
         final ParserContextBreakableNode targetNode = lc.getBreakable(labelName);
         if (targetNode == null) {
             throw error(AbstractParser.message(MSG_ILLEGAL_BREAK_STMT), breakToken);
@@ -3386,7 +3379,7 @@ public class Parser extends AbstractParser {
 
         ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
         if (currentFunction.isClassStaticBlock()) {
-            throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType().toJavaStringUncached()));
+            throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType()));
         }
 
         recordYieldOrAwait();
@@ -3533,7 +3526,7 @@ public class Parser extends AbstractParser {
             // e.g.: let x = 1; switch (x) { case 0: let x = 2; } =>
             // let x = 1; { let :switch = x; { let x; switch (:switch) { case 0: x = 2; } } }
             if (useBlockScope()) {
-                IdentNode switchExprName = new IdentNode(Token.recast(expression.getToken(), IDENT), expression.getFinish(), SWITCH_BINDING_NAME);
+                IdentNode switchExprName = new IdentNode(Token.recast(expression.getToken(), IDENT), expression.getFinish(), lexer.stringIntern(SWITCH_BINDING_NAME));
                 VarNode varNode = new VarNode(expressionLine, Token.recast(expression.getToken(), LET), expression.getFinish(), switchExprName, expression, VarNode.IS_LET);
                 outerBlock.appendStatement(varNode);
                 declareVar(outerBlock.getScope(), varNode);
@@ -3663,7 +3656,7 @@ public class Parser extends AbstractParser {
         }
 
         if (expression == null) {
-            throw error(AbstractParser.message(MSG_EXPECTED_OPERAND, type.getNameOrType().toJavaStringUncached()));
+            throw error(AbstractParser.message(MSG_EXPECTED_OPERAND, type.getNameOrType()));
         }
 
         endOfLine();
@@ -3730,7 +3723,7 @@ public class Parser extends AbstractParser {
                             exception = catchParameter.setIsCatchParameter();
                         } else {
                             pattern = bindingPattern(yield, await);
-                            exception = new IdentNode(Token.recast(pattern.getToken(), IDENT), pattern.getFinish(), ERROR_BINDING_NAME).setIsCatchParameter();
+                            exception = new IdentNode(Token.recast(pattern.getToken(), IDENT), pattern.getFinish(), lexer.stringIntern(ERROR_BINDING_NAME)).setIsCatchParameter();
                         }
 
                         // Nashorn extension: catch clause can have optional
@@ -3856,10 +3849,10 @@ public class Parser extends AbstractParser {
 
         switch (type) {
             case THIS: {
-                final TruffleString name = type.getName();
+                final TruffleString name = type.getNameTS();
                 next();
                 markThis();
-                return new IdentNode(primaryToken, finish, name).setIsThis();
+                return new IdentNode(primaryToken, finish, lexer.stringIntern(name)).setIsThis();
             }
             case IDENT: {
                 final IdentNode ident = identifierReference(yield, await);
@@ -3920,7 +3913,7 @@ public class Parser extends AbstractParser {
                 break;
         }
 
-        throw error(AbstractParser.message(MSG_EXPECTED_OPERAND, type.getNameOrType().toJavaStringUncached()));
+        throw error(AbstractParser.message(MSG_EXPECTED_OPERAND, type.getNameOrType()));
     }
 
     private boolean isPrivateFieldsIn() {
@@ -3935,7 +3928,7 @@ public class Parser extends AbstractParser {
      */
     private Expression execString(final int primaryLine, final long primaryToken) {
         // Synthesize an ident to call $EXEC.
-        final IdentNode execIdent = new IdentNode(primaryToken, finish, EXEC_NAME);
+        final IdentNode execIdent = new IdentNode(primaryToken, finish, lexer.stringIntern(EXEC_NAME));
         // Skip over EXECSTRING.
         next();
         // Set up argument list for call.
@@ -4012,7 +4005,7 @@ public class Parser extends AbstractParser {
 
                 default:
                     if (!elision) {
-                        throw error(AbstractParser.message(MSG_EXPECTED_COMMA, type.getNameOrType().toJavaStringUncached()));
+                        throw error(AbstractParser.message(MSG_EXPECTED_COMMA, type.getNameOrType()));
                     }
 
                     // Add expression element.
@@ -4059,7 +4052,7 @@ public class Parser extends AbstractParser {
         // Object context.
         // Prepare to accumulate elements.
         final ArrayList<PropertyNode> elements = new ArrayList<>();
-        final Map<TruffleString, PropertyNode> map = new HashMap<>();
+        final Map<String, PropertyNode> map = new HashMap<>();
 
         // Create a block for the object literal.
         boolean commaSeen = true;
@@ -4072,7 +4065,7 @@ public class Parser extends AbstractParser {
 
                 case COMMARIGHT:
                     if (commaSeen) {
-                        throw error(AbstractParser.message(MSG_EXPECTED_PROPERTY_ID, type.getNameOrType().toJavaStringUncached()));
+                        throw error(AbstractParser.message(MSG_EXPECTED_PROPERTY_ID, type.getNameOrType()));
                     }
                     next();
                     commaSeen = true;
@@ -4080,7 +4073,7 @@ public class Parser extends AbstractParser {
 
                 default:
                     if (!commaSeen) {
-                        throw error(AbstractParser.message(MSG_EXPECTED_COMMA, type.getNameOrType().toJavaStringUncached()));
+                        throw error(AbstractParser.message(MSG_EXPECTED_COMMA, type.getNameOrType()));
                     }
 
                     commaSeen = false;
@@ -4093,7 +4086,7 @@ public class Parser extends AbstractParser {
                         break;
                     }
 
-                    final TruffleString key = property.getKeyName();
+                    final String key = property.getKeyName();
                     final PropertyNode existingProperty = map.get(key);
 
                     if (existingProperty == null) {
@@ -4146,7 +4139,7 @@ public class Parser extends AbstractParser {
                     final Expression prevValue, final FunctionNode prevGetter, final FunctionNode prevSetter) {
         // ECMA 11.1.5 strict mode restrictions
         if (isStrictMode && value != null && prevValue != null) {
-            throw error(AbstractParser.message(MSG_PROPERTY_REDEFINITON, property.getKeyName().toJavaStringUncached()), property.getToken());
+            throw error(AbstractParser.message(MSG_PROPERTY_REDEFINITON, property.getKeyName()), property.getToken());
         }
 
         final boolean isPrevAccessor = prevGetter != null || prevSetter != null;
@@ -4154,17 +4147,17 @@ public class Parser extends AbstractParser {
 
         // data property redefined as accessor property
         if (prevValue != null && isAccessor) {
-            throw error(AbstractParser.message(MSG_PROPERTY_REDEFINITON, property.getKeyName().toJavaStringUncached()), property.getToken());
+            throw error(AbstractParser.message(MSG_PROPERTY_REDEFINITON, property.getKeyName()), property.getToken());
         }
 
         // accessor property redefined as data
         if (isPrevAccessor && value != null) {
-            throw error(AbstractParser.message(MSG_PROPERTY_REDEFINITON, property.getKeyName().toJavaStringUncached()), property.getToken());
+            throw error(AbstractParser.message(MSG_PROPERTY_REDEFINITON, property.getKeyName()), property.getToken());
         }
 
         if (isAccessor && isPrevAccessor) {
             if (getter != null && prevGetter != null || setter != null && prevSetter != null) {
-                throw error(AbstractParser.message(MSG_PROPERTY_REDEFINITON, property.getKeyName().toJavaStringUncached()), property.getToken());
+                throw error(AbstractParser.message(MSG_PROPERTY_REDEFINITON, property.getKeyName()), property.getToken());
             }
         }
     }
@@ -4293,7 +4286,7 @@ public class Parser extends AbstractParser {
             }
 
             isIdentifier = true;
-            propertyName = new IdentNode(propertyToken, finish, lexer.stringIntern(getOrSet.getName())).setIsPropertyName();
+            propertyName = new IdentNode(propertyToken, finish, lexer.stringIntern(getOrSet.getNameTS())).setIsPropertyName();
         } else if (type == ELLIPSIS && ES8_REST_SPREAD_PROPERTY && isES2017() && !(generator || async)) {
             long spreadToken = Token.recast(propertyToken, TokenType.SPREAD_OBJECT);
             next();
@@ -4319,7 +4312,7 @@ public class Parser extends AbstractParser {
         } else if (isIdentifier && (type == COMMARIGHT || type == RBRACE || type == ASSIGN) && isES6()) {
             IdentNode ident = (IdentNode) propertyName;
             verifyIdent(ident, yield, await);
-            ident = createIdentNode(propertyToken, finish, lexer.stringIntern(ident.getPropertyName()));
+            ident = createIdentNode(propertyToken, finish, ident.getPropertyNameTS());
             // IdentifierReference or CoverInitializedName
             if (type == ASSIGN && ES6_DESTRUCTURING) {
                 // If not destructuring, this is a SyntaxError
@@ -4349,7 +4342,7 @@ public class Parser extends AbstractParser {
             if (!proto) {
                 if (isAnonymousFunctionDefinition(propertyValue)) {
                     if (!computed && propertyName instanceof PropertyKey) {
-                        propertyValue = setAnonymousFunctionName(propertyValue, ((PropertyKey) propertyName).getPropertyName());
+                        propertyValue = setAnonymousFunctionName(propertyValue, ((PropertyKey) propertyName).getPropertyNameTS());
                     } else {
                         isAnonymousFunctionDefinition = true;
                     }
@@ -4434,7 +4427,7 @@ public class Parser extends AbstractParser {
     }
 
     private PropertyFunction propertyMethodFunction(Expression key, final long methodToken, final int methodLine, final boolean generator, final int flags, boolean computed, boolean async) {
-        final IdentNode methodNameNode = computed ? null : createMethodNameIdent(key, ParserStrings.EMPTY_STRING);
+        final IdentNode methodNameNode = computed ? null : createMethodNameIdent(key, "");
 
         expect(LPAREN);
 
@@ -4475,23 +4468,17 @@ public class Parser extends AbstractParser {
         }
     }
 
-    private IdentNode createMethodNameIdent(Expression propertyKey, TruffleString prefix) {
+    private IdentNode createMethodNameIdent(Expression propertyKey, String prefix) {
         TruffleString methodName;
-        boolean intern = false;
         if (propertyKey instanceof IdentNode) {
-            methodName = ((IdentNode) propertyKey).getPropertyName();
+            methodName = ((IdentNode) propertyKey).getPropertyNameTS();
         } else if (propertyKey instanceof PropertyKey) {
-            methodName = ((PropertyKey) propertyKey).getPropertyName();
-            intern = true;
+            methodName = lexer.stringIntern(((PropertyKey) propertyKey).getPropertyNameTS());
         } else {
             return null;
         }
         if (!prefix.isEmpty()) {
-            methodName = ParserStrings.concat(prefix, methodName);
-            intern = true;
-        }
-        if (intern) {
-            methodName = lexer.stringIntern(methodName);
+            methodName = lexer.stringIntern(prefix + methodName.toJavaStringUncached());
         }
         return createIdentNode(propertyKey.getToken(), propertyKey.getFinish(), methodName);
     }
@@ -4578,7 +4565,7 @@ public class Parser extends AbstractParser {
             boolean applyArguments = false;
             if (lhs instanceof IdentNode) {
                 final IdentNode ident = (IdentNode) lhs;
-                final TruffleString name = ident.getName();
+                final String name = ident.getName();
                 if (EVAL_NAME.equals(name)) {
                     markEval();
                     eval = true;
@@ -4635,7 +4622,7 @@ public class Parser extends AbstractParser {
                     }
 
                     // Create property access node.
-                    lhs = new AccessNode(callToken, finish, lhs, property.getName(), false, isPrivate, false, optionalChain);
+                    lhs = new AccessNode(callToken, finish, lhs, property.getNameTS(), false, isPrivate, false, optionalChain);
 
                     break;
                 }
@@ -4683,7 +4670,7 @@ public class Parser extends AbstractParser {
                                 property = getIdentifierName();
                             }
 
-                            lhs = new AccessNode(callToken, finish, lhs, property.getName(), false, isPrivate, true, optionalChain);
+                            lhs = new AccessNode(callToken, finish, lhs, property.getNameTS(), false, isPrivate, true, optionalChain);
                             break;
                         }
                     }
@@ -4719,13 +4706,13 @@ public class Parser extends AbstractParser {
             if (type == IDENT && TARGET.equals(getValueNoEscape())) {
                 next();
                 markNewTarget();
-                return new IdentNode(newToken, finish, NEW_TARGET_NAME).setIsNewTarget();
+                return new IdentNode(newToken, finish, lexer.stringIntern(NEW_TARGET_NAME)).setIsNewTarget();
             } else {
                 throw error(AbstractParser.message(MSG_EXPECTED_TARGET), token);
             }
         } else if (type == IMPORT && isES2020() && lookahead() == LPAREN) {
             // new cannot be used with import()
-            throw error(AbstractParser.message(MSG_EXPECTED_OPERAND, IMPORT.getName().toJavaStringUncached()), token);
+            throw error(AbstractParser.message(MSG_EXPECTED_OPERAND, IMPORT.getName()), token);
         }
 
         // Get function base.
@@ -4743,7 +4730,7 @@ public class Parser extends AbstractParser {
 
             if (type == TokenType.OPTIONAL_CHAIN) {
                 // OptionalChain is not allowed directly after a NewExpression (without parentheses)
-                throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType().toJavaStringUncached()));
+                throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType()));
             }
         }
 
@@ -4821,7 +4808,7 @@ public class Parser extends AbstractParser {
                     if (scope.inMethod()) {
                         long identToken = Token.recast(token, IDENT);
                         next();
-                        lhs = new IdentNode(identToken, finish, SUPER.getName()).setIsSuper();
+                        lhs = new IdentNode(identToken, finish, lexer.stringIntern(SUPER.getNameTS())).setIsSuper();
 
                         switch (type) {
                             case LBRACKET:
@@ -4898,7 +4885,7 @@ public class Parser extends AbstractParser {
                     }
 
                     // Create property access node.
-                    lhs = new AccessNode(callToken, finish, lhs, property.getName(), isSuper, isPrivate, false, false);
+                    lhs = new AccessNode(callToken, finish, lhs, property.getNameTS(), isSuper, isPrivate, false, false);
 
                     if (isSuper) {
                         isSuper = false;
@@ -4943,15 +4930,15 @@ public class Parser extends AbstractParser {
         if (type == PERIOD) {
             next();
             expectDontAdvance(IDENT);
-            TruffleString meta = (TruffleString) getValueNoEscape();
+            String meta = ((TruffleString) getValueNoEscape()).toJavaStringUncached();
             if (META.equals(meta)) {
                 if (!isModule) {
                     throw error(AbstractParser.message(MSG_UNEXPECTED_IMPORT_META), importToken);
                 }
                 next();
-                return new IdentNode(importToken, finish, IMPORT_META_NAME).setIsImportMeta();
+                return new IdentNode(importToken, finish, lexer.stringIntern(IMPORT_META_NAME)).setIsImportMeta();
             } else {
-                throw error(AbstractParser.message(MSG_UNEXPECTED_IDENT, meta.toJavaStringUncached()), token);
+                throw error(AbstractParser.message(MSG_UNEXPECTED_IDENT, meta), token);
             }
         } else if (type == LPAREN) {
             next();
@@ -4968,10 +4955,10 @@ public class Parser extends AbstractParser {
             }
             expect(RPAREN);
 
-            IdentNode importIdent = new IdentNode(importToken, Token.descPosition(importToken) + Token.descLength(importToken), IMPORT.getName());
+            IdentNode importIdent = new IdentNode(importToken, Token.descPosition(importToken) + Token.descLength(importToken), lexer.stringIntern(IMPORT.getNameTS()));
             return CallNode.forImport(importLine, importToken, importStart, finish, importIdent, arguments);
         } else {
-            throw error(AbstractParser.message(MSG_EXPECTED_OPERAND, IMPORT.getName().toJavaStringUncached()), importToken);
+            throw error(AbstractParser.message(MSG_EXPECTED_OPERAND, IMPORT.getName()), importToken);
         }
     }
 
@@ -5265,22 +5252,22 @@ public class Parser extends AbstractParser {
         IdentNode duplicateParameter = functionNode.getDuplicateParameterBinding();
         if (duplicateParameter != null) {
             if (functionNode.isStrict() || functionNode.isMethod() || functionNode.isArrow() || !functionNode.isSimpleParameterList()) {
-                throw error(AbstractParser.message(MSG_STRICT_PARAM_REDEFINITION, duplicateParameter.getName().toJavaStringUncached()), duplicateParameter.getToken());
+                throw error(AbstractParser.message(MSG_STRICT_PARAM_REDEFINITION, duplicateParameter.getName()), duplicateParameter.getToken());
             }
 
             final List<IdentNode> parameters = functionNode.getParameters();
             final int arity = parameters.size();
-            final HashSet<TruffleString> parametersSet = new HashSet<>(arity);
+            final HashSet<String> parametersSet = new HashSet<>(arity);
 
             for (int i = arity - 1; i >= 0; i--) {
                 final IdentNode parameter = parameters.get(i);
-                TruffleString parameterName = parameter.getName();
+                String parameterName = parameter.getName();
 
                 if (parametersSet.contains(parameterName)) {
                     // redefinition of parameter name, rename in non-strict mode
                     parameterName = functionNode.uniqueName(parameterName);
                     final long parameterToken = parameter.getToken();
-                    parameters.set(i, new IdentNode(parameterToken, Token.descPosition(parameterToken), functionNode.uniqueName(parameterName)));
+                    parameters.set(i, new IdentNode(parameterToken, Token.descPosition(parameterToken), lexer.stringIntern(functionNode.uniqueName(parameterName))));
                 }
                 parametersSet.add(parameterName);
             }
@@ -5311,22 +5298,22 @@ public class Parser extends AbstractParser {
             final Object nameExpr = defaultNames.get(defaultNames.size() - 1);
             if (nameExpr instanceof PropertyKey) {
                 markDefaultNameUsed();
-                return ((PropertyKey) nameExpr).getPropertyName();
+                return ((PropertyKey) nameExpr).getPropertyNameTS();
             } else if (nameExpr instanceof AccessNode) {
                 AccessNode accessNode = (AccessNode) nameExpr;
                 markDefaultNameUsed();
                 if (accessNode.getBase() instanceof AccessNode) {
                     AccessNode base = (AccessNode) accessNode.getBase();
                     if (base.getBase() instanceof IdentNode && !base.isPrivate() && base.getProperty().equals(PROTOTYPE_NAME)) {
-                        return ParserStrings.concatAll(((IdentNode) base.getBase()).getName(), DOT, accessNode.getProperty());
+                        return lexer.stringIntern(((IdentNode) base.getBase()).getName() + '.' + accessNode.getProperty());
                     }
                 } else if (accessNode.getBase() instanceof IdentNode) {
-                    return ParserStrings.concatAll(((IdentNode) accessNode.getBase()).getName(), DOT, accessNode.getProperty());
+                    return lexer.stringIntern(((IdentNode) accessNode.getBase()).getName() + '.' + accessNode.getProperty());
                 }
-                return accessNode.getProperty();
+                return accessNode.getPropertyTS();
             }
         }
-        return ANONYMOUS_FUNCTION_NAME;
+        return lexer.stringIntern(ANONYMOUS_FUNCTION_NAME);
     }
 
     private void markDefaultNameUsed() {
@@ -5371,7 +5358,7 @@ public class Parser extends AbstractParser {
                 Expression initializer = assignmentExpression(true, yield, await);
 
                 if (isAnonymousFunctionDefinition(initializer)) {
-                    initializer = setAnonymousFunctionName(initializer, ident.getName());
+                    initializer = setAnonymousFunctionName(initializer, ident.getNameTS());
                 }
 
                 if (currentFunction != null) {
@@ -5526,7 +5513,7 @@ public class Parser extends AbstractParser {
         final boolean parseBody;
         Object endParserState = null;
         // Create a new function block.
-        ParserContextBlockNode body = newBlock(functionNode.createBodyScope());
+        ParserContextBlockNode body = newBlock(functionNode.createBodyScope(lexer::stringIntern));
         try {
             final int functionId = functionNode.getId();
             parseBody = reparsedFunction == null || functionId <= reparsedFunction.getFunctionNodeId();
@@ -5594,7 +5581,7 @@ public class Parser extends AbstractParser {
                 expect(RBRACE);
             }
         } finally {
-            functionNode.finishBodyScope();
+            functionNode.finishBodyScope(lexer::stringIntern);
             restoreBlock(body);
             lc.propagateFunctionFlags();
         }
@@ -5758,7 +5745,7 @@ public class Parser extends AbstractParser {
                 final Expression expr = unaryExpression(yield, await);
 
                 if (type == TokenType.EXP) {
-                    throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType().toJavaStringUncached()));
+                    throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType()));
                 }
 
                 return verifyDeleteExpression(unaryLine, unaryToken, expr);
@@ -5773,7 +5760,7 @@ public class Parser extends AbstractParser {
                 final Expression expr = unaryExpression(yield, await);
 
                 if (type == TokenType.EXP) {
-                    throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType().toJavaStringUncached()));
+                    throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType()));
                 }
 
                 return new UnaryNode(unaryToken, expr);
@@ -6264,7 +6251,7 @@ public class Parser extends AbstractParser {
             coverArrowFunction = null;
         }
         assert functionNode.isArrow() && !functionNode.isCoverArrowHead();
-        functionNode.setInternalName(ARROW_FUNCTION_NAME);
+        functionNode.setInternalName(lexer.stringIntern(ARROW_FUNCTION_NAME));
         functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
 
         lc.push(functionNode);
@@ -6386,7 +6373,7 @@ public class Parser extends AbstractParser {
                 IdentNode ident = (IdentNode) lhs;
 
                 if (isAnonymousFunctionDefinition(initializer)) {
-                    initializer = setAnonymousFunctionName(initializer, ident.getName());
+                    initializer = setAnonymousFunctionName(initializer, ident.getNameTS());
                 }
 
                 addDefaultParameter(paramToken, param.getFinish(), paramLine, ident, initializer, currentFunction);
@@ -6625,7 +6612,7 @@ public class Parser extends AbstractParser {
      *      ModuleItemList
      * </pre>
      */
-    private FunctionNode module(final TruffleString moduleName) {
+    private FunctionNode module(final String moduleName) {
         // Make a pseudo-token for the script holding its start and length.
         int functionStart = Math.min(Token.descPosition(Token.withDelimiter(token)), finish);
         final long functionToken = Token.toDesc(FUNCTION, functionStart, source.getLength() - functionStart);
@@ -6639,7 +6626,7 @@ public class Parser extends AbstractParser {
                         FunctionNode.IS_MODULE,
                         functionLine,
                         List.of(), 0, moduleScope);
-        script.setInternalName(moduleName);
+        script.setInternalName(lexer.stringIntern(moduleName));
 
         lc.push(script);
         final ParserContextModuleNode module = new ParserContextModuleNode(moduleName, moduleScope, this);
@@ -6729,9 +6716,9 @@ public class Parser extends AbstractParser {
         Scope moduleScope = lc.getCurrentBlock().getScope();
         assert moduleScope.isModuleScope();
         if (moduleScope.hasSymbol(ident.getName())) {
-            throw error(ECMAErrors.getMessage(MSG_SYNTAX_ERROR_REDECLARE_VARIABLE, ident.getName().toJavaStringUncached()), ident.getToken());
+            throw error(ECMAErrors.getMessage(MSG_SYNTAX_ERROR_REDECLARE_VARIABLE, ident.getName()), ident.getToken());
         }
-        moduleScope.putSymbol(new Symbol(ident.getName(), Symbol.IS_CONST | Symbol.HAS_BEEN_DECLARED | (star ? 0 : Symbol.IS_IMPORT_BINDING)));
+        moduleScope.putSymbol(new Symbol(ident.getNameTS(), Symbol.IS_CONST | Symbol.HAS_BEEN_DECLARED | (star ? 0 : Symbol.IS_IMPORT_BINDING)));
     }
 
     private void declareImportBinding(IdentNode ident) {
@@ -6792,7 +6779,7 @@ public class Parser extends AbstractParser {
             if (type == MUL) {
                 NameSpaceImportNode namespaceNode = nameSpaceImport();
                 importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, namespaceNode);
-                importEntries.add(ImportEntry.importStarAsNameSpaceFrom(namespaceNode.getBindingIdentifier().getName()));
+                importEntries.add(ImportEntry.importStarAsNameSpaceFrom(namespaceNode.getBindingIdentifier().getNameTS()));
             } else if (type == LBRACE) {
                 NamedImportsNode namedImportsNode = namedImports(importEntries);
                 importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, namedImportsNode);
@@ -6800,7 +6787,7 @@ public class Parser extends AbstractParser {
                 // ImportedDefaultBinding
                 IdentNode importedDefaultBinding = importedBindingIdentifier();
                 declareImportBinding(importedDefaultBinding);
-                ImportEntry defaultImport = ImportEntry.importDefault(importedDefaultBinding.getName());
+                ImportEntry defaultImport = ImportEntry.importDefault(importedDefaultBinding.getNameTS());
                 importEntries.add(defaultImport);
 
                 if (type == COMMARIGHT) {
@@ -6808,7 +6795,7 @@ public class Parser extends AbstractParser {
                     if (type == MUL) {
                         NameSpaceImportNode namespaceNode = nameSpaceImport();
                         importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, importedDefaultBinding, namespaceNode);
-                        importEntries.add(ImportEntry.importStarAsNameSpaceFrom(namespaceNode.getBindingIdentifier().getName()));
+                        importEntries.add(ImportEntry.importStarAsNameSpaceFrom(namespaceNode.getBindingIdentifier().getNameTS()));
                     } else if (type == LBRACE) {
                         NamedImportsNode namedImportsNode = namedImports(importEntries);
                         importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, importedDefaultBinding, namedImportsNode);
@@ -6879,7 +6866,7 @@ public class Parser extends AbstractParser {
                 assertionKey = (TruffleString) getValue();
                 next();
             } else {
-                assertionKey = getIdentifierName().getName();
+                assertionKey = getIdentifierName().getNameTS();
             }
             expect(COLON);
             TruffleString value = null;
@@ -6953,13 +6940,13 @@ public class Parser extends AbstractParser {
                 IdentNode localName = importedBindingIdentifier();
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importName));
                 declareImportBinding(localName);
-                importEntries.add(ImportEntry.importSpecifier(importName.getName(), localName.getName()));
+                importEntries.add(ImportEntry.importSpecifier(importName.getNameTS(), localName.getNameTS()));
             } else if (bindingIdentifier) {
                 verifyIdent(importName, false, false);
                 verifyStrictIdent(importName, CONTEXT_IMPORTED_BINDING);
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, importName, null));
                 declareImportBinding(importName);
-                importEntries.add(ImportEntry.importSpecifier(importName.getName()));
+                importEntries.add(ImportEntry.importSpecifier(importName.getNameTS()));
             } else {
                 // expected BindingIdentifier
                 throw error(AbstractParser.message(MSG_EXPECTED_BINDING_IDENTIFIER), nameToken);
@@ -7245,7 +7232,7 @@ public class Parser extends AbstractParser {
         if (!fn.isProgram()) {
             fn.setFlag(FunctionNode.USES_NEW_TARGET);
         }
-        addIdentifierReference(NEW_TARGET_NAME);
+        addIdentifierReference(NEW_TARGET_NAME.toJavaStringUncached());
     }
 
     private static boolean markApplyArgumentsCall(final ParserContext lc, List<Expression> arguments) {

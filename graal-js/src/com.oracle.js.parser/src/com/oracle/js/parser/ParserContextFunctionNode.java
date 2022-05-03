@@ -44,6 +44,7 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import com.oracle.js.parser.ir.Block;
 import com.oracle.js.parser.ir.Expression;
@@ -141,7 +142,11 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     /**
      * @return Name of the function
      */
-    public TruffleString getName() {
+    public String getName() {
+        return name.toJavaStringUncached();
+    }
+
+    public TruffleString getNameTS() {
         return name;
     }
 
@@ -231,7 +236,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      * @param base prefix for name
      * @return base if no collision exists, otherwise a name prefix with base
      */
-    public TruffleString uniqueName(final TruffleString base) {
+    public String uniqueName(final String base) {
         return namespace.uniqueName(base);
     }
 
@@ -381,7 +386,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
         // Parameters have a temporal dead zone if the parameter list contains expressions.
         boolean tdz = hasParameterExpressions();
-        Symbol paramSymbol = new Symbol(bindingIdentifier.getName(), Symbol.IS_LET | Symbol.IS_PARAM | (!tdz ? Symbol.HAS_BEEN_DECLARED : 0));
+        Symbol paramSymbol = new Symbol(bindingIdentifier.getNameTS(), Symbol.IS_LET | Symbol.IS_PARAM | (!tdz ? Symbol.HAS_BEEN_DECLARED : 0));
         if (getParameterScope().putSymbol(paramSymbol) == null) {
             return true;
         } else {
@@ -486,15 +491,15 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         assert hasParameterExpressions() && getParameterScope().hasSymbol(param.getName());
     }
 
-    public Scope createBodyScope() {
+    public Scope createBodyScope(Function<TruffleString, TruffleString> stringIntern) {
         assert !isScriptOrModule();
         // We only need the parameter scope if the parameter list contains expressions.
         Scope parent;
         if (hasParameterExpressions()) {
             parent = getParameterScope();
             if (needsArguments()) {
-                assert !parent.hasSymbol(Parser.ARGUMENTS_NAME);
-                parent.putSymbol(new Symbol(Parser.ARGUMENTS_NAME, Symbol.IS_LET | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
+                assert !parent.hasSymbol(Parser.ARGUMENTS_NAME.toJavaStringUncached());
+                parent.putSymbol(new Symbol(stringIntern.apply(Parser.ARGUMENTS_NAME), Symbol.IS_LET | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
             }
             parameters = List.of();
         } else {
@@ -507,7 +512,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             if (parameters != null) {
                 for (int i = 0; i < parameters.size(); i++) {
                     IdentNode parameter = parameters.get(i);
-                    scope.putSymbol(new Symbol(parameter.getName(), Symbol.IS_VAR | Symbol.IS_PARAM));
+                    scope.putSymbol(new Symbol(parameter.getNameTS(), Symbol.IS_VAR | Symbol.IS_PARAM));
                 }
             }
         }
@@ -551,17 +556,17 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     private void putFunctionSymbolIfAbsent(TruffleString bindingName, int symbolFlags) {
         if (hasParameterExpressions()) {
             Scope parameterScope = getParameterScope();
-            if (!parameterScope.hasSymbol(bindingName) && !bodyScope.hasSymbol(bindingName)) {
+            if (!parameterScope.hasSymbol(bindingName.toJavaStringUncached()) && !bodyScope.hasSymbol(bindingName.toJavaStringUncached())) {
                 parameterScope.putSymbol(new Symbol(bindingName, Symbol.IS_LET | symbolFlags | Symbol.HAS_BEEN_DECLARED));
             }
         } else {
-            if (!bodyScope.hasSymbol(bindingName)) {
+            if (!bodyScope.hasSymbol(bindingName.toJavaStringUncached())) {
                 bodyScope.putSymbol(new Symbol(bindingName, Symbol.IS_VAR | symbolFlags | Symbol.HAS_BEEN_DECLARED));
             }
         }
     }
 
-    public void finishBodyScope() {
+    public void finishBodyScope(Function<TruffleString, TruffleString> stringIntern) {
         if (hoistableBlockFunctionDeclarations != null) {
             declareHoistedBlockFunctionDeclarations();
         }
@@ -569,21 +574,21 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             return;
         }
         if (needsArguments()) {
-            putFunctionSymbolIfAbsent(Parser.ARGUMENTS_NAME, Symbol.IS_ARGUMENTS);
+            putFunctionSymbolIfAbsent(stringIntern.apply(Parser.ARGUMENTS_NAME), Symbol.IS_ARGUMENTS);
         }
         if (hasFunctionSelf()) {
-            putFunctionSymbolIfAbsent(name, Symbol.IS_FUNCTION_SELF);
+            putFunctionSymbolIfAbsent(getNameTS(), Symbol.IS_FUNCTION_SELF);
         }
         if (!isArrow()) {
             boolean needsThisForEval = hasEval() || hasArrowEval();
             if (usesThis() || usesSuper() || needsThisForEval || getFlag(FunctionNode.HAS_DIRECT_SUPER) != 0) {
-                putFunctionSymbolIfAbsent(TokenType.THIS.getName(), Symbol.IS_THIS);
+                putFunctionSymbolIfAbsent(stringIntern.apply(TokenType.THIS.getNameTS()), Symbol.IS_THIS);
             }
             if (usesSuper() || (isMethod() && needsThisForEval)) {
-                putFunctionSymbolIfAbsent(TokenType.SUPER.getName(), Symbol.IS_SUPER);
+                putFunctionSymbolIfAbsent(stringIntern.apply(TokenType.SUPER.getNameTS()), Symbol.IS_SUPER);
             }
             if (usesNewTarget() || needsThisForEval) {
-                putFunctionSymbolIfAbsent(Parser.NEW_TARGET_NAME, Symbol.IS_NEW_TARGET);
+                putFunctionSymbolIfAbsent(stringIntern.apply(Parser.NEW_TARGET_NAME), Symbol.IS_NEW_TARGET);
             }
         }
         if (hasParameterExpressions()) {
@@ -593,7 +598,11 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         }
     }
 
-    public TruffleString getInternalName() {
+    public String getInternalName() {
+        return internalName.toJavaStringUncached();
+    }
+
+    public TruffleString getInternalNameTS() {
         return internalName;
     }
 
@@ -640,7 +649,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         for (Map.Entry<VarNode, Scope> entry : hoistedVarDeclarations) {
             VarNode varDecl = entry.getKey();
             Scope declScope = entry.getValue();
-            TruffleString varName = varDecl.getName().getName();
+            String varName = varDecl.getName().getName();
             for (Scope current = declScope; current != bodyScope; current = current.getParent()) {
                 Symbol existing = current.getExistingSymbol(varName);
                 if (existing != null && existing.isBlockScoped()) {
@@ -675,7 +684,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         next: for (Map.Entry<VarNode, Scope> entry : hoistableBlockFunctionDeclarations) {
             VarNode functionDecl = entry.getKey();
             Scope functionDeclScope = entry.getValue();
-            TruffleString varName = functionDecl.getName().getName();
+            String varName = functionDecl.getName().getName();
             for (Scope current = functionDeclScope.getParent(); current != null; current = current.getParent()) {
                 Symbol existing = current.getExistingSymbol(varName);
                 if (existing != null && (existing.isBlockScoped() && !existing.isCatchParameter())) {
@@ -688,7 +697,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             }
             // declare var (if not already declared) and hoist the function declaration
             if (bodyScope.getExistingSymbol(varName) == null) {
-                bodyScope.putSymbol(new Symbol(varName, Symbol.IS_VAR | (bodyScope.isGlobalScope() ? Symbol.IS_GLOBAL : 0)));
+                bodyScope.putSymbol(new Symbol(functionDecl.getName().getNameTS(), Symbol.IS_VAR | (bodyScope.isGlobalScope() ? Symbol.IS_GLOBAL : 0)));
             }
             functionDeclScope.getExistingSymbol(varName).setHoistedBlockFunctionDeclaration();
         }

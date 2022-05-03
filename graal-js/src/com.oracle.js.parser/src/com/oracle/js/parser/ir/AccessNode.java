@@ -125,7 +125,11 @@ public final class AccessNode extends BaseNode {
      *
      * @return the property name
      */
-    public TruffleString getProperty() {
+    public String getProperty() {
+        return property.toJavaStringUncached();
+    }
+
+    public TruffleString getPropertyTS() {
         return property;
     }
 
@@ -133,7 +137,12 @@ public final class AccessNode extends BaseNode {
         return isPrivate;
     }
 
-    public TruffleString getPrivateName() {
+    public String getPrivateName() {
+        assert isPrivate();
+        return property.toJavaStringUncached();
+    }
+
+    public TruffleString getPrivateNameTS() {
         assert isPrivate();
         return property;
     }

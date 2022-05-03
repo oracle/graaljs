@@ -66,7 +66,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     private static final int JSON_MODULE_TYPE = 1 << 1;
 
     protected final JSRealm realm;
-    protected final Map<TruffleString, JSModuleRecord> moduleMap = new HashMap<>();
+    protected final Map<String, JSModuleRecord> moduleMap = new HashMap<>();
 
     public static DefaultESModuleLoader create(JSRealm realm) {
         return new DefaultESModuleLoader(realm);
@@ -76,13 +76,13 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         this.realm = realm;
     }
 
-    protected URI asURI(TruffleString specifier) {
+    protected URI asURI(String specifier) {
         assert specifier != null;
-        if (Strings.indexOf(specifier, ':') == -1) {
+        if (specifier.indexOf(':') == -1) {
             return null;
         }
         try {
-            URI uri = new URI(Strings.toJavaString(specifier));
+            URI uri = new URI(specifier);
             return uri.getScheme() != null ? uri : null;
         } catch (URISyntaxException e) {
             return null;
@@ -93,22 +93,22 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
         TruffleString refPath = referrer == null ? null : Strings.fromJavaString(referrer.getSource().getPath());
         try {
-            TruffleString specifier = moduleRequest.getSpecifier();
+            TruffleString specifierTS = moduleRequest.getSpecifier();
+            String specifier = Strings.toJavaString(specifierTS);
             TruffleFile moduleFile;
-            TruffleString canonicalPath;
+            String canonicalPath;
             URI maybeUri = asURI(specifier);
-            String specifierJavaString = Strings.toJavaString(specifier);
 
-            TruffleString maybeCustomPath = realm.getCustomEsmPathMapping(refPath, specifier);
+            TruffleString maybeCustomPath = realm.getCustomEsmPathMapping(refPath, specifierTS);
             if (maybeCustomPath != null) {
-                canonicalPath = maybeCustomPath;
-                moduleFile = realm.getEnv().getPublicTruffleFile(Strings.toJavaString(canonicalPath)).getCanonicalFile();
+                canonicalPath = Strings.toJavaString(maybeCustomPath);
+                moduleFile = realm.getEnv().getPublicTruffleFile(canonicalPath).getCanonicalFile();
             } else {
                 if (refPath == null) {
                     if (maybeUri != null) {
                         moduleFile = realm.getEnv().getPublicTruffleFile(maybeUri);
                     } else {
-                        moduleFile = realm.getEnv().getPublicTruffleFile(specifierJavaString);
+                        moduleFile = realm.getEnv().getPublicTruffleFile(specifier);
                     }
                 } else {
                     TruffleFile refFile = realm.getEnv().getPublicTruffleFile(Strings.toJavaString(refPath));
@@ -117,9 +117,9 @@ public class DefaultESModuleLoader implements JSModuleLoader {
                         moduleFile = refFile.resolveSibling(uriFile);
                     } else {
                         if (bareSpecifierDirectLookup(specifier)) {
-                            moduleFile = realm.getEnv().getPublicTruffleFile(specifierJavaString);
+                            moduleFile = realm.getEnv().getPublicTruffleFile(specifier);
                         } else {
-                            moduleFile = refFile.resolveSibling(specifierJavaString);
+                            moduleFile = refFile.resolveSibling(specifier);
                         }
                     }
                 }
@@ -146,30 +146,30 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         }
     }
 
-    private boolean bareSpecifierDirectLookup(TruffleString specifier) {
+    private boolean bareSpecifierDirectLookup(String specifier) {
         JSContextOptions options = realm.getContext().getContextOptions();
         if (options.isEsmBareSpecifierRelativeLookup()) {
             return false;
         }
-        return !(Strings.startsWith(specifier, Strings.SLASH) || Strings.startsWith(specifier, Strings.DOT_SLASH) || Strings.startsWith(specifier, Strings.DOT_DOT_SLASH));
+        return !(specifier.startsWith("/") || specifier.startsWith("./") || specifier.startsWith("../"));
     }
 
-    protected JSModuleRecord loadModuleFromUrl(ScriptOrModule referrer, ModuleRequest moduleRequest, TruffleFile maybeModuleFile, TruffleString maybeCanonicalPath) throws IOException {
+    protected JSModuleRecord loadModuleFromUrl(ScriptOrModule referrer, ModuleRequest moduleRequest, TruffleFile maybeModuleFile, String maybeCanonicalPath) throws IOException {
         JSModuleRecord existingModule;
         TruffleFile moduleFile;
-        TruffleString canonicalPath;
+        String canonicalPath;
         if (maybeCanonicalPath == null) {
             if (!maybeModuleFile.exists()) {
                 // check whether the moduleFile was loaded already (as literal source)
                 // before trying to invoke getCanonicalFile() (which would fail)
-                canonicalPath = Strings.fromJavaString(maybeModuleFile.getPath());
+                canonicalPath = maybeModuleFile.getPath();
                 existingModule = moduleMap.get(canonicalPath);
                 if (existingModule != null) {
                     return existingModule;
                 }
             }
             moduleFile = maybeModuleFile.getCanonicalFile();
-            canonicalPath = Strings.fromJavaString(moduleFile.getPath());
+            canonicalPath = moduleFile.getPath();
         } else {
             moduleFile = maybeModuleFile;
             canonicalPath = maybeCanonicalPath;
@@ -225,11 +225,11 @@ public class DefaultESModuleLoader implements JSModuleLoader {
 
     @Override
     public JSModuleRecord loadModule(Source source, JSModuleData moduleData) {
-        TruffleString canonicalPath = getCanonicalPath(source);
+        String canonicalPath = getCanonicalPath(source);
         return moduleMap.computeIfAbsent(canonicalPath, (key) -> new JSModuleRecord(moduleData, this));
     }
 
-    private TruffleString getCanonicalPath(Source source) {
+    private String getCanonicalPath(Source source) {
         String path = source.getPath();
         String canonicalPath;
         if (path == null) {
@@ -252,6 +252,6 @@ public class DefaultESModuleLoader implements JSModuleLoader {
                 throw Errors.createErrorFromException(e);
             }
         }
-        return Strings.fromJavaString(canonicalPath);
+        return canonicalPath;
     }
 }

@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.js.parser.ir.Scope;
+import com.oracle.js.parser.ir.Symbol;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.js.nodes.JSFrameDescriptor;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
@@ -158,8 +159,8 @@ public final class BlockEnvironment extends Environment {
     }
 
     @Override
-    public void addFrameSlotFromSymbol(com.oracle.js.parser.ir.Symbol symbol) {
-        Object id = slotId(symbol.getName());
+    public void addFrameSlotFromSymbol(Symbol symbol) {
+        Object id = slotId(symbol.getNameTS());
         assert (!hasScopeFrame() || !getBlockFrameDescriptor().contains(id)) && !getFunctionFrameDescriptor().contains(id) : symbol;
         if (symbol.isClosedOver() || (scope != null && scope.hasNestedEval()) || !context.getContextOptions().isScopeOptimization()) {
             getBlockFrameDescriptor().findOrAddFrameSlot(id, symbol.getFlags(), FrameSlotKind.Illegal);

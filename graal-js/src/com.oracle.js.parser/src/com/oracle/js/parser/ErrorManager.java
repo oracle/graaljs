@@ -41,8 +41,6 @@
 
 package com.oracle.js.parser;
 
-import com.oracle.truffle.api.strings.TruffleString;
-
 /**
  * Handles JavaScript error reporting.
  */
@@ -107,12 +105,12 @@ public abstract class ErrorManager {
         sb.append(source.getName()).append(':').append(line).append(':').append(column).append(' ').append(message).append(eoln);
 
         // Source content.
-        final TruffleString sourceLine = source.getSourceLine(position);
+        final String sourceLine = source.getSourceLine(position);
         sb.append(sourceLine).append(eoln);
 
         // Pointer to column.
         for (int i = 0; i < column; i++) {
-            if (ParserStrings.charAt(sourceLine, i) == '\t') {
+            if (sourceLine.charAt(i) == '\t') {
                 sb.append('\t');
             } else {
                 sb.append(' ');

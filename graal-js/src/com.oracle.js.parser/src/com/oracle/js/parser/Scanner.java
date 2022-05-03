@@ -41,14 +41,12 @@
 
 package com.oracle.js.parser;
 
-import com.oracle.truffle.api.strings.TruffleString;
-
 /**
  * Utility for scanning thru a char array.
  */
 public class Scanner {
     /** Characters to scan. */
-    protected final TruffleString content;
+    protected final String content;
 
     /** Position in content. */
     protected int position;
@@ -76,7 +74,7 @@ public class Scanner {
      * @param start position index in content where to start
      * @param length length of input
      */
-    protected Scanner(final TruffleString content, final int line, final int start, final int length) {
+    protected Scanner(final String content, final int line, final int start, final int length) {
         this.content = content;
         this.position = start;
         this.limit = start + length;
@@ -175,7 +173,7 @@ public class Scanner {
      */
     protected final char charAt(final int i) {
         // Get a character from the content, '\0' if beyond the end of file.
-        return i < limit ? ParserStrings.charAt(content, i) : '\0';
+        return i < limit ? content.charAt(i) : '\0';
     }
 
     /**

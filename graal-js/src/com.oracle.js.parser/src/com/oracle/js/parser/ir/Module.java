@@ -41,17 +41,18 @@
 
 package com.oracle.js.parser.ir;
 
+import com.oracle.js.parser.ParserStrings;
+import com.oracle.truffle.api.strings.TruffleString;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
-import com.oracle.js.parser.ParserStrings;
-import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Module information.
  */
 public final class Module {
+
     /**
      * The synthetic binding name assigned to export default declarations with unnamed expressions.
      */
@@ -79,10 +80,6 @@ public final class Module {
 
         public static ExportEntry exportStarAsNamespaceFrom(TruffleString exportName, ModuleRequest moduleRequest) {
             return new ExportEntry(exportName, moduleRequest, STAR_NAME, null);
-        }
-
-        public static ExportEntry exportDefault() {
-            return exportDefault(DEFAULT_EXPORT_BINDING_NAME);
         }
 
         public static ExportEntry exportDefault(TruffleString localName) {

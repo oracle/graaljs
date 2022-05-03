@@ -239,7 +239,7 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, boolean isStrict, TruffleString[] argumentNames) {
+    public ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, boolean isStrict, List<String> argumentNames) {
         if (isModuleSource(source)) {
             return fakeScriptForModule(context, source);
         }

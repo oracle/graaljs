@@ -43,8 +43,6 @@ package com.oracle.js.parser;
 
 import static com.oracle.js.parser.TokenKind.LITERAL;
 
-import com.oracle.truffle.api.strings.TruffleString;
-
 /**
  * A token is a 64 bit long value that represents a basic parse/lex unit. This class provides static
  * methods to manipulate lexer tokens.
@@ -60,10 +58,6 @@ public final class Token {
     // The first 8 bits are used for the token type, followed by length and position
     private static final int LENGTH_SHIFT = 8;
     private static final int POSITION_SHIFT = 36;
-
-    private static final TruffleString SPC_LPAREN = ParserStrings.constant(" (");
-    private static final TruffleString COMMA_SPC = ParserStrings.constant(", ");
-    private static final TruffleString RPAREN = ParserStrings.constant(")");
 
     private Token() {
     }
@@ -164,9 +158,9 @@ public final class Token {
      * @param verbose True to include details.
      * @return String representation.
      */
-    public static TruffleString toString(final Source source, final long token, final boolean verbose) {
+    public static String toString(final Source source, final long token, final boolean verbose) {
         final TokenType type = Token.descType(token);
-        TruffleString result;
+        String result;
 
         if (source != null && type.getKind() == LITERAL) {
             result = source.getString(token);
@@ -177,7 +171,7 @@ public final class Token {
         if (verbose) {
             final int position = Token.descPosition(token);
             final int length = Token.descLength(token);
-            result = ParserStrings.concatAll(result, SPC_LPAREN, ParserStrings.fromLong(position), COMMA_SPC, ParserStrings.fromLong(length), RPAREN);
+            result += " (" + position + ", " + length + ")";
         }
 
         return result;
@@ -191,7 +185,7 @@ public final class Token {
      *
      * @return token as string
      */
-    public static TruffleString toString(final Source source, final long token) {
+    public static String toString(final Source source, final long token) {
         return Token.toString(source, token, false);
     }
 

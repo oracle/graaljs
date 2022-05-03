@@ -43,7 +43,6 @@ package com.oracle.js.parser.ir;
 
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
-import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * IR representation for {@code continue} statements.
@@ -57,7 +56,7 @@ public class ContinueNode extends JumpStatement {
      * @param finish finish
      * @param labelName label name for continue or null if none
      */
-    public ContinueNode(final int lineNumber, final long token, final int finish, final TruffleString labelName) {
+    public ContinueNode(final int lineNumber, final long token, final int finish, final String labelName) {
         super(lineNumber, token, finish, labelName);
     }
 

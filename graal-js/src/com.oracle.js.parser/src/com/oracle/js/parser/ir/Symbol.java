@@ -123,7 +123,8 @@ public final class Symbol implements Comparable<Symbol> {
     public static final int IS_NEW_TARGET = 1 << 26;
 
     /** Null or name identifying symbol. */
-    private final TruffleString name;
+    private final String name;
+    private final TruffleString nameTS;
 
     /** Symbol flags. */
     private int flags;
@@ -135,7 +136,8 @@ public final class Symbol implements Comparable<Symbol> {
      * @param flags symbol flags
      */
     public Symbol(final TruffleString name, final int flags) {
-        this.name = name;
+        this.nameTS = name;
+        this.name = name.toJavaStringUncached();
         this.flags = flags;
         assert (flags & KINDMASK) != 0;
     }
@@ -166,7 +168,7 @@ public final class Symbol implements Comparable<Symbol> {
 
     @Override
     public int compareTo(final Symbol other) {
-        return name.compareCharsUTF16Uncached(other.name);
+        return getName().compareTo(other.getName());
     }
 
     /**
@@ -331,8 +333,12 @@ public final class Symbol implements Comparable<Symbol> {
      *
      * @return symbol name
      */
-    public TruffleString getName() {
+    public String getName() {
         return name;
+    }
+
+    public TruffleString getNameTS() {
+        return nameTS;
     }
 
     /**

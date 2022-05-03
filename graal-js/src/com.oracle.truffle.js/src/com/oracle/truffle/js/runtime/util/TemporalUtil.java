@@ -2240,7 +2240,7 @@ public final class TemporalUtil {
         long days = dtol(dateDifference.getDays());
         BigInt intermediateNs = addZonedDateTime(ctx, startNs, relativeZDT.getTimeZone(), relativeZDT.getCalendar(), 0, 0, 0, days, 0, 0, 0, 0, 0, 0);
         if (sign == 1) {
-            while (days > 0 && intermediateNs.compareTo(endNs) == 1) {
+            while (days > 0 && intermediateNs.compareTo(endNs) > 0) {
                 days = days - 1;
                 intermediateNs = addZonedDateTime(ctx, startNs, relativeZDT.getTimeZone(), relativeZDT.getCalendar(), 0, 0, 0, days, 0, 0, 0, 0, 0, 0);
             }
@@ -2250,7 +2250,7 @@ public final class TemporalUtil {
         while (!done) {
             BigInteger oneDayFartherNs = addZonedDateTime(ctx, intermediateNs, relativeZDT.getTimeZone(), relativeZDT.getCalendar(), 0, 0, 0, sign, 0, 0, 0, 0, 0, 0).bigIntegerValue();
             dayLengthNs = oneDayFartherNs.subtract(intermediateNs.bigIntegerValue());
-            if (nanoseconds.subtract(dayLengthNs).multiply(signBI).compareTo(BigInteger.ZERO) != -1) {
+            if (nanoseconds.subtract(dayLengthNs).multiply(signBI).compareTo(BigInteger.ZERO) >= 0) {
                 nanoseconds = nanoseconds.subtract(dayLengthNs);
                 intermediateNs = new BigInt(oneDayFartherNs);
                 days = days + sign;
@@ -2696,7 +2696,7 @@ public final class TemporalUtil {
         if (nanoseconds == null) {
             return true; // suspicious, but relevant
         }
-        if (nanoseconds.compareTo(lowerEpochNSLimit) == -1 || nanoseconds.compareTo(upperEpochNSLimit) == 1) {
+        if (nanoseconds.compareTo(lowerEpochNSLimit) < 0 || nanoseconds.compareTo(upperEpochNSLimit) > 0) {
             return false;
         }
         return true;
