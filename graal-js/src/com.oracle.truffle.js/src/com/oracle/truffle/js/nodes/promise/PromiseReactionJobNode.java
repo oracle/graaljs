@@ -149,9 +149,11 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                     }
                     fulfill = true;
                 } catch (AbstractTruffleException ex) {
-                    if (promiseCapability == null && context.isOptionTopLevelAwait()) {
-                        // top-level-await evaluation: throw exception when error is generated but
-                        // no capability is found in chain
+                    // If promiseCapability is undefined, handlerResult is not an abrupt completion.
+                    if (promiseCapability == null) {
+                        assert context.isOptionTopLevelAwait();
+                        // top-level-await evaluation: throw exception directly from promise job
+                        // when TopLevelCapability is rejected (via Context.eval(moduleSource)).
                         throw ex;
                     }
                     handlerResult = getErrorObject().execute(ex);

@@ -291,6 +291,7 @@ public final class GraalJSEvaluator implements JSParser {
                 assert JSPromise.isJSPromise(promise);
                 JSFunctionObject onRejected = createTopLevelAwaitReject(context, realm);
                 JSFunctionObject onAccepted = createTopLevelAwaitResolve(context, realm);
+                // Non-standard: throw error from onRejected handler.
                 performPromiseThenNode.execute((JSDynamicObject) promise, onAccepted, onRejected, null);
             }
             if (context.getContextOptions().isEsmEvalReturnsExports()) {
