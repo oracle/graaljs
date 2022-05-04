@@ -98,6 +98,7 @@ import com.oracle.truffle.js.parser.date.DateParser;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -829,13 +830,13 @@ public final class GraalJSEvaluator implements JSParser {
     @TruffleBoundary
     private static JSFunctionObject createCallAsyncModuleFulfilled(JSRealm realm, JSModuleRecord module) {
         // AsyncModuleExecutionFulfilled ( module )
-        JSFunctionData functionData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncModuleExecutionFulfilled, (c) -> createCallAsyncModuleFulfilledImpl(c));
+        JSFunctionData functionData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncModuleExecutionFulfilled, (c) -> createAsyncModuleExecutionFulfilledImpl(c));
         JSFunctionObject function = JSFunction.create(realm, functionData);
         JSObjectUtil.putHiddenProperty(function, STORE_MODULE_KEY, module);
         return function;
     }
 
-    private static JSFunctionData createCallAsyncModuleFulfilledImpl(JSContext context) {
+    private static JSFunctionData createAsyncModuleExecutionFulfilledImpl(JSContext context) {
         // AsyncModuleExecutionFulfilled ( module )
         class AsyncModuleFulfilledRoot extends JavaScriptRootNode {
             @Child private JavaScriptNode argumentNode = AccessIndexedArgumentNode.create(0);
@@ -854,14 +855,14 @@ public final class GraalJSEvaluator implements JSParser {
     @TruffleBoundary
     private static JSFunctionObject createCallAsyncModuleRejected(JSRealm realm, JSModuleRecord module) {
         // AsyncModuleExecutionRejected ( module )
-        JSFunctionData functionData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncModuleExecutionRejected, (c) -> createCallAsyncModuleRejectedImpl(c));
+        JSFunctionData functionData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncModuleExecutionRejected, (c) -> createAsyncModuleExecutionRejectedImpl(c));
         JSFunctionObject function = JSFunction.create(realm, functionData);
         JSObjectUtil.putHiddenProperty(function, STORE_MODULE_KEY, module);
         return function;
     }
 
-    private static JSFunctionData createCallAsyncModuleRejectedImpl(JSContext context) {
-        // AsyncModuleExecutionRejected ( module )
+    private static JSFunctionData createAsyncModuleExecutionRejectedImpl(JSContext context) {
+        // AsyncModuleExecutionRejected ( module, error )
         class AsyncModuleExecutionRejectedRoot extends JavaScriptRootNode {
             @Child private PropertyGetNode getModule = PropertyGetNode.createGetHidden(STORE_MODULE_KEY, context);
             @Child private PropertyGetNode getRejectionError = PropertyGetNode.createGetHidden(JSPromise.PROMISE_RESULT, context);
@@ -932,8 +933,9 @@ public final class GraalJSEvaluator implements JSParser {
                         assert m.getCycleRoot() == m;
                         JSFunction.call(JSArguments.create(Undefined.instance, m.getTopLevelCapability().getResolve(), dynamicImportResolutionResult));
                     }
-                } catch (Exception e) {
-                    asyncModuleExecutionRejected(realm, m, e);
+                } catch (AbstractTruffleException ex) {
+                    Object error = ex instanceof GraalJSException ? ((GraalJSException) ex).getErrorObject() : ex;
+                    asyncModuleExecutionRejected(realm, m, error);
                 }
             }
         }
