@@ -785,9 +785,9 @@ public class JSContext {
 
         if (isTop) {
             if (contextOptions.isTest262Mode() || contextOptions.isTestV8Mode()) {
-                newRealm.setAgent(new DebugJSAgent(contextOptions.canAgentBlock(), env.getOptions()));
+                newRealm.setAgent(new DebugJSAgent(getPromiseRejectionTracker(), contextOptions.canAgentBlock(), env.getOptions()));
             } else {
-                newRealm.setAgent(new MainJSAgent(newRealm.getContext().getPromiseRejectionTracker()));
+                newRealm.setAgent(new MainJSAgent(getPromiseRejectionTracker()));
             }
             if (contextOptions.isV8RealmBuiltin()) {
                 newRealm.initRealmList();
