@@ -100,10 +100,10 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
 
             JSModuleRecord moduleRecord = (JSModuleRecord) JSArguments.getUserArgument(asyncFrame.getArguments(), 0);
             try {
-                functionBody.execute(asyncFrame);
+                Object returnValue = functionBody.execute(asyncFrame);
 
                 assert promiseCapability != null;
-                promiseCapabilityResolve(promiseCapability, Undefined.instance);
+                promiseCapabilityResolve(promiseCapability, returnValue);
             } catch (YieldException e) {
                 assert promiseCapability == null ? e.isYield() : e.isAwait();
                 if (e.isYield()) {
