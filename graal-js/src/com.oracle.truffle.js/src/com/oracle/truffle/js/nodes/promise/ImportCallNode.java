@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -63,7 +62,6 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSException;
@@ -104,7 +102,6 @@ public class ImportCallNode extends JavaScriptNode {
     // lazily initialized
     @Child private JSFunctionCallNode callRejectNode;
     @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-    @Child private InteropLibrary exceptions;
     @Child private EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
     @Child private PropertyGetNode getAssertionsNode;
 
@@ -145,7 +142,7 @@ public class ImportCallNode extends JavaScriptNode {
         try {
             specifierString = toStringNode.executeString(specifier);
         } catch (AbstractTruffleException ex) {
-            return rejectPromiseOrRethrow(promiseCapability, ex);
+            return rejectPromise(promiseCapability, ex);
         }
         return hostImportModuleDynamically(referencingScriptOrModule, ModuleRequest.create(specifierString), promiseCapability);
     }
@@ -164,7 +161,7 @@ public class ImportCallNode extends JavaScriptNode {
         try {
             specifierString = toStringNode.executeString(specifier);
         } catch (AbstractTruffleException ex) {
-            return rejectPromiseOrRethrow(promiseCapability, ex);
+            return rejectPromise(promiseCapability, ex);
         }
         Map.Entry<TruffleString, TruffleString>[] assertions = null;
         if (options != Undefined.instance) {
@@ -175,7 +172,7 @@ public class ImportCallNode extends JavaScriptNode {
             try {
                 assertionsObj = getAssertionsNode.getValue(options);
             } catch (AbstractTruffleException ex) {
-                return rejectPromiseOrRethrow(promiseCapability, ex);
+                return rejectPromise(promiseCapability, ex);
             }
             if (assertionsObj != Undefined.instance) {
                 if (!JSRuntime.isObject(assertionsObj)) {
@@ -186,7 +183,7 @@ public class ImportCallNode extends JavaScriptNode {
                 try {
                     keys = enumerableOwnPropertyNamesNode.execute(obj);
                 } catch (AbstractTruffleException ex) {
-                    return rejectPromiseOrRethrow(promiseCapability, ex);
+                    return rejectPromise(promiseCapability, ex);
                 }
                 assertions = (Map.Entry<TruffleString, TruffleString>[]) new Map.Entry<?, ?>[keys.size()];
                 for (int i = 0; i < keys.size(); i++) {
@@ -195,7 +192,7 @@ public class ImportCallNode extends JavaScriptNode {
                     try {
                         value = JSObject.get(obj, key);
                     } catch (AbstractTruffleException ex) {
-                        return rejectPromiseOrRethrow(promiseCapability, ex);
+                        return rejectPromise(promiseCapability, ex);
                     }
                     if (!Strings.isTString(value)) {
                         return rejectPromiseWithTypeError(promiseCapability, "Import assertion value must be a string");
@@ -250,25 +247,9 @@ public class ImportCallNode extends JavaScriptNode {
             callRejectNode = insert(JSFunctionCallNode.createCall());
             getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
         }
-        callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), getErrorObjectNode.execute(ex)));
+        Object error = getErrorObjectNode.execute(ex);
+        callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
         return promiseCapability.getPromise();
-    }
-
-    private JSDynamicObject rejectPromiseOrRethrow(PromiseCapabilityRecord promiseCapability, AbstractTruffleException ex) {
-        if (TryCatchNode.shouldCatch(ex, exceptions())) {
-            return rejectPromise(promiseCapability, ex);
-        } else {
-            throw ex;
-        }
-    }
-
-    private InteropLibrary exceptions() {
-        InteropLibrary e = exceptions;
-        if (e == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            exceptions = e = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-        }
-        return e;
     }
 
     private Object rejectPromiseWithTypeError(PromiseCapabilityRecord promiseCapability, String errorMessage) {
@@ -338,9 +319,9 @@ public class ImportCallNode extends JavaScriptNode {
 
         class TopLevelAwaitImportModuleDynamicallyRootNode extends ImportModuleDynamicallyRootNode {
             @Child private PerformPromiseThenNode promiseThenNode = PerformPromiseThenNode.create(context);
-            @Child private JSFunctionCallNode callPromiseReaction = JSFunctionCallNode.createCall();
+            @Child private JSFunctionCallNode callPromiseResolve = JSFunctionCallNode.createCall();
+            @Child private JSFunctionCallNode callPromiseReject;
             @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-            @Child private InteropLibrary exceptions;
             @Child private PropertySetNode setModuleRecord;
 
             @SuppressWarnings("unchecked")
@@ -368,27 +349,23 @@ public class ImportCallNode extends JavaScriptNode {
                             PromiseCapabilityRecord topLevelCapability = moduleRecord.getTopLevelCapability();
                             promiseThenNode.execute(topLevelCapability.getPromise(), moduleLoadedCapability.getResolve(), moduleLoadedCapability.getReject(), null);
                         } else {
-                            callPromiseReaction.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getResolve(), result));
+                            callPromiseResolve.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getResolve(), result));
                         }
                     }
-                } catch (AbstractTruffleException t) {
-                    if (shouldCatch(t)) {
-                        Object errorObject = getErrorObjectNode.execute(t);
-                        callPromiseReaction.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getReject(), errorObject));
-                    } else {
-                        throw t;
-                    }
+                } catch (AbstractTruffleException ex) {
+                    rejectPromise(moduleLoadedCapability, ex);
                 }
                 return Undefined.instance;
             }
 
-            private boolean shouldCatch(AbstractTruffleException exception) {
-                if (getErrorObjectNode == null || exceptions == null) {
+            private void rejectPromise(PromiseCapabilityRecord moduleLoadedCapability, AbstractTruffleException ex) {
+                if (getErrorObjectNode == null || callPromiseReject == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
-                    exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
+                    callPromiseReject = insert(JSFunctionCallNode.createCall());
                 }
-                return TryCatchNode.shouldCatch(exception, exceptions);
+                Object errorObject = getErrorObjectNode.execute(ex);
+                callPromiseReject.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getReject(), errorObject));
             }
 
             private JSDynamicObject createFinishDynamicImportCapabilityCallback(JSContext cx, JSRealm realm, JSModuleRecord moduleRecord, boolean onReject) {

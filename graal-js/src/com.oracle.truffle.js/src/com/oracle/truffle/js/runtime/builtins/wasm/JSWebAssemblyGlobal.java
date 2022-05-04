@@ -49,7 +49,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyGlobalPrototypeBuiltins;
-import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -195,11 +194,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
                             throw Errors.shouldNotReachHere(ex);
                         } catch (AbstractTruffleException ex) {
                             errorBranch.enter();
-                            if (TryCatchNode.shouldCatch(ex)) {
-                                throw Errors.createTypeError(ex, this);
-                            } else {
-                                throw ex;
-                            }
+                            throw Errors.createTypeError(ex, this);
                         }
                     } else {
                         errorBranch.enter();

@@ -50,7 +50,6 @@ import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableGetNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableGrowNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableSetNodeGen;
-import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyIndexOrSizeNode;
@@ -137,11 +136,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw Errors.shouldNotReachHere(ex);
             } catch (AbstractTruffleException ex) {
                 errorBranch.enter();
-                if (TryCatchNode.shouldCatch(ex)) {
-                    throw Errors.createRangeError(ex, this);
-                } else {
-                    throw ex;
-                }
+                throw Errors.createRangeError(ex, this);
             }
         }
 
@@ -181,11 +176,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw Errors.shouldNotReachHere(ex);
             } catch (AbstractTruffleException ex) {
                 errorBranch.enter();
-                if (TryCatchNode.shouldCatch(ex)) {
-                    throw Errors.createRangeError(ex, this);
-                } else {
-                    throw ex;
-                }
+                throw Errors.createRangeError(ex, this);
             }
         }
     }
@@ -224,11 +215,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw Errors.shouldNotReachHere(ex);
             } catch (AbstractTruffleException ex) {
                 errorBranch.enter();
-                if (TryCatchNode.shouldCatch(ex)) {
-                    throw Errors.createRangeError(ex, this);
-                } else {
-                    throw ex;
-                }
+                throw Errors.createRangeError(ex, this);
             }
             return Undefined.instance;
         }

@@ -160,10 +160,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
                 try {
                     InteropLibrary interop = InteropLibrary.getUncached(ex);
                     ExceptionType type = interop.getExceptionType(ex);
-                    if (type == ExceptionType.EXIT || type == ExceptionType.INTERRUPT) {
-                        throw ex;
-                    }
-                    Throwable exception = ex;
+                    AbstractTruffleException exception = ex;
                     if (type == ExceptionType.PARSE_ERROR) {
                         exception = Errors.createCompileError(ex, this);
                     }

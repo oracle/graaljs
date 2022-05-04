@@ -40,15 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -63,7 +59,6 @@ public class IteratorCloseNode extends JavaScriptBaseNode {
     @Child private GetMethodNode getReturnNode;
     @Child private JSFunctionCallNode methodCallNode;
     @Child private IsJSObjectNode isObjectNode;
-    @Child private InteropLibrary exceptions;
 
     protected IteratorCloseNode(JSContext context) {
         this.getReturnNode = GetMethodNode.create(context, Strings.RETURN);
@@ -97,19 +92,7 @@ public class IteratorCloseNode extends JavaScriptBaseNode {
                 methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
             }
         } catch (AbstractTruffleException e) {
-            if (!shouldCatch(e)) {
-                throw e;
-            }
             // re-throw outer exception, see IteratorClose
         }
-    }
-
-    public final boolean shouldCatch(AbstractTruffleException ex) {
-        InteropLibrary interop = exceptions;
-        if (interop == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            exceptions = interop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-        }
-        return TryCatchNode.shouldCatch(ex, interop);
     }
 }

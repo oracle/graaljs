@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -71,7 +70,6 @@ import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -149,7 +147,6 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         @Child protected PropertyGetNode getSyncIteratorRecordNode;
         @Child private PropertySetNode setDoneNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-        @Child private InteropLibrary exceptions;
 
         protected ConditionProfile valuePresenceProfile = ConditionProfile.createBinaryProfile();
 
@@ -175,13 +172,9 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
 
         protected void promiseCapabilityReject(PromiseCapabilityRecord promiseCapability, AbstractTruffleException exception) {
-            if (getErrorObjectNode == null || exceptions == null) {
+            if (getErrorObjectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
-                exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-            }
-            if (!TryCatchNode.shouldCatch(exception, exceptions)) {
-                throw exception;
             }
             Object result = getErrorObjectNode.execute(exception);
             promiseCapabilityRejectImpl(promiseCapability, result);

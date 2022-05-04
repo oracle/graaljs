@@ -216,14 +216,12 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             this.isFastArrayNode = isTypedArrayImplementation ? null : IsArrayNode.createIsFastArray();
         }
 
-        protected void iteratorCloseAbrupt(JSDynamicObject iterator, AbstractTruffleException ex) {
+        protected void iteratorCloseAbrupt(JSDynamicObject iterator) {
             if (iteratorCloseNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
             }
-            if (iteratorCloseNode.shouldCatch(ex)) {
-                iteratorCloseNode.executeAbrupt(iterator);
-            }
+            iteratorCloseNode.executeAbrupt(iterator);
         }
 
         protected IteratorRecord getIterator(Object object, Object usingIterator) {
@@ -340,7 +338,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                     k++;
                 }
             } catch (AbstractTruffleException ex) {
-                iteratorCloseAbrupt(iteratorRecord.getIterator(), ex);
+                iteratorCloseAbrupt(iteratorRecord.getIterator());
                 throw ex; // should be executed by iteratorClose
             }
         }

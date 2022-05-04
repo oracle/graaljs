@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -55,7 +54,6 @@ import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
@@ -77,7 +75,6 @@ public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements 
     private final BranchProfile throwBranch = BranchProfile.create();
     private final BranchProfile exitBranch = BranchProfile.create();
     private final BranchProfile notDoneBranch = BranchProfile.create();
-    @Child private InteropLibrary exceptions;
 
     protected AsyncIteratorCloseWrapperNode(JSContext context, int stateSlot, JavaScriptNode loopNode, JavaScriptNode iteratorNode,
                     JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
@@ -115,23 +112,18 @@ public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements 
                     throw e;
                 }
             } catch (AbstractTruffleException e) {
-                if (TryCatchNode.shouldCatch(e, exceptions())) {
-                    throwBranch.enter();
-                    IteratorRecord iteratorRecord = getIteratorRecord(frame);
-                    JSDynamicObject iterator = iteratorRecord.getIterator();
-                    try {
-                        Object returnMethod = getReturnNode.executeWithTarget(iterator);
-                        if (returnMethod != Undefined.instance) {
-                            innerResult = getReturnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
-                            completion = Completion.forThrow(e);
-                            break await;
-                        }
-                    } catch (AbstractTruffleException ex) {
-                        if (!TryCatchNode.shouldCatch(e, exceptions())) {
-                            throw ex;
-                        }
-                        // re-throw outer exception below
+                throwBranch.enter();
+                IteratorRecord iteratorRecord = getIteratorRecord(frame);
+                JSDynamicObject iterator = iteratorRecord.getIterator();
+                try {
+                    Object returnMethod = getReturnNode.executeWithTarget(iterator);
+                    if (returnMethod != Undefined.instance) {
+                        innerResult = getReturnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                        completion = Completion.forThrow(e);
+                        break await;
                     }
+                } catch (AbstractTruffleException ex) {
+                    // re-throw outer exception below
                 }
                 throw e;
             }
@@ -188,15 +180,6 @@ public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements 
             returnMethodCallNode = insert(JSFunctionCallNode.createCall());
         }
         return returnMethodCallNode;
-    }
-
-    private InteropLibrary exceptions() {
-        InteropLibrary e = exceptions;
-        if (e == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            exceptions = e = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-        }
-        return e;
     }
 
     @Override

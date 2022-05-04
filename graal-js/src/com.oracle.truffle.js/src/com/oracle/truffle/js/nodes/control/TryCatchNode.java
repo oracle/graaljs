@@ -51,9 +51,6 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags.TryBlockTag;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.ExceptionType;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -67,7 +64,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
@@ -93,7 +89,6 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
     @Child private JavaScriptNode destructuring;
     @Child private JavaScriptNode conditionExpression; // non-standard extension
     @Child private GetErrorObjectNode getErrorObjectNode;
-    @Child private InteropLibrary exceptions;
     private final JSContext context;
 
     protected TryCatchNode(JSContext context, JavaScriptNode tryBlock, JavaScriptNode catchBlock, JSWriteFrameSlotNode writeErrorVar, BlockScopeNode blockScope, JavaScriptNode destructuring,
@@ -145,11 +140,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
         } catch (ControlFlowException cfe) {
             throw cfe;
         } catch (AbstractTruffleException ex) {
-            if (shouldCatch(ex, exceptions())) {
-                throwable = ex;
-            } else {
-                throw ex;
-            }
+            throwable = ex;
         } catch (StackOverflowError ste) {
             throwable = ste;
         }
@@ -165,28 +156,11 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
         } catch (ControlFlowException cfe) {
             throw cfe;
         } catch (AbstractTruffleException ex) {
-            if (shouldCatch(ex, exceptions())) {
-                throwable = ex;
-            } else {
-                throw ex;
-            }
+            throwable = ex;
         } catch (StackOverflowError ste) {
             throwable = ste;
         }
         executeCatch(frame, throwable);
-    }
-
-    public static boolean shouldCatch(AbstractTruffleException ex, InteropLibrary exceptions) {
-        try {
-            ExceptionType exceptionType = exceptions.getExceptionType(ex);
-            return exceptionType != ExceptionType.EXIT && exceptionType != ExceptionType.INTERRUPT;
-        } catch (UnsupportedMessageException e) {
-            throw Errors.shouldNotReachHere(e);
-        }
-    }
-
-    public static boolean shouldCatch(AbstractTruffleException ex) {
-        return shouldCatch(ex, InteropLibrary.getUncached());
     }
 
     private Object executeCatch(VirtualFrame frame, Throwable ex) {
@@ -233,11 +207,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
             } catch (ControlFlowException cfe) {
                 throw cfe;
             } catch (AbstractTruffleException ex) {
-                if (shouldCatch(ex, exceptions())) {
-                    throwable = ex;
-                } else {
-                    throw ex;
-                }
+                throwable = ex;
             } catch (StackOverflowError ste) {
                 throwable = ste;
             }
@@ -271,15 +241,6 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
                 blockScope.exitScope(frame, yield);
             }
         }
-    }
-
-    private InteropLibrary exceptions() {
-        InteropLibrary e = exceptions;
-        if (e == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            exceptions = e = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-        }
-        return e;
     }
 
     public abstract static class GetErrorObjectNode extends JavaScriptBaseNode {

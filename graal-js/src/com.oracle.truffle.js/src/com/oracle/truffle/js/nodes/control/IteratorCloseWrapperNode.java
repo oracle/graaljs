@@ -87,12 +87,10 @@ public class IteratorCloseWrapperNode extends JavaScriptNode {
             }
             throw e;
         } catch (AbstractTruffleException e) {
-            if (iteratorClose().shouldCatch(e)) {
-                throwBranch.enter();
-                IteratorRecord iteratorRecord = getIteratorRecord(frame);
-                if (!iteratorRecord.isDone()) {
-                    iteratorClose().executeAbrupt(iteratorRecord.getIterator());
-                }
+            throwBranch.enter();
+            IteratorRecord iteratorRecord = getIteratorRecord(frame);
+            if (!iteratorRecord.isDone()) {
+                iteratorClose().executeAbrupt(iteratorRecord.getIterator());
             }
             throw e;
         }

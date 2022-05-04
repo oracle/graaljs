@@ -47,7 +47,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyMemoryPrototypeBuiltinsFactory.WebAssemblyMemoryGrowNodeGen;
-import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyIndexOrSizeNode;
@@ -124,11 +123,7 @@ public class WebAssemblyMemoryPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw Errors.shouldNotReachHere(ex);
             } catch (AbstractTruffleException ex) {
                 errorBranch.enter();
-                if (TryCatchNode.shouldCatch(ex)) {
-                    throw Errors.createRangeError(ex, this);
-                } else {
-                    throw ex;
-                }
+                throw Errors.createRangeError(ex, this);
             }
         }
 

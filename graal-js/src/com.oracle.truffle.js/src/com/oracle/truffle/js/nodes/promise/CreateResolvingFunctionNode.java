@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -56,7 +55,6 @@ import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -123,7 +121,6 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             @Child private RejectPromiseNode rejectPromiseNode;
             @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
             private final ConditionProfile alreadyResolvedProfile = ConditionProfile.createBinaryProfile();
-            @Child private InteropLibrary exceptions;
 
             // PromiseResolveThenableJob
             @Child private PropertySetNode setPromiseNode;
@@ -155,11 +152,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                     then = getThen(resolution);
                 } catch (AbstractTruffleException ex) {
                     enterErrorBranch();
-                    if (TryCatchNode.shouldCatch(ex, exceptions)) {
-                        return rejectPromise(promise, ex);
-                    } else {
-                        throw ex;
-                    }
+                    return rejectPromise(promise, ex);
                 }
                 if (!isCallableNode.executeBoolean(then)) {
                     return fulfillPromise(promise, resolution);
@@ -199,11 +192,10 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             }
 
             private void enterErrorBranch() {
-                if (rejectPromiseNode == null || getErrorObjectNode == null || exceptions == null) {
+                if (rejectPromiseNode == null || getErrorObjectNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     rejectPromiseNode = insert(RejectPromiseNode.create(context));
                     getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
-                    exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
                 }
             }
 

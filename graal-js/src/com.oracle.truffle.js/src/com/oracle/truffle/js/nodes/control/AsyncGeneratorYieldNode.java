@@ -238,9 +238,6 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                                 try {
                                     returnResult = callReturnNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
                                 } catch (AbstractTruffleException e) {
-                                    if (!TryCatchNode.shouldCatch(e)) {
-                                        throw e;
-                                    }
                                     // swallow inner error
                                     break error;
                                 }

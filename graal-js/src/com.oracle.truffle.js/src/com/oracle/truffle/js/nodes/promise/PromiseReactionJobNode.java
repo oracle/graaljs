@@ -51,7 +51,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -62,7 +61,6 @@ import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -114,7 +112,6 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
         @Child private JSFunctionCallNode callRejectNode;
         @Child private JSFunctionCallNode callHandlerNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-        @Child private InteropLibrary exceptions;
         private final ConditionProfile handlerProf = ConditionProfile.createBinaryProfile();
 
         PromiseReactionJobRootNode(JSContext context) {
@@ -157,12 +154,8 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                         // no capability is found in chain
                         throw ex;
                     }
-                    if (shouldCatch(ex)) {
-                        handlerResult = getErrorObjectNode.execute(ex);
-                        fulfill = false;
-                    } else {
-                        throw ex;
-                    }
+                    handlerResult = getErrorObject().execute(ex);
+                    fulfill = false;
                 }
             }
             Object status;
@@ -174,15 +167,6 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
 
             context.notifyPromiseHook(PromiseHook.TYPE_AFTER, promiseCapability.getPromise());
             return status;
-        }
-
-        private boolean shouldCatch(AbstractTruffleException exception) {
-            if (getErrorObjectNode == null || exceptions == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
-                exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-            }
-            return TryCatchNode.shouldCatch(exception, exceptions);
         }
 
         private JSFunctionCallNode callResolve() {
@@ -207,6 +191,14 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                 callHandlerNode = insert(JSFunctionCallNode.createCall());
             }
             return callHandlerNode;
+        }
+
+        private TryCatchNode.GetErrorObjectNode getErrorObject() {
+            if (getErrorObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+            }
+            return getErrorObjectNode;
         }
 
         @Override

@@ -2638,14 +2638,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child private PropertyGetNode getAdderFnNode;
         protected final BranchProfile errorBranch = BranchProfile.create();
 
-        protected void iteratorCloseAbrupt(JSDynamicObject iterator, AbstractTruffleException ex) {
+        protected void iteratorCloseAbrupt(JSDynamicObject iterator) {
             if (iteratorCloseNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
             }
-            if (iteratorCloseNode.shouldCatch(ex)) {
-                iteratorCloseNode.executeAbrupt(iterator);
-            }
+            iteratorCloseNode.executeAbrupt(iterator);
         }
 
         protected IteratorRecord getIterator(Object iterator) {
@@ -2733,7 +2731,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     call(mapObj, adder, k, v);
                 }
             } catch (AbstractTruffleException ex) {
-                iteratorCloseAbrupt(iter.getIterator(), ex);
+                iteratorCloseAbrupt(iter.getIterator());
                 throw ex;
             }
 
@@ -2786,7 +2784,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     call(setObj, adder, nextValue);
                 }
             } catch (AbstractTruffleException ex) {
-                iteratorCloseAbrupt(iter.getIterator(), ex);
+                iteratorCloseAbrupt(iter.getIterator());
                 throw ex;
             }
 
