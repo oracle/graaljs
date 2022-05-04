@@ -839,14 +839,12 @@ public final class GraalJSEvaluator implements JSParser {
     private static JSFunctionData createAsyncModuleExecutionFulfilledImpl(JSContext context) {
         // AsyncModuleExecutionFulfilled ( module )
         class AsyncModuleFulfilledRoot extends JavaScriptRootNode {
-            @Child private JavaScriptNode argumentNode = AccessIndexedArgumentNode.create(0);
             @Child private PropertyGetNode getModule = PropertyGetNode.createGetHidden(STORE_MODULE_KEY, context);
 
             @Override
             public Object execute(VirtualFrame frame) {
-                Object dynamicImportResolutionResult = argumentNode.execute(frame);
                 Object module = getModule.getValue(JSArguments.getFunctionObject(frame.getArguments()));
-                return asyncModuleExecutionFulfilled(getRealm(), (JSModuleRecord) module, dynamicImportResolutionResult);
+                return asyncModuleExecutionFulfilled(getRealm(), (JSModuleRecord) module);
             }
         }
         return JSFunctionData.createCallOnly(context, new AsyncModuleFulfilledRoot().getCallTarget(), 1, Strings.EMPTY_STRING);
@@ -897,7 +895,7 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @TruffleBoundary
-    private static Object asyncModuleExecutionFulfilled(JSRealm realm, JSModuleRecord module, Object dynamicImportResolutionResult) {
+    private static Object asyncModuleExecutionFulfilled(JSRealm realm, JSModuleRecord module) {
         if (module.getStatus() == Status.Evaluated) {
             assert module.getEvaluationError() != null;
             return Undefined.instance;
@@ -908,7 +906,7 @@ public final class GraalJSEvaluator implements JSParser {
         module.setStatus(Status.Evaluated);
         if (module.getTopLevelCapability() != null) {
             assert module.getCycleRoot() == module;
-            JSFunction.call(JSArguments.create(Undefined.instance, module.getTopLevelCapability().getResolve(), dynamicImportResolutionResult));
+            JSFunction.call(JSArguments.create(Undefined.instance, module.getTopLevelCapability().getResolve(), Undefined.instance));
         }
         Set<JSModuleRecord> execList = new TreeSet<>(new Comparator<JSModuleRecord>() {
             @Override
@@ -928,7 +926,7 @@ public final class GraalJSEvaluator implements JSParser {
                     m.setStatus(Status.Evaluated);
                     if (m.getTopLevelCapability() != null) {
                         assert m.getCycleRoot() == m;
-                        JSFunction.call(JSArguments.create(Undefined.instance, m.getTopLevelCapability().getResolve(), dynamicImportResolutionResult));
+                        JSFunction.call(JSArguments.create(Undefined.instance, m.getTopLevelCapability().getResolve(), Undefined.instance));
                     }
                 } catch (AbstractTruffleException ex) {
                     Object error = ex instanceof GraalJSException ? ((GraalJSException) ex).getErrorObject() : ex;
