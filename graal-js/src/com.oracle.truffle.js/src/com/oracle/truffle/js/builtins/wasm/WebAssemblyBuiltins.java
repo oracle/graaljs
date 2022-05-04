@@ -155,31 +155,26 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
             try {
                 Object resolution = process(argument);
                 promiseResolutionCallNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), resolution));
-            } catch (Throwable ex) {
+            } catch (AbstractTruffleException ex) {
                 errorBranch.enter();
-                InteropLibrary interop = InteropLibrary.getUncached(ex);
-                if (interop.isException(ex)) {
-                    try {
-                        ExceptionType type = interop.getExceptionType(ex);
-                        if (type != ExceptionType.EXIT && type != ExceptionType.INTERRUPT) {
-                            Throwable exception = ex;
-                            if (type == ExceptionType.PARSE_ERROR) {
-                                exception = Errors.createCompileError(ex, this);
-                            }
-                            if (getErrorObjectNode == null) {
-                                CompilerDirectives.transferToInterpreterAndInvalidate();
-                                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
-                            }
-                            Object error = getErrorObjectNode.execute(exception);
-                            promiseResolutionCallNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
-                        } else {
-                            throw ex;
-                        }
-                    } catch (UnsupportedMessageException umex) {
-                        throw Errors.shouldNotReachHere(umex);
+                try {
+                    InteropLibrary interop = InteropLibrary.getUncached(ex);
+                    ExceptionType type = interop.getExceptionType(ex);
+                    if (type == ExceptionType.EXIT || type == ExceptionType.INTERRUPT) {
+                        throw ex;
                     }
-                } else {
-                    throw ex;
+                    Throwable exception = ex;
+                    if (type == ExceptionType.PARSE_ERROR) {
+                        exception = Errors.createCompileError(ex, this);
+                    }
+                    if (getErrorObjectNode == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
+                    }
+                    Object error = getErrorObjectNode.execute(exception);
+                    promiseResolutionCallNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
+                } catch (UnsupportedMessageException umex) {
+                    throw Errors.shouldNotReachHere(umex);
                 }
             }
             return promiseCapability.getPromise();
