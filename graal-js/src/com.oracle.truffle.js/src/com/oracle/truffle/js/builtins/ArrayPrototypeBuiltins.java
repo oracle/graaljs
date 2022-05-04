@@ -2050,7 +2050,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                             @Cached("arrayType") ScriptArray cachedArrayType,
                             @Cached GetPrototypeNode getPrototypeNode,
                             @Cached ConditionProfile arrayElementwise) {
-                if (arrayElementwise.profile(parent.mustUseElementwise(array, cachedArrayType.cast(arrayType), getPrototypeNode))) {
+                if (arrayElementwise.profile(parent.mustUseElementwise(array, len, cachedArrayType.cast(arrayType), getPrototypeNode))) {
                     parent.spliceJSArrayElementwise(array, len, actualStart, actualDeleteCount, itemCount);
                 } else {
                     parent.spliceJSArrayBlockwise(array, actualStart, actualDeleteCount, itemCount, cachedArrayType.cast(arrayType));
@@ -2061,7 +2061,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             static void doUncached(JSDynamicObject array, long len, long actualStart, long actualDeleteCount, long itemCount, ScriptArray arrayType, JSArraySpliceNode parent,
                             @Cached GetPrototypeNode getPrototypeNode,
                             @Cached ConditionProfile arrayElementwise) {
-                if (arrayElementwise.profile(parent.mustUseElementwise(array, arrayType, getPrototypeNode))) {
+                if (arrayElementwise.profile(parent.mustUseElementwise(array, len, arrayType, getPrototypeNode))) {
                     parent.spliceJSArrayElementwise(array, len, actualStart, actualDeleteCount, itemCount);
                 } else {
                     parent.spliceJSArrayBlockwise(array, actualStart, actualDeleteCount, itemCount, arrayType);
@@ -2069,12 +2069,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        final boolean mustUseElementwise(JSDynamicObject obj, ScriptArray array, GetPrototypeNode getPrototypeNode) {
+        final boolean mustUseElementwise(JSDynamicObject obj, long expectedLength, ScriptArray array, GetPrototypeNode getPrototypeNode) {
             return array instanceof SparseArray ||
                             array.isLengthNotWritable() ||
                             getPrototypeNode.execute(obj) != getRealm().getArrayPrototype() ||
                             !getContext().getArrayPrototypeNoElementsAssumption().isValid() ||
-                            (!getContext().getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(obj));
+                            (!getContext().getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(obj)) ||
+                            array.length(obj) != expectedLength;
         }
 
         private void spliceRead(Object thisObj, long actualStart, long actualDeleteCount, JSDynamicObject aObj, long length) {
