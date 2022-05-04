@@ -99,12 +99,6 @@ public class JSModuleRecord extends ScriptOrModule {
      */
     private int dfsAncestorIndex;
 
-    /*
-     * Used to store the top-level promise created as a result of top-level await modules
-     * evaluation.
-     */
-    private Object topLevelAwaitModuleLoadingContinuation;
-
     public JSModuleRecord(JSModuleData parsedModule, JSModuleLoader moduleLoader) {
         super(parsedModule.getContext(), parsedModule.getSource());
         this.parsedModule = parsedModule;
@@ -318,14 +312,6 @@ public class JSModuleRecord extends ScriptOrModule {
 
     public boolean hasTLA() {
         return hasTLA;
-    }
-
-    public void setExecutionContinuation(Object continuation) {
-        this.topLevelAwaitModuleLoadingContinuation = continuation;
-    }
-
-    public Object getExecutionContinuation() {
-        return topLevelAwaitModuleLoadingContinuation;
     }
 
     public void setCycleRoot(JSModuleRecord module) {

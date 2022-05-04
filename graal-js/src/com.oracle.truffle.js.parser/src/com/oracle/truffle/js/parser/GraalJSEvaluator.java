@@ -865,16 +865,13 @@ public final class GraalJSEvaluator implements JSParser {
         // AsyncModuleExecutionRejected ( module, error )
         class AsyncModuleExecutionRejectedRoot extends JavaScriptRootNode {
             @Child private PropertyGetNode getModule = PropertyGetNode.createGetHidden(STORE_MODULE_KEY, context);
-            @Child private PropertyGetNode getRejectionError = PropertyGetNode.createGetHidden(JSPromise.PROMISE_RESULT, context);
+            @Child private JavaScriptNode errorArgument = AccessIndexedArgumentNode.create(0);
 
             @Override
             public Object execute(VirtualFrame frame) {
                 JSModuleRecord module = (JSModuleRecord) getModule.getValue(JSArguments.getFunctionObject(frame.getArguments()));
-                Object resolvedPromise = module.getExecutionContinuation();
-                assert JSPromise.isJSPromise(resolvedPromise);
-                assert JSPromise.isRejected((JSDynamicObject) resolvedPromise);
-                Object reaction = getRejectionError.getValue(resolvedPromise);
-                return asyncModuleExecutionRejected(getRealm(), module, reaction);
+                Object error = errorArgument.execute(frame);
+                return asyncModuleExecutionRejected(getRealm(), module, error);
             }
         }
         return JSFunctionData.createCallOnly(context, new AsyncModuleExecutionRejectedRoot().getCallTarget(), 1, Strings.EMPTY_STRING);
@@ -965,13 +962,13 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     private static Object moduleExecution(JSRealm realm, JSModuleRecord moduleRecord, PromiseCapabilityRecord capability) {
+        JSFunctionObject moduleFunction = JSFunction.create(realm, moduleRecord.getFunctionData());
         if (!moduleRecord.hasTLA()) {
             assert capability == null;
-            return JSFunction.call(JSArguments.create(Undefined.instance, JSFunction.create(realm, moduleRecord.getFunctionData()), moduleRecord));
+            return JSFunction.call(JSArguments.create(Undefined.instance, moduleFunction, moduleRecord));
         } else {
-            Object asyncFunctionResultPromise = JSFunction.call(JSArguments.create(Undefined.instance, JSFunction.create(realm, moduleRecord.getFunctionData()), moduleRecord, capability));
-            moduleRecord.setExecutionContinuation(asyncFunctionResultPromise);
-            return asyncFunctionResultPromise;
+            assert capability != null;
+            return JSFunction.call(JSArguments.create(Undefined.instance, moduleFunction, moduleRecord, capability));
         }
     }
 
