@@ -218,11 +218,6 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorUnrecognizedOperator(TruffleString operatorName, Node originatingNode) {
-        return createTypeError("unrecognized operator " + Strings.toJavaString(operatorName), originatingNode);
-    }
-
-    @TruffleBoundary
     public static JSException createSyntaxError(String message, Throwable cause, Node originatingNode) {
         return JSException.create(JSErrorType.SyntaxError, message, cause, originatingNode);
     }
@@ -654,11 +649,6 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createRangeErrorStackOverflow() {
         return Errors.createRangeError("Maximum call stack size exceeded");
-    }
-
-    @TruffleBoundary
-    public static JSException createRangeErrorStackOverflow(Node originatingNode) {
-        return Errors.createRangeError("Maximum call stack size exceeded", originatingNode);
     }
 
     @TruffleBoundary
