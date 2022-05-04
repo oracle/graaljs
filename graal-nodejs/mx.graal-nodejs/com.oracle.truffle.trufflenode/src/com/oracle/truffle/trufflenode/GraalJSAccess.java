@@ -2999,15 +2999,11 @@ public final class GraalJSAccess {
                 agent.processAllPromises(true);
             } catch (AbstractTruffleException atex) {
                 InteropLibrary interop = InteropLibrary.getUncached(atex);
-                if (interop.isException(atex)) {
-                    ExceptionType type = interop.getExceptionType(atex);
-                    if (type == ExceptionType.INTERRUPT || type == ExceptionType.EXIT) {
-                        throw atex;
-                    }
-                    mainJSContext.notifyPromiseRejectionTracker(JSPromise.create(mainJSContext, getCurrentRealm()), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, atex);
-                } else {
+                ExceptionType type = interop.getExceptionType(atex);
+                if (type == ExceptionType.INTERRUPT || type == ExceptionType.EXIT) {
                     throw atex;
                 }
+                mainJSContext.notifyPromiseRejectionTracker(JSPromise.create(mainJSContext, getCurrentRealm()), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, atex);
             }
         } catch (Exception ex) {
             ex.printStackTrace();

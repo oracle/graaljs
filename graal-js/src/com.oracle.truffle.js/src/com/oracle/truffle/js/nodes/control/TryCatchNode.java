@@ -177,15 +177,12 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
     }
 
     public static boolean shouldCatch(AbstractTruffleException ex, InteropLibrary exceptions) {
-        if (exceptions.isException(ex)) {
-            try {
-                ExceptionType exceptionType = exceptions.getExceptionType(ex);
-                return exceptionType != ExceptionType.EXIT && exceptionType != ExceptionType.INTERRUPT;
-            } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(ex, e, "getExceptionType", null);
-            }
+        try {
+            ExceptionType exceptionType = exceptions.getExceptionType(ex);
+            return exceptionType != ExceptionType.EXIT && exceptionType != ExceptionType.INTERRUPT;
+        } catch (UnsupportedMessageException e) {
+            throw Errors.shouldNotReachHere(e);
         }
-        return false;
     }
 
     public static boolean shouldCatch(AbstractTruffleException ex) {
