@@ -47,6 +47,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
@@ -168,40 +169,26 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     private Object doForeignHintString(Object object, InteropLibrary interop) {
-        if (interop.hasMembers(object) && interop.isMemberInvocable(object, Strings.toJavaString(Strings.TO_STRING))) {
-            Object result;
-            try {
-                result = JSRuntime.importValue(interop.invokeMember(object, Strings.toJavaString(Strings.TO_STRING)));
-            } catch (InteropException e) {
-                result = null;
-            }
-            if (result != null && isPrimitiveNode.executeBoolean(result)) {
-                return result;
-            }
+        Object result = tryInvokeForeignMethod(object, interop, Strings.TO_STRING);
+        if (result != null) {
+            return result;
         }
         JSDynamicObject proto = getForeignObjectPrototype(object);
         Object func = getToString().executeWithTarget(proto);
         if (toStringFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
-            Object result = callToStringNode.executeCall(JSArguments.createZeroArg(object, func));
+            result = callToStringNode.executeCall(JSArguments.createZeroArg(object, func));
             if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
             }
         }
 
-        if (interop.hasMembers(object) && interop.isMemberInvocable(object, Strings.toJavaString(Strings.VALUE_OF))) {
-            Object result;
-            try {
-                result = JSRuntime.importValue(interop.invokeMember(object, Strings.toJavaString(Strings.VALUE_OF)));
-            } catch (InteropException e) {
-                result = null;
-            }
-            if (result != null && isPrimitiveNode.executeBoolean(result)) {
-                return result;
-            }
+        result = tryInvokeForeignMethod(object, interop, Strings.VALUE_OF);
+        if (result != null) {
+            return result;
         }
         func = getValueOf().executeWithTarget(proto);
         if (valueOfFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
-            Object result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, func));
+            result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, func));
             if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
             }
@@ -211,46 +198,46 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     private Object doForeignHintNumber(Object object, InteropLibrary interop) {
-        if (interop.hasMembers(object) && interop.isMemberInvocable(object, Strings.toJavaString(Strings.VALUE_OF))) {
-            Object result;
-            try {
-                result = JSRuntime.importValue(interop.invokeMember(object, Strings.toJavaString(Strings.VALUE_OF)));
-            } catch (InteropException e) {
-                result = null;
-            }
-            if (result != null && isPrimitiveNode.executeBoolean(result)) {
-                return result;
-            }
+        Object result = tryInvokeForeignMethod(object, interop, Strings.VALUE_OF);
+        if (result != null) {
+            return result;
         }
         JSDynamicObject proto = getForeignObjectPrototype(object);
         Object func = getValueOf().executeWithTarget(proto);
         if (valueOfFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
-            Object result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, func));
+            result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, func));
             if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
             }
         }
 
-        if (interop.hasMembers(object) && interop.isMemberInvocable(object, Strings.toJavaString(Strings.TO_STRING))) {
-            Object result;
-            try {
-                result = JSRuntime.importValue(interop.invokeMember(object, Strings.toJavaString(Strings.TO_STRING)));
-            } catch (InteropException e) {
-                result = null;
-            }
-            if (result != null && isPrimitiveNode.executeBoolean(result)) {
-                return result;
-            }
+        result = tryInvokeForeignMethod(object, interop, Strings.TO_STRING);
+        if (result != null) {
+            return result;
         }
         func = getToString().executeWithTarget(proto);
         if (toStringFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
-            Object result = callToStringNode.executeCall(JSArguments.createZeroArg(object, func));
+            result = callToStringNode.executeCall(JSArguments.createZeroArg(object, func));
             if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
             }
         }
 
         throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
+    }
+
+    private Object tryInvokeForeignMethod(Object object, InteropLibrary interop, TruffleString methodName) {
+        if (interop.hasMembers(object) && interop.isMemberInvocable(object, Strings.toJavaString(methodName))) {
+            try {
+                Object result = JSRuntime.importValue(interop.invokeMember(object, Strings.toJavaString(methodName)));
+                if (isPrimitiveNode.executeBoolean(result)) {
+                    return result;
+                }
+            } catch (InteropException e) {
+                // ignore
+            }
+        }
+        return null;
     }
 
     private PropertyNode getToString() {
