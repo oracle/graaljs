@@ -178,7 +178,7 @@ public final class TemporalParser {
             parseTimeZone();
             boolean hasCalendar = parseCalendar();
             if (!hasTimeDesignator && !hasCalendar) {
-                //neither of the two first alternatives match
+                // neither of the two first alternatives match
             } else if (atEnd()) {
                 return result();
             }
@@ -213,7 +213,7 @@ public final class TemporalParser {
         }
 
         reset();
-        TruffleString previousRest = rest; //tryParseTimeSpec overwrites rest
+        TruffleString previousRest = rest; // tryParseTimeSpec overwrites rest
         if (tryParseTimeSpec()) {
             // but it could still be ambiguous, so check ...
 
@@ -260,8 +260,6 @@ public final class TemporalParser {
 
             // TimeHour TimeMinute TimeZoneNumericUTCOffsetNotAmbiguousAllowedNegativeHour
             // TimeZoneBracketedAnnotationopt
-            int posBackup = pos;
-            TruffleString restBackup = rest;
             if (s < 0 && tryParseTimeZoneNumericUTCOffset(true)) {
                 tryParseTimeZoneBracketedAnnotation();
                 if (atEnd()) {

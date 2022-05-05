@@ -46,7 +46,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import com.oracle.truffle.js.builtins.PolyglotBuiltins;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -987,7 +986,7 @@ public class TemporalBuiltinsTest extends JSTest {
                         "pt.hour === 8 && pt.minute === 44 && pt.second === 15 && pt.millisecond === 321;";
         testTrue(code);
 
-        testFail("Temporal.PlainTime.from('08:44:15.321 ');", "invalid PlainTime");
+        testFail("Temporal.PlainTime.from('08:44:15.321 ');", "cannot parse the ISO date time string");
     }
 
     // test the different branches of TimeSpecWithOptionalTimeZoneNotAmbiguous
@@ -997,11 +996,11 @@ public class TemporalBuiltinsTest extends JSTest {
         // TimeHour TimeZoneNumericUTCOffsetNotAmbiguousopt TimeZoneBracketedAnnotationopt
         String code = "var pt = Temporal.PlainTime.from('21+22[+23]');\n" +
                         "pt.hour === 21 && pt.minute === 0 && pt.second === 0;";
-        // testTrue(code);
+        testTrue(code);
 
         code = "var pt = Temporal.PlainTime.from('23');\n" +
                         "pt.hour === 23 && pt.minute === 0 && pt.second === 0;";
-        // testTrue(code);
+        testTrue(code);
 
         // attn: more alternatives in TimeZoneNumericUTCOffsetNotAmbiguous
 
@@ -1044,30 +1043,30 @@ public class TemporalBuiltinsTest extends JSTest {
         // TimeHour TimeMinute TimeZoneNumericUTCOffsetNotAmbiguousAllowedNegativeHour
         // TimeZoneBracketedAnnotationopt
         code = "var pt = Temporal.PlainTime.from('0102+23[+23]');\n" + // TimeZoneNumericUTCOffsetNotAmbiguous
-                "pt.hour === 1 && pt.minute === 2 && pt.second === 0;";
+                        "pt.hour === 1 && pt.minute === 2 && pt.second === 0;";
         testTrue(code);
 
         code = "var pt = Temporal.PlainTime.from('0102-13[+23]');\n" + // timeHourNotValidMonth
-                "pt.hour === 1 && pt.minute === 2 && pt.second === 0;";
+                        "pt.hour === 1 && pt.minute === 2 && pt.second === 0;";
         testTrue(code);
 
         // ==================================================
         // TimeHour : TimeMinute : TimeSecond TimeFractionopt TimeZoneopt
         code = "var pt = Temporal.PlainTime.from('01:02:03.456[+23]');\n" +
-                "pt.hour === 1 && pt.minute === 2 && pt.second === 3 && pt.millisecond === 456;";
+                        "pt.hour === 1 && pt.minute === 2 && pt.second === 3 && pt.millisecond === 456;";
         testTrue(code);
 
         // ==================================================
         // TimeHour TimeMinute TimeSecondNotValidMonth TimeZoneopt
 
         code = "var pt = Temporal.PlainTime.from('010213[+23]');\n" +
-                "pt.hour === 1 && pt.minute === 2 && pt.second === 13 && pt.millisecond === 0;";
+                        "pt.hour === 1 && pt.minute === 2 && pt.second === 13 && pt.millisecond === 0;";
         testTrue(code);
 
         // ==================================================
         // TimeHour TimeMinute TimeSecond TimeFraction TimeZoneopt
         code = "var pt = Temporal.PlainTime.from('010203.456[+23]');\n" +
-                "pt.hour === 1 && pt.minute === 2 && pt.second === 3 && pt.millisecond === 456;";
+                        "pt.hour === 1 && pt.minute === 2 && pt.second === 3 && pt.millisecond === 456;";
         testTrue(code);
     }
 
@@ -1083,7 +1082,7 @@ public class TemporalBuiltinsTest extends JSTest {
             ctx.eval(ID, code);
             Assert.fail("should have failed");
         } catch (PolyglotException ex) {
-            Assert.assertTrue(ex.getMessage().contains("cannot parse the ISO date time string"));
+            Assert.assertTrue(ex.getMessage().contains(message));
         }
     }
 
