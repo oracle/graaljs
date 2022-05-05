@@ -154,9 +154,19 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
             setNumberFormatDigitOptions.execute(state, options, mnfdDefault, mxfdDefault, compactNotation);
 
             int roundingIncrement = getRoundingIncrementOption.executeInt(options, 1, 5000, 1);
-            if (!isValidRoundingIncrement(roundingIncrement) || (roundingIncrement != 1 && !IntlUtil.FRACTION_DIGITS.equals(state.getRoundingType()))) {
+            if (!isValidRoundingIncrement(roundingIncrement)) {
                 errorBranch.enter();
                 throw Errors.createRangeError("roundingIncrement value is out of range.");
+            }
+            if (roundingIncrement != 1) {
+                if (!IntlUtil.FRACTION_DIGITS.equals(state.getRoundingType())) {
+                    errorBranch.enter();
+                    throw Errors.createTypeError("roundingIncrement can be used with fractionDigits rounding type only");
+                }
+                if (state.getMinimumFractionDigits().intValue() != state.getMaximumFractionDigits().intValue()) {
+                    errorBranch.enter();
+                    throw Errors.createRangeError("roundingIncrement can be used when minimumFractionDigits and maximumFractionDigits are equal only");
+                }
             }
             state.setRoundingIncrement(roundingIncrement);
 
