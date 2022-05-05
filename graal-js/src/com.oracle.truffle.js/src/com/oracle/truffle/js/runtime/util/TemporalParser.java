@@ -212,6 +212,8 @@ public final class TemporalParser {
             }
         }
 
+        reset();
+        TruffleString previousRest = rest; //tryParseTimeSpec overwrites rest
         if (tryParseTimeSpec()) {
             // but it could still be ambiguous, so check ...
 
@@ -220,7 +222,7 @@ public final class TemporalParser {
             long s = getNumber(second);
 
             // TimeHour : TimeMinute TimeZoneopt
-            if (Strings.charAt(rest, 2) == ':' && isValidMinute(min)) {
+            if (s < 0 && Strings.length(previousRest) >= 3 && Strings.charAt(previousRest, 2) == ':' && isValidMinute(min)) {
                 parseTimeZone();
                 if (atEnd()) {
                     return result();
@@ -228,7 +230,7 @@ public final class TemporalParser {
             }
 
             // TimeHourMinuteBasicFormatNotAmbiguous TimeZoneBracketedAnnotationopt
-            if (Strings.charAt(rest, 2) != ':') {
+            if (s < 0 && Strings.length(previousRest) >= 3 && Strings.charAt(previousRest, 2) != ':') {
                 boolean ok = false;
                 // TimeHourNotValidMonth TimeMinute
                 if ((h == 0 || (13 <= h && h <= 23)) && isValidMinute(min)) {
@@ -258,12 +260,15 @@ public final class TemporalParser {
 
             // TimeHour TimeMinute TimeZoneNumericUTCOffsetNotAmbiguousAllowedNegativeHour
             // TimeZoneBracketedAnnotationopt
-            if (tryParseTimeZoneNumericUTCOffset(true)) {
+            int posBackup = pos;
+            TruffleString restBackup = rest;
+            if (s < 0 && tryParseTimeZoneNumericUTCOffset(true)) {
                 tryParseTimeZoneBracketedAnnotation();
                 if (atEnd()) {
                     return result();
                 }
             }
+
             if (tryParseNegativeTimeHourNotValidMonth()) {
                 tryParseTimeZoneBracketedAnnotation();
                 if (atEnd()) {
@@ -272,7 +277,7 @@ public final class TemporalParser {
             }
 
             // TimeHour : TimeMinute : TimeSecond TimeFractionopt TimeZoneopt
-            if (Strings.length(rest) >= 4 && Strings.charAt(rest, 2) == ':' && Strings.charAt(rest, 4) == ':') {
+            if (Strings.length(previousRest) > 5 && Strings.charAt(previousRest, 2) == ':' && Strings.charAt(previousRest, 5) == ':') {
                 parseTimeZone();
                 if (atEnd()) {
                     return result();
@@ -280,7 +285,7 @@ public final class TemporalParser {
             }
 
             // TimeHour TimeMinute TimeSecondNotValidMonth TimeZoneopt
-            if (Strings.charAt(rest, 2) != ':' && (s == 0 || (13 <= h && s <= 60))) {
+            if (Strings.length(previousRest) > 2 && Strings.charAt(previousRest, 2) != ':' && (s == 0 || (13 <= s && s <= 60))) {
                 parseTimeZone();
                 if (atEnd()) {
                     return result();
@@ -288,7 +293,7 @@ public final class TemporalParser {
             }
 
             // TimeHour TimeMinute TimeSecond TimeFraction TimeZoneopt
-            if (Strings.charAt(rest, 2) != ':' && this.fraction != null) {
+            if (Strings.length(previousRest) > 2 && Strings.charAt(previousRest, 2) != ':' && this.fraction != null) {
                 parseTimeZone();
                 if (atEnd()) {
                     return result();
@@ -300,10 +305,10 @@ public final class TemporalParser {
     }
 
     private boolean tryParseNegativeTimeHourNotValidMonth() {
-        if (Strings.charAt(rest, 0) == '-') {
+        if (Strings.length(rest) > 0 && Strings.charAt(rest, 0) == '-') {
             int h = parseTwoDigits(1);
             if (0 == h || (13 <= h && h <= 23)) {
-                this.hour = Strings.lazySubstring(rest, 0, 2);
+                this.offsetHour = Strings.lazySubstring(rest, 1, 2);
                 move(3);
                 return true;
             }
@@ -320,6 +325,9 @@ public final class TemporalParser {
     }
 
     private static long getNumber(TruffleString s) {
+        if (s == null) {
+            return -1;
+        }
         try {
             return Strings.parseLong(s);
         } catch (TruffleString.NumberFormatException ex) {
