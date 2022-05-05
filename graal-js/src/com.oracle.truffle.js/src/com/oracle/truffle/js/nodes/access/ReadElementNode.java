@@ -1669,7 +1669,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     this.readFromPrototypeNode = insert(ReadElementNode.create(context));
                     this.foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
                 }
-                JSDynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(truffleObject);
+                JSDynamicObject prototype = foreignObjectPrototypeNode.execute(truffleObject);
                 return readFromPrototypeNode.executeWithTargetAndIndex(prototype, key);
             } else {
                 return Undefined.instance;

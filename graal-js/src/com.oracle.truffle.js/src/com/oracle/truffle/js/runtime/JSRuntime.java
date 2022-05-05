@@ -67,6 +67,7 @@ import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -390,7 +391,6 @@ public final class JSRuntime {
 
     @TruffleBoundary
     private static Object foreignOrdinaryToPrimitive(Object obj, TruffleString hint) {
-        JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
         TruffleString[] methodNames;
         if (Strings.equals(Strings.HINT_STRING, hint)) {
@@ -399,16 +399,8 @@ public final class JSRuntime {
             assert Strings.equals(Strings.HINT_NUMBER, hint);
             methodNames = new TruffleString[]{Strings.VALUE_OF, Strings.TO_STRING};
         }
-        JSDynamicObject proto;
-        if (interop.hasArrayElements(obj)) {
-            proto = realm.getArrayPrototype();
-        } else if (interop.isExecutable(obj)) {
-            proto = realm.getFunctionPrototype();
-        } else if (interop.isInstant(obj)) {
-            proto = realm.getDatePrototype();
-        } else {
-            proto = realm.getObjectPrototype();
-        }
+
+        JSDynamicObject proto = ForeignObjectPrototypeNode.getUncached().execute(obj);
 
         for (TruffleString name : methodNames) {
             if (interop.hasMembers(obj) && interop.isMemberInvocable(obj, Strings.toJavaString(name))) {

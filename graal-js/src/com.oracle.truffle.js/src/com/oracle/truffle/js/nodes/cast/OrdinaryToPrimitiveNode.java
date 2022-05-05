@@ -264,6 +264,6 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
         }
-        return foreignObjectPrototypeNode.executeDynamicObject(truffleObject);
+        return foreignObjectPrototypeNode.execute(truffleObject);
     }
 }

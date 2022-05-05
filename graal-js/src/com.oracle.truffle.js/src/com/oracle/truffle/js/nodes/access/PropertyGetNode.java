@@ -1271,7 +1271,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
                 }
-                JSDynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(thisObj);
+                JSDynamicObject prototype = foreignObjectPrototypeNode.execute(thisObj);
                 return getFromJSObject(prototype, key);
             }
             return Undefined.instance;

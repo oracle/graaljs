@@ -1311,7 +1311,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
             }
-            return foreignObjectPrototypeNode.executeDynamicObject(truffleObject);
+            return foreignObjectPrototypeNode.execute(truffleObject);
         }
 
         private InteropLibrary getInterop() {
