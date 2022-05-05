@@ -124,13 +124,17 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     static TruffleFile getModuleResolveCurrentWorkingDirectory(JSContext context, TruffleLanguage.Env env) {
         String currentFileNameFromStack = CommonJSResolution.getCurrentFileNameFromStack();
         if (currentFileNameFromStack == null) {
-            String cwdOption = context.getContextOptions().getRequireCwd();
-            return cwdOption == null ? env.getCurrentWorkingDirectory() : env.getPublicTruffleFile(cwdOption);
+            return getRequireCwd(context, env);
         } else {
             TruffleFile truffleFile = env.getPublicTruffleFile(currentFileNameFromStack);
             assert truffleFile.isRegularFile() && truffleFile.getParent() != null;
             return truffleFile.getParent().normalize();
         }
+    }
+
+    static TruffleFile getRequireCwd(JSContext context, TruffleLanguage.Env env) {
+        String cwdOption = context.getContextOptions().getRequireCwd();
+        return cwdOption == null ? env.getCurrentWorkingDirectory() : env.getPublicTruffleFile(cwdOption);
     }
 
     CommonJSRequireBuiltin(JSContext context, JSBuiltin builtin) {
@@ -147,11 +151,12 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
 
     @TruffleBoundary
     private Object requireImpl(TruffleString moduleIdentifier, TruffleFile entryPath, JSRealm realm) {
-        log("required module '", moduleIdentifier, " from path ", entryPath);
+        log("required module '", moduleIdentifier, "' from path ", entryPath);
         if (hasCoreModuleReplacement(getContext(), moduleIdentifier)) {
             TruffleString moduleReplacementName = Strings.fromJavaString(getContext().getContextOptions().getCommonJSRequireBuiltins().get(Strings.toJavaString(moduleIdentifier)));
             if (moduleReplacementName != null && !moduleReplacementName.isEmpty()) {
-                return requireImpl(moduleReplacementName, getModuleResolveCurrentWorkingDirectory(getContext(), realm.getEnv()), realm);
+                log("using module replacement for module '", moduleIdentifier, "' with ", moduleReplacementName);
+                return requireImpl(moduleReplacementName, getRequireCwd(getContext(), realm.getEnv()), realm);
             }
             // no core module replacement alias was found: continue and search in the FS.
         }
@@ -205,11 +210,12 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         JSObject.set(env, Strings.ENV_PROPERTY_NAME, JSOrdinary.create(getContext(), getRealm()));
         // Parse the module
         CharSequence characters = MODULE_PREAMBLE + source.getCharacters() + MODULE_END;
-        Source moduleSources = Source.newBuilder(JavaScriptLanguage.ID, characters, Strings.toJavaString(filenameBuiltin)).mimeType(JavaScriptLanguage.TEXT_MIME_TYPE).build();
+        Source moduleSources = Source.newBuilder(source).content(characters).mimeType(JavaScriptLanguage.TEXT_MIME_TYPE).build();
         CallTarget moduleCallTarget = realm.getEnv().parsePublic(moduleSources);
         Object moduleExecutableFunction = moduleCallTarget.call();
         // Execute the module.
         if (JSFunction.isJSFunction(moduleExecutableFunction)) {
+            log("adding to cache ", normalizedPath);
             commonJSCache.put(normalizedPath, moduleBuiltin);
             try {
                 debugStackPush(moduleIdentifier);
