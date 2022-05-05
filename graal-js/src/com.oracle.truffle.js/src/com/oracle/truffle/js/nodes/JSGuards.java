@@ -103,10 +103,6 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSGuards {
-    /** {@code false} constant for use in DSL. */
-    public static final boolean FALSE = false;
-    /** {@code true} constant for use in DSL. */
-    public static final boolean TRUE = true;
 
     private JSGuards() {
         // this class should not be instantiated
