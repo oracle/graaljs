@@ -2300,9 +2300,9 @@
     "status" : "FAIL",
     "comment" : "Missing 'features: [Intl.DurationFormat]'"
   }, {
-    "filePath" : "intl402/NumberFormat/constructor-roundingIncrement-invalid.js",
+    "filePath" : "intl402/NumberFormat/constructor-roundingIncrement.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-04-11"
+    "comment" : "Off-spec test, fixed by https://github.com/tc39/test262/commit/576c0c0c7f1ff4949b15fb6de5953532e159875d"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-increment-10.js",
     "status" : "FAIL",
@@ -2315,6 +2315,10 @@
     "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-increment-1000.js",
     "status" : "FAIL",
     "comment" : "Bug in ICU4J: https://unicode-org.atlassian.net/browse/ICU-21887"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-increment-2.js",
+    "status" : "FAIL",
+    "comment" : "Off-spec test, fixed by https://github.com/tc39/test262/commit/576c0c0c7f1ff4949b15fb6de5953532e159875d"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-increment-20.js",
     "status" : "FAIL",
