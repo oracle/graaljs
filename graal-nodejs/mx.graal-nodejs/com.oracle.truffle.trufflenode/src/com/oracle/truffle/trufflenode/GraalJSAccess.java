@@ -2530,13 +2530,12 @@ public final class GraalJSAccess {
             throwable.printStackTrace();
             exit(1);
         }
-        JSRealm jsRealm = (JSRealm) context;
         if (!(throwable instanceof GraalJSException)) {
             isolateInternalErrorCheck(throwable);
             throwable = JSException.create(JSErrorType.Error, throwable.getMessage(), throwable, null);
         }
         GraalJSException truffleException = (GraalJSException) throwable;
-        Object exceptionObject = truffleException.getErrorObjectEager(jsRealm);
+        Object exceptionObject = truffleException.getErrorObject();
         if (JSRuntime.isObject(exceptionObject)) {
             JSObject errorObject = (JSObject) exceptionObject;
             if (JSError.getException(errorObject) == null) {
@@ -3011,15 +3010,11 @@ public final class GraalJSAccess {
                 agent.processAllPromises(true);
             } catch (AbstractTruffleException atex) {
                 InteropLibrary interop = InteropLibrary.getUncached(atex);
-                if (interop.isException(atex)) {
-                    ExceptionType type = interop.getExceptionType(atex);
-                    if (type == ExceptionType.INTERRUPT || type == ExceptionType.EXIT) {
-                        throw atex;
-                    }
-                    mainJSContext.notifyPromiseRejectionTracker(JSPromise.create(mainJSContext, getCurrentRealm()), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, atex);
-                } else {
+                ExceptionType type = interop.getExceptionType(atex);
+                if (type == ExceptionType.INTERRUPT || type == ExceptionType.EXIT) {
                     throw atex;
                 }
+                mainJSContext.notifyPromiseRejectionTracker(JSPromise.create(mainJSContext, getCurrentRealm()), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, atex);
             }
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -3798,7 +3793,7 @@ public final class GraalJSAccess {
         ESModuleLoader loader = getModuleLoader();
         loader.setResolver(resolveCallback);
         try {
-            jsContext.getEvaluator().moduleInstantiation(jsRealm, (JSModuleRecord) module);
+            jsContext.getEvaluator().moduleLinking(jsRealm, (JSModuleRecord) module);
         } finally {
             loader.setResolver(0);
         }
@@ -3854,7 +3849,7 @@ public final class GraalJSAccess {
         JSModuleRecord record = (JSModuleRecord) module;
         Throwable evaluationError = record.getEvaluationError();
         if (evaluationError instanceof GraalJSException) {
-            return ((GraalJSException) evaluationError).getErrorObjectEager(getCurrentRealm());
+            return ((GraalJSException) evaluationError).getErrorObject();
         }
         return evaluationError;
     }

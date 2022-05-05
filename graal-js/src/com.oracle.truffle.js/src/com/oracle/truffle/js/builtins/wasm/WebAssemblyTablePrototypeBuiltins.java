@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins.wasm;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -49,7 +50,6 @@ import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableGetNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableGrowNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableSetNodeGen;
-import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyIndexOrSizeNode;
@@ -134,13 +134,9 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return tableGrowLib.execute(growFn, wasmTable, deltaInt);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
-            } catch (Throwable throwable) {
+            } catch (AbstractTruffleException ex) {
                 errorBranch.enter();
-                if (TryCatchNode.shouldCatch(throwable)) {
-                    throw Errors.createRangeError(throwable, this);
-                } else {
-                    throw throwable;
-                }
+                throw Errors.createRangeError(ex, this);
             }
         }
 
@@ -178,13 +174,9 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSWebAssemblyInstance.exportFunction(getContext(), realm, fn, funcType);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
-            } catch (Throwable throwable) {
+            } catch (AbstractTruffleException ex) {
                 errorBranch.enter();
-                if (TryCatchNode.shouldCatch(throwable)) {
-                    throw Errors.createRangeError(throwable, this);
-                } else {
-                    throw throwable;
-                }
+                throw Errors.createRangeError(ex, this);
             }
         }
     }
@@ -221,13 +213,9 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 tableSetLib.execute(setFn, wasmTable, indexInt, wasmFunction);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
-            } catch (Throwable throwable) {
+            } catch (AbstractTruffleException ex) {
                 errorBranch.enter();
-                if (TryCatchNode.shouldCatch(throwable)) {
-                    throw Errors.createRangeError(throwable, this);
-                } else {
-                    throw throwable;
-                }
+                throw Errors.createRangeError(ex, this);
             }
             return Undefined.instance;
         }

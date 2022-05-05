@@ -56,6 +56,7 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -73,9 +74,8 @@ public class DebugJSAgent extends JSAgent {
     private boolean quit;
     private Object debugReceiveBroadcast;
 
-    @TruffleBoundary
-    public DebugJSAgent(boolean canBlock, OptionValues optionValues) {
-        super(canBlock);
+    public DebugJSAgent(PromiseRejectionTracker promiseRejectionTracker, boolean canBlock, OptionValues optionValues) {
+        super(promiseRejectionTracker, canBlock);
         this.optionValues = optionValues;
         this.reportValues = new ConcurrentLinkedDeque<>();
         this.spawnedAgent = new LinkedList<>();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,12 +41,12 @@
 package com.oracle.truffle.js.builtins.wasm;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyMemoryPrototypeBuiltinsFactory.WebAssemblyMemoryGrowNodeGen;
-import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyIndexOrSizeNode;
@@ -121,13 +121,9 @@ public class WebAssemblyMemoryPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 return memGrowLib.execute(growFn, wasmMemory, deltaInt);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
-            } catch (Throwable throwable) {
+            } catch (AbstractTruffleException ex) {
                 errorBranch.enter();
-                if (TryCatchNode.shouldCatch(throwable)) {
-                    throw Errors.createRangeError(throwable, this);
-                } else {
-                    throw throwable;
-                }
+                throw Errors.createRangeError(ex, this);
             }
         }
 

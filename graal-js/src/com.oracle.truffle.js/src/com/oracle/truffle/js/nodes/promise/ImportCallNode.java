@@ -46,9 +46,9 @@ import java.util.Set;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -62,7 +62,6 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSException;
@@ -103,7 +102,6 @@ public class ImportCallNode extends JavaScriptNode {
     // lazily initialized
     @Child private JSFunctionCallNode callRejectNode;
     @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-    @Child private InteropLibrary exceptions;
     @Child private EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
     @Child private PropertyGetNode getAssertionsNode;
 
@@ -139,17 +137,14 @@ public class ImportCallNode extends JavaScriptNode {
     }
 
     private Object executeWithoutAssertions(Object referencingScriptOrModule, Object specifier) {
+        PromiseCapabilityRecord promiseCapability = newPromiseCapability();
         TruffleString specifierString;
         try {
             specifierString = toStringNode.executeString(specifier);
-        } catch (Throwable ex) {
-            if (TryCatchNode.shouldCatch(ex, exceptions())) {
-                return newRejectedPromiseFromException(ex);
-            } else {
-                throw ex;
-            }
+        } catch (AbstractTruffleException ex) {
+            return rejectPromise(promiseCapability, ex);
         }
-        return hostImportModuleDynamically(referencingScriptOrModule, ModuleRequest.create(specifierString), newPromiseCapability());
+        return hostImportModuleDynamically(referencingScriptOrModule, ModuleRequest.create(specifierString), promiseCapability);
     }
 
     @SuppressWarnings("unchecked")
@@ -165,42 +160,30 @@ public class ImportCallNode extends JavaScriptNode {
         TruffleString specifierString;
         try {
             specifierString = toStringNode.executeString(specifier);
-        } catch (Throwable ex) {
-            if (TryCatchNode.shouldCatch(ex, exceptions())) {
-                return newRejectedPromiseFromException(ex);
-            } else {
-                throw ex;
-            }
+        } catch (AbstractTruffleException ex) {
+            return rejectPromise(promiseCapability, ex);
         }
         Map.Entry<TruffleString, TruffleString>[] assertions = null;
         if (options != Undefined.instance) {
             if (!JSRuntime.isObject(options)) {
-                return rejectPromise(promiseCapability, "The second argument to import() must be an object");
+                return rejectPromiseWithTypeError(promiseCapability, "The second argument to import() must be an object");
             }
             Object assertionsObj;
             try {
                 assertionsObj = getAssertionsNode.getValue(options);
-            } catch (Throwable ex) {
-                if (TryCatchNode.shouldCatch(ex, exceptions())) {
-                    return newRejectedPromiseFromException(ex);
-                } else {
-                    throw ex;
-                }
+            } catch (AbstractTruffleException ex) {
+                return rejectPromise(promiseCapability, ex);
             }
             if (assertionsObj != Undefined.instance) {
                 if (!JSRuntime.isObject(assertionsObj)) {
-                    return rejectPromise(promiseCapability, "The 'assert' option must be an object");
+                    return rejectPromiseWithTypeError(promiseCapability, "The 'assert' option must be an object");
                 }
                 JSDynamicObject obj = (JSDynamicObject) assertionsObj;
                 UnmodifiableArrayList<? extends Object> keys;
                 try {
                     keys = enumerableOwnPropertyNamesNode.execute(obj);
-                } catch (Throwable ex) {
-                    if (TryCatchNode.shouldCatch(ex, exceptions())) {
-                        return newRejectedPromiseFromException(ex);
-                    } else {
-                        throw ex;
-                    }
+                } catch (AbstractTruffleException ex) {
+                    return rejectPromise(promiseCapability, ex);
                 }
                 assertions = (Map.Entry<TruffleString, TruffleString>[]) new Map.Entry<?, ?>[keys.size()];
                 for (int i = 0; i < keys.size(); i++) {
@@ -208,15 +191,11 @@ public class ImportCallNode extends JavaScriptNode {
                     Object value;
                     try {
                         value = JSObject.get(obj, key);
-                    } catch (Throwable ex) {
-                        if (TryCatchNode.shouldCatch(ex, exceptions())) {
-                            return newRejectedPromiseFromException(ex);
-                        } else {
-                            throw ex;
-                        }
+                    } catch (AbstractTruffleException ex) {
+                        return rejectPromise(promiseCapability, ex);
                     }
                     if (!Strings.isTString(value)) {
-                        return rejectPromise(promiseCapability, "Import assertion value must be a string");
+                        return rejectPromiseWithTypeError(promiseCapability, "Import assertion value must be a string");
                     }
                     assertions[i] = Boundaries.mapEntry(key, JSRuntime.toStringIsString(value));
                 }
@@ -229,15 +208,6 @@ public class ImportCallNode extends JavaScriptNode {
     @TruffleBoundary
     private static ModuleRequest createModuleRequestWithAssertions(TruffleString specifierString, Map.Entry<TruffleString, TruffleString>[] assertions) {
         return ModuleRequest.create(specifierString, assertions);
-    }
-
-    private Object rejectPromise(PromiseCapabilityRecord promiseCapability, String errorMessage) {
-        if (callRejectNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            callRejectNode = insert(JSFunctionCallNode.createCall());
-        }
-        callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), Errors.createTypeError(errorMessage, this)));
-        return promiseCapability.getPromise();
     }
 
     private Object getActiveScriptOrModule(VirtualFrame frame) {
@@ -253,7 +223,7 @@ public class ImportCallNode extends JavaScriptNode {
         if (context.hasImportModuleDynamicallyCallbackBeenSet()) {
             JSDynamicObject promise = context.hostImportModuleDynamically(realm, (ScriptOrModule) referencingScriptOrModule, moduleRequest);
             if (promise == null) {
-                return newRejectedPromiseFromException(createTypeErrorCannotImport(moduleRequest.getSpecifier()));
+                return rejectPromise(promiseCapability, createTypeErrorCannotImport(moduleRequest.getSpecifier()));
             }
             assert JSPromise.isJSPromise(promise);
             return promise;
@@ -271,24 +241,23 @@ public class ImportCallNode extends JavaScriptNode {
         return newPromiseCapabilityNode.executeDefault();
     }
 
-    private JSDynamicObject newRejectedPromiseFromException(Throwable ex) {
+    private JSDynamicObject rejectPromise(PromiseCapabilityRecord promiseCapability, AbstractTruffleException ex) {
         if (callRejectNode == null || getErrorObjectNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             callRejectNode = insert(JSFunctionCallNode.createCall());
             getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
         }
-        PromiseCapabilityRecord promiseCapability = newPromiseCapability();
-        callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), getErrorObjectNode.execute(ex)));
+        Object error = getErrorObjectNode.execute(ex);
+        callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
         return promiseCapability.getPromise();
     }
 
-    private InteropLibrary exceptions() {
-        InteropLibrary e = exceptions;
-        if (e == null) {
+    private Object rejectPromiseWithTypeError(PromiseCapabilityRecord promiseCapability, String errorMessage) {
+        if (callRejectNode == null) {
+            // Just to cut off before createTypeError. Nodes are initialized in rejectPromise().
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            exceptions = e = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
         }
-        return e;
+        return rejectPromise(promiseCapability, Errors.createTypeError(errorMessage, this));
     }
 
     @TruffleBoundary
@@ -335,7 +304,7 @@ public class ImportCallNode extends JavaScriptNode {
             }
 
             protected Object finishDynamicImport(JSRealm realm, JSModuleRecord moduleRecord, ScriptOrModule referencingScriptOrModule, ModuleRequest moduleRequest) {
-                context.getEvaluator().moduleInstantiation(realm, moduleRecord);
+                context.getEvaluator().moduleLinking(realm, moduleRecord);
                 context.getEvaluator().moduleEvaluation(realm, moduleRecord);
                 if (moduleRecord.getEvaluationError() != null) {
                     throw JSRuntime.rethrow(moduleRecord.getEvaluationError());
@@ -350,9 +319,9 @@ public class ImportCallNode extends JavaScriptNode {
 
         class TopLevelAwaitImportModuleDynamicallyRootNode extends ImportModuleDynamicallyRootNode {
             @Child private PerformPromiseThenNode promiseThenNode = PerformPromiseThenNode.create(context);
-            @Child private JSFunctionCallNode callPromiseReaction = JSFunctionCallNode.createCall();
+            @Child private JSFunctionCallNode callPromiseResolve = JSFunctionCallNode.createCall();
+            @Child private JSFunctionCallNode callPromiseReject;
             @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-            @Child private InteropLibrary exceptions;
             @Child private PropertySetNode setModuleRecord;
 
             @SuppressWarnings("unchecked")
@@ -366,7 +335,7 @@ public class ImportCallNode extends JavaScriptNode {
                     JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, moduleRequest);
                     JSRealm realm = getRealm();
                     if (moduleRecord.hasTLA()) {
-                        context.getEvaluator().moduleInstantiation(realm, moduleRecord);
+                        context.getEvaluator().moduleLinking(realm, moduleRecord);
                         Object innerPromise = context.getEvaluator().moduleEvaluation(realm, moduleRecord);
                         assert JSPromise.isJSPromise(innerPromise);
                         JSDynamicObject resolve = createFinishDynamicImportCapabilityCallback(context, realm, moduleRecord, false);
@@ -380,27 +349,23 @@ public class ImportCallNode extends JavaScriptNode {
                             PromiseCapabilityRecord topLevelCapability = moduleRecord.getTopLevelCapability();
                             promiseThenNode.execute(topLevelCapability.getPromise(), moduleLoadedCapability.getResolve(), moduleLoadedCapability.getReject(), null);
                         } else {
-                            callPromiseReaction.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getResolve(), result));
+                            callPromiseResolve.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getResolve(), result));
                         }
                     }
-                } catch (Throwable t) {
-                    if (shouldCatch(t)) {
-                        Object errorObject = getErrorObjectNode.execute(t);
-                        callPromiseReaction.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getReject(), errorObject));
-                    } else {
-                        throw t;
-                    }
+                } catch (AbstractTruffleException ex) {
+                    rejectPromise(moduleLoadedCapability, ex);
                 }
                 return Undefined.instance;
             }
 
-            private boolean shouldCatch(Throwable exception) {
-                if (getErrorObjectNode == null || exceptions == null) {
+            private void rejectPromise(PromiseCapabilityRecord moduleLoadedCapability, AbstractTruffleException ex) {
+                if (getErrorObjectNode == null || callPromiseReject == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
-                    exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
+                    callPromiseReject = insert(JSFunctionCallNode.createCall());
                 }
-                return TryCatchNode.shouldCatch(exception, exceptions);
+                Object errorObject = getErrorObjectNode.execute(ex);
+                callPromiseReject.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getReject(), errorObject));
             }
 
             private JSDynamicObject createFinishDynamicImportCapabilityCallback(JSContext cx, JSRealm realm, JSModuleRecord moduleRecord, boolean onReject) {

@@ -41,12 +41,11 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -58,7 +57,6 @@ public class PromiseResolveThenableNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode callResolveNode;
     @Child private JSFunctionCallNode callRejectNode;
     @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-    @Child private InteropLibrary exceptions;
 
     protected PromiseResolveThenableNode(JSContext context) {
         this.context = context;
@@ -76,29 +74,18 @@ public class PromiseResolveThenableNode extends JavaScriptBaseNode {
         JSDynamicObject reject = resolvingFunctions.getSecond();
         try {
             return callResolveNode.executeCall(JSArguments.create(thenable, then, resolve, reject));
-        } catch (Throwable ex) {
-            if (shouldCatch(ex)) {
-                return callReject().executeCall(JSArguments.create(Undefined.instance, reject, getErrorObjectNode.execute(ex)));
-            } else {
-                throw ex;
-            }
+        } catch (AbstractTruffleException ex) {
+            return callReject(reject, ex);
         }
     }
 
-    private boolean shouldCatch(Throwable exception) {
-        if (getErrorObjectNode == null || exceptions == null) {
+    private Object callReject(JSDynamicObject reject, AbstractTruffleException exception) {
+        if (getErrorObjectNode == null || callRejectNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
-            exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-        }
-        return TryCatchNode.shouldCatch(exception, exceptions);
-    }
-
-    private JSFunctionCallNode callReject() {
-        if (callRejectNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             callRejectNode = insert(JSFunctionCallNode.createCall());
         }
-        return callRejectNode;
+        Object error = getErrorObjectNode.execute(exception);
+        return callRejectNode.executeCall(JSArguments.create(Undefined.instance, reject, error));
     }
 }

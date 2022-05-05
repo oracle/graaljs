@@ -50,11 +50,11 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -70,7 +70,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -94,7 +93,6 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
         @Child private JSFunctionCallNode callResolveNode;
         @Child private JSFunctionCallNode callRejectNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-        @Child private InteropLibrary exceptions;
 
         AsyncFunctionRootNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncResult, JSReadFrameSlotNode readAsyncContext, SourceSection functionSourceSection,
                         String functionName) {
@@ -138,16 +136,12 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
 
             try {
                 Object result = functionBody.execute(asyncFrame);
-                promiseCapabilityResolve(callResolveNode, promiseCapability, result);
+                promiseCapabilityResolve(promiseCapability, result);
             } catch (YieldException e) {
                 assert e.isAwait();
                 // no-op: we called await, so we will resume later.
-            } catch (Throwable e) {
-                if (shouldCatch(e)) {
-                    promiseCapabilityReject(callRejectNode, promiseCapability, getErrorObjectNode.execute(e));
-                } else {
-                    throw e;
-                }
+            } catch (AbstractTruffleException e) {
+                promiseCapabilityReject(promiseCapability, e);
             } finally {
                 if (enterContext) {
                     childContext.leave(this, prev);
@@ -157,14 +151,18 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
             return Undefined.instance;
         }
 
-        private boolean shouldCatch(Throwable exception) {
-            if (getErrorObjectNode == null || callRejectNode == null || exceptions == null) {
+        private void promiseCapabilityResolve(PromiseCapabilityRecord promiseCapability, Object result) {
+            callResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), result));
+        }
+
+        private void promiseCapabilityReject(PromiseCapabilityRecord promiseCapability, AbstractTruffleException e) {
+            if (getErrorObjectNode == null || callRejectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
                 callRejectNode = insert(JSFunctionCallNode.createCall());
-                exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
-            return TryCatchNode.shouldCatch(exception, exceptions);
+            Object error = getErrorObjectNode.execute(e);
+            callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
         }
 
         @Override
@@ -302,14 +300,6 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
         asyncFunctionStart(frame, promiseCapability);
 
         return promiseCapability.getPromise();
-    }
-
-    private static void promiseCapabilityResolve(JSFunctionCallNode promiseCallNode, PromiseCapabilityRecord promiseCapability, Object result) {
-        promiseCallNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), result));
-    }
-
-    private static void promiseCapabilityReject(JSFunctionCallNode promiseCallNode, PromiseCapabilityRecord promiseCapability, Object result) {
-        promiseCallNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), result));
     }
 
     @Override

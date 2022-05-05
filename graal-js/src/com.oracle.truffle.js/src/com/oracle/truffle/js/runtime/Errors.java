@@ -218,11 +218,6 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorUnrecognizedOperator(TruffleString operatorName, Node originatingNode) {
-        return createTypeError("unrecognized operator " + Strings.toJavaString(operatorName), originatingNode);
-    }
-
-    @TruffleBoundary
     public static JSException createSyntaxError(String message, Throwable cause, Node originatingNode) {
         return JSException.create(JSErrorType.SyntaxError, message, cause, originatingNode);
     }
@@ -270,6 +265,16 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createReferenceError(String message, SourceSection sourceLocation) {
         return JSException.create(JSErrorType.ReferenceError, message, sourceLocation, false);
+    }
+
+    @TruffleBoundary
+    public static JSException createReferenceErrorDerivedConstructorThisNotInitialized(Node originatingNode) {
+        return createReferenceError("Must call super constructor in derived class before accessing 'this' or returning from derived constructor", originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorDerivedConstructorReturnedIllegalType(Node originatingNode) {
+        return createTypeError("Derived constructors may only return object or undefined", originatingNode);
     }
 
     @TruffleBoundary
@@ -644,11 +649,6 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createRangeErrorStackOverflow() {
         return Errors.createRangeError("Maximum call stack size exceeded");
-    }
-
-    @TruffleBoundary
-    public static JSException createRangeErrorStackOverflow(Node originatingNode) {
-        return Errors.createRangeError("Maximum call stack size exceeded", originatingNode);
     }
 
     @TruffleBoundary

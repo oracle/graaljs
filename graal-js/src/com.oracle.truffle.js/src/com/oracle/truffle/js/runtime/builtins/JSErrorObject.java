@@ -129,7 +129,7 @@ public final class JSErrorObject extends JSNonProxyObject implements JSCopyableO
 
         @Specialization
         public static TriState doException(JSErrorObject receiver, GraalJSException other) {
-            return TriState.valueOf(receiver == other.getErrorObject());
+            return TriState.valueOf(receiver == other.getErrorObjectLazy());
         }
 
         @SuppressWarnings("unused")

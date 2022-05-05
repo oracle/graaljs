@@ -101,7 +101,7 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
     @TruffleBoundary
     protected void outOfBoundsFail() {
         JSException exception = Errors.createRangeError("out of range index");
-        JSDynamicObject errorObject = (JSDynamicObject) exception.getErrorObjectEager(getRealm());
+        JSDynamicObject errorObject = (JSDynamicObject) exception.getErrorObject();
         JSObject.set(errorObject, "code", "ERR_BUFFER_OUT_OF_BOUNDS");
         throw exception;
     }

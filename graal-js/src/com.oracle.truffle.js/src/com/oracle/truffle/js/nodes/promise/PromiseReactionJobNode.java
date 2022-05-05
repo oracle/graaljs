@@ -44,13 +44,13 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -61,7 +61,6 @@ import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -113,7 +112,6 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
         @Child private JSFunctionCallNode callRejectNode;
         @Child private JSFunctionCallNode callHandlerNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-        @Child private InteropLibrary exceptions;
         private final ConditionProfile handlerProf = ConditionProfile.createBinaryProfile();
 
         PromiseReactionJobRootNode(JSContext context) {
@@ -150,18 +148,16 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                         return Undefined.instance;
                     }
                     fulfill = true;
-                } catch (Throwable ex) {
-                    if (promiseCapability == null && context.isOptionTopLevelAwait()) {
-                        // top-level-await evaluation: throw exception when error is generated but
-                        // no capability is found in chain
+                } catch (AbstractTruffleException ex) {
+                    // If promiseCapability is undefined, handlerResult is not an abrupt completion.
+                    if (promiseCapability == null) {
+                        assert context.isOptionTopLevelAwait();
+                        // top-level-await evaluation: throw exception directly from promise job
+                        // when TopLevelCapability is rejected (via Context.eval(moduleSource)).
                         throw ex;
                     }
-                    if (shouldCatch(ex)) {
-                        handlerResult = getErrorObjectNode.execute(ex);
-                        fulfill = false;
-                    } else {
-                        throw ex;
-                    }
+                    handlerResult = getErrorObject().execute(ex);
+                    fulfill = false;
                 }
             }
             Object status;
@@ -173,15 +169,6 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
 
             context.notifyPromiseHook(PromiseHook.TYPE_AFTER, promiseCapability.getPromise());
             return status;
-        }
-
-        private boolean shouldCatch(Throwable exception) {
-            if (getErrorObjectNode == null || exceptions == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
-                exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-            }
-            return TryCatchNode.shouldCatch(exception, exceptions);
         }
 
         private JSFunctionCallNode callResolve() {
@@ -206,6 +193,14 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                 callHandlerNode = insert(JSFunctionCallNode.createCall());
             }
             return callHandlerNode;
+        }
+
+        private TryCatchNode.GetErrorObjectNode getErrorObject() {
+            if (getErrorObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+            }
+            return getErrorObjectNode;
         }
 
         @Override

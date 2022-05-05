@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,14 +43,13 @@ package com.oracle.truffle.js.nodes.control;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
@@ -62,7 +61,6 @@ public class IteratorCloseWrapperNode extends JavaScriptNode {
     private final BranchProfile throwBranch = BranchProfile.create();
     private final BranchProfile exitBranch = BranchProfile.create();
     private final BranchProfile notDoneBranch = BranchProfile.create();
-    @Child private InteropLibrary exceptions;
 
     protected IteratorCloseWrapperNode(JSContext context, JavaScriptNode block, JavaScriptNode iterator) {
         this.context = context;
@@ -88,13 +86,11 @@ public class IteratorCloseWrapperNode extends JavaScriptNode {
                 iteratorClose().executeVoid(iteratorRecord.getIterator());
             }
             throw e;
-        } catch (Throwable e) {
-            if (TryCatchNode.shouldCatch(e, exceptions())) {
-                throwBranch.enter();
-                IteratorRecord iteratorRecord = getIteratorRecord(frame);
-                if (!iteratorRecord.isDone()) {
-                    iteratorClose().executeAbrupt(iteratorRecord.getIterator());
-                }
+        } catch (AbstractTruffleException e) {
+            throwBranch.enter();
+            IteratorRecord iteratorRecord = getIteratorRecord(frame);
+            if (!iteratorRecord.isDone()) {
+                iteratorClose().executeAbrupt(iteratorRecord.getIterator());
             }
             throw e;
         }
@@ -117,15 +113,6 @@ public class IteratorCloseWrapperNode extends JavaScriptNode {
             iteratorCloseNode = insert(IteratorCloseNode.create(context));
         }
         return iteratorCloseNode;
-    }
-
-    private InteropLibrary exceptions() {
-        InteropLibrary e = exceptions;
-        if (e == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            exceptions = e = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-        }
-        return e;
     }
 
     @Override

@@ -51,11 +51,11 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -69,7 +69,6 @@ import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
 import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
 import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -96,7 +95,6 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         @Child private AsyncGeneratorRejectNode asyncGeneratorRejectNode;
         @Child private AsyncGeneratorResumeNextNode asyncGeneratorResumeNextNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-        @Child private InteropLibrary exceptions;
         private final JSContext context;
         private final String functionName;
 
@@ -162,14 +160,8 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
                             assert e.isAwait();
                             return Undefined.instance;
                         }
-                    } catch (Throwable e) {
-                        if (shouldCatch(e)) {
-                            setGeneratorState.setValue(generatorObject, AsyncGeneratorState.Completed);
-                            Object reason = getErrorObjectNode.execute(e);
-                            asyncGeneratorRejectNode.performReject(generatorFrame, generatorObject, reason);
-                        } else {
-                            throw e;
-                        }
+                    } catch (AbstractTruffleException e) {
+                        asyncGeneratorReject(generatorFrame, generatorObject, e);
                     }
                     // AsyncGeneratorResolve/AsyncGeneratorReject => AsyncGeneratorResumeNext
                     Object nextCompletion = asyncGeneratorResumeNextNode.execute(generatorFrame, generatorObject);
@@ -187,14 +179,15 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
             }
         }
 
-        private boolean shouldCatch(Throwable exception) {
-            if (getErrorObjectNode == null || asyncGeneratorRejectNode == null || exceptions == null) {
+        private void asyncGeneratorReject(VirtualFrame generatorFrame, JSDynamicObject generatorObject, AbstractTruffleException ex) {
+            if (getErrorObjectNode == null || asyncGeneratorRejectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
                 asyncGeneratorRejectNode = insert(AsyncGeneratorRejectNode.create(context));
-                exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
-            return TryCatchNode.shouldCatch(exception, exceptions);
+            setGeneratorState.setValue(generatorObject, AsyncGeneratorState.Completed);
+            Object reason = getErrorObjectNode.execute(ex);
+            asyncGeneratorRejectNode.performReject(generatorFrame, generatorObject, reason);
         }
 
         @Override

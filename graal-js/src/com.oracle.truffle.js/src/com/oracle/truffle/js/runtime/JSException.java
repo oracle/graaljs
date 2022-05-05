@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -70,8 +72,7 @@ public final class JSException extends GraalJSException {
 
     private final JSErrorType type;
     private JSDynamicObject exceptionObj;
-    private JSRealm realm;
-    private boolean useCallerRealm;
+    private final JSRealm realm;
     private final boolean isIncompleteSource;
 
     private JSException(JSErrorType type, String message, Throwable cause, Node originatingNode, JSRealm realm, int stackTraceLimit) {
@@ -79,7 +80,7 @@ public final class JSException extends GraalJSException {
         CompilerAsserts.neverPartOfCompilation("JSException constructor");
         this.type = type;
         this.exceptionObj = null;
-        this.realm = realm;
+        this.realm = Objects.requireNonNull(realm);
         this.isIncompleteSource = false;
     }
 
@@ -88,7 +89,7 @@ public final class JSException extends GraalJSException {
         CompilerAsserts.neverPartOfCompilation("JSException constructor");
         this.type = type;
         this.exceptionObj = exceptionObj;
-        this.realm = realm;
+        this.realm = Objects.requireNonNull(realm);
         this.isIncompleteSource = false;
     }
 
@@ -97,7 +98,7 @@ public final class JSException extends GraalJSException {
         CompilerAsserts.neverPartOfCompilation("JSException constructor");
         this.type = type;
         this.exceptionObj = null;
-        this.realm = realm;
+        this.realm = Objects.requireNonNull(realm);
         this.isIncompleteSource = isIncompleteSource;
     }
 
@@ -168,7 +169,7 @@ public final class JSException extends GraalJSException {
     }
 
     @Override
-    public JSDynamicObject getErrorObject() {
+    public JSDynamicObject getErrorObjectLazy() {
         return exceptionObj;
     }
 
@@ -178,48 +179,17 @@ public final class JSException extends GraalJSException {
 
     @TruffleBoundary
     @Override
-    public Object getErrorObjectEager() {
+    public Object getErrorObject() {
         JSDynamicObject jserror = exceptionObj;
         if (jserror == null) {
-            JSRealm innerRealm = this.realm != null ? this.realm : JavaScriptLanguage.getCurrentJSRealm();
             String message = getRawMessage();
-            exceptionObj = jserror = JSError.createFromJSException(this, innerRealm, (message == null) ? "" : message);
+            exceptionObj = jserror = JSError.createFromJSException(this, this.realm, (message == null) ? "" : message);
         }
         return jserror;
-    }
-
-    @TruffleBoundary
-    @Override
-    public Object getErrorObjectEager(JSRealm currentRealm) {
-        JSDynamicObject jserror = exceptionObj;
-        if (jserror == null) { // not thread safe, but should be all right in this case
-            JSRealm innerRealm = this.realm != null ? this.realm : currentRealm;
-            String message = getRawMessage();
-            exceptionObj = jserror = JSError.createFromJSException(this, innerRealm, (message == null) ? "" : message);
-        }
-        return jserror;
-    }
-
-    public JSException setRealm(JSRealm realm) {
-        if (this.realm == null) {
-            if (useCallerRealm) {
-                // ignore the first set, that is the callee realm!
-                useCallerRealm = false;
-            } else {
-                this.realm = realm;
-            }
-        }
-        return this;
     }
 
     public JSRealm getRealm() {
         return this.realm;
-    }
-
-    public JSException useCallerRealm() {
-        this.useCallerRealm = true;
-        this.realm = null;
-        return this;
     }
 
     @ExportMessage
@@ -241,87 +211,87 @@ public final class JSException extends GraalJSException {
     @ExportMessage
     public Object getMembers(boolean internal,
                     @CachedLibrary(limit = "InteropLibraryLimit") @Shared("delegateLib") InteropLibrary delegateLib) throws UnsupportedMessageException {
-        return delegateLib.getMembers(getErrorObjectEager(), internal);
+        return delegateLib.getMembers(getErrorObject(), internal);
     }
 
     @ExportMessage
     public boolean isMemberReadable(String key,
                     @CachedLibrary(limit = "InteropLibraryLimit") @Shared("delegateLib") InteropLibrary delegateLib) {
-        return delegateLib.isMemberReadable(getErrorObjectEager(), key);
+        return delegateLib.isMemberReadable(getErrorObject(), key);
     }
 
     @ExportMessage
     public boolean isMemberModifiable(String key,
                     @CachedLibrary(limit = "InteropLibraryLimit") @Shared("delegateLib") InteropLibrary delegateLib) {
-        return delegateLib.isMemberModifiable(getErrorObjectEager(), key);
+        return delegateLib.isMemberModifiable(getErrorObject(), key);
     }
 
     @ExportMessage
     public boolean isMemberInsertable(String key,
                     @CachedLibrary(limit = "InteropLibraryLimit") @Shared("delegateLib") InteropLibrary delegateLib) {
-        return delegateLib.isMemberInsertable(getErrorObjectEager(), key);
+        return delegateLib.isMemberInsertable(getErrorObject(), key);
     }
 
     @ExportMessage
     public boolean isMemberRemovable(String key,
                     @CachedLibrary(limit = "InteropLibraryLimit") @Shared("delegateLib") InteropLibrary delegateLib) {
-        return delegateLib.isMemberRemovable(getErrorObjectEager(), key);
+        return delegateLib.isMemberRemovable(getErrorObject(), key);
     }
 
     @ExportMessage
     public boolean isMemberInvocable(String key,
                     @CachedLibrary(limit = "InteropLibraryLimit") @Shared("delegateLib") InteropLibrary delegateLib) {
-        return delegateLib.isMemberInvocable(getErrorObjectEager(), key);
+        return delegateLib.isMemberInvocable(getErrorObject(), key);
     }
 
     @ExportMessage
     public boolean hasMemberReadSideEffects(String key,
                     @CachedLibrary(limit = "InteropLibraryLimit") @Shared("delegateLib") InteropLibrary delegateLib) {
-        return delegateLib.hasMemberReadSideEffects(getErrorObjectEager(), key);
+        return delegateLib.hasMemberReadSideEffects(getErrorObject(), key);
     }
 
     @ExportMessage
     public boolean hasMemberWriteSideEffects(String key,
                     @CachedLibrary(limit = "InteropLibraryLimit") @Shared("delegateLib") InteropLibrary delegateLib) {
-        return delegateLib.hasMemberWriteSideEffects(getErrorObjectEager(), key);
+        return delegateLib.hasMemberWriteSideEffects(getErrorObject(), key);
     }
 
     @ExportMessage
     public Object readMember(String key,
                     @CachedLibrary(limit = "InteropLibraryLimit") @Shared("delegateLib") InteropLibrary delegateLib) throws UnknownIdentifierException, UnsupportedMessageException {
-        return delegateLib.readMember(getErrorObjectEager(), key);
+        return delegateLib.readMember(getErrorObject(), key);
     }
 
     @ExportMessage
     public void writeMember(String key, Object value,
                     @CachedLibrary(limit = "InteropLibraryLimit") @Shared("delegateLib") InteropLibrary delegateLib)
                     throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
-        delegateLib.writeMember(getErrorObjectEager(), key, value);
+        delegateLib.writeMember(getErrorObject(), key, value);
     }
 
     @ExportMessage
     public void removeMember(String key,
                     @CachedLibrary(limit = "InteropLibraryLimit") @Shared("delegateLib") InteropLibrary delegateLib) throws UnsupportedMessageException, UnknownIdentifierException {
-        delegateLib.removeMember(getErrorObjectEager(), key);
+        delegateLib.removeMember(getErrorObject(), key);
     }
 
     @ExportMessage
     public Object invokeMember(String key, Object[] args,
                     @CachedLibrary(limit = "InteropLibraryLimit") @Shared("delegateLib") InteropLibrary delegateLib)
                     throws UnsupportedMessageException, UnknownIdentifierException, ArityException, UnsupportedTypeException {
-        return delegateLib.invokeMember(getErrorObjectEager(), key, args);
+        return delegateLib.invokeMember(getErrorObject(), key, args);
     }
 
     @ExportMessage
     public boolean hasMetaObject(
                     @CachedLibrary(limit = "InteropLibraryLimit") @Shared("delegateLib") InteropLibrary delegateLib) {
-        return delegateLib.hasMetaObject(getErrorObjectEager());
+        return delegateLib.hasMetaObject(getErrorObject());
     }
 
     @ExportMessage
     public Object getMetaObject(
                     @CachedLibrary(limit = "InteropLibraryLimit") @Shared("delegateLib") InteropLibrary delegateLib) throws UnsupportedMessageException {
-        return delegateLib.getMetaObject(getErrorObjectEager());
+        return delegateLib.getMetaObject(getErrorObject());
     }
 
     public static void ensureInitialized() throws ClassNotFoundException {

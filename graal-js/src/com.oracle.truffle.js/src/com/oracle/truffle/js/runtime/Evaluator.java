@@ -103,7 +103,7 @@ public interface Evaluator {
 
     JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referencingScriptOrModule, Module.ModuleRequest moduleRequest);
 
-    void moduleInstantiation(JSRealm realm, JSModuleRecord moduleRecord);
+    void moduleLinking(JSRealm realm, JSModuleRecord moduleRecord);
 
     Object moduleEvaluation(JSRealm realm, JSModuleRecord moduleRecord);
 

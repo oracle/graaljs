@@ -46,10 +46,10 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -59,7 +59,6 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -81,7 +80,6 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
         @Child private JSFunctionCallNode callRejectNode;
         @Child private JSWriteFrameSlotNode writeAsyncResult;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-        @Child private InteropLibrary exceptions;
 
         TopLevelAwaitModuleRootNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncResult, SourceSection functionSourceSection, String functionName) {
             super(context.getLanguage(), functionSourceSection, null);
@@ -102,10 +100,10 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
 
             JSModuleRecord moduleRecord = (JSModuleRecord) JSArguments.getUserArgument(asyncFrame.getArguments(), 0);
             try {
-                functionBody.execute(asyncFrame);
+                Object returnValue = functionBody.execute(asyncFrame);
 
                 assert promiseCapability != null;
-                promiseCapabilityResolve(callResolveNode, promiseCapability, Undefined.instance);
+                promiseCapabilityResolve(promiseCapability, returnValue);
             } catch (YieldException e) {
                 assert promiseCapability == null ? e.isYield() : e.isAwait();
                 if (e.isYield()) {
@@ -114,25 +112,15 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
                     assert e.isAwait();
                     // no-op: we called await, so we will resume later.
                 }
-            } catch (Throwable e) {
-                if (promiseCapability != null && shouldCatch(e)) {
-                    promiseCapabilityReject(callRejectNode, promiseCapability, getErrorObjectNode.execute(e));
+            } catch (AbstractTruffleException e) {
+                if (promiseCapability != null) {
+                    promiseCapabilityReject(promiseCapability, e);
                 } else {
                     throw e;
                 }
             }
             // The result is undefined for normal completion.
             return Undefined.instance;
-        }
-
-        private boolean shouldCatch(Throwable exception) {
-            if (getErrorObjectNode == null || callRejectNode == null || exceptions == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
-                callRejectNode = insert(JSFunctionCallNode.createCall());
-                exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-            }
-            return TryCatchNode.shouldCatch(exception, exceptions);
         }
 
         @Override
@@ -148,12 +136,18 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
             return ":top-level-await-module";
         }
 
-        private static void promiseCapabilityResolve(JSFunctionCallNode promiseCallNode, PromiseCapabilityRecord promiseCapability, Object result) {
-            promiseCallNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), result));
+        private void promiseCapabilityResolve(PromiseCapabilityRecord promiseCapability, Object result) {
+            callResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), result));
         }
 
-        private static void promiseCapabilityReject(JSFunctionCallNode promiseCallNode, PromiseCapabilityRecord promiseCapability, Object result) {
-            promiseCallNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), result));
+        private void promiseCapabilityReject(PromiseCapabilityRecord promiseCapability, AbstractTruffleException e) {
+            if (getErrorObjectNode == null || callRejectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+                callRejectNode = insert(JSFunctionCallNode.createCall());
+            }
+            Object result = getErrorObjectNode.execute(e);
+            callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), result));
         }
     }
 

@@ -2730,7 +2730,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     Object v = readElementNode.executeWithTargetAndIndex(nextItem, 1);
                     call(mapObj, adder, k, v);
                 }
-            } catch (Exception ex) {
+            } catch (AbstractTruffleException ex) {
                 iteratorCloseAbrupt(iter.getIterator());
                 throw ex;
             }
@@ -2783,7 +2783,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     Object nextValue = getIteratorValue((JSDynamicObject) next);
                     call(setObj, adder, nextValue);
                 }
-            } catch (Exception ex) {
+            } catch (AbstractTruffleException ex) {
                 iteratorCloseAbrupt(iter.getIterator());
                 throw ex;
             }

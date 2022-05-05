@@ -68,7 +68,7 @@ public class JSModuleRecord extends ScriptOrModule {
     private final JSModuleData parsedModule;
     private final JSModuleLoader moduleLoader;
 
-    /** Module's instantiation/evaluation status. */
+    /** Module's linking/evaluation status. */
     private Status status;
 
     /** Exception that occurred during evaluation. */
@@ -87,23 +87,17 @@ public class JSModuleRecord extends ScriptOrModule {
     private Object hostDefined;
 
     /**
-     * Auxiliary field used during Instantiate and Evaluate only. If [[Status]] is "instantiating"
-     * or "evaluating", this nonnegative number records the point at which the module was first
+     * Auxiliary field used during Link and Evaluate only. If [[Status]] is "linking" or
+     * "evaluating", this non-negative number records the point at which the module was first
      * visited during the ongoing depth-first traversal of the dependency graph.
      */
     private int dfsIndex;
     /**
-     * Auxiliary field used during Instantiate and Evaluate only. If [[Status]] is "instantiating"
-     * or "evaluating", this is either the module's own [[DFSIndex]] or that of an "earlier" module
-     * in the same strongly connected component.
+     * Auxiliary field used during Link and Evaluate only. If [[Status]] is "linking" or
+     * "evaluating", this is either the module's own [[DFSIndex]] or that of an "earlier" module in
+     * the same strongly connected component.
      */
     private int dfsAncestorIndex;
-
-    /*
-     * Used to store the top-level promise created as a result of top-level await modules
-     * evaluation.
-     */
-    private Object topLevelAwaitModuleLoadingContinuation;
 
     public JSModuleRecord(JSModuleData parsedModule, JSModuleLoader moduleLoader) {
         super(parsedModule.getContext(), parsedModule.getSource());
@@ -111,7 +105,7 @@ public class JSModuleRecord extends ScriptOrModule {
         this.moduleLoader = moduleLoader;
         this.hasTLA = parsedModule.isTopLevelAsync();
         this.hostDefined = null;
-        setUninstantiated();
+        setUnlinked();
     }
 
     public JSModuleRecord(JSModuleData moduleData, JSModuleLoader moduleLoader, Object hostDefined) {
@@ -245,7 +239,7 @@ public class JSModuleRecord extends ScriptOrModule {
         JSObject.set(metaObj, Strings.URL, Strings.fromJavaString(getSource().getURI().toString()));
     }
 
-    public void setUninstantiated() {
+    public void setUnlinked() {
         setStatus(Status.Unlinked);
         this.environment = null;
         this.dfsIndex = -1;
@@ -318,14 +312,6 @@ public class JSModuleRecord extends ScriptOrModule {
 
     public boolean hasTLA() {
         return hasTLA;
-    }
-
-    public void setExecutionContinuation(Object continuation) {
-        this.topLevelAwaitModuleLoadingContinuation = continuation;
-    }
-
-    public Object getExecutionContinuation() {
-        return topLevelAwaitModuleLoadingContinuation;
     }
 
     public void setCycleRoot(JSModuleRecord module) {

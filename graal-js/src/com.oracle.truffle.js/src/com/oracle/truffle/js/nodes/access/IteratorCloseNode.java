@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -59,21 +59,15 @@ public class IteratorCloseNode extends JavaScriptBaseNode {
     @Child private GetMethodNode getReturnNode;
     @Child private JSFunctionCallNode methodCallNode;
     @Child private IsJSObjectNode isObjectNode;
-    @Child private JavaScriptNode iteratorNode;
 
-    protected IteratorCloseNode(JSContext context, JavaScriptNode iteratorNode) {
+    protected IteratorCloseNode(JSContext context) {
         this.getReturnNode = GetMethodNode.create(context, Strings.RETURN);
         this.methodCallNode = JSFunctionCallNode.createCall();
         this.isObjectNode = IsJSObjectNode.create();
-        this.iteratorNode = iteratorNode;
     }
 
     public static IteratorCloseNode create(JSContext context) {
-        return new IteratorCloseNode(context, null);
-    }
-
-    public static IteratorCloseNode create(JSContext context, JavaScriptNode iteratorNode) {
-        return new IteratorCloseNode(context, iteratorNode);
+        return new IteratorCloseNode(context);
     }
 
     public final void executeVoid(JSDynamicObject iterator) {
@@ -97,8 +91,8 @@ public class IteratorCloseNode extends JavaScriptBaseNode {
             if (returnMethod != Undefined.instance) {
                 methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
             }
-        } catch (Exception e) {
-            // re-throw outer exception, see 7.4.6 IteratorClose
+        } catch (AbstractTruffleException e) {
+            // re-throw outer exception, see IteratorClose
         }
     }
 }

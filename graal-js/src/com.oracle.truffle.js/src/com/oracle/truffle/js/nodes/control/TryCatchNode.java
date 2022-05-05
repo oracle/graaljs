@@ -45,28 +45,25 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags.TryBlockTag;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.ExceptionType;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.InitErrorObjectNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanUnaryNode;
+import com.oracle.truffle.js.nodes.control.TryCatchNodeFactory.GetErrorObjectNodeGen;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
@@ -92,7 +89,6 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
     @Child private JavaScriptNode destructuring;
     @Child private JavaScriptNode conditionExpression; // non-standard extension
     @Child private GetErrorObjectNode getErrorObjectNode;
-    @Child private InteropLibrary exceptions;
     private final JSContext context;
 
     protected TryCatchNode(JSContext context, JavaScriptNode tryBlock, JavaScriptNode catchBlock, JSWriteFrameSlotNode writeErrorVar, BlockScopeNode blockScope, JavaScriptNode destructuring,
@@ -138,54 +134,33 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
 
     @Override
     public final Object execute(VirtualFrame frame) {
+        Throwable throwable;
         try {
             return tryBlock.execute(frame);
         } catch (ControlFlowException cfe) {
             throw cfe;
-        } catch (Throwable ex) {
-            if (shouldCatch(ex, exceptions())) {
-                return executeCatch(frame, ex);
-            } else {
-                throw ex;
-            }
+        } catch (AbstractTruffleException ex) {
+            throwable = ex;
+        } catch (StackOverflowError ste) {
+            throwable = ste;
         }
+        return executeCatch(frame, throwable);
     }
 
     @Override
     public final void executeVoid(VirtualFrame frame) {
+        Throwable throwable;
         try {
             tryBlock.executeVoid(frame);
+            return;
         } catch (ControlFlowException cfe) {
             throw cfe;
-        } catch (Throwable ex) {
-            if (shouldCatch(ex, exceptions())) {
-                executeCatch(frame, ex);
-            } else {
-                throw ex;
-            }
+        } catch (AbstractTruffleException ex) {
+            throwable = ex;
+        } catch (StackOverflowError ste) {
+            throwable = ste;
         }
-    }
-
-    public static boolean shouldCatch(Throwable ex, InteropLibrary exceptions) {
-        if (exceptions.isException(ex)) {
-            if (!(ex instanceof AbstractTruffleException)) {
-                return false;
-            }
-            try {
-                ExceptionType exceptionType = exceptions.getExceptionType(ex);
-                return exceptionType != ExceptionType.EXIT && exceptionType != ExceptionType.INTERRUPT;
-            } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(ex, e, "getExceptionType", null);
-            }
-        } else if (ex instanceof StackOverflowError) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    public static boolean shouldCatch(Throwable ex) {
-        return shouldCatch(ex, InteropLibrary.getUncached());
+        executeCatch(frame, throwable);
     }
 
     private Object executeCatch(VirtualFrame frame, Throwable ex) {
@@ -226,23 +201,23 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
     public Object resume(VirtualFrame frame, int stateSlot) {
         Object state = getStateAndReset(frame, stateSlot);
         if (state == Undefined.instance) {
+            Throwable throwable;
             try {
                 return tryBlock.execute(frame);
             } catch (ControlFlowException cfe) {
                 throw cfe;
-            } catch (Throwable ex) {
-                if (shouldCatch(ex, exceptions())) {
-                    if (blockScope != null) {
-                        blockScope.appendScopeFrame(frame);
-                    }
-                    if (!prepareCatch(frame, ex)) {
-                        throw JSRuntime.rethrow(ex);
-                    }
-                    // fall through to execute catch block
-                } else {
-                    throw ex;
-                }
+            } catch (AbstractTruffleException ex) {
+                throwable = ex;
+            } catch (StackOverflowError ste) {
+                throwable = ste;
             }
+            if (blockScope != null) {
+                blockScope.appendScopeFrame(frame);
+            }
+            if (!prepareCatch(frame, throwable)) {
+                throw JSRuntime.rethrow(throwable);
+            }
+            // fall through to execute catch block
         } else {
             if (blockScope != null) {
                 blockScope.setBlockScope(frame, state);
@@ -268,69 +243,67 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
         }
     }
 
-    private InteropLibrary exceptions() {
-        InteropLibrary e = exceptions;
-        if (e == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            exceptions = e = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-        }
-        return e;
-    }
-
-    public static final class GetErrorObjectNode extends JavaScriptBaseNode {
+    public abstract static class GetErrorObjectNode extends JavaScriptBaseNode {
         @Child private InitErrorObjectNode initErrorObjectNode;
-        private final ConditionProfile isJSError = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isJSException = ConditionProfile.createBinaryProfile();
-        private final BranchProfile truffleExceptionBranch = BranchProfile.create();
         private final JSContext context;
 
-        private GetErrorObjectNode(JSContext context) {
+        protected GetErrorObjectNode(JSContext context) {
             this.context = context;
             this.initErrorObjectNode = InitErrorObjectNode.create(context, context.isOptionNashornCompatibilityMode());
         }
 
         public static GetErrorObjectNode create(JSContext context) {
-            return new GetErrorObjectNode(context);
+            return GetErrorObjectNodeGen.create(context);
         }
 
-        public Object execute(Throwable ex) {
-            if (isJSError.profile(ex instanceof JSException)) {
-                // fill in any missing stack trace elements
-                TruffleStackTrace.fillIn(ex);
+        public abstract Object execute(Throwable ex);
 
-                return doJSException((JSException) ex);
-            } else if (isJSException.profile(ex instanceof UserScriptException)) {
-                return ((UserScriptException) ex).getErrorObject();
-            } else if (ex instanceof StackOverflowError) {
-                CompilerDirectives.transferToInterpreter();
-                JSException rangeException = Errors.createRangeErrorStackOverflow(ex, this);
-                return doJSException(rangeException);
-            } else {
-                truffleExceptionBranch.enter();
-                assert !(ex instanceof GraalJSException) && (ex instanceof AbstractTruffleException) : ex;
-                return ex;
-            }
+        @Specialization
+        final Object doJSException(JSException ex) {
+            // fill in any missing stack trace elements
+            TruffleStackTrace.fillIn(ex);
+
+            return getOrCreateErrorFromJSException(ex);
         }
 
-        private Object doJSException(JSException exception) {
-            JSDynamicObject errorObj = exception.getErrorObject();
+        @Specialization
+        static Object doUserScriptException(UserScriptException ex) {
+            return ex.getErrorObject();
+        }
+
+        @Specialization
+        final Object doStackOverflowError(StackOverflowError ex) {
+            JSException rangeError = Errors.createRangeErrorStackOverflow(ex, this);
+            return getOrCreateErrorFromJSException(rangeError);
+        }
+
+        @Fallback
+        static Object doOther(Throwable ex) {
+            assert !(ex instanceof GraalJSException) && (ex instanceof AbstractTruffleException) : ex;
+            return ex;
+        }
+
+        private Object getOrCreateErrorFromJSException(JSException exception) {
+            JSDynamicObject errorObj = exception.getErrorObjectLazy();
             // not thread safe, but should be alright in this case
             if (errorObj == null) {
-                JSRealm realm = exception.getRealm();
-                if (realm == null) {
-                    realm = getRealm();
-                }
-                String message = exception.getRawMessage();
-                assert message != null;
-                errorObj = createErrorFromJSException(context, realm, exception.getErrorType());
-                initErrorObjectNode.execute(errorObj, exception, Strings.fromJavaString(message));
-                exception.setErrorObject(errorObj);
+                errorObj = createErrorFromJSException(exception);
             }
             return errorObj;
         }
 
+        private JSErrorObject createErrorFromJSException(JSException exception) {
+            JSRealm errorRealm = exception.getRealm();
+            String message = exception.getRawMessage();
+            assert message != null;
+            JSErrorObject errorObj = newErrorObject(context, errorRealm, exception.getErrorType());
+            initErrorObjectNode.execute(errorObj, exception, Strings.fromJavaString(message));
+            exception.setErrorObject(errorObj);
+            return errorObj;
+        }
+
         @TruffleBoundary
-        private static JSErrorObject createErrorFromJSException(JSContext context, JSRealm realm, JSErrorType errorType) {
+        private static JSErrorObject newErrorObject(JSContext context, JSRealm realm, JSErrorType errorType) {
             return JSError.createErrorObject(context, realm, errorType);
         }
     }

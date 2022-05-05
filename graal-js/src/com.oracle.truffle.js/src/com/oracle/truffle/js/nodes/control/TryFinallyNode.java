@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,14 +42,12 @@ package com.oracle.truffle.js.nodes.control;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -61,7 +59,6 @@ public class TryFinallyNode extends StatementNode implements ResumableNode.WithO
 
     @Child private JavaScriptNode tryBlock;
     @Child private JavaScriptNode finallyBlock;
-    @Child private InteropLibrary exceptions;
 
     TryFinallyNode(JavaScriptNode tryBlock, JavaScriptNode finallyBlock) {
         this.tryBlock = tryBlock;
@@ -86,13 +83,10 @@ public class TryFinallyNode extends StatementNode implements ResumableNode.WithO
             throwable = null;
         } catch (ControlFlowException cfe) {
             throwable = cfe;
-        } catch (Throwable ex) {
-            if (TryCatchNode.shouldCatch(ex, exceptions())) {
-                throwable = ex;
-            } else {
-                // skip finally block
-                throw ex;
-            }
+        } catch (AbstractTruffleException ex) {
+            throwable = ex;
+        } catch (StackOverflowError ste) {
+            throwable = ste;
         }
 
         finallyBlock.executeVoid(frame);
@@ -112,13 +106,10 @@ public class TryFinallyNode extends StatementNode implements ResumableNode.WithO
             throwable = null;
         } catch (ControlFlowException cfe) {
             throwable = cfe;
-        } catch (Throwable ex) {
-            if (TryCatchNode.shouldCatch(ex, exceptions())) {
-                throwable = ex;
-            } else {
-                // skip finally block
-                throw ex;
-            }
+        } catch (AbstractTruffleException ex) {
+            throwable = ex;
+        } catch (StackOverflowError ste) {
+            throwable = ste;
         }
 
         finallyBlock.executeVoid(frame);
@@ -141,13 +132,10 @@ public class TryFinallyNode extends StatementNode implements ResumableNode.WithO
                 throw e;
             } catch (ControlFlowException cfe) {
                 throwable = cfe;
-            } catch (Throwable ex) {
-                if (TryCatchNode.shouldCatch(ex, exceptions())) {
-                    throwable = ex;
-                } else {
-                    // skip finally block
-                    throw ex;
-                }
+            } catch (AbstractTruffleException ex) {
+                throwable = ex;
+            } catch (StackOverflowError ste) {
+                throwable = ste;
             }
         } else {
             // resuming into finally block
@@ -169,14 +157,5 @@ public class TryFinallyNode extends StatementNode implements ResumableNode.WithO
         // Since we're in a generator function, we may ignore the result and return undefined;
         // otherwise we'd have to remember the result when yielding from the finally block.
         return result;
-    }
-
-    private InteropLibrary exceptions() {
-        InteropLibrary e = exceptions;
-        if (e == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            exceptions = e = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-        }
-        return e;
     }
 }

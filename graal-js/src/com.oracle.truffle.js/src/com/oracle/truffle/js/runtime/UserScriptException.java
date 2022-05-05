@@ -101,6 +101,11 @@ public final class UserScriptException extends GraalJSException {
         return exceptionObject;
     }
 
+    @Override
+    public Object getErrorObjectLazy() {
+        return exceptionObject;
+    }
+
     @SuppressWarnings("static-method")
     @ExportMessage
     public boolean isException() {

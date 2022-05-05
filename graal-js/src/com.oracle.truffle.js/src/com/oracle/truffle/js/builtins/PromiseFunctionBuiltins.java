@@ -42,7 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseCombinatorNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.RejectNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.ResolveNodeGen;
@@ -144,7 +144,6 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private JSFunctionCallNode callRejectNode;
         @Child private IteratorCloseNode iteratorCloseNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-        @Child private InteropLibrary exceptions;
 
         protected PromiseCombinatorNode(JSContext context, JSBuiltin builtin, PerformPromiseCombinatorNode performPromiseOp) {
             super(context, builtin);
@@ -163,24 +162,16 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             try {
                 promiseResolve = getPromiseResolve(constructor);
                 iteratorRecord = getIteratorNode.execute(iterable);
-            } catch (Throwable ex) {
-                if (shouldCatch(ex)) {
-                    return rejectPromise(getErrorObjectNode.execute(ex), promiseCapability);
-                } else {
-                    throw ex;
-                }
+            } catch (AbstractTruffleException ex) {
+                return rejectPromise(ex, promiseCapability);
             }
             try {
                 return performPromiseOpNode.execute(iteratorRecord, constructor, promiseCapability, promiseResolve);
-            } catch (Throwable ex) {
-                if (shouldCatch(ex)) {
-                    if (!iteratorRecord.isDone()) {
-                        iteratorClose(iteratorRecord);
-                    }
-                    return rejectPromise(getErrorObjectNode.execute(ex), promiseCapability);
-                } else {
-                    throw ex;
+            } catch (AbstractTruffleException ex) {
+                if (!iteratorRecord.isDone()) {
+                    iteratorClose(iteratorRecord);
                 }
+                return rejectPromise(ex, promiseCapability);
             }
         }
 
@@ -193,12 +184,14 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             return promiseResolve;
         }
 
-        protected JSDynamicObject rejectPromise(Object value, PromiseCapabilityRecord promiseCapability) {
-            if (callRejectNode == null) {
+        protected JSDynamicObject rejectPromise(AbstractTruffleException ex, PromiseCapabilityRecord promiseCapability) {
+            if (callRejectNode == null || getErrorObjectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 callRejectNode = insert(JSFunctionCallNode.createCall());
+                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
             }
-            callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), value));
+            Object error = getErrorObjectNode.execute(ex);
+            callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
             return promiseCapability.getPromise();
         }
 
@@ -208,15 +201,6 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
             }
             iteratorCloseNode.executeAbrupt(iteratorRecord.getIterator());
-        }
-
-        private boolean shouldCatch(Throwable exception) {
-            if (getErrorObjectNode == null || exceptions == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
-                exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-            }
-            return TryCatchNode.shouldCatch(exception, exceptions);
         }
 
         @SuppressWarnings("unused")

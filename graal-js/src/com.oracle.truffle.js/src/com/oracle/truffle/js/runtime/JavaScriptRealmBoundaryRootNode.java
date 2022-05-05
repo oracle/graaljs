@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
@@ -55,9 +54,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
  *
  */
 public abstract class JavaScriptRealmBoundaryRootNode extends JavaScriptRootNode {
-
-    @CompilationFinal private boolean seenException;
-    @CompilationFinal private boolean seenNullRealm;
 
     protected JavaScriptRealmBoundaryRootNode(JavaScriptLanguage lang, SourceSection sourceSection, FrameDescriptor frameDescriptor) {
         super(lang, sourceSection, frameDescriptor);
@@ -90,25 +86,9 @@ public abstract class JavaScriptRealmBoundaryRootNode extends JavaScriptRootNode
 
         try {
             return executeInRealm(frame);
-        } catch (JSException ex) {
-            if (!seenException) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                seenException = true;
-            }
-            if (ex.getRealm() == null) {
-                if (!seenNullRealm) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    seenNullRealm = true;
-                }
-                if (functionRealm == null) {
-                    functionRealm = getRealm();
-                }
-                ex.setRealm(functionRealm);
-            }
-            throw ex;
         } catch (StackOverflowError ex) {
             CompilerDirectives.transferToInterpreter();
-            throw Errors.createRangeErrorStackOverflow(this);
+            throw Errors.createRangeErrorStackOverflow(ex, this);
         } finally {
             if (enterRealm) {
                 mainRealm.leaveRealm(this, prevRealm);
