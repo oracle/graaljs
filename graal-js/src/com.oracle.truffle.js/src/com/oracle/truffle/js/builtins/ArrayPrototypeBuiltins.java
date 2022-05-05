@@ -1518,11 +1518,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         // ES2015, 22.1.3.1.1
         private boolean isConcatSpreadable(Object el) {
-            if (el == Undefined.instance || el == Null.instance) {
-                return false;
-            }
-            if (JSDynamicObject.isJSDynamicObject(el)) {
-                JSDynamicObject obj = (JSDynamicObject) el;
+            if (el instanceof JSObject) {
+                JSObject obj = (JSObject) el;
                 Object spreadable = getSpreadableProperty(obj);
                 if (spreadable != Undefined.instance) {
                     return toBoolean(spreadable);
