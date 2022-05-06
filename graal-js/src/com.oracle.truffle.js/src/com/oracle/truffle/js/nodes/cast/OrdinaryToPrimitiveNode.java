@@ -47,7 +47,6 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
@@ -83,6 +82,9 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode callValueOfNode;
     @Child private IsPrimitiveNode isPrimitiveNode;
     @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
+
+    private static final String TO_STRING = "toString";
+    private static final String VALUE_OF = "valueOf";
 
     protected OrdinaryToPrimitiveNode(JSContext context, Hint hint) {
         assert hint == Hint.String || hint == Hint.Number;
@@ -169,7 +171,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     private Object doForeignHintString(Object object, InteropLibrary interop) {
-        Object result = tryInvokeForeignMethod(object, interop, Strings.TO_STRING);
+        Object result = tryInvokeForeignMethod(object, interop, TO_STRING);
         if (result != null) {
             return result;
         }
@@ -182,7 +184,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             }
         }
 
-        result = tryInvokeForeignMethod(object, interop, Strings.VALUE_OF);
+        result = tryInvokeForeignMethod(object, interop, VALUE_OF);
         if (result != null) {
             return result;
         }
@@ -198,7 +200,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     private Object doForeignHintNumber(Object object, InteropLibrary interop) {
-        Object result = tryInvokeForeignMethod(object, interop, Strings.VALUE_OF);
+        Object result = tryInvokeForeignMethod(object, interop, VALUE_OF);
         if (result != null) {
             return result;
         }
@@ -211,7 +213,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             }
         }
 
-        result = tryInvokeForeignMethod(object, interop, Strings.TO_STRING);
+        result = tryInvokeForeignMethod(object, interop, TO_STRING);
         if (result != null) {
             return result;
         }
@@ -226,10 +228,10 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
     }
 
-    private Object tryInvokeForeignMethod(Object object, InteropLibrary interop, TruffleString methodName) {
-        if (interop.hasMembers(object) && interop.isMemberInvocable(object, Strings.toJavaString(methodName))) {
+    private Object tryInvokeForeignMethod(Object object, InteropLibrary interop, String methodName) {
+        if (interop.hasMembers(object) && interop.isMemberInvocable(object, methodName)) {
             try {
-                Object result = JSRuntime.importValue(interop.invokeMember(object, Strings.toJavaString(methodName)));
+                Object result = JSRuntime.importValue(interop.invokeMember(object, methodName));
                 if (isPrimitiveNode.executeBoolean(result)) {
                     return result;
                 }
