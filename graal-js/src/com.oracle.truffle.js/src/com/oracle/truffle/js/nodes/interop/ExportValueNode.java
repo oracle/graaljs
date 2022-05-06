@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -151,12 +150,6 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
     @Specialization
     protected static TruffleString doString(TruffleString value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return value;
-    }
-
-    @TruffleBoundary
-    @Specialization
-    protected static TruffleString doJLString(@SuppressWarnings("unused") String value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
-        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Specialization(guards = {"!isJSFunction(value)"}, replaces = "doObject")

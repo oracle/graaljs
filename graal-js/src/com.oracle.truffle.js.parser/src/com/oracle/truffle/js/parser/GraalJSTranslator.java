@@ -841,16 +841,19 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode handleFunctionReturn(FunctionNode functionNode, JavaScriptNode body) {
-        assert (currentFunction().isGlobal() || currentFunction().isEval() || currentFunction().hasSyntheticArguments()) == (functionNode.isScript() || functionNode.isModule());
-        if (currentFunction().returnsLastStatementResult()) {
-            assert !currentFunction().hasReturn();
-            return wrapGetCompletionValue(body);
-        }
-        if (currentFunction().hasReturn()) {
+        FunctionEnvironment currentFunction = currentFunction();
+        assert (currentFunction.isGlobal() || currentFunction.isEval() || currentFunction.hasSyntheticArguments()) == (functionNode.isScript() || functionNode.isModule());
+        if (currentFunction.hasReturn()) {
             if (JSConfig.ReturnValueInFrame) {
-                return factory.createFrameReturnTarget(body, factory.createReadCurrentFrameSlot(currentFunction().getReturnSlot()));
+                return factory.createFrameReturnTarget(body, factory.createReadCurrentFrameSlot(currentFunction.getReturnSlot()));
             } else {
                 return factory.createReturnTarget(body);
+            }
+        } else if (currentFunction.returnsLastStatementResult()) {
+            if (currentFunction.hasReturnSlot()) {
+                return wrapGetCompletionValue(body);
+            } else {
+                return discardResult(body);
             }
         }
         return body;

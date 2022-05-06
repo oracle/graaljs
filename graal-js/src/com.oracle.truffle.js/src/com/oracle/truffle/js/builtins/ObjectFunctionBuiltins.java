@@ -328,7 +328,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
             }
-            return foreignObjectPrototypeNode.executeDynamicObject(truffleObject);
+            return foreignObjectPrototypeNode.execute(truffleObject);
         }
 
         @Specialization(guards = "isJSObject(object)")

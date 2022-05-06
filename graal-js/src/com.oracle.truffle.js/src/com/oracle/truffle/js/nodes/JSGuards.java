@@ -58,7 +58,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
-import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -100,15 +99,10 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSGuards {
-    /** {@code false} constant for use in DSL. */
-    public static final boolean FALSE = false;
-    /** {@code true} constant for use in DSL. */
-    public static final boolean TRUE = true;
 
     private JSGuards() {
         // this class should not be instantiated
@@ -134,10 +128,6 @@ public final class JSGuards {
     }
 
     public static boolean isTruffleString(Object value) {
-        return Strings.isTString(value);
-    }
-
-    public static boolean isTString(Object value) {
         return Strings.isTString(value);
     }
 
@@ -484,14 +474,6 @@ public final class JSGuards {
         return null;
     }
 
-    public static JSClass getJSClassIfObject(JSDynamicObject object) {
-        if (isJSObject(object)) {
-            return JSObject.getJSClass(object);
-        } else {
-            return null;
-        }
-    }
-
     public static Class<?> getClassIfJSObject(Object object) {
         if (isJSObject(object)) {
             return object.getClass();
@@ -522,10 +504,6 @@ public final class JSGuards {
 
     public static boolean isNullOrUndefined(Object value) {
         return JSRuntime.isNullOrUndefined(value);
-    }
-
-    public static boolean isJSObjectShape(Shape shape) {
-        return shape.getDynamicType() instanceof JSClass;
     }
 
     public static boolean hasOverloadedOperators(Object value) {

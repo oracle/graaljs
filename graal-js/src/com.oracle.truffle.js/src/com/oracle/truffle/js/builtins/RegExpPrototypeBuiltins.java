@@ -1623,7 +1623,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached JSToStringNode toStringNodeForFlags,
                         @Cached("create(LAST_INDEX, getContext())") PropertyGetNode getLastIndexNode,
                         @Cached JSToLengthNode toLengthNode,
-                        @Cached("create(LAST_INDEX, FALSE, getContext(), TRUE)") PropertySetNode setLastIndexNode,
+                        @Cached("create(LAST_INDEX, false, getContext(), true)") PropertySetNode setLastIndexNode,
                         @Cached("createCreateRegExpStringIteratorNode()") StringPrototypeBuiltins.CreateRegExpStringIteratorNode createRegExpStringIteratorNode,
                         @Cached @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                         @Cached ConditionProfile indexInIntRangeProf,

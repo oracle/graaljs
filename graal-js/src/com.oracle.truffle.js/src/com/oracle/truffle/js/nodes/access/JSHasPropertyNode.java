@@ -186,7 +186,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
                 return true;
             }
             if (getLanguage().getJSContext().getContextOptions().hasForeignObjectPrototype()) {
-                JSDynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(object);
+                JSDynamicObject prototype = foreignObjectPrototypeNode.execute(object);
                 return hasInPrototype.executeBoolean(prototype, propertyName);
             } else {
                 return false;

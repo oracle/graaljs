@@ -52,6 +52,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeUtil;
@@ -423,8 +424,8 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         }
 
         @TruffleBoundary
-        @Specialization(guards = "isJSFunction(function)")
-        protected Object printSourceAttribution(JSDynamicObject function) {
+        @Specialization
+        protected Object printSourceAttribution(JSFunctionObject function) {
             CallTarget callTarget = JSFunction.getCallTarget(function);
             if (callTarget instanceof RootCallTarget) {
                 return Strings.fromJavaString(NodeUtil.printSourceAttributionTree(((RootCallTarget) callTarget).getRootNode()));
@@ -434,9 +435,15 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
         @TruffleBoundary
         @Specialization
-        protected Object printSourceAttribution(String code) {
-            ScriptNode scriptNode = getContext().getEvaluator().evalCompile(getContext(), code, "<eval>");
+        protected Object printSourceAttribution(TruffleString code) {
+            ScriptNode scriptNode = getContext().getEvaluator().evalCompile(getContext(), Strings.toJavaString(code), "<eval>");
             return Strings.fromJavaString(NodeUtil.printSourceAttributionTree(scriptNode.getRootNode()));
+        }
+
+        @TruffleBoundary
+        @Fallback
+        protected Object illegalArgument(@SuppressWarnings("unused") Object unused) {
+            throw Errors.createTypeError("argument must be a function or a string");
         }
     }
 

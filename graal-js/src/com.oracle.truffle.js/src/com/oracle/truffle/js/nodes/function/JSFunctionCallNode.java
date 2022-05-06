@@ -1591,7 +1591,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
             }
-            JSDynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(receiver);
+            JSDynamicObject prototype = foreignObjectPrototypeNode.execute(receiver);
             return getFunction(prototype);
         }
 

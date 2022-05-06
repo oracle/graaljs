@@ -96,6 +96,11 @@ public class InitializeFrameSlotsNode extends JavaScriptNode {
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return create(scopeFrameNode, slots);
     }
+
+    @Override
+    public boolean isResultAlwaysOfType(Class<?> clazz) {
+        return clazz == Undefined.class;
+    }
 }
 
 class InitializeFrameSlotNode extends JavaScriptNode {
@@ -118,6 +123,11 @@ class InitializeFrameSlotNode extends JavaScriptNode {
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return new InitializeFrameSlotNode(scopeFrameNode, slot);
+    }
+
+    @Override
+    public boolean isResultAlwaysOfType(Class<?> clazz) {
+        return clazz == Undefined.class;
     }
 }
 
@@ -146,5 +156,10 @@ class InitializeFrameSlotRangeNode extends JavaScriptNode {
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return new InitializeFrameSlotRangeNode(scopeFrameNode, start, end);
+    }
+
+    @Override
+    public boolean isResultAlwaysOfType(Class<?> clazz) {
+        return clazz == Undefined.class;
     }
 }

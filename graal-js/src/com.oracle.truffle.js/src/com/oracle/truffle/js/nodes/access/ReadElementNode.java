@@ -841,7 +841,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     protected static ArrayReadElementCacheNode makeArrayCacheNode(@SuppressWarnings("unused") JSDynamicObject target, ScriptArray array, ArrayReadElementCacheNode next) {
         if (array instanceof ConstantEmptyArray) {
             return new EmptyArrayReadElementCacheNode(array, next);
-        } else if (array instanceof ConstantObjectArray) {
+        } else if (array instanceof ConstantObjectArray && array.isHolesType()) {
             return new ConstantObjectArrayReadElementCacheNode(array, next);
         } else if (array instanceof LazyRegexResultArray) {
             return new LazyRegexResultArrayReadElementCacheNode(array, next);
@@ -1669,7 +1669,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     this.readFromPrototypeNode = insert(ReadElementNode.create(context));
                     this.foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
                 }
-                JSDynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(truffleObject);
+                JSDynamicObject prototype = foreignObjectPrototypeNode.execute(truffleObject);
                 return readFromPrototypeNode.executeWithTargetAndIndex(prototype, key);
             } else {
                 return Undefined.instance;

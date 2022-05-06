@@ -543,8 +543,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (isArray(originalArray)) {
                 arraySpeciesIsArray.enter();
                 ctor = getConstructorProperty(originalArray);
-                if (JSDynamicObject.isJSDynamicObject(ctor)) {
-                    JSDynamicObject ctorObj = (JSDynamicObject) ctor;
+                if (ctor instanceof JSObject) {
+                    JSObject ctorObj = (JSObject) ctor;
                     if (JSFunction.isJSFunction(ctorObj) && JSFunction.isConstructor(ctorObj)) {
                         JSRealm thisRealm = getRealm();
                         JSRealm ctorRealm = JSFunction.getRealm((JSFunctionObject) ctorObj);
@@ -561,11 +561,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                             }
                         }
                     }
-                    if (ctor != Undefined.instance) {
-                        arraySpeciesGetSymbol.enter();
-                        ctor = getSpeciesProperty(ctor);
-                        ctor = ctor == Null.instance ? Undefined.instance : ctor;
-                    }
+                    arraySpeciesGetSymbol.enter();
+                    ctor = getSpeciesProperty(ctor);
+                    ctor = ctor == Null.instance ? Undefined.instance : ctor;
                 }
             }
             if (arraySpeciesEmpty.profile(ctor == Undefined.instance)) {
@@ -611,7 +609,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 defaultConstructorBranch.enter();
                 return defaultConstructor;
             }
-            if (!JSDynamicObject.isJSDynamicObject(c)) {
+            if (!(c instanceof JSObject)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorNotAnObject(c);
             }
@@ -1313,7 +1311,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
             }
-            return foreignObjectPrototypeNode.executeDynamicObject(truffleObject);
+            return foreignObjectPrototypeNode.execute(truffleObject);
         }
 
         private InteropLibrary getInterop() {
@@ -1520,11 +1518,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         // ES2015, 22.1.3.1.1
         private boolean isConcatSpreadable(Object el) {
-            if (el == Undefined.instance || el == Null.instance) {
-                return false;
-            }
-            if (JSDynamicObject.isJSDynamicObject(el)) {
-                JSDynamicObject obj = (JSDynamicObject) el;
+            if (el instanceof JSObject) {
+                JSObject obj = (JSObject) el;
                 Object spreadable = getSpreadableProperty(obj);
                 if (spreadable != Undefined.instance) {
                     return toBoolean(spreadable);

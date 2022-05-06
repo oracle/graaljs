@@ -152,6 +152,10 @@ public final class FunctionEnvironment extends Environment {
         return returnSlot;
     }
 
+    public boolean hasReturnSlot() {
+        return returnSlot != null;
+    }
+
     public JSFrameSlot getAsyncResultSlot() {
         return declareLocalVar(ASYNC_RESULT_SLOT_IDENTIFIER);
     }

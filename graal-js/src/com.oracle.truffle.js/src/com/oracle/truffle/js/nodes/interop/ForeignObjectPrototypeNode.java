@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -52,10 +53,11 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 /**
  * Node that returns a suitable prototype for a foreign object.
  */
+@GenerateUncached
 @ImportStatic({JSConfig.class})
 public abstract class ForeignObjectPrototypeNode extends JavaScriptBaseNode {
 
-    public abstract JSDynamicObject executeDynamicObject(Object truffleObject);
+    public abstract JSDynamicObject execute(Object truffleObject);
 
     @Specialization(limit = "InteropLibraryLimit")
     public JSDynamicObject doTruffleObject(Object truffleObject,
@@ -86,4 +88,7 @@ public abstract class ForeignObjectPrototypeNode extends JavaScriptBaseNode {
         return ForeignObjectPrototypeNodeGen.create();
     }
 
+    public static ForeignObjectPrototypeNode getUncached() {
+        return ForeignObjectPrototypeNodeGen.getUncached();
+    }
 }

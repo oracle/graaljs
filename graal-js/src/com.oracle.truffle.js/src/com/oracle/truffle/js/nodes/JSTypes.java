@@ -51,7 +51,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 /**
  * @see JavaScriptNode
  */
-@TypeSystem({boolean.class, int.class, double.class, long.class, SafeInteger.class, BigInt.class, String.class})
+@TypeSystem({boolean.class, int.class, double.class, long.class, SafeInteger.class, BigInt.class})
 public class JSTypes {
 
     protected JSTypes() {

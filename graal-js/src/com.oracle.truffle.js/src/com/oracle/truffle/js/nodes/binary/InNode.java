@@ -112,11 +112,6 @@ public abstract class InNode extends JSBinaryNode {
     }
 
     @Specialization
-    protected static Object doString(@SuppressWarnings("unused") Object needle, String haystack) {
-        throw Errors.createTypeErrorNotAnObject(haystack);
-    }
-
-    @Specialization
     protected static Object doTString(@SuppressWarnings("unused") Object needle, TruffleString haystack) {
         throw Errors.createTypeErrorNotAnObject(haystack);
     }

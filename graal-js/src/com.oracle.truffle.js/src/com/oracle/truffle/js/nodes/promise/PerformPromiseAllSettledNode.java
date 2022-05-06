@@ -88,7 +88,7 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
     }
 
     private static JSFunctionData createResolveElementFunctionImpl(JSContext context) {
-        class PromiseAllSEttledResolveElementRootNode extends JavaScriptRootNode {
+        class PromiseAllSettledResolveElementRootNode extends JavaScriptRootNode {
             @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
             @Child private PropertyGetNode getArgs = PropertyGetNode.createGetHidden(RESOLVE_ELEMENT_ARGS_KEY, context);
             @Child private JSFunctionCallNode callResolve = JSFunctionCallNode.createCall();
@@ -119,7 +119,7 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
                 return Undefined.instance;
             }
         }
-        return JSFunctionData.createCallOnly(context, new PromiseAllSEttledResolveElementRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
+        return JSFunctionData.createCallOnly(context, new PromiseAllSettledResolveElementRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
     private static JSFunctionData createRejectElementFunctionImpl(JSContext context) {

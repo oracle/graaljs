@@ -95,13 +95,21 @@ public abstract class AbstractBlockNode extends StatementNode implements Sequenc
         boolean returnExprBlock = exprBlock;
         for (int i = 0; i < originalStatements.length; i++) {
             JavaScriptNode statement = originalStatements[i];
-            if ((statement instanceof EmptyNode || statement instanceof AbstractBlockNode || statement instanceof DiscardResultNode || statement instanceof JSConstantUndefinedNode) &&
+            if ((statement instanceof EmptyNode ||
+                            statement instanceof AbstractBlockNode ||
+                            statement instanceof DualNode ||
+                            statement instanceof DiscardResultNode ||
+                            statement instanceof JSConstantUndefinedNode) &&
                             !JSNodeUtil.hasImportantTag(statement)) {
                 if (filteredStatements == null) {
                     filteredStatements = newListFromRange(originalStatements, 0, i);
                 }
                 if (statement instanceof AbstractBlockNode) {
                     filteredStatements.addAll(Arrays.asList(((AbstractBlockNode) statement).getStatements()));
+                } else if (statement instanceof DualNode) {
+                    DualNode dualNode = (DualNode) statement;
+                    filteredStatements.add(dualNode.getLeft());
+                    filteredStatements.add(dualNode.getRight());
                 } else if (statement instanceof DiscardResultNode) {
                     DiscardResultNode voidNode = (DiscardResultNode) statement;
                     filteredStatements.add(voidNode.getOperand());
@@ -109,7 +117,8 @@ public abstract class AbstractBlockNode extends StatementNode implements Sequenc
                 } else {
                     assert statement instanceof EmptyNode || statement instanceof JSConstantUndefinedNode;
                 }
-                if (exprBlock && i == originalStatements.length - 1 && !(statement instanceof ExprBlockNode || statement instanceof EmptyNode)) {
+                if (exprBlock && i == originalStatements.length - 1 &&
+                                !(statement instanceof ExprBlockNode || statement instanceof DualNode || statement instanceof EmptyNode)) {
                     // last statement would have returned undefined, so we need a void block node
                     returnExprBlock = false;
                 }
