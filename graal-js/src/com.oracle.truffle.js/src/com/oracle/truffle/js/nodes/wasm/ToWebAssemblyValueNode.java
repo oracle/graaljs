@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,7 @@ package com.oracle.truffle.js.nodes.wasm;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.cast.JSToBigInt64Node;
+import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -56,12 +56,12 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyValueTypes;
 public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
     @Child JSToInt32Node toInt32Node;
     @Child JSToNumberNode toNumberNode;
-    @Child JSToBigInt64Node toBigInt64Node;
+    @Child JSToBigIntNode toBigIntNode;
 
     protected ToWebAssemblyValueNode() {
         this.toNumberNode = JSToNumberNode.create();
         this.toInt32Node = JSToInt32Node.create();
-        this.toBigInt64Node = JSToBigInt64Node.create();
+        this.toBigIntNode = JSToBigIntNode.create();
     }
 
     public static ToWebAssemblyValueNode create() {
@@ -78,7 +78,8 @@ public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
     protected Object convert(Object value, TruffleString type) {
         assert getLanguage().getJSContext().getContextOptions().isWasmBigInt() || !JSWebAssemblyValueTypes.isI64(type);
         if (JSWebAssemblyValueTypes.isI64(type)) {
-            return toBigInt64Node.execute(value);
+            // i64.const ToBigInt64(value)
+            return toBigIntNode.executeBigInteger(value).longValue();
         }
         if (JSWebAssemblyValueTypes.isI32(type)) {
             return toInt32Node.executeInt(value);
