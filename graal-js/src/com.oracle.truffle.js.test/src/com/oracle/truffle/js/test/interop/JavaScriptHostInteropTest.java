@@ -107,22 +107,14 @@ public class JavaScriptHostInteropTest {
                 context.getBindings(ID).putMember("hostobj", hostObj);
                 String expectedClassName = hostObj.getClass().getSimpleName();
 
-                expectedException = e -> {
-                    assertThat(e.getMessage(), e.getMessage(), containsString(expectedClassName));
-                    assertThat(e.getMessage(), e.getMessage(), containsString("foo"));
-                    assertThat(e.getMessage(), e.getMessage(), containsString("Arity error"));
-                };
+                expectedException = new ExceptionVerifier(expectedClassName, "foo", "Arity error");
                 assertThrows(() -> context.eval(ID, "hostobj.foo();"), expectedException);
                 assertThrows(() -> context.eval(ID, "" +
                                 "var foo = hostobj.foo;\n" +
                                 "foo();"),
                                 expectedException);
 
-                expectedException = e -> {
-                    assertThat(e.getMessage(), e.getMessage(), containsString(expectedClassName));
-                    assertThat(e.getMessage(), e.getMessage(), containsString("write"));
-                    assertThat(e.getMessage(), e.getMessage(), containsString("Arity error"));
-                };
+                expectedException = new ExceptionVerifier(expectedClassName, "write", "Arity error");
                 assertThrows(() -> context.eval(ID, "hostobj.write('a', 'b')"), expectedException);
                 assertThrows(() -> context.eval(ID, "hostobj['write']('a', 'b')"), expectedException);
                 assertThrows(() -> context.eval(ID, "hostobj.write('a', 'b', 'c', 'd')"), expectedException);
@@ -147,11 +139,7 @@ public class JavaScriptHostInteropTest {
                 context.getBindings(ID).putMember("hostobj", hostObj);
                 String expectedClassName = hostObj.getClass().getSimpleName();
 
-                expectedException = e -> {
-                    assertThat(e.getMessage(), e.getMessage(), containsString(expectedClassName));
-                    assertThat(e.getMessage(), e.getMessage(), containsString("foo"));
-                    assertThat(e.getMessage(), e.getMessage(), containsString("Cannot convert '{}'(language: JavaScript, type: Object) to Java type 'int'"));
-                };
+                expectedException = new ExceptionVerifier(expectedClassName, "foo", "Cannot convert '{}'(language: JavaScript, type: Object) to Java type 'int'");
                 assertThrows(() -> context.eval(ID, "hostobj.foo({});"), expectedException);
                 assertThrows(() -> context.eval(ID, "" +
                                 "var foo = hostobj.foo;\n" +
@@ -162,21 +150,12 @@ public class JavaScriptHostInteropTest {
                                 "var foo = hostobj.foo;\n" +
                                 "foo(42);");
 
-                expectedException = e -> {
-                    assertThat(e.getMessage(), e.getMessage(), containsString(expectedClassName));
-                    assertThat(e.getMessage(), e.getMessage(), containsString("bounce"));
-                    assertThat(e.getMessage(), e.getMessage(),
-                                    containsString("Cannot convert 'abc'(language: Java, type: com.oracle.truffle.api.strings.TruffleString) to Java type 'java.util.Map[]'"));
-                };
+                expectedException = new ExceptionVerifier(expectedClassName, "bounce",
+                                "Cannot convert 'abc'(language: Java, type: com.oracle.truffle.api.strings.TruffleString) to Java type 'java.util.Map[]'");
                 assertThrows(() -> context.eval(ID, "hostobj.bounce('abc')"), expectedException);
                 assertThrows(() -> context.eval(ID, "hostobj['bounce']('abc')"), expectedException);
 
-                expectedException = e -> {
-                    assertThat(e.getMessage(), e.getMessage(), containsString(expectedClassName));
-                    assertThat(e.getMessage(), e.getMessage(), containsString("write"));
-                    assertThat(e.getMessage(), e.getMessage(),
-                                    containsString("Cannot convert '6'(language: Java, type: java.lang.Integer) to Java type 'java.lang.String'"));
-                };
+                expectedException = new ExceptionVerifier(expectedClassName, "write", "Cannot convert '6'(language: Java, type: java.lang.Integer) to Java type 'java.lang.String'");
                 assertThrows(() -> context.eval(ID, "hostobj.write(6, 'eight', null)"), expectedException);
                 assertThrows(() -> context.eval(ID, "hostobj['write'](6, 'eight', null)"), expectedException);
 
@@ -300,5 +279,22 @@ public class JavaScriptHostInteropTest {
             result = context.eval(ID, "api['consumeArray(java.lang.Object[])'](array);");
             assertEquals("Object[]", result.asString());
         }
+    }
+
+    public static class ExceptionVerifier implements Consumer<PolyglotException> {
+        private final String[] substrings;
+
+        ExceptionVerifier(String... substrings) {
+            this.substrings = substrings;
+        }
+
+        @Override
+        public void accept(PolyglotException e) {
+            String message = e.getMessage();
+            for (String substring : substrings) {
+                assertThat(message, message, containsString(substring));
+            }
+        }
+
     }
 }
