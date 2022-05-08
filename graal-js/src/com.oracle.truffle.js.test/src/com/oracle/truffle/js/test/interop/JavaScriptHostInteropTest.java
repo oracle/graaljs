@@ -106,9 +106,12 @@ public class JavaScriptHostInteropTest {
                 }
                 context.getBindings(ID).putMember("hostobj", hostObj);
                 String expectedClassName = hostObj.getClass().getSimpleName();
+                String ifaceClassName = MyHostIntf.class.getSimpleName();
 
                 expectedException = new ExceptionVerifier(expectedClassName, "foo", "Arity error");
                 assertThrows(() -> context.eval(ID, "hostobj.foo();"), expectedException);
+
+                expectedException = (i == 0) ? expectedException : new ExceptionVerifier(ifaceClassName, "foo", "Arity error");
                 assertThrows(() -> context.eval(ID, "" +
                                 "var foo = hostobj.foo;\n" +
                                 "foo();"),
@@ -116,8 +119,10 @@ public class JavaScriptHostInteropTest {
 
                 expectedException = new ExceptionVerifier(expectedClassName, "write", "Arity error");
                 assertThrows(() -> context.eval(ID, "hostobj.write('a', 'b')"), expectedException);
-                assertThrows(() -> context.eval(ID, "hostobj['write']('a', 'b')"), expectedException);
                 assertThrows(() -> context.eval(ID, "hostobj.write('a', 'b', 'c', 'd')"), expectedException);
+
+                expectedException = (i == 0) ? expectedException : new ExceptionVerifier(ifaceClassName, "write", "Arity error");
+                assertThrows(() -> context.eval(ID, "hostobj['write']('a', 'b')"), expectedException);
                 assertThrows(() -> context.eval(ID, "hostobj['write']('a', 'b', 'c', 'd')"), expectedException);
             }
         }
@@ -138,9 +143,13 @@ public class JavaScriptHostInteropTest {
                 }
                 context.getBindings(ID).putMember("hostobj", hostObj);
                 String expectedClassName = hostObj.getClass().getSimpleName();
+                String ifaceClassName = MyHostIntf.class.getSimpleName();
 
-                expectedException = new ExceptionVerifier(expectedClassName, "foo", "Cannot convert '{}'(language: JavaScript, type: Object) to Java type 'int'");
+                String messagePart = "Cannot convert '{}'(language: JavaScript, type: Object) to Java type 'int'";
+                expectedException = new ExceptionVerifier(expectedClassName, "foo", messagePart);
                 assertThrows(() -> context.eval(ID, "hostobj.foo({});"), expectedException);
+
+                expectedException = (i == 0) ? expectedException : new ExceptionVerifier(ifaceClassName, "foo", messagePart);
                 assertThrows(() -> context.eval(ID, "" +
                                 "var foo = hostobj.foo;\n" +
                                 "foo({});"), expectedException);
@@ -150,13 +159,16 @@ public class JavaScriptHostInteropTest {
                                 "var foo = hostobj.foo;\n" +
                                 "foo(42);");
 
-                expectedException = new ExceptionVerifier(expectedClassName, "bounce",
-                                "Cannot convert 'abc'(language: Java, type: com.oracle.truffle.api.strings.TruffleString) to Java type 'java.util.Map[]'");
+                messagePart = "Cannot convert 'abc'(language: Java, type: com.oracle.truffle.api.strings.TruffleString) to Java type 'java.util.Map[]'";
+                expectedException = new ExceptionVerifier(expectedClassName, "bounce", messagePart);
                 assertThrows(() -> context.eval(ID, "hostobj.bounce('abc')"), expectedException);
+                expectedException = (i == 0) ? expectedException : new ExceptionVerifier(ifaceClassName, "bounce", messagePart);
                 assertThrows(() -> context.eval(ID, "hostobj['bounce']('abc')"), expectedException);
 
-                expectedException = new ExceptionVerifier(expectedClassName, "write", "Cannot convert '6'(language: Java, type: java.lang.Integer) to Java type 'java.lang.String'");
+                messagePart = "Cannot convert '6'(language: Java, type: java.lang.Integer) to Java type 'java.lang.String'";
+                expectedException = new ExceptionVerifier(expectedClassName, "write", messagePart);
                 assertThrows(() -> context.eval(ID, "hostobj.write(6, 'eight', null)"), expectedException);
+                expectedException = (i == 0) ? expectedException : new ExceptionVerifier(ifaceClassName, "write", messagePart);
                 assertThrows(() -> context.eval(ID, "hostobj['write'](6, 'eight', null)"), expectedException);
 
                 context.eval(ID, "hostobj.write(JSON.stringify(6), 'eight', null)");
