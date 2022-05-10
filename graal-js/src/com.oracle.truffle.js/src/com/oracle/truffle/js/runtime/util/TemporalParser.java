@@ -108,6 +108,12 @@ public final class TemporalParser {
         this.input = input;
     }
 
+    public JSTemporalParserRecord parseTemporalDateString() {
+        // TemporalDateString => CalendarDateTime
+        JSTemporalParserRecord rec = parseCalendarDateTime();
+        return rec;
+    }
+
     public JSTemporalParserRecord parseISODateTime() {
         JSTemporalParserRecord rec;
 
@@ -172,18 +178,199 @@ public final class TemporalParser {
             parseTimeZone();
             boolean hasCalendar = parseCalendar();
             if (!hasTimeDesignator && !hasCalendar) {
-                // return null;
-                // ignoring this (almost) implements
-                // TimeSpecWithOptionalTimeZoneNotAmbiguous
+                // neither of the two first alternatives match
+            } else if (atEnd()) {
+                return result();
             }
+        }
+
+        // TimeSpecWithOptionalTimeZoneNotAmbiguous
+        reset();
+        JSTemporalParserRecord rec = parseTimeSpecWithOptionalTimeZoneNotAmbiguous();
+        return rec;
+    }
+
+    private JSTemporalParserRecord parseTimeSpecWithOptionalTimeZoneNotAmbiguous() {
+        reset();
+
+        // TimeHour TimeZoneNumericUTCOffsetNotAmbiguous(opt) TimeZoneBracketedAnnotation(opt)
+        if (tryParseHour()) {
+            tryParseTimeZoneNumericUTCOffset(true);
+            tryParseTimeZoneBracketedAnnotation();
             if (atEnd()) {
                 return result();
             }
         }
 
-        // TODO TimeSpecWithOptionalTimeZoneNotAmbiguous
+        reset();
+        // TimeHourNotValidMonth TimeZone
+        if (tryParseTimeHourNotValidMonth()) {
+            if (parseTimeZone()) {
+                if (atEnd()) {
+                    return result();
+                }
+            }
+        }
+
+        reset();
+        TruffleString previousRest = rest; // tryParseTimeSpec overwrites rest
+        if (tryParseTimeSpec()) {
+            // but it could still be ambiguous, so check ...
+
+            long h = getNumber(hour);
+            long min = getNumber(minute);
+            long s = getNumber(second);
+
+            // TimeHour : TimeMinute TimeZoneopt
+            if (s < 0 && Strings.length(previousRest) >= 3 && Strings.charAt(previousRest, 2) == ':' && isValidMinute(min)) {
+                parseTimeZone();
+                if (atEnd()) {
+                    return result();
+                }
+            }
+
+            // TimeHourMinuteBasicFormatNotAmbiguous TimeZoneBracketedAnnotationopt
+            if (s < 0 && Strings.length(previousRest) >= 3 && Strings.charAt(previousRest, 2) != ':') {
+                boolean ok = false;
+                // TimeHourNotValidMonth TimeMinute
+                if ((h == 0 || (13 <= h && h <= 23)) && isValidMinute(min)) {
+                    ok = true;
+                }
+
+                // TimeHour TimeMinuteNotValidDay
+                if (isValidHour(h) && (min == 0 || (32 <= min && min <= 60))) {
+                    ok = true;
+                }
+                // TimeHourNotThirtyOneDayMonth TimeMinuteThirtyOneOnly
+                if (min == 31 && (h == 2 || h == 4 || h == 6 || h == 9 || h == 11)) {
+                    ok = true;
+                }
+                // TimeHourTwoOnly TimeMinuteThirtyOnly
+                if (h == 2 && min == 30) {
+                    ok = true;
+                }
+
+                if (ok) {
+                    tryParseTimeZoneBracketedAnnotation();
+                    if (atEnd()) {
+                        return result();
+                    }
+                }
+            }
+
+            // TimeHour TimeMinute TimeZoneNumericUTCOffsetNotAmbiguousAllowedNegativeHour
+            // TimeZoneBracketedAnnotationopt
+            if (s < 0 && tryParseTimeZoneNumericUTCOffset(true)) {
+                tryParseTimeZoneBracketedAnnotation();
+                if (atEnd()) {
+                    return result();
+                }
+            }
+
+            if (tryParseNegativeTimeHourNotValidMonth()) {
+                tryParseTimeZoneBracketedAnnotation();
+                if (atEnd()) {
+                    return result();
+                }
+            }
+
+            // TimeHour : TimeMinute : TimeSecond TimeFractionopt TimeZoneopt
+            if (Strings.length(previousRest) > 5 && Strings.charAt(previousRest, 2) == ':' && Strings.charAt(previousRest, 5) == ':') {
+                parseTimeZone();
+                if (atEnd()) {
+                    return result();
+                }
+            }
+
+            // TimeHour TimeMinute TimeSecondNotValidMonth TimeZoneopt
+            if (Strings.length(previousRest) > 2 && Strings.charAt(previousRest, 2) != ':' && (s == 0 || (13 <= s && s <= 60))) {
+                parseTimeZone();
+                if (atEnd()) {
+                    return result();
+                }
+            }
+
+            // TimeHour TimeMinute TimeSecond TimeFraction TimeZoneopt
+            if (Strings.length(previousRest) > 2 && Strings.charAt(previousRest, 2) != ':' && this.fraction != null) {
+                parseTimeZone();
+                if (atEnd()) {
+                    return result();
+                }
+            }
+        }
 
         return null;
+    }
+
+    private boolean tryParseNegativeTimeHourNotValidMonth() {
+        if (Strings.length(rest) > 0 && Strings.charAt(rest, 0) == '-') {
+            int h = parseTwoDigits(1);
+            if (0 == h || (13 <= h && h <= 23)) {
+                this.offsetHour = Strings.lazySubstring(rest, 1, 2);
+                move(3);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isValidMinute(long min) {
+        return 0 <= min && min <= 59;
+    }
+
+    private static boolean isValidHour(long h) {
+        return 0 <= h && h <= 23;
+    }
+
+    private static long getNumber(TruffleString s) {
+        if (s == null) {
+            return -1;
+        }
+        try {
+            return Strings.parseLong(s);
+        } catch (TruffleString.NumberFormatException ex) {
+            return -1;
+        }
+    }
+
+    private boolean tryParseHour() {
+        int num = parseTwoDigits(0);
+        if (0 <= num && num <= 23) {
+            this.hour = Strings.lazySubstring(rest, 0, 2);
+            move(2);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean tryParseTimeHourNotValidMonth() {
+        int num = parseTwoDigits(0);
+        if (num == 0 || (13 <= num && num <= 23)) {
+            this.hour = Strings.lazySubstring(rest, 0, 2);
+            move(2);
+            return true;
+        }
+        return false;
+    }
+
+    private int parseTwoDigits(int at) {
+        if (Strings.length(rest) >= at + 2) {
+            char next0 = Strings.charAt(rest, at + 0);
+            char next1 = Strings.charAt(rest, at + 1);
+            if (isDigit(next0) && isDigit(next1)) {
+                return toDigit(next0) * 10 + toDigit(next1);
+            }
+        }
+        return -1;
+    }
+
+    private static boolean isDigit(char c) {
+        return '0' <= c && c <= '9';
+    }
+
+    private static int toDigit(char c) {
+        assert isDigit(c);
+        return c - '0';
     }
 
     private JSTemporalParserRecord parseCalendarDateTime() {
@@ -223,10 +410,16 @@ public final class TemporalParser {
     }
 
     private boolean parseTimeSpecSeparator() {
+        int posBackup = pos;
+        TruffleString restBackup = rest;
+
         if (!tryParseDateTimeSeparator()) {
             return false;
         }
         if (!tryParseTimeSpec()) {
+            // we found a separator, but no time.
+            pos = posBackup;
+            rest = restBackup;
             return false;
         }
         return true;
@@ -348,7 +541,7 @@ public final class TemporalParser {
 
     public JSTemporalParserRecord parseTimeZoneNumericUTCOffset() {
         reset();
-        if (tryParseTimeZoneNumericUTCOffset()) {
+        if (tryParseTimeZoneNumericUTCOffset(false)) {
             if (atEnd()) { // catches "+00:01.1"
                 return result();
             }
@@ -650,7 +843,7 @@ public final class TemporalParser {
     }
 
     private boolean tryParseTimeZoneUTCOffset() {
-        if (tryParseTimeZoneNumericUTCOffset()) {
+        if (tryParseTimeZoneNumericUTCOffset(false)) {
             return true;
         }
 
@@ -672,7 +865,7 @@ public final class TemporalParser {
         return false;
     }
 
-    private boolean tryParseTimeZoneNumericUTCOffset() {
+    private boolean tryParseTimeZoneNumericUTCOffset(boolean nonAmbiguous) {
         Matcher matcher = createMatch(patternTimeZoneNumericUTCOffset, rest, true);
         if (matcher.matches()) {
             offsetSign = group(rest, matcher, 1);
@@ -686,6 +879,14 @@ public final class TemporalParser {
                 return false;
             }
 
+            if (nonAmbiguous) {
+                // this is production TimeZoneNumericUTCOffsetNotAmbiguous
+                // only difference is: does not accept "-HH"
+                if (matcher.start(3) < 0 && Strings.charAt(rest, 0) == '-') {
+                    return false;
+                }
+            }
+
             // differentiate between "-08" and "-08:00" here!
             move(offsetMinute != null ? matcher.end(3) : matcher.end(2));
             return true;
@@ -697,7 +898,7 @@ public final class TemporalParser {
     private boolean parseTimeZoneIdentifier() {
         // TimeZoneNumericUTCOffset
         reset();
-        if (tryParseTimeZoneNumericUTCOffset()) {
+        if (tryParseTimeZoneNumericUTCOffset(false)) {
             return true;
         }
 

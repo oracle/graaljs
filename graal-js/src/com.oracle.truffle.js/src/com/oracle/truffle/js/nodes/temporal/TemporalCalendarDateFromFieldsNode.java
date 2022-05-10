@@ -40,62 +40,42 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import java.util.List;
-
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.runtime.Boundaries;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.util.TemporalErrors;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Implementation of ToLimitedTemporalDuration() operation.
+ * Implementation of CalendarDateFromFields() operation.
  */
-public abstract class ToLimitedTemporalDurationNode extends JavaScriptBaseNode {
+public abstract class TemporalCalendarDateFromFieldsNode extends JavaScriptBaseNode {
 
-    private final ConditionProfile isObjectProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile hasDisallowedFields = ConditionProfile.createBinaryProfile();
     private final BranchProfile errorBranch = BranchProfile.create();
+    @Child protected PropertyGetNode getDateFromFieldsNode;
+    @Child protected JSFunctionCallNode callNode;
 
-    protected ToLimitedTemporalDurationNode() {
+    protected TemporalCalendarDateFromFieldsNode(JSContext ctx) {
+        this.getDateFromFieldsNode = PropertyGetNode.create(TemporalConstants.DATE_FROM_FIELDS, false, ctx);
+        this.callNode = JSFunctionCallNode.createCall();
     }
 
-    public static ToLimitedTemporalDurationNode create() {
-        return ToLimitedTemporalDurationNodeGen.create();
+    public static TemporalCalendarDateFromFieldsNode create(JSContext context) {
+        return TemporalCalendarDateFromFieldsNodeGen.create(context);
     }
 
-    public abstract JSTemporalDurationRecord executeDynamicObject(Object temporalDurationLike, List<TruffleString> disallowedFields);
+    public abstract JSTemporalPlainDateObject execute(JSDynamicObject calendar, JSDynamicObject fields, Object options);
 
     @Specialization
-    protected JSTemporalDurationRecord toLimitedTemporalDuration(Object temporalDurationLike, List<TruffleString> disallowedFields,
-                    @Cached("create()") IsObjectNode isObjectNode,
-                    @Cached("create()") JSToStringNode toStringNode) {
-        JSTemporalDurationRecord d;
-        if (isObjectProfile.profile(!isObjectNode.executeBoolean(temporalDurationLike))) {
-            TruffleString str = toStringNode.executeString(temporalDurationLike);
-            d = JSTemporalDuration.parseTemporalDurationString(str);
-        } else {
-            d = JSTemporalDuration.toTemporalDurationRecord((JSDynamicObject) temporalDurationLike);
-        }
-
-        if (hasDisallowedFields.profile(disallowedFields != TemporalUtil.listEmpty)) {
-            for (TemporalUtil.UnitPlural unit : TemporalUtil.DURATION_PROPERTIES) {
-                double value = TemporalUtil.getPropertyFromRecord(d, unit);
-                if (value != 0 && Boundaries.listContains(disallowedFields, unit.toTruffleString())) {
-                    errorBranch.enter();
-                    throw TemporalErrors.createRangeErrorDisallowedField(unit.toTruffleString());
-                }
-            }
-        }
-        return d;
+    public JSTemporalPlainDateObject toTemporalDate(JSDynamicObject calendar, JSDynamicObject fields, Object options) {
+        Object dateFromFields = getDateFromFieldsNode.getValue(calendar);
+        Object date = callNode.executeCall(JSArguments.create(calendar, dateFromFields, fields, options));
+        return TemporalUtil.requireTemporalDate(date, errorBranch);
     }
 }

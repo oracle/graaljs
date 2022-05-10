@@ -51,7 +51,6 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
@@ -60,7 +59,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -86,19 +84,16 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
     public abstract JSDynamicObject executeDynamicObject(Object value, JSDynamicObject options);
 
     @Specialization
-    public JSDynamicObject toTemporalDateTime(Object item, JSDynamicObject optParam,
+    public JSDynamicObject toTemporalDateTime(Object item, JSDynamicObject options,
                     @Cached BranchProfile errorBranch,
                     @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToStringNode toStringNode,
                     @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
                     @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
                     @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode,
-                    @Cached TemporalGetOptionNode getOptionNode) {
-        JSDynamicObject options = optParam;
-        assert optParam != null;
-        if (optParam == Undefined.instance) {
-            options = JSOrdinary.createWithNullPrototype(ctx);
-        }
+                    @Cached TemporalGetOptionNode getOptionNode,
+                    @Cached("create(ctx)") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
+        assert options != null;
         JSTemporalDateTimeRecord result = null;
         JSDynamicObject calendar = null;
         if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
@@ -107,7 +102,7 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
                 return itemObj;
             } else if (isZonedDateTimeProfile.profile(TemporalUtil.isTemporalZonedDateTime(itemObj))) {
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) itemObj;
-                JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, zdt.getNanoseconds());
+                JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, getRealm(), zdt.getNanoseconds());
                 return TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, zdt.getTimeZone(), instant, zdt.getCalendar());
             } else if (isPlainDateProfile.profile(itemObj instanceof JSTemporalPlainDateObject)) {
                 JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) itemObj;
@@ -116,7 +111,7 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
             calendar = getTemporalCalendarNode.executeDynamicObject(itemObj);
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDHMMMMMNSY);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.listEmpty);
-            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options, getOptionNode);
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options, getOptionNode, dateFromFieldsNode);
         } else {
             TemporalUtil.toTemporalOverflow(options, getOptionNode);
             TruffleString string = toStringNode.executeString(item);

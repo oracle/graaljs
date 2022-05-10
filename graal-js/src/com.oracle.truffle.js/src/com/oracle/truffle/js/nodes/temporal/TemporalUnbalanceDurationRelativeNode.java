@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.LARGEST_UNIT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
@@ -52,7 +51,6 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -76,7 +74,6 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
 
     protected final JSContext ctx;
     private final BranchProfile errorBranch = BranchProfile.create();
-    @Child private PropertyGetNode getCalendarNode;
     @Child private GetMethodNode getMethodDateAddNode;
     @Child private JSFunctionCallNode callDateAddNode;
     @Child private GetMethodNode getMethodDateUntilNode;
@@ -117,8 +114,9 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
         JSDynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(ctx, 0, 0, sign, 0, 0, 0, 0, 0, 0, 0, errorBranch);
         JSDynamicObject calendar = Undefined.instance;
         if (relativeToAvailable.profile(relativeTo != Undefined.instance)) {
-            relativeTo = toTemporalDateNode.executeDynamicObject(relativeTo, Undefined.instance);
-            calendar = getCalendar(relativeTo);
+            JSTemporalPlainDateObject pdo = toTemporalDateNode.executeDynamicObject(relativeTo, Undefined.instance);
+            relativeTo = pdo;
+            calendar = pdo.getCalendar();
         }
         if (unitIsMonth.profile(TemporalUtil.Unit.MONTH == largestUnit)) {
             return unitIsMonth(years, months, weeks, days, relativeTo, sign, oneYear, calendar);
@@ -225,21 +223,13 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
         return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
     }
 
-    private JSDynamicObject getCalendar(JSDynamicObject obj) {
-        if (getCalendarNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.getCalendarNode = insert(PropertyGetNode.create(CALENDAR, ctx));
-        }
-        return TemporalUtil.toDynamicObject(getCalendarNode.getValue(obj));
-    }
-
     protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options, Object dateAdd) {
         if (callDateAddNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             callDateAddNode = insert(JSFunctionCallNode.createCall());
         }
         Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendar, dateAdd, date, duration, options));
-        return TemporalUtil.requireTemporalDate(addedDate);
+        return TemporalUtil.requireTemporalDate(addedDate, errorBranch);
     }
 
     protected JSTemporalDurationObject calendarDateUntil(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options, Object dateUntil) {

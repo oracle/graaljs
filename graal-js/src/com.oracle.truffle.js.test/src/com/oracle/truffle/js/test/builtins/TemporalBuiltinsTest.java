@@ -445,7 +445,7 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testDurationRound() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = new Temporal.Duration(0, 0, 0, 0, 12, 45, 35, 520, 450, 860);");
-            ctx.eval(ID, "duration = duration.round({ smallestUnit: 'hours' }); print(duration.toString());");
+            ctx.eval(ID, "duration = duration.round({ smallestUnit: 'hours' });");
             validateDuration(ctx, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0);
         }
     }
@@ -829,10 +829,9 @@ public class TemporalBuiltinsTest extends JSTest {
 
     @Test
     public void testInstant() {
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, "Temporal.Instant.from('1900-01-01T12:00Z').toString();");
-            assertEquals("1900-01-01T12:00:00Z", result.toString());
-        }
+        String code = "var inst = Temporal.Instant.from('1900-01-01T12:00Z').toString(); \n" +
+                        "inst.toString() == '1900-01-01T12:00:00Z';";
+        testTrue(code);
     }
 
     @Test
@@ -931,21 +930,14 @@ public class TemporalBuiltinsTest extends JSTest {
         String code = "const epoch = new Temporal.Instant(0n);\n" +
                         "const str = '1970-01-01T00:02:00.000000000+00:02[+00:01:30.987654321]';\n" +
                         "Temporal.Instant.compare(str, epoch) === 0;";
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, code);
-            Assert.assertEquals(true, result.asBoolean());
-        }
+        testTrue(code);
     }
 
     @Test
     public void testMonthDayParser() {
         String code = "const md = Temporal.PlainMonthDay.from('--12-25');\n" +
-                        "print(md.toString()); print(md.monthCode); print(md.day);\n" +
                         "md.monthCode === 'M12' && md.day === 25;";
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, code);
-            Assert.assertEquals(true, result.asBoolean());
-        }
+        testTrue(code);
     }
 
     @Test
@@ -963,6 +955,134 @@ public class TemporalBuiltinsTest extends JSTest {
             Assert.fail();
         } catch (PolyglotException ex) {
             Assert.assertTrue(ex.getMessage().contains("invalid PlainDateTime"));
+        }
+    }
+
+    @Test
+    public void testDurationParserDotComma() {
+        durationParserFail("P1Y1M1W1DT1H1M1.,123456789S");
+        durationParserFail("P1Y1M1W1DT1H1M1,.123456789S");
+        durationParserFail("P1Y1M1W1DT1H1M1..123456789S");
+        durationParserFail("P1Y1M1W1DT1H1M1,,123456789S");
+
+        durationParserFail("P1Y1M1W1DT1H1M1.88,123456789S");
+        durationParserFail("P1Y1M1W1DT1H1M1,88.123456789S");
+        durationParserFail("P1Y1M1W1DT1H1M1.88.123456789S");
+        durationParserFail("P1Y1M1W1DT1H1M1,88,123456789S");
+    }
+
+    private static void durationParserFail(String duration) {
+        try (Context ctx = getJSContext()) {
+            ctx.eval(ID, "Temporal.Duration.from('" + duration + "')");
+            Assert.fail();
+        } catch (PolyglotException ex) {
+            Assert.assertTrue(ex.getMessage().contains("malformed Duration"));
+        }
+    }
+
+    @Test
+    public void testPlainTimeParser() {
+        String code = "var pt = Temporal.PlainTime.from('08:44:15.321');\n" +
+                        "pt.hour === 8 && pt.minute === 44 && pt.second === 15 && pt.millisecond === 321;";
+        testTrue(code);
+
+        testFail("Temporal.PlainTime.from('08:44:15.321 ');", "cannot parse the ISO date time string");
+    }
+
+    // test the different branches of TimeSpecWithOptionalTimeZoneNotAmbiguous
+    @Test
+    public void testTimeSpecWithOptionalTimeZoneNotAmbiguous() {
+        // ==================================================
+        // TimeHour TimeZoneNumericUTCOffsetNotAmbiguousopt TimeZoneBracketedAnnotationopt
+        String code = "var pt = Temporal.PlainTime.from('21+22[+23]');\n" +
+                        "pt.hour === 21 && pt.minute === 0 && pt.second === 0;";
+        testTrue(code);
+
+        code = "var pt = Temporal.PlainTime.from('23');\n" +
+                        "pt.hour === 23 && pt.minute === 0 && pt.second === 0;";
+        testTrue(code);
+
+        // attn: more alternatives in TimeZoneNumericUTCOffsetNotAmbiguous
+
+        // ==================================================
+        // TimeHourNotValidMonth TimeZone
+        code = "var pt = Temporal.PlainTime.from('23-22');\n" + // minus indicates ambiguous
+                        "pt.hour === 23 && pt.minute === 0 && pt.second === 0;";
+        testTrue(code);
+
+        // ==================================================
+        // TimeHour : TimeMinute TimeZoneopt
+        code = "var pt = Temporal.PlainTime.from('21:22[+23]');\n" +
+                        "pt.hour === 21 && pt.minute === 22 && pt.second === 0;";
+        testTrue(code);
+
+        // ==================================================
+        // TimeHourMinuteBasicFormatNotAmbiguous TimeZoneBracketedAnnotationopt
+
+        // TimeHourNotValidMonth TimeMinute
+        code = "var pt = Temporal.PlainTime.from('1359[+23]');\n" +
+                        "pt.hour === 13 && pt.minute === 59 && pt.second === 0;";
+        testTrue(code);
+
+        // TimeHour TimeMinuteNotValidDay
+        code = "var pt = Temporal.PlainTime.from('1259[+23]');\n" +
+                        "pt.hour === 12 && pt.minute === 59 && pt.second === 0;";
+        testTrue(code);
+
+        // TimeHourNotThirtyOneDayMonth TimeMinuteThirtyOneOnly
+        code = "var pt = Temporal.PlainTime.from('0231[+23]');\n" +
+                        "pt.hour === 2 && pt.minute === 31 && pt.second === 0;";
+        testTrue(code);
+
+        // TimeHourTwoOnly TimeMinuteThirtyOnly
+        code = "var pt = Temporal.PlainTime.from('0230[+23]');\n" +
+                        "pt.hour === 2 && pt.minute === 30 && pt.second === 0;";
+        testTrue(code);
+
+        // ==================================================
+        // TimeHour TimeMinute TimeZoneNumericUTCOffsetNotAmbiguousAllowedNegativeHour
+        // TimeZoneBracketedAnnotationopt
+        code = "var pt = Temporal.PlainTime.from('0102+23[+23]');\n" + // TimeZoneNumericUTCOffsetNotAmbiguous
+                        "pt.hour === 1 && pt.minute === 2 && pt.second === 0;";
+        testTrue(code);
+
+        code = "var pt = Temporal.PlainTime.from('0102-13[+23]');\n" + // timeHourNotValidMonth
+                        "pt.hour === 1 && pt.minute === 2 && pt.second === 0;";
+        testTrue(code);
+
+        // ==================================================
+        // TimeHour : TimeMinute : TimeSecond TimeFractionopt TimeZoneopt
+        code = "var pt = Temporal.PlainTime.from('01:02:03.456[+23]');\n" +
+                        "pt.hour === 1 && pt.minute === 2 && pt.second === 3 && pt.millisecond === 456;";
+        testTrue(code);
+
+        // ==================================================
+        // TimeHour TimeMinute TimeSecondNotValidMonth TimeZoneopt
+
+        code = "var pt = Temporal.PlainTime.from('010213[+23]');\n" +
+                        "pt.hour === 1 && pt.minute === 2 && pt.second === 13 && pt.millisecond === 0;";
+        testTrue(code);
+
+        // ==================================================
+        // TimeHour TimeMinute TimeSecond TimeFraction TimeZoneopt
+        code = "var pt = Temporal.PlainTime.from('010203.456[+23]');\n" +
+                        "pt.hour === 1 && pt.minute === 2 && pt.second === 3 && pt.millisecond === 456;";
+        testTrue(code);
+    }
+
+    private static void testTrue(String code) {
+        try (Context ctx = getJSContext()) {
+            Value result = ctx.eval(ID, code);
+            Assert.assertEquals(true, result.asBoolean());
+        }
+    }
+
+    private static void testFail(String code, String message) {
+        try (Context ctx = getJSContext()) {
+            ctx.eval(ID, code);
+            Assert.fail("should have failed");
+        } catch (PolyglotException ex) {
+            Assert.assertTrue(ex.getMessage().contains(message));
         }
     }
 

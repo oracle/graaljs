@@ -48,6 +48,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -57,7 +58,6 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeRecord;
@@ -75,6 +75,7 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetOption;
  */
 public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
 
+    private final BranchProfile errorBranch = BranchProfile.create();
     private final ConditionProfile isObjectProfile = ConditionProfile.createBinaryProfile();
     private final ConditionProfile isZonedDateTimeProfile = ConditionProfile.createBinaryProfile();
 
@@ -91,7 +92,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
     public abstract JSDynamicObject executeDynamicObject(Object value, JSDynamicObject options);
 
     @Specialization
-    public JSDynamicObject toTemporalZonedDateTime(Object item, JSDynamicObject optionsParam,
+    public JSDynamicObject toTemporalZonedDateTime(Object item, JSDynamicObject options,
                     @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToStringNode toStringNode,
                     @Cached("create()") TemporalGetOptionNode getOptionNode,
@@ -99,12 +100,9 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                     @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
                     @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
                     @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode,
-                    @Cached TruffleString.EqualNode equalNode) {
-        JSDynamicObject options = optionsParam;
+                    @Cached TruffleString.EqualNode equalNode,
+                    @Cached("create(ctx)") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         assert options != null;
-        if (options == Undefined.instance) {
-            options = JSOrdinary.createWithNullPrototype(ctx);
-        }
         JSTemporalDateTimeRecord result;
         TruffleString offsetString = null;
         JSDynamicObject timeZone = null;
@@ -130,7 +128,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             } else {
                 offsetString = toStringNode.executeString(offsetStringObj);
             }
-            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options, getOptionNode);
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options, getOptionNode, dateFromFieldsNode);
         } else {
             TemporalUtil.toTemporalOverflow(options, getOptionNode);
             TruffleString string = toStringNode.executeString(item);
@@ -140,6 +138,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             assert timeZoneName != null;
             if (!TemporalUtil.canParseAsTimeZoneNumericUTCOffset(timeZoneName)) {
                 if (!TemporalUtil.isValidTimeZoneName(timeZoneName)) {
+                    errorBranch.enter();
                     throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
                 }
                 timeZoneName = TemporalUtil.canonicalizeTimeZoneName(timeZoneName);

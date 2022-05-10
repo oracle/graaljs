@@ -254,7 +254,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         public JSDynamicObject add(Object thisObj, Object temporalDurationLike,
-                        @Cached("create(getContext())") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
             TemporalUtil.rejectDurationSign(
@@ -285,7 +285,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         public JSDynamicObject subtract(Object thisObj, Object temporalDurationLike,
-                        @Cached("create(getContext())") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
             TemporalUtil.rejectDurationSign(
@@ -336,7 +336,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             }
             JSDynamicObject partialTime = JSTemporalPlainTime.toPartialTime(timeLikeObj, isObjectNode, toIntThrows, getContext());
             JSDynamicObject normalizedOptions = getOptionsObject(options);
-            Overflow overflow = toTemporalOverflow(normalizedOptions);
+            Overflow overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, getOptionNode());
             int hour;
             int minute;
             int second;
@@ -444,6 +444,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, Unit.HOUR, equalNode);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode);
+            roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
             Double max = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double maximum = max == null ? Double.POSITIVE_INFINITY : max.doubleValue();
             long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
@@ -596,7 +597,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 errorBranch.enter();
                 throw TemporalErrors.createTypeErrorTemporalDateExpected();
             }
-            JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) toTemporalDate.executeDynamicObject(temporalDateLike, Undefined.instance);
+            JSTemporalPlainDateObject date = toTemporalDate.executeDynamicObject(temporalDateLike, Undefined.instance);
             Object temporalTimeZoneLike = JSObject.get(item, TemporalConstants.TIME_ZONE);
             if (temporalTimeZoneLike == Undefined.instance || temporalTimeZoneLike == null) {
                 errorBranch.enter();

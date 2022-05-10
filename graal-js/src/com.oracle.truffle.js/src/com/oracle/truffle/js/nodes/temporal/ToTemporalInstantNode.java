@@ -40,62 +40,52 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import java.util.List;
-
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.runtime.Boundaries;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.util.TemporalErrors;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Implementation of ToLimitedTemporalDuration() operation.
+ * Implementation of ToTemporalInstant() operation.
  */
-public abstract class ToLimitedTemporalDurationNode extends JavaScriptBaseNode {
+public abstract class ToTemporalInstantNode extends JavaScriptBaseNode {
 
-    private final ConditionProfile isObjectProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile hasDisallowedFields = ConditionProfile.createBinaryProfile();
-    private final BranchProfile errorBranch = BranchProfile.create();
+    protected final JSContext ctx;
 
-    protected ToLimitedTemporalDurationNode() {
+    protected ToTemporalInstantNode(JSContext context) {
+        this.ctx = context;
     }
 
-    public static ToLimitedTemporalDurationNode create() {
-        return ToLimitedTemporalDurationNodeGen.create();
+    public static ToTemporalInstantNode create(JSContext context) {
+        return ToTemporalInstantNodeGen.create(context);
     }
 
-    public abstract JSTemporalDurationRecord executeDynamicObject(Object temporalDurationLike, List<TruffleString> disallowedFields);
+    public abstract JSTemporalInstantObject execute(Object value);
 
     @Specialization
-    protected JSTemporalDurationRecord toLimitedTemporalDuration(Object temporalDurationLike, List<TruffleString> disallowedFields,
+    public JSTemporalInstantObject toTemporalDateTime(Object item,
                     @Cached("create()") IsObjectNode isObjectNode,
-                    @Cached("create()") JSToStringNode toStringNode) {
-        JSTemporalDurationRecord d;
-        if (isObjectProfile.profile(!isObjectNode.executeBoolean(temporalDurationLike))) {
-            TruffleString str = toStringNode.executeString(temporalDurationLike);
-            d = JSTemporalDuration.parseTemporalDurationString(str);
-        } else {
-            d = JSTemporalDuration.toTemporalDurationRecord((JSDynamicObject) temporalDurationLike);
-        }
-
-        if (hasDisallowedFields.profile(disallowedFields != TemporalUtil.listEmpty)) {
-            for (TemporalUtil.UnitPlural unit : TemporalUtil.DURATION_PROPERTIES) {
-                double value = TemporalUtil.getPropertyFromRecord(d, unit);
-                if (value != 0 && Boundaries.listContains(disallowedFields, unit.toTruffleString())) {
-                    errorBranch.enter();
-                    throw TemporalErrors.createRangeErrorDisallowedField(unit.toTruffleString());
-                }
+                    @Cached("create()") JSToStringNode toStringNode,
+                    @Cached("createBinaryProfile()") ConditionProfile isObjectProfile) {
+        if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
+            if (TemporalUtil.isTemporalInstant(item)) {
+                return (JSTemporalInstantObject) item;
+            }
+            if (TemporalUtil.isTemporalZonedDateTime(item)) {
+                return JSTemporalInstant.create(ctx, getRealm(), ((JSTemporalZonedDateTimeObject) item).getNanoseconds());
             }
         }
-        return d;
+        TruffleString string = toStringNode.executeString(item);
+        BigInt epochNanoseconds = TemporalUtil.parseTemporalInstant(string);
+        return JSTemporalInstant.create(ctx, getRealm(), epochNanoseconds);
     }
 }

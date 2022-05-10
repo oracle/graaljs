@@ -104,7 +104,7 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
             JSDynamicObject options = getOptionsObject(optParam);
             if (isObject(item) && JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(item)) {
                 JSTemporalPlainYearMonthObject pmd = (JSTemporalPlainYearMonthObject) item;
-                toTemporalOverflow(options);
+                TemporalUtil.toTemporalOverflow(options, getOptionNode());
                 return JSTemporalPlainYearMonth.create(getContext(), pmd.getYear(), pmd.getMonth(), pmd.getCalendar(), pmd.getDay(), errorBranch);
             }
             return toTemporalYearMonthNode.executeDynamicObject(item, options);

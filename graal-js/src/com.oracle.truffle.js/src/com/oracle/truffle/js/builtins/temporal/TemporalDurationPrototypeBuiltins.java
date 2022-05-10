@@ -270,7 +270,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected JSDynamicObject with(Object thisObj, JSDynamicObject temporalDurationLike,
+        protected JSDynamicObject with(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") JSToIntegerWithoutRoundingNode toInt) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             JSDynamicObject durationLike = TemporalUtil.toPartialDuration(temporalDurationLike,
@@ -337,7 +337,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected JSDynamicObject add(Object thisObj, Object other, Object options,
                         @Cached("create(getContext())") TemporalDurationAddNode durationAddNode,
                         @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
-                        @Cached("create(getContext())") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             JSTemporalDurationRecord otherDuration = toLimitedTemporalDurationNode.executeDynamicObject(other, TemporalUtil.listEmpty);
             JSDynamicObject normalizedOptions = getOptionsObject(options);
@@ -367,7 +367,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected JSDynamicObject subtract(Object thisObj, Object other, Object options,
                         @Cached("create(getContext())") TemporalDurationAddNode durationAddNode,
                         @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
-                        @Cached("create(getContext())") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             JSTemporalDurationRecord otherDuration = toLimitedTemporalDurationNode.executeDynamicObject(other, TemporalUtil.listEmpty);
             JSDynamicObject normalizedOptions = getOptionsObject(options);

@@ -209,9 +209,14 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         TruffleString fSeconds = Strings.EMPTY_STRING;
 
         // P1Y1M1W1DT1H1M1.123456789S
-        Pattern regex = Pattern.compile("^([\\+\u2212-]?)[Pp](\\d+[Yy])?(\\d+[Mm])?(\\d+[Ww])?(\\d+[Dd])?([Tt]([\\d.]+[Hh])?([\\d.]+[Mm])?([\\d.]+[Ss])?)?$");
+        Pattern regex = Pattern.compile("^([\\+\u2212-]?)[Pp](\\d+[Yy])?(\\d+[Mm])?(\\d+[Ww])?(\\d+[Dd])?([Tt]([\\d.,]+[Hh])?([\\d.,]+[Mm])?([\\d.,]+[Ss])?)?$");
         Matcher matcher = regex.matcher(Strings.toJavaString(string));
         if (matcher.matches()) {
+            if (matcher.start(2) < 0 && matcher.start(3) < 0 && matcher.start(4) < 0 && matcher.start(5) < 0 && matcher.start(7) < 0 && matcher.start(8) < 0 && matcher.start(9) < 0) {
+                // neither DurationDate nor DurationTime found.
+                throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
+            }
+
             TruffleString sign = group(string, matcher, 1);
 
             yearsMV = parseDurationIntl(string, matcher, 2);
@@ -315,16 +320,40 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             // parseTemporalDurationString
             TruffleString numstr = Strings.lazySubstring(string, start, matcher.end(i) - (start + 1));
 
-            int idx = Strings.indexOf(numstr, '.');
+            int idx = findDecimalSeparator(numstr, 0);
             if (idx >= 0) {
                 TruffleString wholePart = Strings.lazySubstring(numstr, 0, idx);
                 TruffleString fractionalPart = Strings.lazySubstring(numstr, idx + 1);
+                if (Strings.length(fractionalPart) > 9) {
+                    throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
+                }
                 return new Pair<>(wholePart, fractionalPart);
             } else {
                 return new Pair<>(numstr, Strings.EMPTY_STRING);
             }
         }
         return new Pair<>(Strings.EMPTY_STRING, Strings.EMPTY_STRING);
+    }
+
+    private static int findDecimalSeparator(TruffleString str, int startPos) {
+        int idxDot = Strings.indexOf(str, '.', startPos);
+        int idxComma = Strings.indexOf(str, ',', startPos);
+        if (idxDot >= 0) {
+            if (idxComma >= 0) {
+                // cannot have both dot and comma in one number string
+                throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
+            }
+            if (Strings.indexOf(str, '.', idxDot + 1) >= 0) {
+                // second dot found
+                throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
+            }
+            return idxDot;
+        }
+        if (Strings.indexOf(str, ',', idxComma + 1) >= 0) {
+            // second comma found
+            throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
+        }
+        return idxComma;
     }
 
     // 7.5.2

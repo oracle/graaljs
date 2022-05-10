@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalInstantNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -117,11 +118,12 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        protected JSDynamicObject from(Object item) {
+        protected JSDynamicObject from(Object item,
+                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
             if (TemporalUtil.isTemporalInstant(item)) {
-                return JSTemporalInstant.create(getContext(), ((JSTemporalInstantObject) item).getNanoseconds());
+                return JSTemporalInstant.create(getContext(), getRealm(), ((JSTemporalInstantObject) item).getNanoseconds());
             }
-            return TemporalUtil.toTemporalInstant(getContext(), item);
+            return toTemporalInstantNode.execute(item);
         }
 
     }
@@ -152,7 +154,7 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
             if (!TemporalUtil.isValidEpochNanoseconds(epochNanoseconds)) {
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }
-            return JSTemporalInstant.create(getContext(), epochNanoseconds);
+            return JSTemporalInstant.create(getContext(), getRealm(), epochNanoseconds);
         }
 
     }
@@ -164,9 +166,10 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        protected int compare(Object obj1, Object obj2) {
-            JSTemporalInstantObject one = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(getContext(), obj1);
-            JSTemporalInstantObject two = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(getContext(), obj2);
+        protected int compare(Object obj1, Object obj2,
+                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
+            JSTemporalInstantObject one = toTemporalInstantNode.execute(obj1);
+            JSTemporalInstantObject two = toTemporalInstantNode.execute(obj2);
             return TemporalUtil.compareEpochNanoseconds(one.getNanoseconds(), two.getNanoseconds());
         }
     }
