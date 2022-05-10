@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -184,6 +184,10 @@ public class DateParser {
                     if (currentField == YEAR && yearSign != 0) {
                         // 15.9.1.15.1 Extended year must have six digits
                         if (tokenLength != 6) {
+                            return false;
+                        }
+                        if (numValue == 0 && yearSign == -1) {
+                            // The representation of the year 0 as -000000 is invalid
                             return false;
                         }
                         numValue *= yearSign;
