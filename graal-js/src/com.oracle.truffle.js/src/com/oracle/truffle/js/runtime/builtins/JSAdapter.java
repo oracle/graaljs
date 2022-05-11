@@ -117,10 +117,6 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         return obj instanceof JSAdapterObject;
     }
 
-    private static JSException typeError() {
-        return Errors.createTypeError("operation not supported");
-    }
-
     @TruffleBoundary
     @Override
     public Object getOwnHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
@@ -261,12 +257,12 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @Override
     public boolean preventExtensions(JSDynamicObject thisObj, boolean doThrow) {
-        throw typeError();
+        return true;
     }
 
     @Override
     public boolean isExtensible(JSDynamicObject thisObj) {
-        throw typeError();
+        return true;
     }
 
     @TruffleBoundary
@@ -338,7 +334,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @Override
     public PropertyDescriptor getOwnProperty(JSDynamicObject thisObj, Object key) {
-        throw typeError();
+        return null;
     }
 
     @Override
