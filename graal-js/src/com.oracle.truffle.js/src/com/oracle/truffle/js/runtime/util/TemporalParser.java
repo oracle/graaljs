@@ -108,16 +108,9 @@ public final class TemporalParser {
         this.input = input;
     }
 
-    public JSTemporalParserRecord parseTemporalDateString() {
-        // TemporalDateString => CalendarDateTime
-        JSTemporalParserRecord rec = parseCalendarDateTime();
-        return rec;
-    }
-
     public JSTemporalParserRecord parseISODateTime() {
         JSTemporalParserRecord rec;
 
-        // TemporalDateString => CalendarDateTime
         // TemporalDateTimeString => CalendarDateTime
         // TemporalRelativeToString => TemporalDateTimeString => CalendarDateTime
         rec = parseCalendarDateTime();
@@ -373,7 +366,7 @@ public final class TemporalParser {
         return c - '0';
     }
 
-    private JSTemporalParserRecord parseCalendarDateTime() {
+    public JSTemporalParserRecord parseCalendarDateTime() {
         reset();
         if (parseDateTime()) {
             parseCalendar();
