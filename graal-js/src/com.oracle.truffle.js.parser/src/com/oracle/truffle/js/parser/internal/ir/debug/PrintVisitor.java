@@ -72,7 +72,6 @@ import com.oracle.js.parser.ir.VarNode;
 import com.oracle.js.parser.ir.WhileNode;
 import com.oracle.js.parser.ir.WithNode;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
-import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Print out the AST as human readable source code. This works both on lowered and unlowered ASTs
@@ -273,7 +272,7 @@ public final class PrintVisitor extends NodeVisitor<LexicalContext> {
     @Override
     public boolean enterUnaryNode(final UnaryNode unaryNode) {
         final TokenType tokenType = unaryNode.tokenType();
-        final TruffleString name = tokenType.getName();
+        final String name = tokenType.getName();
         final boolean isPostfix = tokenType == DECPOSTFIX || tokenType == INCPOSTFIX;
 
         boolean rhsParen = tokenType.needsParens(unaryNode.getExpression().tokenType(), false);

@@ -211,10 +211,10 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
                 Expression rhs = binaryNode.getRhs();
                 if (isTypeOf(lhs) && rhs instanceof LiteralNode) {
                     typeofAsLeftOperand = true;
-                    literal = ((LiteralNode<?>) rhs).getString();
+                    literal = Strings.fromJavaString(((LiteralNode<?>) rhs).getString());
                 } else if (isTypeOf(rhs) && lhs instanceof LiteralNode) {
                     typeofAsLeftOperand = false;
-                    literal = ((LiteralNode<?>) lhs).getString();
+                    literal = Strings.fromJavaString(((LiteralNode<?>) lhs).getString());
                 } else {
                     return null;
                 }

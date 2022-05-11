@@ -230,13 +230,13 @@ public final class FunctionEnvironment extends Environment {
         jumpTargetStack.remove(jumpTargetStack.size() - 1);
     }
 
-    public JumpTargetCloseable<ContinueTarget> pushContinueTarget(Object label) {
+    public JumpTargetCloseable<ContinueTarget> pushContinueTarget(String label) {
         ContinueTarget target = ContinueTarget.forLoop(label, -1);
         pushJumpTarget(target);
         return new JumpTargetCloseable<>(target);
     }
 
-    public JumpTargetCloseable<BreakTarget> pushBreakTarget(Object label) {
+    public JumpTargetCloseable<BreakTarget> pushBreakTarget(String label) {
         BreakTarget target = label == null ? BreakTarget.forSwitch() : BreakTarget.forLabel(label, -1);
         pushJumpTarget(target);
         return new JumpTargetCloseable<>(target);

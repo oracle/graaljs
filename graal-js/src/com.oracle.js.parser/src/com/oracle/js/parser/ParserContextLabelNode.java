@@ -40,22 +40,20 @@
  */
 package com.oracle.js.parser;
 
-import com.oracle.truffle.api.strings.TruffleString;
-
 /**
  * ParserContextNode that represents a LabelNode
  */
 class ParserContextLabelNode extends ParserContextBaseNode {
 
     /** Name for label */
-    private final TruffleString name;
+    private final String name;
 
     /**
      * Constructor
      *
      * @param name The name of the label
      */
-    ParserContextLabelNode(final TruffleString name) {
+    ParserContextLabelNode(final String name) {
         this.name = name;
     }
 
@@ -64,7 +62,7 @@ class ParserContextLabelNode extends ParserContextBaseNode {
      *
      * @return name of label
      */
-    public TruffleString getLabelName() {
+    public String getLabelName() {
         return name;
     }
 }

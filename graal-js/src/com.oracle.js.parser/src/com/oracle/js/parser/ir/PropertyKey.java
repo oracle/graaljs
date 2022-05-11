@@ -52,5 +52,7 @@ public interface PropertyKey {
      *
      * @return the property name
      */
-    TruffleString getPropertyName();
+    String getPropertyName();
+
+    TruffleString getPropertyNameTS();
 }

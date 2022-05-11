@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,7 @@ public class ContinueTarget extends BreakTarget {
     private static final ContinueTarget DEFAULT_LOOP_CONTINUE_TARGET = new ContinueTarget(null, 0, DirectBreakException.instance, ContinueException.instance);
     private final ContinueException continueException;
 
-    protected ContinueTarget(Object label, int id, BreakException breakException, ContinueException continueException) {
+    protected ContinueTarget(String label, int id, BreakException breakException, ContinueException continueException) {
         super(label, id, breakException);
         this.continueException = continueException;
     }
@@ -54,7 +54,7 @@ public class ContinueTarget extends BreakTarget {
         return continueException;
     }
 
-    public static ContinueTarget forLoop(Object label, int id) {
+    public static ContinueTarget forLoop(String label, int id) {
         return new ContinueTarget(label, id, DirectBreakException.instance, new ContinueException(id));
     }
 

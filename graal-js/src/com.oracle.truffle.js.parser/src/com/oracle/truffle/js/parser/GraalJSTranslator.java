@@ -192,13 +192,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     public static final TruffleString SUPER_CALLED_TWICE = Strings.constant("super() called twice");
     public static final TruffleString UNSUPPORTED_REFERENCE_TO_SUPER = Strings.constant("Unsupported reference to 'super'");
-    public static final TruffleString LINE__ = Strings.constant("__LINE__");
-    public static final TruffleString FILE__ = Strings.constant("__FILE__");
-    public static final TruffleString DIR__ = Strings.constant("__DIR__");
-    public static final TruffleString IMPORT = Strings.constant("import");
-    public static final TruffleString IMPORT_META = Strings.constant("import.meta");
+    public static final String LINE__ = "__LINE__";
+    public static final String FILE__ = "__FILE__";
+    public static final String DIR__ = "__DIR__";
+    public static final String IMPORT = "import";
+    public static final String IMPORT_META = "import.meta";
     public static final TruffleString GENERATOREXPR = Strings.constant("generatorexpr");
     public static final TruffleString GENERATORSTATE = Strings.constant("generatorstate");
+    public static final String ARGUMENTS = "arguments";
 
     public static final JavaScriptNode[] EMPTY_NODE_ARRAY = new JavaScriptNode[0];
     private static final JavaScriptNode ANY_JAVA_SCRIPT_NODE = new JavaScriptNode() {
@@ -216,12 +217,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     protected final JSContext context;
     protected final NodeFactory factory;
     protected final Source source;
-    protected final TruffleString[] argumentNames;
+    protected final List<String> argumentNames;
     protected final int sourceLength;
     protected final int prologLength;
     private final boolean isParentStrict;
 
-    protected GraalJSTranslator(LexicalContext lc, NodeFactory factory, JSContext context, Source source, TruffleString[] argumentNames, int prologLength, Environment environment,
+    protected GraalJSTranslator(LexicalContext lc, NodeFactory factory, JSContext context, Source source, List<String> argumentNames, int prologLength, Environment environment,
                     boolean isParentStrict) {
         super(lc);
         this.context = context;
@@ -393,7 +394,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(functionNode, isStrict, isGlobal, hasSyntheticArguments)) {
                 FunctionEnvironment currentFunction = currentFunction();
                 currentFunction.setFunctionName(functionName);
-                currentFunction.setInternalFunctionName(functionNode.getInternalName());
+                currentFunction.setInternalFunctionName(functionNode.getInternalNameTS());
                 currentFunction.setNamedFunctionExpression(functionNode.isNamedFunctionExpression());
 
                 declareParameters(functionNode);
@@ -475,7 +476,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(functionNode, isStrict, isGlobal, hasSyntheticArguments)) {
             FunctionEnvironment currentFunction = currentFunction();
             currentFunction.setFunctionName(functionName);
-            currentFunction.setInternalFunctionName(functionNode.getInternalName());
+            currentFunction.setInternalFunctionName(functionNode.getInternalNameTS());
             currentFunction.setNamedFunctionExpression(functionNode.isNamedFunctionExpression());
 
             currentFunction.setNeedsParentFrame(needsParentFrame);
@@ -902,13 +903,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (context.getEcmaScriptVersion() < 6 && (functionNode.isGetter() || functionNode.isSetter())) {
             // strip getter/setter name prefix in ES5 mode
             assert !functionNode.isAnonymous();
-            TruffleString name = functionNode.getName();
-            if (functionNode.isGetter() && Strings.startsWith(name, Strings.GET_SPC) || (functionNode.isSetter() && Strings.startsWith(name, Strings.SET_SPC))) {
-                name = Strings.lazySubstring(name, 4);
+            String name = functionNode.getName();
+            if (functionNode.isGetter() && name.startsWith(Strings.GET_SPC.toJavaStringUncached()) || (functionNode.isSetter() && name.startsWith(Strings.SET_SPC.toJavaStringUncached()))) {
+                return Strings.substring(context, functionNode.getNameTS(), 4);
             }
-            return name;
         }
-        return functionNode.getName();
+        return functionNode.getNameTS();
     }
 
     private void prepareParameters(List<JavaScriptNode> init) {
@@ -947,7 +947,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             } else {
                 valueNode = tagHiddenExpression(factory.createAccessArgument(argIndex));
             }
-            TruffleString paramName = function.getParameters().get(i).getName();
+            TruffleString paramName = function.getParameters().get(i).getNameTS();
             VarRef paramRef = environment.findLocalVar(paramName);
             if (paramRef != null) {
                 init.add(tagHiddenExpression(paramRef.createWriteNode(valueNode)));
@@ -1014,7 +1014,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             @Override
             public boolean enterIdentNode(IdentNode identNode) {
                 if (!identNode.isPropertyName()) {
-                    TruffleString varName = identNode.getName();
+                    String varName = identNode.getName();
                     findSymbol(varName);
                 }
                 return true;
@@ -1028,7 +1028,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 return true;
             }
 
-            private void findSymbol(TruffleString varName) {
+            private void findSymbol(String varName) {
                 boolean local = true;
                 FunctionNode lastFunction = null;
                 for (Iterator<LexicalContextNode> iterator = lc.getAllNodes(); iterator.hasNext();) {
@@ -1055,7 +1055,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                                 markUsesAncestorScopeUntil(lastFunction, true);
                             }
                             break;
-                        } else if (!function.isProgram() && varName.equals(Strings.ARGUMENTS)) {
+                        } else if (!function.isProgram() && varName.equals(ARGUMENTS)) {
                             // arguments must be local if we are not in an arrow function
                             assert local || (lastFunction != null && lastFunction.isArrow());
                             // Arrow functions inherit 'arguments', but may also declare it.
@@ -1068,11 +1068,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                                 break;
                             }
                         } else if (function.isArrow() && isVarLexicallyScopedInArrowFunction(varName)) {
-                            assert !varName.equals(Strings.ARGUMENTS);
+                            assert !varName.equals(ARGUMENTS);
                             FunctionNode nonArrowFunction = lc.getCurrentNonArrowFunction();
                             // `this` is read from the arrow function object,
                             // unless `this` is supplied by a subclass constructor
-                            if (!varName.equals(Strings.THIS) || nonArrowFunction.isDerivedConstructor()) {
+                            if (!varName.equals("this") || nonArrowFunction.isDerivedConstructor()) {
                                 if (!nonArrowFunction.isProgram()) {
                                     markUsesAncestorScopeUntil(nonArrowFunction, false);
                                 }
@@ -1099,11 +1099,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 }
             }
 
-            private boolean isVarLexicallyScopedInArrowFunction(TruffleString varName) {
-                return Strings.ARGUMENTS.equals(varName) || Environment.NEW_TARGET_NAME.equals(varName) || Strings.SUPER.equals(varName) || Strings.THIS.equals(varName);
+            private boolean isVarLexicallyScopedInArrowFunction(String varName) {
+                return ARGUMENTS.equals(varName) || "new.target".equals(varName) || "super".equals(varName) || "this".equals(varName);
             }
 
-            private boolean isImport(TruffleString varName) {
+            private boolean isImport(String varName) {
                 return IMPORT.equals(varName) || IMPORT_META.equals(varName);
             }
 
@@ -1147,7 +1147,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             @Override
             public boolean enterIdentNode(IdentNode identNode) {
-                if (!identNode.isPropertyName() && !identNode.isApplyArguments() && identNode.getName().equals(Strings.ARGUMENTS)) {
+                if (!identNode.isPropertyName() && !identNode.isApplyArguments() && identNode.getName().equals(ARGUMENTS)) {
                     // `arguments` is used outside of `function.apply(_, arguments)`; bail out.
                     directArgumentsAccess = false;
                 }
@@ -1202,13 +1202,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         for (Symbol symbol : functionNode.getBody().getSymbols()) {
             if (symbol.isGlobal() && symbol.isVar()) {
                 if (symbol.isHoistableDeclaration()) {
-                    declarations.add(factory.createDeclareGlobalFunction(symbol.getName(), configurable, null));
+                    declarations.add(factory.createDeclareGlobalFunction(symbol.getNameTS(), configurable, null));
                 } else {
-                    declarations.add(factory.createDeclareGlobalVariable(symbol.getName(), configurable));
+                    declarations.add(factory.createDeclareGlobalVariable(symbol.getNameTS(), configurable));
                 }
             } else if (!configurable) {
                 assert symbol.isBlockScoped();
-                declarations.add(factory.createDeclareGlobalLexicalVariable(symbol.getName(), symbol.isConst()));
+                declarations.add(factory.createDeclareGlobalLexicalVariable(symbol.getNameTS(), symbol.isConst()));
             }
         }
         final List<JavaScriptNode> nodes = new ArrayList<>(2);
@@ -1409,7 +1409,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 // so we can skip the initialization if there is no non-local use (or eval).
                 // However, we currently need to initialize the variable for instrumentation.
                 if (symbol.isClosedOver() || symbol.isDeclaredInSwitchBlock() || block.isModuleBody() || block.getScope().hasNestedEval() || !allowScopeOptimization() || !allowTDZOptimization()) {
-                    FrameSlotVarRef slotRef = (FrameSlotVarRef) findScopeVar(symbol.getName(), true);
+                    FrameSlotVarRef slotRef = (FrameSlotVarRef) findScopeVar(symbol.getNameTS(), true);
                     assert JSFrameUtil.hasTemporalDeadZone(slotRef.getFrameSlot()) : slotRef.getFrameSlot();
                     slotsWithTDZ.add(slotRef);
                 }
@@ -1417,13 +1417,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (symbol.isVarRedeclaredHere()) {
                 // redeclaration of parameter binding; initial value is copied from outer scope.
                 assert block.isFunctionBody();
-                JavaScriptNode outerVar = environment.findBlockScopedVar(symbol.getName()).createReadNode();
-                blockWithInit.add(findScopeVar(symbol.getName(), true).createWriteNode(outerVar));
+                JavaScriptNode outerVar = environment.findBlockScopedVar(symbol.getNameTS()).createReadNode();
+                blockWithInit.add(findScopeVar(symbol.getNameTS(), true).createWriteNode(outerVar));
             }
         }
 
         if (!slotsWithTDZ.isEmpty()) {
-            Collections.sort(slotsWithTDZ, Comparator.comparingInt(FrameSlotVarRef::getScopeLevel));
+            slotsWithTDZ.sort(Comparator.comparingInt(FrameSlotVarRef::getScopeLevel));
             if (slotsWithTDZ.size() == 1 || slotsWithTDZ.get(0).getScopeLevel() == slotsWithTDZ.get(slotsWithTDZ.size() - 1).getScopeLevel()) {
                 // all slots are in the same frame
                 int[] slots = new int[slotsWithTDZ.size()];
@@ -1465,13 +1465,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         for (ImportEntry importEntry : functionNode.getModule().getImportEntries()) {
             ModuleRequest moduleRequest = importEntry.getModuleRequest();
             TruffleString localName = importEntry.getLocalName();
+            String localNameJS = localName.toJavaStringUncached();
             JSWriteFrameSlotNode writeLocalNode = (JSWriteFrameSlotNode) environment.findLocalVar(localName).createWriteNode(null);
             JavaScriptNode thisModule = getActiveModule();
             if (importEntry.getImportName().equals(Module.STAR_NAME)) {
-                assert functionNode.getBody().getScope().hasSymbol(localName) && functionNode.getBody().getScope().getExistingSymbol(localName).hasBeenDeclared();
+                assert functionNode.getBody().getScope().hasSymbol(localNameJS) && functionNode.getBody().getScope().getExistingSymbol(localNameJS).hasBeenDeclared();
                 declarations.add(factory.createResolveStarImport(context, thisModule, moduleRequest, writeLocalNode));
             } else {
-                assert functionNode.getBody().getScope().hasSymbol(localName) && functionNode.getBody().getScope().getExistingSymbol(localName).isImportBinding();
+                assert functionNode.getBody().getScope().hasSymbol(localNameJS) && functionNode.getBody().getScope().getExistingSymbol(localNameJS).isImportBinding();
                 declarations.add(factory.createResolveNamedImport(context, thisModule, moduleRequest, importEntry.getImportName(), writeLocalNode));
             }
         }
@@ -1521,7 +1522,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         assert currentFunction().isCallerContextEval();
         for (Symbol symbol : block.getSymbols()) {
             if (symbol.isVar() && !environment.getVariableEnvironment().hasLocalVar(symbol.getName())) {
-                blockWithInit.add(createDynamicScopeBinding(symbol.getName(), true));
+                blockWithInit.add(createDynamicScopeBinding(symbol.getNameTS(), true));
             }
         }
     }
@@ -1643,7 +1644,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private void addFunctionFrameSlots(Environment env, FunctionNode function) {
         if (function.needsArguments()) {
-            assert function.getBody().getScope().hasSymbol(Strings.ARGUMENTS) : function;
+            assert function.getBody().getScope().hasSymbol(ARGUMENTS) : function;
             env.reserveArgumentsSlot();
         }
 
@@ -1697,9 +1698,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 continue; // no frame slot required
             }
             if (symbol.isBlockScoped()) {
-                globalEnv.addLexicalDeclaration(symbol.getName(), symbol.isConst());
+                globalEnv.addLexicalDeclaration(symbol.getNameTS(), symbol.isConst());
             } else if (symbol.isGlobal() && symbol.isVar()) {
-                globalEnv.addVarDeclaration(symbol.getName());
+                globalEnv.addVarDeclaration(symbol.getNameTS());
             }
         }
     }
@@ -1733,7 +1734,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
             return factory.createConstantDouble(longValue);
         } else if (value instanceof Lexer.RegexToken) {
-            return factory.createRegExpLiteral(context, ((Lexer.RegexToken) value).getExpression(), ((Lexer.RegexToken) value).getOptions());
+            return factory.createRegExpLiteral(context, ((Lexer.RegexToken) value).getExpressionTS(), ((Lexer.RegexToken) value).getOptionsTS());
         } else if (value instanceof BigInteger) {
             value = BigInt.fromBigInteger((BigInteger) value);
         }
@@ -1764,7 +1765,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (identNode.isImportMeta()) {
             result = enterImportMeta();
         } else if (identNode.isPrivateInCheck()) {
-            TruffleString privateVarName = identNode.getName();
+            TruffleString privateVarName = identNode.getNameTS();
             VarRef privateVarRef = environment.findLocalVar(privateVarName);
             JavaScriptNode readNode = privateVarRef.createReadNode();
             JSFrameSlot frameSlot = privateVarRef.getFrameSlot();
@@ -1775,7 +1776,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 result = readNode;
             }
         } else {
-            TruffleString varName = identNode.getName();
+            TruffleString varName = identNode.getNameTS();
             VarRef varRef = findScopeVarCheckTDZ(varName, false);
             result = varRef.createReadNode();
         }
@@ -1863,7 +1864,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private VarRef findScopeVarCheckTDZ(TruffleString name, boolean initializationAssignment) {
         VarRef varRef = findScopeVar(name, false);
         if (varRef.isFunctionLocal()) {
-            Symbol symbol = lc.getCurrentScope().findBlockScopedSymbolInFunction(varRef.getName());
+            Symbol symbol = lc.getCurrentScope().findBlockScopedSymbolInFunction(varRef.getName().toJavaStringUncached());
             if (symbol == null) {
                 // variable is not block-scoped
                 return varRef;
@@ -1922,14 +1923,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterVarNode(VarNode varNode) {
-        TruffleString varName = varNode.getName().getName();
+        TruffleString varName = varNode.getName().getNameTS();
         assert currentFunction().isGlobal() && (!varNode.isBlockScoped() || lc.getCurrentBlock().isFunctionBody()) || !findScopeVar(varName, true).isGlobal() ||
                         currentFunction().isCallerContextEval() : varNode;
 
         Symbol symbol = null;
         if (varNode.isBlockScoped()) {
             // below, `symbol!=null` implies `isBlockScoped`
-            symbol = lc.getCurrentScope().getExistingSymbol(varName);
+            symbol = lc.getCurrentScope().getExistingSymbol(varNode.getName().getName());
             assert symbol != null : varName;
         }
 
@@ -1958,7 +1959,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             // B.3.3 Block-Level Function Declarations Web Legacy Compatibility Semantics
             FunctionNode fn = lc.getCurrentFunction();
             if (!fn.isStrict()) {
-                Symbol symbol = lc.getCurrentScope().getExistingSymbol(varName);
+                Symbol symbol = lc.getCurrentScope().getExistingSymbol(varName.toJavaStringUncached());
                 if (symbol.isHoistedBlockFunctionDeclaration()) {
                     if (varNode.getFlag(VarNode.IS_ANNEXB_BLOCK_TO_FUNCTION_TRANSFER)) {
                         assert hasVarSymbol(fn.getVarDeclarationBlock().getScope(), varName) : varName;
@@ -1987,7 +1988,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private static boolean hasVarSymbol(Scope scope, TruffleString varName) {
-        Symbol varSymbol = scope.getExistingSymbol(varName);
+        Symbol varSymbol = scope.getExistingSymbol(varName.toJavaStringUncached());
         return varSymbol != null && (varSymbol.isVar() && !varSymbol.isParam());
     }
 
@@ -2181,7 +2182,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode desugarForHeadAssignment(ForNode forNode, JavaScriptNode next) {
         boolean lexicalBindingInit = forNode.hasPerIterationScope();
         if (forNode.getInit() instanceof IdentNode && lexicalBindingInit) {
-            return tagExpression(findScopeVarCheckTDZ(((IdentNode) forNode.getInit()).getName(), lexicalBindingInit).createWriteNode(next), forNode);
+            return tagExpression(findScopeVarCheckTDZ(((IdentNode) forNode.getInit()).getNameTS(), lexicalBindingInit).createWriteNode(next), forNode);
         } else {
             // transform destructuring assignment
             return tagExpression(transformAssignment(forNode.getInit(), forNode.getInit(), next, lexicalBindingInit), forNode);
@@ -2420,12 +2421,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode operand = null;
         if (unaryNode.getExpression() instanceof IdentNode) {
             IdentNode identNode = (IdentNode) unaryNode.getExpression();
-            TruffleString identNodeName = identNode.getName();
+            String identNodeName = identNode.getName();
+            TruffleString identNodeNameTS = identNode.getNameTS();
             if (context.isOptionNashornCompatibilityMode() && (identNodeName.equals(LINE__) || identNodeName.equals(FILE__) || identNodeName.equals(DIR__))) {
-                operand = GlobalPropertyNode.createPropertyNode(context, identNodeName);
+                operand = GlobalPropertyNode.createPropertyNode(context, identNodeNameTS);
             } else if (!identNode.isThis() && !identNode.isMetaProperty()) {
                 // typeof globalVar must not throw ReferenceError if globalVar does not exist
-                operand = findScopeVarCheckTDZ(identNodeName, false).withRequired(false).createReadNode();
+                operand = findScopeVarCheckTDZ(identNodeNameTS, false).withRequired(false).createReadNode();
             }
         }
         if (operand == null) {
@@ -2440,7 +2442,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (JSConfig.LocalVarIncDecNode && unaryNode.getExpression() instanceof IdentNode) {
             IdentNode identNode = (IdentNode) unaryNode.getExpression();
             assert !identNode.isPropertyName() && !identNode.isThis() && !identNode.isMetaProperty() && !identNode.isSuper();
-            VarRef varRef = findScopeVarCheckTDZ(identNode.getName(), false);
+            VarRef varRef = findScopeVarCheckTDZ(identNode.getNameTS(), false);
             if (varRef instanceof FrameSlotVarRef) {
                 FrameSlotVarRef frameVarRef = (FrameSlotVarRef) varRef;
                 JSFrameSlot frameSlot = frameVarRef.getFrameSlot();
@@ -2505,7 +2507,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode result;
         if (rhs instanceof IdentNode) {
             // attempt to delete a binding
-            TruffleString varName = ((IdentNode) rhs).getName();
+            TruffleString varName = ((IdentNode) rhs).getNameTS();
             VarRef varRef = findScopeVar(varName, varName.equals(Strings.THIS));
             result = varRef.createDeleteNode();
         } else {
@@ -2526,7 +2528,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (baseNode instanceof AccessNode) {
             AccessNode accessNode = (AccessNode) baseNode;
             assert !accessNode.isPrivate();
-            key = factory.createConstantString(accessNode.getProperty());
+            key = factory.createConstantString(accessNode.getPropertyTS());
         } else {
             assert baseNode instanceof IndexNode;
             IndexNode indexNode = (IndexNode) baseNode;
@@ -2877,7 +2879,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode transformAssignmentIdent(IdentNode identNode, JavaScriptNode assignedValue, BinaryOperation binaryOp, boolean returnOldValue, boolean convertLHSToNumeric,
                     boolean initializationAssignment) {
         JavaScriptNode rhs = assignedValue;
-        TruffleString ident = identNode.getName();
+        TruffleString ident = identNode.getNameTS();
         VarRef scopeVar = findScopeVarCheckTDZ(ident, initializationAssignment);
 
         // if scopeVar is const, the assignment will never succeed and is only there to perform
@@ -3124,7 +3126,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 JavaScriptNode excludedItemsArray = excludedKeys.length == 0 ? null : factory.createArrayLiteral(context, excludedKeys);
                 rhsNode = factory.createRestObject(context, valueTempVar.createReadNode(), excludedItemsArray);
             } else if (property.getKey() instanceof IdentNode && !property.isComputed()) {
-                TruffleString keyName = property.getKeyName();
+                TruffleString keyName = property.getKeyNameTS();
                 if (hasRest) {
                     excludedKeys[i] = factory.createConstantString(keyName);
                 }
@@ -3169,7 +3171,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (accessNode.isPrivate()) {
             return createPrivateFieldGet(accessNode, base);
         } else {
-            return factory.createReadProperty(context, base, accessNode.getProperty(), accessNode.isFunction());
+            return factory.createReadProperty(context, base, accessNode.getPropertyTS(), accessNode.isFunction());
         }
     }
 
@@ -3177,18 +3179,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (accessNode.isPrivate()) {
             return createPrivateFieldSet(accessNode, base, rhs);
         } else {
-            return factory.createWriteProperty(base, accessNode.getProperty(), rhs, context, environment.isStrictMode());
+            return factory.createWriteProperty(base, accessNode.getPropertyTS(), rhs, context, environment.isStrictMode());
         }
     }
 
     private JavaScriptNode createPrivateFieldGet(AccessNode accessNode, JavaScriptNode base) {
-        VarRef privateNameVar = environment.findLocalVar(accessNode.getPrivateName());
+        VarRef privateNameVar = environment.findLocalVar(accessNode.getPrivateNameTS());
         JavaScriptNode privateName = privateNameVar.createReadNode();
         return factory.createPrivateFieldGet(context, insertPrivateBrandCheck(base, privateNameVar), privateName);
     }
 
     private JavaScriptNode createPrivateFieldSet(AccessNode accessNode, JavaScriptNode base, JavaScriptNode rhs) {
-        VarRef privateNameVar = environment.findLocalVar(accessNode.getPrivateName());
+        VarRef privateNameVar = environment.findLocalVar(accessNode.getPrivateNameTS());
         JavaScriptNode privateName = privateNameVar.createReadNode();
         return factory.createPrivateFieldSet(context, insertPrivateBrandCheck(base, privateNameVar), privateName, rhs);
     }
@@ -3268,11 +3270,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             JavaScriptNode keyWrapper = factory.createToPropertyKey(key);
             return factory.createComputedAccessorMember(keyWrapper, property.isStatic(), enumerable, getter, setter);
         } else if (property.isPrivate()) {
-            VarRef privateVar = environment.findLocalVar(property.getPrivateName());
+            VarRef privateVar = environment.findLocalVar(property.getPrivateNameTS());
             JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
             return factory.createPrivateAccessorMember(property.isStatic(), getter, setter, writePrivateNode);
         } else {
-            return factory.createAccessorMember(property.getKeyName(), property.isStatic(), enumerable, getter, setter);
+            return factory.createAccessorMember(property.getKeyNameTS(), property.isStatic(), enumerable, getter, setter);
         }
     }
 
@@ -3318,11 +3320,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             JavaScriptNode computedKey = transform(property.getKey());
             return factory.createComputedDataMember(computedKey, property.isStatic(), enumerable, value, property.isClassField(), property.isAnonymousFunctionDefinition());
         } else if (!isClass && property.isProto()) {
-            return factory.createProtoMember(property.getKeyName(), property.isStatic(), value);
+            return factory.createProtoMember(property.getKeyNameTS(), property.isStatic(), value);
         } else if (property.isPrivate()) {
-            VarRef privateVar = environment.findLocalVar(property.getPrivateName());
+            VarRef privateVar = environment.findLocalVar(property.getPrivateNameTS());
             if (property.isClassField()) {
-                JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(factory.createNewPrivateName(property.getPrivateName()));
+                JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(factory.createNewPrivateName(property.getPrivateNameTS()));
                 return factory.createPrivateFieldMember(privateVar.createReadNode(), property.isStatic(), value, writePrivateNode);
             } else {
                 JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
@@ -3332,7 +3334,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return factory.createStaticBlockMember(value);
         } else {
             assert property.getKey() != null;
-            return factory.createDataMember(property.getKeyName(), property.isStatic(), enumerable, value, property.isClassField());
+            return factory.createDataMember(property.getKeyNameTS(), property.isStatic(), enumerable, value, property.isClassField());
         }
     }
 
@@ -3362,7 +3364,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         JavaScriptNode writeErrorVar = null;
                         JavaScriptNode destructuring = null;
                         if (catchParameter != null) {
-                            TruffleString errorVarName = ((IdentNode) catchParameter).getName();
+                            TruffleString errorVarName = ((IdentNode) catchParameter).getNameTS();
                             VarRef errorVar = environment.findLocalVar(errorVarName);
                             writeErrorVar = errorVar.createWriteNode(null);
                             if (pattern != null) {
@@ -3705,9 +3707,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         try (EnvironmentCloseable blockEnv = new EnvironmentCloseable(needsScope ? newClassEnvironment(classHeadScope) : environment)) {
             TruffleString className = null;
             Symbol classNameSymbol = null;
-            if (classNode.getIdent() != null) {
-                className = classNode.getIdent().getName();
-                classNameSymbol = classHeadScope.getExistingSymbol(className);
+            IdentNode ident = classNode.getIdent();
+            if (ident != null) {
+                className = ident.getNameTS();
+                classNameSymbol = classHeadScope.getExistingSymbol(ident.getName());
             }
 
             JavaScriptNode classHeritage = transform(classNode.getClassHeritage());

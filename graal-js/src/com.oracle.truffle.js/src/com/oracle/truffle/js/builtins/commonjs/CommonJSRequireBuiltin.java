@@ -75,9 +75,7 @@ import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.hasCore
 public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
     private static final boolean LOG_REQUIRE_PATH_RESOLUTION = false;
-    private static final Stack<TruffleString> requireDebugStack;
-
-    public static final TruffleString UNSUPPORTED_NODE_FILE = Strings.constant("Unsupported .node file: ");
+    private static final Stack<String> requireDebugStack;
 
     static {
         requireDebugStack = LOG_REQUIRE_PATH_RESOLUTION ? new Stack<>() : null;
@@ -86,7 +84,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     public static void log(Object... message) {
         if (LOG_REQUIRE_PATH_RESOLUTION) {
             StringBuilder s = new StringBuilder("['.'");
-            for (TruffleString module : requireDebugStack) {
+            for (String module : requireDebugStack) {
                 s.append(" '").append(module).append("'");
             }
             s.append("] ");
@@ -105,7 +103,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         }
     }
 
-    private static void debugStackPush(TruffleString moduleIdentifier) {
+    private static void debugStackPush(String moduleIdentifier) {
         if (LOG_REQUIRE_PATH_RESOLUTION) {
             requireDebugStack.push(moduleIdentifier);
         }
@@ -146,14 +144,14 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         JSRealm realm = getRealm();
         TruffleLanguage.Env env = realm.getEnv();
         TruffleFile resolutionEntryPath = getModuleResolutionEntryPath(currentRequire, env);
-        return requireImpl(moduleIdentifier, resolutionEntryPath, realm);
+        return requireImpl(Strings.toJavaString(moduleIdentifier), resolutionEntryPath, realm);
     }
 
     @TruffleBoundary
-    private Object requireImpl(TruffleString moduleIdentifier, TruffleFile entryPath, JSRealm realm) {
+    private Object requireImpl(String moduleIdentifier, TruffleFile entryPath, JSRealm realm) {
         log("required module '", moduleIdentifier, "' from path ", entryPath);
         if (hasCoreModuleReplacement(getContext(), moduleIdentifier)) {
-            TruffleString moduleReplacementName = Strings.fromJavaString(getContext().getContextOptions().getCommonJSRequireBuiltins().get(Strings.toJavaString(moduleIdentifier)));
+            String moduleReplacementName = getContext().getContextOptions().getCommonJSRequireBuiltins().get(moduleIdentifier);
             if (moduleReplacementName != null && !moduleReplacementName.isEmpty()) {
                 log("using module replacement for module '", moduleIdentifier, "' with ", moduleReplacementName);
                 return requireImpl(moduleReplacementName, getRequireCwd(getContext(), realm.getEnv()), realm);
@@ -167,7 +165,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
             // Module resolution does not execute JS code. Therefore, an exception at this stage is
             // either IO-related (e.g., file not found) or was raised in a custom Truffle FS.
             // We treat any exception as a module loading failure.
-            throw fail(moduleIdentifier, Strings.fromJavaString(e.getMessage()));
+            throw fail(moduleIdentifier, e.getMessage());
         }
         log("module ", moduleIdentifier, " resolved to ", maybeModule);
         if (maybeModule == null) {
@@ -178,13 +176,13 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         } else if (isJsonFile(maybeModule)) {
             return evalJsonFile(maybeModule);
         } else if (isNodeBinFile(maybeModule)) {
-            throw fail(UNSUPPORTED_NODE_FILE, moduleIdentifier);
+            throw fail("Unsupported .node file: ", moduleIdentifier);
         } else {
             throw fail(moduleIdentifier);
         }
     }
 
-    private Object evalJavaScriptFile(TruffleFile modulePath, TruffleString moduleIdentifier) {
+    private Object evalJavaScriptFile(TruffleFile modulePath, String moduleIdentifier) {
         JSRealm realm = getRealm();
         TruffleFile normalizedPath = modulePath.normalize();
         // If cached, return from cache. This is by design to avoid infinite require loops.
@@ -260,11 +258,11 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         }
     }
 
-    private static JSException fail(TruffleString moduleIdentifier) {
+    private static JSException fail(String moduleIdentifier) {
         return JSException.create(JSErrorType.TypeError, "Cannot load module: '" + moduleIdentifier + "'");
     }
 
-    private static JSException fail(TruffleString moduleIdentifier, TruffleString extraMessage) {
+    private static JSException fail(String moduleIdentifier, String extraMessage) {
         return JSException.create(JSErrorType.TypeError, "Cannot load module: '" + moduleIdentifier + "': " + extraMessage);
     }
 

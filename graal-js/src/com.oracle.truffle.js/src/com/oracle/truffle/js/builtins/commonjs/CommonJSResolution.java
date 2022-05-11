@@ -67,16 +67,16 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class CommonJSResolution {
 
     public static final String NODE_MODULES = "node_modules";
-    public static final TruffleString PACKAGE_JSON = Strings.constant("package.json");
-    public static final TruffleString INDEX_JS = Strings.constant("index.js");
-    public static final TruffleString INDEX_JSON = Strings.constant("index.json");
-    public static final TruffleString INDEX_NODE = Strings.constant("index.node");
+    public static final String PACKAGE_JSON = "package.json";
+    public static final String INDEX_JS = "index.js";
+    public static final String INDEX_JSON = "index.json";
+    public static final String INDEX_NODE = "index.node";
 
     private CommonJSResolution() {
     }
 
-    public static boolean hasCoreModuleReplacement(JSContext context, TruffleString moduleIdentifier) {
-        return context.getContextOptions().getCommonJSRequireBuiltins().containsKey(Strings.toJavaString(moduleIdentifier));
+    public static boolean hasCoreModuleReplacement(JSContext context, String moduleIdentifier) {
+        return context.getContextOptions().getCommonJSRequireBuiltins().containsKey(moduleIdentifier);
     }
 
     static String getCurrentFileNameFromStack() {
@@ -114,7 +114,7 @@ public final class CommonJSResolution {
      * @return A {@link TruffleFile} for the module executable file, or {@code null} if the module cannot be resolved.
      */
     @CompilerDirectives.TruffleBoundary
-    static TruffleFile resolve(JSRealm realm, TruffleString moduleIdentifier, TruffleFile entryPath) {
+    static TruffleFile resolve(JSRealm realm, String moduleIdentifier, TruffleFile entryPath) {
         // 1. If X is an empty module
         if (moduleIdentifier.isEmpty()) {
             return null;
@@ -122,7 +122,7 @@ public final class CommonJSResolution {
         TruffleLanguage.Env env = realm.getEnv();
         // 2. If X begins with '/'
         TruffleFile currentWorkingPath = entryPath;
-        if (Strings.charAt(moduleIdentifier, 0) == '/') {
+        if (moduleIdentifier.charAt(0) == '/') {
             currentWorkingPath = getFileSystemRootPath(env);
         }
         // 3. If X begins with './' or '/' or '../'
@@ -138,7 +138,7 @@ public final class CommonJSResolution {
         return loadNodeModulesOrSelfReference(realm, moduleIdentifier, currentWorkingPath);
     }
 
-    private static TruffleFile loadNodeModulesOrSelfReference(JSRealm realm, TruffleString moduleIdentifier, TruffleFile startFolder) {
+    private static TruffleFile loadNodeModulesOrSelfReference(JSRealm realm, String moduleIdentifier, TruffleFile startFolder) {
         /* @formatter:off
          *
          * 1. let DIRS = NODE_MODULES_PATHS(START)
@@ -254,7 +254,7 @@ public final class CommonJSResolution {
                 if (!Strings.isTString(main)) {
                     return loadIndex(env, modulePath);
                 }
-                TruffleFile module = joinPaths(env, modulePath, JSRuntime.safeToString(main));
+                TruffleFile module = joinPaths(env, modulePath, Strings.toJavaString(JSRuntime.safeToString(main)));
                 TruffleFile asFile = loadAsFile(env, module);
                 if (asFile != null) {
                     return asFile;
@@ -304,11 +304,11 @@ public final class CommonJSResolution {
         return modulePath.exists() && modulePath.isRegularFile();
     }
 
-    private static boolean isPathFileName(TruffleString moduleIdentifier) {
-        return Strings.startsWith(moduleIdentifier, Strings.SLASH) || Strings.startsWith(moduleIdentifier, Strings.DOT_SLASH) || Strings.startsWith(moduleIdentifier, Strings.DOT_DOT_SLASH);
+    private static boolean isPathFileName(String moduleIdentifier) {
+        return moduleIdentifier.startsWith("/") || moduleIdentifier.startsWith("./") || moduleIdentifier.startsWith("../");
     }
 
-    public static TruffleFile joinPaths(TruffleLanguage.Env env, TruffleFile p1, TruffleString p2) {
+    public static TruffleFile joinPaths(TruffleLanguage.Env env, TruffleFile p1, String p2) {
         Objects.requireNonNull(p1);
         String pathSeparator = env.getFileNameSeparator();
         String pathName = p1.normalize().toString();

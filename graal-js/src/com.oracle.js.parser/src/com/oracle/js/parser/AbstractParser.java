@@ -48,7 +48,6 @@ import static com.oracle.js.parser.TokenType.EOL;
 import static com.oracle.js.parser.TokenType.IDENT;
 
 import java.math.BigInteger;
-
 import java.util.function.Function;
 
 import com.oracle.js.parser.Lexer.LexerToken;
@@ -198,7 +197,7 @@ public abstract class AbstractParser {
     }
 
     // sourceURL= after directive comment
-    private static final TruffleString SOURCE_URL_PREFIX = ParserStrings.constant("sourceURL=");
+    private static final String SOURCE_URL_PREFIX = "sourceURL=";
 
     // currently only @sourceURL=foo supported
     private void checkDirectiveComment() {
@@ -207,10 +206,10 @@ public abstract class AbstractParser {
             return;
         }
 
-        final TruffleString comment = ((TruffleString) lexer.getValueOf(token, isStrictMode));
+        final String comment = (String) lexer.getValueOf(token, isStrictMode);
         // 4 characters for directive comment marker //@\s or //#\s
-        if (ParserStrings.startsWith(comment, SOURCE_URL_PREFIX, 4)) {
-            source.setExplicitURL(ParserStrings.lazySubstring(comment, 4 + ParserStrings.length(SOURCE_URL_PREFIX)).toJavaStringUncached());
+        if (comment.regionMatches(4, SOURCE_URL_PREFIX, 0, SOURCE_URL_PREFIX.length())) {
+            source.setExplicitURL(comment.substring(4 + SOURCE_URL_PREFIX.length()));
         }
     }
 
@@ -264,7 +263,7 @@ public abstract class AbstractParser {
     }
 
     protected static String message(final String msgId, IdentNode ident) {
-        return ECMAErrors.getMessage(MSG_PARSER_ERROR + msgId, ident.getName().toJavaStringUncached());
+        return ECMAErrors.getMessage(MSG_PARSER_ERROR + msgId, ident.getName());
     }
 
     /**
@@ -335,23 +334,22 @@ public abstract class AbstractParser {
      * @return the message string
      */
     protected final String expectMessage(final TokenType expected) {
-        final TruffleString tokenString = Token.toString(source, token);
+        final String tokenString = Token.toString(source, token);
         String msg;
 
         if (expected == null) {
-            msg = AbstractParser.message(MSG_EXPECTED_STMT, tokenString.toJavaStringUncached());
+            msg = AbstractParser.message(MSG_EXPECTED_STMT, tokenString);
         } else {
-            final TruffleString expectedName = expected.getNameOrType();
-            msg = AbstractParser.message(MSG_EXPECTED, expectedName.toJavaStringUncached(), tokenString.toJavaStringUncached());
+            msg = AbstractParser.message(MSG_EXPECTED, expected.getNameOrType(), tokenString);
         }
 
         return msg;
     }
 
     protected final String expectMessage(final TokenType expected, final long errorToken) {
-        final TruffleString expectedName = expected.getNameOrType();
-        final TruffleString tokenString = Token.toString(source, errorToken);
-        return AbstractParser.message(MSG_EXPECTED, expectedName.toJavaStringUncached(), tokenString.toJavaStringUncached());
+        final String expectedName = expected.getNameOrType();
+        final String tokenString = Token.toString(source, errorToken);
+        return AbstractParser.message(MSG_EXPECTED, expectedName, tokenString);
     }
 
     /**
@@ -446,7 +444,7 @@ public abstract class AbstractParser {
 
             return createIdentNode(identToken, finish, ident);
         } else if (type.isContextualKeyword() || isNonStrictModeIdent()) {
-            final TruffleString ident = type.getName();
+            final TruffleString ident = lexer.stringIntern(type.getNameTS());
 
             next();
 
@@ -474,7 +472,7 @@ public abstract class AbstractParser {
     }
 
     private boolean isInterned(final TruffleString name) {
-        return isSame(lexer.stringIntern(name), name);
+        return isSame(lexer.stringIntern(name.toJavaStringUncached()), name);
     }
 
     private static boolean isSame(Object a, Object b) {
@@ -518,8 +516,8 @@ public abstract class AbstractParser {
         // Fake out identifier.
         final long identToken = Token.recast(currentToken, IDENT);
         // Get IDENT.
-        final TruffleString ident = (TruffleString) getValue(identToken);
-        return ident != null && !ident.isEmpty() && Character.isJavaIdentifierStart(ParserStrings.charAt(ident, 0));
+        final TruffleString ident = ((TruffleString) getValue(identToken));
+        return ident != null && !ident.isEmpty() && Character.isJavaIdentifierStart(ident.toJavaStringUncached().charAt(0));
     }
 
     /**
@@ -535,9 +533,10 @@ public abstract class AbstractParser {
             final long identToken = Token.recast(token, IDENT);
             // Get IDENT.
             final TruffleString ident = (TruffleString) getValue(identToken);
+            assert isInterned(ident);
             next();
             // Create IDENT node.
-            return createIdentNode(identToken, finish, lexer.stringIntern(ident));
+            return createIdentNode(identToken, finish, ident);
         } else {
             expect(IDENT);
             return null;

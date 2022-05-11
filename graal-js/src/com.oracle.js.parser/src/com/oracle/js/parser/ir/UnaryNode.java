@@ -49,7 +49,6 @@ import com.oracle.js.parser.Token;
 import com.oracle.js.parser.TokenType;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
-import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * UnaryNode nodes represent single operand operations.
@@ -141,7 +140,7 @@ public final class UnaryNode extends Expression implements Assignment<Expression
     @Override
     public void toString(final StringBuilder sb, final boolean printType) {
         final TokenType tokenType = tokenType();
-        final TruffleString name = tokenType.getName();
+        final String name = tokenType.getName();
         final boolean isPostfix = tokenType == DECPOSTFIX || tokenType == INCPOSTFIX;
 
         if (tokenType == TokenType.AWAIT) {

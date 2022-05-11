@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.util.List;
+
 import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -129,7 +131,7 @@ public interface Evaluator {
         return parseScript(context, source, prolog, epilog, isStrict, null);
     }
 
-    ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, boolean isStrict, TruffleString[] argumentNames);
+    ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, boolean isStrict, List<String> argumentNames);
 
     ScriptNode parseScript(JSContext context, String sourceString);
 

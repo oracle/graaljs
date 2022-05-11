@@ -46,10 +46,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-
-import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Represents a binding scope (corresponds to LexicalEnvironment or VariableEnvironment).
@@ -84,9 +83,9 @@ public final class Scope {
     private static final int IS_CLASS_FIELD_INITIALIZER = 1 << 19;
 
     /** Symbol table - keys must be returned in the order they were put in. */
-    protected final EconomicMap<TruffleString, Symbol> symbols;
+    protected final EconomicMap<String, Symbol> symbols;
     /** Use map. */
-    protected EconomicMap<TruffleString, UseInfo> uses;
+    protected EconomicMap<String, UseInfo> uses;
 
     private boolean closed;
     private boolean hasBlockScopedOrRedeclaredSymbols;
@@ -187,7 +186,7 @@ public final class Scope {
      * @return an existing symbol with the specified name defined in the current block, or null if
      *         this block doesn't define a symbol with this name.
      */
-    public Symbol getExistingSymbol(final TruffleString name) {
+    public Symbol getExistingSymbol(final String name) {
         return symbols.get(name);
     }
 
@@ -196,7 +195,7 @@ public final class Scope {
      *
      * @param name the name of the symbol
      */
-    public boolean hasSymbol(final TruffleString name) {
+    public boolean hasSymbol(final String name) {
         return symbols.containsKey(name);
     }
 
@@ -246,7 +245,7 @@ public final class Scope {
      * @param annexB if true, ignore catch parameters
      * @param includeParameters include parameter scope?
      */
-    public boolean isLexicallyDeclaredName(final TruffleString varName, final boolean annexB, final boolean includeParameters) {
+    public boolean isLexicallyDeclaredName(final String varName, final boolean annexB, final boolean includeParameters) {
         for (Scope current = this; current != null; current = current.getParent()) {
             Symbol existingSymbol = current.getExistingSymbol(varName);
             if (existingSymbol != null && existingSymbol.isBlockScoped()) {
@@ -268,7 +267,7 @@ public final class Scope {
      *
      * @param varName the symbol name
      */
-    public Symbol findBlockScopedSymbolInFunction(TruffleString varName) {
+    public Symbol findBlockScopedSymbolInFunction(String varName) {
         for (Scope current = this; current != null; current = current.getParent()) {
             Symbol existingSymbol = current.getExistingSymbol(varName);
             if (existingSymbol != null) {
@@ -294,8 +293,8 @@ public final class Scope {
     public boolean addPrivateName(TruffleString name, int symbolFlags) {
         assert isClassBodyScope();
         // Register a declared private name.
-        if (hasSymbol(name)) {
-            assert getExistingSymbol(name).isPrivateName();
+        if (hasSymbol(name.toJavaStringUncached())) {
+            assert getExistingSymbol(name.toJavaStringUncached()).isPrivateName();
             return false;
         } else {
             putSymbol(new Symbol(name, Symbol.IS_CONST | Symbol.IS_PRIVATE_NAME | Symbol.HAS_BEEN_DECLARED | symbolFlags));
@@ -303,7 +302,7 @@ public final class Scope {
         }
     }
 
-    public boolean findPrivateName(TruffleString name) {
+    public boolean findPrivateName(String name) {
         for (Scope current = this; current != null; current = current.parent) {
             if (current.hasSymbol(name)) {
                 return true;
@@ -396,9 +395,9 @@ public final class Scope {
         symbols.clear();
         if (uses != null) {
             if (parent != null && !parent.closed) {
-                MapCursor<TruffleString, UseInfo> cursor = uses.getEntries();
+                MapCursor<String, UseInfo> cursor = uses.getEntries();
                 while (cursor.advance()) {
-                    TruffleString usedName = cursor.getKey();
+                    String usedName = cursor.getKey();
                     UseInfo useInfo = cursor.getValue();
                     assert useInfo.isUnresolved();
                     if (useInfo.use == this) {
@@ -418,25 +417,25 @@ public final class Scope {
     /**
      * Records the use of an identifier reference in this scope to be resolved.
      */
-    public void addIdentifierReference(TruffleString name) {
+    public void addIdentifierReference(String name) {
         addLocalUse(name);
     }
 
-    private UseInfo getUseInfo(TruffleString name) {
+    private UseInfo getUseInfo(String name) {
         if (uses == null) {
             return null;
         }
         return uses.get(name);
     }
 
-    private void putUseInfo(TruffleString name, UseInfo useInfo) {
+    private void putUseInfo(String name, UseInfo useInfo) {
         if (uses == null) {
             uses = EconomicMap.create();
         }
         uses.put(name, useInfo);
     }
 
-    private void removeUseInfo(TruffleString name) {
+    private void removeUseInfo(String name) {
         if (uses == null) {
             return;
         }
@@ -446,7 +445,7 @@ public final class Scope {
     /**
      * Records or resolves a use in this scope.
      */
-    private void addLocalUse(TruffleString name) {
+    private void addLocalUse(String name) {
         assert !closed : "scope is closed";
         UseInfo foundUse = getUseInfo(name);
         Symbol foundSymbol = symbols.get(name);
@@ -479,7 +478,7 @@ public final class Scope {
     /**
      * Used to resolve or forward unresolved uses from inner scopes.
      */
-    private void addUsesFromInnerScope(TruffleString name, UseInfo useInfo) {
+    private void addUsesFromInnerScope(String name, UseInfo useInfo) {
         assert !closed : "scope is closed";
         if (useInfo.use == null && useInfo.innerUseScopes == null) {
             return;
@@ -524,9 +523,9 @@ public final class Scope {
         }
 
         boolean hasDeclarations = hasDeclarations();
-        MapCursor<TruffleString, UseInfo> cursor = uses.getEntries();
+        MapCursor<String, UseInfo> cursor = uses.getEntries();
         while (cursor.advance()) {
-            TruffleString usedName = cursor.getKey();
+            String usedName = cursor.getKey();
             UseInfo useInfo = cursor.getValue();
             if (useInfo.isUnresolved()) {
                 Symbol foundSymbol;
@@ -535,21 +534,18 @@ public final class Scope {
                     resolveUse(useInfo, this, foundSymbol);
                 } else {
                     // unresolved, pass on to parent scope, if possible
+                    // no use in this scope, skip this scope and remove the use here.
                     if (parent == null || parent.closed) {
                         // A closed parent scope implies a parsing boundary, e.g. eval().
                         // We cannot make any symbols available that are not already captured.
                         // We could resolve these symbols statically but there is currently
                         // no advantage in doing so early.
                         markUseUnresolvable(useInfo);
-                        if (useInfo.use == null) {
-                            cursor.remove();
-                        }
                     } else {
                         parent.addUsesFromInnerScope(usedName, useInfo);
-                        if (useInfo.use == null) {
-                            // no use in this scope, skip this scope and remove the use here.
-                            cursor.remove();
-                        }
+                    }
+                    if (useInfo.use == null) {
+                        cursor.remove();
                     }
                 }
             }
@@ -569,7 +565,7 @@ public final class Scope {
      * Resolve use in the local and any inner scopes to the scope defining the symbol.
      */
     private static void resolveUse(UseInfo useInfo, Scope defScope, Symbol foundSymbol) {
-        TruffleString name = useInfo.name;
+        String name = useInfo.name;
         // cannot change a resolved scope
         assert useInfo.def == null || useInfo.def == defScope;
         assert name.equals(foundSymbol.getName());
@@ -609,7 +605,7 @@ public final class Scope {
     }
 
     private static void markUseUnresolvable(UseInfo useInfo) {
-        TruffleString name = useInfo.name;
+        String name = useInfo.name;
         assert useInfo.def == null : name; // must not be resolved
 
         if (useInfo.innerUseScopes != null) {
@@ -687,7 +683,7 @@ public final class Scope {
     public String toString() {
         StringJoiner names = new StringJoiner(",", "(", ")");
         for (Symbol symbol : symbols.getValues()) {
-            String name = symbol.getName().toJavaStringUncached();
+            String name = symbol.getName();
             String mark = "";
             if (symbol.isClosedOver()) {
                 mark += "'";
@@ -706,9 +702,9 @@ public final class Scope {
         String usedNames = "";
         if (uses != null) {
             StringJoiner sj = new StringJoiner(",", ">(", ")").setEmptyValue("");
-            for (TruffleString use : uses.getKeys()) {
+            for (String use : uses.getKeys()) {
                 if (!symbols.containsKey(use)) {
-                    sj.add(use.toJavaStringUncached());
+                    sj.add(use);
                 }
             }
             usedNames = sj.toString();
@@ -751,7 +747,7 @@ public final class Scope {
      */
     static final class UseInfo {
         /** Used name. */
-        TruffleString name;
+        String name;
         /** Resolved scope in which the symbol has been defined. Must be a parent scope. */
         Scope def;
         /** Local scope in which the symbol is used. */
@@ -759,17 +755,17 @@ public final class Scope {
         /** Inner scopes with unresolved uses of the symbol. */
         List<Scope> innerUseScopes;
 
-        private UseInfo(TruffleString name, Scope use, Scope def) {
+        private UseInfo(String name, Scope use, Scope def) {
             this.name = Objects.requireNonNull(name);
             this.use = use;
             this.def = def;
         }
 
-        static UseInfo resolvedLocal(TruffleString name, Scope local) {
+        static UseInfo resolvedLocal(String name, Scope local) {
             return new UseInfo(name, local, local);
         }
 
-        static UseInfo unresolved(TruffleString name) {
+        static UseInfo unresolved(String name) {
             return new UseInfo(name, null, null);
         }
 
@@ -781,7 +777,7 @@ public final class Scope {
                 innerUseScopes = new ArrayList<>();
             }
             // there should not be any duplicate scopes in the list
-            assert !innerUseScopes.stream().anyMatch(s -> s == useScope) : name;
+            assert innerUseScopes.stream().noneMatch(s -> s == useScope) : name;
             innerUseScopes.add(useScope);
         }
 

@@ -41,9 +41,6 @@
 
 package com.oracle.js.parser.ir;
 
-import java.util.Objects;
-
-import com.oracle.js.parser.ParserStrings;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -71,7 +68,8 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     //@formatter:on
 
     /** Identifier. */
-    private final TruffleString name;
+    private final String name;
+    private final TruffleString nameTS;
 
     private final int flags;
 
@@ -86,13 +84,15 @@ public final class IdentNode extends Expression implements PropertyKey, Function
      */
     public IdentNode(final long token, final int finish, final TruffleString name) {
         super(token, finish);
-        this.name = Objects.requireNonNull(name);
+        this.name = name.toJavaStringUncached();
+        this.nameTS = name;
         this.flags = 0;
     }
 
-    private IdentNode(final IdentNode identNode, final TruffleString name, final int flags) {
+    private IdentNode(final IdentNode identNode, final String name, final TruffleString nameTS, final int flags) {
         super(identNode);
         this.name = name;
+        this.nameTS = nameTS;
         this.flags = flags;
         this.symbol = identNode.symbol;
     }
@@ -126,13 +126,22 @@ public final class IdentNode extends Expression implements PropertyKey, Function
      *
      * @return IdentNode name
      */
-    public TruffleString getName() {
+    public String getName() {
         return name;
     }
 
+    public TruffleString getNameTS() {
+        return nameTS;
+    }
+
     @Override
-    public TruffleString getPropertyName() {
+    public String getPropertyName() {
         return getName();
+    }
+
+    @Override
+    public TruffleString getPropertyNameTS() {
+        return nameTS;
     }
 
     /**
@@ -163,7 +172,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
         if (isPropertyName()) {
             return this;
         }
-        return new IdentNode(this, name, flags | PROPERTY_NAME);
+        return new IdentNode(this, name, nameTS, flags | PROPERTY_NAME);
     }
 
     /**
@@ -184,7 +193,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
         if (isInitializedHere()) {
             return this;
         }
-        return new IdentNode(this, name, flags | INITIALIZED_HERE);
+        return new IdentNode(this, name, nameTS, flags | INITIALIZED_HERE);
     }
 
     /**
@@ -205,7 +214,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
         if (isDeclaredHere()) {
             return this;
         }
-        return new IdentNode(this, name, flags | IS_DECLARED_HERE);
+        return new IdentNode(this, name, nameTS, flags | IS_DECLARED_HERE);
     }
 
     @Override
@@ -220,7 +229,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
      */
     public boolean isInternal() {
         assert name != null;
-        return ParserStrings.charAt(name, 0) == ':';
+        return getName().charAt(0) == ':';
     }
 
     public boolean isThis() {
@@ -228,7 +237,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     }
 
     public IdentNode setIsThis() {
-        return new IdentNode(this, name, flags | THIS);
+        return new IdentNode(this, name, nameTS, flags | THIS);
     }
 
     public boolean isSuper() {
@@ -236,7 +245,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     }
 
     public IdentNode setIsSuper() {
-        return new IdentNode(this, name, flags | SUPER);
+        return new IdentNode(this, name, nameTS, flags | SUPER);
     }
 
     public boolean isDirectSuper() {
@@ -244,7 +253,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     }
 
     public IdentNode setIsDirectSuper() {
-        return new IdentNode(this, name, flags | SUPER | DIRECT_SUPER);
+        return new IdentNode(this, name, nameTS, flags | SUPER | DIRECT_SUPER);
     }
 
     public boolean isRestParameter() {
@@ -252,7 +261,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     }
 
     public IdentNode setIsRestParameter() {
-        return new IdentNode(this, name, flags | REST_PARAMETER);
+        return new IdentNode(this, name, nameTS, flags | REST_PARAMETER);
     }
 
     public boolean isCatchParameter() {
@@ -260,7 +269,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     }
 
     public IdentNode setIsCatchParameter() {
-        return new IdentNode(this, name, flags | CATCH_PARAMETER);
+        return new IdentNode(this, name, nameTS, flags | CATCH_PARAMETER);
     }
 
     public boolean isNewTarget() {
@@ -268,7 +277,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     }
 
     public IdentNode setIsNewTarget() {
-        return new IdentNode(this, name, flags | NEW_TARGET);
+        return new IdentNode(this, name, nameTS, flags | NEW_TARGET);
     }
 
     public boolean isImportMeta() {
@@ -276,7 +285,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     }
 
     public IdentNode setIsImportMeta() {
-        return new IdentNode(this, name, flags | IMPORT_META);
+        return new IdentNode(this, name, nameTS, flags | IMPORT_META);
     }
 
     public boolean isMetaProperty() {
@@ -284,7 +293,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     }
 
     public IdentNode setIsArguments() {
-        return new IdentNode(this, name, flags | ARGUMENTS);
+        return new IdentNode(this, name, nameTS, flags | ARGUMENTS);
     }
 
     public boolean isArguments() {
@@ -292,7 +301,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     }
 
     public IdentNode setIsApplyArguments() {
-        return new IdentNode(this, name, flags | APPLY_ARGUMENTS);
+        return new IdentNode(this, name, nameTS, flags | APPLY_ARGUMENTS);
     }
 
     public boolean isApplyArguments() {
@@ -300,7 +309,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     }
 
     public IdentNode setIsPrivate() {
-        return new IdentNode(this, name, flags | PRIVATE_IDENT);
+        return new IdentNode(this, name, nameTS, flags | PRIVATE_IDENT);
     }
 
     public boolean isPrivate() {
@@ -308,7 +317,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     }
 
     public IdentNode setIsPrivateInCheck() {
-        return new IdentNode(this, name, flags | PRIVATE_IN_CHECK);
+        return new IdentNode(this, name, nameTS, flags | PRIVATE_IN_CHECK);
     }
 
     public boolean isPrivateInCheck() {

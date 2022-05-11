@@ -180,7 +180,7 @@ public final class JSModuleNamespace extends JSNonProxy {
             return super.hasProperty(thisObj, key);
         }
         Map<TruffleString, ExportResolution> exports = getExports(thisObj);
-        return Boundaries.mapContainsKey(exports, key);
+        return Boundaries.mapContainsKey(exports, (TruffleString) key);
     }
 
     @Override
@@ -210,7 +210,7 @@ public final class JSModuleNamespace extends JSNonProxy {
         if (!Strings.isTString(key)) {
             return super.delete(thisObj, key, isStrict);
         }
-        if (Boundaries.mapContainsKey(getExports(thisObj), key)) {
+        if (Boundaries.mapContainsKey(getExports(thisObj), (TruffleString) key)) {
             if (isStrict) {
                 throw Errors.createTypeErrorNotConfigurableProperty(key);
             } else {

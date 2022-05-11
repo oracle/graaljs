@@ -50,8 +50,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.Objects;
 
-import com.oracle.truffle.api.strings.TruffleString;
-
 /**
  * Source objects track the origin of JavaScript entities.
  */
@@ -99,18 +97,18 @@ public final class Source {
 
         long lastModified();
 
-        TruffleString data();
+        String data();
 
         boolean isEvalCode();
     }
 
     private static final class RawData implements Data {
-        private final TruffleString source;
+        private final String source;
         private final boolean evalCode;
         private int hash;
 
         private RawData(final CharSequence source, final boolean evalCode) {
-            this.source = ParserStrings.constant(Objects.requireNonNull(source).toString());
+            this.source = source.toString();
             this.evalCode = evalCode;
         }
 
@@ -141,7 +139,7 @@ public final class Source {
 
         @Override
         public String toString() {
-            return data().toString();
+            return data();
         }
 
         @Override
@@ -151,7 +149,7 @@ public final class Source {
 
         @Override
         public int length() {
-            return ParserStrings.length(source);
+            return source.length();
         }
 
         @Override
@@ -160,7 +158,7 @@ public final class Source {
         }
 
         @Override
-        public TruffleString data() {
+        public String data() {
             return source;
         }
 
@@ -170,7 +168,7 @@ public final class Source {
         }
     }
 
-    private TruffleString data() {
+    private String data() {
         return data.data();
     }
 
@@ -223,15 +221,6 @@ public final class Source {
     }
 
     /**
-     * Fetch source content.
-     *
-     * @return Source content.
-     */
-    public TruffleString getString() {
-        return data.data();
-    }
-
-    /**
      * Get the user supplied name of this script.
      *
      * @return User supplied source name.
@@ -265,19 +254,8 @@ public final class Source {
      * @param len length of portion
      * @return Source content portion.
      */
-    public TruffleString getString(final int start, final int len) {
-        return data().substringByteIndexUncached(start * 2, len * 2, TruffleString.Encoding.UTF_16, false);
-    }
-
-    /**
-     * Fetch a portion of source content as a lazy substring.
-     *
-     * @param start start index in source
-     * @param len length of portion
-     * @return Source content portion.
-     */
-    public TruffleString getLazyString(final int start, final int len) {
-        return data().substringByteIndexUncached(start * 2, len * 2, TruffleString.Encoding.UTF_16, true);
+    public String getString(final int start, final int len) {
+        return data().substring(start, start + len);
     }
 
     /**
@@ -286,7 +264,7 @@ public final class Source {
      * @param token Token descriptor.
      * @return Source content portion.
      */
-    public TruffleString getString(final long token) {
+    public String getString(final long token) {
         final int start = Token.descPosition(token);
         final int len = Token.descLength(token);
         return getString(start, len);
@@ -336,9 +314,9 @@ public final class Source {
      * @return Index of first character of line.
      */
     private int findBOLN(final int position) {
-        final TruffleString d = data();
+        final String d = data();
         for (int i = position - 1; i >= 0; i--) {
-            final char ch = ParserStrings.charAt(d, i);
+            final char ch = d.charAt(i);
 
             if (ch == '\n' || ch == '\r') {
                 return i + 1;
@@ -355,10 +333,10 @@ public final class Source {
      * @return Index of last character of line.
      */
     private int findEOLN(final int position) {
-        final TruffleString d = data();
+        final String d = data();
         final int length = length();
         for (int i = position; i < length; i++) {
-            final char ch = ParserStrings.charAt(d, i);
+            final char ch = d.charAt(i);
 
             if (ch == '\n' || ch == '\r') {
                 return i - 1;
@@ -380,12 +358,12 @@ public final class Source {
      * @return Line number.
      */
     public int getLine(final int position) {
-        final TruffleString d = data();
+        final String d = data();
         // Line count starts at 1.
         int line = 1;
 
         for (int i = 0; i < position; i++) {
-            final char ch = ParserStrings.charAt(d, i);
+            final char ch = d.charAt(i);
             // Works for both \n and \r\n.
             if (ch == '\n') {
                 line++;
@@ -412,7 +390,7 @@ public final class Source {
      * @param position Position of character in source content.
      * @return Line text.
      */
-    public TruffleString getSourceLine(final int position) {
+    public String getSourceLine(final int position) {
         // Find end of previous line.
         final int first = findBOLN(position);
         // Find end of this line.
@@ -422,9 +400,9 @@ public final class Source {
     }
 
     /**
-     * Get the content of this source as a {@link CharSequence}.
+     * Get the content of this source as a {@link String}.
      */
-    public TruffleString getContent() {
+    public String getContent() {
         return data();
     }
 
@@ -472,14 +450,7 @@ public final class Source {
     private byte[] getDigestBytes() {
         byte[] ldigest = digest;
         if (ldigest == null) {
-            final TruffleString content = data();
-            final byte[] bytes = new byte[length() * 2];
-
-            for (int i = 0; i < length(); i++) {
-                bytes[i * 2] = (byte) (ParserStrings.charAt(content, i) & 0x00ff);
-                bytes[i * 2 + 1] = (byte) ((ParserStrings.charAt(content, i) & 0xff00) >> 8);
-            }
-
+            final byte[] bytes = data().getBytes(StandardCharsets.UTF_16LE);
             try {
                 final MessageDigest md = MessageDigest.getInstance("SHA-1");
                 if (name != null) {

@@ -43,7 +43,6 @@ package com.oracle.js.parser.ir;
 
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
-import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * IR representation for {@code break} statements.
@@ -58,7 +57,7 @@ public final class BreakNode extends JumpStatement {
      * @param finish finish
      * @param labelName label name for break or null if none
      */
-    public BreakNode(final int lineNumber, final long token, final int finish, final TruffleString labelName) {
+    public BreakNode(final int lineNumber, final long token, final int finish, final String labelName) {
         super(lineNumber, token, finish, labelName);
     }
 

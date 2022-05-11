@@ -100,11 +100,11 @@ public abstract class LiteralNode<T> extends Expression {
      *
      * @return String value of node.
      */
-    public TruffleString getString() {
+    public String getString() {
         if (value instanceof TruffleString) {
-            return (TruffleString) value;
+            return ((TruffleString) value).toJavaStringUncached();
         }
-        return ParserStrings.constant(String.valueOf(value));
+        return String.valueOf(value);
     }
 
     /**
@@ -206,8 +206,13 @@ public abstract class LiteralNode<T> extends Expression {
         }
 
         @Override
-        public TruffleString getPropertyName() {
-            return ParserStrings.constant(String.valueOf(getObject()));
+        public String getPropertyName() {
+            return String.valueOf(getObject());
+        }
+
+        @Override
+        public TruffleString getPropertyNameTS() {
+            return ParserStrings.fromJavaString(getPropertyName());
         }
     }
 
@@ -249,8 +254,13 @@ public abstract class LiteralNode<T> extends Expression {
         }
 
         @Override
-        public TruffleString getPropertyName() {
-            return toStringConverter == null ? super.getPropertyName() : toStringConverter.apply(getValue());
+        public String getPropertyName() {
+            return toStringConverter == null ? super.getPropertyName() : toStringConverter.apply(getValue()).toJavaStringUncached();
+        }
+
+        @Override
+        public TruffleString getPropertyNameTS() {
+            return toStringConverter == null ? super.getPropertyNameTS() : toStringConverter.apply(getValue());
         }
     }
 
@@ -283,6 +293,16 @@ public abstract class LiteralNode<T> extends Expression {
     private static final class StringLiteralNode extends PrimitiveLiteralNode<TruffleString> {
         private StringLiteralNode(final long token, final int finish, final TruffleString value) {
             super(Token.recast(token, TokenType.STRING), finish, value);
+        }
+
+        @Override
+        public String getPropertyName() {
+            return value.toJavaStringUncached();
+        }
+
+        @Override
+        public TruffleString getPropertyNameTS() {
+            return value;
         }
 
         @Override

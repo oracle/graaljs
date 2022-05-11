@@ -88,7 +88,6 @@ import com.oracle.js.parser.ir.VarNode;
 import com.oracle.js.parser.ir.WhileNode;
 import com.oracle.js.parser.ir.WithNode;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.parser.json.JSONParserUtil;
 import com.oracle.truffle.js.runtime.Strings;
 
@@ -155,7 +154,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
         accessNode.getBase().accept(this);
         comma();
 
-        property("property", Strings.toJavaString(accessNode.getProperty()));
+        property("property", accessNode.getProperty());
         comma();
 
         property("computed", false);
@@ -191,7 +190,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
         type(name);
         comma();
 
-        property("operator", Strings.toJavaString(binaryNode.tokenType().getNameOrType()));
+        property("operator", binaryNode.tokenType().getNameOrType());
         comma();
 
         property("left");
@@ -211,7 +210,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
         type("BreakStatement");
         comma();
 
-        final String label = Strings.toJavaString(breakNode.getLabelName());
+        final String label = breakNode.getLabelName();
         if (label != null) {
             property("label", label);
         } else {
@@ -293,7 +292,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
         type("ContinueStatement");
         comma();
 
-        final String label = Strings.toJavaString(continueNode.getLabelName());
+        final String label = continueNode.getLabelName();
         if (label != null) {
             property("label", label);
         } else {
@@ -523,13 +522,13 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
     public boolean enterIdentNode(final IdentNode identNode) {
         enterDefault(identNode);
 
-        final String name = Strings.toJavaString(identNode.getName());
+        final String name = identNode.getName();
         if ("this".equals(name)) {
             type("ThisExpression");
         } else {
             type("Identifier");
             comma();
-            property("name", Strings.toJavaString(identNode.getName()));
+            property("name", identNode.getName());
         }
 
         return leave();
@@ -588,7 +587,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
         type("LabeledStatement");
         comma();
 
-        property("label", Strings.toJavaString(labelNode.getLabelName()));
+        property("label", labelNode.getLabelName());
         comma();
 
         property("body");
@@ -625,7 +624,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
             } else if (value != null && value.equals(Double.POSITIVE_INFINITY)) {
                 buf.append("\"Infinity\"");
             } else {
-                final TruffleString str = literalNode.getString();
+                final String str = literalNode.getString();
                 // encode every String literal with prefix '$' so that script
                 // can differentiate b/w RegExps as Strings and Strings.
                 buf.append(literalNode.isString() ? quote("$" + str) : str);
@@ -877,7 +876,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
                     break;
                 default:
                     prefix = true;
-                    operator = Strings.toJavaString(tokenType.getName());
+                    operator = tokenType.getName();
                     break;
             }
 

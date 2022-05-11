@@ -43,7 +43,6 @@ package com.oracle.js.parser.ir;
 
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
-import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * IR representation for a labeled statement. It implements JoinPredecessor to hold conversions that
@@ -52,7 +51,7 @@ import com.oracle.truffle.api.strings.TruffleString;
  */
 public final class LabelNode extends LexicalContextStatement {
     /** Label ident. */
-    private final TruffleString labelName;
+    private final String labelName;
 
     /** Statements. */
     private final Block body;
@@ -66,14 +65,14 @@ public final class LabelNode extends LexicalContextStatement {
      * @param labelName label name
      * @param body body of label node
      */
-    public LabelNode(final int lineNumber, final long token, final int finish, final TruffleString labelName, final Block body) {
+    public LabelNode(final int lineNumber, final long token, final int finish, final String labelName, final Block body) {
         super(lineNumber, token, finish);
 
         this.labelName = labelName;
         this.body = body;
     }
 
-    private LabelNode(final LabelNode labelNode, final TruffleString labelName, final Block body) {
+    private LabelNode(final LabelNode labelNode, final String labelName, final Block body) {
         super(labelNode);
         this.labelName = labelName;
         this.body = body;
@@ -131,7 +130,7 @@ public final class LabelNode extends LexicalContextStatement {
      *
      * @return the label
      */
-    public TruffleString getLabelName() {
+    public String getLabelName() {
         return labelName;
     }
 }

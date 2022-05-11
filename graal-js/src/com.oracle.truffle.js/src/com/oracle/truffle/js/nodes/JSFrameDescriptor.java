@@ -188,7 +188,7 @@ public final class JSFrameDescriptor {
     /**
      * A scoped identifier is only equal to identifiers of the same scope.
      */
-    public static Object scopedIdentifier(Object identifier, Scope scope) {
+    public static ScopedIdentifier scopedIdentifier(Object identifier, Scope scope) {
         return new ScopedIdentifier(identifier, scope);
     }
 

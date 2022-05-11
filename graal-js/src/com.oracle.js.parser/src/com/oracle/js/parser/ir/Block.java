@@ -45,7 +45,6 @@ import java.util.List;
 
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
-import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * IR representation for a list of statements.
@@ -177,7 +176,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
      * @return an existing symbol with the specified name defined in the current block, or null if
      *         this block doesn't define a symbol with this name.
      */
-    public Symbol getExistingSymbol(final TruffleString name) {
+    public Symbol getExistingSymbol(final String name) {
         return scope.getExistingSymbol(name);
     }
 
@@ -186,7 +185,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
      *
      * @param name the name of the symbol
      */
-    public boolean hasSymbol(final TruffleString name) {
+    public boolean hasSymbol(final String name) {
         return scope.hasSymbol(name);
     }
 

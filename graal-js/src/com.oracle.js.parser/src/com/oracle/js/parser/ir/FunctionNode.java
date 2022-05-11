@@ -592,10 +592,14 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      *
      * @return the name
      */
-    public TruffleString getName() {
+    public String getName() {
         if (!isAnonymous()) {
             return getIdent().getName();
         }
+        return name.toJavaStringUncached();
+    }
+
+    public TruffleString getNameTS() {
         return name;
     }
 
@@ -621,7 +625,11 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
                         source));
     }
 
-    public TruffleString getInternalName() {
+    public String getInternalName() {
+        return internalName.toJavaStringUncached();
+    }
+
+    public TruffleString getInternalNameTS() {
         return internalName;
     }
 
