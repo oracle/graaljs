@@ -644,7 +644,7 @@ public final class TemporalParser {
         return parseZonedDateTimeString() != null;
     }
 
-    public boolean isTemporalRelativeToString() {
+    public boolean isTemporalTemporalDateTimeString() {
         reset();
         JSTemporalParserRecord rec = parseCalendarDateTime();
         if (rec != null) {

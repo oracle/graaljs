@@ -517,7 +517,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static JSTemporalZonedDateTimeRecord parseTemporalRelativeToString(TruffleString isoString) {
-        if (!(new TemporalParser(isoString)).isTemporalRelativeToString()) {
+        if (!(new TemporalParser(isoString)).isTemporalTemporalDateTimeString()) {
             throw TemporalErrors.createRangeErrorInvalidRelativeToString();
         }
         JSTemporalDateTimeRecord result = parseISODateTime(isoString, false, false);
