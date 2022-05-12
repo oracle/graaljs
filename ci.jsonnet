@@ -7,7 +7,7 @@ local defs = import 'defs.jsonnet';
   // Used to run fewer jobs
   local debug = false,
 
-  local overlay = 'a892aea0a53f23cb522447fdeee08ac172ebd59c',
+  local overlay = 'e8b0f95f111bed6151c29d8c23bfdf81d556b860',
 
   local no_overlay = 'cb733e564850cd37b685fcef6f3c16b59802b22c',
 
