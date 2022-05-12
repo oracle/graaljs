@@ -1099,13 +1099,6 @@ public final class TemporalUtil {
         return values;
     }
 
-    // TODO rewrite this to node
-    public static JSTemporalPlainDateObject dateFromFields(JSDynamicObject calendar, JSDynamicObject fields, Object options) {
-        Object dateFromFields = JSObject.get(calendar, TemporalConstants.DATE_FROM_FIELDS);
-        Object date = JSRuntime.call(dateFromFields, calendar, new Object[]{fields, options});
-        return requireTemporalDate(date);
-    }
-
     @TruffleBoundary
     public static JSTemporalDateTimeRecord parseTemporalDateTimeString(TruffleString string) {
         JSTemporalParserRecord rec = (new TemporalParser(string)).parseCalendarDateTime();
