@@ -83,10 +83,10 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
         return JSProxyPropertyGetNodeGen.create(context);
     }
 
-    public abstract Object executeWithReceiver(Object proxy, Object receiver, Object key);
+    public abstract Object executeWithReceiver(Object proxy, Object receiver, Object key, Object defaultValue);
 
     @Specialization
-    protected Object doGeneric(JSDynamicObject proxy, Object receiver, Object key,
+    protected Object doGeneric(JSDynamicObject proxy, Object receiver, Object key, Object defaultValue,
                     @Cached JSToPropertyKeyNode toPropertyKeyNode,
                     @Cached("createBinaryProfile()") ConditionProfile hasTrap,
                     @Cached JSClassProfile targetClassProfile) {
@@ -98,9 +98,9 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
             if (JSDynamicObject.isJSDynamicObject(target)) {
-                return JSObject.getOrDefault((JSDynamicObject) target, propertyKey, receiver, Undefined.instance, targetClassProfile, this);
+                return JSObject.getOrDefault((JSDynamicObject) target, propertyKey, receiver, defaultValue, targetClassProfile, this);
             } else {
-                return JSInteropUtil.readMemberOrDefault(target, propertyKey, Undefined.instance);
+                return JSInteropUtil.readMemberOrDefault(target, propertyKey, defaultValue);
             }
         }
         Object trapResult = callNode.executeCall(JSArguments.create(handler, trapFun, target, propertyKey, receiver));
