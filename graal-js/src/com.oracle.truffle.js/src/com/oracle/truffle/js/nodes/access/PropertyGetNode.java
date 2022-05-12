@@ -1135,7 +1135,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            return proxyGet.executeWithReceiver(receiverCheck.getStore(thisObj), receiver, root.getKey());
+            return proxyGet.executeWithReceiver(receiverCheck.getStore(thisObj), receiver, root.getKey(), defaultValue);
         }
     }
 
@@ -1156,7 +1156,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             Object key = root.getKey();
             JSDynamicObject proxy = receiverCheck.getStore(thisObj);
             if (proxyHas.executeWithTargetAndKeyBoolean(proxy, key)) {
-                return proxyGet.executeWithReceiver(proxy, receiver, key);
+                return proxyGet.executeWithReceiver(proxy, receiver, key, defaultValue);
             } else {
                 throw Errors.createReferenceErrorNotDefined(root.getContext(), key, this);
             }
@@ -1174,7 +1174,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             Object key = root.getKey();
             JSDynamicObject obj = (JSDynamicObject) thisObj;
             Object result = root.isMethod() ? JSAdapter.INSTANCE.getMethodHelper(obj, obj, key, root) : JSAdapter.INSTANCE.getHelper(obj, obj, key, root);
-            return JSRuntime.nullToUndefined(result);
+            return (result == null) ? defaultValue : result;
         }
     }
 

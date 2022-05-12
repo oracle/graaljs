@@ -102,7 +102,7 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     @Specialization(guards = {"isJSProxy(target)"})
     protected Object doProxy(JSDynamicObject target, Object index, Object receiver, @SuppressWarnings("unused") Object defaultValue,
                     @Cached("create(context)") JSProxyPropertyGetNode proxyGet) {
-        return proxyGet.executeWithReceiver(target, receiver, index);
+        return proxyGet.executeWithReceiver(target, receiver, index, defaultValue);
     }
 
     @ReportPolymorphism.Megamorphic
