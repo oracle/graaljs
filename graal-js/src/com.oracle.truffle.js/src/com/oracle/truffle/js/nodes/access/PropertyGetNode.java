@@ -1174,7 +1174,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             Object key = root.getKey();
             JSDynamicObject obj = (JSDynamicObject) thisObj;
             Object result = root.isMethod() ? JSAdapter.INSTANCE.getMethodHelper(obj, obj, key, root) : JSAdapter.INSTANCE.getHelper(obj, obj, key, root);
-            return JSRuntime.nullToUndefined(result);
+            return (result == null) ? defaultValue : result;
         }
     }
 
