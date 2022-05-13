@@ -420,6 +420,8 @@ suite = {
         "regex:TREGEX",
         "truffle:TRUFFLE_API",
         "sdk:GRAAL_SDK",
+      ],
+      "exclude" : [
         "truffle:ICU4J",
       ],
       "description" : "Graal JavaScript engine",
