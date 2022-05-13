@@ -68,6 +68,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
   }, {
+    "filePath" : "intl/regress-10529.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, updated by https://github.com/v8/v8/commit/b9a48232b735f0f59249ff5d8299e45c09c4cd5c#diff-a80a8b27273a537129d6af2650a81aa462ee693c9abd6f9007348ba9c7a6863a"
+  }, {
     "filePath" : "intl/regress-10613.js",
     "status" : "FAIL",
     "comment" : "Different error message expected, passes otherwise"
