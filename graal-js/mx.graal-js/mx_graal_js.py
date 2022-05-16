@@ -37,7 +37,7 @@ from mx_unittest import unittest
 _suite = mx.suite('graal-js')
 
 # Git repository of Test262: ECMAScript Test Suite.
-TEST262_REPO = "https://github.com/tc39/test262.git"
+TEST262_REPO = "https://" + "github.com/tc39/test262.git"
 
 # Git revision of Test262 to checkout
 TEST262_REV = "d7c0a2076c2b0c1531aef7069d4abe70eec44ee3"
