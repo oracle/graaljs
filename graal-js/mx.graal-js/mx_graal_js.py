@@ -212,8 +212,7 @@ def _fetch_test_suite(dest, library_names):
             with tarfile.open(_get_lib_path(_lib_name), 'r') as _tar:
                 _tar.extractall(dest)
 
-def _run_test_suite(location, library_names, custom_args, default_vm_args, max_heap, stack_size, main_class, nonZeroIsFatal, cwd):
-    _fetch_test_suite(location, library_names)
+def _run_test_suite(custom_args, default_vm_args, max_heap, stack_size, main_class, nonZeroIsFatal, cwd):
     _vm_args, _prog_args = parse_js_args(custom_args)
     _vm_args = _append_default_js_vm_args(vm_args=_vm_args, max_heap=max_heap, stack_size=stack_size)
     _cp = mx.classpath(['TRUFFLE_JS_TESTS']
@@ -227,9 +226,8 @@ def test262(args, nonZeroIsFatal=True):
     _location = join(_suite.dir, 'lib', 'test262')
     _default_vm_args = []
     _stack_size = '2m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'
+    _fetch_test_suite(_location, ['TEST262'])
     return _run_test_suite(
-        location=_location,
-        library_names=['TEST262'],
         custom_args=args,
         default_vm_args=_default_vm_args,
         max_heap='4g',
@@ -244,9 +242,8 @@ def testnashorn(args, nonZeroIsFatal=True):
     _location = join(_suite.dir, 'lib', 'testnashorn')
     _default_vm_args = []
     _stack_size = '2m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'
+    _fetch_test_suite(_location, ['TESTNASHORN', 'TESTNASHORN_EXTERNAL'])
     _run_test_suite(
-        location=_location,
-        library_names=['TESTNASHORN', 'TESTNASHORN_EXTERNAL'],
         custom_args=args,
         default_vm_args=_default_vm_args,
         max_heap='2g',
@@ -260,9 +257,8 @@ def testv8(args, nonZeroIsFatal=True):
     """run the testV8 conformance suite"""
     _location = join(_suite.dir, 'lib', 'testv8')
     _stack_size = '3m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'
+    _fetch_test_suite(_location, ['TESTV8'])
     _run_test_suite(
-        location=_location,
-        library_names=['TESTV8'],
         custom_args=args,
         default_vm_args=[],
         max_heap='8g',
