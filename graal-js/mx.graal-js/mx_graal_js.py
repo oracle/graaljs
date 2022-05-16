@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,7 @@ import os, shutil, tarfile
 from os.path import join, exists, getmtime
 
 import mx_graal_js_benchmark
-import mx, mx_sdk
+import mx, mx_sdk, mx_urlrewrites
 from mx_gate import Tags, Task, add_gate_runner, prepend_gate_runner
 from mx_unittest import unittest
 
@@ -254,7 +254,7 @@ def _fetch_test262():
             shutil.rmtree(_location)
             _clone = True
     if _clone:
-        mx.GitConfig().clone(url=TEST262_REPO, dest=_location, rev=TEST262_REV, abortOnError=True)
+        mx.GitConfig().clone(url=mx_urlrewrites.rewriteurl(TEST262_REPO), dest=_location, rev=TEST262_REV, abortOnError=True)
     else:
         mx.GitConfig().update(_location, rev=TEST262_REV, abortOnError=True)
 
