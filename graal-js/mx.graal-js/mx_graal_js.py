@@ -242,6 +242,16 @@ def test262(args, nonZeroIsFatal=True):
         cwd=_suite.dir
     )
 
+class NoCRLFGitConfig(mx.GitConfig):
+    def run(self, *args, **kwargs):
+        # Hack: disable autocrlf on Windows but re-use the caching-related code in GitConfig.clone
+        if mx.is_windows() and len(args) == 1 and len(args[0]) >= 2 and args[0][0] == 'git' and args[0][1] == 'clone':
+            _cmd = args[0]
+            _new_cmd = _cmd[:2] + ['-c', 'core.autocrlf=false'] + _cmd[2:]
+            return super(NoCRLFGitConfig, self).run(_new_cmd, **kwargs)
+        else:
+            return super().run(*args, **kwargs)
+
 def _fetch_test262():
     """clones/updates test262 test-suite"""
     _location = join(_suite.dir, 'lib', 'test262')
@@ -254,7 +264,7 @@ def _fetch_test262():
             shutil.rmtree(_location)
             _clone = True
     if _clone:
-        mx.GitConfig().clone(url=mx_urlrewrites.rewriteurl(TEST262_REPO), dest=_location, rev=TEST262_REV, abortOnError=True)
+        NoCRLFGitConfig().clone(url=mx_urlrewrites.rewriteurl(TEST262_REPO), dest=_location, rev=TEST262_REV, abortOnError=True)
     else:
         mx.GitConfig().update(_location, rev=TEST262_REV, abortOnError=True)
 
