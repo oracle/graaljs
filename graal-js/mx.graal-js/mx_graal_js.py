@@ -36,6 +36,12 @@ from mx_unittest import unittest
 
 _suite = mx.suite('graal-js')
 
+# Git repository of Test262: ECMAScript Test Suite.
+TEST262_REPO = "https://github.com/tc39/test262.git"
+
+# Git revision of Test262 to checkout
+TEST262_REV = "d7c0a2076c2b0c1531aef7069d4abe70eec44ee3"
+
 def get_jdk(forBuild=False):
     # Graal.nodejs requires a JDK at build time, to be passed as argument to `./configure`.
     # GraalJVMCIJDKConfig (`tag='jvmci'`) is not available until all required jars are built.
@@ -223,10 +229,9 @@ def _run_test_suite(custom_args, default_vm_args, max_heap, stack_size, main_cla
 
 def test262(args, nonZeroIsFatal=True):
     """run the test262 conformance suite"""
-    _location = join(_suite.dir, 'lib', 'test262')
     _default_vm_args = []
     _stack_size = '2m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'
-    _fetch_test_suite(_location, ['TEST262'])
+    _fetch_test262()
     return _run_test_suite(
         custom_args=args,
         default_vm_args=_default_vm_args,
@@ -236,6 +241,22 @@ def test262(args, nonZeroIsFatal=True):
         nonZeroIsFatal=nonZeroIsFatal,
         cwd=_suite.dir
     )
+
+def _fetch_test262():
+    """clones/updates test262 test-suite"""
+    _location = join(_suite.dir, 'lib', 'test262')
+    _clone = False
+    if not mx.isdir(_location):
+        _clone = True
+    else:
+        if not mx.isdir(join(_location, '.git')):
+            # Not a git repository, an old version of the test-suite extracted from an archive most likely.
+            shutil.rmtree(_location)
+            _clone = True
+    if _clone:
+        mx.GitConfig().clone(url=TEST262_REPO, dest=_location, rev=TEST262_REV, abortOnError=True)
+    else:
+        mx.GitConfig().update(_location, rev=TEST262_REV, abortOnError=True)
 
 def testnashorn(args, nonZeroIsFatal=True):
     """run the testNashorn conformance suite"""
