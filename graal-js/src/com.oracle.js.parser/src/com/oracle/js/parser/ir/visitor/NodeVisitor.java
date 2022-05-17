@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.js.parser.ir.BreakNode;
 import com.oracle.js.parser.ir.CallNode;
 import com.oracle.js.parser.ir.CaseNode;
 import com.oracle.js.parser.ir.CatchNode;
+import com.oracle.js.parser.ir.ClassElement;
 import com.oracle.js.parser.ir.ClassNode;
 import com.oracle.js.parser.ir.ContinueNode;
 import com.oracle.js.parser.ir.DebuggerNode;
@@ -953,4 +954,25 @@ public abstract class NodeVisitor<T extends LexicalContext> {
     public Node leaveTemplateLiteralNode(final TemplateLiteralNode templateLiteralNode) {
         return leaveDefault(templateLiteralNode);
     }
+
+    /**
+     * Callback for entering a ClassElement
+     * 
+     * @param element the node
+     * @return true if traversal should continue and node children be traversed, false otherwise
+     */
+    public boolean enterClassElement(final ClassElement element) {
+        return enterDefault(element);
+    }
+
+    /**
+     * Callback for leaving a ClassElement
+     * 
+     * @param element the node
+     * @return processed node, which will replace the original one, or the original node
+     */
+    public Node leaveClassElement(final ClassElement element) {
+        return leaveDefault(element);
+    }
+
 }

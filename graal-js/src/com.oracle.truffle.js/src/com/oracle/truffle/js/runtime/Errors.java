@@ -928,4 +928,13 @@ public final class Errors {
         return JSException.create(JSErrorType.RuntimeError, cause.getMessage(), cause, originatingNode);
     }
 
+    @TruffleBoundary
+    public static JSException createTypeErrorWrongDecoratorReturn(Node originatingNode) {
+        return Errors.createTypeError("Class decorator must return undefined or function", originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorIllegalAccessorTarget(Node originatingNode) {
+        return Errors.createTypeError("Illegal accessor target", originatingNode);
+    }
 }

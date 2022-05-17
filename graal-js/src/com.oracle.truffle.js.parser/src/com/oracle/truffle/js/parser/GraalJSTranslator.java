@@ -63,6 +63,7 @@ import com.oracle.js.parser.ir.BlockStatement;
 import com.oracle.js.parser.ir.CallNode;
 import com.oracle.js.parser.ir.CaseNode;
 import com.oracle.js.parser.ir.CatchNode;
+import com.oracle.js.parser.ir.ClassElement;
 import com.oracle.js.parser.ir.ClassNode;
 import com.oracle.js.parser.ir.DebuggerNode;
 import com.oracle.js.parser.ir.Expression;
@@ -103,6 +104,7 @@ import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.decorators.DecoratorListEvaluationNode;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSFrameDescriptor;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
@@ -2468,7 +2470,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode enterNamedEvaluation(UnaryNode unaryNode) {
-        return factory.createNamedEvaluation(transform(unaryNode.getExpression()), factory.createAccessArgument(0));
+        return factory.createNamedEvaluation(transform(unaryNode.getExpression()), factory.createAccessArgument(1));
     }
 
     private JavaScriptNode enterDelete(UnaryNode unaryNode) {
@@ -3183,6 +3185,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
+    private JSFrameSlot getConstructorFrameSlotForVariable(VarRef privateNameVar) {
+        int frameLevel = ((AbstractFrameVarRef) privateNameVar).getFrameLevel();
+        int scopeLevel = ((AbstractFrameVarRef) privateNameVar).getScopeLevel();
+        Environment memberEnv = environment.getParentAt(frameLevel, scopeLevel);
+        return memberEnv.findBlockFrameSlot(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME);
+    }
+
     private JavaScriptNode getPrivateBrandNode(JSFrameSlot frameSlot, VarRef privateNameVar) {
         int frameLevel = ((AbstractFrameVarRef) privateNameVar).getFrameLevel();
         int scopeLevel = ((AbstractFrameVarRef) privateNameVar).getScopeLevel();
@@ -3218,7 +3227,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return tagExpression(factory.createObjectLiteral(context, members), objectNode);
     }
 
-    private ArrayList<ObjectLiteralMemberNode> transformPropertyDefinitionList(List<PropertyNode> properties, boolean isClass, Symbol classNameSymbol) {
+    private ArrayList<ObjectLiteralMemberNode> transformPropertyDefinitionList(List<? extends PropertyNode> properties, boolean isClass, Symbol classNameSymbol) {
         ArrayList<ObjectLiteralMemberNode> members = new ArrayList<>(properties.size());
         for (int i = 0; i < properties.size(); i++) {
             PropertyNode property = properties.get(i);
@@ -3239,6 +3248,23 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return members;
     }
 
+    private DecoratorListEvaluationNode[] transformClassElementsDecorators(List<ClassElement> elements) {
+        DecoratorListEvaluationNode[] decoratedElements = new DecoratorListEvaluationNode[elements.size()];
+        int i = 0;
+        for (ClassElement element : elements) {
+            JavaScriptNode[] decorators = null;
+            if (element.getDecorators() != null) {
+                List<Expression> d = element.getDecorators();
+                decorators = new JavaScriptNode[d.size()];
+                for (int j = 0; j < d.size(); j++) {
+                    decorators[j] = transform(d.get(j));
+                }
+            }
+            decoratedElements[i++] = decorators != null ? DecoratorListEvaluationNode.create(decorators) : null;
+        }
+        return decoratedElements;
+    }
+
     private ObjectLiteralMemberNode enterObjectAccessorNode(PropertyNode property, boolean isClass) {
         assert property.getGetter() != null || property.getSetter() != null;
         JavaScriptNode getter = getAccessor(property.getGetter());
@@ -3251,7 +3277,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (property.isPrivate()) {
             VarRef privateVar = environment.findLocalVar(property.getPrivateNameTS());
             JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
-            return factory.createPrivateAccessorMember(property.isStatic(), getter, setter, writePrivateNode);
+            JSFrameSlot constructorSlot = getConstructorFrameSlotForVariable(privateVar);
+            return factory.createPrivateAccessorMember(property.isStatic(), getter, setter, writePrivateNode, constructorSlot.getIndex());
         } else {
             return factory.createAccessorMember(property.getKeyNameTS(), property.isStatic(), enumerable, getter, setter);
         }
@@ -3299,7 +3326,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode value = transformPropertyValue(property.getValue(), classNameSymbol);
 
         boolean enumerable = !isClass || property.isClassField();
-        if (property.isComputed()) {
+        if (property instanceof ClassElement && ((ClassElement) property).isAutoAccessor()) {
+            if (property.isComputed()) {
+                JavaScriptNode computedKey = transform(property.getKey());
+                return factory.createComputedAutoAccessor(computedKey, property.isStatic(), enumerable, value);
+            } else {
+                return factory.createAutoAccessor(property.getKeyNameTS(), property.isStatic(), enumerable, value);
+            }
+        } else if (property.isComputed()) {
             JavaScriptNode computedKey = transform(property.getKey());
             return factory.createComputedDataMember(computedKey, property.isStatic(), enumerable, value, property.isClassField(), property.isAnonymousFunctionDefinition());
         } else if (!isClass && property.isProto()) {
@@ -3311,7 +3345,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 return factory.createPrivateFieldMember(privateVar.createReadNode(), property.isStatic(), value, writePrivateNode);
             } else {
                 JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
-                return factory.createPrivateMethodMember(property.isStatic(), value, writePrivateNode);
+                JSFrameSlot constructorSlot = getConstructorFrameSlotForVariable(privateVar);
+                return factory.createPrivateMethodMember(property.getPrivateNameTS(), property.isStatic(), value, writePrivateNode, constructorSlot.getIndex());
             }
         } else if (isClass && property.isClassStaticBlock()) {
             return factory.createStaticBlockMember(value);
@@ -3694,7 +3729,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             try (EnvironmentCloseable privateEnv = new EnvironmentCloseable(newPrivateEnvironment(classBodyScope))) {
                 JavaScriptNode classFunction = transform(classNode.getConstructor().getValue());
 
-                ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true, classNameSymbol);
+                List<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true, classNameSymbol);
+
+                DecoratorListEvaluationNode[] decoratedElementNodes = transformClassElementsDecorators(classNode.getClassElements());
+                JavaScriptNode[] classDecorators = transformClassDecorators(classNode.getDecorators());
 
                 JSWriteFrameSlotNode writeClassBinding = className == null ? null : (JSWriteFrameSlotNode) findScopeVar(className, true).createWriteNode(null);
 
@@ -3704,9 +3742,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                                 : null;
 
                 classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
-                                members.toArray(ObjectLiteralMemberNode.EMPTY), writeClassBinding, writeInternalConstructorBrand, className,
+                                members.toArray(ObjectLiteralMemberNode.EMPTY), writeClassBinding, writeInternalConstructorBrand, classDecorators,
+                                decoratedElementNodes, className,
                                 classNode.getInstanceFieldCount(), classNode.getStaticElementCount(), classNode.hasPrivateInstanceMethods(), environment.getCurrentBlockScopeSlot());
-
                 classDefinition = privateEnv.wrapBlockScope(classDefinition);
             }
 
@@ -3715,6 +3753,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
             return tagExpression(blockEnv.wrapBlockScope(classDefinition), classNode);
         }
+    }
+
+    private JavaScriptNode[] transformClassDecorators(List<Expression> decorators) {
+        if (decorators == null) {
+            return EMPTY_NODE_ARRAY;
+        }
+        JavaScriptNode[] transformedDecorators = new JavaScriptNode[decorators.size()];
+        int i = 0;
+        for (Expression e : decorators) {
+            transformedDecorators[i++] = transform(e);
+        }
+        return transformedDecorators;
     }
 
     private Environment newClassEnvironment(Scope scope) {

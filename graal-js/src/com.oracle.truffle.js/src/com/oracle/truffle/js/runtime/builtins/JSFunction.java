@@ -178,6 +178,7 @@ public final class JSFunction extends JSNonProxy {
 
     public static final HiddenKey HOME_OBJECT_ID = new HiddenKey("HomeObject");
     public static final HiddenKey CLASS_FIELDS_ID = new HiddenKey("Fields");
+    public static final HiddenKey CLASS_INITIALIZERS_ID = new HiddenKey("Initializers");
     public static final HiddenKey PRIVATE_BRAND_ID = new HiddenKey("PrivateBrand");
 
     public static final HiddenKey GENERATOR_STATE_ID = new HiddenKey("GeneratorState");
