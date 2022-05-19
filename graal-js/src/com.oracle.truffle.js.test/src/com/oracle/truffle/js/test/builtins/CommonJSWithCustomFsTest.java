@@ -47,8 +47,11 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
+import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
@@ -65,6 +68,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CWD_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -125,6 +130,23 @@ public class CommonJSWithCustomFsTest {
             assertTrue(e.isHostException());
             assertTrue(e.asHostException() instanceof SecurityException);
         }
+    }
+
+    @Test
+    public void testNestedBareSpecifier() throws IOException {
+        Path testPath = CommonJSRequireTest.getTestRootFolder();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Context.Builder contextBuilder = Context.newBuilder("js").allowAllAccess(true).out(out).err(out).allowHostAccess(HostAccess.ALL);
+        FileSystem fs = FileSystem.newDefaultFileSystem();
+        fs.setCurrentWorkingDirectory(testPath);
+        contextBuilder.fileSystem(fs);
+        contextBuilder.option(COMMONJS_REQUIRE_NAME, "true");
+        contextBuilder.option(COMMONJS_REQUIRE_CWD_NAME, testPath.toAbsolutePath().toString());
+        Context context = contextBuilder.build();
+        File jsFile = new File(testPath + "/foo/main.mjs");
+        context.eval(Source.newBuilder("js", jsFile).build());
+        out.flush();
+        Assert.assertEquals("42\n", out.toString());
     }
 
     private static class DenyAllFs implements FileSystem {
@@ -276,5 +298,4 @@ public class CommonJSWithCustomFsTest {
 
         return Context.newBuilder("js").allowExperimentalOptions(true).allowHostAccess(HostAccess.ALL).options(options).allowIO(true).fileSystem(fs).build();
     }
-
 }

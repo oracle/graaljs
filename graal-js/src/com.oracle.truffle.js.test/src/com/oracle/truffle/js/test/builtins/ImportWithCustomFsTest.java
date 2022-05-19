@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -243,16 +243,24 @@ public class ImportWithCustomFsTest {
         @Override
         public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) {
             Map<String, Object> attr = new HashMap<>();
-            // for testing purposes, we consider all files non-regular. In this way, we force the
-            // module loader to try all possible file names before throwing module not found
-            attr.put("isRegularFile", false);
+            if (path.equals(dummyPath)) {
+                // This "dummy" path is used to signal the actual file that we want to load, so it
+                // must exists.
+                attr.put("isRegularFile", true);
+            } else {
+                // for testing purposes, we consider all other files non-regular. In this way, we
+                // force the
+                // module loader to try all possible file names before throwing module not found
+                attr.put("isRegularFile", false);
+            }
+            attr.put("isDirectory", false);
             return attr;
         }
     }
 
     protected static class TestFS implements FileSystem {
 
-        private final Path dummyPath;
+        protected final Path dummyPath;
         private final String moduleBody;
         private final String expectedPath;
 
@@ -260,7 +268,7 @@ public class ImportWithCustomFsTest {
         protected final Set<String> stringSpecifiers;
 
         TestFS(String expectedPath, String moduleBody) {
-            this(expectedPath, moduleBody, Paths.get("/dummy").toAbsolutePath());
+            this(expectedPath, moduleBody, Paths.get("/dummy.mjs").toAbsolutePath());
         }
 
         TestFS(String expectedPath, String moduleBody, Path dummyPath) {

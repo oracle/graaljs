@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,9 +62,9 @@ import org.junit.Test;
 
 public class GR36103 {
 
-    private static void test(String code) {
+    private static void test(String code, String packageJson) {
         String moduleBody = "export class Foo { bar() { return 42; } }";
-        Context context = createDefaultContext(Context.newBuilder("js").allowAllAccess(true), moduleBody);
+        Context context = createDefaultContext(Context.newBuilder("js").allowAllAccess(true), moduleBody, packageJson);
         Source source = Source.newBuilder("js", code, "test.mjs").buildLiteral();
         var val = context.eval(source);
         Assert.assertTrue(val.isNumber());
@@ -74,38 +74,41 @@ public class GR36103 {
 
     @Test
     public void reproducer() {
-        test("import {Foo} from 'js/foo.mjs'; (new Foo).bar();");
+        test("import {Foo} from 'js/foo.mjs'; (new Foo).bar();", null);
     }
 
     @Test
     public void reproducerBare() {
-        test("import {Foo} from 'foo'; (new Foo).bar();");
+        String packageJson = "{\"type\":\"module\", \"main\":\"foo.mjs\"}";
+        test("import {Foo} from 'foo'; (new Foo).bar();", packageJson);
     }
 
     @Test
     public void reproducerAt() {
-        test("import {Foo} from '@js/nested/foo.mjs'; (new Foo).bar();");
+        test("import {Foo} from '@js/nested/foo.mjs'; (new Foo).bar();", null);
     }
 
-    static Context createDefaultContext(Context.Builder builder, String moduleBody) {
+    static Context createDefaultContext(Context.Builder builder, String moduleBody, String packageJson) {
         Map<String, String> options = new HashMap<>();
         options.put("js.commonjs-require", "true");
         options.put("js.commonjs-require-cwd", "node/npm");
-        builder.options(options).fileSystem(new TestFilesystem(moduleBody));
+        builder.options(options).fileSystem(new TestFilesystem(moduleBody, packageJson));
         return builder.build();
     }
 
     public static class TestFilesystem implements FileSystem {
 
         private final String moduleBody;
+        private final String packageJson;
 
-        public TestFilesystem(String moduleBody) {
+        public TestFilesystem(String moduleBody, String packageJson) {
             this.moduleBody = moduleBody;
+            this.packageJson = packageJson;
         }
 
         @Override
         public Path parsePath(URI uri) {
-            return parsePath(uri.toString());
+            return Path.of(uri);
         }
 
         @Override
@@ -127,6 +130,9 @@ public class GR36103 {
 
         @Override
         public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+            if (path.endsWith("package.json") && packageJson != null) {
+                return new ReadOnlySeekableByteArrayChannel(packageJson.getBytes());
+            }
             return new ReadOnlySeekableByteArrayChannel(moduleBody.getBytes());
         }
 
@@ -148,11 +154,18 @@ public class GR36103 {
         @Override
         public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
             Map<String, Object> map = new HashMap<>();
-            if (path.toString().contains("package.json")) {
-                // In this test, we load a file by name: we don't have a package.json.
-                map.put("isRegularFile", false);
-            } else {
+            // In this test, we consider a directory every path that does not contain '.'
+            if (path.toString().contains(".")) {
                 map.put("isRegularFile", true);
+                map.put("isDirectory", false);
+            } else {
+                map.put("isRegularFile", false);
+                map.put("isDirectory", true);
+            }
+            // `package.json` exists only if used by the test
+            if (path.toString().endsWith("package.json")) {
+                map.put("isRegularFile", packageJson != null);
+                map.put("isDirectory", false);
             }
             return map;
         }

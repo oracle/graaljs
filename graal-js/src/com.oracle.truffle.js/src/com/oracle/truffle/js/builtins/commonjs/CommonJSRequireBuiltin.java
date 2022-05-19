@@ -70,12 +70,19 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.CJS_EXT;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.JSON_EXT;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.JS_EXT;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.MJS_EXT;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.NODE_EXT;
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.hasCoreModuleReplacement;
 
 public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
     private static final boolean LOG_REQUIRE_PATH_RESOLUTION = false;
     private static final Stack<String> requireDebugStack;
+
+    public static final String UNSUPPORTED_NODE_FILE = "Unsupported .node file: ";
 
     static {
         requireDebugStack = LOG_REQUIRE_PATH_RESOLUTION ? new Stack<>() : null;
@@ -121,13 +128,13 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     @TruffleBoundary
     static TruffleFile getModuleResolveCurrentWorkingDirectory(JSContext context, TruffleLanguage.Env env) {
         String currentFileNameFromStack = CommonJSResolution.getCurrentFileNameFromStack();
-        if (currentFileNameFromStack == null) {
-            return getRequireCwd(context, env);
-        } else {
+        if (currentFileNameFromStack != null) {
             TruffleFile truffleFile = env.getPublicTruffleFile(currentFileNameFromStack);
-            assert truffleFile.isRegularFile() && truffleFile.getParent() != null;
-            return truffleFile.getParent().normalize();
+            if (truffleFile.isRegularFile() && truffleFile.getParent() != null) {
+                return truffleFile.getParent().normalize();
+            }
         }
+        return getRequireCwd(context, env);
     }
 
     static TruffleFile getRequireCwd(JSContext context, TruffleLanguage.Env env) {
@@ -144,7 +151,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         JSRealm realm = getRealm();
         TruffleLanguage.Env env = realm.getEnv();
         TruffleFile resolutionEntryPath = getModuleResolutionEntryPath(currentRequire, env);
-        return requireImpl(Strings.toJavaString(moduleIdentifier), resolutionEntryPath, realm);
+        return requireImpl(moduleIdentifier.toJavaStringUncached(), resolutionEntryPath, realm);
     }
 
     @TruffleBoundary
@@ -168,15 +175,25 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
             throw fail(moduleIdentifier, e.getMessage());
         }
         log("module ", moduleIdentifier, " resolved to ", maybeModule);
+
         if (maybeModule == null) {
-            throw fail(moduleIdentifier);
+            // A custom Truffle FS might still try to map a package specifier to some file.
+            TruffleFile maybeCustom = realm.getEnv().getPublicTruffleFile(moduleIdentifier);
+            if (maybeCustom.exists()) {
+                maybeModule = maybeCustom;
+            } else {
+                throw fail(moduleIdentifier);
+            }
         }
-        if (isJsFile(maybeModule)) {
+        if (isJsFile(maybeModule) || isCjsFile(maybeModule)) {
             return evalJavaScriptFile(maybeModule, moduleIdentifier);
         } else if (isJsonFile(maybeModule)) {
             return evalJsonFile(maybeModule);
         } else if (isNodeBinFile(maybeModule)) {
-            throw fail("Unsupported .node file: ", moduleIdentifier);
+            throw fail(UNSUPPORTED_NODE_FILE, moduleIdentifier);
+        } else if (maybeModule.exists() && !isMjsFile(maybeModule)) {
+            // No extension matched: still try loading as a CJS file
+            return evalJavaScriptFile(maybeModule, moduleIdentifier);
         } else {
             throw fail(moduleIdentifier);
         }
@@ -200,7 +217,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
             throw fail(moduleIdentifier);
         }
         // Create `require` and other builtins for this module.
-        TruffleString dirnameBuiltin = modulePath.getParent() == null ? Strings.fromJavaString(".") : Strings.fromJavaString(modulePath.getParent().getAbsoluteFile().normalize().toString());
+        String dirnameBuiltin = modulePath.getParent() == null ? "." : modulePath.getParent().getAbsoluteFile().normalize().toString();
         JSObject exportsBuiltin = createExportsBuiltin(realm);
         JSObject moduleBuiltin = createModuleBuiltin(realm, exportsBuiltin, filenameBuiltin);
         JSObject requireBuiltin = createRequireBuiltin(realm, moduleBuiltin, filenameBuiltin);
@@ -218,7 +235,8 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
             try {
                 debugStackPush(moduleIdentifier);
                 log("executing '", filenameBuiltin, "' for ", moduleIdentifier);
-                JSFunction.call(JSArguments.create(moduleExecutableFunction, moduleExecutableFunction, exportsBuiltin, requireBuiltin, moduleBuiltin, filenameBuiltin, dirnameBuiltin, env));
+                JSFunction.call(JSArguments.create(moduleExecutableFunction, moduleExecutableFunction, exportsBuiltin, requireBuiltin, moduleBuiltin, filenameBuiltin,
+                                Strings.fromJavaString(dirnameBuiltin), env));
                 JSObject.set(moduleBuiltin, Strings.LOADED_PROPERTY_NAME, true);
                 return JSObject.get(moduleBuiltin, Strings.EXPORTS_PROPERTY_NAME);
             } catch (Exception e) {
@@ -242,7 +260,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
                 if (file.isRegularFile()) {
                     source = sourceFromTruffleFile(file);
                 } else {
-                    throw fail(Strings.fromJavaString(jsonFile.toString()));
+                    throw fail(jsonFile.toString());
                 }
                 JSFunctionObject parse = (JSFunctionObject) realm.getJsonParseFunctionObject();
                 assert source != null;
@@ -252,27 +270,18 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
                     return (JSDynamicObject) jsonObj;
                 }
             }
-            throw fail(Strings.fromJavaString(jsonFile.toString()));
+            throw fail(jsonFile.toString());
         } catch (SecurityException e) {
             throw Errors.createErrorFromException(e);
         }
     }
 
-    private static JSException fail(String moduleIdentifier) {
+    static JSException fail(String moduleIdentifier) {
         return JSException.create(JSErrorType.TypeError, "Cannot load module: '" + moduleIdentifier + "'");
     }
 
     private static JSException fail(String moduleIdentifier, String extraMessage) {
         return JSException.create(JSErrorType.TypeError, "Cannot load module: '" + moduleIdentifier + "': " + extraMessage);
-    }
-
-    @TruffleBoundary
-    private static JSException fail(TruffleString... message) {
-        StringBuilder sb = new StringBuilder();
-        for (TruffleString s : message) {
-            sb.append(s);
-        }
-        return JSException.create(JSErrorType.TypeError, sb.toString());
     }
 
     private static JSObject createModuleBuiltin(JSRealm realm, JSDynamicObject exportsBuiltin, TruffleString fileNameBuiltin) {
@@ -303,15 +312,23 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     }
 
     private static boolean isNodeBinFile(TruffleFile maybeModule) {
-        return hasExtension(Objects.requireNonNull(maybeModule.getName()), ".node");
+        return hasExtension(Objects.requireNonNull(maybeModule.getName()), NODE_EXT);
     }
 
     private static boolean isJsFile(TruffleFile maybeModule) {
-        return hasExtension(Objects.requireNonNull(maybeModule.getName()), ".js");
+        return hasExtension(Objects.requireNonNull(maybeModule.getName()), JS_EXT);
+    }
+
+    private static boolean isCjsFile(TruffleFile maybeModule) {
+        return hasExtension(Objects.requireNonNull(maybeModule.getName()), CJS_EXT);
+    }
+
+    private static boolean isMjsFile(TruffleFile maybeModule) {
+        return hasExtension(Objects.requireNonNull(maybeModule.getName()), MJS_EXT);
     }
 
     private static boolean isJsonFile(TruffleFile maybeModule) {
-        return hasExtension(Objects.requireNonNull(maybeModule.getName()), ".json");
+        return hasExtension(Objects.requireNonNull(maybeModule.getName()), JSON_EXT);
     }
 
     private static boolean fileExists(TruffleFile modulePath) {

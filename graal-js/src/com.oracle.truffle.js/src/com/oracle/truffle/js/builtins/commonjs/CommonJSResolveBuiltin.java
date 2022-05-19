@@ -62,7 +62,7 @@ public abstract class CommonJSResolveBuiltin extends GlobalBuiltins.JSFileLoadin
     protected TruffleString resolve(TruffleString moduleIdentifier) {
         JSRealm realm = getRealm();
         TruffleFile cwd = CommonJSRequireBuiltin.getModuleResolveCurrentWorkingDirectory(getContext(), realm.getEnv());
-        TruffleFile maybeModule = CommonJSResolution.resolve(realm, Strings.toJavaString(moduleIdentifier), cwd);
+        TruffleFile maybeModule = CommonJSResolution.resolve(realm, moduleIdentifier.toJavaStringUncached(), cwd);
         if (maybeModule == null) {
             throw fail(moduleIdentifier);
         } else {

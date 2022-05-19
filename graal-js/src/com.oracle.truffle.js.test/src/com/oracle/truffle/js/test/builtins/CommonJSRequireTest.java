@@ -56,6 +56,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.MalformedURLException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -75,6 +76,7 @@ import static org.junit.Assert.assertEquals;
 public class CommonJSRequireTest {
 
     private static final String PATH_OF_TESTS = "src/com.oracle.truffle.js.test/commonjs";
+    private static final boolean WINDOWS = System.getProperty("os.name").startsWith("Windows");
 
     private static Context testContext(Path tempFolder) {
         return testContext(tempFolder, System.out, System.err);
@@ -107,7 +109,7 @@ public class CommonJSRequireTest {
         return testContext(out, err, options);
     }
 
-    private static Path getTestRootFolder() {
+    public static Path getTestRootFolder() {
         String testPath = System.getProperty("commonjs.test.path", PATH_OF_TESTS);
         Path root = FileSystems.getDefault().getPath(testPath);
         if (!Files.exists(root)) {
@@ -189,7 +191,7 @@ public class CommonJSRequireTest {
 
     private static String logicalAbsolutePath(Path path) {
         String pathStr = path.toAbsolutePath().toString();
-        if (System.getProperty("os.name").startsWith("Windows")) {
+        if (WINDOWS) {
             // On Windows we support logical Unix-like paths
             Path root = path.getRoot();
             if (root != null) {
@@ -198,6 +200,14 @@ public class CommonJSRequireTest {
             pathStr = pathStr.replace("\\", "/");
         }
         return pathStr;
+    }
+
+    private static String getTestRootFolderUrl() {
+        try {
+            return getTestRootFolder().toUri().toURL().toString();
+        } catch (MalformedURLException e) {
+            throw new AssertionError(e);
+        }
     }
 
     // ##### CommonJs Modules
@@ -642,44 +652,44 @@ public class CommonJSRequireTest {
     @Test
     public void unknownEsModule() throws IOException {
         final String src = "import('unknown').then(x => {throw 'unexpected'}).catch(console.log);";
-        final String out = "TypeError: Cannot load module: 'unknown'\n";
+        final String out = "TypeError: Module not found: 'unknown'\n";
         runAndExpectOutput(src, out);
     }
 
     @Test
     public void unknownEsFile() throws IOException {
         final String src = "import('./unknown.mjs').then(x => {throw 'unexpected'}).catch(console.log);";
-        final String out = "TypeError: Cannot load module: './unknown.mjs'\n";
+        final String out = "TypeError: Module not found: './unknown.mjs'\n";
         runAndExpectOutput(src, out);
     }
 
     @Test
     public void unsupportedUrl() throws IOException {
         final String src = "import('https://unpkg.com/@esm/ms').then(x => {throw 'unexpected'}).catch(console.log);";
-        final String out = "TypeError: Only file:// urls are supported: java.lang.IllegalArgumentException: URI scheme is not \"file\"\n";
+        final String out = "TypeError: Cannot load module: 'https://unpkg.com/@esm/ms'\n";
         runAndExpectOutput(src, out);
     }
 
     @Test
     public void dontImportCommonJs() throws IOException {
         final String src = "import('with-package').then(x => {throw 'unexpected'}).catch(console.log);";
-        final String out = "TypeError: do not use import() to load non-ES modules.\n";
+        final String out = "TypeError: Unsupported file extension: '" + getTestRootFolderUrl() + "node_modules/with-package/alternative-index.js'\n";
         runAndExpectOutput(src, out);
     }
 
     @Test
     public void badModuleName() throws IOException {
         // GR-36110
-        Assume.assumeFalse(System.getProperty("os.name").startsWith("Windows"));
+        Assume.assumeFalse(WINDOWS);
         final String src = "import('__foo__ + /some/garbage.js').then(x => {throw 'unexpected'}).catch(console.log);";
-        final String out = "TypeError: Cannot load module: '__foo__ + /some/garbage.js'\n";
+        final String out = "TypeError: Module not found: '__foo__ + /some/garbage.js'\n";
         runAndExpectOutput(src, out);
     }
 
     @Test
     public void emptyModuleName() throws IOException {
         final String src = "import('').then(x => {throw 'unexpected'}).catch(console.log);";
-        final String out = "TypeError: Cannot load module: ''\n";
+        final String out = "TypeError: Invalid module specifier: ''\n";
         runAndExpectOutput(src, out);
     }
 
@@ -758,7 +768,7 @@ public class CommonJSRequireTest {
     @Test
     public void importBuiltinModuleEsNoFs() {
         final String src = "import {whatever} from 'fs'; console.log('should not print!');";
-        final String expectedMessage = "TypeError: Cannot load module: 'fs'";
+        final String expectedMessage = "TypeError: Module not found: 'fs'";
         Map<String, String> options = getDefaultOptions();
         try {
             runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "", "", options);

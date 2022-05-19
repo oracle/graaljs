@@ -43,6 +43,7 @@ package com.oracle.truffle.js.test.regress;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
@@ -67,76 +68,96 @@ import org.graalvm.polyglot.io.FileSystem;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class GH594 {
+public class GH598 {
 
     @Test
-    public void testGitHub594() throws IOException {
-        Map<Path, String> files = new HashMap<>();
-        files.put(Paths.get("/a/b/cjs-module.cjs").toAbsolutePath(), "exports.fooPromise = import('./esm-module.mjs').then(mod => mod.foo);");
-        files.put(Paths.get("/a/b/esm-module.mjs").toAbsolutePath(), "export const foo = 'foo';");
-        String root = System.getProperty("user.home");
+    public void test() throws IOException {
+        String fsRoot = System.getProperty("os.name").contains("indows") ? "C:/" : "/";
+        Map<String, String> files = new HashMap<>();
+        files.put("bare-spec-esm-module", "import '/esm-module.js'; require('/cjs-module.js');");
+        files.put("/esm-module.js", "console.log('loaded esm-module.js');");
+        files.put("/cjs-module.js", "console.log('loaded cjs-module.js');");
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Context context = Context.newBuilder("js").fileSystem(new TestFileSystem(files, root)).allowAllAccess(true).allowExperimentalOptions(true).out(out).err(out).option("js.commonjs-require",
-                        "true").option("js.commonjs-require-cwd", root).build();
-        context.eval("js", "require('/a/b/cjs-module.cjs').fooPromise.then(console.log);");
+        Context context = Context.newBuilder("js").//
+                        fileSystem(new TestFileSystem(files)).//
+                        allowAllAccess(true).//
+                        out(out).//
+                        err(out).//
+                        allowExperimentalOptions(true).//
+                        option("js.commonjs-require", "true").//
+                        option("js.commonjs-require-cwd", fsRoot).//
+                        build();
+        context.eval("js", "import('bare-spec-esm-module')" +
+                        ".then(r => console.log('OK!'))" +
+                        ".catch(e => console.log('Error!'));");
         out.flush();
-        Assert.assertEquals("foo\n", out.toString());
+        Assert.assertEquals("loaded esm-module.js\nloaded cjs-module.js\nOK!\n", out.toString());
     }
 
     private static class TestFileSystem implements FileSystem {
 
-        private final String root;
-        private final Map<Path, String> files;
+        private final Map<String, String> files;
 
-        TestFileSystem(Map<Path, String> files, String root) {
-            this.root = root;
+        TestFileSystem(Map<String, String> files) {
             this.files = files;
         }
 
         @Override
         public Path parsePath(String path) {
-            return Paths.get(path);
+            return Path.of(path);
         }
 
         @Override
         public Path toAbsolutePath(Path path) {
-            return Paths.get(root).resolve(path).normalize();
+            String filepath = path.toString().replace(File.separator, "/");
+            if ("bare-spec-esm-module".equals(filepath)) {
+                return path;
+            }
+            return Path.of("/").resolve(path).normalize();
         }
 
         @Override
-        public Path toRealPath(Path path, LinkOption... linkOptions) {
+        public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
             return toAbsolutePath(path);
         }
 
         @Override
         public String getSeparator() {
-            return File.separator;
+            return "/";
         }
 
         @Override
-        public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) {
-            if (path.equals(Paths.get(root))) {
+        public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
+            if (path.equals(path.getRoot())) {
                 return;
             }
-            if (!files.containsKey(path)) {
-                throw new AssertionError();
+            String filepath = path.toString().replace(File.separator, "/");
+            if (!files.containsKey(filepath)) {
+                throw new FileNotFoundException();
             }
         }
 
         @Override
-        public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) {
-            if (!files.containsKey(path)) {
-                throw new AssertionError();
-            }
+        public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
+            String filepath = path.toString().replace(File.separator, "/");
             Map<String, Object> attrs = new HashMap<>();
+            if (path.equals(Paths.get("/"))) {
+                attrs.put("isRegularFile", Boolean.FALSE);
+                attrs.put("isDirectory", Boolean.TRUE);
+                return attrs;
+            }
+            if (!files.containsKey(filepath)) {
+                throw new FileNotFoundException();
+            }
             attrs.put("isRegularFile", Boolean.TRUE);
             attrs.put("isDirectory", Boolean.FALSE);
             return attrs;
         }
 
         @Override
-        public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) {
-            String contents = files.get(path);
+        public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+            String filepath = path.toString().replace(File.separator, "/");
+            String contents = files.get(filepath);
             byte[] bytes = contents.getBytes(StandardCharsets.UTF_8);
             long size = bytes.length;
             ReadableByteChannel channel = Channels.newChannel(new ByteArrayInputStream(bytes));
@@ -154,12 +175,12 @@ public class GH594 {
 
                 @Override
                 public int write(ByteBuffer src) {
-                    throw new AssertionError();
+                    throw new UnsupportedOperationException();
                 }
 
                 @Override
                 public SeekableByteChannel truncate(long sizeParam) {
-                    throw new AssertionError();
+                    throw new UnsupportedOperationException();
                 }
 
                 @Override
@@ -174,34 +195,34 @@ public class GH594 {
 
                 @Override
                 public SeekableByteChannel position(long newPosition) {
-                    throw new AssertionError();
+                    throw new UnsupportedOperationException();
                 }
 
                 @Override
                 public long position() {
-                    throw new AssertionError();
+                    throw new UnsupportedOperationException();
                 }
             };
         }
 
         @Override
         public Path parsePath(URI uri) {
-            return Paths.get(uri);
+            return Path.of(uri);
         }
 
         @Override
-        public void createDirectory(Path dir, FileAttribute<?>... attrs) {
-            throw new AssertionError();
+        public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
+            throw new UnsupportedOperationException();
         }
 
         @Override
         public void delete(Path path) throws IOException {
-            throw new AssertionError();
+            throw new UnsupportedOperationException();
         }
 
         @Override
-        public DirectoryStream<Path> newDirectoryStream(Path dir, Filter<? super Path> filter) {
-            throw new AssertionError();
+        public DirectoryStream<Path> newDirectoryStream(Path dir, Filter<? super Path> filter) throws IOException {
+            throw new UnsupportedOperationException();
         }
     }
 }
