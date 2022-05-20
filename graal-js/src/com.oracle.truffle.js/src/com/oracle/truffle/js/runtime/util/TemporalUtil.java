@@ -1487,42 +1487,12 @@ public final class TemporalUtil {
         return JSTemporalDateTimeRecord.create(yearParam, month, day, 0, 0, 0, 0, 0, 0);
     }
 
-    // input values always in int range
+    @TruffleBoundary
     public static JSTemporalDateTimeRecord balanceISODate(int yearParam, int monthParam, int dayParam) {
-        JSTemporalDateTimeRecord balancedYearMonth = balanceISOYearMonth(yearParam, monthParam);
-        int month = balancedYearMonth.getMonth();
-        int year = balancedYearMonth.getYear();
-        int day = dayParam;
-        int testYear;
-        if (month > 2) {
-            testYear = year;
-        } else {
-            testYear = year - 1;
-        }
-        while (day < -1 * isoDaysInYear(testYear)) {
-            day = day + isoDaysInYear(testYear);
-            year = year - 1;
-            testYear = testYear - 1;
-        }
-        testYear = testYear + 1;
-        while (day > isoDaysInYear(testYear)) {
-            day = day - isoDaysInYear(testYear);
-            year = year + 1;
-            testYear = testYear + 1;
-        }
-        while (day < 1) {
-            balancedYearMonth = balanceISOYearMonth(year, month - 1);
-            year = balancedYearMonth.getYear();
-            month = balancedYearMonth.getMonth();
-            day = day + isoDaysInMonth(year, month);
-        }
-        while (day > isoDaysInMonth(year, month)) {
-            day = day - isoDaysInMonth(year, month);
-            balancedYearMonth = balanceISOYearMonth(year, month + 1);
-            year = balancedYearMonth.getYear();
-            month = balancedYearMonth.getMonth();
-        }
-        return JSTemporalPlainDate.toRecord(year, month, day);
+        double epochDays = JSDate.makeDay(yearParam, monthParam - 1, dayParam);
+        assert Double.isFinite(epochDays);
+        double ms = JSDate.makeDate(epochDays, 0);
+        return JSTemporalPlainDate.toRecord(JSDate.yearFromTime((long) ms), JSDate.monthFromTime(ms) + 1, JSDate.dateFromTime(ms));
     }
 
     @TruffleBoundary
