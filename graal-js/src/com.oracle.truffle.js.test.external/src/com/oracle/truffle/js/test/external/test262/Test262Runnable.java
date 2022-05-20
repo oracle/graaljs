@@ -246,6 +246,7 @@ public class Test262Runnable extends TestRunnable {
                     "IsHTMLDDA",
                     "ShadowRealm",
                     "arbitrary-module-namespace-names",
+                    "decorators",
                     "regexp-v-flag",
                     "resizable-arraybuffer",
                     "tail-call-optimization",
