@@ -266,7 +266,7 @@ def _fetch_test262():
     if _clone:
         NoCRLFGitConfig().clone(url=mx_urlrewrites.rewriteurl(TEST262_REPO), dest=_location, rev=TEST262_REV, abortOnError=True)
     else:
-        mx.GitConfig().update(_location, rev=TEST262_REV, abortOnError=True)
+        mx.GitConfig().update(_location, rev=TEST262_REV, mayPull=True, abortOnError=True)
 
 def testnashorn(args, nonZeroIsFatal=True):
     """run the testNashorn conformance suite"""
