@@ -322,18 +322,18 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode);
             double maximum;
             if (Unit.HOUR == smallestUnit) {
-                maximum = 24;
+                maximum = TemporalUtil.HOURS_PER_DAY;
             } else if (Unit.MINUTE == smallestUnit) {
-                maximum = 1440;
+                maximum = TemporalUtil.MINUTES_PER_HOUR * TemporalUtil.HOURS_PER_DAY;
             } else if (Unit.SECOND == smallestUnit) {
-                maximum = 86400;
+                maximum = TemporalUtil.SECONDS_PER_MINUTE * TemporalUtil.MINUTES_PER_HOUR * TemporalUtil.HOURS_PER_DAY;
             } else if (Unit.MILLISECOND == smallestUnit) {
-                maximum = 8.64 * 10_000_000;
+                maximum = TemporalUtil.MS_PER_DAY;
             } else if (Unit.MICROSECOND == smallestUnit) {
-                maximum = 8.64 * 10_000_000_000d;
+                maximum = TemporalUtil.MS_PER_DAY * 1000;
             } else {
                 assert Unit.NANOSECOND == smallestUnit;
-                maximum = 8.64 * 10_000_000_000_000d;
+                maximum = TemporalUtil.NS_PER_DAY;
             }
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(roundTo, maximum, true, isObjectNode, toNumber);
             BigInteger roundedNs = TemporalUtil.roundTemporalInstant(instant.getNanoseconds(), (long) roundingIncrement, smallestUnit, roundingMode);

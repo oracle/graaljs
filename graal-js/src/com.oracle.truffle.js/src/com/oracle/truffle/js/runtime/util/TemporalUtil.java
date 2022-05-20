@@ -267,6 +267,12 @@ public final class TemporalUtil {
     public static final TruffleString MONTH_DAY_FROM_FIELDS = Strings.constant("monthDayFromFields");
     public static final TruffleString GET_POSSIBLE_INSTANTS_FOR = Strings.constant("getPossibleInstantsFor");
 
+    public static final int HOURS_PER_DAY = 24;
+    public static final int MINUTES_PER_HOUR = 60;
+    public static final int SECONDS_PER_MINUTE = 60;
+    public static final double MS_PER_DAY = 8.64 * 10_000_000;
+    public static final double NS_PER_DAY = 8.64 * 10_000_000_000_000D;
+
     public enum Overflow {
         CONSTRAIN,
         REJECT
