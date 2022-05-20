@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -30,11 +30,17 @@ import os, shutil, tarfile
 from os.path import join, exists, getmtime
 
 import mx_graal_js_benchmark
-import mx, mx_sdk
+import mx, mx_sdk, mx_urlrewrites
 from mx_gate import Tags, Task, add_gate_runner, prepend_gate_runner
 from mx_unittest import unittest
 
 _suite = mx.suite('graal-js')
+
+# Git repository of Test262: ECMAScript Test Suite.
+TEST262_REPO = "https://" + "github.com/tc39/test262.git"
+
+# Git revision of Test262 to checkout
+TEST262_REV = "d7c0a2076c2b0c1531aef7069d4abe70eec44ee3"
 
 def get_jdk(forBuild=False):
     # Graal.nodejs requires a JDK at build time, to be passed as argument to `./configure`.
@@ -212,8 +218,7 @@ def _fetch_test_suite(dest, library_names):
             with tarfile.open(_get_lib_path(_lib_name), 'r') as _tar:
                 _tar.extractall(dest)
 
-def _run_test_suite(location, library_names, custom_args, default_vm_args, max_heap, stack_size, main_class, nonZeroIsFatal, cwd):
-    _fetch_test_suite(location, library_names)
+def _run_test_suite(custom_args, default_vm_args, max_heap, stack_size, main_class, nonZeroIsFatal, cwd):
     _vm_args, _prog_args = parse_js_args(custom_args)
     _vm_args = _append_default_js_vm_args(vm_args=_vm_args, max_heap=max_heap, stack_size=stack_size)
     _cp = mx.classpath(['TRUFFLE_JS_TESTS']
@@ -224,12 +229,10 @@ def _run_test_suite(location, library_names, custom_args, default_vm_args, max_h
 
 def test262(args, nonZeroIsFatal=True):
     """run the test262 conformance suite"""
-    _location = join(_suite.dir, 'lib', 'test262')
     _default_vm_args = []
     _stack_size = '2m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'
+    _fetch_test262()
     return _run_test_suite(
-        location=_location,
-        library_names=['TEST262'],
         custom_args=args,
         default_vm_args=_default_vm_args,
         max_heap='4g',
@@ -239,14 +242,39 @@ def test262(args, nonZeroIsFatal=True):
         cwd=_suite.dir
     )
 
+class NoCRLFGitConfig(mx.GitConfig):
+    def run(self, *args, **kwargs):
+        # Hack: disable autocrlf on Windows but re-use the caching-related code in GitConfig.clone
+        if mx.is_windows() and len(args) == 1 and len(args[0]) >= 2 and args[0][0] == 'git' and args[0][1] == 'clone':
+            _cmd = args[0]
+            _new_cmd = _cmd[:2] + ['-c', 'core.autocrlf=false'] + _cmd[2:]
+            return super(NoCRLFGitConfig, self).run(_new_cmd, **kwargs)
+        else:
+            return super().run(*args, **kwargs)
+
+def _fetch_test262():
+    """clones/updates test262 test-suite"""
+    _location = join(_suite.dir, 'lib', 'test262')
+    _clone = False
+    if not mx.isdir(_location):
+        _clone = True
+    else:
+        if not mx.isdir(join(_location, '.git')):
+            # Not a git repository, an old version of the test-suite extracted from an archive most likely.
+            shutil.rmtree(_location)
+            _clone = True
+    if _clone:
+        NoCRLFGitConfig().clone(url=mx_urlrewrites.rewriteurl(TEST262_REPO), dest=_location, rev=TEST262_REV, abortOnError=True)
+    else:
+        mx.GitConfig().update(_location, rev=TEST262_REV, abortOnError=True)
+
 def testnashorn(args, nonZeroIsFatal=True):
     """run the testNashorn conformance suite"""
     _location = join(_suite.dir, 'lib', 'testnashorn')
     _default_vm_args = []
     _stack_size = '2m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'
+    _fetch_test_suite(_location, ['TESTNASHORN', 'TESTNASHORN_EXTERNAL'])
     _run_test_suite(
-        location=_location,
-        library_names=['TESTNASHORN', 'TESTNASHORN_EXTERNAL'],
         custom_args=args,
         default_vm_args=_default_vm_args,
         max_heap='2g',
@@ -260,9 +288,8 @@ def testv8(args, nonZeroIsFatal=True):
     """run the testV8 conformance suite"""
     _location = join(_suite.dir, 'lib', 'testv8')
     _stack_size = '3m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'
+    _fetch_test_suite(_location, ['TESTV8'])
     _run_test_suite(
-        location=_location,
-        library_names=['TESTV8'],
         custom_args=args,
         default_vm_args=[],
         max_heap='8g',
