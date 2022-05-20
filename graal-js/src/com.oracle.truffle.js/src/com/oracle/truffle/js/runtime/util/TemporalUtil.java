@@ -3566,4 +3566,12 @@ public final class TemporalUtil {
         }
         throw Errors.createTypeError("unexpected showCalendar");
     }
+
+    public static double roundTowardsZero(double d) {
+        if (d < 0) {
+            return Math.ceil(d);
+        } else {
+            return Math.floor(d);
+        }
+    }
 }

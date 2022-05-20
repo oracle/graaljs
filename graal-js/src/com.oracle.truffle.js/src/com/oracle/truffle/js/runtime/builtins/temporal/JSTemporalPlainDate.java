@@ -68,6 +68,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
+import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
@@ -176,7 +177,6 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         return context.trackAllocation(object);
     }
 
-    // 3.5.5
     public static JSTemporalDurationRecord differenceISODate(int y1, int m1, int d1, int y2, int m2, int d2, Unit largestUnit) {
         assert largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY;
         if (largestUnit == Unit.YEAR || largestUnit == Unit.MONTH) {
@@ -234,31 +234,15 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             return toRecordWeeksPlural(years, months, 0, days);
         }
         if (largestUnit == Unit.DAY || largestUnit == Unit.WEEK) {
-            JSTemporalDateTimeRecord smaller;
-            JSTemporalDateTimeRecord greater;
-            int sign;
-            if (TemporalUtil.compareISODate(y1, m1, d1, y2, m2, d2) < 0) {
-                smaller = toRecord(y1, m1, d1);
-                greater = toRecord(y2, m2, d2);
-                sign = 1;
-            } else {
-                smaller = toRecord(y2, m2, d2);
-                greater = toRecord(y1, m1, d1);
-                sign = -1;
-            }
-            int years = greater.getYear() - smaller.getYear();
-            int days = TemporalUtil.toISODayOfYear(greater.getYear(), greater.getMonth(), greater.getDay()) - TemporalUtil.toISODayOfYear(smaller.getYear(), smaller.getMonth(), smaller.getDay());
-            assert years >= 0;
-            while (years > 0) {
-                days = days + TemporalUtil.isoDaysInYear(smaller.getYear() + years - 1);
-                years = years - 1;
-            }
+            double epochDays1 = JSDate.makeDay(y1, m1 - 1, d1);
+            double epochDays2 = JSDate.makeDay(y2, m2 - 1, d2);
+            int days = TemporalUtil.dtoi(epochDays2 - epochDays1);
             int weeks = 0;
             if (largestUnit == Unit.WEEK) {
-                weeks = Math.floorDiv(days, 7);
+                weeks = (int) TemporalUtil.roundTowardsZero(days / 7.0);
                 days = days % 7;
             }
-            return toRecordWeeksPlural(0, 0, weeks * sign, days * sign);
+            return toRecordWeeksPlural(0, 0, weeks, days);
         }
         CompilerDirectives.transferToInterpreter();
         throw Errors.shouldNotReachHere("unexpected largest unit: " + largestUnit);
