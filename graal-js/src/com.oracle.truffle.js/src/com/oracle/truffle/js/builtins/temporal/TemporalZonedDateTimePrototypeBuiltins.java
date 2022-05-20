@@ -653,7 +653,27 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         }
     }
 
-    public abstract static class JSTemporalZonedDateTimeAdd extends JSTemporalBuiltinOperation {
+    public abstract static class ZonedDateTimeOperation extends JSTemporalBuiltinOperation {
+        public ZonedDateTimeOperation(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        protected JSTemporalZonedDateTimeObject addDurationToOrSubtractDurationFromZonedDateTime(int sign, JSTemporalZonedDateTimeObject zonedDateTime, Object temporalDurationLike,
+                        Object optionsParam, JSNumberToBigIntNode toBigInt, ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
+            JSDynamicObject options = getOptionsObject(optionsParam);
+            JSDynamicObject timeZone = zonedDateTime.getTimeZone();
+            JSDynamicObject calendar = zonedDateTime.getCalendar();
+            BigInt epochNanoseconds = TemporalUtil.addZonedDateTime(getContext(), zonedDateTime.getNanoseconds(), timeZone, calendar, sign * dtol(duration.getYears()),
+                            sign * dtol(duration.getMonths()),
+                            sign * dtol(duration.getWeeks()), sign * dtol(duration.getDays()), sign * dtol(duration.getHours()), sign * dtol(duration.getMinutes()), sign * dtol(duration.getSeconds()),
+                            sign * dtol(duration.getMilliseconds()),
+                            sign * dtol(duration.getMicroseconds()), toBigInt.executeBigInt(sign * duration.getNanoseconds()).bigIntegerValue(), options);
+            return JSTemporalZonedDateTime.create(getContext(), getRealm(), epochNanoseconds, timeZone, calendar);
+        }
+    }
+
+    public abstract static class JSTemporalZonedDateTimeAdd extends ZonedDateTimeOperation {
 
         protected JSTemporalZonedDateTimeAdd(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -664,18 +684,11 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached JSNumberToBigIntNode toBigInt,
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
-            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
-            JSDynamicObject options = getOptionsObject(optionsParam);
-            JSDynamicObject timeZone = zonedDateTime.getTimeZone();
-            JSDynamicObject calendar = zonedDateTime.getCalendar();
-            BigInt epochNanoseconds = TemporalUtil.addZonedDateTime(getContext(), zonedDateTime.getNanoseconds(), timeZone, calendar, dtol(duration.getYears()), dtol(duration.getMonths()),
-                            dtol(duration.getWeeks()), dtol(duration.getDays()), dtol(duration.getHours()), dtol(duration.getMinutes()), dtol(duration.getSeconds()), dtol(duration.getMilliseconds()),
-                            dtol(duration.getMicroseconds()), toBigInt.executeBigInt(duration.getNanoseconds()).bigIntegerValue(), options);
-            return JSTemporalZonedDateTime.create(getContext(), getRealm(), epochNanoseconds, timeZone, calendar);
+            return addDurationToOrSubtractDurationFromZonedDateTime(1, zonedDateTime, temporalDurationLike, optionsParam, toBigInt, toLimitedTemporalDurationNode);
         }
     }
 
-    public abstract static class JSTemporalZonedDateTimeSubtract extends JSTemporalBuiltinOperation {
+    public abstract static class JSTemporalZonedDateTimeSubtract extends ZonedDateTimeOperation {
 
         protected JSTemporalZonedDateTimeSubtract(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -686,14 +699,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached JSNumberToBigIntNode toBigInt,
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
-            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
-            JSDynamicObject options = getOptionsObject(optionsParam);
-            JSDynamicObject timeZone = zonedDateTime.getTimeZone();
-            JSDynamicObject calendar = zonedDateTime.getCalendar();
-            BigInt epochNanoseconds = TemporalUtil.addZonedDateTime(getContext(), zonedDateTime.getNanoseconds(), timeZone, calendar, dtol(-duration.getYears()), dtol(-duration.getMonths()),
-                            dtol(-duration.getWeeks()), dtol(-duration.getDays()), dtol(-duration.getHours()), dtol(-duration.getMinutes()), dtol(-duration.getSeconds()),
-                            dtol(-duration.getMilliseconds()), dtol(-duration.getMicroseconds()), toBigInt.executeBigInt(-duration.getNanoseconds()).bigIntegerValue(), options);
-            return JSTemporalZonedDateTime.create(getContext(), getRealm(), epochNanoseconds, timeZone, calendar);
+            return addDurationToOrSubtractDurationFromZonedDateTime(-1, zonedDateTime, temporalDurationLike, optionsParam, toBigInt, toLimitedTemporalDurationNode);
         }
     }
 

@@ -344,8 +344,34 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         }
     }
 
-    // 4.3.10
-    public abstract static class JSTemporalPlainDateTimeAdd extends JSTemporalBuiltinOperation {
+    public abstract static class PlainDateTimeOperation extends JSTemporalBuiltinOperation {
+        public PlainDateTimeOperation(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        protected JSTemporalPlainDateTimeObject addDurationToOrSubtractDurationFromPlainDateTime(int sign, JSTemporalPlainDateTimeObject dateTime, Object temporalDurationLike, Object optParam, ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
+            TemporalUtil.rejectDurationSign(
+                    duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
+                    duration.getHours(), duration.getMinutes(), duration.getSeconds(),
+                    duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
+            JSDynamicObject options = getOptionsObject(optParam);
+            JSTemporalDateTimeRecord result = TemporalUtil.addDateTime(getContext(),
+                    dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
+                    dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
+                    dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(),
+                    dateTime.getCalendar(),
+                    sign * duration.getYears(), sign * duration.getMonths(), sign * duration.getWeeks(), sign * duration.getDays(),
+                    sign * duration.getHours(), sign * duration.getMinutes(), sign * duration.getSeconds(),
+                    sign * duration.getMilliseconds(), sign * duration.getMicroseconds(), sign * duration.getNanoseconds(),
+                    options);
+
+            return JSTemporalPlainDateTime.create(getContext(),
+                    result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(),
+                    result.getNanosecond(), dateTime.getCalendar(), errorBranch);
+        }
+    }
+    public abstract static class JSTemporalPlainDateTimeAdd extends PlainDateTimeOperation {
 
         protected JSTemporalPlainDateTimeAdd(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -355,25 +381,21 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         public JSDynamicObject add(Object thisObj, Object temporalDurationLike, Object optParam,
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalPlainDateTimeObject dateTime = requireTemporalDateTime(thisObj);
-            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
-            TemporalUtil.rejectDurationSign(
-                            duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
-                            duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
-            JSDynamicObject options = getOptionsObject(optParam);
-            JSTemporalDateTimeRecord result = TemporalUtil.addDateTime(getContext(),
-                            dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
-                            dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
-                            dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(),
-                            dateTime.getCalendar(),
-                            duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
-                            duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(),
-                            options);
+            return addDurationToOrSubtractDurationFromPlainDateTime(1, dateTime, temporalDurationLike, optParam, toLimitedTemporalDurationNode);
+        }
+    }
 
-            return JSTemporalPlainDateTime.create(getContext(),
-                            result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(),
-                            result.getNanosecond(), dateTime.getCalendar(), errorBranch);
+    public abstract static class JSTemporalPlainDateTimeSubtractNode extends PlainDateTimeOperation {
+
+        protected JSTemporalPlainDateTimeSubtractNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public JSDynamicObject subtract(Object thisObj, Object temporalDurationLike, Object optParam,
+                                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+            JSTemporalPlainDateTimeObject dateTime = requireTemporalDateTime(thisObj);
+            return addDurationToOrSubtractDurationFromPlainDateTime(-1, dateTime, temporalDurationLike, optParam, toLimitedTemporalDurationNode);
         }
     }
 
@@ -496,39 +518,6 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, TemporalConstants.ISO_SECOND, dt.getSecond());
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, TemporalConstants.ISO_YEAR, dt.getYear());
             return obj;
-        }
-    }
-
-    // 4.3.11
-    public abstract static class JSTemporalPlainDateTimeSubtractNode extends JSTemporalBuiltinOperation {
-
-        protected JSTemporalPlainDateTimeSubtractNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        public JSDynamicObject subtract(Object thisObj, Object temporalDurationLike, Object optParam,
-                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
-            JSTemporalPlainDateTimeObject dateTime = requireTemporalDateTime(thisObj);
-            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
-            TemporalUtil.rejectDurationSign(
-                            duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
-                            duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
-            JSDynamicObject options = getOptionsObject(optParam);
-            JSTemporalDateTimeRecord result = TemporalUtil.addDateTime(getContext(),
-                            dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
-                            dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
-                            dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(),
-                            dateTime.getCalendar(),
-                            -duration.getYears(), -duration.getMonths(), -duration.getWeeks(), -duration.getDays(),
-                            -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(),
-                            -duration.getMilliseconds(), -duration.getMicroseconds(), -duration.getNanoseconds(),
-                            options);
-
-            return JSTemporalPlainDateTime.create(getContext(),
-                            result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(),
-                            result.getNanosecond(), dateTime.getCalendar(), errorBranch);
         }
     }
 

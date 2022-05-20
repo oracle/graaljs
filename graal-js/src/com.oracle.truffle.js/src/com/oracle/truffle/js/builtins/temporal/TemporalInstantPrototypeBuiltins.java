@@ -217,8 +217,19 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
     }
 
-    // 4.3.10
-    public abstract static class JSTemporalInstantAdd extends JSTemporalBuiltinOperation {
+    public abstract static class InstantOperation extends JSTemporalBuiltinOperation {
+        public InstantOperation(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        protected JSTemporalInstantObject addDurationToOrSubtractFromInstant(int sign, JSTemporalInstantObject instant, Object temporalDurationLike, ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listPluralYMWD);
+            BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), sign * duration.getHours(), sign * duration.getMinutes(), sign * duration.getSeconds(),
+                    sign * duration.getMilliseconds(), sign * duration.getMicroseconds(), sign * duration.getNanoseconds());
+            return JSTemporalInstant.create(getContext(), getRealm(), ns);
+        }
+    }
+    public abstract static class JSTemporalInstantAdd extends InstantOperation {
 
         protected JSTemporalInstantAdd(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -228,14 +239,11 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         public JSDynamicObject add(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
-            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listPluralYMWD);
-            BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
-            return JSTemporalInstant.create(getContext(), getRealm(), ns);
+            return addDurationToOrSubtractFromInstant(1, instant, temporalDurationLike, toLimitedTemporalDurationNode);
         }
     }
 
-    public abstract static class JSTemporalInstantSubtract extends JSTemporalBuiltinOperation {
+    public abstract static class JSTemporalInstantSubtract extends InstantOperation {
 
         protected JSTemporalInstantSubtract(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -245,10 +253,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         public JSDynamicObject subtract(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
-            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listPluralYMWD);
-            BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(),
-                            -duration.getMilliseconds(), -duration.getMicroseconds(), -duration.getNanoseconds());
-            return JSTemporalInstant.create(getContext(), getRealm(), ns);
+            return addDurationToOrSubtractFromInstant(-1, instant, temporalDurationLike, toLimitedTemporalDurationNode);
         }
     }
 

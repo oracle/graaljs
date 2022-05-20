@@ -391,24 +391,19 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         }
     }
 
-    public abstract static class JSTemporalPlainYearMonthAddNode extends JSTemporalBuiltinOperation {
-
-        protected JSTemporalPlainYearMonthAddNode(JSContext context, JSBuiltin builtin) {
+    public abstract static class PlainYearMonthOperation extends JSTemporalBuiltinOperation {
+        public PlainYearMonthOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization
-        protected JSDynamicObject add(Object thisObj, Object temporalDurationLike, Object optParam,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
-                        @Cached("create(getContext())") TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
-                        @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode,
-                        @Cached("create(getContext())") TemporalCalendarGetterNode calendarGetterNode,
-                        @Cached JSToIntegerThrowOnInfinityNode toIntNode,
-                        @Cached("create(getContext())") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
-            JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
-
+        protected JSTemporalPlainYearMonthObject addTemporalPlainYearMonth(int operation, JSTemporalPlainYearMonthObject ym, Object temporalDurationLike, Object optParam,
+                        EnumerableOwnPropertyNamesNode namesNode, ToLimitedTemporalDurationNode toLimitedTemporalDurationNode, TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
+                        TemporalCalendarFieldsNode calendarFieldsNode, TemporalCalendarGetterNode calendarGetterNode, JSToIntegerThrowOnInfinityNode toIntNode,
+                        TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
+            if (operation == -1) {
+                duration = TemporalUtil.createNegatedTemporalDuration(duration);
+            }
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), Unit.DAY);
             JSDynamicObject options = getOptionsObject(optParam);
@@ -433,7 +428,28 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         }
     }
 
-    public abstract static class JSTemporalPlainYearMonthSubtractNode extends JSTemporalBuiltinOperation {
+    public abstract static class JSTemporalPlainYearMonthAddNode extends PlainYearMonthOperation {
+
+        protected JSTemporalPlainYearMonthAddNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected JSDynamicObject add(Object thisObj, Object temporalDurationLike, Object optParam,
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
+                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
+                        @Cached("create(getContext())") TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
+                        @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode,
+                        @Cached("create(getContext())") TemporalCalendarGetterNode calendarGetterNode,
+                        @Cached JSToIntegerThrowOnInfinityNode toIntNode,
+                        @Cached("create(getContext())") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
+            JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
+            return addTemporalPlainYearMonth(1, ym, temporalDurationLike, optParam, namesNode, toLimitedTemporalDurationNode, yearMonthFromFieldsNode, calendarFieldsNode, calendarGetterNode,
+                            toIntNode, dateFromFieldsNode);
+        }
+    }
+
+    public abstract static class JSTemporalPlainYearMonthSubtractNode extends PlainYearMonthOperation {
 
         protected JSTemporalPlainYearMonthSubtractNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -449,30 +465,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached JSToIntegerThrowOnInfinityNode toIntNode,
                         @Cached("create(getContext())") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
             JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
-
-            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
-            duration = TemporalUtil.createNegatedTemporalDuration(duration);
-            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), Unit.DAY);
-            JSDynamicObject options = getOptionsObject(optParam);
-            JSDynamicObject calendar = ym.getCalendar();
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listMCY);
-            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), ym, fieldNames, TemporalUtil.listEmpty);
-            int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
-            int day = 0;
-            if (sign < 0) {
-                Object dayFromCalender = TemporalUtil.calendarDaysInMonth(calendarGetterNode, calendar, ym);
-                day = TemporalUtil.toPositiveIntegerConstrainInt(dayFromCalender, toIntNode, errorBranch);
-            } else {
-                day = 1;
-            }
-            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.DAY, day);
-            JSDynamicObject date = dateFromFieldsNode.execute(calendar, fields, Undefined.instance);
-            JSDynamicObject durationToAdd = JSTemporalDuration.createTemporalDuration(getContext(), duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0,
-                            0, 0, 0, errorBranch);
-            JSDynamicObject addedDate = TemporalUtil.calendarDateAdd(calendar, date, durationToAdd, options, Undefined.instance);
-            JSDynamicObject addedDateFields = TemporalUtil.prepareTemporalFields(getContext(), addedDate, fieldNames, TemporalUtil.listEmpty);
-            return yearMonthFromFieldsNode.execute(calendar, addedDateFields, options);
+            return addTemporalPlainYearMonth(-1, ym, temporalDurationLike, optParam, namesNode, toLimitedTemporalDurationNode, yearMonthFromFieldsNode, calendarFieldsNode, calendarGetterNode,
+                            toIntNode, dateFromFieldsNode);
         }
     }
 
