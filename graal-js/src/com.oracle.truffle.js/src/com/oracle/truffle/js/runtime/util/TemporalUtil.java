@@ -3197,13 +3197,13 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     @SuppressWarnings("unused")
-    public static long getIANATimeZoneOffsetNanoseconds(BigInt nanoseconds, TruffleString identifier) {
+    public static double getIANATimeZoneOffsetNanoseconds(BigInt nanoseconds, TruffleString identifier) {
         try {
             Instant instant = Instant.ofEpochSecond(0, nanoseconds.longValue()); // TODO wrong
             ZoneId zoneId = ZoneId.of(Strings.toJavaString(identifier));
             ZoneRules zoneRule = zoneId.getRules();
             ZoneOffset offset = zoneRule.getOffset(instant);
-            return offset.getTotalSeconds() * 1_000_000_000L;
+            return offset.getTotalSeconds() * 1_000_000_000D;
         } catch (Exception ex) {
             assert false;
             return Long.MIN_VALUE;
