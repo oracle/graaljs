@@ -44,6 +44,7 @@ import java.util.ArrayDeque;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -86,6 +87,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
     @Child private PropertySetNode setGeneratorNode;
     @Child private PropertySetNode setPromiseIsHandledNode;
     @Child private PromiseResolveNode promiseResolveNode;
+    @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
     private final ConditionProfile abruptProf = ConditionProfile.createBinaryProfile();
     protected final JSContext context;
 
@@ -126,10 +128,16 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
                     setGeneratorStateNode.setValue(generator, state);
                 }
                 if (state == AsyncGeneratorState.Completed) {
-                    if (next.isReturn()) {
+                    if (next.isReturn()) { // AsyncGeneratorAwaitReturn
                         enterReturnBranch();
                         setGeneratorStateNode.setValue(generator, AsyncGeneratorState.AwaitingReturn);
-                        JSDynamicObject promise = promiseResolve(next.getCompletionValue());
+                        JSDynamicObject promise;
+                        try {
+                            promise = promiseResolve(next.getCompletionValue());
+                        } catch (AbstractTruffleException e) {
+                            asyncGeneratorRejectBrokenPromise(frame, generator, e);
+                            continue; // Perform AsyncGeneratorDrainQueue(generator).
+                        }
                         JSFunctionObject onFulfilled = createAsyncGeneratorReturnProcessorFulfilledFunction(generator);
                         JSFunctionObject onRejected = createAsyncGeneratorReturnProcessorRejectedFunction(generator);
                         PromiseCapabilityRecord throwawayCapability = newThrowawayCapability();
@@ -138,15 +146,15 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
                     } else {
                         assert next.isThrow();
                         enterThrowBranch();
-                        // return ! AsyncGeneratorReject(generator, completion.[[Value]]).
+                        // return AsyncGeneratorReject(generator, completion.[[Value]]).
                         asyncGeneratorRejectNode.performReject(frame, generator, next.getCompletionValue());
-                        continue; // Perform ! AsyncGeneratorResumeNext(generator).
+                        continue; // Perform AsyncGeneratorDrainQueue(generator).
                     }
                 }
             } else if (state == AsyncGeneratorState.Completed) {
-                // return ! AsyncGeneratorResolve(generator, undefined, true).
+                // return AsyncGeneratorResolve(generator, undefined, true).
                 asyncGeneratorResolveNode.performResolve(frame, generator, Undefined.instance, true);
-                continue; // Perform ! AsyncGeneratorResumeNext(generator).
+                continue; // Perform AsyncGeneratorDrainQueue(generator).
             }
             assert state == AsyncGeneratorState.SuspendedStart || state == AsyncGeneratorState.SuspendedYield;
             setGeneratorStateNode.setValue(generator, AsyncGeneratorState.Executing);
@@ -232,6 +240,17 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.asyncGeneratorRejectNode = insert(AsyncGeneratorRejectNode.create(context));
         }
+    }
+
+    private void asyncGeneratorRejectBrokenPromise(VirtualFrame frame, JSDynamicObject generator, AbstractTruffleException exception) {
+        if (getErrorObjectNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+        }
+        enterThrowBranch();
+        setGeneratorStateNode.setValue(generator, AsyncGeneratorState.Completed);
+        Object error = getErrorObjectNode.execute(exception);
+        asyncGeneratorRejectNode.performReject(frame, generator, error);
     }
 
     private JSFunctionObject createAsyncGeneratorReturnProcessorFulfilledFunction(JSDynamicObject generator) {
