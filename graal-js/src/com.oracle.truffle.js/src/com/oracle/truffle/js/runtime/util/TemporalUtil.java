@@ -273,6 +273,9 @@ public final class TemporalUtil {
     public static final double MS_PER_DAY = 8.64 * 10_000_000;
     public static final double NS_PER_DAY = 8.64 * 10_000_000_000_000D;
 
+    public static final int SINCE = -1;
+    public static final int UNTIL = 1;
+
     public enum Overflow {
         CONSTRAIN,
         REJECT

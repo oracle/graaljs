@@ -49,6 +49,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
 
+import java.time.temporal.Temporal;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -426,6 +427,44 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             JSDynamicObject addedDateFields = TemporalUtil.prepareTemporalFields(getContext(), addedDate, fieldNames, TemporalUtil.listEmpty);
             return yearMonthFromFieldsNode.execute(calendar, addedDateFields, options);
         }
+
+        protected JSTemporalDurationObject differenceTemporalPlainYearMonth(int sign, JSTemporalPlainYearMonthObject ym, Object otherParam, Object optParam, ConditionProfile unitIsMonth,
+                        JSToStringNode toStringNode, JSToNumberNode toNumberNode, EnumerableOwnPropertyNamesNode namesNode, TruffleString.EqualNode equalNode,
+                        TemporalRoundDurationNode roundDurationNode, ToTemporalYearMonthNode toTemporalYearMonthNode, TemporalCalendarFieldsNode calendarFieldsNode,
+                        TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
+            JSTemporalPlainYearMonthObject other = toTemporalYearMonthNode.executeDynamicObject(otherParam, Undefined.instance);
+            JSDynamicObject calendar = ym.getCalendar();
+            if (!TemporalUtil.calendarEquals(calendar, other.getCalendar(), toStringNode)) {
+                errorBranch.enter();
+                throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
+            }
+            JSDynamicObject options = getOptionsObject(optParam);
+            List<TruffleString> disallowedUnits = TemporalUtil.listWDHMSMMN;
+            Unit smallestUnit = toSmallestTemporalUnit(options, disallowedUnits, MONTH, equalNode);
+            Unit largestUnit = toLargestTemporalUnit(options, disallowedUnits, AUTO, Unit.YEAR, equalNode);
+            TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode);
+            if (sign == TemporalUtil.SINCE) {
+                roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
+            }
+            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, null, false, isObjectNode, toNumberNode);
+            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listMCY);
+            JSDynamicObject otherFields = TemporalUtil.prepareTemporalFields(getContext(), other, fieldNames, TemporalUtil.listEmpty);
+            TemporalUtil.createDataPropertyOrThrow(getContext(), otherFields, DAY, 1);
+            JSDynamicObject otherDate = dateFromFieldsNode.execute(calendar, otherFields, Undefined.instance);
+            JSDynamicObject thisFields = TemporalUtil.prepareTemporalFields(getContext(), ym, fieldNames, TemporalUtil.listEmpty);
+            TemporalUtil.createDataPropertyOrThrow(getContext(), thisFields, DAY, 1);
+            JSTemporalPlainDateObject thisDate = dateFromFieldsNode.execute(calendar, thisFields, Undefined.instance);
+            JSDynamicObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, options, largestUnit);
+            JSTemporalDurationObject result = TemporalUtil.calendarDateUntil(calendar, thisDate, otherDate, untilOptions, Undefined.instance);
+            if (unitIsMonth.profile(Unit.MONTH == smallestUnit && roundingIncrement == 1)) {
+                return JSTemporalDuration.createTemporalDuration(getContext(), sign * result.getYears(), sign * result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, errorBranch);
+            } else {
+                JSTemporalDurationRecord result2 = roundDurationNode.execute(result.getYears(), result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, (long) roundingIncrement,
+                                smallestUnit, roundingMode, thisDate);
+                return JSTemporalDuration.createTemporalDuration(getContext(), sign * result2.getYears(), sign * result2.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, errorBranch);
+            }
+        }
     }
 
     public abstract static class JSTemporalPlainYearMonthAddNode extends PlainYearMonthOperation {
@@ -470,7 +509,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         }
     }
 
-    public abstract static class JSTemporalPlainYearMonthUntilNode extends JSTemporalBuiltinOperation {
+    public abstract static class JSTemporalPlainYearMonthUntilNode extends PlainYearMonthOperation {
 
         protected JSTemporalPlainYearMonthUntilNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -491,39 +530,12 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode,
                         @Cached("create(getContext())") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
             JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
-            JSTemporalPlainYearMonthObject other = toTemporalYearMonthNode.executeDynamicObject(otherParam, Undefined.instance);
-            JSDynamicObject calendar = ym.getCalendar();
-            if (!TemporalUtil.calendarEquals(calendar, other.getCalendar(), toStringNode)) {
-                errorBranch.enter();
-                throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
-            }
-            JSDynamicObject options = getOptionsObject(optParam);
-            List<TruffleString> disallowedUnits = TemporalUtil.listWDHMSMMN;
-            Unit smallestUnit = toSmallestTemporalUnit(options, disallowedUnits, MONTH, equalNode);
-            Unit largestUnit = toLargestTemporalUnit(options, disallowedUnits, AUTO, Unit.YEAR, equalNode);
-            TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode);
-            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, null, false, isObjectNode, toNumberNode);
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listMCY);
-            JSDynamicObject otherFields = TemporalUtil.prepareTemporalFields(getContext(), other, fieldNames, TemporalUtil.listEmpty);
-            TemporalUtil.createDataPropertyOrThrow(getContext(), otherFields, DAY, 1);
-            JSDynamicObject otherDate = dateFromFieldsNode.execute(calendar, otherFields, Undefined.instance);
-            JSDynamicObject thisFields = TemporalUtil.prepareTemporalFields(getContext(), ym, fieldNames, TemporalUtil.listEmpty);
-            TemporalUtil.createDataPropertyOrThrow(getContext(), thisFields, DAY, 1);
-            JSTemporalPlainDateObject thisDate = dateFromFieldsNode.execute(calendar, thisFields, Undefined.instance);
-            JSDynamicObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, options, largestUnit);
-            JSTemporalDurationObject result = TemporalUtil.calendarDateUntil(calendar, thisDate, otherDate, untilOptions, Undefined.instance);
-            if (unitIsMonth.profile(Unit.MONTH == smallestUnit && roundingIncrement == 1)) {
-                return JSTemporalDuration.createTemporalDuration(getContext(), result.getYears(), result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, errorBranch);
-            } else {
-                JSTemporalDurationRecord result2 = roundDurationNode.execute(result.getYears(), result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, (long) roundingIncrement,
-                                smallestUnit, roundingMode, thisDate);
-                return JSTemporalDuration.createTemporalDuration(getContext(), result2.getYears(), result2.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, errorBranch);
-            }
+            return differenceTemporalPlainYearMonth(TemporalUtil.UNTIL, ym, otherParam, optParam, unitIsMonth, toStringNode, toNumberNode, namesNode, equalNode, roundDurationNode,
+                            toTemporalYearMonthNode, calendarFieldsNode, dateFromFieldsNode);
         }
     }
 
-    public abstract static class JSTemporalPlainYearMonthSinceNode extends JSTemporalBuiltinOperation {
+    public abstract static class JSTemporalPlainYearMonthSinceNode extends PlainYearMonthOperation {
 
         protected JSTemporalPlainYearMonthSinceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -541,36 +553,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode,
                         @Cached("create(getContext())") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
             JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
-            JSTemporalPlainYearMonthObject other = toTemporalYearMonthNode.executeDynamicObject(otherParam, Undefined.instance);
-            JSDynamicObject calendar = ym.getCalendar();
-            if (!TemporalUtil.calendarEquals(calendar, other.getCalendar(), toStringNode)) {
-                errorBranch.enter();
-                throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
-            }
-            JSDynamicObject options = getOptionsObject(optParam);
-            List<TruffleString> disallowedUnits = TemporalUtil.listWDHMSMMN;
-            Unit smallestUnit = toSmallestTemporalUnit(options, disallowedUnits, MONTH, equalNode);
-            Unit largestUnit = toLargestTemporalUnit(options, disallowedUnits, AUTO, Unit.YEAR, equalNode);
-            TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode);
-            roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
-            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, null, false, isObjectNode, toNumberNode);
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listMCY);
-            JSDynamicObject otherFields = TemporalUtil.prepareTemporalFields(getContext(), other, fieldNames, TemporalUtil.listEmpty);
-            TemporalUtil.createDataPropertyOrThrow(getContext(), otherFields, DAY, 1);
-            JSDynamicObject otherDate = dateFromFieldsNode.execute(calendar, otherFields, Undefined.instance);
-            JSDynamicObject thisFields = TemporalUtil.prepareTemporalFields(getContext(), ym, fieldNames, TemporalUtil.listEmpty);
-            TemporalUtil.createDataPropertyOrThrow(getContext(), thisFields, DAY, 1);
-            JSTemporalPlainDateObject thisDate = dateFromFieldsNode.execute(calendar, thisFields, Undefined.instance);
-            JSDynamicObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, options, largestUnit);
-            JSTemporalDurationObject result = TemporalUtil.calendarDateUntil(calendar, thisDate, otherDate, untilOptions, Undefined.instance);
-            if (unitIsMonth.profile(Unit.MONTH == smallestUnit && roundingIncrement == 1)) {
-                return JSTemporalDuration.createTemporalDuration(getContext(), -result.getYears(), -result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, errorBranch);
-            } else {
-                JSTemporalDurationRecord result2 = roundDurationNode.execute(result.getYears(), result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, (long) roundingIncrement,
-                                smallestUnit, roundingMode, thisDate);
-                return JSTemporalDuration.createTemporalDuration(getContext(), -result2.getYears(), -result2.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, errorBranch);
-            }
+            return differenceTemporalPlainYearMonth(TemporalUtil.SINCE, ym, otherParam, optParam, unitIsMonth, toStringNode, toNumberNode, namesNode, equalNode, roundDurationNode,
+                            toTemporalYearMonthNode, calendarFieldsNode, dateFromFieldsNode);
         }
     }
 }
