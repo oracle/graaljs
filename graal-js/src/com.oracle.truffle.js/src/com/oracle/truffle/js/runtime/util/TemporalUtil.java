@@ -2321,13 +2321,13 @@ public final class TemporalUtil {
         return offsetAfter - offsetBefore;
     }
 
-    // 7.5.17
+    @TruffleBoundary
     public static long daysUntil(JSDynamicObject earlier, JSDynamicObject later) {
-        assert isTemporalDate(earlier) && isTemporalDate(later);
-        JSTemporalDurationRecord difference = JSTemporalPlainDate.differenceISODate(
-                        ((TemporalYear) earlier).getYear(), ((TemporalMonth) earlier).getMonth(), ((TemporalDay) earlier).getDay(),
-                        ((TemporalYear) later).getYear(), ((TemporalMonth) later).getMonth(), ((TemporalDay) later).getDay(), Unit.DAY);
-        return dtol(difference.getDays());
+        double epochDays1 = JSDate.makeDay(((TemporalYear) earlier).getYear(), ((TemporalMonth) earlier).getMonth() - 1, ((TemporalDay) earlier).getDay());
+        assert Double.isFinite(epochDays1);
+        double epochDays2 = JSDate.makeDay(((TemporalYear) later).getYear(), ((TemporalMonth) later).getMonth() - 1, ((TemporalDay) later).getDay());
+        assert Double.isFinite(epochDays2);
+        return dtol(epochDays2 - epochDays1);
     }
 
     private static boolean isTemporalDate(JSDynamicObject d) {
