@@ -493,7 +493,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             timePart.append("M");
         }
         if (condition || !AUTO.equals(precision)) {
-            // values clamped above
+            // valuesb clamped above
             long fraction = Math.abs(bitoi(milliseconds)) * 1_000_000L + Math.abs(bitoi(microseconds)) * 1_000L + Math.abs(bitoi(nanoseconds));
             TruffleString decimalPart = Strings.format("000000000%1$09d", fraction);
             decimalPart = Strings.lazySubstring(decimalPart, Strings.length(decimalPart) - 9);

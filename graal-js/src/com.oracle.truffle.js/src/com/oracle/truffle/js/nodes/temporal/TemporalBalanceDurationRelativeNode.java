@@ -64,6 +64,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -104,6 +105,10 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
         if (unitIsDay.profile((largestUnit != TemporalUtil.Unit.YEAR && largestUnit != TemporalUtil.Unit.MONTH && largestUnit != TemporalUtil.Unit.WEEK) ||
                         (years == 0 && months == 0 && weeks == 0 && days == 0))) {
             return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
+        }
+        if (relTo == Undefined.instance) {
+            errorBranch.enter();
+            throw TemporalErrors.createRangeErrorRelativeToNotUndefined();
         }
         long sign = TemporalUtil.durationSign(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
         assert sign != 0;
