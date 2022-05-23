@@ -82,7 +82,6 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -133,7 +132,6 @@ public class WriteElementNode extends JSTargetableNode {
     @Child private ToArrayIndexNode toArrayIndexNode;
     @Child protected JavaScriptNode valueNode;
     @Child private WriteElementTypeCacheNode typeCacheNode;
-    @Child private RequireObjectCoercibleNode requireObjectCoercibleNode;
 
     final JSContext context;
     final boolean isStrict;
@@ -169,7 +167,6 @@ public class WriteElementNode extends JSTargetableNode {
         this.context = context;
         this.isStrict = isStrict;
         this.writeOwn = writeOwn;
-        this.requireObjectCoercibleNode = RequireObjectCoercibleNode.create();
     }
 
     protected final Object toArrayIndex(Object index) {
@@ -180,20 +177,12 @@ public class WriteElementNode extends JSTargetableNode {
         return toArrayIndexNode.execute(index);
     }
 
-    protected final void requireObjectCoercible(Object target, int index) {
-        try {
-            requireObjectCoercibleNode.executeVoid(target);
-        } catch (JSException e) {
-            throw Errors.createTypeErrorCannotSetProperty(index, target, this);
-        }
+    @SuppressWarnings("unused")
+    protected void requireObjectCoercible(Object target, int index) {
     }
 
-    protected final void requireObjectCoercible(Object target, Object index) {
-        try {
-            requireObjectCoercibleNode.executeVoid(target);
-        } catch (JSException e) {
-            throw Errors.createTypeErrorCannotSetProperty(index, target, this);
-        }
+    @SuppressWarnings("unused")
+    protected void requireObjectCoercible(Object target, Object index) {
     }
 
     @Override
