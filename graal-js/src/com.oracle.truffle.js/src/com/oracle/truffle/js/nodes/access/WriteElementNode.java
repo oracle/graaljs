@@ -184,7 +184,7 @@ public class WriteElementNode extends JSTargetableNode {
         try {
             requireObjectCoercibleNode.executeVoid(target);
         } catch (JSException e) {
-            throw Errors.createTypeErrorCannotSetProperty(JSRuntime.safeToString(index), target, this);
+            throw Errors.createTypeErrorCannotSetProperty(index, target, this);
         }
     }
 
@@ -192,7 +192,7 @@ public class WriteElementNode extends JSTargetableNode {
         try {
             requireObjectCoercibleNode.executeVoid(target);
         } catch (JSException e) {
-            throw Errors.createTypeErrorCannotSetProperty(JSRuntime.safeToString(index), target, this);
+            throw Errors.createTypeErrorCannotSetProperty(index, target, this);
         }
     }
 

@@ -461,9 +461,14 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorCannotSetProperty(int index, Object object, Node originatingNode) {
+        return createTypeErrorCannotSetProperty(JSRuntime.safeToString(index), object, originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorCannotSetProperty(Object key, Object object, Node originatingNode) {
         JavaScriptLanguage language = JavaScriptLanguage.get(originatingNode);
-        return createTypeErrorCannotSetProperty(key, object, originatingNode, language.getJSContext());
+        return createTypeErrorCannotSetProperty(JSRuntime.safeToString(key), object, originatingNode, language.getJSContext());
     }
 
     @TruffleBoundary
