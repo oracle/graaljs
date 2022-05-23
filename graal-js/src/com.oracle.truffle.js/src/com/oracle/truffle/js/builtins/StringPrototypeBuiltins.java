@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,6 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -2800,9 +2799,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             adoptChildren();
         }
 
-        public DynamicObject createIterator(VirtualFrame frame, Object regex, String string, Boolean global, Boolean fullUnicode) {
+        public DynamicObject createIterator(Object regex, String string, Boolean global, Boolean fullUnicode) {
             DynamicObject regExpStringIteratorPrototype = getRealm().getRegExpStringIteratorPrototype();
-            DynamicObject iterator = createObjectNode.execute(frame, regExpStringIteratorPrototype);
+            DynamicObject iterator = createObjectNode.execute(regExpStringIteratorPrototype);
             setIteratingRegExpNode.setValue(iterator, regex);
             setIteratedStringNode.setValue(iterator, string);
             setGlobalNode.setValueBoolean(iterator, global);
@@ -2825,18 +2824,18 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected DynamicObject doString(VirtualFrame frame, String string) {
-            DynamicObject iterator = createObjectNode.execute(frame, getRealm().getStringIteratorPrototype());
+        protected DynamicObject doString(String string) {
+            DynamicObject iterator = createObjectNode.execute(getRealm().getStringIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, string);
             setNextIndexNode.setValueInt(iterator, 0);
             return iterator;
         }
 
         @Specialization(guards = "!isString(thisObj)")
-        protected DynamicObject doCoerce(VirtualFrame frame, Object thisObj,
+        protected DynamicObject doCoerce(Object thisObj,
                         @Cached("create()") RequireObjectCoercibleNode requireObjectCoercibleNode,
                         @Cached("create()") JSToStringNode toStringNode) {
-            return doString(frame, toStringNode.executeString(requireObjectCoercibleNode.execute(thisObj)));
+            return doString(toStringNode.executeString(requireObjectCoercibleNode.execute(thisObj)));
         }
 
     }

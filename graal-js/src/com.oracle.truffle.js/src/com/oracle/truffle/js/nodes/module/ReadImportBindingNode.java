@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.module;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -77,7 +78,7 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
     }
 
     @Specialization(guards = {"frameDescriptor == resolution.getModule().getFrameDescriptor()", "bindingName.equals(resolution.getBindingName())"}, limit = "1")
-    static Object doCached(ExportResolution resolution,
+    static Object doCached(ExportResolution.Resolved resolution,
                     @Cached("resolution.getModule().getFrameDescriptor()") @SuppressWarnings("unused") FrameDescriptor frameDescriptor,
                     @Cached("resolution.getBindingName()") @SuppressWarnings("unused") String bindingName,
                     @Cached("create(frameDescriptor.findFrameSlot(bindingName))") JSReadFrameSlotNode readFrameSlot) {
@@ -91,7 +92,7 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
 
     @TruffleBoundary
     @Specialization(replaces = {"doCached"})
-    final Object doUncached(ExportResolution resolution) {
+    final Object doUncached(ExportResolution.Resolved resolution) {
         JSModuleRecord module = resolution.getModule();
         assert module.getStatus().compareTo(Status.Linked) >= 0 : module.getStatus();
         String bindingName = resolution.getBindingName();
@@ -113,6 +114,13 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
     @Specialization(guards = "isJSModuleNamespace(namespace)")
     static Object doNamespace(DynamicObject namespace) {
         return namespace;
+    }
+
+    @Fallback
+    static Object doUnresolved(@SuppressWarnings("unused") Object uninitialized) {
+        // Note: Should not reach here normally; this is just a safeguard in case the scope is
+        // intercepted before all imports are resolved and the environment is fully initialized.
+        throw Errors.createReferenceError("Unresolved import");
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,16 +72,16 @@ public class OrdinaryCreateFromConstructorNode extends JavaScriptNode {
     @Override
     public DynamicObject execute(VirtualFrame frame) {
         DynamicObject proto = getPrototypeFromConstructorNode.execute(frame);
-        return executeWithPrototype(frame, proto);
+        return executeWithPrototype(proto);
     }
 
-    public DynamicObject executeWithConstructor(VirtualFrame frame, DynamicObject constructor) {
+    public DynamicObject executeWithConstructor(DynamicObject constructor) {
         DynamicObject proto = getPrototypeFromConstructorNode.executeWithConstructor(constructor);
-        return executeWithPrototype(frame, proto);
+        return executeWithPrototype(proto);
     }
 
-    private DynamicObject executeWithPrototype(VirtualFrame frame, DynamicObject proto) {
-        return createObjectNode.execute(frame, proto);
+    private DynamicObject executeWithPrototype(DynamicObject proto) {
+        return createObjectNode.execute(proto);
     }
 
     @Override

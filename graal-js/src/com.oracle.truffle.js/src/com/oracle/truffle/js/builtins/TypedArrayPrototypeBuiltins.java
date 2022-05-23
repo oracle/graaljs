@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -731,9 +730,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = "isJSArrayBufferView(thisObj)")
-        protected DynamicObject doObject(VirtualFrame frame, DynamicObject thisObj) {
+        protected DynamicObject doObject(DynamicObject thisObj) {
             checkHasDetachedBuffer(thisObj);
-            return createArrayIteratorNode.execute(frame, thisObj);
+            return createArrayIteratorNode.execute(thisObj);
         }
 
         @SuppressWarnings("unused")

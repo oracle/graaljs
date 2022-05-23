@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,7 +95,7 @@ public abstract class ExportResolution {
         return AMBIGUOUS;
     }
 
-    private static class Resolved extends ExportResolution {
+    public static final class Resolved extends ExportResolution {
         private final JSModuleRecord module;
         private final String bindingName;
 
@@ -144,14 +144,14 @@ public abstract class ExportResolution {
         }
     }
 
-    private static class Null extends ExportResolution {
+    private static final class Null extends ExportResolution {
         @Override
         public boolean isNull() {
             return true;
         }
     }
 
-    private static class Ambiguous extends ExportResolution {
+    private static final class Ambiguous extends ExportResolution {
         @Override
         public boolean isAmbiguous() {
             return true;

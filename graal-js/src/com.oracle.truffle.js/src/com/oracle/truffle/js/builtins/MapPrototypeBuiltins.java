@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.StopIterationException;
@@ -440,8 +439,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         }
 
         @Specialization(guards = "isJSMap(map)")
-        protected DynamicObject doMap(VirtualFrame frame, DynamicObject map) {
-            DynamicObject iterator = createObjectNode.execute(frame, getRealm().getMapIteratorPrototype());
+        protected DynamicObject doMap(DynamicObject map) {
+            DynamicObject iterator = createObjectNode.execute(getRealm().getMapIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, map);
             setNextIndexNode.setValue(iterator, JSMap.getInternalMap(map).getEntries());
             setIterationKindNode.setValueInt(iterator, iterationKind);

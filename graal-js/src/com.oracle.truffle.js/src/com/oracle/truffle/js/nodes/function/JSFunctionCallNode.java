@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -103,6 +103,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptFunctionCallNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -362,7 +363,12 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             }
             JSFunctionCacheNode newNode;
             if (obsoleteNode instanceof FunctionInstanceCacheNode) {
-                newNode = new FunctionDataCacheNode(functionData, ((FunctionInstanceCacheNode) obsoleteNode).callNode);
+                DirectCallNode callNode = ((FunctionInstanceCacheNode) obsoleteNode).callNode;
+                if (functionData.isBound()) {
+                    newNode = new BoundFunctionDataCacheNode(functionData, callNode);
+                } else {
+                    newNode = new UnboundFunctionDataCacheNode(functionData, callNode);
+                }
             } else {
                 newNode = createCallableNode(functionObj, functionData, isNew(flags), isNewTarget(flags), false);
             }
@@ -953,8 +959,11 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
             if (cacheOnInstance) {
                 return new FunctionInstanceCacheNode(function, callTarget);
+            } else if (JSFunction.isBoundFunction(function)) {
+                // used in the case of a deeply nested bound function
+                return new BoundFunctionDataCacheNode(functionData, callTarget);
             } else {
-                return new FunctionDataCacheNode(functionData, callTarget);
+                return new UnboundFunctionDataCacheNode(functionData, callTarget);
             }
         }
     }
@@ -1025,22 +1034,48 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    private static final class FunctionDataCacheNode extends UnboundJSFunctionCacheNode {
+    private static final class UnboundFunctionDataCacheNode extends UnboundJSFunctionCacheNode {
         private final JSFunctionData functionData;
 
-        FunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget) {
+        UnboundFunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget) {
             super(callTarget);
             this.functionData = functionData;
+            assert !functionData.isBound();
         }
 
-        FunctionDataCacheNode(JSFunctionData functionData, DirectCallNode directCallNode) {
+        UnboundFunctionDataCacheNode(JSFunctionData functionData, DirectCallNode directCallNode) {
             super(directCallNode);
             this.functionData = functionData;
         }
 
         @Override
         protected boolean accept(Object function) {
-            return JSFunction.isJSFunction(function) && functionData == JSFunction.getFunctionData((DynamicObject) function);
+            return function instanceof JSFunctionObject.Unbound && JSFunction.getFunctionData((JSFunctionObject.Unbound) function) == functionData;
+        }
+
+        @Override
+        protected JSFunctionData getFunctionData() {
+            return functionData;
+        }
+    }
+
+    private static final class BoundFunctionDataCacheNode extends UnboundJSFunctionCacheNode {
+        private final JSFunctionData functionData;
+
+        BoundFunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget) {
+            super(callTarget);
+            this.functionData = functionData;
+            assert functionData.isBound();
+        }
+
+        BoundFunctionDataCacheNode(JSFunctionData functionData, DirectCallNode directCallNode) {
+            super(directCallNode);
+            this.functionData = functionData;
+        }
+
+        @Override
+        protected boolean accept(Object function) {
+            return function instanceof JSFunctionObject.Bound && JSFunction.getFunctionData((JSFunctionObject.Bound) function) == functionData;
         }
 
         @Override

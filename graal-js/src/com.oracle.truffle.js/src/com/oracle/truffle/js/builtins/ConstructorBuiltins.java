@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,7 +59,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -2501,8 +2500,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = "isCallable.executeBoolean(executor)")
-        protected DynamicObject construct(VirtualFrame frame, DynamicObject newTarget, Object executor) {
-            DynamicObject promise = createPromiseFromConstructor.executeWithConstructor(frame, newTarget);
+        protected DynamicObject construct(DynamicObject newTarget, Object executor) {
+            DynamicObject promise = createPromiseFromConstructor.executeWithConstructor(newTarget);
             JSPromise.setPromiseState(promise, JSPromise.PENDING);
             setPromiseFulfillReactions.setValue(promise, new SimpleArrayList<>());
             setPromiseRejectReactions.setValue(promise, new SimpleArrayList<>());

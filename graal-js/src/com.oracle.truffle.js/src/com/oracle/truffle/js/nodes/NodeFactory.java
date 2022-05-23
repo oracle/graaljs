@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,8 @@ import java.util.List;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -172,6 +174,7 @@ import com.oracle.truffle.js.nodes.control.IfNode;
 import com.oracle.truffle.js.nodes.control.IteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.LabelNode;
 import com.oracle.truffle.js.nodes.control.ModuleBodyNode;
+import com.oracle.truffle.js.nodes.control.ModuleInitializeEnvironmentNode;
 import com.oracle.truffle.js.nodes.control.ModuleYieldNode;
 import com.oracle.truffle.js.nodes.control.ReturnNode;
 import com.oracle.truffle.js.nodes.control.ReturnTargetNode;
@@ -213,6 +216,7 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryPlusNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.nodes.unary.VoidNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
@@ -748,6 +752,32 @@ public class NodeFactory {
         return functionRoot;
     }
 
+    public FunctionRootNode createModuleRootNode(AbstractBodyNode linkBody, AbstractBodyNode evalBody, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection,
+                    String internalFunctionName) {
+        FunctionRootNode linkRoot;
+        FunctionRootNode evalRoot;
+        if (linkBody == evalBody) {
+            evalRoot = linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection, internalFunctionName);
+        } else {
+            linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection,
+                            internalFunctionName.concat(Evaluator.MODULE_LINK_SUFFIX));
+            evalRoot = FunctionRootNode.create(evalBody, JavaScriptRootNode.MODULE_DUMMY_FRAMEDESCRIPTOR, functionData, sourceSection,
+                            internalFunctionName.concat(Evaluator.MODULE_EVAL_SUFFIX));
+        }
+
+        RootCallTarget linkCallTarget = Truffle.getRuntime().createCallTarget(linkRoot);
+        RootCallTarget evalCallTarget = Truffle.getRuntime().createCallTarget(evalRoot);
+        // Module function data is always eagerly initialized.
+        // The [[Construct]] target is used to represent InitializeEnvironment().
+        // The [[Call]] target is used to represent ExecuteModule().
+        functionData.setRootTarget(evalCallTarget);
+        functionData.setCallTarget(evalCallTarget);
+        functionData.setConstructTarget(linkCallTarget);
+        functionData.setConstructNewTarget(linkCallTarget); // unused
+
+        return linkRoot;
+    }
+
     public ConstructorRootNode createConstructorRootNode(JSFunctionData functionData, CallTarget callTarget, boolean newTarget) {
         return ConstructorRootNode.create(functionData, callTarget, newTarget);
     }
@@ -756,12 +786,18 @@ public class NodeFactory {
         return FunctionBodyNode.create(body);
     }
 
+    /**
+     * @param functionNode used by snapshot recording.
+     */
     public JSFunctionExpressionNode createFunctionExpression(JSFunctionData function, FunctionRootNode functionNode, FrameSlot blockScopeSlot) {
-        return JSFunctionExpressionNode.create(function, functionNode, blockScopeSlot);
+        return JSFunctionExpressionNode.create(function, blockScopeSlot);
     }
 
+    /**
+     * @param functionNode used by snapshot recording.
+     */
     public JSFunctionExpressionNode createFunctionExpressionLexicalThis(JSFunctionData function, FunctionRootNode functionNode, FrameSlot blockScopeSlot, JavaScriptNode thisNode) {
-        return JSFunctionExpressionNode.createLexicalThis(function, functionNode, blockScopeSlot, thisNode);
+        return JSFunctionExpressionNode.createLexicalThis(function, blockScopeSlot, thisNode);
     }
 
     public JavaScriptNode createPrepareThisBinding(JSContext context, JavaScriptNode child) {
@@ -1090,6 +1126,10 @@ public class NodeFactory {
 
     public JavaScriptNode createModuleBody(JavaScriptNode moduleBody) {
         return ModuleBodyNode.create(moduleBody);
+    }
+
+    public JavaScriptNode createModuleInitializeEnvironment(JavaScriptNode moduleBody) {
+        return ModuleInitializeEnvironmentNode.create(moduleBody);
     }
 
     public JavaScriptNode createModuleYield() {

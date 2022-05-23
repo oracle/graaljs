@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,57 +40,44 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.control.YieldNode.ExceptionYieldResultNode;
-import com.oracle.truffle.js.nodes.control.YieldNode.YieldResultNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-import java.util.Set;
-
 /**
- * A synthetic yield statement that suspends execution when the module function has successfully
- * finished initializing the environment. Execution is resumed at this point when the module is
- * evaluated.
+ * The InitializeEnvironment() entry point of an ES module.
  */
-public class ModuleYieldNode extends JavaScriptNode implements ResumableNode, SuspendNode {
+public final class ModuleInitializeEnvironmentNode extends JavaScriptNode {
 
-    @Child private YieldResultNode generatorYieldNode;
+    @Child private JavaScriptNode moduleBodyNode;
 
-    protected ModuleYieldNode() {
-        this.generatorYieldNode = new ExceptionYieldResultNode();
+    private ModuleInitializeEnvironmentNode(JavaScriptNode body) {
+        this.moduleBodyNode = body;
     }
 
-    public static ModuleYieldNode create() {
-        return new ModuleYieldNode();
+    public static JavaScriptNode create(JavaScriptNode body) {
+        return new ModuleInitializeEnvironmentNode(body);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        return generatorYield(frame);
-    }
-
-    protected final Object generatorYield(VirtualFrame frame) {
-        throw generatorYieldNode.generatorYield(frame, Undefined.instance);
-    }
-
-    @Override
-    public Object resume(VirtualFrame frame) {
         JSModuleRecord moduleRecord = (JSModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
-        if (moduleRecord.getStatus() == Status.Linking) {
-            return generatorYield(frame);
-        } else {
-            return Undefined.instance;
-        }
+        assert moduleRecord.getStatus() == Status.Linking : moduleRecord.getStatus();
+        assert moduleRecord.getEnvironment() == null;
+        moduleBodyNode.executeVoid(frame);
+        moduleRecord.setEnvironment(frame.materialize());
+        return Undefined.instance;
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create();
+        return create(cloneUninitialized(moduleBodyNode, materializedTags));
     }
 
 }

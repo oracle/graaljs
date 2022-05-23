@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InternalSlotId;
 
@@ -77,8 +77,12 @@ public final class JSFrameUtil {
         return JSArguments.getThisObject(frame.getArguments());
     }
 
-    public static DynamicObject getFunctionObject(Frame frame) {
-        return (DynamicObject) JSArguments.getFunctionObject(frame.getArguments());
+    public static JSFunctionObject getFunctionObject(Frame frame) {
+        return (JSFunctionObject.Unbound) JSArguments.getFunctionObject(frame.getArguments());
+    }
+
+    public static Object getFunctionObjectNoCast(Frame frame) {
+        return JSArguments.getFunctionObject(frame.getArguments());
     }
 
     public static Object[] getArgumentsArray(Frame frame) {

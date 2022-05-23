@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,17 +73,15 @@ import com.oracle.truffle.trufflenode.info.Value;
 
 public class ObjectTemplateNode extends JavaScriptBaseNode {
     @Children ObjectLiteralNode.ObjectLiteralMemberNode[] members;
-    private final JSContext context;
 
-    ObjectTemplateNode(ObjectLiteralNode.ObjectLiteralMemberNode[] members, JSContext context) {
+    ObjectTemplateNode(ObjectLiteralNode.ObjectLiteralMemberNode[] members) {
         this.members = members;
-        this.context = context;
     }
 
     @ExplodeLoop
-    public DynamicObject executeWithObject(VirtualFrame frame, DynamicObject object) {
+    public DynamicObject executeWithObject(VirtualFrame frame, DynamicObject object, JSRealm realm) {
         for (int i = 0; i < members.length; i++) {
-            members[i].executeVoid(frame, object, context);
+            members[i].executeVoid(frame, object, realm);
         }
         return object;
     }
@@ -143,7 +141,7 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
             members.add(new SetInternalFieldCountNode(template.getInternalFieldCount()));
         }
 
-        return new ObjectTemplateNode(members.toArray(ObjectLiteralNode.ObjectLiteralMemberNode.EMPTY), context);
+        return new ObjectTemplateNode(members.toArray(ObjectLiteralNode.ObjectLiteralMemberNode.EMPTY));
     }
 
     private static final class InternalFieldNode extends ObjectLiteralNode.ObjectLiteralMemberNode {
@@ -157,7 +155,7 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSContext context) {
+        public void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSRealm realm) {
             setNode.setValue(receiver, value);
         }
 
@@ -177,13 +175,13 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSContext context) {
+        public void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSRealm realm) {
             if (receiver instanceof JSOrdinaryObject.InternalFieldLayout) {
                 ((JSOrdinaryObject.InternalFieldLayout) receiver).setInternalFieldCount(value);
             } else {
                 if (setNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    setNode = insert(PropertySetNode.createSetHidden(GraalJSAccess.INTERNAL_FIELD_COUNT_KEY, context));
+                    setNode = insert(PropertySetNode.createSetHidden(GraalJSAccess.INTERNAL_FIELD_COUNT_KEY, getLanguage().getJSContext()));
                 }
                 setNode.setValueInt(receiver, value);
             }

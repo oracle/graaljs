@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -107,10 +107,11 @@ public class FunctionEnvironment extends Environment {
     private boolean isDynamicallyScoped;
     private boolean needsNewTarget;
     private final boolean inDirectEval;
+    private final boolean isModule;
 
     public FunctionEnvironment(Environment parent, NodeFactory factory, JSContext context,
                     boolean isStrictMode, boolean isEval, boolean isDirectEval, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor, boolean isAsyncFunction,
-                    boolean isGlobal, boolean hasSyntheticArguments) {
+                    boolean isGlobal, boolean hasSyntheticArguments, boolean isModule) {
         super(parent, factory, context);
         this.isDirectEval = isDirectEval;
         this.isAsyncFunction = isAsyncFunction;
@@ -125,6 +126,7 @@ public class FunctionEnvironment extends Environment {
 
         this.frameDescriptor = factory.createFrameDescriptor();
         this.inDirectEval = isDirectEval || (parent != null && parent.function() != null && parent.function().inDirectEval());
+        this.isModule = isModule;
     }
 
     @Override
@@ -547,5 +549,9 @@ public class FunctionEnvironment extends Environment {
 
     public boolean isAsyncGeneratorFunction() {
         return isAsyncFunction && isGeneratorFunction;
+    }
+
+    public boolean isModule() {
+        return isModule;
     }
 }
