@@ -82,6 +82,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     @Children private final ObjectLiteralMemberNode[] memberNodes;
 
     @Child private JSWriteFrameSlotNode writeClassBindingNode;
+    @Child private JSWriteFrameSlotNode writeInternalConstructorBrand;
     @Child private PropertyGetNode getPrototypeNode;
     @Child private CreateMethodPropertyNode setConstructorNode;
     @Child private CreateObjectNode.CreateObjectWithPrototypeNode createPrototypeNode;
@@ -98,7 +99,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     private final int staticElementCount;
 
     protected ClassDefinitionNode(JSContext context, JSFunctionExpressionNode constructorFunctionNode, JavaScriptNode classHeritageNode, ObjectLiteralMemberNode[] memberNodes,
-                    JSWriteFrameSlotNode writeClassBindingNode, boolean hasName, int instanceFieldCount, int staticElementCount, boolean hasPrivateInstanceMethods, int blockScopeSlot) {
+                    JSWriteFrameSlotNode writeClassBindingNode, JSWriteFrameSlotNode writeInternalConstructorBrand, boolean hasName, int instanceFieldCount, int staticElementCount,
+                    boolean hasPrivateInstanceMethods, int blockScopeSlot) {
         this.context = context;
         this.constructorFunctionNode = constructorFunctionNode;
         this.classHeritageNode = classHeritageNode;
@@ -108,6 +110,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         this.staticElementCount = staticElementCount;
 
         this.writeClassBindingNode = writeClassBindingNode;
+        this.writeInternalConstructorBrand = writeInternalConstructorBrand;
         this.getPrototypeNode = PropertyGetNode.create(JSObject.PROTOTYPE, false, context);
         this.setConstructorNode = CreateMethodPropertyNode.create(context, JSObject.CONSTRUCTOR);
         this.createPrototypeNode = CreateObjectNode.createOrdinaryWithPrototype(context);
@@ -119,8 +122,10 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     public static ClassDefinitionNode create(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members,
-                    JSWriteFrameSlotNode writeClassBinding, boolean hasName, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods, JSFrameSlot blockScopeSlot) {
-        return new ClassDefinitionNode(context, constructorFunction, classHeritage, members, writeClassBinding, hasName, instanceFieldCount, staticFieldCount, hasPrivateInstanceMethods,
+                    JSWriteFrameSlotNode writeClassBinding, JSWriteFrameSlotNode writeInternalConstructorBrand, boolean hasName, int instanceFieldCount, int staticFieldCount,
+                    boolean hasPrivateInstanceMethods, JSFrameSlot blockScopeSlot) {
+        return new ClassDefinitionNode(context, constructorFunction, classHeritage, members, writeClassBinding, writeInternalConstructorBrand, hasName, instanceFieldCount, staticFieldCount,
+                        hasPrivateInstanceMethods,
                         blockScopeSlot != null ? blockScopeSlot.getIndex() : -1);
     }
 
@@ -231,6 +236,12 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
             setPrivateBrandNode.setValue(constructor, privateBrand);
         }
 
+        // internal constructor binding used for private brand checks.
+        // Should set before static blocks execution.
+        if (writeInternalConstructorBrand != null) {
+            writeInternalConstructorBrand.executeWrite(frame, constructor);
+        }
+
         if (staticElementCount != 0) {
             InitializeInstanceElementsNode initializeStaticElements = this.staticElementsNode;
             if (initializeStaticElements == null) {
@@ -296,7 +307,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return new ClassDefinitionNode(context, (JSFunctionExpressionNode) cloneUninitialized(constructorFunctionNode, materializedTags), cloneUninitialized(classHeritageNode, materializedTags),
                         ObjectLiteralMemberNode.cloneUninitialized(memberNodes, materializedTags),
-                        cloneUninitialized(writeClassBindingNode, materializedTags), hasName, instanceFieldCount, staticElementCount, setPrivateBrandNode != null,
+                        cloneUninitialized(writeClassBindingNode, materializedTags), writeInternalConstructorBrand, hasName, instanceFieldCount, staticElementCount, setPrivateBrandNode != null,
                         defineConstructorMethodNode.getBlockScopeSlot());
     }
 
