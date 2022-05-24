@@ -477,7 +477,7 @@ public final class TemporalParser {
 
     public JSTemporalParserRecord parseTimeZoneString() {
         reset();
-        // TemporalTimeZoneIdentifier
+        // TimeZoneIdentifier
         if (parseTimeZoneIdentifier()) {
             if (atEnd()) {
                 return result();
@@ -882,15 +882,15 @@ public final class TemporalParser {
     }
 
     private boolean parseTimeZoneIdentifier() {
-        // TimeZoneNumericUTCOffset
+        // TimeZoneIANAName
         reset();
-        if (tryParseTimeZoneNumericUTCOffset(false)) {
+        if (parseTimeZoneIANAName()) {
             return true;
         }
 
+        // TimeZoneNumericUTCOffset
         reset();
-        // TimeZoneIANAName
-        if (parseTimeZoneIANAName()) {
+        if (tryParseTimeZoneNumericUTCOffset(false)) {
             return true;
         }
 
@@ -921,6 +921,8 @@ public final class TemporalParser {
             move(matcher.end(1));
             return true;
         }
+
+
         return false;
     }
 
