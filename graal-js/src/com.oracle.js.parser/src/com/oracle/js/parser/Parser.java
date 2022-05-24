@@ -4034,11 +4034,8 @@ public class Parser extends AbstractParser {
      * <pre>
      * ObjectLiteral :
      *      { }
-     *      { PropertyNameAndValueList } { PropertyNameAndValueList , }
-     *
-     * PropertyNameAndValueList :
-     *      PropertyAssignment
-     *      PropertyNameAndValueList , PropertyAssignment
+     *      {  PropertyDefinitionList }
+     *      {  PropertyDefinitionList , }
      * </pre>
      *
      * @return Expression node.
@@ -4052,11 +4049,13 @@ public class Parser extends AbstractParser {
         // Object context.
         // Prepare to accumulate elements.
         final ArrayList<PropertyNode> elements = new ArrayList<>();
-        final Map<String, PropertyNode> map = new HashMap<>();
+        final Map<String, PropertyNode> propertyNameMapES5 = isES6() ? null : new HashMap<>();
 
         // Create a block for the object literal.
         boolean commaSeen = true;
         boolean hasCoverInitializedName = false;
+        boolean hasDuplicateProto = false;
+        boolean hasProto = false;
         loop: while (true) {
             switch (type) {
                 case RBRACE:
@@ -4081,47 +4080,19 @@ public class Parser extends AbstractParser {
                     final PropertyNode property = propertyDefinition(yield, await);
                     elements.add(property);
                     hasCoverInitializedName = hasCoverInitializedName || property.isCoverInitializedName() || hasCoverInitializedName(property.getValue());
+                    hasDuplicateProto = hasProto && property.isProto();
+                    hasProto = hasProto || property.isProto();
 
                     if (property.isComputed() || property.getKey().isTokenType(SPREAD_OBJECT)) {
                         break;
                     }
 
-                    final String key = property.getKeyName();
-                    final PropertyNode existingProperty = map.get(key);
-
-                    if (existingProperty == null) {
-                        map.put(key, property);
-                        break;
-                    }
-
-                    // ECMA section 11.1.5 Object Initialiser
-                    // point # 4 on property assignment production
-                    final Expression value = property.getValue();
-                    final FunctionNode getter = property.getGetter();
-                    final FunctionNode setter = property.getSetter();
-
-                    final Expression prevValue = existingProperty.getValue();
-                    final FunctionNode prevGetter = existingProperty.getGetter();
-                    final FunctionNode prevSetter = existingProperty.getSetter();
-
                     if (isES6()) {
-                        if (property.isProto() && existingProperty.isProto()) {
+                        if (hasDuplicateProto) {
                             throw error(AbstractParser.message(MSG_MULTIPLE_PROTO_KEY), property.getToken());
                         }
                     } else {
-                        checkPropertyRedefinition(property, value, getter, setter, prevValue, prevGetter, prevSetter);
-
-                        if (value == null && prevValue == null) {
-                            // Update the map with existing (merged accessor) properties
-                            // for the purpose of checkPropertyRedefinition() above
-                            if (getter != null) {
-                                assert prevGetter != null || prevSetter != null;
-                                map.put(key, existingProperty.setGetter(getter));
-                            } else if (setter != null) {
-                                assert prevGetter != null || prevSetter != null;
-                                map.put(key, existingProperty.setSetter(setter));
-                            }
-                        }
+                        checkES5PropertyDefinition(property, propertyNameMapES5);
                     }
                     break;
             }
@@ -4133,6 +4104,39 @@ public class Parser extends AbstractParser {
     private static boolean hasCoverInitializedName(Expression value) {
         return (value != null && ((value instanceof ObjectNode && ((ObjectNode) value).hasCoverInitializedName()) ||
                         (value instanceof ArrayLiteralNode && ((ArrayLiteralNode) value).hasCoverInitializedName())));
+    }
+
+    private void checkES5PropertyDefinition(PropertyNode property, Map<String, PropertyNode> map) {
+        final String key = property.getKeyName();
+        final PropertyNode existingProperty = map.get(key);
+
+        if (existingProperty == null) {
+            map.put(key, property);
+        } else {
+            // ES5 section 11.1.5 Object Initialiser
+            // point # 4 on property assignment production
+            final Expression value = property.getValue();
+            final FunctionNode getter = property.getGetter();
+            final FunctionNode setter = property.getSetter();
+
+            final Expression prevValue = existingProperty.getValue();
+            final FunctionNode prevGetter = existingProperty.getGetter();
+            final FunctionNode prevSetter = existingProperty.getSetter();
+
+            checkPropertyRedefinition(property, value, getter, setter, prevValue, prevGetter, prevSetter);
+
+            if (value == null && prevValue == null) {
+                // Update the map with existing (merged accessor) properties
+                // for the purpose of checkPropertyRedefinition() above
+                if (getter != null) {
+                    assert prevGetter != null || prevSetter != null;
+                    map.put(key, existingProperty.setGetter(getter));
+                } else if (setter != null) {
+                    assert prevGetter != null || prevSetter != null;
+                    map.put(key, existingProperty.setSetter(setter));
+                }
+            }
+        }
     }
 
     private void checkPropertyRedefinition(final PropertyNode property, final Expression value, final FunctionNode getter, final FunctionNode setter,
