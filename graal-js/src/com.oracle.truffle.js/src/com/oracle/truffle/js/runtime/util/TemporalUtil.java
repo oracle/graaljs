@@ -376,8 +376,22 @@ public final class TemporalUtil {
         EMPTY,
         CEIL,
         FLOOR,
+        EXPAND,
         TRUNC,
-        HALF_EXPAND
+        HALF_EXPAND,
+        HALF_TRUNC,
+        HALF_EVEN,
+        HALF_FLOOR,
+        HALF_CEIL
+    }
+
+    public enum UnsignedRoundingMode {
+        EMPTY,
+        ZERO,
+        INFINITY,
+        HALF_INFINITY,
+        HALF_ZERO,
+        HALF_EVEN
     }
 
     public enum Disambiguation {
@@ -766,6 +780,56 @@ public final class TemporalUtil {
     // 13.35
     public static int constrainToRange(long value, int minimum, int maximum) {
         return (int) (Math.min(Math.max(value, minimum), maximum));
+    }
+
+    public static UnsignedRoundingMode getUnsignedRoundingMode(RoundingMode rm, boolean isNegative) {
+        switch (rm) {
+            case CEIL: return isNegative?UnsignedRoundingMode.ZERO:UnsignedRoundingMode.INFINITY;
+            case FLOOR: return isNegative?UnsignedRoundingMode.INFINITY:UnsignedRoundingMode.ZERO;
+            case EXPAND: return UnsignedRoundingMode.INFINITY;
+            case TRUNC: return UnsignedRoundingMode.ZERO;
+            case HALF_CEIL: return isNegative?UnsignedRoundingMode.HALF_ZERO:UnsignedRoundingMode.HALF_INFINITY;
+            case HALF_FLOOR: return isNegative?UnsignedRoundingMode.HALF_INFINITY:UnsignedRoundingMode.HALF_ZERO;
+            case HALF_EXPAND: return UnsignedRoundingMode.HALF_INFINITY;
+            case HALF_TRUNC: return UnsignedRoundingMode.HALF_ZERO;
+            case HALF_EVEN: return UnsignedRoundingMode.HALF_EVEN;
+        }
+        return UnsignedRoundingMode.EMPTY;
+    }
+
+    public static double applyUnsignedRoundingMode(double x, double r1, double r2, UnsignedRoundingMode urm) {
+        if (x == r1) {
+            return r1;
+        }
+        assert r1 < x && x < r2;
+        assert urm != UnsignedRoundingMode.EMPTY;
+        if (urm == UnsignedRoundingMode.ZERO) {
+            return r1;
+        }
+        if (urm == UnsignedRoundingMode.INFINITY) {
+            return r2;
+        }
+        double d1 = x-r1;
+        double d2 = r2-x;
+        if (d1 < d2)  {
+            return r1;
+        }
+        if (d2 < d1) {
+            return r2;
+        }
+        assert d1 == d2;
+        if (urm == UnsignedRoundingMode.HALF_ZERO) {
+            return r1;
+        }
+        if (urm == UnsignedRoundingMode.HALF_INFINITY) {
+            return r2;
+        }
+        assert urm == UnsignedRoundingMode.HALF_EVEN;
+        double cardinality = (r1 / (r2-r1)) % 2;
+        if (cardinality == 0) {
+            return r1;
+        }
+        return r2;
     }
 
     @TruffleBoundary
