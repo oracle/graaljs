@@ -3351,16 +3351,12 @@ public final class TemporalUtil {
                         dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(day))), overflow);
     }
 
-    // 12.1.40
     public static JSTemporalYearMonthDayRecord isoYearMonthFromFields(JSDynamicObject fields, JSDynamicObject options, JSContext ctx, IsObjectNode isObject,
                     TemporalGetOptionNode getOptionNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
         Overflow overflow = toTemporalOverflow(options, getOptionNode);
-        JSDynamicObject preparedFields = prepareTemporalFields(ctx, fields, listMMCY, listEmpty);
+        JSDynamicObject preparedFields = prepareTemporalFields(ctx, fields, listMMCY, listY);
         Object year = JSObject.get(preparedFields, YEAR);
-        if (year == Undefined.instance) {
-            throw TemporalErrors.createTypeErrorTemporalYearNotPresent();
-        }
         Object month = resolveISOMonth(ctx, preparedFields, toIntOrInfinityNode, identicalNode);
 
         JSTemporalYearMonthDayRecord result = regulateISOYearMonth(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))),
