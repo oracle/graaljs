@@ -1684,7 +1684,7 @@ public class Parser extends AbstractParser {
             Expression classHeritage = null;
             if (type == EXTENDS) {
                 next();
-                classHeritage = leftHandSideExpression(yield, await);
+                classHeritage = leftHandSideExpression(yield, await, false);
 
                 // Note: ClassHeritage should be parsed in the outer PrivateEnvironment.
                 // We have only one scope for both classScope and classPrivateEnvironment, so we
@@ -2611,9 +2611,9 @@ public class Parser extends AbstractParser {
 
     private Expression bindingPattern(boolean yield, boolean await) {
         if (type == LBRACKET) {
-            return arrayLiteral(yield, await);
+            return arrayLiteral(yield, await, true);
         } else if (type == LBRACE) {
-            return objectLiteral(yield, await);
+            return objectLiteral(yield, await, true);
         } else {
             throw error(AbstractParser.message(MSG_EXPECTED_BINDING));
         }
@@ -3386,7 +3386,7 @@ public class Parser extends AbstractParser {
 
         next();
 
-        Expression expression = unaryExpression(yield, true);
+        Expression expression = unaryExpression(yield, true, false);
 
         if (isModule && currentFunction.isModule()) {
             // Top-level await module: mark the body of the module as async.
@@ -3842,7 +3842,7 @@ public class Parser extends AbstractParser {
      * @return Expression node.
      */
     @SuppressWarnings("fallthrough")
-    private Expression primaryExpression(boolean yield, boolean await) {
+    private Expression primaryExpression(boolean yield, boolean await, boolean inPatternPosition) {
         // Capture first token.
         final int primaryLine = line;
         final long primaryToken = token;
@@ -3892,9 +3892,9 @@ public class Parser extends AbstractParser {
                 next();
                 return LiteralNode.newInstance(primaryToken, finish);
             case LBRACKET:
-                return arrayLiteral(yield, await);
+                return arrayLiteral(yield, await, inPatternPosition);
             case LBRACE:
-                return objectLiteral(yield, await);
+                return objectLiteral(yield, await, inPatternPosition);
             case LPAREN:
                 return parenthesizedExpressionAndArrowParameterList(yield, await);
             case TEMPLATE:
@@ -3963,7 +3963,7 @@ public class Parser extends AbstractParser {
      *
      * @return Expression node.
      */
-    private LiteralNode<Expression[]> arrayLiteral(boolean yield, boolean await) {
+    private LiteralNode<Expression[]> arrayLiteral(boolean yield, boolean await, boolean inPatternPosition) {
         // Capture LBRACKET token.
         final long arrayToken = token;
         // LBRACKET tested in caller.
@@ -4009,7 +4009,7 @@ public class Parser extends AbstractParser {
                     }
 
                     // Add expression element.
-                    Expression expression = assignmentExpression(true, yield, await, true);
+                    Expression expression = assignmentExpression(true, yield, await, inPatternPosition);
                     if (expression != null) {
                         if (spreadToken != 0) {
                             expression = new UnaryNode(Token.recast(spreadToken, SPREAD_ARRAY), expression);
@@ -4040,7 +4040,7 @@ public class Parser extends AbstractParser {
      *
      * @return Expression node.
      */
-    private ObjectNode objectLiteral(boolean yield, boolean await) {
+    private ObjectNode objectLiteral(boolean yield, boolean await, boolean inPatternPosition) {
         // Capture LBRACE token.
         final long objectToken = token;
         // LBRACE tested in caller.
@@ -4077,7 +4077,7 @@ public class Parser extends AbstractParser {
 
                     commaSeen = false;
                     // Get and add the next property.
-                    final PropertyNode property = propertyDefinition(yield, await);
+                    final PropertyNode property = propertyDefinition(yield, await, inPatternPosition);
                     elements.add(property);
                     hasCoverInitializedName = hasCoverInitializedName || property.isCoverInitializedName() || hasCoverInitializedName(property.getValue());
                     hasDuplicateProto = hasProto && property.isProto();
@@ -4251,7 +4251,7 @@ public class Parser extends AbstractParser {
      *
      * @return Property or reference node.
      */
-    private PropertyNode propertyDefinition(boolean yield, boolean await) {
+    private PropertyNode propertyDefinition(boolean yield, boolean await, boolean inPatternPosition) {
         // Capture firstToken.
         final long propertyToken = token;
         final int functionLine = line;
@@ -4321,6 +4321,9 @@ public class Parser extends AbstractParser {
             if (type == ASSIGN && ES6_DESTRUCTURING) {
                 // If not destructuring, this is a SyntaxError
                 long assignToken = token;
+                if (!inPatternPosition) {
+                    throw error(AbstractParser.message(MSG_INVALID_PROPERTY_INITIALIZER), assignToken);
+                }
                 coverInitializedName = true;
                 next();
                 Expression rhs = assignmentExpression(true, yield, await);
@@ -4338,7 +4341,7 @@ public class Parser extends AbstractParser {
 
             pushDefaultName(propertyName);
             try {
-                propertyValue = assignmentExpression(true, yield, await, true);
+                propertyValue = assignmentExpression(true, yield, await, inPatternPosition);
             } finally {
                 popDefaultName();
             }
@@ -4546,11 +4549,11 @@ public class Parser extends AbstractParser {
      *
      * @return Expression node.
      */
-    private Expression leftHandSideExpression(boolean yield, boolean await) {
+    private Expression leftHandSideExpression(boolean yield, boolean await, boolean inPatternPosition) {
         int callLine = line;
         long callToken = token;
 
-        Expression lhs = memberExpression(yield, await);
+        Expression lhs = memberExpression(yield, await, inPatternPosition);
 
         if (type == LPAREN) {
             boolean async = ES8_ASYNC_FUNCTION && isES2017() && lhs.isTokenType(ASYNC) && lookbehindNoLineTerminatorAfterAsync();
@@ -4721,7 +4724,7 @@ public class Parser extends AbstractParser {
 
         // Get function base.
         final int callLine = line;
-        final Expression constructor = memberExpression(yield, await);
+        final Expression constructor = memberExpression(yield, await, false);
 
         // Get arguments.
         List<Expression> arguments;
@@ -4748,7 +4751,7 @@ public class Parser extends AbstractParser {
         // The object literal following the "new Constructor()" expression
         // is passed as an additional (last) argument to the constructor.
         if (env.syntaxExtensions && type == LBRACE) {
-            arguments.add(objectLiteral(yield, await));
+            arguments.add(objectLiteral(yield, await, false));
         }
 
         final Expression callNode = CallNode.forNew(callLine, newToken, Token.descPosition(newToken), finish, constructor, arguments);
@@ -4783,7 +4786,7 @@ public class Parser extends AbstractParser {
      *
      * @return Expression node.
      */
-    private Expression memberExpression(boolean yield, boolean await) {
+    private Expression memberExpression(boolean yield, boolean await, boolean inPatternPosition) {
         // Prepare to build operation.
         Expression lhs;
         boolean isSuper = false;
@@ -4851,7 +4854,7 @@ public class Parser extends AbstractParser {
 
             default:
                 // Get primary expression.
-                lhs = primaryExpression(yield, await);
+                lhs = primaryExpression(yield, await, inPatternPosition);
                 break;
         }
 
@@ -5739,14 +5742,14 @@ public class Parser extends AbstractParser {
      *
      * @return Expression node.
      */
-    private Expression unaryExpression(boolean yield, boolean await) {
+    private Expression unaryExpression(boolean yield, boolean await, boolean inPatternPosition) {
         final int unaryLine = line;
         final long unaryToken = token;
 
         switch (type) {
             case DELETE: {
                 next();
-                final Expression expr = unaryExpression(yield, await);
+                final Expression expr = unaryExpression(yield, await, false);
 
                 if (type == TokenType.EXP) {
                     throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType()));
@@ -5761,7 +5764,7 @@ public class Parser extends AbstractParser {
             case BIT_NOT:
             case NOT:
                 next();
-                final Expression expr = unaryExpression(yield, await);
+                final Expression expr = unaryExpression(yield, await, false);
 
                 if (type == TokenType.EXP) {
                     throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType()));
@@ -5774,7 +5777,7 @@ public class Parser extends AbstractParser {
                 final TokenType opType = type;
                 next();
 
-                final Expression lhs = unaryExpression(yield, await);
+                final Expression lhs = unaryExpression(yield, await, false);
 
                 return verifyIncDecExpression(unaryToken, opType, lhs, false);
 
@@ -5785,7 +5788,7 @@ public class Parser extends AbstractParser {
                 break;
         }
 
-        Expression expression = leftHandSideExpression(yield, await);
+        Expression expression = leftHandSideExpression(yield, await, inPatternPosition);
 
         if (last != EOL) {
             switch (type) {
@@ -6093,7 +6096,7 @@ public class Parser extends AbstractParser {
         if (in && type == PRIVATE_IDENT && isPrivateFieldsIn() && lookahead() == IN) {
             lhs = privateIdentifierUse().setIsPrivateInCheck();
         } else {
-            lhs = unaryExpression(yield, await);
+            lhs = unaryExpression(yield, await, true);
         }
         return expression(lhs, minPrecedence, in, yield, await);
     }
@@ -6139,7 +6142,7 @@ public class Parser extends AbstractParser {
                     assert opType != IN;
                     rhs = privateIdentifierUse().setIsPrivateInCheck();
                 } else {
-                    rhs = unaryExpression(yield, await);
+                    rhs = unaryExpression(yield, await, false);
                 }
 
                 // Get precedence of next operator.
@@ -6190,7 +6193,7 @@ public class Parser extends AbstractParser {
 
         if (asyncArrow && exprLhs instanceof IdentNode && isBindingIdentifier() && lookaheadIsArrow()) {
             // async ident =>
-            exprLhs = primaryExpression(yield, await);
+            exprLhs = primaryExpression(yield, await, false);
             if (exprLhs instanceof IdentNode && AWAIT.getName().equals(((IdentNode) exprLhs).getName())) {
                 throw error(AbstractParser.message(MSG_INVALID_ARROW_PARAMETER), exprLhs.getToken());
             }
