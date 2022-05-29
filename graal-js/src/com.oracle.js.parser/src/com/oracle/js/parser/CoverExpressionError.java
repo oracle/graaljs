@@ -97,4 +97,16 @@ final class CoverExpressionError {
             assert hasCoverInitializedName();
         }
     }
+
+    public boolean hasDuplicateProto() {
+        return hasError() && !hasCoverInitializedName();
+    }
+
+    public void recordDuplicateProto(long protoToken) {
+        assert Token.descType(protoToken) == TokenType.IDENT || Token.descType(protoToken) == TokenType.STRING;
+        if (shouldRecordError()) {
+            this.errorToken = protoToken;
+            assert hasDuplicateProto();
+        }
+    }
 }

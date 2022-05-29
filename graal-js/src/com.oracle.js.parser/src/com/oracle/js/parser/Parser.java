@@ -4090,7 +4090,11 @@ public class Parser extends AbstractParser {
 
                     if (isES6()) {
                         if (hasDuplicateProto) {
-                            throw error(AbstractParser.message(MSG_MULTIPLE_PROTO_KEY), property.getToken());
+                            if (coverExpression != CoverExpressionError.DENY) {
+                                coverExpression.recordDuplicateProto(property.getToken());
+                            } else {
+                                throw error(AbstractParser.message(MSG_MULTIPLE_PROTO_KEY), property.getToken());
+                            }
                         }
                     } else {
                         checkES5PropertyDefinition(property, propertyNameMapES5);
@@ -6242,8 +6246,12 @@ public class Parser extends AbstractParser {
     }
 
     private void throwExpressionError(CoverExpressionError coverExpression) {
-        assert coverExpression.hasCoverInitializedName();
-        throw error(AbstractParser.message(MSG_INVALID_PROPERTY_INITIALIZER), coverExpression.getErrorToken());
+        if (coverExpression.hasCoverInitializedName()) {
+            throw error(AbstractParser.message(MSG_INVALID_PROPERTY_INITIALIZER), coverExpression.getErrorToken());
+        } else {
+            assert coverExpression.hasDuplicateProto();
+            throw error(AbstractParser.message(MSG_MULTIPLE_PROTO_KEY), coverExpression.getErrorToken());
+        }
     }
 
     /**
