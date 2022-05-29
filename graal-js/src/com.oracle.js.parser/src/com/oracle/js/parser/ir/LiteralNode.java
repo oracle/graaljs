@@ -369,7 +369,6 @@ public abstract class LiteralNode<T> extends Expression {
     public static final class ArrayLiteralNode extends LiteralNode<Expression[]> implements LexicalContextNode {
         private final boolean hasSpread;
         private final boolean hasTrailingComma;
-        private final boolean hasCoverInitializedName;
 
         /**
          * Constructor
@@ -379,7 +378,7 @@ public abstract class LiteralNode<T> extends Expression {
          * @param value array literal value, a Node array
          */
         protected ArrayLiteralNode(final long token, final int finish, final Expression[] value) {
-            this(token, finish, value, false, false, false);
+            this(token, finish, value, false, false);
         }
 
         /**
@@ -391,11 +390,10 @@ public abstract class LiteralNode<T> extends Expression {
          * @param hasSpread true if the array has a spread element
          * @param hasTrailingComma true if the array literal has a comma after the last element
          */
-        protected ArrayLiteralNode(final long token, final int finish, final Expression[] value, boolean hasSpread, boolean hasTrailingComma, boolean hasCoverInitializedName) {
+        protected ArrayLiteralNode(final long token, final int finish, final Expression[] value, boolean hasSpread, boolean hasTrailingComma) {
             super(Token.recast(token, TokenType.ARRAY), finish, value);
             this.hasSpread = hasSpread;
             this.hasTrailingComma = hasTrailingComma;
-            this.hasCoverInitializedName = hasCoverInitializedName;
         }
 
         /**
@@ -407,7 +405,6 @@ public abstract class LiteralNode<T> extends Expression {
             super(node, value);
             this.hasSpread = node.hasSpread;
             this.hasTrailingComma = node.hasTrailingComma;
-            this.hasCoverInitializedName = node.hasCoverInitializedName;
         }
 
         @Override
@@ -421,10 +418,6 @@ public abstract class LiteralNode<T> extends Expression {
 
         public boolean hasTrailingComma() {
             return hasTrailingComma;
-        }
-
-        public boolean hasCoverInitializedName() {
-            return hasCoverInitializedName;
         }
 
         /**
@@ -519,8 +512,8 @@ public abstract class LiteralNode<T> extends Expression {
      *
      * @return the new literal node
      */
-    public static LiteralNode<Expression[]> newInstance(long token, int finish, List<Expression> value, boolean hasSpread, boolean hasTrailingComma, boolean hasCoverInitializedName) {
-        return new ArrayLiteralNode(token, finish, valueToArray(value), hasSpread, hasTrailingComma, hasCoverInitializedName);
+    public static LiteralNode<Expression[]> newInstance(long token, int finish, List<Expression> value, boolean hasSpread, boolean hasTrailingComma) {
+        return new ArrayLiteralNode(token, finish, valueToArray(value), hasSpread, hasTrailingComma);
     }
 
     /**

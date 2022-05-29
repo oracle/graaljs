@@ -3979,7 +3979,6 @@ public class Parser extends AbstractParser {
         // Track elisions.
         boolean elision = true;
         boolean hasSpread = false;
-        boolean hasCoverInitializedName = false;
         loop: while (true) {
             long spreadToken = 0;
             switch (type) {
@@ -4020,7 +4019,6 @@ public class Parser extends AbstractParser {
                             expression = new UnaryNode(Token.recast(spreadToken, SPREAD_ARRAY), expression);
                         }
                         elements.add(expression);
-                        hasCoverInitializedName = hasCoverInitializedName || hasCoverInitializedName(expression);
                     } else {
                         expect(RBRACKET);
                     }
@@ -4030,7 +4028,7 @@ public class Parser extends AbstractParser {
             }
         }
 
-        return LiteralNode.newInstance(arrayToken, finish, elements, hasSpread, elision, hasCoverInitializedName);
+        return LiteralNode.newInstance(arrayToken, finish, elements, hasSpread, elision);
     }
 
     /**
@@ -4058,7 +4056,6 @@ public class Parser extends AbstractParser {
 
         // Create a block for the object literal.
         boolean commaSeen = true;
-        boolean hasCoverInitializedName = false;
         boolean hasDuplicateProto = false;
         boolean hasProto = false;
         loop: while (true) {
@@ -4084,7 +4081,6 @@ public class Parser extends AbstractParser {
                     // Get and add the next property.
                     final PropertyNode property = propertyDefinition(yield, await, coverExpression);
                     elements.add(property);
-                    hasCoverInitializedName = hasCoverInitializedName || property.isCoverInitializedName() || hasCoverInitializedName(property.getValue());
                     hasDuplicateProto = hasProto && property.isProto();
                     hasProto = hasProto || property.isProto();
 
@@ -4103,12 +4099,7 @@ public class Parser extends AbstractParser {
             }
         }
 
-        return new ObjectNode(objectToken, finish, elements, hasCoverInitializedName);
-    }
-
-    private static boolean hasCoverInitializedName(Expression value) {
-        return (value != null && ((value instanceof ObjectNode && ((ObjectNode) value).hasCoverInitializedName()) ||
-                        (value instanceof ArrayLiteralNode && ((ArrayLiteralNode) value).hasCoverInitializedName())));
+        return new ObjectNode(objectToken, finish, elements);
     }
 
     private void checkES5PropertyDefinition(PropertyNode property, Map<String, PropertyNode> map) {
@@ -6006,7 +5997,6 @@ public class Parser extends AbstractParser {
                 }
 
                 Expression rhs = assignmentExpression(true, yield, await, coverExpression);
-                assert canBeArrowParameterList || !hasCoverInitializedName(rhs);
 
                 if (assignmentExpression == null) {
                     assignmentExpression = rhs;
@@ -6190,8 +6180,8 @@ public class Parser extends AbstractParser {
         final long startToken = token;
         final int startLine = line;
 
-        boolean useCover = isStartOfAssignmentPattern();
-        CoverExpressionError coverExprLhs = useCover ? new CoverExpressionError() : CoverExpressionError.DENY;
+        boolean canBeAssignmentPattern = isStartOfAssignmentPattern();
+        CoverExpressionError coverExprLhs = canBeAssignmentPattern ? new CoverExpressionError() : CoverExpressionError.DENY;
 
         Expression exprLhs = conditionalExpression(in, yield, await, coverExprLhs);
 
@@ -6211,7 +6201,6 @@ public class Parser extends AbstractParser {
         }
         assert !(exprLhs instanceof ExpressionList);
 
-        boolean inPatternPosition = coverExpression != CoverExpressionError.DENY;
         if (type.isAssignment()) {
             final boolean isAssign = type == ASSIGN;
             if (isAssign) {
@@ -6221,21 +6210,20 @@ public class Parser extends AbstractParser {
                 long assignToken = token;
                 next();
                 Expression exprRhs = assignmentExpression(in, yield, await);
-                return verifyAssignment(assignToken, exprLhs, exprRhs, inPatternPosition);
+                return verifyAssignment(assignToken, exprLhs, exprRhs, coverExpression != CoverExpressionError.DENY);
             } finally {
                 if (isAssign) {
                     popDefaultName();
                 }
             }
         } else {
-            if (useCover) {
-                if (inPatternPosition) {
+            if (canBeAssignmentPattern) {
+                if (coverExpression != CoverExpressionError.DENY) {
                     coverExpression.recordErrorFrom(coverExprLhs);
                 } else {
                     verifyExpression(coverExprLhs);
                 }
             }
-            assert inPatternPosition || !hasCoverInitializedName(exprLhs);
             return exprLhs;
         }
     }
