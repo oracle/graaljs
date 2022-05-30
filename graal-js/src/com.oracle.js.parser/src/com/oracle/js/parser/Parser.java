@@ -4090,11 +4090,7 @@ public class Parser extends AbstractParser {
 
                     if (isES6()) {
                         if (hasDuplicateProto) {
-                            if (coverExpression != CoverExpressionError.DENY) {
-                                coverExpression.recordDuplicateProto(property.getToken());
-                            } else {
-                                throw error(AbstractParser.message(MSG_MULTIPLE_PROTO_KEY), property.getToken());
-                            }
+                            recordOrThrowExpressionError(MSG_MULTIPLE_PROTO_KEY, property.getToken(), coverExpression);
                         }
                     } else {
                         checkES5PropertyDefinition(property, propertyNameMapES5);
@@ -4321,11 +4317,7 @@ public class Parser extends AbstractParser {
             if (type == ASSIGN && ES6_DESTRUCTURING) {
                 // If not destructuring, this is a SyntaxError
                 long assignToken = token;
-                if (coverExpression != CoverExpressionError.DENY) {
-                    coverExpression.recordCoverInitializedName(assignToken);
-                } else {
-                    throw error(AbstractParser.message(MSG_INVALID_PROPERTY_INITIALIZER), assignToken);
-                }
+                recordOrThrowExpressionError(MSG_INVALID_PROPERTY_INITIALIZER, assignToken, coverExpression);
                 coverInitializedName = true;
                 next();
                 Expression rhs = assignmentExpression(true, yield, await);
@@ -6246,11 +6238,15 @@ public class Parser extends AbstractParser {
     }
 
     private void throwExpressionError(CoverExpressionError coverExpression) {
-        if (coverExpression.hasCoverInitializedName()) {
-            throw error(AbstractParser.message(MSG_INVALID_PROPERTY_INITIALIZER), coverExpression.getErrorToken());
+        assert coverExpression.hasError();
+        throw error(AbstractParser.message(coverExpression.getErrorMessage()), coverExpression.getErrorToken());
+    }
+
+    private void recordOrThrowExpressionError(String msgId, long assignToken, CoverExpressionError coverExpression) {
+        if (coverExpression != CoverExpressionError.DENY) {
+            coverExpression.recordExpressionError(msgId, assignToken);
         } else {
-            assert coverExpression.hasDuplicateProto();
-            throw error(AbstractParser.message(MSG_MULTIPLE_PROTO_KEY), coverExpression.getErrorToken());
+            throw error(AbstractParser.message(msgId), assignToken);
         }
     }
 

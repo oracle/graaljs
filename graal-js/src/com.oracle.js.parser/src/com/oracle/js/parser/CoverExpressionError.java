@@ -62,6 +62,7 @@ final class CoverExpressionError {
     static final CoverExpressionError IGNORE = new CoverExpressionError();
 
     private long errorToken;
+    private String errorMessage;
 
     CoverExpressionError() {
     }
@@ -75,38 +76,28 @@ final class CoverExpressionError {
         return errorToken;
     }
 
+    public String getErrorMessage() {
+        assert hasError();
+        return errorMessage;
+    }
+
     private boolean shouldRecordError() {
         // Only record the first error.
         return this != IGNORE && !hasError();
     }
 
+    public void recordExpressionError(String message, long token) {
+        if (shouldRecordError()) {
+            this.errorToken = token;
+            this.errorMessage = message;
+        }
+    }
+
     public void recordErrorFrom(CoverExpressionError other) {
         if (shouldRecordError() && other.hasError()) {
             this.errorToken = other.getErrorToken();
+            this.errorMessage = other.getErrorMessage();
         }
     }
 
-    public boolean hasCoverInitializedName() {
-        return hasError() && Token.descType(errorToken) == TokenType.ASSIGN;
-    }
-
-    public void recordCoverInitializedName(long assignToken) {
-        assert Token.descType(assignToken) == TokenType.ASSIGN;
-        if (shouldRecordError()) {
-            this.errorToken = assignToken;
-            assert hasCoverInitializedName();
-        }
-    }
-
-    public boolean hasDuplicateProto() {
-        return hasError() && !hasCoverInitializedName();
-    }
-
-    public void recordDuplicateProto(long protoToken) {
-        assert Token.descType(protoToken) == TokenType.IDENT || Token.descType(protoToken) == TokenType.STRING;
-        if (shouldRecordError()) {
-            this.errorToken = protoToken;
-            assert hasDuplicateProto();
-        }
-    }
 }
