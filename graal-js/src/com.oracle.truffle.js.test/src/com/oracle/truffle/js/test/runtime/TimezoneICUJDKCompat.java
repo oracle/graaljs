@@ -45,6 +45,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class TimezoneICUJDKCompat {
@@ -87,15 +88,10 @@ public class TimezoneICUJDKCompat {
     }
 
     @Test
+    @Ignore
     public void compareICUandJDKversions() {
         String versionJDK = java.time.zone.ZoneRulesProvider.getVersions("UTC").lastEntry().getKey();
         String versionICU = com.ibm.icu.util.TimeZone.getTZDataVersion();
-        if ("2021a3".equals(versionICU)) {
-            // Time zone data (tzdata) version 2021e (2021-oct) except that
-            // for now ICU retains pre-1970 time zone data that has recently
-            // been removed from the TZ DB. (Reports as version "2021a3")
-            versionICU = "2021e";
-        }
         Assert.assertEquals(versionJDK, versionICU);
     }
 
