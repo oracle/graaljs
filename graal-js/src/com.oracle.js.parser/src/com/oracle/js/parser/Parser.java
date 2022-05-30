@@ -6198,6 +6198,11 @@ public class Parser extends AbstractParser {
         assert !(exprLhs instanceof ExpressionList);
 
         if (type.isAssignment()) {
+            if (canBeAssignmentPattern && !isDestructuringLhs(exprLhs)) {
+                // If LHS is not an AssignmentPattern, verify that it is a valid expression.
+                verifyExpression(coverExprLhs);
+            }
+
             final boolean isAssign = type == ASSIGN;
             if (isAssign) {
                 pushDefaultName(exprLhs);
