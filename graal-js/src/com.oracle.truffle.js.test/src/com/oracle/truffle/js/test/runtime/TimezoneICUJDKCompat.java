@@ -45,6 +45,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class TimezoneICUJDKCompat {
@@ -87,6 +88,7 @@ public class TimezoneICUJDKCompat {
     }
 
     @Test
+    @Ignore
     public void compareICUandJDKversions() {
         String versionJDK = java.time.zone.ZoneRulesProvider.getVersions("UTC").lastEntry().getKey();
         String versionICU = com.ibm.icu.util.TimeZone.getTZDataVersion();
