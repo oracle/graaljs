@@ -2640,14 +2640,6 @@
     "status" : "FAIL",
     "comment" : "Missing 'features: [Intl.DurationFormat]'"
   }, {
-    "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-priority-less-precision.js",
-    "status" : "FAIL",
-    "comment" : "Bug in ICU: https://unicode-org.atlassian.net/browse/ICU-21886"
-  }, {
-    "filePath" : "intl402/NumberFormat/prototype/format/format-rounding-priority-more-precision.js",
-    "status" : "FAIL",
-    "comment" : "Off-spec test, fixed by https://github.com/tc39/test262/commit/0a480293334c34a34f2cae012ddb4dfbd94e5782"
-  }, {
     "filePath" : "intl402/Temporal/Calendar/prototype/dateAdd/date-infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
