@@ -4849,6 +4849,9 @@ public class Parser extends AbstractParser {
             default:
                 // Get primary expression.
                 lhs = primaryExpression(yield, await, coverExpression);
+                if (coverExpression != CoverExpressionError.DENY) {
+                    verifyPrimaryExpression(lhs, coverExpression);
+                }
                 break;
         }
 
@@ -4911,6 +4914,31 @@ public class Parser extends AbstractParser {
         }
 
         return lhs;
+    }
+
+    /**
+     * To be called immediately after {@link #primaryExpression} to check if the next token still
+     * meets the AssignmentPattern grammar requirements and if not, throws any expression error.
+     * This helps report the first error location for cases like: <code>({x=i}[{y=j}])</code>.
+     */
+    private void verifyPrimaryExpression(Expression lhs, CoverExpressionError coverExpression) {
+        if (coverExpression != CoverExpressionError.DENY && coverExpression.hasError() && isDestructuringLhs(lhs)) {
+            /**
+             * These token types indicate that the preceding PrimaryExpression is part of an
+             * unfinished MemberExpression or other LeftHandSideExpression, which also means that it
+             * cannot be a valid AssignmentPattern anymore at this point.
+             */
+            switch (type) {
+                case LPAREN:
+                case PERIOD:
+                case LBRACKET:
+                case OPTIONAL_CHAIN:
+                case TEMPLATE:
+                case TEMPLATE_HEAD:
+                    verifyExpression(coverExpression);
+                    break;
+            }
+        }
     }
 
     /**
