@@ -306,8 +306,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return new ClassDefinitionNode(context, (JSFunctionExpressionNode) cloneUninitialized(constructorFunctionNode, materializedTags), cloneUninitialized(classHeritageNode, materializedTags),
-                        ObjectLiteralMemberNode.cloneUninitialized(memberNodes, materializedTags),
-                        cloneUninitialized(writeClassBindingNode, materializedTags), writeInternalConstructorBrand, hasName, instanceFieldCount, staticElementCount, setPrivateBrandNode != null,
+                        ObjectLiteralMemberNode.cloneUninitialized(memberNodes, materializedTags), cloneUninitialized(writeClassBindingNode, materializedTags),
+                        cloneUninitialized(writeInternalConstructorBrand, materializedTags), hasName, instanceFieldCount, staticElementCount, setPrivateBrandNode != null,
                         defineConstructorMethodNode.getBlockScopeSlot());
     }
 
