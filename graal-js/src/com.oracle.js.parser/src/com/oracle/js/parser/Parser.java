@@ -2609,10 +2609,6 @@ public class Parser extends AbstractParser {
         }
     }
 
-    private boolean isStartOfAssignmentPattern() {
-        return type == LBRACKET || type == LBRACE;
-    }
-
     private Expression bindingPattern(boolean yield, boolean await) {
         if (type == LBRACKET) {
             return arrayLiteral(yield, await, CoverExpressionError.IGNORE);
@@ -4849,9 +4845,7 @@ public class Parser extends AbstractParser {
             default:
                 // Get primary expression.
                 lhs = primaryExpression(yield, await, coverExpression);
-                if (coverExpression != CoverExpressionError.DENY) {
-                    verifyPrimaryExpression(lhs, coverExpression);
-                }
+                verifyPrimaryExpression(lhs, coverExpression);
                 break;
         }
 
@@ -6176,6 +6170,10 @@ public class Parser extends AbstractParser {
         return lhs;
     }
 
+    private boolean isStartOfAssignmentPattern() {
+        return type == LBRACKET || type == LBRACE;
+    }
+
     private Expression assignmentExpression(boolean in, boolean yield, boolean await) {
         return assignmentExpression(in, yield, await, CoverExpressionError.DENY);
     }
@@ -6183,10 +6181,15 @@ public class Parser extends AbstractParser {
     /**
      * AssignmentExpression.
      *
-     * AssignmentExpression[In, Yield] : ConditionalExpression[?In, ?Yield] [+Yield]
-     * YieldExpression[?In] ArrowFunction[?In, ?Yield] AsyncArrowFunction
-     * LeftHandSideExpression[?Yield] = AssignmentExpression[?In, ?Yield]
-     * LeftHandSideExpression[?Yield] AssignmentOperator AssignmentExpression[?In, ?Yield]
+     * <pre>
+     * AssignmentExpression[In, Yield, Await] :
+     *   ConditionalExpression
+     *   [+Yield] YieldExpression
+     *   ArrowFunction
+     *   AsyncArrowFunction
+     *   LeftHandSideExpression = AssignmentExpression
+     *   LeftHandSideExpression AssignmentOperator AssignmentExpression
+     * </pre>
      */
     private Expression assignmentExpression(boolean in, boolean yield, boolean await, CoverExpressionError coverExpression) {
         if (type == YIELD && yield) {
