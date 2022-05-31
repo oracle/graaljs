@@ -219,8 +219,8 @@ public final class JSRuntime {
             return JSBoolean.TYPE_NAME;
         } else if (value instanceof Symbol) {
             return JSSymbol.TYPE_NAME;
-        } else if (JSDynamicObject.isJSDynamicObject(value)) {
-            JSDynamicObject object = (JSDynamicObject) value;
+        } else if (JSObject.isJSObject(value)) {
+            JSObject object = (JSObject) value;
             if (JSProxy.isJSProxy(object)) {
                 Object target = JSProxy.getTargetNonProxy(object);
                 return typeof(target);
@@ -300,8 +300,8 @@ public final class JSRuntime {
     public static Object toPrimitive(Object value, JSToPrimitiveNode.Hint hint) {
         if (value == Null.instance || value == Undefined.instance) {
             return value;
-        } else if (JSDynamicObject.isJSDynamicObject(value)) {
-            return JSObject.toPrimitive((JSDynamicObject) value, hint);
+        } else if (JSObject.isJSObject(value)) {
+            return JSObject.toPrimitive((JSObject) value, hint);
         } else if (isForeignObject(value)) {
             return toPrimitiveFromForeign(value, hint);
         }
@@ -887,8 +887,8 @@ public final class JSRuntime {
             throw Errors.createTypeErrorCannotConvertToString("a Symbol value");
         } else if (value instanceof BigInt) {
             return Strings.fromBigInt((BigInt) value);
-        } else if (JSDynamicObject.isJSDynamicObject(value)) {
-            return toString(JSObject.toPrimitive((JSDynamicObject) value, JSToPrimitiveNode.Hint.String));
+        } else if (JSObject.isJSObject(value)) {
+            return toString(JSObject.toPrimitive((JSObject) value, JSToPrimitiveNode.Hint.String));
         } else if (value instanceof TruffleObject) {
             assert !isJSNative(value);
             return toString(toPrimitiveFromForeign(value, JSToPrimitiveNode.Hint.String));
@@ -937,8 +937,8 @@ public final class JSRuntime {
             return format.quoteString() ? quote((TruffleString) value) : (TruffleString) value;
         } else if (value instanceof String) {
             return format.quoteString() ? quote(Strings.fromJavaString((String) value)) : Strings.fromJavaString((String) value);
-        } else if (JSDynamicObject.isJSDynamicObject(value)) {
-            return ((JSDynamicObject) value).toDisplayStringImpl(allowSideEffects, format, depth);
+        } else if (JSObject.isJSObject(value)) {
+            return ((JSObject) value).toDisplayStringImpl(allowSideEffects, format, depth);
         } else if (value instanceof Symbol) {
             return ((Symbol) value).toTString();
         } else if (value instanceof BigInt) {
@@ -1414,8 +1414,8 @@ public final class JSRuntime {
      */
     public static TruffleObject toObject(JSContext ctx, Object value) {
         requireObjectCoercible(value, ctx);
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, JSDynamicObject.isJSDynamicObject(value))) {
-            return (JSDynamicObject) value;
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, JSObject.isJSObject(value))) {
+            return (JSObject) value;
         }
         Object unboxedValue = value;
         if (isForeignObject(value)) {
