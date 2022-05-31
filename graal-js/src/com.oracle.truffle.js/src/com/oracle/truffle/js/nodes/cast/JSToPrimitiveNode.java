@@ -55,6 +55,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -229,7 +230,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         JSRealm realm = getRealm();
         TruffleLanguage.Env env = realm.getEnv();
         if (env.isHostObject(object)) {
-            Object maybeResult = tryHostObjectToPrimitive(object, interop);
+            Object maybeResult = tryHostObjectToPrimitive(object, hint, interop);
             if (maybeResult != null) {
                 return maybeResult;
             }
@@ -240,13 +241,13 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         return JSInteropUtil.toPrimitiveOrDefault(result, result, resultInterop, this);
     }
 
-    private Object tryHostObjectToPrimitive(Object object, InteropLibrary interop) {
-        if (isHintNumber() && getLanguage().getJSContext().isOptionNashornCompatibilityMode() &&
+    public static Object tryHostObjectToPrimitive(Object object, Hint hint, InteropLibrary interop) {
+        if (hint != Hint.String && JavaScriptLanguage.get(interop).getJSContext().isOptionNashornCompatibilityMode() &&
                         interop.isMemberInvocable(object, "doubleValue")) {
             try {
                 return interop.invokeMember(object, "doubleValue");
             } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
-                throw Errors.createTypeErrorInteropException(object, e, "doubleValue()", this);
+                throw Errors.createTypeErrorInteropException(object, e, "doubleValue()", interop);
             }
         } else if (interop.isInstant(object)) {
             return JSDate.getDateValueFromInstant(object, interop);
@@ -272,25 +273,25 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private TruffleString javaClassToString(Object object, InteropLibrary interop) {
+    private static TruffleString javaClassToString(Object object, InteropLibrary interop) {
         try {
             String qualifiedName = InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(object));
-            if (getLanguage().getJSContext().isOptionNashornCompatibilityMode() && qualifiedName.endsWith("[]")) {
-                Object hostObject = getRealm().getEnv().asHostObject(object);
+            if (JavaScriptLanguage.get(interop).getJSContext().isOptionNashornCompatibilityMode() && qualifiedName.endsWith("[]")) {
+                Object hostObject = JSRealm.get(interop).getEnv().asHostObject(object);
                 qualifiedName = ((Class<?>) hostObject).getName();
             }
             return Strings.fromJavaString("class " + qualifiedName);
         } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(object, e, "getTypeName", this);
+            throw Errors.createTypeErrorInteropException(object, e, "getTypeName", interop);
         }
     }
 
     @TruffleBoundary
-    private TruffleString javaExceptionToString(Object object, InteropLibrary interop) {
+    private static TruffleString javaExceptionToString(Object object, InteropLibrary interop) {
         try {
             return InteropLibrary.getUncached().asTruffleString(interop.toDisplayString(object, true));
         } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(object, e, "toString", this);
+            throw Errors.createTypeErrorInteropException(object, e, "toString", interop);
         }
     }
 

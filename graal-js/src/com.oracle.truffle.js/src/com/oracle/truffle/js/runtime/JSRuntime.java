@@ -48,13 +48,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -77,7 +74,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
-import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
@@ -325,65 +321,12 @@ public final class JSRuntime {
         } else if (JSInteropUtil.isBoxedPrimitive(tObj, interop)) {
             return JSInteropUtil.toPrimitiveOrDefault(tObj, Null.instance, interop, null);
         } else if (JavaScriptLanguage.getCurrentEnv().isHostObject(tObj)) {
-            Object maybeResult = tryToPrimitiveFromHostObject(tObj, hint, interop);
+            Object maybeResult = JSToPrimitiveNode.tryHostObjectToPrimitive(tObj, hint, interop);
             if (maybeResult != null) {
                 return maybeResult;
             }
         }
         return foreignOrdinaryToPrimitive(tObj, hint == JSToPrimitiveNode.Hint.None ? JSToPrimitiveNode.Hint.Number : hint);
-    }
-
-    private static Object tryToPrimitiveFromHostObject(Object tObj, JSToPrimitiveNode.Hint hint, InteropLibrary interop) {
-        if (hint == JSToPrimitiveNode.Hint.Number && JavaScriptLanguage.getCurrentLanguage().getJSContext().isOptionNashornCompatibilityMode() &&
-                        interop.isMemberInvocable(tObj, "doubleValue")) {
-            try {
-                return interop.invokeMember(tObj, "doubleValue");
-            } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
-                throw Errors.createTypeErrorInteropException(tObj, e, "doubleValue()", null);
-            }
-        } else if (interop.isInstant(tObj)) {
-            return JSDate.getDateValueFromInstant(tObj, interop);
-        } else if (isJavaArray(tObj, interop)) {
-            return formatJavaArray(tObj, interop);
-        } else if (interop.isMetaObject(tObj)) {
-            return javaClassToString(tObj, interop);
-        } else if (interop.isException(tObj)) {
-            return javaExceptionToString(tObj, interop);
-        }
-        return null;
-    }
-
-    private static boolean isJavaArray(Object obj, InteropLibrary interop) {
-        return interop.hasArrayElements(obj) && interop.isMemberReadable(obj, "length");
-    }
-
-    @TruffleBoundary
-    private static Object formatJavaArray(Object obj, InteropLibrary interop) {
-        assert isJavaArray(obj, interop);
-        return JSRuntime.toDisplayString(obj, true, ToDisplayStringFormat.getArrayFormat());
-    }
-
-    @TruffleBoundary
-    private static Object javaClassToString(Object object, InteropLibrary interop) {
-        try {
-            String qualifiedName = InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(object));
-            if (JavaScriptLanguage.getCurrentLanguage().getJSContext().isOptionNashornCompatibilityMode() && qualifiedName.endsWith("[]")) {
-                Object hostObject = JavaScriptLanguage.getCurrentEnv().asHostObject(object);
-                qualifiedName = ((Class<?>) hostObject).getName();
-            }
-            return "class " + qualifiedName;
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(object, e, "getTypeName", null);
-        }
-    }
-
-    @TruffleBoundary
-    private static String javaExceptionToString(Object object, InteropLibrary interop) {
-        try {
-            return InteropLibrary.getUncached().asString(interop.toDisplayString(object, true));
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(object, e, "toString", null);
-        }
     }
 
     @TruffleBoundary
