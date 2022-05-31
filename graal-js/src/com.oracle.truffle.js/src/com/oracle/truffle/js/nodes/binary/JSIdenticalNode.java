@@ -290,15 +290,7 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return false;
     }
 
-    @Specialization(guards = {"cachedClassA != null", "cachedClassB != null", "a.getClass() == cachedClassA",
-                    "b.getClass() == cachedClassB"}, limit = "MAX_CLASSES")
-    protected boolean doNumberCached(Object a, Object b, //
-                    @Cached("getJavaNumberClass(a)") Class<?> cachedClassA, //
-                    @Cached("getJavaNumberClass(b)") Class<?> cachedClassB) {
-        return doNumber((Number) cachedClassA.cast(a), (Number) cachedClassB.cast(b));
-    }
-
-    @Specialization(guards = {"isJavaNumber(a)", "isJavaNumber(b)"}, replaces = "doNumberCached")
+    @Specialization(guards = {"isJavaNumber(a)", "isJavaNumber(b)"})
     protected boolean doNumber(Number a, Number b) {
         return doDouble(JSRuntime.doubleValue(a), JSRuntime.doubleValue(b));
     }

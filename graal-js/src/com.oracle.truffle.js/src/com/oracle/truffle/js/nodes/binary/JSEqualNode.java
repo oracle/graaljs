@@ -74,7 +74,6 @@ import com.oracle.truffle.js.runtime.objects.Null;
 @NodeInfo(shortName = "==")
 @ImportStatic({JSRuntime.class, JSInteropUtil.class, JSConfig.class})
 public abstract class JSEqualNode extends JSCompareNode {
-    protected static final int MAX_CLASSES = 3;
 
     protected JSEqualNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
@@ -337,14 +336,7 @@ public abstract class JSEqualNode extends JSCompareNode {
         }
     }
 
-    @Specialization(guards = {"a != null", "b != null", "cachedClassA != null", "cachedClassB != null", "a.getClass() == cachedClassA", "b.getClass() == cachedClassB"}, limit = "MAX_CLASSES")
-    protected static boolean doNumberCached(Object a, Object b,
-                    @Cached("getJavaNumberClass(a)") Class<?> cachedClassA,
-                    @Cached("getJavaNumberClass(b)") Class<?> cachedClassB) {
-        return doNumber((Number) cachedClassA.cast(a), (Number) cachedClassB.cast(b));
-    }
-
-    @Specialization(guards = {"isJavaNumber(a)", "isJavaNumber(b)"}, replaces = "doNumberCached")
+    @Specialization(guards = {"isJavaNumber(a)", "isJavaNumber(b)"})
     protected static boolean doNumber(Number a, Number b) {
         return doDouble(JSRuntime.doubleValue(a), JSRuntime.doubleValue(b));
     }
