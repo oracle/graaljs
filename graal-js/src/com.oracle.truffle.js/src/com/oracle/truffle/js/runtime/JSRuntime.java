@@ -284,7 +284,6 @@ public final class JSRuntime {
      * Implementation of ECMA 7.1.1 "ToPrimitive", with NO hint given.
      *
      * @param value an Object to be converted to a primitive value
-     *
      * @return an Object representing the primitive value of the parameter
      */
     @TruffleBoundary
@@ -325,24 +324,32 @@ public final class JSRuntime {
         } else if (JSInteropUtil.isBoxedPrimitive(tObj, interop)) {
             return JSInteropUtil.toPrimitiveOrDefault(tObj, Null.instance, interop, null);
         } else if (JavaScriptLanguage.getCurrentEnv().isHostObject(tObj)) {
-            if (Strings.HINT_NUMBER.equals(hint) && JavaScriptLanguage.getCurrentLanguage().getJSContext().isOptionNashornCompatibilityMode() &&
-                            interop.isMemberInvocable(tObj, "doubleValue")) {
-                try {
-                    return interop.invokeMember(tObj, "doubleValue");
-                } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
-                    throw Errors.createTypeErrorInteropException(tObj, e, "doubleValue()", null);
-                }
-            } else if (interop.isInstant(tObj)) {
-                return JSDate.getDateValueFromInstant(tObj, interop);
-            } else if (isJavaArray(tObj, interop)) {
-                return formatJavaArray(tObj, interop);
-            } else if (interop.isMetaObject(tObj)) {
-                return javaClassToString(tObj, interop);
-            } else if (interop.isException(tObj)) {
-                return javaExceptionToString(tObj, interop);
+            Object maybeResult = tryToPrimitiveFromHostObject(tObj, hint, interop);
+            if (maybeResult != null) {
+                return maybeResult;
             }
         }
         return foreignOrdinaryToPrimitive(tObj, hint);
+    }
+
+    private static Object tryToPrimitiveFromHostObject(Object tObj, TruffleString hint, InteropLibrary interop) {
+        if (Strings.HINT_NUMBER.equals(hint) && JavaScriptLanguage.getCurrentLanguage().getJSContext().isOptionNashornCompatibilityMode() &&
+                        interop.isMemberInvocable(tObj, "doubleValue")) {
+            try {
+                return interop.invokeMember(tObj, "doubleValue");
+            } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
+                throw Errors.createTypeErrorInteropException(tObj, e, "doubleValue()", null);
+            }
+        } else if (interop.isInstant(tObj)) {
+            return JSDate.getDateValueFromInstant(tObj, interop);
+        } else if (isJavaArray(tObj, interop)) {
+            return formatJavaArray(tObj, interop);
+        } else if (interop.isMetaObject(tObj)) {
+            return javaClassToString(tObj, interop);
+        } else if (interop.isException(tObj)) {
+            return javaExceptionToString(tObj, interop);
+        }
+        return null;
     }
 
     private static boolean isJavaArray(Object obj, InteropLibrary interop) {
@@ -1404,7 +1411,7 @@ public final class JSRuntime {
 
     /**
      * 9.8.1 ToString Applied to the Number Type.
-     *
+     * <p>
      * Better use JSDoubleToStringNode where appropriate.
      */
     public static TruffleString doubleToString(double d) {

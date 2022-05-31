@@ -913,13 +913,13 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isHintNumber.profile(Strings.HINT_NUMBER.equals(hint))) {
                 if (ordinaryToPrimitiveHintNumber == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    ordinaryToPrimitiveHintNumber = insert(OrdinaryToPrimitiveNode.createHintNumber(getContext()));
+                    ordinaryToPrimitiveHintNumber = insert(OrdinaryToPrimitiveNode.createHintNumber());
                 }
                 return ordinaryToPrimitiveHintNumber.execute(obj);
             } else if (isHintStringOrDefault.profile(Strings.HINT_STRING.equals(hint) || Strings.HINT_DEFAULT.equals(hint))) {
                 if (ordinaryToPrimitiveHintString == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    ordinaryToPrimitiveHintString = insert(OrdinaryToPrimitiveNode.createHintString(getContext()));
+                    ordinaryToPrimitiveHintString = insert(OrdinaryToPrimitiveNode.createHintString());
                 }
                 return ordinaryToPrimitiveHintString.execute(obj);
             } else {

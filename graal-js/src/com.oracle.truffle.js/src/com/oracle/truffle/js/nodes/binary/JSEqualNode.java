@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -298,21 +299,23 @@ public abstract class JSEqualNode extends JSCompareNode {
         return false;
     }
 
-    @Specialization(guards = "isForeignObject(a) || isForeignObject(b)")
+    @Specialization(guards = "isAForeign || isBForeign")
     protected boolean doForeign(Object a, Object b,
+                    @Bind("isForeignObject(a)") boolean isAForeign,
+                    @Bind("isForeignObject(b)") boolean isBForeign,
                     @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
                     @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
         assert (a != null) && (b != null);
         final Object defaultValue = null;
         Object primLeft;
-        if (JSGuards.isForeignObject(a)) {
+        if (isAForeign) {
             primLeft = JSInteropUtil.toPrimitiveOrDefault(a, defaultValue, aInterop, this);
         } else {
             primLeft = JSGuards.isNullOrUndefined(a) ? Null.instance : a;
         }
         Object primRight;
-        if (JSGuards.isForeignObject(b)) {
+        if (isBForeign) {
             primRight = JSInteropUtil.toPrimitiveOrDefault(b, defaultValue, bInterop, this);
         } else {
             primRight = JSGuards.isNullOrUndefined(b) ? Null.instance : b;

@@ -57,13 +57,12 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
-import com.oracle.truffle.js.nodes.access.PropertyNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
@@ -169,12 +168,11 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
 
     @Specialization
     protected Object doJSObject(JSObject object,
-                    @Cached("createGetToPrimitive(object)") PropertyNode getToPrimitive,
+                    @Cached("createGetToPrimitive()") PropertyGetNode getToPrimitive,
                     @Cached("create()") IsPrimitiveNode isPrimitive,
-                    @Cached("createOrdinaryToPrimitive(object)") OrdinaryToPrimitiveNode ordinaryToPrimitive,
                     @Cached("createBinaryProfile()") ConditionProfile exoticToPrimProfile,
                     @Cached("createCall()") JSFunctionCallNode callExoticToPrim) {
-        Object exoticToPrim = getToPrimitive.executeWithTarget(object);
+        Object exoticToPrim = getToPrimitive.getValue(object);
         if (exoticToPrimProfile.profile(!JSRuntime.isNullOrUndefined(exoticToPrim))) {
             Object result = callExoticToPrim.executeCall(JSArguments.createOneArg(object, exoticToPrim, getHintName()));
             if (isPrimitive.executeBoolean(result)) {
@@ -183,7 +181,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
             throw Errors.createTypeError("[Symbol.toPrimitive] method returned a non-primitive object", this);
         }
 
-        return ordinaryToPrimitive.execute(object);
+        return ordinaryToPrimitive(object);
     }
 
     private Object getHintName() {
@@ -233,27 +231,35 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         JSRealm realm = getRealm();
         TruffleLanguage.Env env = realm.getEnv();
         if (env.isHostObject(object)) {
-            if (isHintNumber() && getLanguage().getJSContext().isOptionNashornCompatibilityMode() &&
-                            interop.isMemberInvocable(object, "doubleValue")) {
-                try {
-                    return interop.invokeMember(object, "doubleValue");
-                } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
-                    throw Errors.createTypeErrorInteropException(object, e, "doubleValue()", this);
-                }
-            } else if (interop.isInstant(object)) {
-                return JSDate.getDateValueFromInstant(object, interop);
-            } else if (isJavaArray(object, interop)) {
-                return formatJavaArray(object, interop);
-            } else if (interop.isMetaObject(object)) {
-                return javaClassToString(object, interop);
-            } else if (interop.isException(object)) {
-                return javaExceptionToString(object, interop);
+            Object maybeResult = tryHostObjectToPrimitive(object, interop);
+            if (maybeResult != null) {
+                return maybeResult;
             }
             // else, try OrdinaryToPrimitive (toString(), valueOf())
         }
         Object result = ordinaryToPrimitive(object);
         assert IsPrimitiveNode.getUncached().executeBoolean(result) : result;
         return JSInteropUtil.toPrimitiveOrDefault(result, result, resultInterop, this);
+    }
+
+    private Object tryHostObjectToPrimitive(Object object, InteropLibrary interop) {
+        if (isHintNumber() && getLanguage().getJSContext().isOptionNashornCompatibilityMode() &&
+                        interop.isMemberInvocable(object, "doubleValue")) {
+            try {
+                return interop.invokeMember(object, "doubleValue");
+            } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
+                throw Errors.createTypeErrorInteropException(object, e, "doubleValue()", this);
+            }
+        } else if (interop.isInstant(object)) {
+            return JSDate.getDateValueFromInstant(object, interop);
+        } else if (isJavaArray(object, interop)) {
+            return formatJavaArray(object, interop);
+        } else if (interop.isMetaObject(object)) {
+            return javaClassToString(object, interop);
+        } else if (interop.isException(object)) {
+            return javaExceptionToString(object, interop);
+        }
+        return null;
     }
 
     private static boolean isJavaArray(Object object, InteropLibrary interop) {
@@ -299,18 +305,16 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     private Object ordinaryToPrimitive(Object object) {
         if (ordinaryToPrimitiveNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            ordinaryToPrimitiveNode = insert(OrdinaryToPrimitiveNode.create(getLanguage().getJSContext(), isHintString() ? Hint.String : Hint.Number));
+            ordinaryToPrimitiveNode = insert(createOrdinaryToPrimitive());
         }
         return ordinaryToPrimitiveNode.execute(object);
     }
 
-    protected static PropertyNode createGetToPrimitive(JSDynamicObject object) {
-        JSContext context = JSObject.getJSContext(object);
-        return PropertyNode.createMethod(context, null, Symbol.SYMBOL_TO_PRIMITIVE);
+    protected PropertyGetNode createGetToPrimitive() {
+        return PropertyGetNode.createGetMethod(Symbol.SYMBOL_TO_PRIMITIVE, getLanguage().getJSContext());
     }
 
-    protected OrdinaryToPrimitiveNode createOrdinaryToPrimitive(JSDynamicObject object) {
-        JSContext context = JSObject.getJSContext(object);
-        return OrdinaryToPrimitiveNode.create(context, isHintString() ? Hint.String : Hint.Number);
+    protected OrdinaryToPrimitiveNode createOrdinaryToPrimitive() {
+        return OrdinaryToPrimitiveNode.create(isHintString() ? Hint.String : Hint.Number);
     }
 }
