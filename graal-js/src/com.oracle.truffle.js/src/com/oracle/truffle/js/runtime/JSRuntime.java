@@ -2610,8 +2610,8 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static JSRealm getFunctionRealm(Object obj, JSRealm currentRealm) {
-        if (JSDynamicObject.isJSDynamicObject(obj)) {
-            JSDynamicObject dynObj = (JSDynamicObject) obj;
+        if (JSObject.isJSObject(obj)) {
+            JSObject dynObj = (JSObject) obj;
             if (JSFunction.isJSFunction(dynObj)) {
                 if (JSFunction.isBoundFunction(dynObj)) {
                     return getFunctionRealm(JSFunction.getBoundTargetFunction(dynObj), currentRealm);
