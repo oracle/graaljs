@@ -64,6 +64,7 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
+import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropGetIteratorNode;
@@ -559,37 +560,33 @@ public abstract class JSObject extends JSDynamicObject {
      * ES2015 7.1.1 ToPrimitive in case an Object is passed.
      */
     @TruffleBoundary
-    public static Object toPrimitive(JSDynamicObject obj, Object hint) {
+    public static Object toPrimitive(JSDynamicObject obj, JSToPrimitiveNode.Hint hint) {
         assert obj != Null.instance && obj != Undefined.instance;
         Object exoticToPrim = JSObject.getMethod(obj, Symbol.SYMBOL_TO_PRIMITIVE);
         if (exoticToPrim != Undefined.instance) {
-            Object result = JSRuntime.call(exoticToPrim, obj, new Object[]{hint});
+            Object result = JSRuntime.call(exoticToPrim, obj, new Object[]{hint.getHintName()});
             if (JSRuntime.isObject(result)) {
                 throw Errors.createTypeError("[Symbol.toPrimitive] method returned a non-primitive object");
             }
             return result;
         }
-        if (hint.equals(Strings.HINT_DEFAULT)) {
-            return ordinaryToPrimitive(obj, Strings.HINT_NUMBER);
-        } else {
-            return ordinaryToPrimitive(obj, hint);
-        }
+        return ordinaryToPrimitive(obj, hint == JSToPrimitiveNode.Hint.None ? JSToPrimitiveNode.Hint.Number : hint);
     }
 
     @TruffleBoundary
     public static Object toPrimitive(JSDynamicObject obj) {
-        return toPrimitive(obj, Strings.HINT_DEFAULT);
+        return toPrimitive(obj, JSToPrimitiveNode.Hint.None);
     }
 
     /**
      * ES2018 7.1.1.1 OrdinaryToPrimitive.
      */
     @TruffleBoundary
-    public static Object ordinaryToPrimitive(JSDynamicObject obj, Object hint) {
+    public static Object ordinaryToPrimitive(JSDynamicObject obj, JSToPrimitiveNode.Hint hint) {
         assert JSRuntime.isObject(obj);
-        assert Strings.HINT_STRING.equals(hint) || Strings.HINT_NUMBER.equals(hint);
+        assert hint == JSToPrimitiveNode.Hint.String || hint == JSToPrimitiveNode.Hint.Number;
         Object[] methodNames;
-        if (Strings.HINT_STRING.equals(hint)) {
+        if (hint == JSToPrimitiveNode.Hint.String) {
             methodNames = new Object[]{Strings.TO_STRING, Strings.VALUE_OF};
         } else {
             methodNames = new Object[]{Strings.VALUE_OF, Strings.TO_STRING};

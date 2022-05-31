@@ -66,6 +66,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
+import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
@@ -288,7 +289,7 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Object toPrimitive(Object value) {
-        return toPrimitive(value, Strings.HINT_DEFAULT);
+        return toPrimitive(value, JSToPrimitiveNode.Hint.None);
     }
 
     /**
@@ -300,7 +301,7 @@ public final class JSRuntime {
      * @see com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode
      */
     @TruffleBoundary
-    public static Object toPrimitive(Object value, TruffleString hint) {
+    public static Object toPrimitive(Object value, JSToPrimitiveNode.Hint hint) {
         if (value == Null.instance || value == Undefined.instance) {
             return value;
         } else if (JSDynamicObject.isJSDynamicObject(value)) {
@@ -316,7 +317,7 @@ public final class JSRuntime {
      * Converts a foreign object to a primitive value.
      */
     @TruffleBoundary
-    public static Object toPrimitiveFromForeign(Object tObj, TruffleString hint) {
+    public static Object toPrimitiveFromForeign(Object tObj, JSToPrimitiveNode.Hint hint) {
         assert isForeignObject(tObj);
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(tObj);
         if (interop.isNull(tObj)) {
@@ -329,11 +330,11 @@ public final class JSRuntime {
                 return maybeResult;
             }
         }
-        return foreignOrdinaryToPrimitive(tObj, hint);
+        return foreignOrdinaryToPrimitive(tObj, hint == JSToPrimitiveNode.Hint.None ? JSToPrimitiveNode.Hint.Number : hint);
     }
 
-    private static Object tryToPrimitiveFromHostObject(Object tObj, TruffleString hint, InteropLibrary interop) {
-        if (Strings.HINT_NUMBER.equals(hint) && JavaScriptLanguage.getCurrentLanguage().getJSContext().isOptionNashornCompatibilityMode() &&
+    private static Object tryToPrimitiveFromHostObject(Object tObj, JSToPrimitiveNode.Hint hint, InteropLibrary interop) {
+        if (hint == JSToPrimitiveNode.Hint.Number && JavaScriptLanguage.getCurrentLanguage().getJSContext().isOptionNashornCompatibilityMode() &&
                         interop.isMemberInvocable(tObj, "doubleValue")) {
             try {
                 return interop.invokeMember(tObj, "doubleValue");
@@ -386,13 +387,13 @@ public final class JSRuntime {
     }
 
     @TruffleBoundary
-    private static Object foreignOrdinaryToPrimitive(Object obj, TruffleString hint) {
+    private static Object foreignOrdinaryToPrimitive(Object obj, JSToPrimitiveNode.Hint hint) {
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
         TruffleString[] methodNames;
-        if (Strings.equals(Strings.HINT_STRING, hint)) {
+        if (hint == JSToPrimitiveNode.Hint.String) {
             methodNames = new TruffleString[]{Strings.TO_STRING, Strings.VALUE_OF};
         } else {
-            assert Strings.equals(Strings.HINT_NUMBER, hint);
+            assert hint == JSToPrimitiveNode.Hint.Number;
             methodNames = new TruffleString[]{Strings.VALUE_OF, Strings.TO_STRING};
         }
 
@@ -472,9 +473,9 @@ public final class JSRuntime {
     public static Number toNumber(Object value) {
         Object primitive;
         if (isObject(value)) {
-            primitive = JSObject.toPrimitive((JSDynamicObject) value, Strings.HINT_NUMBER);
+            primitive = JSObject.toPrimitive((JSDynamicObject) value, JSToPrimitiveNode.Hint.Number);
         } else if (isForeignObject(value)) {
-            primitive = toPrimitiveFromForeign(value, Strings.HINT_NUMBER);
+            primitive = toPrimitiveFromForeign(value, JSToPrimitiveNode.Hint.Number);
         } else {
             primitive = value;
         }
@@ -483,7 +484,7 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static Object toNumeric(Object value) {
-        Object primitive = isObject(value) ? JSObject.toPrimitive((JSDynamicObject) value, Strings.HINT_NUMBER) : value;
+        Object primitive = isObject(value) ? JSObject.toPrimitive((JSDynamicObject) value, JSToPrimitiveNode.Hint.Number) : value;
         if (primitive instanceof BigInt) {
             return primitive;
         } else {
@@ -525,7 +526,7 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static BigInt toBigInt(Object value) {
-        Object primitive = toPrimitive(value, Strings.HINT_NUMBER);
+        Object primitive = toPrimitive(value, JSToPrimitiveNode.Hint.Number);
         if (Strings.isTString(primitive)) {
             try {
                 return Strings.parseBigInt((TruffleString) primitive);
@@ -944,10 +945,10 @@ public final class JSRuntime {
         } else if (value instanceof BigInt) {
             return Strings.fromBigInt((BigInt) value);
         } else if (JSDynamicObject.isJSDynamicObject(value)) {
-            return toString(JSObject.toPrimitive((JSDynamicObject) value, Strings.HINT_STRING));
+            return toString(JSObject.toPrimitive((JSDynamicObject) value, JSToPrimitiveNode.Hint.String));
         } else if (value instanceof TruffleObject) {
             assert !isJSNative(value);
-            return toString(toPrimitiveFromForeign(value, Strings.HINT_STRING));
+            return toString(toPrimitiveFromForeign(value, JSToPrimitiveNode.Hint.String));
         }
         throw toStringTypeError(value);
     }
@@ -1342,7 +1343,7 @@ public final class JSRuntime {
         } else if (value == Null.instance) {
             return Null.NAME;
         }
-        return toString(JSObject.toPrimitive(value, Strings.HINT_STRING));
+        return toString(JSObject.toPrimitive(value, JSToPrimitiveNode.Hint.String));
     }
 
     public static String numberToJavaString(Number number) {

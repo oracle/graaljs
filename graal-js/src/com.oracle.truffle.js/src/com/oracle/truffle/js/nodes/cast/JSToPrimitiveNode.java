@@ -87,9 +87,19 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     @Child private OrdinaryToPrimitiveNode ordinaryToPrimitiveNode;
 
     public enum Hint {
-        None,
-        String,
-        Number
+        None(Strings.HINT_DEFAULT),
+        Number(Strings.HINT_NUMBER),
+        String(Strings.HINT_STRING);
+
+        private final TruffleString hintName;
+
+        Hint(TruffleString hintName) {
+            this.hintName = hintName;
+        }
+
+        public TruffleString getHintName() {
+            return hintName;
+        }
     }
 
     protected final Hint hint;
@@ -174,7 +184,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
                     @Cached("createCall()") JSFunctionCallNode callExoticToPrim) {
         Object exoticToPrim = getToPrimitive.getValue(object);
         if (exoticToPrimProfile.profile(!JSRuntime.isNullOrUndefined(exoticToPrim))) {
-            Object result = callExoticToPrim.executeCall(JSArguments.createOneArg(object, exoticToPrim, getHintName()));
+            Object result = callExoticToPrim.executeCall(JSArguments.createOneArg(object, exoticToPrim, hint.getHintName()));
             if (isPrimitive.executeBoolean(result)) {
                 return result;
             }
@@ -182,18 +192,6 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         }
 
         return ordinaryToPrimitive(object);
-    }
-
-    private Object getHintName() {
-        switch (hint) {
-            case Number:
-                return Strings.HINT_NUMBER;
-            case String:
-                return Strings.HINT_STRING;
-            case None:
-            default:
-                return Strings.HINT_DEFAULT;
-        }
     }
 
     protected final boolean isHintString() {

@@ -85,6 +85,7 @@ import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
+import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -209,7 +210,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     @TruffleBoundary
     private static JSException createNoRegExpError(Object obj) {
-        TruffleString objName = Strings.fromObject(JSRuntime.toPrimitive(obj, Strings.HINT_STRING));
+        TruffleString objName = Strings.fromObject(JSRuntime.toPrimitive(obj, JSToPrimitiveNode.Hint.String));
         return Errors.createTypeError(Strings.toJavaString(objName) + " is not a RegExp");
     }
 
