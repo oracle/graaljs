@@ -968,7 +968,7 @@ public final class JSRuntime {
     @TruffleBoundary
     public static TruffleString objectToDisplayString(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth, TruffleString name, TruffleString[] internalKeys,
                     Object[] internalValues) {
-        assert JSDynamicObject.isJSDynamicObject(obj) && !JSFunction.isJSFunction(obj) && !JSProxy.isJSProxy(obj);
+        assert !JSFunction.isJSFunction(obj) && !JSProxy.isJSProxy(obj);
         boolean v8CompatMode = JSObject.getJSContext(obj).isOptionV8CompatibilityMode();
         TruffleStringBuilder sb = Strings.builderCreate();
 
