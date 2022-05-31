@@ -55,6 +55,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNullNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
@@ -62,14 +63,13 @@ import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.unary.JSIsNullOrUndefinedNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 @NodeInfo(shortName = "==")
 @ImportStatic({JSRuntime.class, JSInteropUtil.class, JSConfig.class})
@@ -226,14 +226,27 @@ public abstract class JSEqualNode extends JSCompareNode {
         }
     }
 
-    protected TruffleString getOverloadedOperatorName() {
+    protected static TruffleString getOverloadedOperatorName() {
         return Strings.SYMBOL_EQUALS_EQUALS;
     }
 
-    @Specialization(guards = {"isObject(a)", "!isObject(b)", "!hasOverloadedOperators(a)"})
-    protected boolean doJSObject(JSDynamicObject a, Object b,
+    // null-or-undefined check on one argument suffices
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"})
+    protected static boolean doJSObject(JSObject a, JSDynamicObject b) {
+        return a == b;
+    }
+
+    // null-or-undefined check on one argument suffices
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"})
+    protected static boolean doJSObject(JSDynamicObject a, JSObject b) {
+        return a == b;
+    }
+
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "isPrimitiveNode.executeBoolean(b)"}, limit = "1")
+    protected boolean doJSObjectVsPrimitive(JSObject a, Object b,
                     @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
                     @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared("isPrimitive") @Cached @SuppressWarnings("unused") IsPrimitiveNode isPrimitiveNode,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
         if (isNullish(b, bInterop)) {
             return false;
@@ -241,10 +254,11 @@ public abstract class JSEqualNode extends JSCompareNode {
         return nestedEqualNode.executeBoolean(toPrimitiveNode.execute(a), b);
     }
 
-    @Specialization(guards = {"!isObject(a)", "isObject(b)", "!hasOverloadedOperators(b)"})
-    protected boolean doJSObject(Object a, JSDynamicObject b,
+    @Specialization(guards = {"!hasOverloadedOperators(b)", "isPrimitiveNode.executeBoolean(a)"}, limit = "1")
+    protected boolean doJSObjectVsPrimitive(Object a, JSObject b,
                     @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
                     @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared("isPrimitive") @Cached @SuppressWarnings("unused") IsPrimitiveNode isPrimitiveNode,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
         if (isNullish(a, aInterop)) {
             return false;
@@ -275,12 +289,6 @@ public abstract class JSEqualNode extends JSCompareNode {
         return doBigIntAndNumber(b, a);
     }
 
-    // null-or-undefined check on one element suffices
-    @Specialization(guards = {"!isNullOrUndefined(a)", "isJSDynamicObject(a)", "isJSDynamicObject(b)"})
-    protected static boolean doJSObject(JSDynamicObject a, JSDynamicObject b) {
-        return a == b;
-    }
-
     @Specialization
     protected static boolean doSymbol(Symbol a, Symbol b) {
         return a == b;
@@ -304,36 +312,30 @@ public abstract class JSEqualNode extends JSCompareNode {
                     @Bind("isForeignObject(b)") boolean isBForeign,
                     @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
                     @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
+                    @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared("isPrimitive") @Cached IsPrimitiveNode isPrimitiveNode,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
-        assert (a != null) && (b != null);
-        final Object defaultValue = null;
-        Object primLeft;
-        if (isAForeign) {
-            primLeft = JSInteropUtil.toPrimitiveOrDefault(a, defaultValue, aInterop, this);
-        } else {
-            primLeft = JSGuards.isNullOrUndefined(a) ? Null.instance : a;
+        assert a != null && b != null;
+        boolean isAPrimitive = isPrimitiveNode.executeBoolean(a);
+        boolean isBPrimitive = isPrimitiveNode.executeBoolean(b);
+        if (!isAPrimitive && !isBPrimitive) {
+            // If both are of type Object, don't attempt ToPrimitive conversion.
+            return aInterop.isIdentical(a, b, bInterop);
         }
-        Object primRight;
-        if (isBForeign) {
-            primRight = JSInteropUtil.toPrimitiveOrDefault(b, defaultValue, bInterop, this);
-        } else {
-            primRight = JSGuards.isNullOrUndefined(b) ? Null.instance : b;
+        // If at least one is nullish => both need to be nullish to be equal
+        if (isNullish(a, aInterop)) {
+            return isNullish(b, bInterop);
+        } else if (isNullish(b, bInterop)) {
+            assert !isNullish(a, bInterop);
+            return false;
         }
-
-        if (primLeft == Null.instance || primRight == Null.instance) {
-            // at least one is nullish => both need to be for equality
-            return primLeft == primRight;
-        } else if (primLeft == defaultValue || primRight == defaultValue) {
-            // if both are foreign objects and not null and not boxed, use Java equals
-            if (primLeft == defaultValue && primRight == defaultValue) {
-                return Boundaries.equals(a, b);
-            } else {
-                return false; // cannot be equal
-            }
-        } else {
-            assert !JSGuards.isForeignObject(primLeft) && !JSGuards.isForeignObject(primRight);
-            return nestedEqualNode.executeBoolean(primLeft, primRight);
-        }
+        // If one of them is primitive, we attempt to convert the other one ToPrimitive.
+        // Foreign primitive values always have to be converted to JS primitive values.
+        Object primLeft = !isAPrimitive || isAForeign ? toPrimitiveNode.execute(a) : a;
+        Object primRight = !isBPrimitive || isBForeign ? toPrimitiveNode.execute(b) : b;
+        // Now that both are primitive values, we can compare them using normal JS semantics.
+        assert !JSGuards.isForeignObject(primLeft) && !JSGuards.isForeignObject(primRight);
+        return nestedEqualNode.executeBoolean(primLeft, primRight);
     }
 
     @Specialization(guards = {"isJavaNumber(a)", "isJavaNumber(b)"})

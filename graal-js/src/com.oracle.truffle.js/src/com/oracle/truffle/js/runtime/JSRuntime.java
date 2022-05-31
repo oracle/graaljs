@@ -1481,9 +1481,9 @@ public final class JSRuntime {
     public static boolean equal(Object a, Object b) {
         if (a == b) {
             return true;
-        } else if (a == Undefined.instance || a == Null.instance) {
+        } else if (isNullOrUndefined(a)) {
             return isNullish(b);
-        } else if (b == Undefined.instance || b == Null.instance) {
+        } else if (isNullOrUndefined(b)) {
             return isNullish(a);
         } else if (a instanceof Boolean && b instanceof Boolean) {
             return a.equals(b);
@@ -1493,7 +1493,7 @@ public final class JSRuntime {
             double da = doubleValue((Number) a);
             double db = doubleValue((Number) b);
             return da == db;
-        } else if (JSDynamicObject.isJSDynamicObject(a) && JSDynamicObject.isJSDynamicObject(b)) {
+        } else if (isObject(a) && isObject(b) && !JSOverloadedOperatorsObject.hasOverloadedOperators(a) && !JSOverloadedOperatorsObject.hasOverloadedOperators(b)) {
             return a == b;
         } else if (isJavaNumber(a) && Strings.isTString(b)) {
             return equal(a, stringToNumber((TruffleString) b));
@@ -1524,7 +1524,10 @@ public final class JSRuntime {
                 } else {
                     return false;
                 }
-            } else {
+            } else if (IsPrimitiveNode.getUncached().executeBoolean(b)) {
+                if (isNullish(b)) {
+                    return false;
+                }
                 return equal(JSObject.toPrimitive((JSDynamicObject) a), b);
             }
         } else if (isObject(b)) {
@@ -1536,14 +1539,17 @@ public final class JSRuntime {
                 } else {
                     return false;
                 }
-            } else {
+            } else if (IsPrimitiveNode.getUncached().executeBoolean(a)) {
+                if (isNullish(a)) {
+                    return false;
+                }
                 return equal(a, JSObject.toPrimitive((JSDynamicObject) b));
             }
-        } else if (isForeignObject(a) || isForeignObject(b)) {
-            return equalInterop(a, b);
-        } else {
-            return false;
         }
+        if (isForeignObject(a) || isForeignObject(b)) {
+            return equalInterop(a, b);
+        }
+        return false;
     }
 
     public static boolean isForeignObject(Object value) {
@@ -1556,35 +1562,27 @@ public final class JSRuntime {
     }
 
     private static boolean equalInterop(Object a, Object b) {
-        assert (a != null) && (b != null);
-        final Object defaultValue = null;
-        Object primLeft;
-        if (isForeignObject(a)) {
-            primLeft = JSInteropUtil.toPrimitiveOrDefault(a, defaultValue, InteropLibrary.getUncached(a), null);
-        } else {
-            primLeft = isNullOrUndefined(a) ? Null.instance : a;
+        assert a != null && b != null && (isForeignObject(a) || isForeignObject(b));
+        boolean isAPrimitive = IsPrimitiveNode.getUncached().executeBoolean(a);
+        boolean isBPrimitive = IsPrimitiveNode.getUncached().executeBoolean(b);
+        if (!isAPrimitive && !isBPrimitive) {
+            // If both are of type Object, don't attempt ToPrimitive conversion.
+            return InteropLibrary.getUncached(a).isIdentical(a, b, InteropLibrary.getUncached(b));
         }
-        Object primRight;
-        if (isForeignObject(b)) {
-            primRight = JSInteropUtil.toPrimitiveOrDefault(b, defaultValue, InteropLibrary.getUncached(b), null);
-        } else {
-            primRight = isNullOrUndefined(b) ? Null.instance : b;
+        // If at least one is nullish => both need to be nullish to be equal
+        if (isNullish(a)) {
+            return isNullish(b);
+        } else if (isNullish(b)) {
+            assert !isNullish(a);
+            return false;
         }
-
-        if (primLeft == Null.instance || primRight == Null.instance) {
-            // at least one is nullish => both need to be for equality
-            return primLeft == primRight;
-        } else if (primLeft == defaultValue || primRight == defaultValue) {
-            // if both are foreign objects and not null and not boxed, use Java equals
-            if (primLeft == defaultValue && primRight == defaultValue) {
-                return Boundaries.equals(a, b);
-            } else {
-                return false; // cannot be equal
-            }
-        } else {
-            assert !isForeignObject(primLeft) && !isForeignObject(primRight);
-            return equal(primLeft, primRight);
-        }
+        // If one of them is primitive, we attempt to convert the other one ToPrimitive.
+        // Foreign primitive values always have to be converted to JS primitive values.
+        Object primLeft = !isAPrimitive || isForeignObject(a) ? toPrimitive(a) : a;
+        Object primRight = !isBPrimitive || isForeignObject(b) ? toPrimitive(b) : b;
+        // Now that both are primitive values, we can compare them using normal JS semantics.
+        assert !isForeignObject(primLeft) && !isForeignObject(primRight);
+        return equal(primLeft, primRight);
     }
 
     private static boolean equalBigIntAndNumber(BigInt a, Number b) {

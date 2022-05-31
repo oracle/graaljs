@@ -180,8 +180,8 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     @Specialization
     protected Object doJSObject(JSObject object,
                     @Cached("createGetToPrimitive()") PropertyGetNode getToPrimitive,
-                    @Cached("create()") IsPrimitiveNode isPrimitive,
-                    @Cached("createBinaryProfile()") ConditionProfile exoticToPrimProfile,
+                    @Cached IsPrimitiveNode isPrimitive,
+                    @Cached ConditionProfile exoticToPrimProfile,
                     @Cached("createCall()") JSFunctionCallNode callExoticToPrim) {
         Object exoticToPrim = getToPrimitive.getValue(object);
         if (exoticToPrimProfile.profile(!JSRuntime.isNullOrUndefined(exoticToPrim))) {
