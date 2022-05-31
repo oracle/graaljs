@@ -226,7 +226,7 @@ public class JSRuntimeTest extends JSTest {
                 Object v2 = values[j];
                 boolean r1 = JSRuntime.equal(v1, v2);
                 boolean r2 = node.executeBoolean(v1, v2);
-                assertTrue("wrong outcode of equals for i=" + i + ", j=" + j, r1 == r2);
+                assertTrue("wrong outcome of equals for i=" + i + ", j=" + j + " (" + v1 + " == " + v2 + ")", r1 == r2);
             }
         }
     }
@@ -260,7 +260,7 @@ public class JSRuntimeTest extends JSTest {
                 Object v2 = values[j];
                 boolean r1 = JSRuntime.identical(v1, v2);
                 boolean r2 = node.executeBoolean(v1, v2);
-                assertTrue("wrong outcode of identical for i=" + i + ", j=" + j, r1 == r2);
+                assertTrue("wrong outcome of identical for i=" + i + ", j=" + j + " (" + v1 + " === " + v2 + ")", r1 == r2);
             }
         }
     }
@@ -274,7 +274,7 @@ public class JSRuntimeTest extends JSTest {
             Object v1 = values[i];
             Object r1 = JSRuntime.typeof(v1);
             Object r2 = node.executeString(v1);
-            assertTrue("wrong outcode of typeof for i=" + i, r1.equals(r2));
+            assertTrue("wrong outcome of typeof for i=" + i + " (" + v1 + ")", r1.equals(r2));
         }
     }
 
