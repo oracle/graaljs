@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
-import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode.RequireObjectCoercibleWrapperNode;
 
 @GenerateWrapper
 public class SuperPropertyReferenceNode extends JSTargetableNode implements RepeatableNode {
@@ -68,7 +67,7 @@ public class SuperPropertyReferenceNode extends JSTargetableNode implements Repe
 
     public static JSTargetableNode create(JavaScriptNode baseNode, JavaScriptNode thisValueNode) {
         assert baseNode instanceof RepeatableNode && thisValueNode instanceof RepeatableNode;
-        return new SuperPropertyReferenceNode(RequireObjectCoercibleWrapperNode.create(baseNode), thisValueNode);
+        return new SuperPropertyReferenceNode(baseNode, thisValueNode);
     }
 
     public JavaScriptNode getBaseValue() {
