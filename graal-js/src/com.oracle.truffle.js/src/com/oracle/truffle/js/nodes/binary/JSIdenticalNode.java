@@ -70,6 +70,11 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+/**
+ * IsStrictlyEqual(x, y) aka {@code ===} operator.
+ *
+ * @see JSEqualNode
+ */
 @NodeInfo(shortName = "===")
 @ImportStatic({JSRuntime.class, JSConfig.class, JSGuards.class})
 public abstract class JSIdenticalNode extends JSCompareNode {
@@ -304,7 +309,8 @@ public abstract class JSIdenticalNode extends JSCompareNode {
 
     @Fallback
     protected static boolean doFallback(Object a, Object b) {
-        return JSRuntime.identical(a, b);
+        assert !JSRuntime.identical(a, b) : a + " (" + (a == null ? "null" : a.getClass()) + ")" + ", " + b + " (" + (b == null ? "null" : b.getClass()) + ")";
+        return false;
     }
 
     @Override

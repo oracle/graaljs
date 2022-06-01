@@ -71,6 +71,11 @@ import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
+/**
+ * IsLooselyEqual(x, y) aka {@code ==} operator.
+ *
+ * @see JSIdenticalNode
+ */
 @NodeInfo(shortName = "==")
 @ImportStatic({JSRuntime.class, JSInteropUtil.class, JSConfig.class})
 public abstract class JSEqualNode extends JSCompareNode {
@@ -355,7 +360,8 @@ public abstract class JSEqualNode extends JSCompareNode {
 
     @Fallback
     protected static boolean doFallback(Object a, Object b) {
-        return JSRuntime.equal(a, b);
+        assert !JSRuntime.equal(a, b) : a + " (" + (a == null ? "null" : a.getClass()) + ")" + ", " + b + " (" + (b == null ? "null" : b.getClass()) + ")";
+        return false;
     }
 
     protected static boolean isNullish(Object value, InteropLibrary interop) {
