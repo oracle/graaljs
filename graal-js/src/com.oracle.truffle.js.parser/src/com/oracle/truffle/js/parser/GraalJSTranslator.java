@@ -3244,6 +3244,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         ArrayList<ObjectLiteralMemberNode> members = new ArrayList<>(properties.size());
         for (int i = 0; i < properties.size(); i++) {
             PropertyNode property = properties.get(i);
+            assert !property.isCoverInitializedName();
 
             final ObjectLiteralMemberNode member;
             if (property.getValue() != null || property.isClassField()) {

@@ -3252,9 +3252,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "language/expressions/assignment/destructuring/obj-prop-__proto__dup.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/assignment/target-member-computed-reference-null.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-07-08"

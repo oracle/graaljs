@@ -54,8 +54,6 @@ public final class ObjectNode extends Expression {
     /** Literal elements. */
     private final List<PropertyNode> elements;
 
-    private final boolean hasCoverInitializedName;
-
     /**
      * Constructor
      *
@@ -63,16 +61,14 @@ public final class ObjectNode extends Expression {
      * @param finish finish
      * @param elements the elements used to initialize this ObjectNode
      */
-    public ObjectNode(final long token, final int finish, final List<PropertyNode> elements, final boolean hasCoverInitializedName) {
+    public ObjectNode(final long token, final int finish, final List<PropertyNode> elements) {
         super(token, finish);
         this.elements = List.copyOf(elements);
-        this.hasCoverInitializedName = hasCoverInitializedName;
     }
 
-    private ObjectNode(final ObjectNode objectNode, final List<PropertyNode> elements, final boolean hasCoverInitializedName) {
+    private ObjectNode(final ObjectNode objectNode, final List<PropertyNode> elements) {
         super(objectNode);
         this.elements = List.copyOf(elements);
-        this.hasCoverInitializedName = hasCoverInitializedName;
     }
 
     @Override
@@ -124,10 +120,7 @@ public final class ObjectNode extends Expression {
         if (this.elements == elements) {
             return this;
         }
-        return new ObjectNode(this, elements, hasCoverInitializedName);
+        return new ObjectNode(this, elements);
     }
 
-    public boolean hasCoverInitializedName() {
-        return hasCoverInitializedName;
-    }
 }
