@@ -246,6 +246,7 @@ public class JSRuntimeTest extends JSTest {
                         JSOrdinary.create(ctx, realm),
                         JSProxy.create(ctx, realm, JSOrdinary.create(ctx, realm), JSOrdinary.create(ctx, realm)),
                         JSBigInt.create(ctx, realm, BigInt.ZERO),
+                        new ForeignNull(),
                         new ForeignTestMap()};
     }
 
