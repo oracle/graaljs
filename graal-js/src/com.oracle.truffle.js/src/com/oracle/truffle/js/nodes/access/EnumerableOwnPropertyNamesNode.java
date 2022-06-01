@@ -44,15 +44,25 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.builtins.helper.ListSizeNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -66,6 +76,7 @@ import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 /**
  * EnumerableOwnPropertyNames (O, kind).
  */
+@ImportStatic({JSConfig.class})
 public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode {
 
     private final boolean keys;
@@ -93,7 +104,7 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
         return EnumerableOwnPropertyNamesNodeGen.create(context, true, true);
     }
 
-    public abstract UnmodifiableArrayList<? extends Object> execute(JSDynamicObject obj);
+    public abstract UnmodifiableArrayList<? extends Object> execute(Object obj);
 
     @Specialization
     protected UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(JSDynamicObject thisObj,
@@ -123,7 +134,7 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
                                 element = value;
                             } else {
                                 assert keys && values;
-                                element = JSArray.createConstant(context, getRealm(), new Object[]{key, value});
+                                element = createKeyValuePair(key, value);
                             }
                         }
                         properties.add(element, growProfile);
@@ -134,6 +145,10 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
         }
     }
 
+    private Object createKeyValuePair(Object key, Object value) {
+        return JSArray.createConstant(context, getRealm(), new Object[]{key, value});
+    }
+
     protected PropertyDescriptor getOwnProperty(JSDynamicObject thisObj, Object key) {
         if (getOwnPropertyNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -141,4 +156,72 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
         }
         return getOwnPropertyNode.execute(thisObj, key);
     }
+
+    @Specialization(guards = "isForeignObject(obj)", limit = "InteropLibraryLimit")
+    protected UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNamesForeign(Object obj,
+                    @CachedLibrary("obj") InteropLibrary interop,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary asString,
+                    @Cached ImportValueNode importValue,
+                    @Cached BranchProfile errorBranch) {
+        try {
+            long arraySize = 0;
+            if (interop.hasArrayElements(obj)) {
+                arraySize = interop.getArraySize(obj);
+            }
+            Object keysObj = null;
+            long memberCount = 0;
+            if (interop.hasMembers(obj)) {
+                keysObj = interop.getMembers(obj);
+                memberCount = members.getArraySize(keysObj);
+            }
+            long size = arraySize + memberCount;
+            if (arraySize < 0 || memberCount < 0 || size < 0 || size >= Integer.MAX_VALUE) {
+                errorBranch.enter();
+                throw Errors.createRangeErrorInvalidArrayLength();
+            }
+            if (size > 0) {
+                SimpleArrayList<Object> list = SimpleArrayList.create(size);
+                for (long i = 0; i < arraySize; i++) {
+                    TruffleString key = Strings.fromLong(i);
+                    Object element;
+                    if (values) {
+                        Object value = importValue.executeWithTarget(interop.readArrayElement(obj, i));
+                        if (keys) {
+                            element = createKeyValuePair(key, value);
+                        } else {
+                            element = value;
+                        }
+                    } else {
+                        element = key;
+                    }
+                    list.addUnchecked(element);
+                }
+                for (int i = 0; i < memberCount; i++) {
+                    Object objectKey = members.readArrayElement(keysObj, i);
+                    assert InteropLibrary.getUncached().isString(objectKey);
+                    TruffleString key = Strings.interopAsTruffleString(asString, objectKey);
+                    Object element;
+                    if (values) {
+                        String javaStringKey = Strings.toJavaString(key);
+                        Object value = importValue.executeWithTarget(interop.readMember(obj, javaStringKey));
+                        if (keys) {
+                            element = createKeyValuePair(key, value);
+                        } else {
+                            element = value;
+                        }
+                    } else {
+                        element = key;
+                    }
+                    list.addUnchecked(element);
+                }
+                return new UnmodifiableArrayList<>(list.toArray());
+            }
+            // fall through
+        } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
+            // fall through
+        }
+        return new UnmodifiableArrayList<>(ScriptArray.EMPTY_OBJECT_ARRAY);
+    }
+
 }
