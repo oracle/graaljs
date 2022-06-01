@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.binary;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -219,18 +220,18 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return false;
     }
 
-    @Specialization(guards = {"isJSNull(a)", "!isJSNull(b)", "!isUndefined(b)"}, limit = "InteropLibraryLimit")
+    @Specialization(guards = {"isJSNull(a)", "!isNullOrUndefined(b)"})
     protected static boolean doNullA(@SuppressWarnings("unused") Object a, Object b,
-                    @CachedLibrary("b") InteropLibrary bInterop) {
+                    @Shared("isNullInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary nullInterop) {
         assert b != Undefined.instance;
-        return bInterop.isNull(b);
+        return nullInterop.isNull(b);
     }
 
-    @Specialization(guards = {"!isJSNull(a)", "!isUndefined(a)", "isJSNull(b)"}, limit = "InteropLibraryLimit")
+    @Specialization(guards = {"!isNullOrUndefined(a)", "isJSNull(b)"})
     protected static boolean doNullB(Object a, @SuppressWarnings("unused") Object b,
-                    @CachedLibrary("a") InteropLibrary aInterop) {
+                    @Shared("isNullInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary nullInterop) {
         assert a != Undefined.instance;
-        return aInterop.isNull(a);
+        return nullInterop.isNull(a);
     }
 
     @SuppressWarnings("unused")
