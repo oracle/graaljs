@@ -139,7 +139,6 @@ import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.Pair;
-import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 
 /**
@@ -1026,7 +1025,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected final boolean entries;
 
         @Child private EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
-        @Child private InteropLibrary asString;
+        private final ConditionProfile hasElements = ConditionProfile.createBinaryProfile();
 
         public ObjectValuesOrEntriesNode(JSContext context, JSBuiltin builtin, boolean entries) {
             super(context, builtin);
@@ -1036,18 +1035,22 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected abstract JSDynamicObject executeEvaluated(Object obj);
 
         @Specialization(guards = "isJSObject(obj)")
-        protected JSDynamicObject valuesOrEntriesJSObject(JSDynamicObject obj,
-                        @Cached("createBinaryProfile()") ConditionProfile lengthZero) {
+        protected JSDynamicObject valuesOrEntriesJSObject(JSDynamicObject obj) {
+            return valuesOrEntries(obj);
+        }
+
+        private JSDynamicObject valuesOrEntries(Object obj) {
+            assert JSObject.isJSObject(obj) || JSRuntime.isForeignObject(obj);
             UnmodifiableArrayList<? extends Object> list = enumerableOwnPropertyNames(obj);
             int len = list.size();
             JSRealm realm = getRealm();
-            if (lengthZero.profile(len == 0)) {
-                return JSArray.createEmptyChecked(getContext(), realm, 0);
+            if (hasElements.profile(len > 0)) {
+                return JSArray.createConstant(getContext(), realm, list.toArray());
             }
-            return JSArray.createConstant(getContext(), realm, list.toArray());
+            return JSArray.createEmptyChecked(getContext(), realm, 0);
         }
 
-        protected UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(JSDynamicObject obj) {
+        protected UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(Object obj) {
             if (enumerableOwnPropertyNamesNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 enumerableOwnPropertyNamesNode = insert(entries ? EnumerableOwnPropertyNamesNode.createKeysValues(getContext()) : EnumerableOwnPropertyNamesNode.createValues(getContext()));
@@ -1055,35 +1058,9 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return enumerableOwnPropertyNamesNode.execute(obj);
         }
 
-        @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "InteropLibraryLimit")
-        protected JSDynamicObject enumerableOwnPropertyNamesForeign(Object thisObj,
-                        @CachedLibrary("thisObj") InteropLibrary interop,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
-                        @Cached ImportValueNode importValue,
-                        @Cached BranchProfile growProfile,
-                        @Cached BranchProfile errorBranch) {
-            JSRealm realm = getRealm();
-            try {
-                Object keysObj = interop.getMembers(thisObj);
-                long size = members.getArraySize(keysObj);
-                if (size < 0 || size >= Integer.MAX_VALUE) {
-                    errorBranch.enter();
-                    throw Errors.createRangeErrorInvalidArrayLength();
-                }
-                SimpleArrayList<Object> values = SimpleArrayList.create(size);
-                for (int i = 0; i < size; i++) {
-                    Object key = members.readArrayElement(keysObj, i);
-                    String stringKey = asStringKey(key);
-                    Object value = importValue.executeWithTarget(interop.readMember(thisObj, stringKey));
-                    if (entries) {
-                        value = JSArray.createConstant(getContext(), realm, new Object[]{Strings.interopAsTruffleString(key), value});
-                    }
-                    values.add(value, growProfile);
-                }
-                return JSArray.createConstant(getContext(), realm, values.toArray());
-            } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
-                return JSArray.createEmptyZeroLength(getContext(), realm);
-            }
+        @Specialization(guards = {"isForeignObject(thisObj)"})
+        protected JSDynamicObject valuesOrEntriesForeign(Object thisObj) {
+            return valuesOrEntries(thisObj);
         }
 
         @Specialization(guards = {"!isJSObject(obj)", "!isForeignObject(obj)"})
@@ -1091,19 +1068,6 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached("createRecursive()") ObjectValuesOrEntriesNode recursive) {
             Object thisObj = toObject(obj);
             return recursive.executeEvaluated(thisObj);
-        }
-
-        private String asStringKey(Object key) throws UnsupportedMessageException {
-            assert InteropLibrary.getUncached().isString(key);
-            if (key instanceof String) {
-                return (String) key;
-            } else {
-                if (asString == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    asString = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-                }
-                return asString.asString(key);
-            }
         }
 
         ObjectValuesOrEntriesNode createRecursive() {
