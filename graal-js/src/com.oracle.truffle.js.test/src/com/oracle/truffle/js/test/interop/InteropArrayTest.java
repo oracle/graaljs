@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -477,6 +477,60 @@ public class InteropArrayTest {
             Object arrayLike = ProxyObject.fromMap(map);
             context.getBindings(ID).putMember("arrayLike", arrayLike);
             Value result = context.eval(ID, "var array = Array.from(arrayLike); array.length === 2 && array[0] === 42 && array[1] === 211;");
+            assertTrue(result.isBoolean());
+            assertTrue(result.asBoolean());
+        }
+    }
+
+    @Test
+    public void testObjectKeys() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Object array = ProxyArray.fromArray(2, 4, 6);
+            context.getBindings(ID).putMember("array", array);
+            String code = "var keys = Object.keys(array);" +
+                            "keys.length === 3 && keys[0] === '0' && keys[1] === '1' && keys[2] === '2'";
+            Value result = context.eval(ID, code);
+            assertTrue(result.isBoolean());
+            assertTrue(result.asBoolean());
+        }
+    }
+
+    @Test
+    public void testObjectValues() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Object array = ProxyArray.fromArray(2, 4, 6);
+            context.getBindings(ID).putMember("array", array);
+            String code = "var values = Object.values(array);" +
+                            "values.length === 3 && values[0] === 2 && values[1] === 4 && values[2] === 6";
+            Value result = context.eval(ID, code);
+            assertTrue(result.isBoolean());
+            assertTrue(result.asBoolean());
+        }
+    }
+
+    @Test
+    public void testObjectEntries() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Object array = ProxyArray.fromArray(2, 4, 6);
+            context.getBindings(ID).putMember("array", array);
+            String code = "var entries = Object.entries(array);" +
+                            "entries.length === 3 && " +
+                            "entries[0][0] === '0' && entries[1][0] === '1' && entries[2][0] === '2' && " +
+                            "entries[0][1] === 2 && entries[1][1] === 4 && entries[2][1] === 6";
+            Value result = context.eval(ID, code);
+            assertTrue(result.isBoolean());
+            assertTrue(result.asBoolean());
+        }
+    }
+
+    @Test
+    public void testObjectGetOwnPropertyNames() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Object array = ProxyArray.fromArray(2, 4, 6);
+            context.getBindings(ID).putMember("array", array);
+            String code = "var names = Object.getOwnPropertyNames(array);" +
+                            "names.length === 3 && names[0] === '0' && names[1] === '1' && names[2] === '2'";
+            Value result = context.eval(ID, code);
             assertTrue(result.isBoolean());
             assertTrue(result.asBoolean());
         }

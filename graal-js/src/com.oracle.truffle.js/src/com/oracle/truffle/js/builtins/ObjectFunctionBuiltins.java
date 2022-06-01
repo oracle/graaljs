@@ -122,7 +122,6 @@ import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
@@ -139,7 +138,6 @@ import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.Pair;
-import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 
 /**
@@ -529,34 +527,18 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return JSArray.createConstantEmptyArray(getContext(), getRealm());
         }
 
-        @Specialization(guards = {"isForeignObject(thisObj)", "!symbols"}, limit = "InteropLibraryLimit")
+        @Specialization(guards = {"isForeignObject(thisObj)", "!symbols"})
         protected JSDynamicObject getForeignObjectNames(Object thisObj,
-                        @CachedLibrary("thisObj") InteropLibrary interop,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keys,
-                        @Cached BranchProfile errorBranch) {
-            Object[] array;
-            if (interop.hasMembers(thisObj)) {
-                try {
-                    Object keysObj = interop.getMembers(thisObj);
-                    long size = members.getArraySize(keysObj);
-                    if (size < 0 || size >= Integer.MAX_VALUE) {
-                        errorBranch.enter();
-                        throw Errors.createRangeErrorInvalidArrayLength();
-                    }
-                    array = new Object[(int) size];
-                    for (int i = 0; i < size; i++) {
-                        Object key = members.readArrayElement(keysObj, i);
-                        assert InteropLibrary.getUncached().isString(key);
-                        array[i] = keys.asTruffleString(key);
-                    }
-                } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                    array = ScriptArray.EMPTY_OBJECT_ARRAY;
-                }
-            } else {
-                array = ScriptArray.EMPTY_OBJECT_ARRAY;
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode,
+                        @Cached ConditionProfile hasElements) {
+            UnmodifiableArrayList<? extends Object> keyList = enumerableOwnPropertyNamesNode.execute(thisObj);
+            int len = keyList.size();
+            JSRealm realm = getRealm();
+            if (hasElements.profile(len > 0)) {
+                assert keyList.stream().allMatch(Strings::isTString);
+                return JSArray.createConstant(getContext(), realm, keyList.toArray());
             }
-            return JSArray.createConstant(getContext(), getRealm(), array);
+            return JSArray.createEmptyChecked(getContext(), realm, 0);
         }
     }
 
@@ -800,16 +782,15 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     @ImportStatic(JSConfig.class)
     public abstract static class ObjectKeysNode extends ObjectOperation {
         @Child private EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
-        @Child private InteropLibrary asString;
         private final ConditionProfile hasElements = ConditionProfile.createBinaryProfile();
 
         public ObjectKeysNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSDynamicObject(thisObj)")
-        protected JSDynamicObject keysDynamicObject(JSDynamicObject thisObj) {
-            UnmodifiableArrayList<? extends Object> keyList = enumerableOwnPropertyNames(toOrAsJSObject(thisObj));
+        private JSDynamicObject keys(Object obj) {
+            assert JSObject.isJSObject(obj) || JSRuntime.isForeignObject(obj);
+            UnmodifiableArrayList<? extends Object> keyList = enumerableOwnPropertyNames(obj);
             int len = keyList.size();
             JSRealm realm = getRealm();
             if (hasElements.profile(len > 0)) {
@@ -819,63 +800,42 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return JSArray.createEmptyChecked(getContext(), realm, 0);
         }
 
+        @Specialization(guards = "isJSDynamicObject(thisObj)")
+        protected JSDynamicObject keysDynamicObject(JSDynamicObject thisObj) {
+            return keys(toOrAsJSObject(thisObj));
+        }
+
         @Specialization
         protected JSDynamicObject keysSymbol(Symbol symbol) {
-            return keysDynamicObject(toOrAsJSObject(symbol));
+            return keys(toOrAsJSObject(symbol));
         }
 
         @Specialization
         protected JSDynamicObject keysString(TruffleString string) {
-            return keysDynamicObject(toOrAsJSObject(string));
+            return keys(toOrAsJSObject(string));
         }
 
         @Specialization
         protected JSDynamicObject keysSafeInt(SafeInteger largeInteger) {
-            return keysDynamicObject(toOrAsJSObject(largeInteger));
+            return keys(toOrAsJSObject(largeInteger));
         }
 
         @Specialization
         protected JSDynamicObject keysBigInt(BigInt bigInt) {
-            return keysDynamicObject(toOrAsJSObject(bigInt));
+            return keys(toOrAsJSObject(bigInt));
         }
 
         @Specialization(guards = "!isTruffleObject(thisObj)")
         protected JSDynamicObject keysOther(Object thisObj) {
-            return keysDynamicObject(toOrAsJSObject(thisObj));
+            return keys(toOrAsJSObject(thisObj));
         }
 
-        @Specialization(guards = "isForeignObject(obj)", limit = "InteropLibraryLimit")
-        protected JSDynamicObject keysForeign(Object obj,
-                        @CachedLibrary("obj") InteropLibrary interop,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
-                        @Cached BranchProfile growProfile,
-                        @Cached BranchProfile errorBranch) {
-            if (interop.hasMembers(obj)) {
-                try {
-                    Object keysObj = interop.getMembers(obj);
-                    long size = members.getArraySize(keysObj);
-                    if (size < 0 || size >= Integer.MAX_VALUE) {
-                        errorBranch.enter();
-                        throw Errors.createRangeErrorInvalidArrayLength();
-                    }
-                    if (size > 0) {
-                        SimpleArrayList<TruffleString> keys = SimpleArrayList.create(size);
-                        for (int i = 0; i < size; i++) {
-                            Object key = members.readArrayElement(keysObj, i);
-                            assert InteropLibrary.getUncached().isString(key);
-                            keys.add(asStringKey(key), growProfile);
-                        }
-                        return JSArray.createConstant(getContext(), getRealm(), keys.toArray());
-                    }
-                    // fall through
-                } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                    // fall through
-                }
-            }
-            return JSArray.createEmptyZeroLength(getContext(), getRealm());
+        @Specialization(guards = "isForeignObject(obj)")
+        protected JSDynamicObject keysForeign(Object obj) {
+            return keys(obj);
         }
 
-        private UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(JSDynamicObject obj) {
+        private UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(Object obj) {
             if (enumerableOwnPropertyNamesNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 enumerableOwnPropertyNamesNode = insert(EnumerableOwnPropertyNamesNode.createKeys(getContext()));
@@ -883,18 +843,6 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return enumerableOwnPropertyNamesNode.execute(obj);
         }
 
-        private TruffleString asStringKey(Object key) throws UnsupportedMessageException {
-            assert InteropLibrary.getUncached().isString(key);
-            if (Strings.isTString(key)) {
-                return (TruffleString) key;
-            } else {
-                if (asString == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    asString = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-                }
-                return asString.asTruffleString(key);
-            }
-        }
     }
 
     public abstract static class ObjectSetPrototypeOfNode extends ObjectOperation {
@@ -1060,7 +1008,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected final boolean entries;
 
         @Child private EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
-        @Child private InteropLibrary asString;
+        private final ConditionProfile hasElements = ConditionProfile.createBinaryProfile();
 
         public ObjectValuesOrEntriesNode(JSContext context, JSBuiltin builtin, boolean entries) {
             super(context, builtin);
@@ -1070,18 +1018,22 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected abstract JSDynamicObject executeEvaluated(Object obj);
 
         @Specialization(guards = "isJSObject(obj)")
-        protected JSDynamicObject valuesOrEntriesJSObject(JSDynamicObject obj,
-                        @Cached("createBinaryProfile()") ConditionProfile lengthZero) {
+        protected JSDynamicObject valuesOrEntriesJSObject(JSDynamicObject obj) {
+            return valuesOrEntries(obj);
+        }
+
+        private JSDynamicObject valuesOrEntries(Object obj) {
+            assert JSObject.isJSObject(obj) || JSRuntime.isForeignObject(obj);
             UnmodifiableArrayList<? extends Object> list = enumerableOwnPropertyNames(obj);
             int len = list.size();
             JSRealm realm = getRealm();
-            if (lengthZero.profile(len == 0)) {
-                return JSArray.createEmptyChecked(getContext(), realm, 0);
+            if (hasElements.profile(len > 0)) {
+                return JSArray.createConstant(getContext(), realm, list.toArray());
             }
-            return JSArray.createConstant(getContext(), realm, list.toArray());
+            return JSArray.createEmptyChecked(getContext(), realm, 0);
         }
 
-        protected UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(JSDynamicObject obj) {
+        protected UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(Object obj) {
             if (enumerableOwnPropertyNamesNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 enumerableOwnPropertyNamesNode = insert(entries ? EnumerableOwnPropertyNamesNode.createKeysValues(getContext()) : EnumerableOwnPropertyNamesNode.createValues(getContext()));
@@ -1089,35 +1041,9 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return enumerableOwnPropertyNamesNode.execute(obj);
         }
 
-        @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "InteropLibraryLimit")
-        protected JSDynamicObject enumerableOwnPropertyNamesForeign(Object thisObj,
-                        @CachedLibrary("thisObj") InteropLibrary interop,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
-                        @Cached ImportValueNode importValue,
-                        @Cached BranchProfile growProfile,
-                        @Cached BranchProfile errorBranch) {
-            JSRealm realm = getRealm();
-            try {
-                Object keysObj = interop.getMembers(thisObj);
-                long size = members.getArraySize(keysObj);
-                if (size < 0 || size >= Integer.MAX_VALUE) {
-                    errorBranch.enter();
-                    throw Errors.createRangeErrorInvalidArrayLength();
-                }
-                SimpleArrayList<Object> values = SimpleArrayList.create(size);
-                for (int i = 0; i < size; i++) {
-                    Object key = members.readArrayElement(keysObj, i);
-                    String stringKey = asStringKey(key);
-                    Object value = importValue.executeWithTarget(interop.readMember(thisObj, stringKey));
-                    if (entries) {
-                        value = JSArray.createConstant(getContext(), realm, new Object[]{Strings.interopAsTruffleString(key), value});
-                    }
-                    values.add(value, growProfile);
-                }
-                return JSArray.createConstant(getContext(), realm, values.toArray());
-            } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
-                return JSArray.createEmptyZeroLength(getContext(), realm);
-            }
+        @Specialization(guards = {"isForeignObject(thisObj)"})
+        protected JSDynamicObject valuesOrEntriesForeign(Object thisObj) {
+            return valuesOrEntries(thisObj);
         }
 
         @Specialization(guards = {"!isJSObject(obj)", "!isForeignObject(obj)"})
@@ -1125,19 +1051,6 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached("createRecursive()") ObjectValuesOrEntriesNode recursive) {
             Object thisObj = toObject(obj);
             return recursive.executeEvaluated(thisObj);
-        }
-
-        private String asStringKey(Object key) throws UnsupportedMessageException {
-            assert InteropLibrary.getUncached().isString(key);
-            if (key instanceof String) {
-                return (String) key;
-            } else {
-                if (asString == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    asString = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-                }
-                return asString.asString(key);
-            }
         }
 
         ObjectValuesOrEntriesNode createRecursive() {
