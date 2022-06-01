@@ -263,21 +263,22 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return false;
     }
 
-    protected static boolean isNonObjectType(Class<?> clazz) {
-        return Number.class.isAssignableFrom(clazz) || JSRuntime.isStringClass(clazz);
+    protected static boolean isCachedPrimitiveType(Class<?> clazz) {
+        return Number.class.isAssignableFrom(clazz);
     }
 
-    protected static boolean differentNonObjectTypes(Class<?> classA, Class<?> classB) {
-        return Number.class.isAssignableFrom(classA) != Number.class.isAssignableFrom(classB) || JSRuntime.isStringClass(classA) != JSRuntime.isStringClass(classB);
+    protected static boolean differentTypeClasses(Class<?> classA, Class<?> classB) {
+        return Number.class.isAssignableFrom(classA) != Number.class.isAssignableFrom(classB);
     }
 
     /**
      * lhs and rhs are of different types. This specialization is used only for type classes that
-     * are wider than a single type (to be more specific, numbers and strings, currently).
+     * are wider than a single type (to be more specific, only numbers, currently).
      */
     @SuppressWarnings("unused")
-    @Specialization(guards = {"a.getClass() == cachedClassA", "b.getClass() == cachedClassB", "isNonObjectType(cachedClassA) || isNonObjectType(cachedClassB)",
-                    "differentNonObjectTypes(cachedClassA, cachedClassB)"}, limit = "MAX_CLASSES")
+    @Specialization(guards = {"a.getClass() == cachedClassA", "b.getClass() == cachedClassB",
+                    "isCachedPrimitiveType(cachedClassA) || isCachedPrimitiveType(cachedClassB)",
+                    "differentTypeClasses(cachedClassA, cachedClassB)"}, limit = "MAX_CLASSES")
     protected static boolean doDifferentTypesCached(Object a, Object b, //
                     @Cached("a.getClass()") Class<?> cachedClassA, //
                     @Cached("b.getClass()") Class<?> cachedClassB) {
@@ -290,7 +291,7 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return false;
     }
 
-    @Specialization(guards = {"isString(a) != isString(b)"}, replaces = "doDifferentTypesCached")
+    @Specialization(guards = {"isString(a) != isString(b)"})
     protected static boolean doStringNotString(Object a, Object b) {
         assert (a != null) && (b != null);
         return false;
