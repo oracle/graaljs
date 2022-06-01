@@ -1493,8 +1493,6 @@ public final class JSRuntime {
             double da = doubleValue((Number) a);
             double db = doubleValue((Number) b);
             return da == db;
-        } else if (isObject(a) && isObject(b) && !JSOverloadedOperatorsObject.hasOverloadedOperators(a) && !JSOverloadedOperatorsObject.hasOverloadedOperators(b)) {
-            return a == b;
         } else if (isJavaNumber(a) && Strings.isTString(b)) {
             return equal(a, stringToNumber((TruffleString) b));
         } else if (Strings.isTString(a) && isJavaNumber(b)) {
