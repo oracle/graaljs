@@ -122,7 +122,6 @@ import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
@@ -528,34 +527,18 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return JSArray.createConstantEmptyArray(getContext(), getRealm());
         }
 
-        @Specialization(guards = {"isForeignObject(thisObj)", "!symbols"}, limit = "InteropLibraryLimit")
+        @Specialization(guards = {"isForeignObject(thisObj)", "!symbols"})
         protected JSDynamicObject getForeignObjectNames(Object thisObj,
-                        @CachedLibrary("thisObj") InteropLibrary interop,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keys,
-                        @Cached BranchProfile errorBranch) {
-            Object[] array;
-            if (interop.hasMembers(thisObj)) {
-                try {
-                    Object keysObj = interop.getMembers(thisObj);
-                    long size = members.getArraySize(keysObj);
-                    if (size < 0 || size >= Integer.MAX_VALUE) {
-                        errorBranch.enter();
-                        throw Errors.createRangeErrorInvalidArrayLength();
-                    }
-                    array = new Object[(int) size];
-                    for (int i = 0; i < size; i++) {
-                        Object key = members.readArrayElement(keysObj, i);
-                        assert InteropLibrary.getUncached().isString(key);
-                        array[i] = keys.asTruffleString(key);
-                    }
-                } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                    array = ScriptArray.EMPTY_OBJECT_ARRAY;
-                }
-            } else {
-                array = ScriptArray.EMPTY_OBJECT_ARRAY;
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode,
+                        @Cached ConditionProfile hasElements) {
+            UnmodifiableArrayList<? extends Object> keyList = enumerableOwnPropertyNamesNode.execute(thisObj);
+            int len = keyList.size();
+            JSRealm realm = getRealm();
+            if (hasElements.profile(len > 0)) {
+                assert keyList.stream().allMatch(Strings::isTString);
+                return JSArray.createConstant(getContext(), realm, keyList.toArray());
             }
-            return JSArray.createConstant(getContext(), getRealm(), array);
+            return JSArray.createEmptyChecked(getContext(), realm, 0);
         }
     }
 
