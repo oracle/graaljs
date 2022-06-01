@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -76,6 +77,12 @@ public abstract class JavaScriptBaseNode extends Node {
 
     protected final JavaScriptLanguage getLanguage() {
         return JavaScriptLanguage.get(this);
+    }
+
+    protected final boolean hasOverloadedOperators(Object obj) {
+        assert !JSGuards.hasOverloadedOperators(obj) || getLanguage().getJSContext().getContextOptions().isOperatorOverloading();
+        return (CompilerDirectives.inInterpreter() || getLanguage().getJSContext().getContextOptions().isOperatorOverloading()) &&
+                        JSGuards.hasOverloadedOperators(obj);
     }
 
 }
