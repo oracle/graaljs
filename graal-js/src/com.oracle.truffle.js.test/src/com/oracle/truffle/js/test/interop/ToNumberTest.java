@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,10 +56,10 @@ public class ToNumberTest {
         try (Context context = JSTest.newContextBuilder().allowAllAccess(true).build()) {
             String jscode = "var array = [42,211];\n" +
                             "array.length = new java.lang.StringBuilder('1');\n" +
-                            "array.length == 1 && array[0] == 42";
+                            "(array.length == 1 && array[0] == 42) || array.toString()";
             Value value = context.eval(JavaScriptLanguage.ID, jscode);
-            assertTrue(value.isBoolean());
-            assertTrue(value.asBoolean());
+            assertTrue(value.toString(), value.isBoolean());
+            assertTrue(value.toString(), value.asBoolean());
         }
     }
 
@@ -67,11 +67,11 @@ public class ToNumberTest {
     public void testForeignCompareFnResult() {
         try (Context context = JSTest.newContextBuilder().allowAllAccess(true).build()) {
             String jscode = "var array = [211,42];\n" +
-                            "array.sort(function(x,y) { return java.math.BigInteger.valueOf(x-y); })\n" +
-                            "array.length == 2 && array[0] == 42 && array[1] == 211";
+                            "array.sort(function(x,y) { return java.math.BigInteger.valueOf(x - y); });\n" +
+                            "(array.length == 2 && array[0] == 42 && array[1] == 211) || array.toString()";
             Value value = context.eval(JavaScriptLanguage.ID, jscode);
-            assertTrue(value.isBoolean());
-            assertTrue(value.asBoolean());
+            assertTrue(value.toString(), value.isBoolean());
+            assertTrue(value.toString(), value.asBoolean());
         }
     }
 
