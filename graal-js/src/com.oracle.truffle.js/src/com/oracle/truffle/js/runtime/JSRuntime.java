@@ -252,7 +252,6 @@ public final class JSRuntime {
                 return JSOrdinary.TYPE_NAME;
             }
         } else {
-            CompilerDirectives.transferToInterpreter();
             throw new UnsupportedOperationException("typeof: don't know " + value.getClass().getSimpleName());
         }
     }
@@ -1296,6 +1295,7 @@ public final class JSRuntime {
     }
 
     public static TruffleString numberToString(Number number) {
+        CompilerAsserts.neverPartOfCompilation();
         if (number instanceof Integer) {
             return Strings.fromInt(((Integer) number).intValue());
         } else if (number instanceof SafeInteger) {
@@ -1305,7 +1305,6 @@ public final class JSRuntime {
         } else if (number instanceof Long) {
             return Strings.fromLong(number.longValue());
         }
-        CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException("unknown number value: " + number.toString() + " " + number.getClass().getSimpleName());
     }
 
