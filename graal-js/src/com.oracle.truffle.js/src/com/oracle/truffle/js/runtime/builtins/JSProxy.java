@@ -67,6 +67,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -774,7 +775,12 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.getOwnProperty((JSDynamicObject) target, key);
             } else {
-                return null;
+                if (Strings.isTString(key)) {
+                    return JSInteropUtil.getOwnProperty(target, (TruffleString) key);
+                } else {
+                    assert key instanceof Symbol;
+                    return null; // No symbols in foreign objects
+                }
             }
         }
         Object trapResultObj = checkTrapReturnValue(JSRuntime.call(getOwnPropertyFn, handler, new Object[]{target, key}));
