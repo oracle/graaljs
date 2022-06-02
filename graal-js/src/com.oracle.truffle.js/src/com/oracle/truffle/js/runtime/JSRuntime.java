@@ -64,6 +64,7 @@ import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
+import com.oracle.truffle.js.nodes.cast.OrdinaryToPrimitiveNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
@@ -344,14 +345,15 @@ public final class JSRuntime {
 
         for (TruffleString name : methodNames) {
             if (interop.hasMembers(obj) && interop.isMemberInvocable(obj, Strings.toJavaString(name))) {
-                Object result;
-                try {
-                    result = importValue(interop.invokeMember(obj, Strings.toJavaString(name)));
-                } catch (InteropException e) {
-                    result = null;
-                }
-                if (result != null && IsPrimitiveNode.getUncached().executeBoolean(result)) {
-                    return result;
+                if (!OrdinaryToPrimitiveNode.isJavaArray(obj, interop)) {
+                    try {
+                        Object result = importValue(interop.invokeMember(obj, Strings.toJavaString(name)));
+                        if (IsPrimitiveNode.getUncached().executeBoolean(result)) {
+                            return result;
+                        }
+                    } catch (InteropException e) {
+                        // ignore
+                    }
                 }
             }
 

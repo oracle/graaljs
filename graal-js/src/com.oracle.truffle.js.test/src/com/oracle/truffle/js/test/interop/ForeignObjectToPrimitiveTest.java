@@ -140,7 +140,7 @@ public class ForeignObjectToPrimitiveTest {
             Value isLooselyEqual = makeIsLooselyEqual(context);
 
             Object[] array = List.of("fun", "with", "proxy", "array").toArray();
-            String expectedString = "[fun, with, proxy, array]";
+            String expectedString = "fun,with,proxy,array";
             assertEquals(expectedString, toString(context, array));
             assertEquals(expectedString, valueOf(context, array));
             assertTrue("string == array", isLooselyEqual.execute(expectedString, array).asBoolean());

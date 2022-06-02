@@ -69,7 +69,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -251,25 +250,12 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
             }
         } else if (interop.isInstant(object)) {
             return JSDate.getDateValueFromInstant(object, interop);
-        } else if (isJavaArray(object, interop)) {
-            return formatJavaArray(object, interop);
         } else if (interop.isMetaObject(object)) {
             return javaClassToString(object, interop);
         } else if (interop.isException(object)) {
             return javaExceptionToString(object, interop);
         }
         return null;
-    }
-
-    private static boolean isJavaArray(Object object, InteropLibrary interop) {
-        return interop.hasArrayElements(object) && interop.isMemberReadable(object, "length");
-    }
-
-    @TruffleBoundary
-    private static TruffleString formatJavaArray(Object object, InteropLibrary interop) {
-        assert isJavaArray(object, interop);
-        // toDisplayString formats host arrays similar to Arrays.toString.
-        return JSRuntime.toDisplayString(object, true, ToDisplayStringFormat.getArrayFormat());
     }
 
     @TruffleBoundary

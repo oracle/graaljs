@@ -227,6 +227,10 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
 
     private Object tryInvokeForeignMethod(Object object, InteropLibrary interop, String methodName) {
         if (interop.hasMembers(object) && interop.isMemberInvocable(object, methodName)) {
+            // Avoid calling toString() on Java arrays; use Array.prototype.toString() instead.
+            if (isJavaArray(object, interop)) {
+                return null;
+            }
             try {
                 Object result = JSRuntime.importValue(interop.invokeMember(object, methodName));
                 if (isPrimitiveNode.executeBoolean(result)) {
@@ -237,6 +241,10 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             }
         }
         return null;
+    }
+
+    public static boolean isJavaArray(Object object, InteropLibrary interop) {
+        return interop.hasArrayElements(object) && interop.isMemberReadable(object, "length");
     }
 
     private PropertyGetNode getToString() {
