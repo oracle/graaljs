@@ -15,7 +15,7 @@ GraalVM ships with a specific Node.js version that it is compatible with.
 Applications can therefore freely import and use NPM packages compatible with the supported Node.js version, including CommonJS, ES modules, and modules that use native bindings.
 To check and verify the Node.js version supported by GraalVM, simply run `bin/node --version`.
 
-## Java-based applications (`Context` API)
+## Java-based Applications (`Context` API)
 
 When embedded in a Java application (using the `Context` API), GraalVM JavaScript can execute JavaScript applications and modules that _do not_ depend on Node.js' built-in modules such as `'fs'`, `'events'`, or `'http'` or Node.js-specific functions such as `setTimeout()` or `setInterval()`.
 On the other hand, modules that depend on such Node.js builtins cannot be loaded in a GraalVM polyglot `Context`.

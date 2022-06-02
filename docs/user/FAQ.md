@@ -89,17 +89,17 @@ Solution:
 Here are a few tips you can follow to analyse and improve peak performance:
 
 * When measuring, ensure you have given the GraalVM compiler enough time to compile all hot methods before starting to measure peak performance. A useful command line option for that is `--engine.TraceCompilation=true` -- this outputs a message whenever a (JavaScript) method is compiled. As long as this still prints frequently, measurement should not yet start.
-* Compare the performance between the Native Image and the JVM mode if possible. Depending on the characteristics of your application, one or the other might show better peak performance.
+* Compare the performance between Native Image and the JVM mode if possible. Depending on the characteristics of your application, one or the other might show better peak performance.
 * The Polyglot API comes with several tools and options to inspect the performance of your application:
     * `--cpusampler` and `--cputracer` will print a list of the hottest methods when the application is terminated. Use that list to figure out where most time is spent in your application.
     * `--experimental-options --memtracer` can help you understand the memory allocations of your application. Refer to the [Profiling Command Line Tool](https://github.com/oracle/graal/blob/master/docs/tools/profiling.md) reference for more detail.
 
-### What is the difference between running GraalVM's JavaScript in a Native Image compared to the JVM?
+### What is the difference between running GraalVM's JavaScript in Native Image compared to the JVM?
 In essence, the JavaScript engine of GraalVM is a plain Java application.
 Running it on any JVM (JDK 8 or higher) is possible, but, for a better result, it should be GraalVM or a compatible JVMCI-enabled JDK using the GraalVM compiler.
 This mode gives the JavaScript engine full access to Java at runtime, but also requires the JVM to first (just-in-time) compile the JavaScript engine when executed, just like any other Java application.
 
-Running in a Native Image means that the JavaScript engine, including all its dependencies from, e.g., the JDK, is pre-compiled into a native binary. This will tremendously speed up the startup of any JavaScript application, as GraalVM can immediately start to compile JavaScript code, without itself requiring to be compiled first.
+Running in Native Image means that the JavaScript engine, including all its dependencies from, e.g., the JDK, is pre-compiled into a native executable. This will tremendously speed up the startup of any JavaScript application, as GraalVM can immediately start to compile JavaScript code, without itself requiring to be compiled first.
 This mode, however, will only give GraalVM access to Java classes known at the time of image creation.
 Most significantly, this means that the JavaScript-to-Java interoperability features are not available in this mode, as they would require dynamic class loading and execution of arbitrary Java code at runtime.
 

@@ -11,7 +11,7 @@ Applications can freely import and use NPM packages, including native ones.
 
 For the differences between running the `node` native launcher and accessing Node.js/npm modules/ECMAScript modules from a Java Context, see [NodeJSVSJavaScriptContext](NodeJSVSJavaScriptContext.md).
 
-## Installing the Node.js component
+## Installing Node.js Component
 
 Since GraalVM 21.1, the Node.js support is packaged in a separate GraalVM component.
 It can be installed with the _GraalVM Updater_.
@@ -22,28 +22,28 @@ $GRAALVM/bin/gu install nodejs
 
 This installs the `node` and `npm` binaries in the `$GRAALVM/bin` directory.
 
-### Polyglot support in Node.js
+### Polyglot Support in Node.js
 
 The Node.js component is able to use the polyglot language interoperability (flag: `--polyglot`) with other installed polyglot languages.
 This feature is available by default in JVM mode (flag: `--jvm`).
 For polyglot access to the Ruby language, you can e.g. use this command:
 
 ```shell
-$GRAALVM/bin/node --jvm --polyglot -e 'var array = Polyglot.eval("ruby", "[1,2,42,4]"); console.log(array[2]);'
+$GRAALVM_HOME/bin/node --jvm --polyglot -e 'var array = Polyglot.eval("ruby", "[1,2,42,4]"); console.log(array[2]);'
 ```
 
 To use the polyglot capabilities of `node` in the native mode (flag: `--native`), the `libpolyglot` needs to be rebuilt first.
 For this, the `native-image` component and the other languages need to be installed first, before the image can be rebuilt:
 
 ```shell
-$GRAALVM/bin/gu install native-image
-$GRAALVM/bin/gu rebuild-images libpolyglot
+$GRAALVM_HOME/bin/gu install native-image
+$GRAALVM_HOME/bin/gu rebuild-images libpolyglot
 ```
 
 After a successfull rebuild, the polyglot access is also available in the `--native` mode:
 
 ```shell
-$GRAALVM/bin/node --native --polyglot -e 'var array = Polyglot.eval("ruby", "[1,2,42,4]"); console.log(array[2]);'
+$GRAALVM_HOME/bin/node --native --polyglot -e 'var array = Polyglot.eval("ruby", "[1,2,42,4]"); console.log(array[2]);'
 ```
 
 ## Running Node.js Applications

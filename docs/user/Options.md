@@ -31,13 +31,13 @@ For a full list of options of the JavaScript engine, pass the `--help:js` flag t
 To include internal options, use `--help:js:internal`.
 Note that those lists both include stable, supported options and experimental options.
 
-### Provide options to the Launcher
+### Provide Options to the Launcher
 To the launcher, the options are passed with `--js.<option-name>=<value>`:
 ```shell
 js --js.ecmascript-version=6
 ```
 
-### Provide options programmatically using the Context API
+### Provide Options Programmatically Using the Context API
 When started from Java via GraalVM's Polyglot feature, the options are passed programmatically to the `Context` object:
 ```java
 Context context = Context.newBuilder("js")
@@ -57,7 +57,7 @@ In the native launchers (`js` and `node`), `--experimental-options` has to be pa
 When using a `Context`, the option `allowExperimentalOptions(true)` has to be called on the `Context.Builder`.
 See [ScriptEngine Implementation](ScriptEngine.md) on how to use experimental options with a `ScriptEngine`.
 
-### Frequently used Stable Options
+### Frequently Used Stable Options
 The following stable options are frequently relevant:
    * `--js.ecmascript-version`: emulate a specific ECMAScript version. Integer value (`5`, `6`, etc., `2015`-`2022`), `"latest"` (latest supported version of the spec, including finished proposals), or `"staging"` (latest version including supported unfinished proposals), default is `"latest"`.
    * `--js.foreign-object-prototype`: provide JavaScript's default prototype to foreign objects that mimic JavaScript's own types (foreign Arrays, Objects and Functions). Boolean value, default is `false`.
@@ -74,7 +74,7 @@ It expects an integer value, where both the counting version numbers (`5`, `6`, 
 As of GraalVM 21.2, `latest`, `staging` are supported, too.
 The default in GraalVM 22.x is the [`ECMAScript 2022 specification`](https://tc39.es/ecma262/).
 GraalVM JavaScript implements some features of the future draft specification and of open proposals, if you explicitly select that version and/or enable specific experimental flags.
-For production settings, it is recommended to set the `ecmascript-version` to a released, finalized version of the specification (e.g. `2021`).
+For production settings, it is recommended to set the `ecmascript-version` to a released, finalized version of the specification (e.g., `2021`).
 
 Available versions are:
 * `5` for ECMAScript 5.x
@@ -99,7 +99,7 @@ It expects a Boolean value and the default is `false`.
 This option enables JavaScript's strict mode for all scripts.
 It expects a Boolean value and the default is `false`.
 
-### Frequently used Experimental Options
+### Frequently Used Experimental Options
 Note that these options are experimental and are not guaranteed to be maintained or supported in the future.
 To use them, the `--experimental-options` flag is required or the experimental options have to be enabled on the Context, see above.
 
