@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -391,18 +391,23 @@ public class InteropArrayTest {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (Context context = JSTest.newContextBuilder().allowHostAccess(accessWithArrays).out(baos).err(baos).build()) {
             context.getBindings(ID).putMember("javaArray", new ToBePassedToJS());
-            context.eval(ID, "var arrayFromJava = javaArray.methodThatReturnsArrayWithJSObject(" +
-                            "{foo: 'bar', number: 42, f: function() { return 'yes';}, array: [2, 4, 8]});" +
+            context.eval(ID, "" +
+                            "var jsObj = {foo: 'bar', number: 42, f: function() { return 'yes';}, array: [2, 4, 8]};\n" +
+                            "var arrayFromJava = javaArray.methodThatReturnsArrayWithJSObject(jsObj);\n" +
                             "console.log(arrayFromJava);");
-            assertEquals("[41, {foo: \"bar\", number: 42, f: function() { return 'yes';}, array: [2, 4, 8]}, \"string\", {x: 42, y: \"foo\"}]", baos.toString().trim());
+            assertEquals("41,[object Object],string,[object Object]", baos.toString().trim());
+            baos.reset();
+            context.eval(ID, "Object.prototype.toString = function() { return JSON.stringify(this); };\n" +
+                            "console.log(arrayFromJava);");
+            assertEquals("41,{\"foo\":\"bar\",\"number\":42,\"array\":[2,4,8]},string,{\"x\":42,\"y\":\"foo\"}", baos.toString().trim());
             baos.reset();
             context.eval(ID, "var arrayFromJava = javaArray.methodThatReturnsArray();" +
                             "console.log(arrayFromJava);");
-            assertEquals("[3, 4, 1, 5]", baos.toString().trim());
+            assertEquals("3,4,1,5", baos.toString().trim());
             baos.reset();
             context.eval(ID, "var arrayFromJavaAsValue = javaArray.methodThatReturnsArrayAsValue();" +
                             "console.log(arrayFromJavaAsValue);");
-            assertEquals("[3, 4, 1, 5]", baos.toString().trim());
+            assertEquals("3,4,1,5", baos.toString().trim());
         }
     }
 

@@ -147,16 +147,19 @@ public class JavaBuiltinsTest extends JSTest {
 
     @Test
     public void testJavaTo() {
-        String result = test("var t = Java.to({a:'foo'}); ''+t;");
+        String result = test("var t = Java.to({a:'foo'}); '[' + t + ']';");
         assertEquals("[]", result);
 
-        result = test("var t = Java.to({a:'foo'},arg); ''+t;", null, true, (new Object[0]).getClass());
+        result = test("var t = Java.to({a:'foo'},arg); '[' + t + ']';", null, true, (new Object[0]).getClass());
         assertEquals("[]", result);
 
-        test("var t = Java.to({a:'foo'}, 'int[]'); ''+t;");
+        result = test("var t = Java.to({a:'foo'}, 'int[]'); '[' + t + ']';");
         assertEquals("[]", result);
 
         test("var t = Java.to(1, 'int[]'); ''+t;", "is not an Object");
+
+        result = test("var t = Java.to([3,1,4,1,5,9], 'int[]'); '[' + t + ']';");
+        assertEquals("[3,1,4,1,5,9]", result);
     }
 
     @Test
