@@ -46,6 +46,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -198,6 +199,27 @@ public class ForeignObjectToPrimitiveTest {
         @Override
         public String toString() {
             return "toString()";
+        }
+    }
+
+    @Test
+    public void testHostInstantToPrimitive() {
+        try (Context context = newContext()) {
+            Value isLooselyEqual = makeIsLooselyEqual(context);
+
+            long epochMilli = 1645568542000L; // 2022-02-22T22:22:22Z
+            Instant instant = Instant.ofEpochMilli(epochMilli);
+            assertEquals(instant.toString(), toString(context, instant));
+            assertEquals(String.valueOf(epochMilli), valueOf(context, instant));
+            assertTrue("string == instant", isLooselyEqual.execute(String.valueOf(epochMilli), instant).asBoolean());
+            assertTrue("instant == string", isLooselyEqual.execute(instant, String.valueOf(epochMilli)).asBoolean());
+            assertTrue("number == instant", isLooselyEqual.execute(epochMilli, instant).asBoolean());
+            assertTrue("instant == number", isLooselyEqual.execute(instant, epochMilli).asBoolean());
+
+            // isIdentical
+            assertTrue("instant == instant", isLooselyEqual.execute(instant, instant).asBoolean());
+            assertFalse("instant == instant", isLooselyEqual.execute(instant, Instant.ofEpochMilli(instant.toEpochMilli())).asBoolean());
+            assertFalse("instant == instant", isLooselyEqual.execute(Instant.ofEpochMilli(instant.toEpochMilli()), instant).asBoolean());
         }
     }
 

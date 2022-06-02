@@ -69,7 +69,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -248,8 +247,6 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
             } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
                 throw Errors.createTypeErrorInteropException(object, e, "doubleValue()", interop);
             }
-        } else if (interop.isInstant(object)) {
-            return JSDate.getDateValueFromInstant(object, interop);
         } else if (interop.isMetaObject(object)) {
             return javaClassToString(object, interop);
         } else if (interop.isException(object)) {
