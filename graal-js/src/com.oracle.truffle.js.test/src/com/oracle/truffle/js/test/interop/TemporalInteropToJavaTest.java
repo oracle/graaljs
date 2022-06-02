@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,81 +38,66 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import java.math.BigInteger;
+package com.oracle.truffle.js.test.interop;
+
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.Month;
 import java.time.ZoneId;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
+import org.junit.Assert;
+import org.junit.Test;
 
-@ExportLibrary(InteropLibrary.class)
-public class JSTemporalInstantObject extends JSNonProxyObject {
+import com.oracle.truffle.js.test.JSTest;
 
-    private final BigInt nanoseconds; // 8.4 A BigInt value
+public class TemporalInteropToJavaTest extends JSTest {
 
-    protected JSTemporalInstantObject(Shape shape, BigInt nanoseconds) {
-        super(shape);
-        this.nanoseconds = nanoseconds;
+    private static Context getJSContext() {
+        return JSTest.newContextBuilder(ID).option("js.temporal", "true").build();
     }
 
-    public BigInt getNanoseconds() {
-        return nanoseconds;
-    }
+    @Test
+    public void testInstant() {
+        try (Context ctx = getJSContext()) {
+            Value val = ctx.eval(ID, "new Temporal.Instant(0n);");
+            Instant inst = val.asInstant();
+            Assert.assertEquals(0, inst.getNano());
+            Assert.assertEquals(0, inst.getEpochSecond());
+        }
 
-    @ExportMessage
-    @TruffleBoundary
-    Instant asInstant() {
-        BigInteger[] res = nanoseconds.bigIntegerValue().divideAndRemainder(TemporalUtil.BI_10_POW_9);
-        return Instant.ofEpochSecond(res[0].longValue(), res[1].intValue());
-    }
+        try (Context ctx = getJSContext()) {
+            Value val = ctx.eval(ID, "new Temporal.Instant(100_000_000n);");
+            Instant inst = val.asInstant();
+            Assert.assertEquals(100_000_000L, inst.getNano());
+            Assert.assertEquals(0, inst.getEpochSecond());
+        }
 
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    final boolean isTimeZone() {
-        return true;
-    }
+        try (Context ctx = getJSContext()) {
+            Value val = ctx.eval(ID, "new Temporal.Instant(100_123_456_789n);");
+            Instant inst = val.asInstant();
+            Assert.assertEquals(123_456_789L, inst.getNano());
+            Assert.assertEquals(100, inst.getEpochSecond());
 
-    @ExportMessage
-    @TruffleBoundary
-    @SuppressWarnings("static-method")
-    final ZoneId asTimeZone() {
-        return ZoneId.of("UTC");
-    }
+            LocalDate ld = val.asDate();
+            Assert.assertEquals(1970, ld.getYear());
+            Assert.assertEquals(Month.JANUARY, ld.getMonth());
+            Assert.assertEquals(1, ld.getDayOfYear());
 
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    final boolean isDate() {
-        return true;
-    }
+            LocalTime lt = val.asTime();
+            Assert.assertEquals(0, lt.getHour());
+            Assert.assertEquals(1, lt.getMinute());
+            Assert.assertEquals(40, lt.getSecond());
+            Assert.assertEquals(123_456_789L, lt.getNano());
 
-    @ExportMessage
-    @TruffleBoundary
-    final LocalDate asDate() {
-        LocalDate ld = LocalDate.ofInstant(asInstant(), asTimeZone());
-        return ld;
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    final boolean isTime() {
-        return true;
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    final LocalTime asTime() {
-        LocalTime lt = LocalTime.ofInstant(asInstant(), asTimeZone());
-        return lt;
+            ZoneId zid = val.asTimeZone();
+            Assert.assertEquals("UTC", zid.getId());
+        }
     }
 
 }
