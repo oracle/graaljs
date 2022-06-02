@@ -65,8 +65,6 @@ public abstract class ForeignObjectPrototypeNode extends JavaScriptBaseNode {
         JSRealm realm = getRealm();
         if (interop.hasArrayElements(truffleObject)) {
             return realm.getArrayPrototype();
-        } else if (interop.isExecutable(truffleObject) || interop.isInstantiable(truffleObject)) {
-            return realm.getFunctionPrototype();
         } else if (interop.isInstant(truffleObject)) {
             return realm.getDatePrototype();
         } else if (interop.hasHashEntries(truffleObject)) {
@@ -79,6 +77,8 @@ public abstract class ForeignObjectPrototypeNode extends JavaScriptBaseNode {
             return realm.getNumberPrototype();
         } else if (interop.isBoolean(truffleObject)) {
             return realm.getBooleanPrototype();
+        } else if (interop.isExecutable(truffleObject) || interop.isInstantiable(truffleObject)) {
+            return realm.getFunctionPrototype();
         } else {
             return realm.getObjectPrototype();
         }
