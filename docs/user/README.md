@@ -33,10 +33,10 @@ $GRAALVM/bin/gu install nodejs
 Alternatively, you can also download the Node.js runtime plugin installable manually and install it from a file, e.g.:
 
 ```shell
-$ $GRAALVM/bin/gu install --file ~/Downloads/nodejs-installable-svm-java17-linux-amd64-21.3.0.jar
+$ $GRAALVM/bin/gu install --file ~/Downloads/nodejs-installable-...-.jar
 ```
 
-This installs the `node` and `npm` binaries in the `$GRAALVM/bin` directory.
+This installs the `node` and `npm` binaries in the `$GRAALVM_HOME/bin` directory.
 Use the `node` utility to execute Node.js applications:
 ```shell
 node [options] [filename] [args]
@@ -45,30 +45,31 @@ node [options] [filename] [args]
 To install a Node.js package, use the `npm` launcher from the GraalVM's `/bin` folder.
 The `npm` command is equivalent to the default Node.js command and supports all Node.js APIs.
 
-1&#46; Install the `colors` and `ansispan` packages using `npm install` as follows:
-```shell
-npm install colors ansispan
-```
-After the packages are installed, you can use them from your application.
+1. Install the `colors` and `ansispan` packages using `npm install` as follows:
+    ```shell
+    npm install colors ansispan
+    ```
+    After the packages are installed, you can use them from your application.
 
-2&#46; Add the following code snippet to a file named `app.js` and save it in the same directory where you installed the Node.js packages:
-```js
-const http = require("http");
-const span = require("ansispan");
-require("colors");
+2. Add the following code snippet to a file named `app.js` and save it in the same directory where you installed the Node.js packages:
+    ```js
+    const http = require("http");
+    const span = require("ansispan");
+    require("colors");
 
-http.createServer(function (request, response) {
-    response.writeHead(200, {"Content-Type": "text/html"});
-    response.end(span("Hello Graal.js!".green));
-}).listen(8000, function() { console.log("Graal.js server running at http://127.0.0.1:8000/".red); });
+    http.createServer(function (request, response) {
+        response.writeHead(200, {"Content-Type": "text/html"});
+        response.end(span("Hello Graal.js!".green));
+    }).listen(8000, function() { console.log("Graal.js server running at http://127.0.0.1:8000/".red); });
 
-setTimeout(function() { console.log("DONE!"); process.exit(); }, 2000);
-```
+    setTimeout(function() { console.log("DONE!"); process.exit(); }, 2000);
+    ```
 
-3&#46; Execute it on GraalVM using the `node` command as follows:
-```shell
-node app.js
-```
+3. Execute it on GraalVM using the `node` command as follows:
+    ```shell
+    node app.js
+    ```
+
 For more information about running Node.js, continue to [Node.js Runtime](NodeJS.md).
 Node.js functionality is available when an application is started from the `node` binary launcher.
 Certain limits apply when launching a Node.js application or accessing npm packages from a Java context, see [Node.js vs. Java Script Context](NodeJSVSJavaScriptContext.md).
@@ -82,7 +83,7 @@ To enable Node.js or JavaScript interoperability with other languages, pass the 
 
 ```shell
 node --jvm --polyglot
-Welcome to Node.js v12.15.0.
+Welcome to Node.js v16.14.2.
 Type ".help" for more information.
 > var array = Polyglot.eval("python", "[1,2,42,4]")
 > console.log(array[2]);
@@ -147,7 +148,8 @@ Hello Java!
 hello from node.js
 done
 ```
-By setting the classpath, you instruct `node` to start a JVM properly. Both Node.js and JVM then run in the same process and the interoperability works using the same `Value` classes as above.
+By setting the classpath, you instruct `node` to start a JVM properly. 
+Both Node.js and JVM then run in the same process and the interoperability works using the same `Value` classes as above.
 
 Learn more about language interoperability in the [Java Interoperability](JavaInteroperability.md) guide.
 
