@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -112,18 +112,22 @@ public class JavaBuiltinsTest extends JSTest {
     }
 
     @Test
-    public void testJavaExtend() {
-        // String result = test("var t = Java.type('java.lang.Object'); var e = Java.extend(t);
-        // ''+e;");
-        // assertEquals("class com.oracle.truffle.js.javaadapters.java.lang.Object", result);
-
-        // result = test("var t = Java.type('java.lang.Object'); var e = Java.extend(t, {a:'foo'});
-        // ''+e;");
-        // assertEquals("class com.oracle.truffle.js.javaadapters.java.lang.Object", result);
-
+    public void testJavaExtendArgumentError() {
         test("Java.extend();", "needs at least one argument");
         test("Java.extend({});", "needs at least one type argument");
         test("Java.extend(1);", "needs Java types");
+    }
+
+    @Test
+    public void testJavaExtend() {
+        String result;
+        result = test("var O = Java.type('java.lang.Object');\n" +
+                        "var E = Java.extend(O); new E({a: 'foo', toString() {return 'EXTENDED';}}).toString();");
+        assertEquals("EXTENDED", result);
+
+        result = test("var O = Java.type('java.lang.Object');\n" +
+                        "var E = Java.extend(O, {a: 'foo', toString() {return 'EXTENDED';}}); new E().toString();");
+        assertEquals("EXTENDED", result);
     }
 
     @Test
