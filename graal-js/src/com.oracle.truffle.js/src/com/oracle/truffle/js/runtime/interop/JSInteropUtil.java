@@ -45,6 +45,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -60,6 +61,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -236,4 +238,51 @@ public final class JSInteropUtil {
     public static boolean isBoxedPrimitive(Object receiver, InteropLibrary interop) {
         return interop.isString(receiver) || interop.isNumber(receiver) || interop.isBoolean(receiver);
     }
+
+    public static PropertyDescriptor getOwnProperty(Object object, TruffleString propertyKey) {
+        return getOwnProperty(object, propertyKey, InteropLibrary.getUncached(), ImportValueNode.getUncached(), TruffleString.ReadCharUTF16Node.getUncached());
+    }
+
+    public static PropertyDescriptor getOwnProperty(Object object, TruffleString propertyKey, InteropLibrary interop, ImportValueNode importValueNode, TruffleString.ReadCharUTF16Node charAtNode) {
+        try {
+            String key = Strings.toJavaString(propertyKey);
+            if (interop.hasMembers(object) && interop.isMemberExisting(object, key)) {
+                PropertyDescriptor desc = getExistingMemberProperty(object, key, interop, importValueNode);
+                if (desc != null) {
+                    return desc;
+                }
+            }
+            long index = JSRuntime.propertyNameToArrayIndex(propertyKey, charAtNode);
+            if (JSRuntime.isArrayIndex(index) && interop.hasArrayElements(object)) {
+                return getArrayElementProperty(object, index, interop, importValueNode);
+            }
+        } catch (InteropException iex) {
+        }
+        return null;
+    }
+
+    public static PropertyDescriptor getExistingMemberProperty(Object object, String key, InteropLibrary interop, ImportValueNode importValueNode) throws InteropException {
+        assert interop.hasMembers(object) && interop.isMemberExisting(object, key);
+        if (interop.isMemberReadable(object, key)) {
+            return PropertyDescriptor.createData(
+                            importValueNode.executeWithTarget(interop.readMember(object, key)),
+                            !interop.isMemberInternal(object, key),
+                            interop.isMemberWritable(object, key),
+                            interop.isMemberRemovable(object, key));
+        }
+        return null;
+    }
+
+    public static PropertyDescriptor getArrayElementProperty(Object object, long index, InteropLibrary interop, ImportValueNode importValueNode) throws InteropException {
+        assert interop.hasArrayElements(object) && JSRuntime.isArrayIndex(index);
+        if (interop.isArrayElementExisting(object, index) && interop.isArrayElementReadable(object, index)) {
+            return PropertyDescriptor.createData(
+                            importValueNode.executeWithTarget(interop.readArrayElement(object, index)),
+                            true,
+                            interop.isArrayElementWritable(object, index),
+                            interop.isArrayElementRemovable(object, index));
+        }
+        return null;
+    }
+
 }

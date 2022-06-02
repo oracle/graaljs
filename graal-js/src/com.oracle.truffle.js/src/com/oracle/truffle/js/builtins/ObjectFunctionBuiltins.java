@@ -360,30 +360,9 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached TruffleString.ReadCharUTF16Node charAtNode) {
             Object propertyKey = toPropertyKeyNode.execute(property);
             if (Strings.isTString(propertyKey)) {
-                try {
-                    String member = Strings.toJavaString((TruffleString) propertyKey);
-                    if (interop.hasMembers(thisObj)) {
-                        if (interop.isMemberExisting(thisObj, member) && interop.isMemberReadable(thisObj, member)) {
-                            PropertyDescriptor desc = PropertyDescriptor.createData(
-                                            toJSType.executeWithTarget(interop.readMember(thisObj, member)),
-                                            !interop.isMemberInternal(thisObj, member),
-                                            interop.isMemberWritable(thisObj, member),
-                                            interop.isMemberRemovable(thisObj, member));
-                            return fromPropertyDescriptorNode.execute(desc, getContext());
-                        }
-                    }
-                    long index = JSRuntime.propertyNameToArrayIndex((TruffleString) propertyKey, charAtNode);
-                    if (JSRuntime.isArrayIndex(index) && interop.hasArrayElements(thisObj)) {
-                        if (interop.isArrayElementExisting(thisObj, index) && interop.isArrayElementReadable(thisObj, index)) {
-                            PropertyDescriptor desc = PropertyDescriptor.createData(
-                                            toJSType.executeWithTarget(interop.readArrayElement(thisObj, index)),
-                                            true,
-                                            interop.isArrayElementWritable(thisObj, index),
-                                            interop.isArrayElementRemovable(thisObj, index));
-                            return fromPropertyDescriptorNode.execute(desc, getContext());
-                        }
-                    }
-                } catch (InteropException iex) {
+                PropertyDescriptor desc = JSInteropUtil.getOwnProperty(thisObj, (TruffleString) propertyKey, interop, toJSType, charAtNode);
+                if (desc != null) {
+                    return fromPropertyDescriptorNode.execute(desc, getContext());
                 }
             }
             return Undefined.instance;
@@ -449,12 +428,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     }
                     for (int i = 0; i < size; i++) {
                         String member = (String) members.readArrayElement(keysObj, i);
-                        if (interop.isMemberReadable(thisObj, member)) {
-                            PropertyDescriptor desc = PropertyDescriptor.createData(
-                                            toJSType.executeWithTarget(interop.readMember(thisObj, member)),
-                                            !interop.isMemberInternal(thisObj, member),
-                                            interop.isMemberWritable(thisObj, member),
-                                            interop.isMemberRemovable(thisObj, member));
+                        PropertyDescriptor desc = JSInteropUtil.getExistingMemberProperty(thisObj, member, interop, toJSType);
+                        if (desc != null) {
                             JSDynamicObject propDesc = fromPropertyDescriptorNode.execute(desc, getContext());
                             Properties.putWithFlags(putPropDescNode, result, Strings.fromJavaString(member), propDesc, JSAttributes.configurableEnumerableWritable());
                         }
@@ -467,12 +442,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         throw Errors.createRangeErrorInvalidArrayLength();
                     }
                     for (long i = 0; i < size; i++) {
-                        if (interop.isArrayElementExisting(thisObj, i) && interop.isArrayElementReadable(thisObj, i)) {
-                            PropertyDescriptor desc = PropertyDescriptor.createData(
-                                            toJSType.executeWithTarget(interop.readArrayElement(thisObj, i)),
-                                            true,
-                                            interop.isArrayElementWritable(thisObj, i),
-                                            interop.isArrayElementRemovable(thisObj, i));
+                        PropertyDescriptor desc = JSInteropUtil.getArrayElementProperty(thisObj, i, interop, toJSType);
+                        if (desc != null) {
                             JSDynamicObject propDesc = fromPropertyDescriptorNode.execute(desc, getContext());
                             Properties.putWithFlags(putPropDescNode, result, Strings.fromLong(i), propDesc, JSAttributes.configurableEnumerableWritable());
                         }
