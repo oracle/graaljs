@@ -148,6 +148,7 @@ public class JSTemporalPlainDateTimeObject extends JSNonProxyObject implements T
     }
 
     @ExportMessage
+    @TruffleBoundary
     final LocalDate asDate() {
         LocalDate ld = LocalDate.of(year, month, day);
         return ld;

@@ -111,10 +111,18 @@ public class TemporalInteropToJavaTest extends JSTest {
     // public void testDuration() {
     // }
 
-    // TODO
-    // @Test
-    // public void testPlainDate() {
-    // }
+    @Test
+    public void testPlainDate() {
+        try (Context ctx = getJSContext()) {
+            Value val = ctx.eval(ID, "new Temporal.PlainDate(1982, 11, 26);");
+            LocalDate ld = val.asDate();
+            Assert.assertEquals(1982, ld.getYear());
+            Assert.assertEquals(Month.NOVEMBER, ld.getMonth());
+            Assert.assertEquals(26, ld.getDayOfMonth());
+
+            Assert.assertFalse(val.isTime());
+            Assert.assertFalse(val.isTimeZone());
+        }}
 
     @Test
     public void testPlainTime() {
