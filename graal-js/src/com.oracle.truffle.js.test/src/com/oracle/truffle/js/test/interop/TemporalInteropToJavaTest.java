@@ -48,6 +48,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.Month;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
@@ -99,5 +100,68 @@ public class TemporalInteropToJavaTest extends JSTest {
             Assert.assertEquals("UTC", zid.getId());
         }
     }
+
+    // TODO
+    // @Test
+    // public void testCalendar() {
+    // }
+
+    // TODO
+    // @Test
+    // public void testDuration() {
+    // }
+
+    // TODO
+    // @Test
+    // public void testPlainDate() {
+    // }
+
+    // TODO
+    // @Test
+    // public void testPlainTime() {
+    // }
+
+    // TODO
+    // @Test
+    // public void testPlainDateTime() {
+    // }
+
+    // TODO
+    // @Test
+    // public void testPlainMonthDay() {
+    // }
+
+    // TODO
+    // @Test
+    // public void testPlainYearMonth() {
+    // }
+
+    @Test
+    public void testTimeZone() {
+        try (Context ctx = getJSContext()) {
+            Value val = ctx.eval(ID, "new Temporal.TimeZone('UTC');");
+            ZoneId zid = val.asTimeZone();
+            Assert.assertEquals("UTC", zid.getId());
+        }
+
+        try (Context ctx = getJSContext()) {
+            Value val = ctx.eval(ID, "new Temporal.TimeZone('Europe/Vienna');");
+            ZoneId zid = val.asTimeZone();
+            Assert.assertEquals("Europe/Vienna", zid.getId());
+        }
+
+        try (Context ctx = getJSContext()) {
+            Value val = ctx.eval(ID, "Temporal.TimeZone.from('+0645');");
+            ZoneId zid = val.asTimeZone();
+            Assert.assertTrue(zid instanceof ZoneOffset);
+            ZoneOffset zoff = (ZoneOffset) zid;
+            Assert.assertEquals(405 * 60, zoff.getTotalSeconds());
+        }
+    }
+
+    // TODO
+    // @Test
+    // public void testZonedDateTime() {
+    // }
 
 }

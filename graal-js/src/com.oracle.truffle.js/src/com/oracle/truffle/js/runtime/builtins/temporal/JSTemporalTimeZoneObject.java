@@ -40,11 +40,18 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
+import java.time.ZoneId;
+
+@ExportLibrary(InteropLibrary.class)
 public class JSTemporalTimeZoneObject extends JSNonProxyObject {
 
     private final BigInt offsetNanoseconds;
@@ -62,5 +69,17 @@ public class JSTemporalTimeZoneObject extends JSNonProxyObject {
 
     public TruffleString getIdentifier() {
         return identifier;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    final boolean isTimeZone() {
+        return true;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final ZoneId asTimeZone() {
+        return ZoneId.of(identifier.toJavaStringUncached());
     }
 }
