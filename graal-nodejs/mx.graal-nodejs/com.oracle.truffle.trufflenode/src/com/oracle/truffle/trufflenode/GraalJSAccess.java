@@ -3191,10 +3191,6 @@ public final class GraalJSAccess {
             return; // termination in progress already
         }
         terminateExecution = true;
-        Thread thread = agent.getThread();
-        if (thread != null) {
-            thread.interrupt();
-        }
         Debugger debugger = lookupInstrument("debugger", Debugger.class);
         if (debugger == null) {
             System.err.println("Debugger is not available!");
@@ -3209,6 +3205,10 @@ public final class GraalJSAccess {
             }
             throw new GraalJSKillException();
         }).suspendNextExecution();
+        Thread thread = agent.getThread();
+        if (thread != null) {
+            thread.interrupt();
+        }
     }
 
     static final class GraalJSKillException extends ThreadDeath {
