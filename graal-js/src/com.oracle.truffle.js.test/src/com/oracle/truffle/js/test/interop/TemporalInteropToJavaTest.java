@@ -116,10 +116,17 @@ public class TemporalInteropToJavaTest extends JSTest {
     // public void testPlainDate() {
     // }
 
-    // TODO
-    // @Test
-    // public void testPlainTime() {
-    // }
+    @Test
+    public void testPlainTime() {
+        try (Context ctx = getJSContext()) {
+            Value val = ctx.eval(ID, "new Temporal.PlainTime(12, 34, 56, 987, 654, 321);");
+            LocalTime lt = val.asTime();
+            Assert.assertEquals(12, lt.getHour());
+            Assert.assertEquals(34, lt.getMinute());
+            Assert.assertEquals(56, lt.getSecond());
+            Assert.assertEquals(987_654_321L, lt.getNano());
+        }
+    }
 
     // TODO
     // @Test

@@ -40,10 +40,17 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
+import java.time.LocalTime;
+
+@ExportLibrary(InteropLibrary.class)
 public class JSTemporalPlainTimeObject extends JSNonProxyObject implements TemporalTime {
 
     // all values guaranteed to fit into int
@@ -101,5 +108,19 @@ public class JSTemporalPlainTimeObject extends JSNonProxyObject implements Tempo
     @Override
     public JSDynamicObject getCalendar() {
         return calendar;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    final boolean isTime() {
+        return true;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final LocalTime asTime() {
+        int ns = millisecond * 1_000_000 + microsecond * 1_000 + nanosecond;
+        LocalTime lt = LocalTime.of(hour, minute, second, ns);
+        return lt;
     }
 }
