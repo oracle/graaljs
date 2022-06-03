@@ -63,6 +63,9 @@ public class TemporalInteropToJavaTest extends JSTest {
         return JSTest.newContextBuilder(ID).option("js.temporal", "true").build();
     }
 
+    // Calendar, Duration, PlainMonthDay, PlainYearMonth cannot be converted to Instant, Date or
+    // Time
+
     @Test
     public void testInstant() {
         try (Context ctx = getJSContext()) {
@@ -101,16 +104,6 @@ public class TemporalInteropToJavaTest extends JSTest {
         }
     }
 
-    // TODO
-    // @Test
-    // public void testCalendar() {
-    // }
-
-    // TODO
-    // @Test
-    // public void testDuration() {
-    // }
-
     @Test
     public void testPlainDate() {
         try (Context ctx = getJSContext()) {
@@ -122,7 +115,8 @@ public class TemporalInteropToJavaTest extends JSTest {
 
             Assert.assertFalse(val.isTime());
             Assert.assertFalse(val.isTimeZone());
-        }}
+        }
+    }
 
     @Test
     public void testPlainTime() {
@@ -158,16 +152,6 @@ public class TemporalInteropToJavaTest extends JSTest {
         }
     }
 
-    // TODO
-    // @Test
-    // public void testPlainMonthDay() {
-    // }
-
-    // TODO
-    // @Test
-    // public void testPlainYearMonth() {
-    // }
-
     @Test
     public void testTimeZone() {
         try (Context ctx = getJSContext()) {
@@ -191,9 +175,27 @@ public class TemporalInteropToJavaTest extends JSTest {
         }
     }
 
-    // TODO
-    // @Test
-    // public void testZonedDateTime() {
-    // }
+    @Test
+    public void testZonedDateTime() {
+        try (Context ctx = getJSContext()) {
+            Value val = ctx.eval(ID, "new Temporal.ZonedDateTime(100_123_456_789n, Temporal.TimeZone.from('Europe/Vienna'));");
+            Instant inst = val.asInstant();
+            Assert.assertEquals(123_456_789L, inst.getNano());
+            Assert.assertEquals(100, inst.getEpochSecond());
 
+            LocalDate ld = val.asDate();
+            Assert.assertEquals(1970, ld.getYear());
+            Assert.assertEquals(Month.JANUARY, ld.getMonth());
+            Assert.assertEquals(1, ld.getDayOfYear());
+
+            LocalTime lt = val.asTime();
+            Assert.assertEquals(1, lt.getHour()); // offset of +1 due to timezone
+            Assert.assertEquals(1, lt.getMinute());
+            Assert.assertEquals(40, lt.getSecond());
+            Assert.assertEquals(123_456_789L, lt.getNano());
+
+            ZoneId zid = val.asTimeZone();
+            Assert.assertEquals("Europe/Vienna", zid.getId());
+        }
+    }
 }

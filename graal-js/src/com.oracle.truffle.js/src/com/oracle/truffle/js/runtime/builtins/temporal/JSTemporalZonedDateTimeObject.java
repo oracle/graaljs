@@ -40,11 +40,27 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
+import java.math.BigInteger;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+
+@ExportLibrary(InteropLibrary.class)
 public class JSTemporalZonedDateTimeObject extends JSNonProxyObject implements TemporalCalendar {
 
     private final BigInt nanoseconds; // 6.4. A BigInt value
@@ -69,5 +85,65 @@ public class JSTemporalZonedDateTimeObject extends JSNonProxyObject implements T
 
     public JSDynamicObject getTimeZone() {
         return timeZone;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Instant asInstant() {
+        BigInteger[] res = nanoseconds.bigIntegerValue().divideAndRemainder(TemporalUtil.BI_10_POW_9);
+        return Instant.ofEpochSecond(res[0].longValue(), res[1].intValue());
+    }
+
+    @ExportMessage
+    final boolean isTimeZone() {
+        return getZoneIdIntl() != null;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final ZoneId asTimeZone() throws UnsupportedMessageException {
+        ZoneId tzObj = getZoneIdIntl();
+        if (tzObj == null) {
+            throw UnsupportedMessageException.create();
+        }
+        return tzObj;
+    }
+
+    @TruffleBoundary
+    private ZoneId getZoneIdIntl() {
+        if (timeZone instanceof JSTemporalTimeZoneObject) {
+            JSTemporalTimeZoneObject tzObj = (JSTemporalTimeZoneObject) timeZone;
+            return tzObj.asTimeZone();
+        }
+        Object tzID = JSObject.get(timeZone, TemporalConstants.TIME_ZONE);
+        if (tzID instanceof TruffleString) {
+            String id = ((TruffleString) tzID).toJavaStringUncached();
+            return ZoneId.of(id);
+        }
+        return null;
+    }
+
+    @ExportMessage
+    final boolean isDate() {
+        return isTimeZone();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final LocalDate asDate() throws UnsupportedMessageException {
+        LocalDate ld = LocalDate.ofInstant(asInstant(), asTimeZone());
+        return ld;
+    }
+
+    @ExportMessage
+    final boolean isTime() {
+        return isTimeZone();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final LocalTime asTime() throws UnsupportedMessageException {
+        LocalTime lt = LocalTime.ofInstant(asInstant(), asTimeZone());
+        return lt;
     }
 }
