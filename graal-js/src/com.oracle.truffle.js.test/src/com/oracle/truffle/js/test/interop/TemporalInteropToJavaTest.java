@@ -125,13 +125,30 @@ public class TemporalInteropToJavaTest extends JSTest {
             Assert.assertEquals(34, lt.getMinute());
             Assert.assertEquals(56, lt.getSecond());
             Assert.assertEquals(987_654_321L, lt.getNano());
+
+            Assert.assertFalse(val.isDate());
+            Assert.assertFalse(val.isTimeZone());
         }
     }
 
-    // TODO
-    // @Test
-    // public void testPlainDateTime() {
-    // }
+    @Test
+    public void testPlainDateTime() {
+        try (Context ctx = getJSContext()) {
+            Value val = ctx.eval(ID, "new Temporal.PlainDateTime(1982, 11, 26, 12, 34, 56, 987, 654, 321);");
+            LocalDate ld = val.asDate();
+            Assert.assertEquals(1982, ld.getYear());
+            Assert.assertEquals(Month.NOVEMBER, ld.getMonth());
+            Assert.assertEquals(26, ld.getDayOfMonth());
+
+            LocalTime lt = val.asTime();
+            Assert.assertEquals(12, lt.getHour());
+            Assert.assertEquals(34, lt.getMinute());
+            Assert.assertEquals(56, lt.getSecond());
+            Assert.assertEquals(987_654_321L, lt.getNano());
+
+            Assert.assertFalse(val.isTimeZone());
+        }
+    }
 
     // TODO
     // @Test
