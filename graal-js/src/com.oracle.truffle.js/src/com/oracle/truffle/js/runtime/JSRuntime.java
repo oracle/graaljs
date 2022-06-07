@@ -285,7 +285,7 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Object toPrimitive(Object value) {
-        return toPrimitive(value, JSToPrimitiveNode.Hint.None);
+        return toPrimitive(value, JSToPrimitiveNode.Hint.Default);
     }
 
     /**
@@ -326,7 +326,7 @@ public final class JSRuntime {
                 return maybeResult;
             }
         }
-        return foreignOrdinaryToPrimitive(tObj, hint == JSToPrimitiveNode.Hint.None ? JSToPrimitiveNode.Hint.Number : hint);
+        return foreignOrdinaryToPrimitive(tObj, hint == JSToPrimitiveNode.Hint.Default ? JSToPrimitiveNode.Hint.Number : hint);
     }
 
     @TruffleBoundary

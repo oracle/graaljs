@@ -995,7 +995,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         private Object toPrimitive(Object target) {
             if (toPrimitiveNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toPrimitiveNode = insert(JSToPrimitiveNode.createHintNone());
+                toPrimitiveNode = insert(JSToPrimitiveNode.createHintDefault());
             }
             return toPrimitiveNode.execute(target);
         }

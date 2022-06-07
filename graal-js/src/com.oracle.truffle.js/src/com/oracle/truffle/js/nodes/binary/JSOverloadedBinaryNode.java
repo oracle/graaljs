@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -107,8 +107,8 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
         return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, hint, true);
     }
 
-    public static JSOverloadedBinaryNode createHintNone(TruffleString overloadedOperatorName) {
-        return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.None, true);
+    public static JSOverloadedBinaryNode createHintDefault(TruffleString overloadedOperatorName) {
+        return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.Default, true);
     }
 
     public static JSOverloadedBinaryNode createHintNumber(TruffleString overloadedOperatorName) {

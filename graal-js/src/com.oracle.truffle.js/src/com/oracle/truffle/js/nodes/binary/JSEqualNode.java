@@ -222,7 +222,7 @@ public abstract class JSEqualNode extends JSCompareNode {
 
     @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
     protected boolean doOverloaded(Object a, Object b,
-                    @Cached("createHintNone(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode,
+                    @Cached("createHintDefault(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode,
                     @Cached("create()") JSToBooleanNode toBooleanNode) {
         if (a == b) {
             return true;
@@ -250,7 +250,7 @@ public abstract class JSEqualNode extends JSCompareNode {
     @Specialization(guards = {"!hasOverloadedOperators(a)", "isPrimitiveNode.executeBoolean(b)"}, limit = "1")
     protected boolean doJSObjectVsPrimitive(JSObject a, Object b,
                     @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
-                    @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared("toPrimitive") @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("isPrimitive") @Cached @SuppressWarnings("unused") IsPrimitiveNode isPrimitiveNode,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
         if (isNullish(b, bInterop)) {
@@ -262,7 +262,7 @@ public abstract class JSEqualNode extends JSCompareNode {
     @Specialization(guards = {"!hasOverloadedOperators(b)", "isPrimitiveNode.executeBoolean(a)"}, limit = "1")
     protected boolean doJSObjectVsPrimitive(Object a, JSObject b,
                     @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
-                    @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared("toPrimitive") @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("isPrimitive") @Cached @SuppressWarnings("unused") IsPrimitiveNode isPrimitiveNode,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
         if (isNullish(a, aInterop)) {
@@ -317,7 +317,7 @@ public abstract class JSEqualNode extends JSCompareNode {
                     @Bind("isForeignObject(b)") boolean isBForeign,
                     @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
                     @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
-                    @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared("toPrimitive") @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("isPrimitive") @Cached IsPrimitiveNode isPrimitiveNode,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
         assert a != null && b != null;

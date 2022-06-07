@@ -86,7 +86,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     @Child private OrdinaryToPrimitiveNode ordinaryToPrimitiveNode;
 
     public enum Hint {
-        None(Strings.HINT_DEFAULT),
+        Default(Strings.HINT_DEFAULT),
         Number(Strings.HINT_NUMBER),
         String(Strings.HINT_STRING);
 
@@ -109,8 +109,8 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object value);
 
-    public static JSToPrimitiveNode createHintNone() {
-        return create(Hint.None);
+    public static JSToPrimitiveNode createHintDefault() {
+        return create(Hint.Default);
     }
 
     public static JSToPrimitiveNode createHintString() {
@@ -198,7 +198,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     protected final boolean isHintNumber() {
-        return hint == Hint.Number || hint == Hint.None;
+        return hint == Hint.Number || hint == Hint.Default;
     }
 
     @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")

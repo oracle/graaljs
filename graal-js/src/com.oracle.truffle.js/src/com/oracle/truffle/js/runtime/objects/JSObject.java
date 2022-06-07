@@ -570,12 +570,12 @@ public abstract class JSObject extends JSDynamicObject {
             }
             return result;
         }
-        return ordinaryToPrimitive(obj, hint == JSToPrimitiveNode.Hint.None ? JSToPrimitiveNode.Hint.Number : hint);
+        return ordinaryToPrimitive(obj, hint == JSToPrimitiveNode.Hint.Default ? JSToPrimitiveNode.Hint.Number : hint);
     }
 
     @TruffleBoundary
     public static Object toPrimitive(JSDynamicObject obj) {
-        return toPrimitive(obj, JSToPrimitiveNode.Hint.None);
+        return toPrimitive(obj, JSToPrimitiveNode.Hint.Default);
     }
 
     /**
