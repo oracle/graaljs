@@ -191,7 +191,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
             case toName:
                 return TestV8ToNameNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case toPrimitive:
-                return TestV8ToPrimitiveNodeGen.create(context, builtin, JSToPrimitiveNode.Hint.None, args().fixedArgs(1).createArgumentNodes(context));
+                return TestV8ToPrimitiveNodeGen.create(context, builtin, JSToPrimitiveNode.Hint.Default, args().fixedArgs(1).createArgumentNodes(context));
             case toPrimitiveString:
                 return TestV8ToPrimitiveNodeGen.create(context, builtin, JSToPrimitiveNode.Hint.String, args().fixedArgs(1).createArgumentNodes(context));
             case toPrimitiveNumber:

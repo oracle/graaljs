@@ -50,7 +50,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
-import com.oracle.truffle.js.nodes.access.PropertyNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
@@ -58,7 +58,7 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -72,11 +72,10 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 @ImportStatic({JSConfig.class})
 public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     private final Hint hint;
-    private final JSContext context;
     private final ConditionProfile toStringFunctionProfile = ConditionProfile.createBinaryProfile();
     private final ConditionProfile valueOfFunctionProfile = ConditionProfile.createBinaryProfile();
-    @Child private PropertyNode getToStringNode;
-    @Child private PropertyNode getValueOfNode;
+    @Child private PropertyGetNode getToStringNode;
+    @Child private PropertyGetNode getValueOfNode;
     @Child private IsCallableNode isCallableNode;
     @Child private JSFunctionCallNode callToStringNode;
     @Child private JSFunctionCallNode callValueOfNode;
@@ -86,10 +85,9 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     private static final String TO_STRING = "toString";
     private static final String VALUE_OF = "valueOf";
 
-    protected OrdinaryToPrimitiveNode(JSContext context, Hint hint) {
+    protected OrdinaryToPrimitiveNode(Hint hint) {
         assert hint == Hint.String || hint == Hint.Number;
         this.hint = hint;
-        this.context = context;
         this.isCallableNode = IsCallableNode.create();
         this.isPrimitiveNode = IsPrimitiveNode.create();
     }
@@ -117,20 +115,20 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         }
     }
 
-    public static OrdinaryToPrimitiveNode createHintString(JSContext context) {
-        return create(context, Hint.String);
+    public static OrdinaryToPrimitiveNode createHintString() {
+        return create(Hint.String);
     }
 
-    public static OrdinaryToPrimitiveNode createHintNumber(JSContext context) {
-        return create(context, Hint.Number);
+    public static OrdinaryToPrimitiveNode createHintNumber() {
+        return create(Hint.Number);
     }
 
-    public static OrdinaryToPrimitiveNode create(JSContext context, Hint hint) {
-        return OrdinaryToPrimitiveNodeGen.create(context, hint);
+    public static OrdinaryToPrimitiveNode create(Hint hint) {
+        return OrdinaryToPrimitiveNodeGen.create(hint);
     }
 
     private Object doHintString(JSObject object) {
-        Object toString = getToString().executeWithTarget(object);
+        Object toString = getToString().getValue(object);
         if (toStringFunctionProfile.profile(isCallableNode.executeBoolean(toString))) {
             Object result = callToStringNode.executeCall(JSArguments.createZeroArg(object, toString));
             if (isPrimitiveNode.executeBoolean(result)) {
@@ -138,7 +136,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             }
         }
 
-        Object valueOf = getValueOf().executeWithTarget(object);
+        Object valueOf = getValueOf().getValue(object);
         if (valueOfFunctionProfile.profile(isCallableNode.executeBoolean(valueOf))) {
             Object result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, valueOf));
             if (isPrimitiveNode.executeBoolean(result)) {
@@ -151,7 +149,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
 
     private Object doHintNumber(JSObject object) {
         assert JSGuards.isJSObject(object);
-        Object valueOf = getValueOf().executeWithTarget(object);
+        Object valueOf = getValueOf().getValue(object);
         if (valueOfFunctionProfile.profile(isCallableNode.executeBoolean(valueOf))) {
             Object result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, valueOf));
             if (isPrimitiveNode.executeBoolean(result)) {
@@ -159,7 +157,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             }
         }
 
-        Object toString = getToString().executeWithTarget(object);
+        Object toString = getToString().getValue(object);
         if (toStringFunctionProfile.profile(isCallableNode.executeBoolean(toString))) {
             Object result = callToStringNode.executeCall(JSArguments.createZeroArg(object, toString));
             if (isPrimitiveNode.executeBoolean(result)) {
@@ -176,7 +174,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             return result;
         }
         JSDynamicObject proto = getForeignObjectPrototype(object);
-        Object func = getToString().executeWithTarget(proto);
+        Object func = getToString().getValue(proto);
         if (toStringFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
             result = callToStringNode.executeCall(JSArguments.createZeroArg(object, func));
             if (isPrimitiveNode.executeBoolean(result)) {
@@ -188,7 +186,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         if (result != null) {
             return result;
         }
-        func = getValueOf().executeWithTarget(proto);
+        func = getValueOf().getValue(proto);
         if (valueOfFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
             result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, func));
             if (isPrimitiveNode.executeBoolean(result)) {
@@ -205,7 +203,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             return result;
         }
         JSDynamicObject proto = getForeignObjectPrototype(object);
-        Object func = getValueOf().executeWithTarget(proto);
+        Object func = getValueOf().getValue(proto);
         if (valueOfFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
             result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, func));
             if (isPrimitiveNode.executeBoolean(result)) {
@@ -217,7 +215,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         if (result != null) {
             return result;
         }
-        func = getToString().executeWithTarget(proto);
+        func = getToString().getValue(proto);
         if (toStringFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
             result = callToStringNode.executeCall(JSArguments.createZeroArg(object, func));
             if (isPrimitiveNode.executeBoolean(result)) {
@@ -230,6 +228,10 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
 
     private Object tryInvokeForeignMethod(Object object, InteropLibrary interop, String methodName) {
         if (interop.hasMembers(object) && interop.isMemberInvocable(object, methodName)) {
+            // Avoid calling toString() on Java arrays; use Array.prototype.toString() instead.
+            if (isJavaArray(object, interop)) {
+                return null;
+            }
             try {
                 Object result = JSRuntime.importValue(interop.invokeMember(object, methodName));
                 if (isPrimitiveNode.executeBoolean(result)) {
@@ -242,19 +244,23 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         return null;
     }
 
-    private PropertyNode getToString() {
+    public static boolean isJavaArray(Object object, InteropLibrary interop) {
+        return JSRealm.get(interop).getEnv().isHostObject(object) && interop.hasArrayElements(object) && interop.isMemberReadable(object, "length");
+    }
+
+    private PropertyGetNode getToString() {
         if (getToStringNode == null || callToStringNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getToStringNode = insert(PropertyNode.createMethod(context, null, Strings.TO_STRING));
+            getToStringNode = insert(PropertyGetNode.createGetMethod(Strings.TO_STRING, getLanguage().getJSContext()));
             callToStringNode = insert(JSFunctionCallNode.createCall());
         }
         return getToStringNode;
     }
 
-    private PropertyNode getValueOf() {
+    private PropertyGetNode getValueOf() {
         if (getValueOfNode == null || callValueOfNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getValueOfNode = insert(PropertyNode.createMethod(context, null, Strings.VALUE_OF));
+            getValueOfNode = insert(PropertyGetNode.createGetMethod(Strings.VALUE_OF, getLanguage().getJSContext()));
             callValueOfNode = insert(JSFunctionCallNode.createCall());
         }
         return getValueOfNode;

@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.binary;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -70,6 +71,11 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+/**
+ * IsStrictlyEqual(x, y) aka {@code ===} operator.
+ *
+ * @see JSEqualNode
+ */
 @NodeInfo(shortName = "===")
 @ImportStatic({JSRuntime.class, JSConfig.class, JSGuards.class})
 public abstract class JSIdenticalNode extends JSCompareNode {
@@ -214,18 +220,18 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return false;
     }
 
-    @Specialization(guards = {"isJSNull(a)", "!isJSNull(b)", "!isUndefined(b)"}, limit = "InteropLibraryLimit")
+    @Specialization(guards = {"isJSNull(a)", "!isNullOrUndefined(b)"})
     protected static boolean doNullA(@SuppressWarnings("unused") Object a, Object b,
-                    @CachedLibrary("b") InteropLibrary bInterop) {
+                    @Shared("isNullInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary nullInterop) {
         assert b != Undefined.instance;
-        return bInterop.isNull(b);
+        return nullInterop.isNull(b);
     }
 
-    @Specialization(guards = {"!isJSNull(a)", "!isUndefined(a)", "isJSNull(b)"}, limit = "InteropLibraryLimit")
+    @Specialization(guards = {"!isNullOrUndefined(a)", "isJSNull(b)"})
     protected static boolean doNullB(Object a, @SuppressWarnings("unused") Object b,
-                    @CachedLibrary("a") InteropLibrary aInterop) {
+                    @Shared("isNullInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary nullInterop) {
         assert a != Undefined.instance;
-        return aInterop.isNull(a);
+        return nullInterop.isNull(a);
     }
 
     @SuppressWarnings("unused")
@@ -257,48 +263,36 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return false;
     }
 
-    protected static boolean isNonObjectType(Class<?> clazz) {
-        return Number.class.isAssignableFrom(clazz) || JSRuntime.isStringClass(clazz);
-    }
-
-    protected static boolean differentNonObjectTypes(Class<?> classA, Class<?> classB) {
-        return Number.class.isAssignableFrom(classA) != Number.class.isAssignableFrom(classB) || JSRuntime.isStringClass(classA) != JSRuntime.isStringClass(classB);
+    protected static boolean isJavaNumberType(Class<?> clazz) {
+        return Number.class.isAssignableFrom(clazz);
     }
 
     /**
      * lhs and rhs are of different types. This specialization is used only for type classes that
-     * are wider than a single type (to be more specific, numbers and strings, currently).
+     * are wider than a single type (to be more specific, only numbers, currently).
      */
     @SuppressWarnings("unused")
-    @Specialization(guards = {"a.getClass() == cachedClassA", "b.getClass() == cachedClassB", "isNonObjectType(cachedClassA) || isNonObjectType(cachedClassB)",
-                    "differentNonObjectTypes(cachedClassA, cachedClassB)"}, limit = "MAX_CLASSES")
-    protected static boolean doDifferentTypesCached(Object a, Object b, //
+    @Specialization(guards = {"a.getClass() == cachedClassA", "b.getClass() == cachedClassB",
+                    "isJavaNumberType(cachedClassA) != isJavaNumberType(cachedClassB)"}, limit = "MAX_CLASSES")
+    protected static boolean doNumberNotNumberCached(Object a, Object b, //
                     @Cached("a.getClass()") Class<?> cachedClassA, //
                     @Cached("b.getClass()") Class<?> cachedClassB) {
         return false;
     }
 
-    @Specialization(guards = {"isJavaNumber(a) != isJavaNumber(b)"}, replaces = "doDifferentTypesCached")
+    @Specialization(guards = {"isJavaNumber(a) != isJavaNumber(b)"}, replaces = "doNumberNotNumberCached")
     protected static boolean doNumberNotNumber(Object a, Object b) {
         assert (a != null) && (b != null);
         return false;
     }
 
-    @Specialization(guards = {"isString(a) != isString(b)"}, replaces = "doDifferentTypesCached")
+    @Specialization(guards = {"isString(a) != isString(b)"})
     protected static boolean doStringNotString(Object a, Object b) {
         assert (a != null) && (b != null);
         return false;
     }
 
-    @Specialization(guards = {"cachedClassA != null", "cachedClassB != null", "a.getClass() == cachedClassA",
-                    "b.getClass() == cachedClassB"}, limit = "MAX_CLASSES")
-    protected boolean doNumberCached(Object a, Object b, //
-                    @Cached("getJavaNumberClass(a)") Class<?> cachedClassA, //
-                    @Cached("getJavaNumberClass(b)") Class<?> cachedClassB) {
-        return doNumber((Number) cachedClassA.cast(a), (Number) cachedClassB.cast(b));
-    }
-
-    @Specialization(guards = {"isJavaNumber(a)", "isJavaNumber(b)"}, replaces = "doNumberCached")
+    @Specialization(guards = {"isJavaNumber(a)", "isJavaNumber(b)"})
     protected boolean doNumber(Number a, Number b) {
         return doDouble(JSRuntime.doubleValue(a), JSRuntime.doubleValue(b));
     }
@@ -312,7 +306,8 @@ public abstract class JSIdenticalNode extends JSCompareNode {
 
     @Fallback
     protected static boolean doFallback(Object a, Object b) {
-        return JSRuntime.identical(a, b);
+        assert !JSRuntime.identical(a, b) : a + " (" + (a == null ? "null" : a.getClass()) + ")" + ", " + b + " (" + (b == null ? "null" : b.getClass()) + ")";
+        return false;
     }
 
     @Override

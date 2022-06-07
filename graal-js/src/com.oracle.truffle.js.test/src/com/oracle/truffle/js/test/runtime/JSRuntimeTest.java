@@ -47,19 +47,23 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.math.BigInteger;
+import java.util.Objects;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSEqualNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
+import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
@@ -202,14 +206,15 @@ public class JSRuntimeTest extends JSTest {
         assertFalse(JSRuntime.isIntegerIndex(9007199254740993L));
     }
 
-    private static <T extends JavaScriptNode> T adopt(T node) {
+    private static <T extends JavaScriptBaseNode> T adopt(T node) {
         assert node.isAdoptable();
         new RootNode(null) {
-            @Child JavaScriptNode child = node;
+            @Child JavaScriptBaseNode child = node;
 
             @Override
             public Object execute(VirtualFrame frame) {
-                return child.execute(frame);
+                Objects.requireNonNull(child);
+                throw CompilerDirectives.shouldNotReachHere();
             }
         }.getCallTarget(); // Ensure call target is initialized.
         return node;
@@ -226,13 +231,14 @@ public class JSRuntimeTest extends JSTest {
                 Object v2 = values[j];
                 boolean r1 = JSRuntime.equal(v1, v2);
                 boolean r2 = node.executeBoolean(v1, v2);
-                assertTrue("wrong outcode of equals for i=" + i + ", j=" + j, r1 == r2);
+                assertTrue("wrong outcome of equals for i=" + i + ", j=" + j + " (" + v1 + " == " + v2 + ")", r1 == r2);
             }
         }
     }
 
     private static Object[] createValues(JSRealm realm) {
         JSContext ctx = realm.getContext();
+        TruffleLanguage.Env env = realm.getEnv();
         return new Object[]{0, 1,
                         true, false,
                         0.5,
@@ -246,7 +252,9 @@ public class JSRuntimeTest extends JSTest {
                         JSOrdinary.create(ctx, realm),
                         JSProxy.create(ctx, realm, JSOrdinary.create(ctx, realm), JSOrdinary.create(ctx, realm)),
                         JSBigInt.create(ctx, realm, BigInt.ZERO),
-                        new ForeignTestMap()};
+                        new ForeignNull(),
+                        new ForeignTestMap(),
+                        env.asGuestValue(new Object[]{3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 9})};
     }
 
     @Test
@@ -260,7 +268,7 @@ public class JSRuntimeTest extends JSTest {
                 Object v2 = values[j];
                 boolean r1 = JSRuntime.identical(v1, v2);
                 boolean r2 = node.executeBoolean(v1, v2);
-                assertTrue("wrong outcode of identical for i=" + i + ", j=" + j, r1 == r2);
+                assertTrue("wrong outcome of identical for i=" + i + ", j=" + j + " (" + v1 + " === " + v2 + ")", r1 == r2);
             }
         }
     }
@@ -274,7 +282,22 @@ public class JSRuntimeTest extends JSTest {
             Object v1 = values[i];
             Object r1 = JSRuntime.typeof(v1);
             Object r2 = node.executeString(v1);
-            assertTrue("wrong outcode of typeof for i=" + i, r1.equals(r2));
+            assertTrue("wrong outcome of typeof for i=" + i + " (" + v1 + ")", r1.equals(r2));
+        }
+    }
+
+    @Test
+    public void testToPrimitiveRuntimeAndNode() {
+        Object[] values = createValues(testHelper.getRealm());
+        for (var hint : JSToPrimitiveNode.Hint.values()) {
+            JSToPrimitiveNode node = adopt(JSToPrimitiveNode.create(hint));
+
+            for (int i = 0; i < values.length; i++) {
+                Object v1 = values[i];
+                Object r1 = JSRuntime.toPrimitive(v1, hint);
+                Object r2 = node.execute(v1);
+                assertTrue("wrong outcome of ToPrimitive for i=" + i + " (" + v1 + ")", JSRuntime.identical(r1, r2));
+            }
         }
     }
 

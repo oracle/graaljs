@@ -164,7 +164,6 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
-import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayLengthNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
@@ -996,7 +995,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         private Object toPrimitive(Object target) {
             if (toPrimitiveNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toPrimitiveNode = insert(JSToPrimitiveNode.create(Hint.None));
+                toPrimitiveNode = insert(JSToPrimitiveNode.createHintDefault());
             }
             return toPrimitiveNode.execute(target);
         }
@@ -1968,7 +1967,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         private Object toPrimitive(Object target) {
             if (toPrimitiveNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toPrimitiveNode = insert(JSToPrimitiveNode.create(Hint.Number));
+                toPrimitiveNode = insert(JSToPrimitiveNode.createHintNumber());
             }
             return toPrimitiveNode.execute(target);
         }

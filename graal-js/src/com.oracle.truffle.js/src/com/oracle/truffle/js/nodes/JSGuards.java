@@ -467,13 +467,6 @@ public final class JSGuards {
         return JSAbstractArgumentsArray.hasDisconnectedIndices(argumentsArray);
     }
 
-    public static Class<? extends Number> getJavaNumberClass(Object value) {
-        if (value != null && isJavaNumber(value)) {
-            return ((Number) value).getClass();
-        }
-        return null;
-    }
-
     public static Class<?> getClassIfJSObject(Object object) {
         if (isJSObject(object)) {
             return object.getClass();

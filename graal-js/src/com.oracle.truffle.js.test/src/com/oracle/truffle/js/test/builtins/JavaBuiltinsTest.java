@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -112,18 +112,22 @@ public class JavaBuiltinsTest extends JSTest {
     }
 
     @Test
-    public void testJavaExtend() {
-        // String result = test("var t = Java.type('java.lang.Object'); var e = Java.extend(t);
-        // ''+e;");
-        // assertEquals("class com.oracle.truffle.js.javaadapters.java.lang.Object", result);
-
-        // result = test("var t = Java.type('java.lang.Object'); var e = Java.extend(t, {a:'foo'});
-        // ''+e;");
-        // assertEquals("class com.oracle.truffle.js.javaadapters.java.lang.Object", result);
-
+    public void testJavaExtendArgumentError() {
         test("Java.extend();", "needs at least one argument");
         test("Java.extend({});", "needs at least one type argument");
         test("Java.extend(1);", "needs Java types");
+    }
+
+    @Test
+    public void testJavaExtend() {
+        String result;
+        result = test("var O = Java.type('java.lang.Object');\n" +
+                        "var E = Java.extend(O); new E({a: 'foo', toString() {return 'EXTENDED';}}).toString();");
+        assertEquals("EXTENDED", result);
+
+        result = test("var O = Java.type('java.lang.Object');\n" +
+                        "var E = Java.extend(O, {a: 'foo', toString() {return 'EXTENDED';}}); new E().toString();");
+        assertEquals("EXTENDED", result);
     }
 
     @Test
@@ -143,16 +147,19 @@ public class JavaBuiltinsTest extends JSTest {
 
     @Test
     public void testJavaTo() {
-        String result = test("var t = Java.to({a:'foo'}); ''+t;");
+        String result = test("var t = Java.to({a:'foo'}); '[' + t + ']';");
         assertEquals("[]", result);
 
-        result = test("var t = Java.to({a:'foo'},arg); ''+t;", null, true, (new Object[0]).getClass());
+        result = test("var t = Java.to({a:'foo'},arg); '[' + t + ']';", null, true, (new Object[0]).getClass());
         assertEquals("[]", result);
 
-        test("var t = Java.to({a:'foo'}, 'int[]'); ''+t;");
+        result = test("var t = Java.to({a:'foo'}, 'int[]'); '[' + t + ']';");
         assertEquals("[]", result);
 
         test("var t = Java.to(1, 'int[]'); ''+t;", "is not an Object");
+
+        result = test("var t = Java.to([3,1,4,1,5,9], 'int[]'); '[' + t + ']';");
+        assertEquals("[3,1,4,1,5,9]", result);
     }
 
     @Test

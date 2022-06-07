@@ -49,6 +49,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -196,7 +197,7 @@ public final class JavaPackage extends JSNonProxy {
                 if (Strings.HINT_STRING.equals(hint)) {
                     return toPrimitiveString((JSDynamicObject) obj);
                 } else if (Strings.HINT_DEFAULT.equals(hint) || Strings.HINT_NUMBER.equals(hint)) {
-                    return JSObject.ordinaryToPrimitive((JSDynamicObject) obj, Strings.HINT_NUMBER);
+                    return JSObject.ordinaryToPrimitive((JSDynamicObject) obj, JSToPrimitiveNode.Hint.Number);
                 } else {
                     throw Errors.createTypeError("invalid hint");
                 }

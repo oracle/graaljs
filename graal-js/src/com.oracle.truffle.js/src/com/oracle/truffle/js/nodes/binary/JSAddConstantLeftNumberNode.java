@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -147,7 +147,7 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
 
     @Specialization
     protected Object doOverloaded(JSOverloadedOperatorsObject right,
-                    @Cached("createHintNone(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
+                    @Cached("createHintDefault(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(getLeftValue(), right);
     }
 
@@ -157,7 +157,7 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
 
     @Specialization(guards = {"!hasOverloadedOperators(right)"}, replaces = {"doInt", "doDouble", "doNumberString"})
     protected Object doPrimitiveConversion(Object right,
-                    @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveB,
+                    @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveB,
                     @Cached("create()") JSToNumberNode toNumberB,
                     @Cached("leftValueToString()") TruffleString leftString,
                     @Cached("create()") JSConcatStringsNode createLazyString,
