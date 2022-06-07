@@ -296,7 +296,7 @@ public class JSRuntimeTest extends JSTest {
                 Object v1 = values[i];
                 Object r1 = JSRuntime.toPrimitive(v1, hint);
                 Object r2 = node.execute(v1);
-                assertTrue("wrong outcome of ToPrimitive for i=" + i + " (" + v1 + ")", r1.equals(r2));
+                assertTrue("wrong outcome of ToPrimitive for i=" + i + " (" + v1 + ")", JSRuntime.identical(r1, r2));
             }
         }
     }
