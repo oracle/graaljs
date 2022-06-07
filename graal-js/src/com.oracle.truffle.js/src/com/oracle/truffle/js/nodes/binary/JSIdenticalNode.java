@@ -263,12 +263,8 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return false;
     }
 
-    protected static boolean isCachedPrimitiveType(Class<?> clazz) {
+    protected static boolean isJavaNumberType(Class<?> clazz) {
         return Number.class.isAssignableFrom(clazz);
-    }
-
-    protected static boolean differentTypeClasses(Class<?> classA, Class<?> classB) {
-        return Number.class.isAssignableFrom(classA) != Number.class.isAssignableFrom(classB);
     }
 
     /**
@@ -277,15 +273,14 @@ public abstract class JSIdenticalNode extends JSCompareNode {
      */
     @SuppressWarnings("unused")
     @Specialization(guards = {"a.getClass() == cachedClassA", "b.getClass() == cachedClassB",
-                    "isCachedPrimitiveType(cachedClassA) || isCachedPrimitiveType(cachedClassB)",
-                    "differentTypeClasses(cachedClassA, cachedClassB)"}, limit = "MAX_CLASSES")
-    protected static boolean doDifferentTypesCached(Object a, Object b, //
+                    "isJavaNumberType(cachedClassA) != isJavaNumberType(cachedClassB)"}, limit = "MAX_CLASSES")
+    protected static boolean doNumberNotNumberCached(Object a, Object b, //
                     @Cached("a.getClass()") Class<?> cachedClassA, //
                     @Cached("b.getClass()") Class<?> cachedClassB) {
         return false;
     }
 
-    @Specialization(guards = {"isJavaNumber(a) != isJavaNumber(b)"}, replaces = "doDifferentTypesCached")
+    @Specialization(guards = {"isJavaNumber(a) != isJavaNumber(b)"}, replaces = "doNumberNotNumberCached")
     protected static boolean doNumberNotNumber(Object a, Object b) {
         assert (a != null) && (b != null);
         return false;
