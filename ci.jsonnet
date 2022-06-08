@@ -26,7 +26,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     timelimit: '30:00',
   },
 
-  builds: finishBuilds(graalJs.builds + graalNodeJs.builds) + [
+  builds: graalJs.builds + graalNodeJs.builds + [
     common.jdk11 + deployBinary + common.deploy + common.postMerge + common.ol65 + {name: 'js-deploybinary-ol65-amd64'},
     common.jdk11 + deployBinary + common.deploy + common.postMerge + common.darwin + {name: 'js-deploybinary-darwin-amd64', timelimit: '45:00'},
   ],
@@ -167,4 +167,6 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
   local finishBuilds(allBuilds) =
     local builds = [b for b in allBuilds if !std.objectHasAll(b, 'enabled') || b.enabled];
     if self.useArtifacts then [applyArtifact(b) for b in builds] + deriveArtifactBuilds(builds) else builds,
+
+  finishBuilds:: finishBuilds,
 }
