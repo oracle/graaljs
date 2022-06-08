@@ -1,17 +1,16 @@
+local common = import 'common.jsonnet';
 local graalJs = import 'graal-js/ci.jsonnet';
 local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
-local common = import 'common.jsonnet';
-local defs = import 'defs.jsonnet';
 
 {
   // Used to run fewer jobs
-  local debug = false,
+  local useOverlay = true,
 
-  local overlay = 'e8b0f95f111bed6151c29d8c23bfdf81d556b860',
+  local overlay = 'ef829abec0c29bf0e98304d570747d2d407acf67',
 
   local no_overlay = 'cb733e564850cd37b685fcef6f3c16b59802b22c',
 
-  overlay: if debug then no_overlay else overlay,
+  overlay: if useOverlay then overlay else no_overlay,
 
   specVersion: "3",
 
@@ -27,16 +26,17 @@ local defs = import 'defs.jsonnet';
     timelimit: '30:00',
   },
 
-  builds: finishBuilds(graalJs.builds + graalNodeJs.builds) + [
+  builds: graalJs.builds + graalNodeJs.builds + [
     common.jdk11 + deployBinary + common.deploy + common.postMerge + common.ol65 + {name: 'js-deploybinary-ol65-amd64'},
     common.jdk11 + deployBinary + common.deploy + common.postMerge + common.darwin + {name: 'js-deploybinary-darwin-amd64', timelimit: '45:00'},
   ],
 
   // Set this flag to false to switch off the use of artifacts (pipelined builds).
-  useArtifacts:: defs.enabled,
+  useArtifacts:: useOverlay,
 
   jobtemplate:: {
-    graalvm:: defs.ce,
+    defs:: $.defs,
+    graalvm:: self.defs.ce,
     enabled:: self.graalvm.available,
     suiteimports+:: [],
     nativeimages+:: [],
@@ -69,9 +69,33 @@ local defs = import 'defs.jsonnet';
     timelimit: "00:30:00",
   },
 
-  defs:: defs,
-  ce:: {graalvm:: defs.ce},
-  ee:: {graalvm:: defs.ee},
+  defs:: {
+    ce:: {
+      edition:: 'ce',
+      available:: true,
+
+      graal_repo:: 'graal',
+      suites:: {
+        compiler:: {name:: 'compiler', dynamicimport:: '/' + self.name},
+        vm:: {name:: 'vm', dynamicimport:: '/' + self.name},
+        substratevm:: {name:: 'substratevm', dynamicimport:: '/' + self.name},
+        tools:: {name:: 'tools', dynamicimport:: '/' + self.name},
+        wasm:: {name:: 'wasm', dynamicimport:: '/' + self.name},
+      },
+
+      setup+: [
+        // clone the imported revision of `graal`
+        ['mx', '-p', 'graal-js', 'sforceimports'],
+      ],
+    },
+
+    ee:: self.ce + {
+      available:: false,
+    },
+  },
+
+  ce: {defs:: $.defs, graalvm:: self.defs.ce},
+  ee: {defs:: $.defs, graalvm:: self.defs.ee},
 
   local artifact_name(jdk, edition, os, arch, suffix='') =
     local desc = edition + "-" + jdk + "-" + os + "-" + arch + suffix;
@@ -143,4 +167,6 @@ local defs = import 'defs.jsonnet';
   local finishBuilds(allBuilds) =
     local builds = [b for b in allBuilds if !std.objectHasAll(b, 'enabled') || b.enabled];
     if self.useArtifacts then [applyArtifact(b) for b in builds] + deriveArtifactBuilds(builds) else builds,
+
+  finishBuilds:: finishBuilds,
 }
