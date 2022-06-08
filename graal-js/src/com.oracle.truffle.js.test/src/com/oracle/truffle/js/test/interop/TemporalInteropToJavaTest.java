@@ -43,6 +43,7 @@ package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -63,8 +64,7 @@ public class TemporalInteropToJavaTest extends JSTest {
         return JSTest.newContextBuilder(ID).option("js.temporal", "true").build();
     }
 
-    // Calendar, Duration, PlainMonthDay, PlainYearMonth cannot be converted to Instant, Date or
-    // Time
+    // Calendar, PlainMonthDay, PlainYearMonth cannot be converted to Instant, Date or Time
 
     @Test
     public void testInstant() {
@@ -196,6 +196,32 @@ public class TemporalInteropToJavaTest extends JSTest {
 
             ZoneId zid = val.asTimeZone();
             Assert.assertEquals("Europe/Vienna", zid.getId());
+        }
+    }
+
+    @Test
+    public void testDuration() {
+        try (Context ctx = getJSContext()) {
+            Value val = ctx.eval(ID, "Temporal.Duration.from('PT2H3M4.987654321S');");
+            Duration dur = val.asDuration();
+
+            long expectedSeconds = 2 * 60 * 60 + 3 * 60 + 4;
+            long expectedNanos = 987654321;
+            Assert.assertEquals(0, dur.toDays());
+            Assert.assertEquals(4, dur.toSecondsPart());
+            Assert.assertEquals(expectedSeconds, dur.toSeconds());
+            Assert.assertEquals(expectedNanos, dur.toNanosPart());
+            Assert.assertEquals(expectedSeconds * 1_000_000_000 + expectedNanos, dur.toNanos());
+
+            // invalid duration; java.time.Duration does not accept units larger or equals to DAY
+            val = ctx.eval(ID, "Temporal.Duration.from('P1Y');");
+            Assert.assertFalse(val.isDuration());
+            val = ctx.eval(ID, "Temporal.Duration.from('P2M');");
+            Assert.assertFalse(val.isDuration());
+            val = ctx.eval(ID, "Temporal.Duration.from('P3W');");
+            Assert.assertFalse(val.isDuration());
+            val = ctx.eval(ID, "Temporal.Duration.from('P4D');");
+            Assert.assertFalse(val.isDuration());
         }
     }
 }
