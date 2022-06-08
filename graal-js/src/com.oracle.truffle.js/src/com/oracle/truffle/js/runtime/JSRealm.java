@@ -2355,7 +2355,7 @@ public class JSRealm {
             if (CompilerDirectives.isPartialEvaluationConstant(timeZone)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
-            timeZone = IntlUtil.getICUTimeZone(getLocalTimeZoneId());
+            timeZone = IntlUtil.getICUTimeZone(getLocalTimeZoneId(), getContext());
         }
         return timeZone;
     }
