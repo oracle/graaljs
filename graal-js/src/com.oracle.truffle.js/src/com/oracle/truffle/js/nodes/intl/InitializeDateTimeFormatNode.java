@@ -210,7 +210,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
                 errorBranch.enter();
                 throw Errors.createRangeErrorInvalidTimeZone(name);
             }
-            return IntlUtil.getICUTimeZone(tzId);
+            return IntlUtil.getICUTimeZone(tzId, context);
         } else {
             return getRealm().getLocalTimeZone();
         }

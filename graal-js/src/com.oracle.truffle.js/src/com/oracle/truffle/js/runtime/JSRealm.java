@@ -2596,7 +2596,7 @@ public class JSRealm {
 
     @TruffleBoundary
     private TimeZone getICUTimeZoneFromEnv() {
-        return IntlUtil.getICUTimeZone(getLocalTimeZoneId());
+        return IntlUtil.getICUTimeZone(getLocalTimeZoneId(), getContext());
     }
 
     public ZoneId getLocalTimeZoneId() {
@@ -2990,7 +2990,7 @@ public class JSRealm {
         try {
             if (tzId != null) {
                 newZoneId = ZoneId.of(tzId);
-                newTimeZone = IntlUtil.getICUTimeZone(tzId);
+                newTimeZone = IntlUtil.getICUTimeZone(tzId, getContext());
             } else {
                 // Reset to default time zone (fields are reinitialized on next use).
                 newZoneId = null;

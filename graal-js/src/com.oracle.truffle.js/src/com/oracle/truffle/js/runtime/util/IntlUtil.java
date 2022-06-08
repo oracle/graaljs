@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.util;
 
 import java.time.ZoneId;
+import java.time.zone.ZoneRulesProvider;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -873,14 +874,22 @@ public final class IntlUtil {
     }
 
     @TruffleBoundary
-    public static TimeZone getICUTimeZone(String tzId) {
+    public static TimeZone getICUTimeZone(String tzId, JSContext context) {
         assert tzId != null;
-        return TimeZone.getTimeZone(tzId);
+        if (context.getContextOptions().hasZoneRulesBasedTimeZones()) {
+            return new ZoneRulesBasedTimeZone(tzId, ZoneRulesProvider.getRules(tzId, false));
+        } else {
+            return TimeZone.getTimeZone(tzId);
+        }
     }
 
     @TruffleBoundary
-    public static TimeZone getICUTimeZone(ZoneId zoneId) {
-        return getICUTimeZone(toICUTimeZoneId(zoneId));
+    public static TimeZone getICUTimeZone(ZoneId zoneId, JSContext context) {
+        if (context.getContextOptions().hasZoneRulesBasedTimeZones()) {
+            return new ZoneRulesBasedTimeZone(zoneId.getId(), zoneId.getRules());
+        } else {
+            return TimeZone.getTimeZone(toICUTimeZoneId(zoneId));
+        }
     }
 
     private static String toICUTimeZoneId(ZoneId zoneId) {
