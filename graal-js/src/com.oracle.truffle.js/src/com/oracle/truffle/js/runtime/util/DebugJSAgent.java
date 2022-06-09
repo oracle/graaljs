@@ -103,13 +103,15 @@ public class DebugJSAgent extends JSAgent {
 
                 barrier.countDown();
 
-                while (true) {
+                // Note: Evaluation of the agent source may have already called agent.leaving().
+                while (!childAgent.quit) {
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
                         executor.executeBroadcastCallback();
                     }
-                    if (executor.jsAgent.quit) {
+                    // broadcast callback may have called agent.leaving().
+                    if (childAgent.quit) {
                         return;
                     }
                     executor.processPromises();
