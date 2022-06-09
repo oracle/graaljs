@@ -7,6 +7,7 @@ See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) fo
 
 ## Version 22.2.0
 * Removed experimental option `commonjs-global-properties`. The same functionality can be achieved in user code with a direct call to `require()` after context creation.
+* Added an experimental option `--js.zone-rules-based-time-zones` that allows to use timezone-related data from `ZoneRulesProvider` (instead of ICU4J data files).
 
 ## Version 22.1.0
 * Updated Node.js to version 16.14.2.
