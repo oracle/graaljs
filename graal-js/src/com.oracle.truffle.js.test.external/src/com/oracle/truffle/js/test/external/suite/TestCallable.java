@@ -95,6 +95,7 @@ public class TestCallable extends AbstractTestCallable {
         }
         contextBuilder.allowIO(true);
         contextBuilder.allowExperimentalOptions(true);
+        contextBuilder.allowCreateThread(true);
         contextBuilder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, ecmaScriptVersionToOptionString(ecmaScriptVersion));
         contextBuilder.option(JSContextOptions.STRICT_NAME, Boolean.toString(false));
         contextBuilder.options(suite.getCommonOptions());

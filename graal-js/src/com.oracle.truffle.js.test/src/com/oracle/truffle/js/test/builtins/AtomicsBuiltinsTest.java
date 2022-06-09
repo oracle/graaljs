@@ -57,7 +57,7 @@ public class AtomicsBuiltinsTest {
     @Test
     public void testNotify() {
         int agentCount = 10;
-        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.TEST262_MODE_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().allowCreateThread(true).option(JSContextOptions.TEST262_MODE_NAME, "true").build()) {
             String code = "let agentCount = " + agentCount + ";\n" //
                             + "for (let i = 0; i < agentCount; i++) {\n" //
                             + "  $262.agent.start(`\n" //
@@ -263,7 +263,7 @@ public class AtomicsBuiltinsTest {
 
     @Test
     public void testAgentStartReturnValue() {
-        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.TEST262_MODE_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().allowCreateThread(true).option(JSContextOptions.TEST262_MODE_NAME, "true").build()) {
             String code = "" +
                             "var startResult = $262.agent.start(`\n" +
                             "  $262.agent.receiveBroadcast(function(sab) {\n" +
