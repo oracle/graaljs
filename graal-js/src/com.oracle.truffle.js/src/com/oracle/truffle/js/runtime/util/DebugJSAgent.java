@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleContext;
@@ -53,6 +54,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSAgent;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
@@ -88,13 +90,16 @@ public class DebugJSAgent extends JSAgent {
         final TruffleContext agentContext = env.newContextBuilder().build();
         final CountDownLatch barrier = new CountDownLatch(1);
 
-        agentContext.evalPublic(null, agentSource);
-
         Thread thread = env.createThread(new Runnable() {
             @Override
             public void run() {
-                DebugJSAgent childAgent = (DebugJSAgent) JavaScriptLanguage.getCurrentJSRealm().getAgent();
-                AgentExecutor executor = DebugJSAgent.this.registerChildAgent(Thread.currentThread(), childAgent, agentContext);
+                JSRealm innerContext = JavaScriptLanguage.getCurrentJSRealm();
+                DebugJSAgent childAgent = (DebugJSAgent) innerContext.getAgent();
+                DebugJSAgent parentAgent = DebugJSAgent.this;
+                AgentExecutor executor = parentAgent.registerChildAgent(Thread.currentThread(), childAgent, agentContext);
+
+                CallTarget callTarget = innerContext.getEnv().parsePublic(agentSource);
+                callTarget.call();
 
                 barrier.countDown();
 
