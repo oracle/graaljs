@@ -231,7 +231,9 @@ When the Java class has both a field and a method of the same name publicly avai
 ## Additional Aspects to Consider
 
 ### Features of GraalVM JavaScript
-GraalVM JavaScript supports features of the newest ECMAScript specification and some extensions to it. See [JavaScript Compatibility](JavaScriptCompatibility.md). Note that this example adds objects to the global scope that might interfere with existing source code unaware of those extensions.
+GraalVM JavaScript supports features of the newest ECMAScript specification and some extensions to it.
+See [JavaScript Compatibility](JavaScriptCompatibility.md).
+Note that this example adds objects to the global scope that might interfere with existing source code unaware of those extensions.
 
 ### Console Output
 GraalVM JavaScript provides a `print` builtin function compatible with Nashorn.

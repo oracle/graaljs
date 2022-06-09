@@ -6,15 +6,21 @@ permalink: /reference-manual/js/OperatorOverloading/
 ---
 # Operator Overloading
 
-GraalVM JavaScript provides an early implementation of the ECMAScript [operator overloading proposal](https://github.com/tc39/proposal-operator-overloading). This lets you overload the behavior of JavaScript's operators on your JavaScript classes.
+GraalVM JavaScript provides an early implementation of the ECMAScript [operator overloading proposal](https://github.com/tc39/proposal-operator-overloading).
+This lets you overload the behavior of JavaScript's operators on your JavaScript classes.
 
-If you want to experiment with this feature, you will first need to enable it. Since both the proposal and our implementation of it are in early stages, you will need to set the following experimental option.
+If you want to experiment with this feature, you will first need to enable it.
+Since both the proposal and our implementation of it are in early stages, you will need to set the following experimental option.
 
 ```shell
 js --experimental-options --js.operator-overloading
 ```
 
-After setting the option, you will see a new builtin in the global namespace, the `Operators` function. You can call this function, passing it a JavaScript object as an argument. The object should have a property for every operator you wish to overload, with the key being the name of the operator and the value being a function which implements it. The return value of the `Operators` function is a constructor that you can then subclass when defining your type. By subclassing this constructor, you get a class whose objects will all inherit the overloaded operator behavior that you defined in your argument to the `Operators` function.
+After setting the option, you will see a new builtin in the global namespace, the `Operators` function.
+You can call this function, passing it a JavaScript object as an argument.
+The object should have a property for every operator you wish to overload, with the key being the name of the operator and the value being a function which implements it.
+The return value of the `Operators` function is a constructor that you can then subclass when defining your type.
+By subclassing this constructor, you get a class whose objects will all inherit the overloaded operator behavior that you defined in your argument to the `Operators` function.
 
 ## Basic Example
 
@@ -40,7 +46,9 @@ class Vector extends VectorOps {
 }
 ```
 
-Here we define overloads for two operators, `+` and `==`. Calling the `Operators` function with the table of overloaded operators yields the `VectorOps` class. We then define our `Vector` class as a subclass of `VectorOps`.
+Here we define overloads for two operators, `+` and `==`.
+Calling the `Operators` function with the table of overloaded operators yields the `VectorOps` class.
+We then define our `Vector` class as a subclass of `VectorOps`.
 
 If we create instances of `Vector`, we can observe that they follow our overloaded operator definitions:
 
@@ -78,7 +86,10 @@ class Vector extends VectorOps {
 }
 ```
 
-To define mixed-type operators, we need to pass additional objects to the `Operators` function. These extra tables should each have either a `left` property or a `right` property, depending on whether we are overloading the behavior of operators with some other type on the left or on the right side of the operator. In our case, we are overloading the `*` operator for cases when there is a `Number` on the left and our type, `Vector`, on the right. Each extra table can have either a `left` property or a `right` property and then any number of operator overloads which will apply to that particular case.
+To define mixed-type operators, we need to pass additional objects to the `Operators` function.
+These extra tables should each have either a `left` property or a `right` property, depending on whether we are overloading the behavior of operators with some other type on the left or on the right side of the operator.
+In our case, we are overloading the `*` operator for cases when there is a `Number` on the left and our type, `Vector`, on the right.
+Each extra table can have either a `left` property or a `right` property and then any number of operator overloads which will apply to that particular case.
 
 Let's see this in action:
 
@@ -89,20 +100,32 @@ true
 
 ## Reference
 
-The function `Operators(table, extraTables...)` returns a class with overloaded operators. Users should define their own class which extends that class.
+The function `Operators(table, extraTables...)` returns a class with overloaded operators.
+Users should define their own class which extends that class.
 
-The `table` argument must be an object with one property for every overloaded operator. The property key must be the name of the operator. These are the names of operators which can be overloaded:
+The `table` argument must be an object with one property for every overloaded operator.
+The property key must be the name of the operator.
+These are the names of operators which can be overloaded:
 
   * binary operators: `"+"`, `"-"`, `"*"`, `"/"`, `"%"`, `"**"`, `"&"`, `"^"`, `"|"`, `"<<"`, `">>"`, `">>>"`, `"=="`, `"<"`
   * unary operators: `"pos"`, `"neg"`, `"++"`, `"--"`, `"~"`
 
-The `"pos"` and `"neg"` operator names correspond to unary `+` and unary `-`, respectively. Overloading `"++"` works both for pre-increments `++x` and post-increments `x++`, the same goes for `"--"`. The overload for `"=="` is used both for equality `x == y` and inequality `x != y` tests. Similarly, the overload for `"<"` is used for all comparison operators (`x < y`, `x <= y`, `x > y`, `x >= y`) by swapping the arguments and/or negating the result.
+The `"pos"` and `"neg"` operator names correspond to unary `+` and unary `-`, respectively.
+Overloading `"++"` works both for pre-increments `++x` and post-increments `x++`, the same goes for `"--"`.
+The overload for `"=="` is used both for equality `x == y` and inequality `x != y` tests.
+Similarly, the overload for `"<"` is used for all comparison operators (`x < y`, `x <= y`, `x > y`, `x >= y`) by swapping the arguments and/or negating the result.
 
 The value assigned to an operator name must be a function of two arguments in the case of binary operators or a function of one argument in the case of unary operators.
 
-The `table` argument can also have an `open` property. If so, the value of that property must be an array of operator names. These are the operators which future classes will be able to overload on this type (e.g. a `Vector` type might declare `"*"` to be open so that later a `Matrix` type might overload the operations `Vector * Matrix` and `Matrix * Vector`). If the `open` property is missing, all operators are considered to be open for future overloading with other types.
+The `table` argument can also have an `open` property.
+If so, the value of that property must be an array of operator names.
+These are the operators which future classes will be able to overload on this type (e.g. a `Vector` type might declare `"*"` to be open so that later a `Matrix` type might overload the operations `Vector * Matrix` and `Matrix * Vector`).
+If the `open` property is missing, all operators are considered to be open for future overloading with other types.
 
-Following the first argument `table` are optional arguments `extraTables`. Each of these must also be an object. Each extra table must have either a `left` property or a `right` property, not both. The value of that property must be one of the following JavaScript constructors:
+Following the first argument `table` are optional arguments `extraTables`.
+Each of these must also be an object.
+Each extra table must have either a `left` property or a `right` property, not both.
+The value of that property must be one of the following JavaScript constructors:
 
   * `Number`
   * `BigInt`
@@ -111,16 +134,22 @@ Following the first argument `table` are optional arguments `extraTables`. Each 
 
 The other properties of the extra table should be operator overloads as in the first `table` argument (operator name as key, function implementing the operator as value).
 
-These extra tables define the behavior of operators when one of the operand types is of a type other than the one being defined. If the extra table has a `left` property, its operator definitions will apply to cases when the left operand is of the type named by the `left` property and the right operand is of the type whose operators are being defined. Similarly for the `right` property, if the extra table has a `right` property, the table's operator definitions will apply when the right operand has the named type and the left operand has the type whose operators are being defined.
+These extra tables define the behavior of operators when one of the operand types is of a type other than the one being defined.
+If the extra table has a `left` property, its operator definitions will apply to cases when the left operand is of the type named by the `left` property and the right operand is of the type whose operators are being defined.
+Similarly for the `right` property, if the extra table has a `right` property, the table's operator definitions will apply when the right operand has the named type and the left operand has the type whose operators are being defined.
 
-Note that you are free to overload any of the binary operators between your custom type and the JavaScript numeric types `Number` and `BigInt`. However, the only operators you are allowed to overload between your custom type and the `String` type are `"=="` and `"<"`.
+Note that you are free to overload any of the binary operators between your custom type and the JavaScript numeric types `Number` and `BigInt`.
+However, the only operators you are allowed to overload between your custom type and the `String` type are `"=="` and `"<"`.
 
-The `Operators` function will return a constructor that you will usually want to extend in your own class. Instances of that class will respect your overloaded operator definitions. Whenever you use an operator on an object with overloaded operators, the following happens:
+The `Operators` function will return a constructor that you will usually want to extend in your own class.
+Instances of that class will respect your overloaded operator definitions.
+Whenever you use an operator on an object with overloaded operators, the following happens:
 
   1) Every operand that does *not* have overloaded operators is coerced to a primitive.
   2) If there is an applicable overload for this pairing of operands, it is called. Otherwise, a `TypeError` is thrown.
 
-Notably, your objects with overloaded operators will not be coerced to primitives when applying operators and you can get `TypeError`s when applying undefined operators to them. There are two exceptions to this:
+Notably, your objects with overloaded operators will not be coerced to primitives when applying operators and you can get `TypeError`s when applying undefined operators to them.
+There are two exceptions to this:
 
   1) If you are using the `+` operator and one of the arguments is a string (or an object without overloaded operators that coerces to a string via `ToPrimitive`), then the result will be a concatenation of the `ToString` values of the two operands.
   2) If you are using the `==` operator and there is no applicable overload found, the two operands are assumed to be different (`x == y` will return `false` and `x != y` will return `true`).

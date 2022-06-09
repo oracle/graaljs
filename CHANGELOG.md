@@ -6,6 +6,7 @@ Changelog may include unreleased versions.
 See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) for release dates.
 
 ## Version 22.2.0
+* GraalVM JavaScript is now an installable component of GraalVM. It can be installed with `gu install js`.
 * Removed experimental option `commonjs-global-properties`. The same functionality can be achieved in user code with a direct call to `require()` after context creation.
 
 ## Version 22.1.0

@@ -20,22 +20,30 @@ For a reference of the JavaScript APIs that GraalVM supports, see [GRAAL.JS-API]
 
 ### Is GraalVM compatible with the original node implementation?
 Node.js based on GraalVM is largely compatible with the original Node.js (based on the V8 engine).
-This leads to a high number of npm-based modules being compatible with GraalVM. In fact, out of the 95k modules we test, more than 90% of them pass all tests.
+This leads to a high number of npm-based modules being compatible with GraalVM.
+In fact, out of the 100k npm modules we test, more than 94% of them pass all tests.
 Still, several sources of differences have to be considered:
 
 - **Setup:**
-GraalVM mostly mimicks the original setup of Node, including the `node` executable, `npm`, and similar. However, not all command-line options are supported (or behave exactly identically). You need to (re-)compile native modules against the v8.h file, etc.
+GraalVM mostly mimicks the original setup of Node, including the `node` executable, `npm`, and similar.
+However, not all command-line options are supported (or behave exactly identically).
+Modules might require that native modules are (re-)compiled against the v8.h file.
 
 Since GraalVM 21.1, Node.js and all related executables (e.g., `node`, `npm`, etc.) are not included by default in the GraalVM binary.
 Node.js support is now packaged in a separate component that can be installed with the _GraalVM Updater_ using `$GRAALVM/bin/gu install nodejs`.
 
 - **Internals:**
-GraalVM is implemented on top of a JVM, and thus has a different internal architecture than Node.js based on V8. This implies that some internal mechanisms behave differently and cannot exactly replicate V8 behaviour. This will hardly ever affect user code, but might affect modules implemented natively, depending on V8 internals.
+GraalVM is implemented on top of a JVM, and thus has a different internal architecture than Node.js based on V8.
+This implies that some internal mechanisms behave differently and cannot exactly replicate V8 behaviour.
+This will hardly ever affect user code, but might affect modules implemented natively, depending on V8 internals.
 
 - **Performance:**
-Due to GraalVM being implemented on top of a JVM, performance characteristics vary from the original native implementation. While GraalVM's peak performance can match V8 on many benchmarks, it will typically take longer to reach the peak (known as _warmup_). Be sure to give the GraalVM compiler some extra time when measuring (peak) performance.
+Due to GraalVM being implemented on top of a JVM, performance characteristics vary from the original native implementation.
+While GraalVM's peak performance can match V8 on many benchmarks, it will typically take longer to reach the peak (known as _warmup_).
+Be sure to give the GraalVM compiler some extra time when measuring (peak) performance.
 
-In addition, GraalVM uses the following approaches to check and retain compatibility with Node.js code:
+- **Compatiblity:**
+GraalVM uses the following approaches to check and retain compatibility with Node.js code:
 
 * node-compat-table: GraalVM is compared against other engines using the _node-compat-table_ module, highlighting incompatibilities that might break Node.js code.
 * automated mass-testing of modules using _mocha_: in order to test a large set of modules, GraalVM is tested against 95k modules that use the mocha test framework. Using mocha allows automating the process of executing the test and comprehending the test result.
@@ -96,10 +104,11 @@ Here are a few tips you can follow to analyse and improve peak performance:
 
 ### What is the difference between running GraalVM's JavaScript in Native Image compared to the JVM?
 In essence, the JavaScript engine of GraalVM is a plain Java application.
-Running it on any JVM (JDK 8 or higher) is possible, but, for a better result, it should be GraalVM or a compatible JVMCI-enabled JDK using the GraalVM compiler.
+Running it on any JVM (JDK 11 or higher) is possible, but, for a better result, it should be GraalVM or a compatible JVMCI-enabled JDK using the GraalVM compiler.
 This mode gives the JavaScript engine full access to Java at runtime, but also requires the JVM to first (just-in-time) compile the JavaScript engine when executed, just like any other Java application.
 
-Running in Native Image means that the JavaScript engine, including all its dependencies from, e.g., the JDK, is pre-compiled into a native executable. This will tremendously speed up the startup of any JavaScript application, as GraalVM can immediately start to compile JavaScript code, without itself requiring to be compiled first.
+Running in Native Image means that the JavaScript engine, including all its dependencies from, e.g., the JDK, is pre-compiled into a native executable.
+This will tremendously speed up the startup of any JavaScript application, as GraalVM can immediately start to compile JavaScript code, without itself requiring to be compiled first.
 This mode, however, will only give GraalVM access to Java classes known at the time of image creation.
 Most significantly, this means that the JavaScript-to-Java interoperability features are not available in this mode, as they would require dynamic class loading and execution of arbitrary Java code at runtime.
 

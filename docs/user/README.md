@@ -7,15 +7,27 @@ permalink: /reference-manual/js/
 # GraalVM JavaScript Implementation
 
 GraalVM provides an ECMAScript-compliant runtime to execute JavaScript and Node.js applications.
-It is fully standard compliant, execute applications with high performance, and provide all benefits from the GraalVM stack, including language interoperability and common tooling.
+It is fully standard compliant, executes applications with high performance, and provides all benefits from the GraalVM stack, including language interoperability and common tooling.
 This reference documentation provides information on available JavaScript engine configurations, the Node.js runtime, the `javax.script.ScriptEngine` implementation, multithreading support details, possible embedding scenarios, and more.
 To migrate the code previously targeted to the Nashorn or Rhino engines, migration guides are available.
 
 ## Running JavaScript
+Since GraalVM 22.2, the JavaScript support is packaged in a separate GraalVM component.
+It can be installed with the _GraalVM Updater_:
 
-GraalVM can run plain JavaScript (ECMAScript) code:
 ```shell
-js [options] [filename...] -- [args]
+$GRAALVM/bin/gu install js
+```
+
+Alternatively, you can also download the JavaScript runtime plugin installable manually and install it from a file, e.g.:
+
+```shell
+$ $GRAALVM/bin/gu install --file ~/Downloads/js-installable-...-.jar
+```
+
+When the JavaScript component is installed, GraalVM can run plain JavaScript (ECMAScript) code:
+```shell
+$GRAALVM/bin/js [options] [filename...] -- [args]
 ```
 
 For information about the compatibility of GraalVM JavaScript with existing standards and engines, see [JavaScriptCompatibility](JavaScriptCompatibility.md).

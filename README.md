@@ -14,7 +14,18 @@ The goals of GraalVM JavaScript are:
 
 
 ## Getting Started
-See the documentation on the [GraalVM website](https://www.graalvm.org/docs/getting-started/) how to install and use GraalVM JavaScript.
+The preferred way to run GraalVM JavaScript is from a [GraalVM](https://www.graalvm.org/downloads/).
+Starting with GraalVM 22.2., GraalVM JavaScript is an installable component that needs to be installed with `gu install js` after downloading GraalVM.
+See the documentation on the [GraalVM website](https://www.graalvm.org/docs/getting-started/) for more information on how to install and use GraalVM JavaScript.
+
+Installing GraalVM JavaScript using the _GraalVM Updater_:
+
+```shell
+$ $GRAALVM/bin/gu install js
+$ $GRAALVM/bin/js --version
+```
+
+After installation, the `js` shell can be executed and used to run JavaScript code or execute JavaScript files.
 
 ```
 $ $GRAALVM/bin/js
@@ -23,8 +34,9 @@ Hello JavaScript
 >
 ```
 
-The preferred way to run GraalVM JavaScript is from a [GraalVM](https://www.graalvm.org/downloads/).
 If you prefer running it on a stock JVM, please have a look at the documentation in [`RunOnJDK.md`](https://github.com/graalvm/graaljs/blob/master/docs/user/RunOnJDK.md).
+Note that in this mode many features and optimizations of GraalVM are not available.
+Due to those limitations, running on a stock JVM is not a supported feature - please use a GraalVM instead.
 
 ## Documentation
 
@@ -36,8 +48,9 @@ For contributors, a guide how to build GraalVM JavaScript from source code can b
 ## Current Status
 
 GraalVM JavaScript is compatible with the [ECMAScript 2021 specification](https://262.ecma-international.org/12.0/).
-Starting with GraalVM 22.0.0, ECMAScript 2022 - currently at the draft stage - is the default compatibility level.
+Starting with GraalVM 22.0.0, [ECMAScript 2022](https://262.ecma-international.org/13.0/) - currently at the draft stage - is the default compatibility level.
 New features, e.g. `ECMAScript proposals` scheduled to land in future editions, are added frequently and are accessible behind a flag.
+See the [CHANGELOG.md](https://github.com/graalvm/graaljs/tree/master/CHANGELOG.md) for the proposals already adopted.
 
 In addition, some popular extensions of other engines are supported, see [`JavaScriptCompatibility.md`](https://github.com/graalvm/graaljs/tree/master/docs/user/JavaScriptCompatibility.md).
 
@@ -48,7 +61,8 @@ It provides high compatibility with existing npm packages, with high likelyhood 
 This includes npm packages with native implementations.
 Note that some npm modules will require to be re-compiled from source with GraalVM JavaScript if they ship with binaries that have been compiled for Node.js based on V8.
 
-Node.js support is not included in the main GraalVM distribution (since 21.1) but packaged as a separate component that can be installed using the _GraalVM Updater_:
+Similar to JavaScript itself, Node.js is a separately installable component of GraalVM (since 21.1).
+It can be installed using the _GraalVM Updater_:
 
 ```shell
 $ $GRAALVM/bin/gu install nodejs
@@ -58,10 +72,7 @@ $ $GRAALVM/bin/node --version
 ### Compatibility on Operating Systems
 
 The core JavaScript engine is a Java application and is thus in principle compatible with every operating system that provides a compatible JVM, [see `RunOnJDK.md`](https://github.com/graalvm/graaljs/tree/master/docs/user/RunOnJDK.md).
-We test and support GraalVM JavaScript currently in full extent on Linux and MacOS.
-For Windows, a preliminary preview version is available.
-
-Some features, including the Node.js support, are currently not supported on all platforms (e.g. Windows).
+We test and support GraalVM JavaScript currently in full extent on Linux AMD64, Linux AArch64, MacOS, and Windows.
 
 ## GraalVM JavaScript Reference Manual
 
