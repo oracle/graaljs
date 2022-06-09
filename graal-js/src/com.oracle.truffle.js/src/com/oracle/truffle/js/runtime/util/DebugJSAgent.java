@@ -45,7 +45,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionValues;
@@ -88,8 +87,7 @@ public class DebugJSAgent extends JSAgent {
     }
 
     @TruffleBoundary
-    public Object startNewAgent(String source) {
-        final AtomicReference<Object> result = new AtomicReference<>(null);
+    public void startNewAgent(String source) {
         final CountDownLatch barrier = new CountDownLatch(1);
         Thread thread = new Thread(new Runnable() {
 
@@ -150,7 +148,6 @@ public class DebugJSAgent extends JSAgent {
         } catch (InterruptedException e) {
             throw new AssertionError(e);
         }
-        return result.get();
     }
 
     @TruffleBoundary
