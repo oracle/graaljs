@@ -46,15 +46,12 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
 
-import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.OptionValues;
-import org.graalvm.polyglot.Context;
-
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSAgent;
-import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
@@ -65,17 +62,14 @@ import com.oracle.truffle.js.runtime.objects.Null;
  */
 public class DebugJSAgent extends JSAgent {
 
-    private OptionValues optionValues;
-
     private final Deque<Object> reportValues;
     private final List<AgentExecutor> spawnedAgent;
 
     private boolean quit;
     private Object debugReceiveBroadcast;
 
-    public DebugJSAgent(PromiseRejectionTracker promiseRejectionTracker, boolean canBlock, OptionValues optionValues) {
+    public DebugJSAgent(PromiseRejectionTracker promiseRejectionTracker, boolean canBlock) {
         super(promiseRejectionTracker, canBlock);
-        this.optionValues = optionValues;
         this.reportValues = new ConcurrentLinkedDeque<>();
         this.spawnedAgent = new LinkedList<>();
     }
@@ -87,31 +81,25 @@ public class DebugJSAgent extends JSAgent {
     }
 
     @TruffleBoundary
-    public void startNewAgent(String source) {
+    public void startNewAgent(String sourceText) {
         final CountDownLatch barrier = new CountDownLatch(1);
-        Thread thread = new Thread(new Runnable() {
 
+        final Source agentSource = Source.newBuilder(JavaScriptLanguage.ID, sourceText, "agent").build();
+        final TruffleContext agentContext = JavaScriptLanguage.getCurrentEnv().newContextBuilder().build();
+        agentContext.evalPublic(null, agentSource);
+
+        Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
-                Context.Builder contextBuilder = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true);
-                contextBuilder.option("engine.WarnInterpreterOnly", Boolean.toString(false));
-                if (optionValues.hasSetOptions()) {
-                    for (OptionDescriptor optionDescriptor : optionValues.getDescriptors()) {
-                        if (optionDescriptor.getKey().hasBeenSet(optionValues)) {
-                            contextBuilder.option(optionDescriptor.getName(), getOptionValueAsString(optionDescriptor));
-                        }
-                    }
-                }
-
-                Context polyglotContext = contextBuilder.build();
-                polyglotContext.enter();
                 try {
-                    polyglotContext.initialize(JavaScriptLanguage.ID);
-
-                    DebugJSAgent debugJSAgent = (DebugJSAgent) JavaScriptLanguage.getCurrentJSRealm().getAgent();
-                    AgentExecutor executor = registerChildAgent(Thread.currentThread(), debugJSAgent);
-
-                    polyglotContext.eval(JavaScriptLanguage.ID, source);
+                    AgentExecutor executor;
+                    Object prev = agentContext.enter(null);
+                    try {
+                        DebugJSAgent childAgent = (DebugJSAgent) JavaScriptLanguage.getCurrentJSRealm().getAgent();
+                        executor = DebugJSAgent.this.registerChildAgent(Thread.currentThread(), childAgent, agentContext);
+                    } finally {
+                        agentContext.leave(null, prev);
+                    }
 
                     barrier.countDown();
 
@@ -124,20 +112,11 @@ public class DebugJSAgent extends JSAgent {
                         if (executor.jsAgent.quit) {
                             return;
                         }
-                        executor.jsAgent.processAllPromises(false);
+                        executor.processPromises();
                     }
                 } finally {
-                    polyglotContext.leave();
-                    polyglotContext.close();
+                    agentContext.close();
                 }
-            }
-
-            private String getOptionValueAsString(OptionDescriptor optionDescriptor) {
-                Object optionValue = optionDescriptor.getKey().getValue(optionValues);
-                if (optionDescriptor.getKey() == JSContextOptions.ECMASCRIPT_VERSION && Integer.valueOf(JSConfig.StagingECMAScriptVersion).equals(optionValue)) {
-                    optionValue = JSContextOptions.ECMASCRIPT_VERSION_STAGING;
-                }
-                return String.valueOf(optionValue);
             }
         });
         thread.setDaemon(true);
@@ -156,8 +135,8 @@ public class DebugJSAgent extends JSAgent {
     }
 
     @TruffleBoundary
-    public AgentExecutor registerChildAgent(Thread thread, DebugJSAgent jsAgent) {
-        AgentExecutor spawned = new AgentExecutor(thread, jsAgent);
+    public AgentExecutor registerChildAgent(Thread thread, DebugJSAgent jsAgent, TruffleContext agentContext) {
+        AgentExecutor spawned = new AgentExecutor(thread, jsAgent, agentContext);
         spawnedAgent.add(spawned);
         return spawned;
     }
@@ -211,29 +190,49 @@ public class DebugJSAgent extends JSAgent {
     private static final class AgentExecutor {
 
         private final DebugJSAgent jsAgent;
+        private final TruffleContext agentContext;
         private final Thread thread;
 
         private ConcurrentLinkedDeque<Object> incoming;
 
-        @TruffleBoundary
-        AgentExecutor(Thread thread, DebugJSAgent jsAgent) {
+        AgentExecutor(Thread thread, DebugJSAgent jsAgent, TruffleContext agentContext) {
+            CompilerAsserts.neverPartOfCompilation();
             this.thread = thread;
             this.jsAgent = jsAgent;
+            this.agentContext = agentContext;
             this.incoming = new ConcurrentLinkedDeque<>();
         }
 
-        @TruffleBoundary
-        private void pushMessage(Object sab) {
+        void pushMessage(Object sab) {
+            CompilerAsserts.neverPartOfCompilation();
             incoming.add(sab);
             thread.interrupt();
         }
 
-        @TruffleBoundary
-        public void executeBroadcastCallback() {
+        void executeBroadcastCallback() {
+            CompilerAsserts.neverPartOfCompilation();
             assert jsAgent.debugReceiveBroadcast != null;
-            while (incoming.size() > 0) {
-                JSFunctionObject cb = (JSFunctionObject) jsAgent.debugReceiveBroadcast;
-                JSFunction.call(cb, cb, new Object[]{incoming.pop()});
+            if (incoming.size() == 0) {
+                return;
+            }
+            Object prev = agentContext.enter(null);
+            try {
+                while (incoming.size() > 0) {
+                    JSFunctionObject cb = (JSFunctionObject) jsAgent.debugReceiveBroadcast;
+                    JSFunction.call(cb, cb, new Object[]{incoming.pop()});
+                }
+            } finally {
+                agentContext.leave(null, prev);
+            }
+        }
+
+        void processPromises() {
+            CompilerAsserts.neverPartOfCompilation();
+            Object prev = agentContext.enter(null);
+            try {
+                jsAgent.processAllPromises(false);
+            } finally {
+                agentContext.leave(null, prev);
             }
         }
     }
