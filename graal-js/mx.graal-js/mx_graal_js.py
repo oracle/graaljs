@@ -74,7 +74,9 @@ def _graal_js_gate_runner(args, tasks):
     with Task('UnitTests', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all]) as t:
         if t:
             noWebAssemblyTestSuite = '^(?!' + webassemblyTestSuite  + ')'
-            unittest(['--regex', noWebAssemblyTestSuite, '--enable-timing', '--very-verbose', '--suite', _suite.name])
+            commonOptions = ['--enable-timing', '--very-verbose', '--suite', _suite.name]
+            unittest(['--regex', noWebAssemblyTestSuite] + commonOptions)
+            unittest(['--regex', 'ZoneRulesProviderTest', '-Djava.time.zone.DefaultZoneRulesProvider=com.oracle.truffle.js.test.runtime.SimpleZoneRulesProvider'] + commonOptions)
 
     with Task('WebAssemblyTests', tasks, tags=['webassembly', GraalJsDefaultTags.all]) as t:
         if t:
