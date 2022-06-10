@@ -1045,7 +1045,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     }
 
     private SetCacheNode createCachedDataPropertyNodeJSObject(JSDynamicObject thisObj, int depth, Object value, AbstractShapeCheckNode shapeCheck, Property property) {
-        assert !JSProperty.isConst(property) || (depth == 0 && isGlobal() && property.getLocation().isValue() && property.getLocation().get(null) == Dead.instance()) : "const assignment";
+        assert !JSProperty.isConst(property) || (depth == 0 && isGlobal() && property.getLocation().isConstant() && property.getLocation().getConstantValue() == Dead.instance()) : "const assignment";
         if (!JSProperty.isWritable(property)) {
             return new ReadOnlyPropertySetNode(shapeCheck, isStrict());
         } else if (superProperty) {
@@ -1201,7 +1201,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         assert shapesHaveCommonLayoutForKey(parentShape, cacheShape);
         if (JSDynamicObject.isJSDynamicObject(thisObj) && JSProperty.isData(property)) {
             if (JSProperty.isWritable(property) && depth == 0 && !superProperty && !JSProperty.isProxy(property)) {
-                return !property.getLocation().isValue() && property.getLocation().canStore(value);
+                return !property.getLocation().isConstant() && property.getLocation().canStore(value);
             }
         }
         return false;

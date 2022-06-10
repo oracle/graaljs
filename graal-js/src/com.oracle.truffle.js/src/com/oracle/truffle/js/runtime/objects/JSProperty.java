@@ -218,6 +218,6 @@ public class JSProperty {
 
     public static PropertyProxy getConstantProxy(Property proxyProperty) {
         assert isProxy(proxyProperty);
-        return proxyProperty.getLocation().isConstant() ? (PropertyProxy) proxyProperty.getLocation().get(null, false) : null;
+        return proxyProperty.getLocation().isConstant() ? (PropertyProxy) proxyProperty.getLocation().getConstantValue() : null;
     }
 }

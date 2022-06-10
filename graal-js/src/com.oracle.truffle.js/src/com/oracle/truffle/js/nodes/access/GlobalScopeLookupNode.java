@@ -120,7 +120,8 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
 
     final boolean isDead(Shape shape) {
         Property property = shape.getProperty(varName);
-        return property != null && property.getLocation().isValue();
+        assert property == null || !property.getLocation().isConstant() || property.getLocation().getConstantValue() == Dead.instance();
+        return property != null && property.getLocation().isConstant();
     }
 
     final boolean isConstAssignment(Shape shape) {
