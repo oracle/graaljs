@@ -46,6 +46,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 
@@ -54,8 +55,13 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.js.test.JSTest;
 
 public class ForeignObjectPrototypeTest {
@@ -120,4 +126,215 @@ public class ForeignObjectPrototypeTest {
         }
     }
 
+    @Test
+    public void testPrototype() {
+        testPrototypeIntl("Array", ProxyArray.fromArray("fun", "with", "proxy", "array"));
+        testPrototypeIntl("Date", Instant.now());
+        testPrototypeIntl("Map", new TestTruffleHash());
+        // testPrototypeIntl("String", new TestTruffleString());
+        // testPrototypeIntl("Boolean", new TestTruffleBoolean());
+        // testPrototypeIntl("Number", new TestTruffleNumber());
+        testPrototypeIntl("Function", (ProxyExecutable) v -> true);
+        testPrototypeIntl("Object", new Object());
+    }
+
+    private static void testPrototypeIntl(String prototype, Object obj) {
+        String code = "(obj) => { var proto = Object.getPrototypeOf(obj); \n" +
+                        "  var protoProto = Object.getPrototypeOf(proto); \n" +
+                        "  return protoProto === " + prototype + ".prototype; \n" +
+                        "}";
+        try (Context context = JSTest.newContextBuilder(ID).build()) {
+            Value result = context.eval(ID, code).execute(obj);
+            Assert.assertTrue(result.asBoolean());
+        }
+    }
+
+    @Test
+    public void testPrototypeDisabled() {
+        testDisabled(ProxyArray.fromArray("fun", "with", "proxy", "array"));
+        testDisabled((ProxyExecutable) args -> "hi");
+        testDisabled(Instant.now());
+    }
+
+    private static void testDisabled(Object array) {
+        String code = "(obj) => { return Object.getPrototypeOf(obj) === null; }";
+        try (Context context = JSTest.newContextBuilder(ID).option(FOREIGN_OBJECT_PROTOTYPE_NAME, "false").build()) {
+            Value result = context.eval(ID, code).execute(array);
+            Assert.assertTrue(result.asBoolean());
+        }
+    }
+
+    @Test
+    public void testHostMethodHasPrecedence() {
+        String codeGetEpochSecond = "(obj) => { return obj.getEpochSecond(); }";
+        try (Context context = JSTest.newContextBuilder(ID).allowHostAccess(HostAccess.ALL).build()) {
+            Instant inst = Instant.now();
+
+            // check getter from Java can be called
+            long second = context.eval(ID, codeGetEpochSecond).execute(inst).asLong();
+            Assert.assertEquals(inst.getEpochSecond(), second);
+
+            // provide your own getter
+            context.eval(ID, "(obj) => { Object.getPrototypeOf(obj).getEpochSecond = () => { return 666; }; };").execute(inst);
+
+            // verify that still the host getter is called
+            Instant inst2 = Instant.now();
+            Value result = context.eval(ID, codeGetEpochSecond).execute(inst2);
+            Assert.assertEquals(inst2.getEpochSecond(), result.asLong());
+        }
+    }
+
+    @Test
+    public void testJSBuiltinCanBeOverwritten() {
+        String codeGetUTCString = "(obj) => { return obj.toUTCString(); }";
+        try (Context context = JSTest.newContextBuilder(ID).allowHostAccess(HostAccess.ALL).build()) {
+            Instant inst = Instant.now();
+
+            // check JS Prototype method can be called
+            String utcString = context.eval(ID, codeGetUTCString).execute(inst).asString();
+            Assert.assertTrue(utcString.length() > 10);
+
+            // provide your own getter
+            context.eval(ID, "(obj) => { Object.getPrototypeOf(obj).toUTCString = () => { return 'special'; }; };").execute(inst);
+
+            // verify that on another object this overwritten method is called
+            Instant inst2 = Instant.now();
+            Value result = context.eval(ID, codeGetUTCString).execute(inst2);
+            Assert.assertEquals("special", result.asString());
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    public static class TestTruffleHash implements TruffleObject {
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasHashEntries() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        long getHashSize() {
+            return 0;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Object getHashEntriesIterator() {
+            return null;
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    public static class TestTruffleString implements TruffleObject {
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isString() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        String asString() {
+            return "";
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    public static class TestTruffleBoolean implements TruffleObject {
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isBoolean() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean asBoolean() {
+            return true;
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    public static class TestTruffleNumber implements TruffleObject {
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isNumber() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final boolean fitsInByte() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final boolean fitsInShort() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final boolean fitsInInt() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final boolean fitsInLong() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final boolean fitsInFloat() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final boolean fitsInDouble() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final byte asByte() {
+            return (byte) 0;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final short asShort() {
+            return (short) 0;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final int asInt() {
+            return 0;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final long asLong() {
+            return 0L;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final float asFloat() {
+            return 0.0F;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final double asDouble() {
+            return 0.0D;
+        }
+
+    }
 }

@@ -1498,7 +1498,7 @@ public class JSContext {
         return contextOptions.isAsyncStackTraces();
     }
 
-    public boolean isOptionForeignObjectPrototype () {
+    public boolean isOptionForeignObjectPrototype() {
         return contextOptions.hasForeignObjectPrototype();
     }
 
