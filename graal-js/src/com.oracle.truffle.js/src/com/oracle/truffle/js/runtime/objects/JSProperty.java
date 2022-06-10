@@ -88,8 +88,9 @@ public class JSProperty {
      * @param store the store that this property's value resides in
      * @return the value assigned to this property
      */
+    @SuppressWarnings("deprecation")
     public static Object getValue(Property property, JSDynamicObject store, Object thisObj, Node encapsulatingNode) {
-        Object value = property.getLocation().get(store, false);
+        Object value = property.getLocation().get(store);
         if (isAccessor(property)) {
             return getValueAccessor(thisObj, value, encapsulatingNode);
         } else if (isProxy(property)) {

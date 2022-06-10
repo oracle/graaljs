@@ -182,6 +182,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     }
 
     /** @see JSNonProxy#ordinaryGetOwnProperty */
+    @SuppressWarnings("deprecation")
     private PropertyDescriptor ordinaryGetOwnProperty(JSDynamicObject thisObj, Property prop) {
         assert !JSProxy.isJSProxy(thisObj);
         if (hasPropertyBranch.profile(prop == null)) {
@@ -196,7 +197,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
             }
         } else if (isAccessorPropertyBranch.profile(JSProperty.isAccessor(prop))) {
             if (needValue) {
-                Accessor acc = (Accessor) prop.getLocation().get(thisObj, false);
+                Accessor acc = (Accessor) prop.getLocation().get(thisObj);
                 d = PropertyDescriptor.createAccessor(acc.getGetter(), acc.getSetter());
             } else {
                 d = PropertyDescriptor.createAccessor(null, null);
@@ -213,9 +214,10 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         return d;
     }
 
+    @SuppressWarnings("deprecation")
     private Object getDataPropertyValue(JSDynamicObject thisObj, Property prop) {
         assert JSProperty.isData(prop);
-        Object value = prop.getLocation().get(thisObj, false);
+        Object value = prop.getLocation().get(thisObj);
         if (JSProperty.isProxy(prop)) {
             return getPropertyProxyValue(thisObj, value);
         } else {

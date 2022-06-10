@@ -53,13 +53,8 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.BooleanLocation;
-import com.oracle.truffle.api.object.DoubleLocation;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.IncompatibleLocationException;
-import com.oracle.truffle.api.object.IntLocation;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -100,6 +95,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 /**
  * @see WritePropertyNode
  */
+@SuppressWarnings("deprecation")
 public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheNode> {
     private final boolean isGlobal;
     private final boolean isStrict;
@@ -415,7 +411,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 JSDynamicObject store = receiverCheck.getStore(thisObj);
                 try {
                     location.set(store, value, receiverCheck.getShape());
-                } catch (IncompatibleLocationException | FinalLocationException e) {
+                } catch (com.oracle.truffle.api.object.IncompatibleLocationException | com.oracle.truffle.api.object.FinalLocationException e) {
                     throw Errors.shouldNotReachHere(e);
                 }
                 return true;
@@ -456,11 +452,11 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     public static final class IntPropertySetNode extends LinkedPropertySetNode {
 
-        private final IntLocation location;
+        private final com.oracle.truffle.api.object.IntLocation location;
 
         public IntPropertySetNode(Property property, ReceiverCheckNode shapeCheck) {
             super(shapeCheck);
-            this.location = (IntLocation) property.getLocation();
+            this.location = (com.oracle.truffle.api.object.IntLocation) property.getLocation();
             assert JSProperty.isData(property) && JSProperty.isWritable(property) : property;
         }
 
@@ -471,7 +467,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 JSDynamicObject store = receiverCheck.getStore(thisObj);
                 try {
                     location.setInt(store, intValue, receiverCheck.getShape());
-                } catch (FinalLocationException e) {
+                } catch (com.oracle.truffle.api.object.FinalLocationException e) {
                     throw Errors.shouldNotReachHere(e);
                 }
                 return true;
@@ -486,7 +482,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             try {
                 location.setInt(store, value, receiverCheck.getShape());
                 return true;
-            } catch (FinalLocationException e) {
+            } catch (com.oracle.truffle.api.object.FinalLocationException e) {
                 throw Errors.shouldNotReachHere(e);
             }
         }
@@ -498,7 +494,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     }
 
     public static final class DoublePropertySetNode extends LinkedPropertySetNode {
-        private final DoubleLocation location;
+        private final com.oracle.truffle.api.object.DoubleLocation location;
 
         @CompilationFinal int valueProfile;
         private static final int INT = 1 << 0;
@@ -507,7 +503,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         public DoublePropertySetNode(Property property, ReceiverCheckNode shapeCheck) {
             super(shapeCheck);
-            this.location = (DoubleLocation) property.getLocation();
+            this.location = (com.oracle.truffle.api.object.DoubleLocation) property.getLocation();
             assert JSProperty.isData(property) && JSProperty.isWritable(property) : property;
         }
 
@@ -537,7 +533,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             try {
                 location.setDouble(store, doubleValue, receiverCheck.getShape());
                 return true;
-            } catch (FinalLocationException e) {
+            } catch (com.oracle.truffle.api.object.FinalLocationException e) {
                 throw Errors.shouldNotReachHere(e);
             }
         }
@@ -548,7 +544,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             try {
                 location.setDouble(store, value, receiverCheck.getShape());
                 return true;
-            } catch (FinalLocationException e) {
+            } catch (com.oracle.truffle.api.object.FinalLocationException e) {
                 throw Errors.shouldNotReachHere(e);
             }
         }
@@ -559,7 +555,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             try {
                 location.setDouble(store, value, receiverCheck.getShape());
                 return true;
-            } catch (FinalLocationException e) {
+            } catch (com.oracle.truffle.api.object.FinalLocationException e) {
                 throw Errors.shouldNotReachHere(e);
             }
         }
@@ -572,11 +568,11 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     public static final class BooleanPropertySetNode extends LinkedPropertySetNode {
 
-        private final BooleanLocation location;
+        private final com.oracle.truffle.api.object.BooleanLocation location;
 
         public BooleanPropertySetNode(Property property, ReceiverCheckNode shapeCheck) {
             super(shapeCheck);
-            this.location = (BooleanLocation) property.getLocation();
+            this.location = (com.oracle.truffle.api.object.BooleanLocation) property.getLocation();
             assert JSProperty.isData(property) && JSProperty.isWritable(property) : property;
         }
 
@@ -586,7 +582,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 JSDynamicObject store = receiverCheck.getStore(thisObj);
                 try {
                     location.setBoolean(store, (boolean) value, receiverCheck.getShape());
-                } catch (FinalLocationException e) {
+                } catch (com.oracle.truffle.api.object.FinalLocationException e) {
                     throw Errors.shouldNotReachHere(e);
                 }
                 return true;
@@ -601,7 +597,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             try {
                 location.setBoolean(store, value, receiverCheck.getShape());
                 return true;
-            } catch (FinalLocationException e) {
+            } catch (com.oracle.truffle.api.object.FinalLocationException e) {
                 throw Errors.shouldNotReachHere(e);
             }
         }
@@ -1067,11 +1063,11 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 return createRedefinePropertyNode(key, shapeCheck, shapeCheck.getShape(), property);
             }
 
-            if (property.getLocation() instanceof IntLocation) {
+            if (property.getLocation() instanceof com.oracle.truffle.api.object.IntLocation) {
                 return new IntPropertySetNode(property, shapeCheck);
-            } else if (property.getLocation() instanceof DoubleLocation) {
+            } else if (property.getLocation() instanceof com.oracle.truffle.api.object.DoubleLocation) {
                 return new DoublePropertySetNode(property, shapeCheck);
-            } else if (property.getLocation() instanceof BooleanLocation) {
+            } else if (property.getLocation() instanceof com.oracle.truffle.api.object.BooleanLocation) {
                 return new BooleanPropertySetNode(property, shapeCheck);
             } else {
                 return new ObjectPropertySetNode(property, shapeCheck);
@@ -1211,11 +1207,11 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     protected SetCacheNode createCombinedIcPropertyNode(Shape parentShape, Shape cacheShape, Object thisObj, int depth, Object value, Property property) {
         PropertyGetNode.CombinedShapeCheckNode shapeCheck = new PropertyGetNode.CombinedShapeCheckNode(parentShape, cacheShape);
 
-        if (property.getLocation() instanceof IntLocation) {
+        if (property.getLocation() instanceof com.oracle.truffle.api.object.IntLocation) {
             return new IntPropertySetNode(property, shapeCheck);
-        } else if (property.getLocation() instanceof DoubleLocation) {
+        } else if (property.getLocation() instanceof com.oracle.truffle.api.object.DoubleLocation) {
             return new DoublePropertySetNode(property, shapeCheck);
-        } else if (property.getLocation() instanceof BooleanLocation) {
+        } else if (property.getLocation() instanceof com.oracle.truffle.api.object.BooleanLocation) {
             return new BooleanPropertySetNode(property, shapeCheck);
         } else {
             return new ObjectPropertySetNode(property, shapeCheck);
