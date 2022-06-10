@@ -64,23 +64,23 @@ public abstract class ForeignObjectPrototypeNode extends JavaScriptBaseNode {
                     @CachedLibrary("truffleObject") InteropLibrary interop) {
         JSRealm realm = getRealm();
         if (interop.hasArrayElements(truffleObject)) {
-            return realm.getArrayPrototype();
+            return realm.getForeignArrayPrototype();
         } else if (interop.isInstant(truffleObject)) {
-            return realm.getDatePrototype();
+            return realm.getForeignDatePrototype();
         } else if (interop.hasHashEntries(truffleObject)) {
-            return realm.getMapPrototype();
+            return realm.getForeignMapPrototype();
         } else if (interop.hasIterator(truffleObject)) {
             return realm.getForeignIterablePrototype();
         } else if (interop.isString(truffleObject)) {
-            return realm.getStringPrototype();
+            return realm.getForeignStringPrototype();
         } else if (interop.isNumber(truffleObject)) {
-            return realm.getNumberPrototype();
+            return realm.getForeignNumberPrototype();
         } else if (interop.isBoolean(truffleObject)) {
-            return realm.getBooleanPrototype();
+            return realm.getForeignBooleanPrototype();
         } else if (interop.isExecutable(truffleObject) || interop.isInstantiable(truffleObject)) {
-            return realm.getFunctionPrototype();
+            return realm.getForeignFunctionPrototype();
         } else {
-            return realm.getObjectPrototype();
+            return realm.getForeignObjectPrototype();
         }
     }
 

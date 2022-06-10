@@ -1498,6 +1498,10 @@ public class JSContext {
         return contextOptions.isAsyncStackTraces();
     }
 
+    public boolean isOptionForeignObjectPrototype () {
+        return contextOptions.hasForeignObjectPrototype();
+    }
+
     public long getTimerResolution() {
         assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option timer-resolution accessed during context pre-initialization.";
         return contextOptions.getTimerResolution();
