@@ -1027,7 +1027,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         @Specialization
-        protected Object doGeneric(Object maybeTarget, Object index, Object count,
+        protected Object doNotify(Object maybeTarget, Object index, Object count,
                         @Cached("create()") JSToIndexNode toIndexNode,
                         @Cached("create()") JSToInt32Node toInt32Node,
                         @Cached("create()") BranchProfile notSharedArrayBuffer) {
@@ -1047,18 +1047,17 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 return 0;
             }
 
-            JSAgent agent = getRealm().getAgent();
-            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), agent, target, i);
+            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
 
-            SharedMemorySync.enterCriticalSection(agent, wl);
+            SharedMemorySync.enterCriticalSection(wl);
             try {
-                WaiterRecord[] waiters = SharedMemorySync.removeWaiters(agent, wl, c);
+                WaiterRecord[] waiters = SharedMemorySync.removeWaiters(wl, c);
                 int n;
                 for (n = 0; n < waiters.length; n++) {
+                    waiters[n].setNotified();
                     if (waiters[n].getPromiseCapability() == null) {
-                        SharedMemorySync.notifyWaiter(agent, waiters[n]);
+                        SharedMemorySync.notifyWaiter(waiters[n]);
                     } else {
-                        waiters[n].setNotified();
                         if (Double.isInfinite(waiters[n].getTimeout())) {
                             waiters[n].enqueueInAgent();
                         }
@@ -1066,7 +1065,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 }
                 return n;
             } finally {
-                SharedMemorySync.leaveCriticalSection(agent, wl);
+                SharedMemorySync.leaveCriticalSection(wl);
             }
         }
     }
@@ -1127,7 +1126,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 errorBranch.enter();
                 throw createTypeErrorUnsupported();
             }
-            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), agent, target, i);
+            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
 
             PromiseCapabilityRecord promiseCapability = null;
             JSDynamicObject resultObject = null;
@@ -1138,7 +1137,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 resultObject = ordinaryObjectCreate(frame);
             }
 
-            SharedMemorySync.enterCriticalSection(agent, wl);
+            SharedMemorySync.enterCriticalSection(wl);
             try {
                 Object w = loadNode.executeWithBufferAndIndex(frame, maybeTarget, i);
                 boolean isNotEqual = isInt32 ? !(w instanceof Integer) || (int) w != (int) v
@@ -1169,7 +1168,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                         assert !wl.contains(waiterRecord);
                         return Strings.OK;
                     } else {
-                        SharedMemorySync.removeWaiter(agent, wl, waiterRecord);
+                        SharedMemorySync.removeWaiter(wl, waiterRecord);
                         return Strings.TIMED_OUT;
                     }
                 }
@@ -1177,7 +1176,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 createValuePropertyNode.executeVoid(resultObject, waiterRecord.getPromiseCapability().getPromise());
                 return resultObject;
             } finally {
-                SharedMemorySync.leaveCriticalSection(agent, wl);
+                SharedMemorySync.leaveCriticalSection(wl);
             }
         }
 

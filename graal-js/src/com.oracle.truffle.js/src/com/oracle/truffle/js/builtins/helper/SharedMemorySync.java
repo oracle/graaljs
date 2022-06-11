@@ -46,6 +46,8 @@ import java.lang.invoke.VarHandle;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -55,6 +57,7 @@ import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.WaiterRecord;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSInterruptedExecutionException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.TypedArray;
@@ -223,8 +226,7 @@ public final class SharedMemorySync {
 
     // ##### Thread Wake/Park primitives
 
-    @SuppressWarnings("unused")
-    public static JSAgentWaiterListEntry getWaiterList(JSContext context, JSAgent agent, JSDynamicObject target, int indexPos) {
+    public static JSAgentWaiterListEntry getWaiterList(JSContext context, JSDynamicObject target, int indexPos) {
         JSDynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
         int offset = JSArrayBufferView.getByteOffset(target, context);
@@ -233,14 +235,13 @@ public final class SharedMemorySync {
     }
 
     @TruffleBoundary
-    public static void enterCriticalSection(JSAgent agent, JSAgentWaiterListEntry wl) {
-        assert !agent.inCriticalSection();
-        agent.criticalSectionEnter(wl);
+    public static void enterCriticalSection(JSAgentWaiterListEntry wl) {
+        wl.enterCriticalSection();
     }
 
     @TruffleBoundary
-    public static void leaveCriticalSection(JSAgent agent, JSAgentWaiterListEntry wl) {
-        agent.criticalSectionLeave(wl);
+    public static void leaveCriticalSection(JSAgentWaiterListEntry wl) {
+        wl.leaveCriticalSection();
     }
 
     public static boolean agentCanSuspend(JSAgent agent) {
@@ -249,7 +250,7 @@ public final class SharedMemorySync {
 
     @TruffleBoundary
     public static void addWaiter(JSAgent agent, JSAgentWaiterListEntry wl, WaiterRecord waiterRecord, boolean isAsync) {
-        assert agent.inCriticalSection();
+        assert wl.inCriticalSection();
         assert !wl.contains(waiterRecord);
         wl.add(waiterRecord);
         if (isAsync && Double.isFinite(waiterRecord.getTimeout())) {
@@ -259,41 +260,63 @@ public final class SharedMemorySync {
     }
 
     @TruffleBoundary
-    public static void removeWaiter(JSAgent agent, JSAgentWaiterListEntry wl, WaiterRecord w) {
-        assert agent.inCriticalSection();
+    public static void removeWaiter(JSAgentWaiterListEntry wl, WaiterRecord w) {
+        assert wl.inCriticalSection();
         assert wl.contains(w);
         wl.remove(w);
     }
 
-    /* ECMA2022 25.4.1.9 - Suspend returns true if agent was woken by another agent */
+    /**
+     * SuspendAgent (WL, W, timeout).
+     *
+     * Suspends (blocks) this agent, awaiting a notification via this WaiterList.
+     *
+     * @return true if agent W was notified by another agent; false if timed out.
+     */
     @TruffleBoundary
     public static boolean suspendAgent(JSAgent agent, JSAgentWaiterListEntry wl, WaiterRecord waiterRecord) {
-        assert agent.inCriticalSection();
+        assert wl.inCriticalSection();
         assert agent.getSignifier() == waiterRecord.getAgentSignifier();
         assert wl.contains(waiterRecord);
         assert agent.canBlock();
-        agent.criticalSectionLeave(wl);
-        boolean interrupt = false;
+        boolean finiteTimeout = Double.isFinite(waiterRecord.getTimeout());
+        long timeoutRemaining = finiteTimeout ? TimeUnit.MILLISECONDS.toNanos((long) waiterRecord.getTimeout()) : 0L;
         try {
-            Thread.sleep((long) waiterRecord.getTimeout());
+            Condition condition = wl.getCondition();
+            while (true) {
+                if (waiterRecord.isNotified()) {
+                    return true;
+                }
+                if (finiteTimeout) {
+                    timeoutRemaining = condition.awaitNanos(timeoutRemaining);
+                    if (timeoutRemaining <= 0) {
+                        // timed out
+                        return false;
+                    }
+                } else {
+                    condition.await();
+                }
+            }
         } catch (InterruptedException e) {
-            interrupt = true;
+            throw new JSInterruptedExecutionException(e.getMessage(), null);
         }
-        agent.criticalSectionEnter(wl);
-        return interrupt;
     }
 
-    /* ECMA2022 25.4.1.10 - Wake up another agent */
+    /**
+     * NotifyWaiter (WL, W). Notify and wake up a waiting agent.
+     */
     @TruffleBoundary
-    public static void notifyWaiter(JSAgent agent, WaiterRecord waiterRecord) {
-        assert agent.inCriticalSection();
+    public static void notifyWaiter(WaiterRecord waiterRecord) {
+        JSAgentWaiterListEntry wl = waiterRecord.getWaiterListEntry();
+        assert wl.inCriticalSection();
         assert waiterRecord.getPromiseCapability() == null;
-        agent.wakeAgent(waiterRecord.getAgentSignifier());
+        assert waiterRecord.isNotified();
+        wl.getCondition().signalAll();
     }
 
     @TruffleBoundary
-    public static WaiterRecord[] removeWaiters(JSAgent agent, JSAgentWaiterListEntry wl, int count) {
-        assert agent.inCriticalSection();
+    public static WaiterRecord[] removeWaiters(JSAgentWaiterListEntry wl, int count) {
+        assert wl.inCriticalSection();
         int c = 0;
         Iterator<WaiterRecord> iter = wl.iterator();
         List<WaiterRecord> list = new LinkedList<>();

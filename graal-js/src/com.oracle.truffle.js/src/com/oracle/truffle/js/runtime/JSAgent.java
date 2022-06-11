@@ -73,9 +73,6 @@ public abstract class JSAgent implements EcmaAgent {
     private final int signifier;
     private boolean canBlock;
 
-    private boolean inAtomicSection;
-    private boolean inCriticalSection;
-
     /**
      * ECMA 8.4 "PromiseJobs" job queue.
      */
@@ -117,6 +114,8 @@ public abstract class JSAgent implements EcmaAgent {
 
     public abstract void wakeAgent(int w);
 
+    public abstract void wake();
+
     public int getSignifier() {
         return signifier;
     }
@@ -125,38 +124,16 @@ public abstract class JSAgent implements EcmaAgent {
         return canBlock;
     }
 
-    public boolean inCriticalSection() {
-        return inCriticalSection;
-    }
-
-    public void criticalSectionEnter(JSAgentWaiterListEntry wl) {
-        assert !inCriticalSection;
-        wl.lock();
-        inCriticalSection = true;
-    }
-
-    public void criticalSectionLeave(JSAgentWaiterListEntry wl) {
-        assert inCriticalSection;
-        inCriticalSection = false;
-        wl.unlock();
-    }
-
     public void atomicSectionEnter(JSDynamicObject target) {
-        assert !inAtomicSection;
-        assert JSArrayBufferView.isJSArrayBufferView(target);
         JSDynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
-        waiterList.lock();
-        inAtomicSection = true;
+        waiterList.enterAtomicSection();
     }
 
     public void atomicSectionLeave(JSDynamicObject target) {
-        assert inAtomicSection;
-        assert JSArrayBufferView.isJSArrayBufferView(target);
         JSDynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
-        inAtomicSection = false;
-        waiterList.unlock();
+        waiterList.leaveAtomicSection();
     }
 
     @TruffleBoundary
@@ -167,20 +144,24 @@ public abstract class JSAgent implements EcmaAgent {
     @TruffleBoundary
     public void enqueueWaitAsyncPromiseJob(WaiterRecord waiter) {
         waitAsyncJobsQueue.push(waiter);
+        // Wake up agent to process waitAsync and promise queue now.
+        if (waiter.isReadyToResolve()) {
+            waiter.getAgent().wake();
+        }
     }
 
     @TruffleBoundary
     public final void processAllPromises(boolean processWeakRefs) {
         try {
-            boolean checkWaiterRecords = !waitAsyncJobsQueue.isEmpty();
             interopBoundaryEnter();
+            boolean checkWaiterRecords = !waitAsyncJobsQueue.isEmpty();
             while (!promiseJobsQueue.isEmpty() || checkWaiterRecords) {
                 checkWaiterRecords = false;
                 Iterator<WaiterRecord> iter = waitAsyncJobsQueue.descendingIterator();
                 while (iter.hasNext()) {
                     WaiterRecord wr = iter.next();
                     JSAgentWaiterListEntry wl = wr.getWaiterListEntry();
-                    criticalSectionEnter(wl);
+                    wl.enterCriticalSection();
                     boolean isReadyToResolve = wr.isReadyToResolve();
                     try {
                         if (isReadyToResolve) {
@@ -192,7 +173,7 @@ public abstract class JSAgent implements EcmaAgent {
                             }
                         }
                     } finally {
-                        criticalSectionLeave(wl);
+                        wl.leaveCriticalSection();
                     }
                     if (isReadyToResolve) {
                         JSDynamicObject resolve = (JSDynamicObject) wr.getPromiseCapability().getResolve();
@@ -271,13 +252,13 @@ public abstract class JSAgent implements EcmaAgent {
         int result = 0;
         for (WaiterRecord wr : waitAsyncJobsQueue) {
             if (wr.getWaiterListEntry() == wl) {
-                criticalSectionEnter(wl);
+                wl.enterCriticalSection();
                 try {
                     if (wr.isReadyToResolve()) {
                         result++;
                     }
                 } finally {
-                    criticalSectionLeave(wl);
+                    wl.leaveCriticalSection();
                 }
             }
         }

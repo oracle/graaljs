@@ -43,14 +43,21 @@ package com.oracle.truffle.js.runtime.util;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSAgent;
@@ -71,10 +78,17 @@ public class DebugJSAgent extends JSAgent {
     private boolean quit;
     private Object debugReceiveBroadcast;
 
+    private final Lock queueLock;
+    private final Condition queueCondition;
+
+    static final int POLL_TIMEOUT_MS = 1_000;
+
     public DebugJSAgent(PromiseRejectionTracker promiseRejectionTracker, boolean canBlock) {
         super(promiseRejectionTracker, canBlock);
         this.reportValues = new ConcurrentLinkedDeque<>();
         this.spawnedAgents = new LinkedList<>();
+        this.queueLock = new ReentrantLock();
+        this.queueCondition = queueLock.newCondition();
     }
 
     @Override
@@ -103,18 +117,35 @@ public class DebugJSAgent extends JSAgent {
 
                 barrier.countDown();
 
-                // Note: Evaluation of the agent source may have already called agent.leaving().
-                while (!childAgent.quit) {
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        executor.executeBroadcastCallback();
+                try {
+                    // Note: Evaluation of the agent source may have already called agent.leaving().
+                    while (true) {
+                        childAgent.queueLock.lock();
+                        try {
+                            if (childAgent.quit) {
+                                return;
+                            }
+                            childAgent.queueCondition.await(POLL_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                        } finally {
+                            childAgent.queueLock.unlock();
+                        }
+                        // Signal received or timeout. Process all pending events.
+                        do {
+                            Object next = executor.broadcasts.poll();
+                            if (next != null) {
+                                executor.executeBroadcastCallback(next);
+                                // broadcast callback may have called agent.leaving().
+                                if (childAgent.quit) {
+                                    return;
+                                }
+                            }
+                            executor.processPromises();
+                        } while (!executor.broadcasts.isEmpty());
                     }
-                    // broadcast callback may have called agent.leaving().
-                    if (childAgent.quit) {
-                        return;
-                    }
-                    executor.processPromises();
+                } catch (InterruptedException e) {
+                    System.err.println("Interrupted " + Thread.currentThread());
+                } catch (AbstractTruffleException e) {
+                    System.err.println("Uncaught error from " + Thread.currentThread() + ": " + e.getMessage());
                 }
             }
         }, agentContext);
@@ -182,8 +213,18 @@ public class DebugJSAgent extends JSAgent {
     public void wakeAgent(int w) {
         for (AgentExecutor e : spawnedAgents) {
             if (e.jsAgent.getSignifier() == w) {
-                e.thread.interrupt();
+                e.wake();
             }
+        }
+    }
+
+    @Override
+    public void wake() {
+        queueLock.lock();
+        try {
+            queueCondition.signalAll();
+        } finally {
+            queueLock.unlock();
         }
     }
 
@@ -192,34 +233,27 @@ public class DebugJSAgent extends JSAgent {
         private final DebugJSAgent jsAgent;
         private final TruffleContext agentContext;
         private final Thread thread;
-
-        private ConcurrentLinkedDeque<Object> incoming;
+        final Queue<Object> broadcasts;
 
         AgentExecutor(Thread thread, DebugJSAgent jsAgent, TruffleContext agentContext) {
             CompilerAsserts.neverPartOfCompilation();
             this.thread = thread;
             this.jsAgent = jsAgent;
             this.agentContext = agentContext;
-            this.incoming = new ConcurrentLinkedDeque<>();
+            this.broadcasts = new ConcurrentLinkedQueue<>();
         }
 
         void pushMessage(Object sab) {
             CompilerAsserts.neverPartOfCompilation();
-            incoming.add(sab);
-            thread.interrupt();
+            broadcasts.add(sab);
+            jsAgent.wake();
         }
 
-        void executeBroadcastCallback() {
+        void executeBroadcastCallback(Object sab) {
             CompilerAsserts.neverPartOfCompilation();
             assert agentContext.isEntered();
-            assert jsAgent.debugReceiveBroadcast != null;
-            if (incoming.size() == 0) {
-                return;
-            }
-            while (incoming.size() > 0) {
-                JSFunctionObject cb = (JSFunctionObject) jsAgent.debugReceiveBroadcast;
-                JSFunction.call(cb, cb, new Object[]{incoming.pop()});
-            }
+            JSFunctionObject cb = (JSFunctionObject) jsAgent.debugReceiveBroadcast;
+            JSFunction.call(cb, cb, new Object[]{sab});
         }
 
         void processPromises() {
@@ -243,7 +277,6 @@ public class DebugJSAgent extends JSAgent {
         }
         for (AgentExecutor executor : spawnedAgents) {
             if (executor.thread.isAlive()) {
-                executor.jsAgent.quit = true;
                 executor.thread.interrupt();
                 try {
                     executor.thread.join(timeout);

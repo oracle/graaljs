@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,11 +73,16 @@ public class NodeJSAgent extends JSAgent {
         synchronized (agents) {
             for (NodeJSAgent agent : agents) {
                 if (agent.getSignifier() == w) {
-                    agent.thread.interrupt();
+                    agent.wake();
                     break;
                 }
             }
         }
+    }
+
+    @Override
+    public void wake() {
+        // Not supported currently.
     }
 
     @Override
@@ -87,7 +92,7 @@ public class NodeJSAgent extends JSAgent {
 
     @Override
     public void terminate(int timeout) {
-        throw new UnsupportedOperationException();
+        // No-op
     }
 
 }

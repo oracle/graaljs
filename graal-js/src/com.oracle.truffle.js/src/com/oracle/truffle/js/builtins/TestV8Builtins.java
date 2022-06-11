@@ -487,8 +487,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
                         @Cached("create()") JSToIndexNode toIndexNode) {
             JSDynamicObject target = ensureSharedArray(maybeTarget);
             int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
-            JSAgent agent = getRealm().getAgent();
-            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), agent, target, i);
+            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
             return wl.size();
         }
 
@@ -506,7 +505,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
             JSDynamicObject target = ensureSharedArray(maybeTarget);
             int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             JSAgent agent = getRealm().getAgent();
-            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), agent, target, i);
+            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
             return agent.getAsyncWaitersToBeResolved(wl);
         }
     }
