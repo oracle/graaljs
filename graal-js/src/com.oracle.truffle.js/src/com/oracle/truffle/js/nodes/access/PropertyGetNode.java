@@ -61,13 +61,9 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.BooleanLocation;
-import com.oracle.truffle.api.object.DoubleLocation;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.IntLocation;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.LongLocation;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -131,6 +127,7 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
  * @see PropertyNode
  * @see GlobalPropertyNode
  */
+@SuppressWarnings("deprecation")
 public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheNode> {
     protected final boolean isGlobal;
     protected final boolean getOwnProperty;
@@ -676,12 +673,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static final class IntPropertyGetNode extends LinkedPropertyGetNode {
 
-        private final IntLocation location;
+        private final com.oracle.truffle.api.object.IntLocation location;
 
         public IntPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
             assert JSProperty.isData(property);
-            this.location = (IntLocation) property.getLocation();
+            this.location = (com.oracle.truffle.api.object.IntLocation) property.getLocation();
         }
 
         @Override
@@ -702,14 +699,14 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static final class FinalIntPropertyGetNode extends AbstractFinalPropertyGetNode {
 
-        private final IntLocation location;
+        private final com.oracle.truffle.api.object.IntLocation location;
         private final int finalValue;
 
         public FinalIntPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck, int value, JSDynamicObject expectedObj) {
             super(property, shapeCheck, expectedObj);
             assert JSProperty.isData(property);
             this.finalValue = value;
-            this.location = (IntLocation) property.getLocation();
+            this.location = (com.oracle.truffle.api.object.IntLocation) property.getLocation();
         }
 
         @Override
@@ -735,12 +732,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static final class DoublePropertyGetNode extends LinkedPropertyGetNode {
 
-        private final DoubleLocation location;
+        private final com.oracle.truffle.api.object.DoubleLocation location;
 
         public DoublePropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
             assert JSProperty.isData(property);
-            this.location = (DoubleLocation) property.getLocation();
+            this.location = (com.oracle.truffle.api.object.DoubleLocation) property.getLocation();
         }
 
         @Override
@@ -757,13 +754,13 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     public static final class FinalDoublePropertyGetNode extends AbstractFinalPropertyGetNode {
 
         private final double finalValue;
-        private final DoubleLocation location;
+        private final com.oracle.truffle.api.object.DoubleLocation location;
 
         public FinalDoublePropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck, double value, JSDynamicObject expectedObj) {
             super(property, shapeCheck, expectedObj);
             assert JSProperty.isData(property);
             this.finalValue = value;
-            this.location = (DoubleLocation) property.getLocation();
+            this.location = (com.oracle.truffle.api.object.DoubleLocation) property.getLocation();
         }
 
         @Override
@@ -784,12 +781,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static final class BooleanPropertyGetNode extends LinkedPropertyGetNode {
 
-        private final BooleanLocation location;
+        private final com.oracle.truffle.api.object.BooleanLocation location;
 
         public BooleanPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
             assert JSProperty.isData(property);
-            this.location = (BooleanLocation) property.getLocation();
+            this.location = (com.oracle.truffle.api.object.BooleanLocation) property.getLocation();
         }
 
         @Override
@@ -806,13 +803,13 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     public static final class FinalBooleanPropertyGetNode extends AbstractFinalPropertyGetNode {
 
         private final boolean finalValue;
-        private final BooleanLocation location;
+        private final com.oracle.truffle.api.object.BooleanLocation location;
 
         public FinalBooleanPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck, boolean value, JSDynamicObject expectedObj) {
             super(property, shapeCheck, expectedObj);
             assert JSProperty.isData(property);
             this.finalValue = value;
-            this.location = (BooleanLocation) property.getLocation();
+            this.location = (com.oracle.truffle.api.object.BooleanLocation) property.getLocation();
         }
 
         @Override
@@ -833,12 +830,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static final class LongPropertyGetNode extends LinkedPropertyGetNode {
 
-        private final LongLocation location;
+        private final com.oracle.truffle.api.object.LongLocation location;
 
         public LongPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
             assert JSProperty.isData(property);
-            this.location = (LongLocation) property.getLocation();
+            this.location = (com.oracle.truffle.api.object.LongLocation) property.getLocation();
         }
 
         @Override
@@ -855,13 +852,13 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     public static final class FinalLongPropertyGetNode extends AbstractFinalPropertyGetNode {
 
         private final long finalValue;
-        private final LongLocation location;
+        private final com.oracle.truffle.api.object.LongLocation location;
 
         public FinalLongPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck, long value, JSDynamicObject expectedObj) {
             super(property, shapeCheck, expectedObj);
             assert JSProperty.isData(property);
             this.finalValue = value;
-            this.location = (LongLocation) property.getLocation();
+            this.location = (com.oracle.truffle.api.object.LongLocation) property.getLocation();
         }
 
         @Override
@@ -1921,13 +1918,13 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     private static GetCacheNode createSpecializationFromDataProperty(Property property, ReceiverCheckNode receiverCheck, JSContext context) {
         Property dataProperty = property;
 
-        if (property.getLocation() instanceof IntLocation) {
+        if (property.getLocation() instanceof com.oracle.truffle.api.object.IntLocation) {
             return new IntPropertyGetNode(dataProperty, receiverCheck);
-        } else if (property.getLocation() instanceof DoubleLocation) {
+        } else if (property.getLocation() instanceof com.oracle.truffle.api.object.DoubleLocation) {
             return new DoublePropertyGetNode(dataProperty, receiverCheck);
-        } else if (property.getLocation() instanceof BooleanLocation) {
+        } else if (property.getLocation() instanceof com.oracle.truffle.api.object.BooleanLocation) {
             return new BooleanPropertyGetNode(dataProperty, receiverCheck);
-        } else if (property.getLocation() instanceof LongLocation) {
+        } else if (property.getLocation() instanceof com.oracle.truffle.api.object.LongLocation) {
             return new LongPropertyGetNode(dataProperty, receiverCheck);
         } else if (JSProperty.isProxy(property)) {
             if (isArrayLengthProperty(property)) {
@@ -1960,16 +1957,16 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         JSDynamicObject constObjOrNull = isConstantObjectFinal ? thisObj : null;
         try {
-            if (property.getLocation() instanceof IntLocation) {
+            if (property.getLocation() instanceof com.oracle.truffle.api.object.IntLocation) {
                 int intValue = DynamicObjectLibrary.getUncached().getIntOrDefault(store, key, null);
                 return new FinalIntPropertyGetNode(property, finalShapeCheckNode, intValue, constObjOrNull);
-            } else if (property.getLocation() instanceof DoubleLocation) {
+            } else if (property.getLocation() instanceof com.oracle.truffle.api.object.DoubleLocation) {
                 double doubleValue = DynamicObjectLibrary.getUncached().getDoubleOrDefault(store, key, null);
                 return new FinalDoublePropertyGetNode(property, finalShapeCheckNode, doubleValue, constObjOrNull);
-            } else if (property.getLocation() instanceof BooleanLocation) {
+            } else if (property.getLocation() instanceof com.oracle.truffle.api.object.BooleanLocation) {
                 boolean boolValue = (boolean) DynamicObjectLibrary.getUncached().getOrDefault(store, key, null);
                 return new FinalBooleanPropertyGetNode(property, finalShapeCheckNode, boolValue, constObjOrNull);
-            } else if (property.getLocation() instanceof LongLocation) {
+            } else if (property.getLocation() instanceof com.oracle.truffle.api.object.LongLocation) {
                 long longValue = DynamicObjectLibrary.getUncached().getLongOrDefault(store, key, null);
                 return new FinalLongPropertyGetNode(property, finalShapeCheckNode, longValue, constObjOrNull);
             } else {
@@ -2145,13 +2142,13 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     protected GetCacheNode createCombinedIcPropertyNode(Shape parentShape, Shape cacheShape, Object thisObj, int depth, Object value, Property property) {
         CombinedShapeCheckNode receiverCheck = new CombinedShapeCheckNode(parentShape, cacheShape);
 
-        if (property.getLocation() instanceof IntLocation) {
+        if (property.getLocation() instanceof com.oracle.truffle.api.object.IntLocation) {
             return new IntPropertyGetNode(property, receiverCheck);
-        } else if (property.getLocation() instanceof DoubleLocation) {
+        } else if (property.getLocation() instanceof com.oracle.truffle.api.object.DoubleLocation) {
             return new DoublePropertyGetNode(property, receiverCheck);
-        } else if (property.getLocation() instanceof BooleanLocation) {
+        } else if (property.getLocation() instanceof com.oracle.truffle.api.object.BooleanLocation) {
             return new BooleanPropertyGetNode(property, receiverCheck);
-        } else if (property.getLocation() instanceof LongLocation) {
+        } else if (property.getLocation() instanceof com.oracle.truffle.api.object.LongLocation) {
             return new LongPropertyGetNode(property, receiverCheck);
         } else {
             assert !JSProperty.isProxy(property);

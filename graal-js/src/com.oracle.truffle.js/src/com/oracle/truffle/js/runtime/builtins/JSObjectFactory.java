@@ -148,7 +148,7 @@ public abstract class JSObjectFactory {
     }
 
     static boolean verifyPrototype(Shape shape, JSDynamicObject prototype) {
-        return JSShape.getPrototypeProperty(shape).getLocation().isConstant() && JSShape.getPrototypeProperty(shape).getLocation().get(null) == prototype;
+        return JSShape.getPrototypeProperty(shape).getLocation().isConstant() && JSShape.getPrototypeProperty(shape).getLocation().getConstantValue() == prototype;
     }
 
     protected abstract JSDynamicObject getPrototype(JSRealm realm);
