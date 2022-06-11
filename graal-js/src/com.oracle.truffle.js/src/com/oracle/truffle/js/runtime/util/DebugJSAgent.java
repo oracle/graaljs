@@ -49,6 +49,7 @@ import java.util.concurrent.CountDownLatch;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSAgent;
@@ -63,7 +64,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 public class DebugJSAgent extends JSAgent {
 
     private final Deque<Object> reportValues;
-    private final List<AgentExecutor> spawnedAgent;
+    private final List<AgentExecutor> spawnedAgents;
 
     private boolean quit;
     private Object debugReceiveBroadcast;
@@ -71,7 +72,7 @@ public class DebugJSAgent extends JSAgent {
     public DebugJSAgent(PromiseRejectionTracker promiseRejectionTracker, boolean canBlock) {
         super(promiseRejectionTracker, canBlock);
         this.reportValues = new ConcurrentLinkedDeque<>();
-        this.spawnedAgent = new LinkedList<>();
+        this.spawnedAgents = new LinkedList<>();
     }
 
     @Override
@@ -82,43 +83,35 @@ public class DebugJSAgent extends JSAgent {
 
     @TruffleBoundary
     public void startNewAgent(String sourceText) {
+        final Source agentSource = Source.newBuilder(JavaScriptLanguage.ID, sourceText, "agent").build();
+        final TruffleLanguage.Env env = JavaScriptLanguage.getCurrentEnv();
+        final TruffleContext agentContext = env.newContextBuilder().build();
         final CountDownLatch barrier = new CountDownLatch(1);
 
-        final Source agentSource = Source.newBuilder(JavaScriptLanguage.ID, sourceText, "agent").build();
-        final TruffleContext agentContext = JavaScriptLanguage.getCurrentEnv().newContextBuilder().build();
         agentContext.evalPublic(null, agentSource);
 
-        Thread thread = new Thread(new Runnable() {
+        Thread thread = env.createThread(new Runnable() {
             @Override
             public void run() {
-                try {
-                    AgentExecutor executor;
-                    Object prev = agentContext.enter(null);
+                DebugJSAgent childAgent = (DebugJSAgent) JavaScriptLanguage.getCurrentJSRealm().getAgent();
+                AgentExecutor executor = DebugJSAgent.this.registerChildAgent(Thread.currentThread(), childAgent, agentContext);
+
+                barrier.countDown();
+
+                while (true) {
                     try {
-                        DebugJSAgent childAgent = (DebugJSAgent) JavaScriptLanguage.getCurrentJSRealm().getAgent();
-                        executor = DebugJSAgent.this.registerChildAgent(Thread.currentThread(), childAgent, agentContext);
-                    } finally {
-                        agentContext.leave(null, prev);
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        executor.executeBroadcastCallback();
                     }
-
-                    barrier.countDown();
-
-                    while (true) {
-                        try {
-                            Thread.sleep(1000);
-                        } catch (InterruptedException e) {
-                            executor.executeBroadcastCallback();
-                        }
-                        if (executor.jsAgent.quit) {
-                            return;
-                        }
-                        executor.processPromises();
+                    if (executor.jsAgent.quit) {
+                        return;
                     }
-                } finally {
-                    agentContext.close();
+                    executor.processPromises();
                 }
             }
-        });
+        }, agentContext);
+
         thread.setDaemon(true);
         thread.setName("Debug-JSAgent-Worker-Thread");
         thread.start();
@@ -137,20 +130,20 @@ public class DebugJSAgent extends JSAgent {
     @TruffleBoundary
     public AgentExecutor registerChildAgent(Thread thread, DebugJSAgent jsAgent, TruffleContext agentContext) {
         AgentExecutor spawned = new AgentExecutor(thread, jsAgent, agentContext);
-        spawnedAgent.add(spawned);
+        spawnedAgents.add(spawned);
         return spawned;
     }
 
     @TruffleBoundary
     public void broadcast(Object sab) {
-        for (AgentExecutor e : spawnedAgent) {
+        for (AgentExecutor e : spawnedAgents) {
             e.pushMessage(sab);
         }
     }
 
     @TruffleBoundary
     public Object getReport() {
-        for (AgentExecutor e : spawnedAgent) {
+        for (AgentExecutor e : spawnedAgents) {
             if (e.jsAgent.reportValues.size() > 0) {
                 return e.jsAgent.reportValues.pollLast();
             }
@@ -180,7 +173,7 @@ public class DebugJSAgent extends JSAgent {
     @Override
     @TruffleBoundary
     public void wakeAgent(int w) {
-        for (AgentExecutor e : spawnedAgent) {
+        for (AgentExecutor e : spawnedAgents) {
             if (e.jsAgent.getSignifier() == w) {
                 e.thread.interrupt();
             }
@@ -211,29 +204,21 @@ public class DebugJSAgent extends JSAgent {
 
         void executeBroadcastCallback() {
             CompilerAsserts.neverPartOfCompilation();
+            assert agentContext.isEntered();
             assert jsAgent.debugReceiveBroadcast != null;
             if (incoming.size() == 0) {
                 return;
             }
-            Object prev = agentContext.enter(null);
-            try {
-                while (incoming.size() > 0) {
-                    JSFunctionObject cb = (JSFunctionObject) jsAgent.debugReceiveBroadcast;
-                    JSFunction.call(cb, cb, new Object[]{incoming.pop()});
-                }
-            } finally {
-                agentContext.leave(null, prev);
+            while (incoming.size() > 0) {
+                JSFunctionObject cb = (JSFunctionObject) jsAgent.debugReceiveBroadcast;
+                JSFunction.call(cb, cb, new Object[]{incoming.pop()});
             }
         }
 
         void processPromises() {
             CompilerAsserts.neverPartOfCompilation();
-            Object prev = agentContext.enter(null);
-            try {
-                jsAgent.processAllPromises(false);
-            } finally {
-                agentContext.leave(null, prev);
-            }
+            assert agentContext.isEntered();
+            jsAgent.processAllPromises(false);
         }
     }
 
@@ -246,7 +231,21 @@ public class DebugJSAgent extends JSAgent {
     @TruffleBoundary
     @Override
     public void terminate(int timeout) {
-        throw new UnsupportedOperationException("Not supported in Debug agent");
+        if (spawnedAgents.isEmpty()) {
+            return;
+        }
+        for (AgentExecutor executor : spawnedAgents) {
+            if (executor.thread.isAlive()) {
+                executor.jsAgent.quit = true;
+                executor.thread.interrupt();
+                try {
+                    executor.thread.join(timeout);
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e);
+                }
+            }
+        }
+        spawnedAgents.clear();
     }
 
 }

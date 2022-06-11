@@ -188,6 +188,8 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
     @Override
     protected void finalizeContext(JSRealm realm) {
+        // Terminate spawned agent threads
+        realm.getAgent().terminate(0);
     }
 
     @TruffleBoundary
