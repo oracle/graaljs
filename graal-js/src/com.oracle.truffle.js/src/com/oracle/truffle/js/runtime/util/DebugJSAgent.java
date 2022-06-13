@@ -255,12 +255,6 @@ public class DebugJSAgent extends JSAgent {
 
     @TruffleBoundary
     @Override
-    public boolean isTerminated() {
-        throw new UnsupportedOperationException("Not supported in Debug agent");
-    }
-
-    @TruffleBoundary
-    @Override
     public void terminate(int timeout) {
         if (spawnedAgents.isEmpty()) {
             return;

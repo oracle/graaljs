@@ -64,11 +64,6 @@ public class NodeJSAgent extends JSAgent {
     }
 
     @Override
-    public boolean isTerminated() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void terminate(int timeout) {
         // No-op
     }

@@ -50,11 +50,6 @@ public final class MainJSAgent extends JSAgent {
     }
 
     @Override
-    public boolean isTerminated() {
-        return false;
-    }
-
-    @Override
     public void terminate(int timeout) {
         // No-op
     }

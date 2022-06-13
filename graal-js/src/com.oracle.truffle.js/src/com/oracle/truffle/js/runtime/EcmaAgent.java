@@ -46,11 +46,6 @@ package com.oracle.truffle.js.runtime;
 public interface EcmaAgent {
 
     /**
-     * Returns true if the agent was terminated.
-     */
-    boolean isTerminated();
-
-    /**
      * Terminate the agent.
      */
     void terminate(int timeout);
