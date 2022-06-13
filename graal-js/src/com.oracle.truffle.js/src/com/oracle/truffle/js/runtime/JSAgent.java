@@ -154,31 +154,8 @@ public abstract class JSAgent {
             interopBoundaryEnter();
             boolean checkWaiterRecords = !waitAsyncJobsQueue.isEmpty();
             while (!promiseJobsQueue.isEmpty() || checkWaiterRecords) {
-                checkWaiterRecords = false;
-                Iterator<WaiterRecord> iter = waitAsyncJobsQueue.descendingIterator();
-                while (iter.hasNext()) {
-                    WaiterRecord wr = iter.next();
-                    JSAgentWaiterListEntry wl = wr.getWaiterListEntry();
-                    wl.enterCriticalSection();
-                    boolean isReadyToResolve = wr.isReadyToResolve();
-                    try {
-                        if (isReadyToResolve) {
-                            iter.remove();
-                            checkWaiterRecords = true;
-                            if (wl.contains(wr)) {
-                                wr.setResult(Strings.TIMED_OUT);
-                                wl.remove(wr);
-                            }
-                        }
-                    } finally {
-                        wl.leaveCriticalSection();
-                    }
-                    if (isReadyToResolve) {
-                        JSDynamicObject resolve = (JSDynamicObject) wr.getPromiseCapability().getResolve();
-                        assert JSFunction.isJSFunction(resolve);
-                        Object result = wr.getResult();
-                        JSFunction.call(JSArguments.createOneArg(Undefined.instance, resolve, result));
-                    }
+                if (checkWaiterRecords) {
+                    checkWaiterRecords = processWaitAsyncJobs();
                 }
                 if (!promiseJobsQueue.isEmpty()) {
                     JSFunctionObject nextJob = promiseJobsQueue.pollLast();
@@ -206,6 +183,36 @@ public abstract class JSAgent {
                 promiseRejectionTracker.promiseReactionJobsProcessed();
             }
         }
+    }
+
+    private boolean processWaitAsyncJobs() {
+        boolean checkWaiterRecords = false;
+        Iterator<WaiterRecord> iter = waitAsyncJobsQueue.descendingIterator();
+        while (iter.hasNext()) {
+            WaiterRecord wr = iter.next();
+            JSAgentWaiterListEntry wl = wr.getWaiterListEntry();
+            wl.enterCriticalSection();
+            boolean isReadyToResolve = wr.isReadyToResolve();
+            try {
+                if (isReadyToResolve) {
+                    iter.remove();
+                    checkWaiterRecords = true;
+                    if (wl.contains(wr)) {
+                        wr.setResult(Strings.TIMED_OUT);
+                        wl.remove(wr);
+                    }
+                }
+            } finally {
+                wl.leaveCriticalSection();
+            }
+            if (isReadyToResolve) {
+                JSDynamicObject resolve = (JSDynamicObject) wr.getPromiseCapability().getResolve();
+                assert JSFunction.isJSFunction(resolve);
+                Object result = wr.getResult();
+                JSFunction.call(JSArguments.createOneArg(Undefined.instance, resolve, result));
+            }
+        }
+        return checkWaiterRecords;
     }
 
     /**
