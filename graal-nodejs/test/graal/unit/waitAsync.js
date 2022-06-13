@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,7 @@
 const assert = require('assert');
 
 describe.skipOnNode('waitAsync', function () {
-    it('should work', function() {
+    it('should work with finite timeout', function() {
         this.timeout(20000);
         var child_process = require('child_process');
         var spawnSync = child_process.spawnSync;
@@ -67,11 +67,43 @@ describe.skipOnNode('waitAsync', function () {
           w.on('message', (sab) => {
             var i32a = new Int32Array(sab);
             const count = Atomics.notify(i32a, 0, 1);
-            assert(count === 1);
+            assert.strictEqual(count, 1);
           });`;
 
         const result = spawnSync(process.execPath, ['--js.ecmascript-version=staging', '-e', code]);
-        assert.strictEqual(result.status, 0);
+        assert.strictEqual(result.status, 0, result.stderr.toString());
         assert.strictEqual(result.stderr.toString(), '');
     });
+    it('should work with infinite timeout', function() {
+      this.timeout(20000);
+      var child_process = require('child_process');
+      var spawnSync = child_process.spawnSync;
+
+      const workerCode = `
+        const assert = require('assert');
+        const { parentPort } = require('worker_threads');
+
+        const sab = new SharedArrayBuffer(16);
+        const i32a = new Int32Array(sab);
+
+        Atomics.waitAsync(i32a, 0, 0, Infinity);
+
+        parentPort.postMessage(sab);`;
+
+      const code = `
+        const assert = require('assert');
+        const { Worker } = require('worker_threads');
+
+        const w = new Worker(\`${workerCode}\`, { eval: true });
+
+        w.on('message', (sab) => {
+          var i32a = new Int32Array(sab);
+          const count = Atomics.notify(i32a, 0, 1);
+          assert.strictEqual(count, 1);
+        });`;
+
+      const result = spawnSync(process.execPath, ['--js.ecmascript-version=staging', '-e', code]);
+      assert.strictEqual(result.status, 0, result.stderr.toString());
+      assert.strictEqual(result.stderr.toString(), '');
+  });
 });
