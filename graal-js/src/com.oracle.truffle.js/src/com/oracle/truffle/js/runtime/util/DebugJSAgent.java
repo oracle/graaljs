@@ -209,16 +209,6 @@ public class DebugJSAgent extends JSAgent {
     }
 
     @Override
-    @TruffleBoundary
-    public void wakeAgent(int w) {
-        for (AgentExecutor e : spawnedAgents) {
-            if (e.jsAgent.getSignifier() == w) {
-                e.wake();
-            }
-        }
-    }
-
-    @Override
     public void wake() {
         queueLock.lock();
         try {

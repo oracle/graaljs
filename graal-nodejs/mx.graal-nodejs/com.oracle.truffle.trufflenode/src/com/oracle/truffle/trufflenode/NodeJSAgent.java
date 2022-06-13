@@ -40,15 +40,10 @@
  */
 package com.oracle.truffle.trufflenode;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-
 import com.oracle.truffle.js.runtime.JSAgent;
 
 public class NodeJSAgent extends JSAgent {
-    // The set of active agents, i.e., agents that entered an isolate
-    private static final Set<NodeJSAgent> agents = Collections.synchronizedSet(new HashSet<>());
+
     private Thread thread;
 
     NodeJSAgent() {
@@ -57,27 +52,10 @@ public class NodeJSAgent extends JSAgent {
 
     void setThread(Thread thread) {
         this.thread = thread;
-        if (thread == null) {
-            agents.remove(this);
-        } else {
-            agents.add(this);
-        }
     }
 
     Thread getThread() {
         return thread;
-    }
-
-    @Override
-    public void wakeAgent(int w) {
-        synchronized (agents) {
-            for (NodeJSAgent agent : agents) {
-                if (agent.getSignifier() == w) {
-                    agent.wake();
-                    break;
-                }
-            }
-        }
     }
 
     @Override

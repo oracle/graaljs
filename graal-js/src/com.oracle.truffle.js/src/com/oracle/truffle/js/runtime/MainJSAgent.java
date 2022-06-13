@@ -60,11 +60,6 @@ public final class MainJSAgent extends JSAgent {
     }
 
     @Override
-    public void wakeAgent(int w) {
-        // No-op
-    }
-
-    @Override
     public void wake() {
         // No-op
     }

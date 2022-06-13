@@ -112,8 +112,6 @@ public abstract class JSAgent implements EcmaAgent {
         this.finalizationRegistryQueue = new ArrayDeque<>(4);
     }
 
-    public abstract void wakeAgent(int w);
-
     public abstract void wake();
 
     public int getSignifier() {
