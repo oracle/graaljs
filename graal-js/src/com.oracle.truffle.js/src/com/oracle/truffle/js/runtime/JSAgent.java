@@ -65,7 +65,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 /**
  * Base class for ECMA2017 8.7 Agents.
  */
-public abstract class JSAgent implements EcmaAgent {
+public abstract class JSAgent {
 
     private static final AtomicInteger signifierGenerator = new AtomicInteger(0);
 
@@ -267,5 +267,10 @@ public abstract class JSAgent implements EcmaAgent {
     public void setCanBlock(boolean canBlock) {
         this.canBlock = canBlock;
     }
+
+    /**
+     * Terminate the agent.
+     */
+    public abstract void terminate(int timeout);
 
 }
