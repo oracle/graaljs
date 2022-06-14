@@ -150,7 +150,6 @@ public class DebugJSAgent extends JSAgent {
             }
         }, agentContext);
 
-        thread.setDaemon(true);
         thread.setName("Debug-JSAgent-Worker-Thread");
         thread.start();
         try {
