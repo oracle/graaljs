@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -123,6 +123,16 @@ final class NativeVarHandleByteBufferAccess extends ByteBufferAccess {
     public void putDouble(ByteBuffer buffer, int index, double value) {
         DOUBLE.set(buffer, index, value);
     }
+
+    @Override
+    public int compareExchangeInt32(ByteBuffer buffer, int index, int expectedValue, int newValue) {
+        return (int) INT32.compareAndExchange(buffer, index, expectedValue, newValue);
+    }
+
+    @Override
+    public long compareExchangeInt64(ByteBuffer buffer, int index, long expectedValue, long newValue) {
+        return (long) INT64.compareAndExchange(buffer, index, expectedValue, newValue);
+    }
 }
 
 final class LittleEndianVarHandleByteBufferAccess extends ByteBufferAccess {
@@ -186,6 +196,16 @@ final class LittleEndianVarHandleByteBufferAccess extends ByteBufferAccess {
     public void putDouble(ByteBuffer buffer, int index, double value) {
         DOUBLE.set(buffer, index, value);
     }
+
+    @Override
+    public int compareExchangeInt32(ByteBuffer buffer, int index, int expectedValue, int newValue) {
+        return (int) INT32.compareAndExchange(buffer, index, expectedValue, newValue);
+    }
+
+    @Override
+    public long compareExchangeInt64(ByteBuffer buffer, int index, long expectedValue, long newValue) {
+        return (long) INT64.compareAndExchange(buffer, index, expectedValue, newValue);
+    }
 }
 
 final class BigEndianVarHandleByteBufferAccess extends ByteBufferAccess {
@@ -248,5 +268,15 @@ final class BigEndianVarHandleByteBufferAccess extends ByteBufferAccess {
     @Override
     public void putDouble(ByteBuffer buffer, int index, double value) {
         DOUBLE.set(buffer, index, value);
+    }
+
+    @Override
+    public int compareExchangeInt32(ByteBuffer buffer, int index, int expectedValue, int newValue) {
+        return (int) INT32.compareAndExchange(buffer, index, expectedValue, newValue);
+    }
+
+    @Override
+    public long compareExchangeInt64(ByteBuffer buffer, int index, long expectedValue, long newValue) {
+        return (long) INT64.compareAndExchange(buffer, index, expectedValue, newValue);
     }
 }

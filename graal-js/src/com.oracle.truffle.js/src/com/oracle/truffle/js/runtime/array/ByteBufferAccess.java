@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,9 @@
  */
 package com.oracle.truffle.js.runtime.array;
 
+import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 public abstract class ByteBufferAccess {
 
@@ -81,6 +83,62 @@ public abstract class ByteBufferAccess {
     public abstract void putDouble(ByteBuffer buffer, int index, double value);
 
     public abstract void putInt64(ByteBuffer buffer, int index, long value);
+
+    public abstract int compareExchangeInt32(ByteBuffer buffer, int index, int expectedValue, int newValue);
+
+    public abstract long compareExchangeInt64(ByteBuffer buffer, int index, long expectedValue, long newValue);
+
+    /**
+     * Emulate 8-bit CAS using 32-bit CAS. Cannot be used if the buffer is too short for that.
+     */
+    public int compareExchangeInt8(ByteBuffer buffer, int index, int expectedValue, int newValue) {
+        int wordOffset = index & ~3;
+        assert wordOffset <= buffer.capacity() - Integer.BYTES;
+        int shift = (index & 3) << 3;
+        if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
+            shift = 24 - shift;
+        }
+        int mask = 0xFF << shift;
+        int maskedExpected = (expectedValue & 0xFF) << shift;
+        int maskedReplacement = (newValue & 0xFF) << shift;
+        int fullWord;
+        int exchanged;
+        do {
+            fullWord = getInt32(buffer, wordOffset);
+            VarHandle.acquireFence();
+            if ((fullWord & mask) != maskedExpected) {
+                return (byte) ((fullWord & mask) >> shift);
+            }
+            exchanged = compareExchangeInt32(buffer, wordOffset, fullWord, (fullWord & ~mask) | maskedReplacement);
+        } while (exchanged != fullWord);
+        return expectedValue;
+    }
+
+    /**
+     * Emulate 16-bit CAS using 32-bit CAS. Cannot be used if the buffer is too short for that.
+     */
+    public int compareExchangeInt16(ByteBuffer buffer, int index, int expectedValue, int newValue) {
+        int wordOffset = index & ~3;
+        assert wordOffset <= buffer.capacity() - Integer.BYTES;
+        int shift = (index & 3) << 3;
+        if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
+            shift = 16 - shift;
+        }
+        int mask = 0xFFFF << shift;
+        int maskedExpected = (expectedValue & 0xFFFF) << shift;
+        int maskedReplacement = (newValue & 0xFFFF) << shift;
+        int fullWord;
+        int exchanged;
+        do {
+            fullWord = getInt32(buffer, wordOffset);
+            VarHandle.acquireFence();
+            if ((fullWord & mask) != maskedExpected) {
+                return (short) ((fullWord & mask) >> shift);
+            }
+            exchanged = compareExchangeInt32(buffer, wordOffset, fullWord, (fullWord & ~mask) | maskedReplacement);
+        } while (exchanged != fullWord);
+        return expectedValue;
+    }
 
     public static final ByteBufferAccess littleEndian() {
         return ByteBufferSupport.littleEndian();

@@ -51,13 +51,18 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -145,11 +150,11 @@ public abstract class TypedArray extends ScriptArray {
     /**
      * Get ArrayBuffer from TypedArray.
      */
-    public static JSDynamicObject getBufferFromTypedArray(JSDynamicObject typedArray) {
+    public static JSArrayBufferObject getBufferFromTypedArray(JSDynamicObject typedArray) {
         return JSArrayBufferView.getArrayBuffer(typedArray);
     }
 
-    protected final int getOffset(JSDynamicObject object) {
+    public final int getOffset(JSDynamicObject object) {
         if (offset) {
             return typedArrayGetOffset(object);
         } else {
@@ -310,6 +315,47 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         public abstract void setBufferElementIntImpl(Object buffer, int index, boolean littleEndian, int value, InteropLibrary interop);
+
+        @SuppressWarnings("unused")
+        public int compareExchangeInt(JSTypedArrayObject typedArray, int index, int expectedValue, int newValue) {
+            throw Errors.shouldNotReachHere();
+        }
+
+        static boolean isCompareExchangeSupported(ByteBuffer byteBuffer, int byteOffset) {
+            return (byteOffset & ~3) <= byteBuffer.limit() - Integer.BYTES;
+        }
+
+        @TruffleBoundary
+        final int lockedReadModifyWriteByte(JSTypedArrayObject typedArrayObject, int index, int expectedValue, int newValue) {
+            JSArrayBufferObject arrayBuffer = getBufferFromTypedArray(typedArrayObject);
+            JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
+            waiterList.enterAtomicSection();
+            try {
+                byte read = (byte) SharedMemorySync.doVolatileGet(typedArrayObject, index, this);
+                if (read == (byte) expectedValue) {
+                    SharedMemorySync.doVolatilePut(typedArrayObject, index, (byte) newValue, this);
+                }
+                return read;
+            } finally {
+                waiterList.leaveAtomicSection();
+            }
+        }
+
+        @TruffleBoundary
+        final int lockedReadModifyWriteShort(JSTypedArrayObject typedArrayObject, int index, int expectedValue, int newValue) {
+            JSArrayBufferObject arrayBuffer = getBufferFromTypedArray(typedArrayObject);
+            JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
+            waiterList.enterAtomicSection();
+            try {
+                short read = (short) SharedMemorySync.doVolatileGet(typedArrayObject, index, this);
+                if (read == (short) expectedValue) {
+                    SharedMemorySync.doVolatilePut(typedArrayObject, index, (short) newValue, this);
+                }
+                return read;
+            } finally {
+                waiterList.leaveAtomicSection();
+            }
+        }
     }
 
     static final int INT8_BYTES_PER_ELEMENT = 1;
@@ -364,6 +410,19 @@ public abstract class TypedArray extends ScriptArray {
         public void setBufferElementIntImpl(Object buffer, int index, boolean littleEndian, int value, InteropLibrary interop) {
             getDirectByteBuffer(buffer).put(index, (byte) value);
         }
+
+        @Override
+        public int compareExchangeInt(JSTypedArrayObject typedArrayObject, int index, int expectedValue, int newValue) {
+            ByteBuffer byteBuffer = getDirectByteBuffer(getBufferFromTypedArray(typedArrayObject));
+            int byteOffset = getOffset(typedArrayObject) + index * INT8_BYTES_PER_ELEMENT;
+            if (isCompareExchangeSupported(byteBuffer, byteOffset)) {
+                return (byte) ByteBufferAccess.nativeOrder().compareExchangeInt8(byteBuffer, byteOffset, expectedValue, newValue);
+            } else {
+                // CAS not possible, fall back to locking strategy
+                return (byte) lockedReadModifyWriteByte(typedArrayObject, index, expectedValue, newValue);
+            }
+        }
+
     }
 
     public static class InteropInt8Array extends InteropOneByteIntArray {
@@ -470,6 +529,19 @@ public abstract class TypedArray extends ScriptArray {
         public void setBufferElementIntImpl(Object buffer, int index, boolean littleEndian, int value, InteropLibrary interop) {
             getDirectByteBuffer(buffer).put(index, (byte) value);
         }
+
+        @Override
+        public int compareExchangeInt(JSTypedArrayObject typedArrayObject, int index, int expectedValue, int newValue) {
+            ByteBuffer byteBuffer = getDirectByteBuffer(getBufferFromTypedArray(typedArrayObject));
+            int byteOffset = getOffset(typedArrayObject) + index * UINT8_BYTES_PER_ELEMENT;
+            if (isCompareExchangeSupported(byteBuffer, byteOffset)) {
+                return ByteBufferAccess.nativeOrder().compareExchangeInt8(byteBuffer, byteOffset, expectedValue, newValue) & 0xff;
+            } else {
+                // CAS not possible, fall back to locking strategy
+                return lockedReadModifyWriteByte(typedArrayObject, index, expectedValue, newValue) & 0xff;
+            }
+        }
+
     }
 
     public static final class InteropUint8Array extends InteropOneByteIntArray {
@@ -645,6 +717,18 @@ public abstract class TypedArray extends ScriptArray {
         public void setBufferElementIntImpl(Object buffer, int index, boolean littleEndian, int value, InteropLibrary interop) {
             ByteBufferAccess.forOrder(littleEndian).putInt16(getDirectByteBuffer(buffer), index, (short) value);
         }
+
+        @Override
+        public int compareExchangeInt(JSTypedArrayObject typedArrayObject, int index, int expectedValue, int newValue) {
+            ByteBuffer byteBuffer = getDirectByteBuffer(getBufferFromTypedArray(typedArrayObject));
+            int byteOffset = getOffset(typedArrayObject) + index * INT16_BYTES_PER_ELEMENT;
+            if (isCompareExchangeSupported(byteBuffer, byteOffset)) {
+                return (short) ByteBufferAccess.nativeOrder().compareExchangeInt16(byteBuffer, byteOffset, expectedValue, newValue);
+            } else {
+                // CAS not possible, fall back to locking strategy
+                return (short) lockedReadModifyWriteShort(typedArrayObject, index, expectedValue, newValue);
+            }
+        }
     }
 
     public static class InteropInt16Array extends InteropTwoByteIntArray {
@@ -751,6 +835,18 @@ public abstract class TypedArray extends ScriptArray {
         public void setBufferElementIntImpl(Object buffer, int index, boolean littleEndian, int value, InteropLibrary interop) {
             ByteBufferAccess.forOrder(littleEndian).putInt16(getDirectByteBuffer(buffer), index, (char) value);
         }
+
+        @Override
+        public int compareExchangeInt(JSTypedArrayObject typedArrayObject, int index, int expectedValue, int newValue) {
+            ByteBuffer byteBuffer = getDirectByteBuffer(getBufferFromTypedArray(typedArrayObject));
+            int byteOffset = getOffset(typedArrayObject) + index * UINT16_BYTES_PER_ELEMENT;
+            if (isCompareExchangeSupported(byteBuffer, byteOffset)) {
+                return ByteBufferAccess.nativeOrder().compareExchangeInt16(byteBuffer, byteOffset, expectedValue, newValue) & 0xffff;
+            } else {
+                // CAS not possible, fall back to locking strategy
+                return lockedReadModifyWriteShort(typedArrayObject, index, expectedValue, newValue) & 0xffff;
+            }
+        }
     }
 
     public static final class InteropUint16Array extends InteropTwoByteIntArray {
@@ -820,6 +916,13 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public void setBufferElementIntImpl(Object buffer, int index, boolean littleEndian, int value, InteropLibrary interop) {
             ByteBufferAccess.forOrder(littleEndian).putInt32(getDirectByteBuffer(buffer), index, value);
+        }
+
+        @Override
+        public int compareExchangeInt(JSTypedArrayObject typedArray, int index, int expectedValue, int newValue) {
+            ByteBuffer byteBuffer = getDirectByteBuffer(getBufferFromTypedArray(typedArray));
+            int bufferOffset = getOffset(typedArray) + index * INT32_BYTES_PER_ELEMENT;
+            return ByteBufferAccess.nativeOrder().compareExchangeInt32(byteBuffer, bufferOffset, expectedValue, newValue);
         }
     }
 
@@ -956,6 +1059,13 @@ public abstract class TypedArray extends ScriptArray {
         public void setBufferElementIntImpl(Object buffer, int index, boolean littleEndian, int value, InteropLibrary interop) {
             ByteBufferAccess.forOrder(littleEndian).putInt32(getDirectByteBuffer(buffer), index, value);
         }
+
+        @Override
+        public int compareExchangeInt(JSTypedArrayObject typedArray, int index, int expectedValue, int newValue) {
+            ByteBuffer byteBuffer = getDirectByteBuffer(getBufferFromTypedArray(typedArray));
+            int bufferOffset = getOffset(typedArray) + index * UINT32_BYTES_PER_ELEMENT;
+            return ByteBufferAccess.nativeOrder().compareExchangeInt32(byteBuffer, bufferOffset, expectedValue, newValue);
+        }
     }
 
     public static final class InteropUint32Array extends AbstractUint32Array {
@@ -1041,6 +1151,16 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         public abstract void setBufferElementLongImpl(Object buffer, int index, boolean littleEndian, long value, InteropLibrary interop);
+
+        @SuppressWarnings("unused")
+        public long compareExchangeLong(JSTypedArrayObject typedArray, int index, long expectedValue, long newValue) {
+            throw Errors.shouldNotReachHere();
+        }
+
+        @SuppressWarnings("unused")
+        public BigInt compareExchangeBigInt(JSTypedArrayObject typedArray, int index, BigInt expectedValue, BigInt newValue) {
+            throw Errors.shouldNotReachHere();
+        }
     }
 
     static final int BIGINT64_BYTES_PER_ELEMENT = 8;
@@ -1094,6 +1214,17 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public void setLongImpl(Object buffer, int offset, int index, long value, InteropLibrary interop) {
             ByteBufferAccess.nativeOrder().putInt64(getDirectByteBuffer(buffer), offset + index * BIGINT64_BYTES_PER_ELEMENT, value);
+        }
+
+        @Override
+        public long compareExchangeLong(JSTypedArrayObject typedArray, int index, long expectedValue, long newValue) {
+            return ByteBufferAccess.nativeOrder().compareExchangeInt64(getDirectByteBuffer(getBufferFromTypedArray(typedArray)),
+                            getOffset(typedArray) + index * BIGINT64_BYTES_PER_ELEMENT, expectedValue, newValue);
+        }
+
+        @Override
+        public BigInt compareExchangeBigInt(JSTypedArrayObject typedArray, int index, BigInt expectedValue, BigInt newValue) {
+            return BigInt.valueOf(compareExchangeLong(typedArray, index, expectedValue.longValue(), newValue.longValue()));
         }
     }
 
@@ -1220,6 +1351,17 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public void setLongImpl(Object buffer, int offset, int index, long value, InteropLibrary interop) {
             ByteBufferAccess.nativeOrder().putInt64(getDirectByteBuffer(buffer), offset + index * BIGUINT64_BYTES_PER_ELEMENT, value);
+        }
+
+        @Override
+        public long compareExchangeLong(JSTypedArrayObject typedArray, int index, long expectedValue, long newValue) {
+            return ByteBufferAccess.nativeOrder().compareExchangeInt64(getDirectByteBuffer(getBufferFromTypedArray(typedArray)),
+                            getOffset(typedArray) + index * BIGUINT64_BYTES_PER_ELEMENT, expectedValue, newValue);
+        }
+
+        @Override
+        public BigInt compareExchangeBigInt(JSTypedArrayObject typedArray, int index, BigInt expectedValue, BigInt newValue) {
+            return BigInt.valueOfUnsigned(compareExchangeLong(typedArray, index, expectedValue.longValue(), newValue.longValue()));
         }
     }
 

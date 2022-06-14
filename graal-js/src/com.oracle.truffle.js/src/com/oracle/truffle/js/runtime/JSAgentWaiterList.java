@@ -74,11 +74,13 @@ public class JSAgentWaiterList {
         }
     }
 
+    @TruffleBoundary
     public void enterAtomicSection() {
         assert !inAtomicSection();
         atomicSection.lock();
     }
 
+    @TruffleBoundary
     public void leaveAtomicSection() {
         assert inAtomicSection();
         atomicSection.unlock();

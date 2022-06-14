@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.builtins.helper;
 
-import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetArrayType;
-
 import java.lang.invoke.VarHandle;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -60,9 +58,11 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSInterruptedExecutionException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.array.TypedArray;
+import com.oracle.truffle.js.runtime.array.TypedArray.TypedBigIntArray;
+import com.oracle.truffle.js.runtime.array.TypedArray.TypedIntArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
@@ -75,153 +75,58 @@ public final class SharedMemorySync {
     }
 
     // ##### Getters and setters with ordering and memory barriers
-    @TruffleBoundary
-    public static int doVolatileGet(JSDynamicObject target, int intArrayOffset) {
+    public static int doVolatileGet(JSTypedArrayObject target, int intArrayOffset, TypedIntArray typedArray) {
+        int result = typedArray.getInt(target, intArrayOffset, InteropLibrary.getUncached());
         VarHandle.acquireFence();
-        TypedArray array = typedArrayGetArrayType(target);
-        TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) array;
-        return typedArray.getInt(target, intArrayOffset, InteropLibrary.getUncached());
+        return result;
     }
 
-    // ##### Getters and setters with ordering and memory barriers
-    @TruffleBoundary
-    public static BigInt doVolatileGetBigInt(JSDynamicObject target, int intArrayOffset) {
+    public static BigInt doVolatileGetBigInt(JSTypedArrayObject target, int intArrayOffset, TypedBigIntArray typedArray) {
+        BigInt result = typedArray.getBigInt(target, intArrayOffset, InteropLibrary.getUncached());
         VarHandle.acquireFence();
-        TypedArray array = typedArrayGetArrayType(target);
-        TypedArray.TypedBigIntArray typedArray = (TypedArray.TypedBigIntArray) array;
-        return typedArray.getBigInt(target, intArrayOffset, InteropLibrary.getUncached());
+        return result;
     }
 
-    @TruffleBoundary
-    public static void doVolatilePut(JSDynamicObject target, int index, int value) {
-        TypedArray array = typedArrayGetArrayType(target);
-        TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) array;
+    public static void doVolatilePut(JSTypedArrayObject target, int index, int value, TypedIntArray typedArray) {
+        VarHandle.releaseFence();
         typedArray.setInt(target, index, value, InteropLibrary.getUncached());
-        VarHandle.releaseFence();
+        VarHandle.fullFence();
     }
 
-    @TruffleBoundary
-    public static void doVolatilePutBigInt(JSDynamicObject target, int index, BigInt value) {
-        TypedArray array = typedArrayGetArrayType(target);
-        TypedArray.TypedBigIntArray typedArray = (TypedArray.TypedBigIntArray) array;
-        typedArray.setBigInt(target, index, value, InteropLibrary.getUncached());
+    public static void doVolatilePutBigInt(JSTypedArrayObject target, int index, BigInt value, TypedBigIntArray typedArray) {
         VarHandle.releaseFence();
+        typedArray.setBigInt(target, index, value, InteropLibrary.getUncached());
+        VarHandle.fullFence();
     }
 
     // ##### Atomic CAS primitives
-    @TruffleBoundary
-    public static boolean compareAndSwapInt(JSAgent agent, JSDynamicObject target, int intArrayOffset, int initial, int result) {
-        agent.atomicSectionEnter(target);
-        try {
-            int value = doVolatileGet(target, intArrayOffset);
-            if (value == initial) {
-                doVolatilePut(target, intArrayOffset, result);
-                return true;
-            }
-            return false;
-        } finally {
-            agent.atomicSectionLeave(target);
-        }
+    public static boolean compareAndSwapInt(JSTypedArrayObject target, int intArrayOffset, int expected, int replacement, TypedIntArray typedArray) {
+        return typedArray.compareExchangeInt(target, intArrayOffset, expected, replacement) == expected;
     }
 
-    @TruffleBoundary
-    public static boolean compareAndSwapBigInt(JSAgent agent, JSDynamicObject target, int intArrayOffset, BigInt initial, BigInt result) {
-        agent.atomicSectionEnter(target);
-        try {
-            BigInt value = doVolatileGetBigInt(target, intArrayOffset);
-            if (value.compareTo(initial) == 0) {
-                doVolatilePutBigInt(target, intArrayOffset, result);
-                return true;
-            }
-            return false;
-        } finally {
-            agent.atomicSectionLeave(target);
-        }
+    public static boolean compareAndSwapBigInt(JSTypedArrayObject target, int intArrayOffset, BigInt expected, BigInt replacement, TypedBigIntArray typedArray) {
+        return typedArray.compareExchangeBigInt(target, intArrayOffset, expected, replacement).equals(expected);
     }
 
-    // ##### Atomic Fetch-or-Get primitives
-    @TruffleBoundary
-    public static long atomicFetchOrGetUnsigned(JSAgent agent, JSDynamicObject target, int intArrayOffset, Object expected, Object replacement) {
-        agent.atomicSectionEnter(target);
-        long read = JSRuntime.toUInt32(doVolatileGet(target, intArrayOffset));
-        if (read == JSRuntime.toUInt32(expected)) {
-            doVolatilePut(target, intArrayOffset, (int) JSRuntime.toUInt32(replacement));
-        }
-        agent.atomicSectionLeave(target);
-        return read;
+    // ##### Atomic Read-Modify-Write primitives
+    public static long atomicReadModifyWriteUint32(JSTypedArrayObject target, int intArrayOffset, Object expected, Object replacement, TypedIntArray typedArray) {
+        return JSRuntime.toUInt32(typedArray.compareExchangeInt(target, intArrayOffset, (int) JSRuntime.toUInt32(expected), (int) JSRuntime.toUInt32(replacement)));
     }
 
-    @TruffleBoundary
-    public static long atomicFetchOrGetLong(JSAgent agent, JSDynamicObject target, int intArrayOffset, long expected, long replacement) {
-        agent.atomicSectionEnter(target);
-        try {
-            int read = doVolatileGet(target, intArrayOffset);
-            if (read == expected) {
-                doVolatilePut(target, intArrayOffset, (int) replacement);
-            }
-            return read;
-        } finally {
-            agent.atomicSectionLeave(target);
-        }
+    public static int atomicReadModifyWriteInt(JSTypedArrayObject target, int intArrayOffset, int expected, int replacement, TypedIntArray typedArray) {
+        return typedArray.compareExchangeInt(target, intArrayOffset, expected, replacement);
     }
 
-    @TruffleBoundary
-    public static int atomicFetchOrGetInt(JSAgent agent, JSDynamicObject target, int intArrayOffset, int expected, int replacement) {
-        agent.atomicSectionEnter(target);
-        try {
-            int read = doVolatileGet(target, intArrayOffset);
-            if (read == expected) {
-                doVolatilePut(target, intArrayOffset, replacement);
-            }
-            return read;
-        } finally {
-            agent.atomicSectionLeave(target);
-        }
+    public static int atomicReadModifyWriteShort(JSTypedArrayObject target, int intArrayOffset, int expected, int replacement, @SuppressWarnings("unused") boolean sign, TypedIntArray typedArray) {
+        return typedArray.compareExchangeInt(target, intArrayOffset, expected, replacement);
     }
 
-    @TruffleBoundary
-    public static int atomicFetchOrGetShort(JSAgent agent, JSDynamicObject target, int intArrayOffset, int expected, int replacement, boolean sign) {
-        agent.atomicSectionEnter(target);
-        int read = doVolatileGet(target, intArrayOffset);
-        read = sign ? read : read & 0xFFFF;
-        int expectedChopped = sign ? (short) expected : expected & 0xFFFF;
-        if (read == expectedChopped) {
-            int signed = sign ? replacement : replacement & 0xFFFF;
-            SharedMemorySync.doVolatilePut(target, intArrayOffset, (short) signed);
-        }
-        agent.atomicSectionLeave(target);
-        return read;
+    public static int atomicReadModifyWriteByte(JSTypedArrayObject target, int intArrayOffset, int expected, int replacement, @SuppressWarnings("unused") boolean sign, TypedIntArray typedArray) {
+        return typedArray.compareExchangeInt(target, intArrayOffset, expected, replacement);
     }
 
-    @TruffleBoundary
-    public static int atomicFetchOrGetByte(JSAgent agent, JSDynamicObject target, int intArrayOffset, int expected, int replacement, boolean sign) {
-        agent.atomicSectionEnter(target);
-        try {
-            int read = doVolatileGet(target, intArrayOffset);
-            read = sign ? read : read & 0xFF;
-            int expectedChopped = sign ? (byte) expected : expected & 0xFF;
-            if (read == expectedChopped) {
-                int signed = sign ? replacement : replacement & 0xFF;
-                SharedMemorySync.doVolatilePut(target, intArrayOffset, (byte) signed);
-            }
-            return read;
-        } finally {
-            agent.atomicSectionLeave(target);
-        }
-    }
-
-    @TruffleBoundary
-    public static BigInt atomicFetchOrGetBigInt(JSAgent agent, JSDynamicObject target, int intArrayOffset, BigInt expected, BigInt replacement) {
-        agent.atomicSectionEnter(target);
-        try {
-            BigInt read = doVolatileGetBigInt(target, intArrayOffset);
-            if (read.compareTo(expected) == 0) {
-                doVolatilePutBigInt(target, intArrayOffset, replacement);
-            }
-            return read;
-        } finally {
-            agent.atomicSectionLeave(target);
-        }
+    public static BigInt atomicReadModifyWriteBigInt(JSTypedArrayObject target, int intArrayOffset, BigInt expected, BigInt replacement, TypedBigIntArray typedArray) {
+        return typedArray.compareExchangeBigInt(target, intArrayOffset, expected, replacement);
     }
 
     // ##### Thread Wake/Park primitives

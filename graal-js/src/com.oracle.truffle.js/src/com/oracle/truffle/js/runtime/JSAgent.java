@@ -53,12 +53,10 @@ import org.graalvm.collections.Equivalence;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.WaiterRecord;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistryObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -120,18 +118,6 @@ public abstract class JSAgent {
 
     public boolean canBlock() {
         return canBlock;
-    }
-
-    public void atomicSectionEnter(JSDynamicObject target) {
-        JSDynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
-        JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
-        waiterList.enterAtomicSection();
-    }
-
-    public void atomicSectionLeave(JSDynamicObject target) {
-        JSDynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
-        JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
-        waiterList.leaveAtomicSection();
     }
 
     @TruffleBoundary
