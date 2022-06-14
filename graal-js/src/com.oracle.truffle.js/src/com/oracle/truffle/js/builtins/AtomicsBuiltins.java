@@ -1255,6 +1255,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         // For now, we assume that any platform is lock free on Graal.js
         private static final boolean AR_IsLockFree1 = true;
         private static final boolean AR_IsLockFree2 = true;
+        private static final boolean AR_IsLockFree8 = true;
 
         public AtomicsIsLockFreeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -1271,8 +1272,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             } else if (n == 4) {
                 return true;
             } else if (n == 8) {
-                // BigInt related
-                return !getContext().getContextOptions().isTestV8Mode();
+                return AR_IsLockFree8;
             }
             return false;
         }
