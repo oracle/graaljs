@@ -303,14 +303,19 @@ public final class SharedMemorySync {
     }
 
     /**
-     * NotifyWaiter (WL, W). Notify and wake up a waiting agent.
+     * NotifyWaiter (WL, W). Notifies (but does not wake) a waiting agent.
      */
     @TruffleBoundary
     public static void notifyWaiter(WaiterRecord waiterRecord) {
-        JSAgentWaiterListEntry wl = waiterRecord.getWaiterListEntry();
+        waiterRecord.setNotified();
+    }
+
+    /**
+     * Wakes waiting agents on the WaiterList, since at least one of them should be notified.
+     */
+    @TruffleBoundary
+    public static void wakeWaiters(JSAgentWaiterListEntry wl) {
         assert wl.inCriticalSection();
-        assert waiterRecord.getPromiseCapability() == null;
-        assert waiterRecord.isNotified();
         wl.getCondition().signalAll();
     }
 
