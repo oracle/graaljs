@@ -151,7 +151,11 @@ local ci = import '../ci.jsonnet';
     // interop benchmarks
     graalJs + common.jdk17 + common.bench  + common.x52            + interopJmhBenchmarks                                                     + {name: 'js-bench-interop-jmh-jdk17-linux-amd64'},
 
-    // POST-MERGE - PGO profiles
+    // POST-MERGE
+    // PGO profiles
     graalJs + common.jdk17 + common.postMerge + common.linux       + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}     + {name: 'js-postmerge-pgo-profiles-jdk17-linux-amd64'},
+
+    // js.zone-rules-based-time-zones
+    graalJs + common.jdk17 + common.postMerge + common.linux       + gateTags('zonerulesbasedtimezones')                                      + {name: 'js-postmerge-zonerulesbasedtimezones-jdk17-linux-amd64'},
   ],
 }

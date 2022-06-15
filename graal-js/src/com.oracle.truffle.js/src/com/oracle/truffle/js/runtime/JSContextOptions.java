@@ -226,6 +226,11 @@ public final class JSContextOptions {
         }
     }));
 
+    public static final String ZONE_RULES_BASED_TIME_ZONES_NAME = JS_OPTION_PREFIX + "zone-rules-based-time-zones";
+    @Option(name = ZONE_RULES_BASED_TIME_ZONES_NAME, category = OptionCategory.EXPERT, help = "Use ZoneRulesProvider instead of time-zone data from ICU4J.") //
+    public static final OptionKey<Boolean> ZONE_RULES_BASED_TIME_ZONES = new OptionKey<>(false);
+    @CompilationFinal private boolean zoneRulesBasedTimeZones;
+
     public static final String TIMER_RESOLUTION_NAME = JS_OPTION_PREFIX + "timer-resolution";
     @Option(name = TIMER_RESOLUTION_NAME, category = OptionCategory.USER, usageSyntax = "<nanoseconds>", help = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.") //
     public static final OptionKey<Long> TIMER_RESOLUTION = new OptionKey<>(1000000L);
@@ -667,6 +672,7 @@ public final class JSContextOptions {
         });
         this.parseOnly = readBooleanOption(PARSE_ONLY);
         this.debug = readBooleanOption(DEBUG_BUILTIN);
+        this.zoneRulesBasedTimeZones = readBooleanOption(ZONE_RULES_BASED_TIME_ZONES);
         this.timerResolution = patchLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, timerResolution, msg -> {
             timerResolutionCyclicAssumption.invalidate(msg);
             timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
@@ -855,6 +861,10 @@ public final class JSContextOptions {
 
     public boolean isV8LegacyConst() {
         return v8LegacyConst;
+    }
+
+    public boolean hasZoneRulesBasedTimeZones() {
+        return zoneRulesBasedTimeZones;
     }
 
     public boolean canAgentBlock() {
@@ -1153,6 +1163,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.debug ? 1 : 0);
         hash = 53 * hash + (this.directByteBuffer ? 1 : 0);
         hash = 53 * hash + (this.parseOnly ? 1 : 0);
+        hash = 53 * hash + (this.zoneRulesBasedTimeZones ? 1 : 0);
         hash = 53 * hash + (int) this.timerResolution;
         hash = 53 * hash + (this.agentCanBlock ? 1 : 0);
         hash = 53 * hash + (this.awaitOptimization ? 1 : 0);
@@ -1253,6 +1264,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.parseOnly != other.parseOnly) {
+            return false;
+        }
+        if (this.zoneRulesBasedTimeZones != other.zoneRulesBasedTimeZones) {
             return false;
         }
         if (this.timerResolution != other.timerResolution) {
