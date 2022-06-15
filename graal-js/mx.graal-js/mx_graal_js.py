@@ -82,6 +82,7 @@ def _graal_js_gate_runner(args, tasks):
         'directbytebuffer': ['-Dpolyglot.js.direct-byte-buffer=true', 'gate'],
         'cloneuninitialized': ['-Dpolyglot.js.test-clone-uninitialized=true', 'gate'],
         'lazytranslation': ['-Dpolyglot.js.lazy-translation=true', 'gate'],
+        'zonerulesbasedtimezones': ['-Dpolyglot.js.zone-rules-based-time-zones=true', 'gate'],
         'shareengine': ['gate', 'shareengine'],
         'latestversion': ['gate', 'minesversion=2022'],
         'instrument': ['gate', 'instrument', 'timeoutoverall=1800']
