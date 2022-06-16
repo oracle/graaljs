@@ -7,9 +7,9 @@ The average user will prefer the pre-built binaries as part of [GraalVM](http://
 
 ### Prerequisites
 
-* Python 3 (required by `mx`), and Python 2.7 for building Node.js
+* Python 3.8+ (required by `mx`)
 * git (to download, update, and locate repositories)
-* Java JDK 8 or newer
+* Java JDK 11 or newer
 
 Building the Node.js support is optional, and requires additional tools, see futher below.
 
@@ -37,14 +37,9 @@ Building the Node.js support is optional, and requires additional tools, see fut
     For the further steps you need to be in either of those directories (we assume you cd'ed to the `graal-js` directory).
 
 4. setup your environment:
-    - if you build with JDK8:
+    - assuming you build with JDK11 or newer:
         ```bash
-        export JAVA_HOME=[path to JDK8]
-        ```
-    - if you build with JDK9+:
-        ```bash
-        export JAVA_HOME=[path to JDK9+]
-        export EXTRA_JAVA_HOMES=[path to JDK8]
+        export JAVA_HOME=[path to JDK11+]
         ```
 5. (optional) clone or update the dependent repositories:
     ```bash

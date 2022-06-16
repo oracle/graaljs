@@ -38,7 +38,7 @@ js --js.ecmascript-version=6
 ```
 
 ### Provide Options Programmatically Using the Context API
-When started from Java via GraalVM's Polyglot feature, the options are passed programmatically to the `Context` object:
+When started from Java using GraalVM's Polyglot API, the options are passed programmatically to the `Context` object:
 ```java
 Context context = Context.newBuilder("js")
                          .option("js.ecmascript-version", "6")

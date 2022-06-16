@@ -14,12 +14,10 @@ See the [Embedding Reference](https://www.graalvm.org/reference-manual/embed-lan
 The [Polyglot Programming](https://www.graalvm.org/reference-manual/polyglot-programming/) guide can be of additional help in that area.
 Specific migration guides for [Rhino](RhinoMigrationGuide.md) and [Nashorn](NashornMigrationGuide.md) are also available.
 
-GraalVM ships with the `js` native launcher.
-The Node.js support is packaged separately and can be installed with GraalVM Updater:
-```shell
-$GRAALVM/bin/gu install nodejs
-```
-Then the `node` launcher becomes available.
+Both JavaScript and Node.js are separately installable components of GraalVM.
+See the [README](../../README.md) for details on how to use the _GraalVM Updater_ to install JavaScript and Node.js.
+After a successfull installation, the respective native launchers `js` and `node` from the `$GRAALVM/bin` directory can be used.
+
 Although other builds are possible, the following examples assume this setup is used.
 
 ## Enabling Java Interoperability
