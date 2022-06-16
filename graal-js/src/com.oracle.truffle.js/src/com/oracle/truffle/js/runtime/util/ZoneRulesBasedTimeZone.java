@@ -50,6 +50,7 @@ import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.time.zone.ZoneRules;
 import java.util.Date;
+import java.util.List;
 
 /**
  * Implementation of ICU4J {@code TimeZone} that takes time-zone data from the provided
@@ -70,7 +71,14 @@ public class ZoneRulesBasedTimeZone extends TimeZone {
         LocalDate date = LocalDate.of((era == GregorianCalendar.BC) ? -year : year, month + 1, day);
         LocalTime time = LocalTime.ofNanoOfDay(1000000L * milliseconds);
         LocalDateTime dateTime = LocalDateTime.of(date, time);
-        return toMillis(rules.getOffset(dateTime));
+        List<ZoneOffset> offsets = rules.getValidOffsets(dateTime);
+        ZoneOffset offset;
+        if (offsets.size() == 1) {
+            offset = offsets.get(0);
+        } else {
+            offset = rules.getTransition(dateTime).getOffsetAfter();
+        }
+        return toMillis(offset);
     }
 
     @Override
