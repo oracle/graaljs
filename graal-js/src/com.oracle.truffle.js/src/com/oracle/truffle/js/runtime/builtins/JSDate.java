@@ -428,6 +428,12 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
 
         // dstOffset = 0, look back by standard DST savings
         int dstSavings = timeZone.getDSTSavings();
+        if (dstSavings == 0) {
+            // getDSTSavings() returns 0 for some time-zones (like America/Sao_Paulo)
+            // that stopped to use DST. Unfortunately, we may have a date that
+            // used DST still => try to use the usual DST savings (1 hour)
+            dstSavings = 3600000;
+        }
         offset = getOffset(timeZone, date - dstSavings, fields);
         int dstOffset = offset - rawOffset;
         if (dstOffset != 0 && dstOffset != dstSavings) {
