@@ -3,6 +3,9 @@
 This changelog summarizes major changes between GraalVM versions of the GraalVM JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 21.3.3
+* Added an experimental option `--js.zone-rules-based-time-zones` that allows to use timezone-related data from `ZoneRulesProvider` (instead of ICU4J data files).
+
 ## Version 21.3.2
 * Updated Node.js to version 14.19.1.
 * Updated ICU4J library to version 70.1.
