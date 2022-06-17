@@ -555,6 +555,7 @@ suite = {
         "./": [
           "file:README.md",
         ],
+        "LICENSE_GRAALJS.txt" : "file:LICENSE_GRAALJS",
       },
     },
 
