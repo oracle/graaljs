@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -201,6 +201,26 @@ public class ForeignObjectPrototypeTest {
             Instant inst2 = Instant.now();
             Value result = context.eval(ID, codeGetUTCString).execute(inst2);
             Assert.assertEquals("special", result.asString());
+        }
+    }
+
+    @Test
+    public void testForeignInstanceof() {
+        testInstanceofIntl("Array", ProxyArray.fromArray("fun", "with", "proxy", "array"));
+        testPrototypeIntl("Date", Instant.now());
+        testPrototypeIntl("Map", new TestTruffleHash());
+        testPrototypeIntl("String", new TestTruffleString());
+        testPrototypeIntl("Boolean", new TestTruffleBoolean());
+        testPrototypeIntl("Number", new TestTruffleNumber());
+        testPrototypeIntl("Function", (ProxyExecutable) v -> true);
+        testPrototypeIntl("Object", new Object());
+    }
+
+    private static void testInstanceofIntl(String prototype, Object obj) {
+        String code = "(obj) => { return (obj instanceof " + prototype + "); }";
+        try (Context context = JSTest.newContextBuilder(ID).build()) {
+            Value result = context.eval(ID, code).execute(obj);
+            Assert.assertTrue(result.asBoolean());
         }
     }
 
