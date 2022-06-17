@@ -271,6 +271,17 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         public Builder setOption(Builder builder, Object value) {
             return builder.option("js.ecmascript-version", String.valueOf(value));
         }
+    }, new MagicBindingsOptionSetter() {
+
+        @Override
+        public String getOptionKey() {
+            return MAGIC_OPTION_PREFIX + "intl-402";
+        }
+
+        @Override
+        public Builder setOption(Builder builder, Object value) {
+            return builder.option("js.intl-402", String.valueOf(toBoolean(this, value)));
+        }
     }};
 
     private static final EconomicSet<String> MAGIC_BINDINGS_OPTION_KEYS = EconomicSet.create();
