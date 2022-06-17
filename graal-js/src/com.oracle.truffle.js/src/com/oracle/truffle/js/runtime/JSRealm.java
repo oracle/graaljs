@@ -57,6 +57,7 @@ import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.js.runtime.objects.Null;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
@@ -273,6 +274,15 @@ public class JSRealm {
     @CompilationFinal(dimensions = 1) private final JSDynamicObject[] errorPrototypes;
     private final JSFunctionObject callSiteConstructor;
     private final JSDynamicObject callSitePrototype;
+
+    private final JSDynamicObject foreignArrayPrototype;
+    private final JSDynamicObject foreignDatePrototype;
+    private final JSDynamicObject foreignMapPrototype;
+    private final JSDynamicObject foreignStringPrototype;
+    private final JSDynamicObject foreignNumberPrototype;
+    private final JSDynamicObject foreignBooleanPrototype;
+    private final JSDynamicObject foreignFunctionPrototype;
+    private final JSDynamicObject foreignObjectPrototype;
 
     private final Shape initialRegExpPrototypeShape;
     private final JSObjectFactory.RealmData objectFactories;
@@ -974,6 +984,18 @@ public class JSRealm {
             this.temporalZonedDateTimeConstructor = null;
             this.temporalZonedDateTimePrototype = null;
         }
+
+        // always create, regardless of context.isOptionForeignObjectPrototype()
+        // we use them in some scenarios even when option is turned off
+        this.foreignArrayPrototype = JSOrdinary.createInit(this, this.arrayPrototype);
+        this.foreignDatePrototype = JSOrdinary.createInit(this, this.datePrototype);
+        // mapPrototype can be null in ES5 mode
+        this.foreignMapPrototype = JSOrdinary.createInit(this, this.mapPrototype == null ? Null.instance : this.mapPrototype);
+        this.foreignStringPrototype = JSOrdinary.createInit(this, this.stringPrototype);
+        this.foreignNumberPrototype = JSOrdinary.createInit(this, this.numberPrototype);
+        this.foreignBooleanPrototype = JSOrdinary.createInit(this, this.booleanPrototype);
+        this.foreignFunctionPrototype = JSOrdinary.createInit(this, this.functionPrototype);
+        this.foreignObjectPrototype = JSOrdinary.createInit(this, this.objectPrototype);
     }
 
     private void initializeTypedArrayConstructors() {
@@ -1490,6 +1512,38 @@ public class JSRealm {
 
     public JSDynamicObject getTemporalZonedDateTimePrototype() {
         return temporalZonedDateTimePrototype;
+    }
+
+    public final JSDynamicObject getForeignArrayPrototype() {
+        return foreignArrayPrototype;
+    }
+
+    public final JSDynamicObject getForeignDatePrototype() {
+        return foreignDatePrototype;
+    }
+
+    public JSDynamicObject getForeignMapPrototype() {
+        return foreignMapPrototype;
+    }
+
+    public JSDynamicObject getForeignStringPrototype() {
+        return foreignStringPrototype;
+    }
+
+    public JSDynamicObject getForeignNumberPrototype() {
+        return foreignNumberPrototype;
+    }
+
+    public JSDynamicObject getForeignBooleanPrototype() {
+        return foreignBooleanPrototype;
+    }
+
+    public JSDynamicObject getForeignFunctionPrototype() {
+        return foreignFunctionPrototype;
+    }
+
+    public JSDynamicObject getForeignObjectPrototype() {
+        return foreignObjectPrototype;
     }
 
     public final Map<Object, JSDynamicObject> getTemplateRegistry() {
