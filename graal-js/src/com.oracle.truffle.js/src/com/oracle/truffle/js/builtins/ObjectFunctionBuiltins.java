@@ -299,7 +299,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "!isJSObject(object)")
-        protected JSDynamicObject getPrototypeOfNonObject(Object object) {
+        protected JSDynamicObject getPrototypeOfNonObject(Object object,
+                        @Cached("createBinaryProfile()") ConditionProfile isForeignProfile) {
             if (getContext().getEcmaScriptVersion() < 6) {
                 if (JSRuntime.isJSPrimitive(object)) {
                     throw Errors.createTypeErrorNotAnObject(object);
@@ -307,15 +308,19 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     return Null.instance;
                 }
             } else {
-                Object tobject = toObject(object);
-                if (JSDynamicObject.isJSDynamicObject(tobject)) {
-                    return JSObject.getPrototype((JSDynamicObject) tobject);
-                } else {
+                if (isForeignProfile.profile(JSRuntime.isForeignObject(object))) {
+                    if (InteropLibrary.getUncached(object).isNull(object)) {
+                        throw Errors.createTypeErrorNotAnObject(object);
+                    }
                     if (getContext().getContextOptions().hasForeignObjectPrototype()) {
-                        return getForeignObjectPrototype(tobject);
+                        return getForeignObjectPrototype(object);
                     } else {
                         return Null.instance;
                     }
+                } else {
+                    assert JSRuntime.isJSPrimitive(object);
+                    Object tobject = toObject(object);
+                    return JSObject.getPrototype((JSDynamicObject) tobject);
                 }
             }
         }
