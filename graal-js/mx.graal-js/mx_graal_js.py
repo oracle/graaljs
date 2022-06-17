@@ -347,7 +347,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         'GraalVM license files': ('', ['GRAALVM-README.md']),
     },
     license_files=['LICENSE_GRAALJS.txt'],
-    third_party_license_files=[],
+    third_party_license_files=['THIRD_PARTY_LICENSE_GRAALJS.txt'],
     dependencies=[
         'Truffle',
         'TRegex',
