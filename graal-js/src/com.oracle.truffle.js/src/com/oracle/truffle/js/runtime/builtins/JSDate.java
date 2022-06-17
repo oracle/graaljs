@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -423,6 +423,12 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
 
         // dstOffset = 0, look back by standard DST savings
         int dstSavings = timeZone.getDSTSavings();
+        if (dstSavings == 0) {
+            // getDSTSavings() returns 0 for some time-zones (like America/Sao_Paulo)
+            // that stopped to use DST. Unfortunately, we may have a date that
+            // used DST still => try to use the usual DST savings (1 hour)
+            dstSavings = 3600000;
+        }
         offset = getOffset(timeZone, date - dstSavings, fields);
         int dstOffset = offset - rawOffset;
         if (dstOffset != 0 && dstOffset != dstSavings) {

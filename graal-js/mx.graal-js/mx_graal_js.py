@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -68,7 +68,9 @@ def _graal_js_gate_runner(args, tasks):
     with Task('UnitTests', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all]) as t:
         if t:
             noWebAssemblyTestSuite = '^(?!' + webassemblyTestSuite  + ')'
-            unittest(['--regex', noWebAssemblyTestSuite, '--enable-timing', '--very-verbose', '--suite', _suite.name])
+            commonOptions = ['--enable-timing', '--very-verbose', '--suite', _suite.name]
+            unittest(['--regex', noWebAssemblyTestSuite] + commonOptions)
+            unittest(['--regex', 'ZoneRulesProviderTest', '-Djava.time.zone.DefaultZoneRulesProvider=com.oracle.truffle.js.test.runtime.SimpleZoneRulesProvider'] + commonOptions)
 
     with Task('WebAssemblyTests', tasks, tags=['webassembly', GraalJsDefaultTags.all]) as t:
         if t:
@@ -80,6 +82,7 @@ def _graal_js_gate_runner(args, tasks):
         'directbytebuffer': ['-Dpolyglot.js.direct-byte-buffer=true', 'gate'],
         'cloneuninitialized': ['-Dpolyglot.js.test-clone-uninitialized=true', 'gate'],
         'lazytranslation': ['-Dpolyglot.js.lazy-translation=true', 'gate'],
+        'zonerulesbasedtimezones': ['-Dpolyglot.js.zone-rules-based-time-zones=true', 'gate'],
         'shareengine': ['gate', 'shareengine'],
         'latestversion': ['gate', 'minesversion=2022'],
         'instrument': ['gate', 'instrument', 'timeoutoverall=1800']

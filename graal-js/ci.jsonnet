@@ -98,5 +98,9 @@ local common = import '../common.jsonnet';
 
     // interop benchmarks
     graalJs + common.jdk8  + common.bench  + common.x52            + interopJmhBenchmarks                                                     + {name: 'js-bench-interop-jmh-jdk8-linux-amd64'},
+
+    // POST-MERGE
+    // js.zone-rules-based-time-zones
+    graalJs + common.jdk8  + common.postMerge + common.linux       + common.gateTags           + {environment+: {TAGS: 'zonerulesbasedtimezones'}} + {name: 'js-postmerge-zonerulesbasedtimezones-jdk8-linux-amd64'},
   ],
 }
