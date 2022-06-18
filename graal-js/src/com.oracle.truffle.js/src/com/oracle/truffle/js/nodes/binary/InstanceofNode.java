@@ -244,6 +244,9 @@ public abstract class InstanceofNode extends JSBinaryNode {
                         @Cached @Shared("invalidPrototypeBranch") BranchProfile invalidPrototypeBranch) {
             if (context.isOptionForeignObjectPrototype()) {
                 Object rightProto = getConstructorPrototype(right, invalidPrototypeBranch);
+                if (rightProto == getRealm().getDatePrototype()) {
+                    return false;
+                }
                 Object foreignProto = getForeignPrototypeNode.execute(left);
                 Object foreignProtoProto = getPrototype1Node.execute(foreignProto);
                 return rightProto == foreignProtoProto;
