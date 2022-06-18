@@ -242,10 +242,14 @@ public abstract class InstanceofNode extends JSBinaryNode {
                         @Cached ForeignObjectPrototypeNode getForeignPrototypeNode,
                         @Cached @Shared("getPrototype1Node") GetPrototypeNode getPrototype1Node,
                         @Cached @Shared("invalidPrototypeBranch") BranchProfile invalidPrototypeBranch) {
-            Object rightProto = getConstructorPrototype(right, invalidPrototypeBranch);
-            Object foreignProto = getForeignPrototypeNode.execute(left);
-            Object foreignProtoProto = getPrototype1Node.execute(foreignProto);
-            return rightProto == foreignProtoProto;
+            if (context.isOptionForeignObjectPrototype()) {
+                Object rightProto = getConstructorPrototype(right, invalidPrototypeBranch);
+                Object foreignProto = getForeignPrototypeNode.execute(left);
+                Object foreignProtoProto = getPrototype1Node.execute(foreignProto);
+                return rightProto == foreignProtoProto;
+            } else {
+                return false;
+            }
         }
 
         @Specialization(guards = {"!isJSObject(left)", "!isForeignObject(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
