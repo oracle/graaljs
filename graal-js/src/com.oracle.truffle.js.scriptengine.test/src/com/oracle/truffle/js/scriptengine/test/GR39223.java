@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,48 +38,62 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins.temporal;
+package com.oracle.truffle.js.scriptengine.test;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-import java.time.ZoneId;
+import javax.script.Bindings;
+import javax.script.ScriptContext;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
+import org.junit.Test;
 
-@ExportLibrary(InteropLibrary.class)
-public class JSTemporalTimeZoneObject extends JSNonProxyObject {
+public class GR39223 {
 
-    private final BigInt offsetNanoseconds;
-    private final TruffleString identifier;
-
-    protected JSTemporalTimeZoneObject(Shape shape, BigInt offsetNanoseconds, TruffleString identifier) {
-        super(shape);
-        this.offsetNanoseconds = offsetNanoseconds;
-        this.identifier = identifier;
+    private static ScriptEngine getEngine() {
+        ScriptEngineManager manager = new ScriptEngineManager();
+        return manager.getEngineByName(TestEngine.TESTED_ENGINE_NAME);
     }
 
-    public BigInt getNanoseconds() {
-        return offsetNanoseconds;
+    @Test
+    public void testIntlDefault() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Object result = engine.eval("typeof Intl");
+        assertEquals("undefined", result);
     }
 
-    public TruffleString getIdentifier() {
-        return identifier;
+    @Test
+    public void testIntlEnabled() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        bindings.put("polyglot.js.intl-402", true);
+        Object result = engine.eval("typeof Intl");
+        assertEquals("object", result);
     }
 
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    final boolean isTimeZone() {
-        return true;
+    @Test
+    public void testIntlDisabled() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        bindings.put("polyglot.js.intl-402", false);
+        Object result = engine.eval("typeof Intl");
+        assertEquals("undefined", result);
     }
 
-    @ExportMessage
-    @TruffleBoundary
-    final ZoneId asTimeZone() {
-        return ZoneId.of(identifier.toJavaStringUncached());
+    @Test
+    public void testIntlInvalid() {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        try {
+            bindings.put("polyglot.js.intl-402", "foo");
+            fail("Exception expected");
+        } catch (IllegalArgumentException ex) {
+            String message = ex.getMessage();
+            assertTrue(message, message.contains("polyglot.js.intl-402"));
+        }
     }
+
 }

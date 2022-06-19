@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,22 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import java.math.BigInteger;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
+@ExportLibrary(InteropLibrary.class)
 public class JSTemporalInstantObject extends JSNonProxyObject {
 
     private final BigInt nanoseconds; // 8.4 A BigInt value
@@ -56,4 +68,51 @@ public class JSTemporalInstantObject extends JSNonProxyObject {
     public BigInt getNanoseconds() {
         return nanoseconds;
     }
+
+    @ExportMessage
+    @TruffleBoundary
+    Instant asInstant() {
+        BigInteger[] res = nanoseconds.bigIntegerValue().divideAndRemainder(TemporalUtil.BI_10_POW_9);
+        return Instant.ofEpochSecond(res[0].longValue(), res[1].intValue());
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    final boolean isTimeZone() {
+        return true;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    @SuppressWarnings("static-method")
+    final ZoneId asTimeZone() {
+        return ZoneId.of("UTC");
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    final boolean isDate() {
+        return true;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final LocalDate asDate() {
+        LocalDate ld = LocalDate.ofInstant(asInstant(), asTimeZone());
+        return ld;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    final boolean isTime() {
+        return true;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final LocalTime asTime() {
+        LocalTime lt = LocalTime.ofInstant(asInstant(), asTimeZone());
+        return lt;
+    }
+
 }

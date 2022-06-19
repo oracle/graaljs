@@ -68,6 +68,7 @@ import com.oracle.truffle.js.nodes.binary.InstanceofNodeGen.IsBoundFunctionCache
 import com.oracle.truffle.js.nodes.binary.InstanceofNodeGen.OrdinaryHasInstanceNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -236,7 +237,25 @@ public abstract class InstanceofNode extends JSBinaryNode {
             return instanceofNode.executeBoolean(obj, boundTargetFunction);
         }
 
-        @Specialization(guards = {"!isJSObject(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
+        @Specialization(guards = {"!isJSObject(left)", "isForeignObject(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
+        protected boolean doForeignObject(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSDynamicObject right,
+                        @Cached ForeignObjectPrototypeNode getForeignPrototypeNode,
+                        @Cached @Shared("getPrototype1Node") GetPrototypeNode getPrototype1Node,
+                        @Cached @Shared("invalidPrototypeBranch") BranchProfile invalidPrototypeBranch) {
+            if (context.isOptionForeignObjectPrototype()) {
+                Object rightProto = getConstructorPrototype(right, invalidPrototypeBranch);
+                if (rightProto == getRealm().getDatePrototype()) {
+                    return false;
+                }
+                Object foreignProto = getForeignPrototypeNode.execute(left);
+                Object foreignProtoProto = getPrototype1Node.execute(foreignProto);
+                return rightProto == foreignProtoProto;
+            } else {
+                return false;
+            }
+        }
+
+        @Specialization(guards = {"!isJSObject(left)", "!isForeignObject(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
         protected boolean doNotAnObject(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSDynamicObject right) {
             return false;
         }

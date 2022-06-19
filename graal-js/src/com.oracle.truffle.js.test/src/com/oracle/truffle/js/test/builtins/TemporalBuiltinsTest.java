@@ -1070,6 +1070,31 @@ public class TemporalBuiltinsTest extends JSTest {
         testTrue(code);
     }
 
+    @Test
+    public void testDuration1DayExactly24Hours() {
+        // DST was entered on 2022-03-27 at 1am, jumping to 2am
+        String code = "var dur = Temporal.Duration.from('P1D');\n" +
+                        "var relTo = Temporal.ZonedDateTime.from('2022-03-26T12:00+01:00[Europe/Vienna]'); \n" +
+                        "var dur2 = dur.round({ 'relativeTo': relTo, 'largestUnit': 'seconds' }); \n" +
+                        "dur2.seconds === 82800;"; // 23 hours
+        testTrue(code);
+
+        // same DST transition as above, but using 24 HOURS instead of 1 DAY
+        code = "var dur = Temporal.Duration.from('PT24H');\n" +
+                        "var relTo = Temporal.ZonedDateTime.from('2022-03-26T12:00+01:00[Europe/Vienna]'); \n" +
+                        "var dur2 = dur.round({ 'relativeTo': relTo, 'largestUnit': 'seconds' }); \n" +
+                        "dur2.seconds === 86400;"; // 24 hours, different than above. 1D != 24H
+        testTrue(code);
+
+        // There was one leap second at 2016-12-31 after 23:59:59 (UTC+0)
+        code = "var dur = Temporal.Duration.from('P1D');\n" +
+                        "var relTo = Temporal.ZonedDateTime.from('2016-12-31T12:00:00+00:00[Europe/London]'); \n" +
+                        "var dur2 = dur.round({ 'relativeTo': relTo, 'largestUnit': 'seconds' }); \n" +
+                        "dur2.seconds === 86400"; // exactly 1 day; Temporal does not consider leap
+                                                  // seconds
+        testTrue(code);
+    }
+
     private static void testTrue(String code) {
         try (Context ctx = getJSContext()) {
             Value result = ctx.eval(ID, code);

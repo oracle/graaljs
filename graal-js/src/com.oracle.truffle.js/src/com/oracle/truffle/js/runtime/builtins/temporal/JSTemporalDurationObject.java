@@ -40,9 +40,18 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import java.time.Duration;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
+@ExportLibrary(InteropLibrary.class)
 public class JSTemporalDurationObject extends JSNonProxyObject {
 
     private final double years;
@@ -109,5 +118,32 @@ public class JSTemporalDurationObject extends JSNonProxyObject {
 
     public double getNanoseconds() {
         return nanoseconds;
+    }
+
+    @ExportMessage
+    final boolean isDuration() {
+        // note: java.time.Duration only considers DAYS, while JS Temporal also has W, M, Y.
+        // due to vague DAYS support in Java, we disallow conversion when any of D, W, M, Y is != 0.
+        return years == 0 && months == 0 && weeks == 0 && days == 0 && JSRuntime.doubleIsRepresentableAsLong(calcSeconds()) && JSRuntime.doubleIsRepresentableAsLong(calcNanoseconds());
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final Duration asDuration() throws UnsupportedMessageException {
+        if (!isDuration()) {
+            throw UnsupportedMessageException.create();
+        }
+        double sec = calcSeconds();
+        double nanos = calcNanoseconds();
+        Duration dur = Duration.ofSeconds((long) sec, (long) nanos);
+        return dur;
+    }
+
+    private double calcNanoseconds() {
+        return nanoseconds + microseconds * 1_000 + milliseconds * 1_000_000;
+    }
+
+    private double calcSeconds() {
+        return seconds + minutes * 60 + hours * 60 * 60;
     }
 }

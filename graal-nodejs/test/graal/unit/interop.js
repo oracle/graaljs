@@ -60,6 +60,8 @@ describe('Polyglot', function () {
                     assert.ifError(error);
                     assert.deepEqual(data, [
                         [
+                            'java.lang.System.out.propertyIsEnumerable',
+                            '',
                             'java.lang.System.out.print',
                             'java.lang.System.out.printf',
                             'java.lang.System.out.println'
