@@ -1309,19 +1309,23 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         @Specialization
-        protected Object doGeneric(Object size,
-                        @Cached("create()") JSToInt32Node toInt32Node) {
-            int n = toInt32Node.executeInt(size);
-            if (n == 1) {
+        protected static boolean doInt(int size) {
+            if (size == 1) {
                 return AR_IsLockFree1;
-            } else if (n == 2) {
+            } else if (size == 2) {
                 return AR_IsLockFree2;
-            } else if (n == 4) {
+            } else if (size == 4) {
                 return true;
-            } else if (n == 8) {
+            } else if (size == 8) {
                 return AR_IsLockFree8;
             }
             return false;
+        }
+
+        @Specialization
+        protected static boolean doGeneric(Object size,
+                        @Cached JSToInt32Node toInt32Node) {
+            return doInt(toInt32Node.executeInt(size));
         }
     }
 
