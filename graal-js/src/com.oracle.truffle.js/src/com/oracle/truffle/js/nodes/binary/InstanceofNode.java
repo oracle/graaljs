@@ -232,7 +232,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
 
         @Specialization(guards = {"isJSFunction(check)", "isBoundFunction(check)"})
         protected boolean doIsBound(Object obj, JSDynamicObject check,
-                        @Cached("create(context)") InstanceofNode instanceofNode) {
+                        @Cached("create(context)") @Shared("instanceofNode") InstanceofNode instanceofNode) {
             JSDynamicObject boundTargetFunction = JSFunction.getBoundTargetFunction(check);
             return instanceofNode.executeBoolean(obj, boundTargetFunction);
         }
@@ -240,16 +240,16 @@ public abstract class InstanceofNode extends JSBinaryNode {
         @Specialization(guards = {"!isJSObject(left)", "isForeignObject(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
         protected boolean doForeignObject(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSDynamicObject right,
                         @Cached ForeignObjectPrototypeNode getForeignPrototypeNode,
-                        @Cached @Shared("getPrototype1Node") GetPrototypeNode getPrototype1Node,
-                        @Cached @Shared("invalidPrototypeBranch") BranchProfile invalidPrototypeBranch) {
+                        @Cached @Shared("invalidPrototypeBranch") BranchProfile invalidPrototypeBranch,
+                        @Cached("create(context)") @Shared("instanceofNode") InstanceofNode instanceofNode) {
             if (context.isOptionForeignObjectPrototype()) {
                 Object rightProto = getConstructorPrototype(right, invalidPrototypeBranch);
                 if (rightProto == getRealm().getDatePrototype()) {
+                    // necessary because of GR-39319
                     return false;
                 }
                 Object foreignProto = getForeignPrototypeNode.execute(left);
-                Object foreignProtoProto = getPrototype1Node.execute(foreignProto);
-                return rightProto == foreignProtoProto;
+                return instanceofNode.executeBoolean(foreignProto, right);
             } else {
                 return false;
             }

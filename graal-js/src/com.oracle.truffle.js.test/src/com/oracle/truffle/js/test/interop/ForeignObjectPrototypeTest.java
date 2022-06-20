@@ -206,21 +206,32 @@ public class ForeignObjectPrototypeTest {
 
     @Test
     public void testForeignInstanceof() {
-        testInstanceofIntl("Array", ProxyArray.fromArray("fun", "with", "proxy", "array"));
-        testInstanceofIntl("Date", Instant.now());
-        testInstanceofIntl("Map", new TestTruffleHash());
-        testInstanceofIntl("String", new TestTruffleString());
-        testInstanceofIntl("Boolean", new TestTruffleBoolean());
-        testInstanceofIntl("Number", new TestTruffleNumber());
-        testInstanceofIntl("Function", (ProxyExecutable) v -> true);
-        testInstanceofIntl("Object", new Object());
+        // test expected Instance
+        Assert.assertTrue(testInstanceofIntl("Array", ProxyArray.fromArray("fun", "with", "proxy", "array")));
+        // Assert.assertTrue(testInstanceofIntl("Date", Instant.now())); //see GR-39319
+        Assert.assertTrue(testInstanceofIntl("Map", new TestTruffleHash()));
+        Assert.assertTrue(testInstanceofIntl("String", new TestTruffleString()));
+        Assert.assertTrue(testInstanceofIntl("Boolean", new TestTruffleBoolean()));
+        Assert.assertTrue(testInstanceofIntl("Number", new TestTruffleNumber()));
+        Assert.assertTrue(testInstanceofIntl("Function", (ProxyExecutable) v -> true));
+        Assert.assertTrue(testInstanceofIntl("Object", new Object()));
+
+        // test non-matching instance
+        Assert.assertFalse(testInstanceofIntl("RegExp", ProxyArray.fromArray("fun", "with", "proxy", "array")));
+        Assert.assertFalse(testInstanceofIntl("RegExp", Instant.now()));
+        Assert.assertFalse(testInstanceofIntl("RegExp", new TestTruffleHash()));
+        Assert.assertFalse(testInstanceofIntl("RegExp", new TestTruffleString()));
+        Assert.assertFalse(testInstanceofIntl("RegExp", new TestTruffleBoolean()));
+        Assert.assertFalse(testInstanceofIntl("RegExp", new TestTruffleNumber()));
+        Assert.assertFalse(testInstanceofIntl("RegExp", (ProxyExecutable) v -> true));
+        Assert.assertFalse(testInstanceofIntl("RegExp", new Object()));
     }
 
-    private static void testInstanceofIntl(String prototype, Object obj) {
-        String code = "(obj) => { return (obj instanceof " + prototype + "); }";
+    private static boolean testInstanceofIntl(String prototype, Object obj) {
+        String code = "(obj) => { return (obj instanceof " + prototype + ") && (obj instanceof Object); }";
         try (Context context = JSTest.newContextBuilder(ID).build()) {
             Value result = context.eval(ID, code).execute(obj);
-            Assert.assertTrue(result.asBoolean());
+            return result.asBoolean();
         }
     }
 
