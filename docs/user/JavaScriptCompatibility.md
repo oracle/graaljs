@@ -198,7 +198,7 @@ The existence of the property can be used to identify whether the GraalVM JavaSc
 
 ```js
 if (typeof Graal != 'undefined') {
-    print(Graal.versionJS);
+    print(Graal.versionECMAScript);
     print(Graal.versionGraalVM);
     print(Graal.isGraalRuntime());
 }
@@ -206,9 +206,9 @@ if (typeof Graal != 'undefined') {
 
 The Graal object is available in GraalVM JavaScript by default, unless deactivated by an option (`js.graal-builtin=false`).
 
-#### `Graal.versionJS`
+#### `Graal.versionECMAScript`
 
-- provides the version number of GraalVM JavaScript
+- provides the version number (year value) of GraalVM JavaScript's ECMAScript compatibility mode.
 
 #### `Graal.versionGraalVM`
 
