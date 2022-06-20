@@ -706,67 +706,122 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt8Array(ta) || isDirectUint8Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected int doIntArrayObj(JSTypedArrayObject target, int index, int value,
+        @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt8Array(ta)", "ta.isInBoundsFast(target, index)"})
+        protected int doSharedInt8Array(JSTypedArrayObject target, int index, int value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
-            SharedMemorySync.doVolatilePut(target, index, value, (TypedIntArray) ta);
+            SharedMemorySync.doVolatilePut(target, index, value, (DirectInt8Array) ta);
             return value;
         }
 
-        @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt8Array(ta) || isDirectUint8Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected Number doIntArrayObj(JSTypedArrayObject target, int index, double value,
+        @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint8Array(ta)", "ta.isInBoundsFast(target, index)"})
+        protected int doSharedUint8Array(JSTypedArrayObject target, int index, int value,
+                        @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
+            SharedMemorySync.doVolatilePut(target, index, value, (DirectUint8Array) ta);
+            return value;
+        }
+
+        @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt8Array(ta)", "ta.isInBoundsFast(target, index)"})
+        protected Number doSharedInt8Array(JSTypedArrayObject target, int index, double value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             Number v = toIntegerOrInfinity(value);
-            SharedMemorySync.doVolatilePut(target, index, toRaw(v), (TypedIntArray) ta);
+            SharedMemorySync.doVolatilePut(target, index, toRaw(v), (DirectInt8Array) ta);
             return v;
         }
 
-        @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt16Array(ta) || isDirectUint16Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected Object doInt16ArrayObj(JSTypedArrayObject target, int index, int value,
-                        @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
-            SharedMemorySync.doVolatilePut(target, index, (short) value, (TypedIntArray) ta);
-            return value;
-        }
-
-        @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt16Array(ta) || isDirectUint16Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected Number doInt16ArrayObj(JSTypedArrayObject target, int index, double value,
+        @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint8Array(ta)", "ta.isInBoundsFast(target, index)"})
+        protected Number doSharedUint8Array(JSTypedArrayObject target, int index, double value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             Number v = toIntegerOrInfinity(value);
-            SharedMemorySync.doVolatilePut(target, index, toRaw(v), (TypedIntArray) ta);
+            SharedMemorySync.doVolatilePut(target, index, toRaw(v), (DirectUint8Array) ta);
             return v;
         }
 
-        @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt32Array(ta) || isDirectUint32Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected int doInt32ArrayObj(JSTypedArrayObject target, int index, int value,
+        @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt16Array(ta)", "ta.isInBoundsFast(target, index)"})
+        protected Object doSharedInt16Array(JSTypedArrayObject target, int index, int value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
-            SharedMemorySync.doVolatilePut(target, index, value, (TypedIntArray) ta);
+            SharedMemorySync.doVolatilePut(target, index, (short) value, (DirectInt16Array) ta);
             return value;
         }
 
-        @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt32Array(ta) || isDirectUint32Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected Object doInt32ArrayObj(JSTypedArrayObject target, int index, double value,
+        @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint16Array(ta)", "ta.isInBoundsFast(target, index)"})
+        protected Object doSharedUint16Array(JSTypedArrayObject target, int index, int value,
+                        @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
+            SharedMemorySync.doVolatilePut(target, index, (short) value, (DirectUint16Array) ta);
+            return value;
+        }
+
+        @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt16Array(ta)", "ta.isInBoundsFast(target, index)"})
+        protected Number doSharedInt16Array(JSTypedArrayObject target, int index, double value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             Number v = toIntegerOrInfinity(value);
-            SharedMemorySync.doVolatilePut(target, index, toRaw(v), (TypedIntArray) ta);
+            SharedMemorySync.doVolatilePut(target, index, toRaw(v), (DirectInt16Array) ta);
+            return v;
+        }
+
+        @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint16Array(ta)", "ta.isInBoundsFast(target, index)"})
+        protected Number doSharedUint16Array(JSTypedArrayObject target, int index, double value,
+                        @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
+            Number v = toIntegerOrInfinity(value);
+            SharedMemorySync.doVolatilePut(target, index, toRaw(v), (DirectUint16Array) ta);
+            return v;
+        }
+
+        @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt32Array(ta)", "ta.isInBoundsFast(target, index)"})
+        protected int doSharedInt32Array(JSTypedArrayObject target, int index, int value,
+                        @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
+            SharedMemorySync.doVolatilePut(target, index, value, (DirectInt32Array) ta);
+            return value;
+        }
+
+        @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint32Array(ta)", "ta.isInBoundsFast(target, index)"})
+        protected int doSharedUint32Array(JSTypedArrayObject target, int index, int value,
+                        @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
+            SharedMemorySync.doVolatilePut(target, index, value, (DirectUint32Array) ta);
+            return value;
+        }
+
+        @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt32Array(ta)", "ta.isInBoundsFast(target, index)"})
+        protected Object doSharedInt32Array(JSTypedArrayObject target, int index, double value,
+                        @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
+            Number v = toIntegerOrInfinity(value);
+            SharedMemorySync.doVolatilePut(target, index, toRaw(v), (DirectInt32Array) ta);
+            return v;
+        }
+
+        @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint32Array(ta)", "ta.isInBoundsFast(target, index)"})
+        protected Object doSharedUint32Array(JSTypedArrayObject target, int index, double value,
+                        @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
+            Number v = toIntegerOrInfinity(value);
+            SharedMemorySync.doVolatilePut(target, index, toRaw(v), (DirectUint32Array) ta);
             return v;
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt32Array(ta)"})
-        protected Object doInt32ArrayObjObjIdx(JSTypedArrayObject target, Object index, int value,
+        protected Object doSharedInt32ArrayObjIdx(JSTypedArrayObject target, Object index, int value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
                         @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
-            SharedMemorySync.doVolatilePut(target, intIndex, value, (TypedIntArray) ta);
+            SharedMemorySync.doVolatilePut(target, intIndex, value, (DirectInt32Array) ta);
             return value;
         }
 
-        @Specialization(guards = {"isSharedBufferView(target)", "isDirectBigInt64Array(ta) || isDirectBigUint64Array(ta)"})
-        protected Object doBigInt64ArrayObjObjIdx(JSTypedArrayObject target, Object index, Object value,
+        @Specialization(guards = {"isSharedBufferView(target)", "isDirectBigInt64Array(ta)"})
+        protected Object doSharedBigInt64Array(JSTypedArrayObject target, Object index, Object value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
                         @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             BigInt biValue = toBigInt(value, target);
-            SharedMemorySync.doVolatilePutBigInt(target, intIndex, biValue, (TypedBigIntArray) ta);
+            SharedMemorySync.doVolatilePutBigInt(target, intIndex, biValue, (DirectBigInt64Array) ta);
+            return biValue;
+        }
+
+        @Specialization(guards = {"isSharedBufferView(target)", "isDirectBigUint64Array(ta)"})
+        protected Object doSharedBigUint64Array(JSTypedArrayObject target, Object index, Object value,
+                        @Bind("typedArrayGetArrayType(target)") TypedArray ta,
+                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
+            int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
+            BigInt biValue = toBigInt(value, target);
+            SharedMemorySync.doVolatilePutBigInt(target, intIndex, biValue, (DirectBigUint64Array) ta);
             return biValue;
         }
 
@@ -894,55 +949,63 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt8Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected int doInt8ArrayObj(JSTypedArrayObject target, int index, int value,
+        protected int doSharedInt8Array(JSTypedArrayObject target, int index, int value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             return (byte) atomicDoInt(target, index, value, (DirectInt8Array) ta);
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint8Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected int doUint8ArrayObj(JSTypedArrayObject target, int index, int value,
+        protected int doSharedUint8Array(JSTypedArrayObject target, int index, int value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             return atomicDoInt(target, index, value, (DirectUint8Array) ta) & 0xFF;
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt16Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected int doInt16ArrayObj(JSTypedArrayObject target, int index, int value,
+        protected int doSharedInt16Array(JSTypedArrayObject target, int index, int value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             return (short) atomicDoInt(target, index, value, (DirectInt16Array) ta);
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint16Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected int doUint16ArrayObj(JSTypedArrayObject target, int index, int value,
+        protected int doSharedUint16Array(JSTypedArrayObject target, int index, int value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             return atomicDoInt(target, index, value, (DirectUint16Array) ta) & 0xFFFF;
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt32Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected int doInt32ArrayObj(JSTypedArrayObject target, int index, int value,
+        protected int doSharedInt32Array(JSTypedArrayObject target, int index, int value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             return atomicDoInt(target, index, value, (DirectInt32Array) ta);
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint32Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected SafeInteger doUint32ArrayObj(JSTypedArrayObject target, int index, int value,
+        protected SafeInteger doSharedUint32Array(JSTypedArrayObject target, int index, int value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             return SafeInteger.valueOf(atomicDoInt(target, index, value, (DirectUint32Array) ta) & 0xFFFFFFFFL);
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt32Array(ta)"})
-        protected int doInt32ArrayObjObjIdx(JSTypedArrayObject target, Object index, int value,
+        protected int doSharedInt32ArrayObjIdx(JSTypedArrayObject target, Object index, int value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
                         @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             return atomicDoInt(target, intIndex, value, (DirectInt32Array) ta);
         }
 
-        @Specialization(guards = {"isSharedBufferView(target)", "isDirectBigInt64Array(ta) || isDirectBigUint64Array(ta)"})
-        protected BigInt doBigInt64ArrayObjObjIdx(JSTypedArrayObject target, Object index, Object value,
+        @Specialization(guards = {"isSharedBufferView(target)", "isDirectBigInt64Array(ta)"})
+        protected BigInt doSharedBigInt64Array(JSTypedArrayObject target, Object index, Object value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
                         @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
-            return atomicDoBigInt(target, intIndex, toBigIntChecked(value, target), (TypedBigIntArray) ta);
+            return atomicDoBigInt(target, intIndex, toBigInt(value), (DirectBigInt64Array) ta);
+        }
+
+        @Specialization(guards = {"isSharedBufferView(target)", "isDirectBigUint64Array(ta)"})
+        protected BigInt doSharedBigUint64Array(JSTypedArrayObject target, Object index, Object value,
+                        @Bind("typedArrayGetArrayType(target)") TypedArray ta,
+                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
+            int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
+            return atomicDoBigInt(target, intIndex, toBigInt(value), (DirectBigUint64Array) ta);
         }
 
         @Specialization
