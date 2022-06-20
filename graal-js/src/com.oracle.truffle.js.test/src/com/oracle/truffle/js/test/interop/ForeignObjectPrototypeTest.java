@@ -207,13 +207,13 @@ public class ForeignObjectPrototypeTest {
     @Test
     public void testForeignInstanceof() {
         testInstanceofIntl("Array", ProxyArray.fromArray("fun", "with", "proxy", "array"));
-        testPrototypeIntl("Date", Instant.now());
-        testPrototypeIntl("Map", new TestTruffleHash());
-        testPrototypeIntl("String", new TestTruffleString());
-        testPrototypeIntl("Boolean", new TestTruffleBoolean());
-        testPrototypeIntl("Number", new TestTruffleNumber());
-        testPrototypeIntl("Function", (ProxyExecutable) v -> true);
-        testPrototypeIntl("Object", new Object());
+        testInstanceofIntl("Date", Instant.now());
+        testInstanceofIntl("Map", new TestTruffleHash());
+        testInstanceofIntl("String", new TestTruffleString());
+        testInstanceofIntl("Boolean", new TestTruffleBoolean());
+        testInstanceofIntl("Number", new TestTruffleNumber());
+        testInstanceofIntl("Function", (ProxyExecutable) v -> true);
+        testInstanceofIntl("Object", new Object());
     }
 
     private static void testInstanceofIntl(String prototype, Object obj) {
