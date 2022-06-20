@@ -354,34 +354,26 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             super(context, builtin);
         }
 
-        protected int doCASInt8(JSTypedArrayObject target, int index, int expected, int replacement, boolean signed, TypedArray.TypedIntArray typedArray) {
-            return SharedMemorySync.atomicReadModifyWriteByte(target, index, (byte) expected, replacement, signed, typedArray);
-        }
-
-        protected int doCASInt16(JSTypedArrayObject target, int index, int expected, int replacement, boolean signed, TypedArray.TypedIntArray typedArray) {
-            return SharedMemorySync.atomicReadModifyWriteShort(target, index, expected, replacement, signed, typedArray);
-        }
-
         protected Object doCASUint32(JSTypedArrayObject target, int index, Object expected, Object replacement, TypedArray.TypedIntArray typedArray) {
-            return SafeInteger.valueOf(SharedMemorySync.atomicReadModifyWriteUint32(target, index, expected, replacement, typedArray));
+            return SafeInteger.valueOf(JSRuntime.toUInt32(typedArray.compareExchangeInt(target, index, (int) JSRuntime.toUInt32(expected), (int) JSRuntime.toUInt32(replacement))));
         }
 
         protected int doCASInt(JSTypedArrayObject target, int index, int expected, int replacement, TypedArray.TypedIntArray typedArray) {
-            return SharedMemorySync.atomicReadModifyWriteInt(target, index, expected, replacement, typedArray);
+            return typedArray.compareExchangeInt(target, index, expected, replacement);
         }
 
         protected BigInt doCASBigInt(JSTypedArrayObject target, int index, BigInt expected, BigInt replacement, TypedArray.TypedBigIntArray typedArray) {
-            return SharedMemorySync.atomicReadModifyWriteBigInt(target, index, expected, replacement, typedArray);
+            return typedArray.compareExchangeBigInt(target, index, expected, replacement);
         }
 
         @TruffleBoundary
         protected static int doInt8(JSTypedArrayObject target, int index, int expected, int replacement, boolean signed, TypedArray.TypedIntArray typedArray) {
             int read = typedArray.getInt(target, index, InteropLibrary.getUncached());
-            read = signed ? read : read & 0xFF;
-            int expectedChopped = signed ? (byte) expected : expected & 0xFF;
+            read = signed ? (byte) read : read & 0xFF;
+            int expectedChopped = signed ? (byte) expected : (expected & 0xFF);
             if (read == expectedChopped) {
-                int signedValue = signed ? replacement : replacement & 0xFF;
-                typedArray.setInt(target, index, (byte) signedValue, InteropLibrary.getUncached());
+                int signedValue = signed ? (byte) replacement : (replacement & 0xFF);
+                typedArray.setInt(target, index, signedValue, InteropLibrary.getUncached());
             }
             return read;
         }
@@ -389,11 +381,11 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @TruffleBoundary
         protected static int doInt16(JSTypedArrayObject target, int index, int expected, int replacement, boolean signed, TypedArray.TypedIntArray typedArray) {
             int read = typedArray.getInt(target, index, InteropLibrary.getUncached());
-            read = signed ? read : read & 0xFFFF;
-            int expectedChopped = signed ? (short) expected : expected & 0xFFFF;
+            read = signed ? (short) read : read & 0xFFFF;
+            int expectedChopped = signed ? (short) expected : (expected & 0xFFFF);
             if (read == expectedChopped) {
-                int signedValue = signed ? replacement : replacement & 0xFFFF;
-                typedArray.setInt(target, index, (short) signedValue, InteropLibrary.getUncached());
+                int signedValue = signed ? (short) replacement : (replacement & 0xFFFF);
+                typedArray.setInt(target, index, signedValue, InteropLibrary.getUncached());
             }
             return read;
         }
@@ -428,25 +420,25 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt8Array(ta)", "ta.isInBoundsFast(target, index)"})
         protected int doInt8ArrayByte(JSTypedArrayObject target, int index, int expected, int replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
-            return (byte) doCASInt8(target, index, expected, replacement, true, (TypedArray.DirectInt8Array) ta);
+            return (byte) doCASInt(target, index, expected, replacement, (TypedArray.DirectInt8Array) ta);
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint8Array(ta)", "ta.isInBoundsFast(target, index)"})
         protected int doUint8ArrayByte(JSTypedArrayObject target, int index, int expected, int replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
-            return doCASInt8(target, index, expected, replacement, false, (TypedArray.DirectUint8Array) ta) & 0xff;
+            return doCASInt(target, index, expected, replacement, (TypedArray.DirectUint8Array) ta) & 0xff;
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt16Array(ta)", "ta.isInBoundsFast(target, index)"})
         protected int doInt16ArrayByte(JSTypedArrayObject target, int index, int expected, int replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
-            return (short) doCASInt16(target, index, expected, replacement, true, (TypedArray.DirectInt16Array) ta);
+            return (short) doCASInt(target, index, expected, replacement, (TypedArray.DirectInt16Array) ta);
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint16Array(ta)", "ta.isInBoundsFast(target, index)"})
         protected int doUint16ArrayByte(JSTypedArrayObject target, int index, int expected, int replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
-            return doCASInt16(target, index, expected, replacement, false, (TypedArray.DirectUint16Array) ta) & 0xffff;
+            return doCASInt(target, index, expected, replacement, (TypedArray.DirectUint16Array) ta) & 0xffff;
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint32Array(ta)", "ta.isInBoundsFast(target, index)"})
@@ -545,13 +537,13 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 }
             } else {
                 if (ta instanceof Int8Array || ta instanceof DirectInt8Array) {
-                    return (int) (byte) doCASInt8(target, intIndex, toInt(expected), toInt(replacement), true, (TypedIntArray) ta);
+                    return (int) (byte) doCASInt(target, intIndex, toInt(expected), toInt(replacement), (TypedIntArray) ta);
                 } else if (ta instanceof Uint8Array || ta instanceof DirectUint8Array) {
-                    return doCASInt8(target, intIndex, toInt(expected), toInt(replacement), false, (TypedIntArray) ta) & 0xffff;
+                    return doCASInt(target, intIndex, toInt(expected), toInt(replacement), (TypedIntArray) ta) & 0xffff;
                 } else if (ta instanceof Int16Array || ta instanceof DirectInt16Array) {
-                    return (int) (short) doCASInt16(target, intIndex, toInt(expected), toInt(replacement), true, (TypedIntArray) ta);
+                    return (int) (short) doCASInt(target, intIndex, toInt(expected), toInt(replacement), (TypedIntArray) ta);
                 } else if (ta instanceof Uint16Array || ta instanceof DirectUint16Array) {
-                    return doCASInt16(target, intIndex, toInt(expected), toInt(replacement), false, (TypedIntArray) ta) & 0xffff;
+                    return doCASInt(target, intIndex, toInt(expected), toInt(replacement), (TypedIntArray) ta) & 0xffff;
                 } else if (ta instanceof Int32Array || ta instanceof DirectInt32Array) {
                     return doCASInt(target, intIndex, toInt(expected), toInt(replacement), (TypedIntArray) ta);
                 } else if (ta instanceof Uint32Array || ta instanceof DirectUint32Array) {

@@ -57,7 +57,6 @@ import com.oracle.truffle.js.runtime.JSAgentWaiterList.WaiterRecord;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSInterruptedExecutionException;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.TypedArray.TypedBigIntArray;
 import com.oracle.truffle.js.runtime.array.TypedArray.TypedIntArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -107,27 +106,6 @@ public final class SharedMemorySync {
     public static boolean compareAndSetBigInt(JSTypedArrayObject target, int intArrayOffset, BigInt expected, BigInt replacement, TypedBigIntArray typedArray) {
         long expectedAsLong = expected.longValue();
         return typedArray.compareExchangeLong(target, intArrayOffset, expectedAsLong, replacement.longValue()) == expectedAsLong;
-    }
-
-    // ##### Atomic Read-Modify-Write primitives
-    public static long atomicReadModifyWriteUint32(JSTypedArrayObject target, int intArrayOffset, Object expected, Object replacement, TypedIntArray typedArray) {
-        return JSRuntime.toUInt32(typedArray.compareExchangeInt(target, intArrayOffset, (int) JSRuntime.toUInt32(expected), (int) JSRuntime.toUInt32(replacement)));
-    }
-
-    public static int atomicReadModifyWriteInt(JSTypedArrayObject target, int intArrayOffset, int expected, int replacement, TypedIntArray typedArray) {
-        return typedArray.compareExchangeInt(target, intArrayOffset, expected, replacement);
-    }
-
-    public static int atomicReadModifyWriteShort(JSTypedArrayObject target, int intArrayOffset, int expected, int replacement, @SuppressWarnings("unused") boolean sign, TypedIntArray typedArray) {
-        return typedArray.compareExchangeInt(target, intArrayOffset, expected, replacement);
-    }
-
-    public static int atomicReadModifyWriteByte(JSTypedArrayObject target, int intArrayOffset, int expected, int replacement, @SuppressWarnings("unused") boolean sign, TypedIntArray typedArray) {
-        return typedArray.compareExchangeInt(target, intArrayOffset, expected, replacement);
-    }
-
-    public static BigInt atomicReadModifyWriteBigInt(JSTypedArrayObject target, int intArrayOffset, BigInt expected, BigInt replacement, TypedBigIntArray typedArray) {
-        return typedArray.compareExchangeBigInt(target, intArrayOffset, expected, replacement);
     }
 
     // ##### Thread Wake/Park primitives
