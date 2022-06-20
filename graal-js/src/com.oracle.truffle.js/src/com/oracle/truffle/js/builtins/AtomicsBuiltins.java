@@ -721,7 +721,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt8Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected Number doSharedInt8Array(JSTypedArrayObject target, int index, double value,
+        protected Number doSharedInt8Array(JSTypedArrayObject target, int index, Object value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             Number v = toIntegerOrInfinity(value);
             SharedMemorySync.doVolatilePut(target, index, toRaw(v), (DirectInt8Array) ta);
@@ -729,7 +729,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint8Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected Number doSharedUint8Array(JSTypedArrayObject target, int index, double value,
+        protected Number doSharedUint8Array(JSTypedArrayObject target, int index, Object value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             Number v = toIntegerOrInfinity(value);
             SharedMemorySync.doVolatilePut(target, index, toRaw(v), (DirectUint8Array) ta);
@@ -751,7 +751,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt16Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected Number doSharedInt16Array(JSTypedArrayObject target, int index, double value,
+        protected Number doSharedInt16Array(JSTypedArrayObject target, int index, Object value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             Number v = toIntegerOrInfinity(value);
             SharedMemorySync.doVolatilePut(target, index, toRaw(v), (DirectInt16Array) ta);
@@ -759,7 +759,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint16Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected Number doSharedUint16Array(JSTypedArrayObject target, int index, double value,
+        protected Number doSharedUint16Array(JSTypedArrayObject target, int index, Object value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             Number v = toIntegerOrInfinity(value);
             SharedMemorySync.doVolatilePut(target, index, toRaw(v), (DirectUint16Array) ta);
@@ -781,7 +781,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt32Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected Object doSharedInt32Array(JSTypedArrayObject target, int index, double value,
+        protected Object doSharedInt32Array(JSTypedArrayObject target, int index, Object value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             Number v = toIntegerOrInfinity(value);
             SharedMemorySync.doVolatilePut(target, index, toRaw(v), (DirectInt32Array) ta);
@@ -789,7 +789,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint32Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected Object doSharedUint32Array(JSTypedArrayObject target, int index, double value,
+        protected Object doSharedUint32Array(JSTypedArrayObject target, int index, Object value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             Number v = toIntegerOrInfinity(value);
             SharedMemorySync.doVolatilePut(target, index, toRaw(v), (DirectUint32Array) ta);
