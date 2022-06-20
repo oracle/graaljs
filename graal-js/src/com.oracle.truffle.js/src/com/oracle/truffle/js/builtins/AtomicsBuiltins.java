@@ -418,39 +418,33 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt8Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected int doInt8ArrayByte(JSTypedArrayObject target, int index, int expected, int replacement,
+        protected int doInt8Array(JSTypedArrayObject target, int index, int expected, int replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             return (byte) doCASInt(target, index, expected, replacement, (TypedArray.DirectInt8Array) ta);
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint8Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected int doUint8ArrayByte(JSTypedArrayObject target, int index, int expected, int replacement,
+        protected int doUint8Array(JSTypedArrayObject target, int index, int expected, int replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             return doCASInt(target, index, expected, replacement, (TypedArray.DirectUint8Array) ta) & 0xff;
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt16Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected int doInt16ArrayByte(JSTypedArrayObject target, int index, int expected, int replacement,
+        protected int doInt16Array(JSTypedArrayObject target, int index, int expected, int replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             return (short) doCASInt(target, index, expected, replacement, (TypedArray.DirectInt16Array) ta);
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint16Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected int doUint16ArrayByte(JSTypedArrayObject target, int index, int expected, int replacement,
+        protected int doUint16Array(JSTypedArrayObject target, int index, int expected, int replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             return doCASInt(target, index, expected, replacement, (TypedArray.DirectUint16Array) ta) & 0xffff;
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectUint32Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected Object doUint32ArrayByte(JSTypedArrayObject target, int index, Object expected, Object replacement,
+        protected Object doUint32Array(JSTypedArrayObject target, int index, Object expected, Object replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             return doCASUint32(target, index, expected, replacement, (TypedArray.DirectUint32Array) ta);
-        }
-
-        @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt32Array(ta)", "ta.isInBoundsFast(target, index)"})
-        protected int doInt32ArrayByte(JSTypedArrayObject target, int index, byte expected, byte replacement,
-                        @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
-            return doCASInt(target, index, expected, replacement, (TypedArray.DirectInt32Array) ta);
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt32Array(ta)", "ta.isInBoundsFast(target, index)"})
@@ -463,14 +457,6 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         protected int doInt32ArrayObj(JSTypedArrayObject target, int index, Object expected, Object replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta) {
             return doCASInt(target, index, toInt(expected), toInt(replacement), (TypedArray.DirectInt32Array) ta);
-        }
-
-        @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt32Array(ta)"})
-        protected int doInt32ArrayByteObjIdx(JSTypedArrayObject target, Object index, byte expected, byte replacement,
-                        @Bind("typedArrayGetArrayType(target)") TypedArray ta,
-                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
-            int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
-            return doCASInt(target, intIndex, expected, replacement, (TypedArray.DirectInt32Array) ta);
         }
 
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt32Array(ta)"})
