@@ -863,7 +863,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             do {
                 initial = SharedMemorySync.doVolatileGet(target, index, typedArray);
                 result = intOperator.applyAsInt(initial, value);
-            } while (!SharedMemorySync.compareAndSwapInt(target, index, initial, result, typedArray));
+            } while (!SharedMemorySync.compareAndSetInt(target, index, initial, result, typedArray));
             return initial;
         }
 
@@ -873,7 +873,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             do {
                 initial = SharedMemorySync.doVolatileGetBigInt(target, index, typedArray);
                 result = bigIntOperator.apply(initial, value);
-            } while (!SharedMemorySync.compareAndSwapBigInt(target, index, initial, result, typedArray));
+            } while (!SharedMemorySync.compareAndSetBigInt(target, index, initial, result, typedArray));
             return initial;
         }
 

@@ -100,12 +100,13 @@ public final class SharedMemorySync {
     }
 
     // ##### Atomic CAS primitives
-    public static boolean compareAndSwapInt(JSTypedArrayObject target, int intArrayOffset, int expected, int replacement, TypedIntArray typedArray) {
+    public static boolean compareAndSetInt(JSTypedArrayObject target, int intArrayOffset, int expected, int replacement, TypedIntArray typedArray) {
         return typedArray.compareExchangeInt(target, intArrayOffset, expected, replacement) == expected;
     }
 
-    public static boolean compareAndSwapBigInt(JSTypedArrayObject target, int intArrayOffset, BigInt expected, BigInt replacement, TypedBigIntArray typedArray) {
-        return typedArray.compareExchangeBigInt(target, intArrayOffset, expected, replacement).equals(expected);
+    public static boolean compareAndSetBigInt(JSTypedArrayObject target, int intArrayOffset, BigInt expected, BigInt replacement, TypedBigIntArray typedArray) {
+        long expectedAsLong = expected.longValue();
+        return typedArray.compareExchangeLong(target, intArrayOffset, expectedAsLong, replacement.longValue()) == expectedAsLong;
     }
 
     // ##### Atomic Read-Modify-Write primitives
