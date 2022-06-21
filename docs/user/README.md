@@ -30,19 +30,19 @@ It can be installed with the _GraalVM Updater_:
 $GRAALVM/bin/gu install nodejs
 ```
 
-Alternatively, you can also download the Node.js runtime plugin installable manually and install it from a file, e.g.:
+Alternatively, you can download the Node.js runtime component manually and install it from a file, e.g.:
 
 ```shell
-$ $GRAALVM/bin/gu install --file ~/Downloads/nodejs-installable-svm-java17-linux-amd64-21.3.0.jar
+$GRAALVM/bin/gu install --file ~/Downloads/nodejs-installable-svm-java17-linux-amd64-21.3.0.jar
 ```
 
-This installs the `node` and `npm` binaries in the `$GRAALVM/bin` directory.
+This installs the `node` and `npm` launchers in the `$GRAALVM/bin` directory.
 Use the `node` utility to execute Node.js applications:
 ```shell
 node [options] [filename] [args]
 ```
 
-To install a Node.js package, use the `npm` launcher from the GraalVM's `/bin` folder.
+To install a Node.js package, use the `npm` launcher from `$GRAALVM/bin`.
 The `npm` command is equivalent to the default Node.js command and supports all Node.js APIs.
 
 1&#46; Install the `colors` and `ansispan` packages using `npm install` as follows:
