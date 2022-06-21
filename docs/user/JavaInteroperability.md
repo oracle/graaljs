@@ -6,14 +6,11 @@ permalink: /reference-manual/js/JavaInteroperability/
 ---
 # Java Interoperability
 
-GraalVM includes a JavaScript language execution runtime and allows interoperability with Java code.
+GraalVM provides a JavaScript language execution runtime and allows interoperability with Java code.
 This document describes the features and usage of this JavaScript-to-Java interoperability feature.
 
 For a reference of GraalVM public API, see [JavaScript Compatibility](JavaScriptCompatibility.md).
 Migration guides for [Rhino](RhinoMigrationGuide.md) and [Nashorn](NashornMigrationGuide.md) are also available.
-
-By default, GraalVM ships with `js` and `node` native launchers.
-Although other builds are possible, the following examples assume this setup is used.
 
 ## Enabling Java Interoperability
 In GraalVM, the `js` and `node` launchers are started in an ahead-of-time compiled native mode by default. In that mode, Java interoperability is not available.
