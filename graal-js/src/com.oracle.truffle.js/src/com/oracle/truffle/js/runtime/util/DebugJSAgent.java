@@ -61,6 +61,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSAgent;
+import com.oracle.truffle.js.runtime.JSInterruptedExecutionException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -155,7 +156,7 @@ public class DebugJSAgent extends JSAgent {
         try {
             barrier.await();
         } catch (InterruptedException e) {
-            throw new AssertionError(e);
+            throw JSInterruptedExecutionException.wrap(e);
         }
     }
 
@@ -193,7 +194,7 @@ public class DebugJSAgent extends JSAgent {
         try {
             Thread.sleep(time);
         } catch (InterruptedException e) {
-            throw new AssertionError(e);
+            throw JSInterruptedExecutionException.wrap(e);
         }
     }
 
@@ -259,13 +260,22 @@ public class DebugJSAgent extends JSAgent {
         if (spawnedAgents.isEmpty()) {
             return;
         }
+        boolean alive = false;
         for (AgentExecutor executor : spawnedAgents) {
             if (executor.thread.isAlive()) {
+                alive = true;
                 executor.thread.interrupt();
-                try {
-                    executor.thread.join();
-                } catch (InterruptedException e) {
-                    throw new AssertionError(e);
+            }
+        }
+        if (alive) {
+            for (AgentExecutor executor : spawnedAgents) {
+                if (executor.thread.isAlive()) {
+                    try {
+                        executor.thread.join();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
                 }
             }
         }

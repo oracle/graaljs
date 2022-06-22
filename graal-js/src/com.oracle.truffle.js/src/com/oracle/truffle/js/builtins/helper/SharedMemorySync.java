@@ -168,7 +168,7 @@ public final class SharedMemorySync {
                 }
             }
         } catch (InterruptedException e) {
-            throw new JSInterruptedExecutionException(e.getMessage(), null);
+            throw JSInterruptedExecutionException.wrap(e);
         }
     }
 
