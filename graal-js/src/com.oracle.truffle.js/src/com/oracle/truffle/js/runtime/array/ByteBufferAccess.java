@@ -89,7 +89,8 @@ public abstract class ByteBufferAccess {
     public abstract long compareExchangeInt64(ByteBuffer buffer, int index, long expectedValue, long newValue);
 
     /**
-     * Emulate 8-bit CAS using 32-bit CAS. Cannot be used if the buffer is too short for that.
+     * Emulate 8-bit CAS using 32-bit CAS. Cannot be used if the buffer length is not a multiple of
+     * 4 and too short for the 32-bit access to be fully in bounds.
      */
     public int compareExchangeInt8(ByteBuffer buffer, int index, int expectedValue, int newValue) {
         int wordOffset = index & ~3;
@@ -115,9 +116,11 @@ public abstract class ByteBufferAccess {
     }
 
     /**
-     * Emulate 16-bit CAS using 32-bit CAS. Cannot be used if the buffer is too short for that.
+     * Emulate 16-bit CAS using 32-bit CAS. Cannot be used if the buffer length is not a multiple of
+     * 4 and too short for the 32-bit access to be fully in bounds or if {@code (index % 4) == 3}.
      */
     public int compareExchangeInt16(ByteBuffer buffer, int index, int expectedValue, int newValue) {
+        assert (index & 3) != 3 : "Update spans the word, not supported";
         int wordOffset = index & ~3;
         assert wordOffset <= buffer.capacity() - Integer.BYTES;
         int shift = (index & 3) << 3;
