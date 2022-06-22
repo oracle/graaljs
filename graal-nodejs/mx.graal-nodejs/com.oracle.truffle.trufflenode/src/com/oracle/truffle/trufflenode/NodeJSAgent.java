@@ -64,7 +64,7 @@ public class NodeJSAgent extends JSAgent {
     }
 
     @Override
-    public void terminate(int timeout) {
+    public void terminate() {
         // No-op
     }
 

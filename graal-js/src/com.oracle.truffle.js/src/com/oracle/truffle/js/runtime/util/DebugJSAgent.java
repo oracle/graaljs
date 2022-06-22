@@ -255,7 +255,7 @@ public class DebugJSAgent extends JSAgent {
 
     @TruffleBoundary
     @Override
-    public void terminate(int timeout) {
+    public void terminate() {
         if (spawnedAgents.isEmpty()) {
             return;
         }
@@ -263,7 +263,7 @@ public class DebugJSAgent extends JSAgent {
             if (executor.thread.isAlive()) {
                 executor.thread.interrupt();
                 try {
-                    executor.thread.join(timeout);
+                    executor.thread.join();
                 } catch (InterruptedException e) {
                     throw new AssertionError(e);
                 }

@@ -264,6 +264,6 @@ public abstract class JSAgent {
     /**
      * Terminate the agent.
      */
-    public abstract void terminate(int timeout);
+    public abstract void terminate();
 
 }

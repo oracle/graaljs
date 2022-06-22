@@ -50,7 +50,7 @@ public final class MainJSAgent extends JSAgent {
     }
 
     @Override
-    public void terminate(int timeout) {
+    public void terminate() {
         // No-op
     }
 
