@@ -209,6 +209,7 @@ public class DebugJSAgent extends JSAgent {
 
     @Override
     public void wake() {
+        CompilerAsserts.neverPartOfCompilation();
         queueLock.lock();
         try {
             queueCondition.signalAll();

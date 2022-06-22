@@ -65,6 +65,7 @@ public class JSAgentWaiterList {
         this.atomicSection = new ReentrantLock();
     }
 
+    @TruffleBoundary
     public JSAgentWaiterListEntry getListForIndex(int indexPos) {
         JSAgentWaiterListEntry list = Boundaries.mapPutIfAbsent(waiters, indexPos, new JSAgentWaiterListEntry());
         if (list == null) {
@@ -103,11 +104,13 @@ public class JSAgentWaiterList {
             this.waitCondition = criticalSection.newCondition();
         }
 
+        @TruffleBoundary
         public void enterCriticalSection() {
             assert !inCriticalSection();
             criticalSection.lock();
         }
 
+        @TruffleBoundary
         public void leaveCriticalSection() {
             assert inCriticalSection();
             criticalSection.unlock();
@@ -117,6 +120,7 @@ public class JSAgentWaiterList {
             return waitCondition;
         }
 
+        @TruffleBoundary
         public boolean inCriticalSection() {
             return criticalSection.isHeldByCurrentThread();
         }

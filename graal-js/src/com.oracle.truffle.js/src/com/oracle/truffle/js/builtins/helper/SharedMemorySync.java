@@ -119,20 +119,6 @@ public final class SharedMemorySync {
     }
 
     @TruffleBoundary
-    public static void enterCriticalSection(JSAgentWaiterListEntry wl) {
-        wl.enterCriticalSection();
-    }
-
-    @TruffleBoundary
-    public static void leaveCriticalSection(JSAgentWaiterListEntry wl) {
-        wl.leaveCriticalSection();
-    }
-
-    public static boolean agentCanSuspend(JSAgent agent) {
-        return agent.canBlock();
-    }
-
-    @TruffleBoundary
     public static void addWaiter(JSAgent agent, JSAgentWaiterListEntry wl, WaiterRecord waiterRecord, boolean isAsync) {
         assert wl.inCriticalSection();
         assert !wl.contains(waiterRecord);
@@ -184,14 +170,6 @@ public final class SharedMemorySync {
         } catch (InterruptedException e) {
             throw new JSInterruptedExecutionException(e.getMessage(), null);
         }
-    }
-
-    /**
-     * NotifyWaiter (WL, W). Notifies (but does not wake) a waiting agent.
-     */
-    @TruffleBoundary
-    public static void notifyWaiter(WaiterRecord waiterRecord) {
-        waiterRecord.setNotified();
     }
 
     /**

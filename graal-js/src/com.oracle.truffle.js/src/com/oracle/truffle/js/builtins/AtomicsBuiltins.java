@@ -1101,14 +1101,14 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
         @TruffleBoundary
         private static Object notifyWaiters(JSAgentWaiterListEntry wl, int c) {
-            SharedMemorySync.enterCriticalSection(wl);
+            wl.enterCriticalSection();
             try {
                 boolean wake = false;
                 WaiterRecord[] waiters = SharedMemorySync.removeWaiters(wl, c);
                 int n;
                 for (n = 0; n < waiters.length; n++) {
                     WaiterRecord waiterRecord = waiters[n];
-                    SharedMemorySync.notifyWaiter(waiterRecord);
+                    waiterRecord.setNotified();
                     if (waiterRecord.getPromiseCapability() == null) {
                         wake = true;
                     } else {
@@ -1122,7 +1122,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 }
                 return n;
             } finally {
-                SharedMemorySync.leaveCriticalSection(wl);
+                wl.leaveCriticalSection();
             }
         }
     }
@@ -1179,7 +1179,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             }
 
             JSAgent agent = getRealm().getAgent();
-            if (!isAsync && !SharedMemorySync.agentCanSuspend(agent)) {
+            if (!isAsync && !agent.canBlock()) {
                 errorBranch.enter();
                 throw createTypeErrorUnsupported();
             }
@@ -1194,7 +1194,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 resultObject = ordinaryObjectCreate(frame);
             }
 
-            SharedMemorySync.enterCriticalSection(wl);
+            wl.enterCriticalSection();
             try {
                 Object w = loadNode.executeWithBufferAndIndex(frame, maybeTarget, i);
                 boolean isNotEqual = isInt32 ? !(w instanceof Integer) || (int) w != (int) v
@@ -1233,7 +1233,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 createValuePropertyNode.executeVoid(resultObject, waiterRecord.getPromiseCapability().getPromise());
                 return resultObject;
             } finally {
-                SharedMemorySync.leaveCriticalSection(wl);
+                wl.leaveCriticalSection();
             }
         }
 
