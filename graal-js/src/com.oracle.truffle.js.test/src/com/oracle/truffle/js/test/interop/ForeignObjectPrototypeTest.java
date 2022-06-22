@@ -235,6 +235,46 @@ public class ForeignObjectPrototypeTest {
         }
     }
 
+    @Test
+    public void testForeignRightPrototype() {
+        String code = "ForeignObjectPrototype = Object.getPrototypeOf(new java.lang.Object());\n" +
+                        "function f() {}; \n" +
+                        "f.prototype = ForeignObjectPrototype;\n" +
+                        "new java.lang.Object() instanceof f;";
+        testTrue(code);
+    }
+
+    private static void testTrue(String code) {
+        Assert.assertTrue(testIntl(code));
+    }
+
+    private static void testFalse(String code) {
+        Assert.assertFalse(testIntl(code));
+    }
+
+    private static boolean testIntl(String code) {
+        try (Context context = JSTest.newContextBuilder(ID).allowAllAccess(true).allowHostAccess(HostAccess.ALL).build()) {
+            Value result = context.eval(ID, code);
+            return result.asBoolean();
+        }
+    }
+
+    @Test
+    public void testCallableProxies() {
+        String code = "new java.lang.Object instanceof new Proxy(Object, {});";
+        testTrue(code);
+
+        code = "var handler = { get(target, prop, recv) { return (prop === 'prototype') ? Object.prototype : Reflect.get(target, prop, recv); } };\n" +
+                        "var proxy = new Proxy(function() {}, handler);\n" +
+                        "new java.lang.Object() instanceof proxy";
+        testTrue(code);
+
+        code = "var handler = { get(target, prop, recv) { if (prop === 'prototype') { throw new Error() } else { return Reflect.get(target, prop, recv); } } };\n" +
+                        "var proxy = new Proxy(function() {}, handler);\n" +
+                        "42 instanceof proxy";
+        testFalse(code);
+    }
+
     @ExportLibrary(InteropLibrary.class)
     public static class TestTruffleHash implements TruffleObject {
 

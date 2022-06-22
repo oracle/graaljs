@@ -232,27 +232,35 @@ public abstract class InstanceofNode extends JSBinaryNode {
 
         @Specialization(guards = {"isJSFunction(check)", "isBoundFunction(check)"})
         protected boolean doIsBound(Object obj, JSDynamicObject check,
-                        @Cached("create(context)") @Shared("instanceofNode") InstanceofNode instanceofNode) {
+                        @Cached("create(context)") InstanceofNode instanceofNode) {
             JSDynamicObject boundTargetFunction = JSFunction.getBoundTargetFunction(check);
             return instanceofNode.executeBoolean(obj, boundTargetFunction);
         }
 
         @Specialization(guards = {"!isJSObject(left)", "isForeignObject(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
         protected boolean doForeignObject(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSDynamicObject right,
-                        @Cached ForeignObjectPrototypeNode getForeignPrototypeNode,
+                        @Cached @Shared("foreignPrototypeNode") ForeignObjectPrototypeNode getForeignPrototypeNode,
                         @Cached @Shared("invalidPrototypeBranch") BranchProfile invalidPrototypeBranch,
-                        @Cached("create(context)") @Shared("instanceofNode") InstanceofNode instanceofNode) {
+                        @Cached("create(context)") @Shared("ordinaryHasInstance") OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
             if (context.isOptionForeignObjectPrototype()) {
-                Object rightProto = getConstructorPrototype(right, invalidPrototypeBranch);
-                if (rightProto == getRealm().getDatePrototype()) {
-                    // necessary because of GR-39319
-                    return false;
-                }
-                Object foreignProto = getForeignPrototypeNode.execute(left);
-                return instanceofNode.executeBoolean(foreignProto, right);
+                return foreignObjectIntl(left, right, getForeignPrototypeNode, invalidPrototypeBranch, ordinaryHasInstanceNode);
             } else {
                 return false;
             }
+        }
+
+        private boolean foreignObjectIntl(Object left, JSDynamicObject right, ForeignObjectPrototypeNode getForeignPrototypeNode, BranchProfile invalidPrototypeBranch,
+                        OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
+            Object rightProto = getConstructorPrototype(right, invalidPrototypeBranch);
+            if (rightProto == getRealm().getDatePrototype()) {
+                // necessary because of GR-39319
+                return false;
+            }
+            Object foreignProto = getForeignPrototypeNode.execute(left);
+            if (foreignProto == rightProto) {
+                return true;
+            }
+            return ordinaryHasInstanceNode.executeBoolean(foreignProto, right);
         }
 
         @Specialization(guards = {"!isJSObject(left)", "!isForeignObject(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
@@ -260,8 +268,15 @@ public abstract class InstanceofNode extends JSBinaryNode {
             return false;
         }
 
-        @Specialization(guards = {"!isJSObject(left)", "isJSProxy(right)", "isCallableProxy(right)"})
-        protected boolean doNotAnObjectProxy(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSDynamicObject right) {
+        @Specialization(guards = {"!isJSObject(left)", "isForeignObject(left)", "isJSProxy(right)", "isCallableProxy(right)"})
+        protected boolean doNotAnObjectProxyForeign(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSDynamicObject right,
+                        @Cached @Shared("foreignPrototypeNode") ForeignObjectPrototypeNode getForeignPrototypeNode, @Cached @Shared("invalidPrototypeBranch") BranchProfile invalidPrototypeBranch,
+                        @Cached("create(context)") @Shared("ordinaryHasInstance") OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
+            return doForeignObject(left, right, getForeignPrototypeNode, invalidPrototypeBranch, ordinaryHasInstanceNode);
+        }
+
+        @Specialization(guards = {"!isJSObject(left)", "!isForeignObject(left)", "isJSProxy(right)", "isCallableProxy(right)"})
+        protected boolean doNotAnObjectProxyPrimitive(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSDynamicObject right) {
             return false;
         }
 
