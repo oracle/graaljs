@@ -271,14 +271,13 @@ Lossy conversion is disallowed and results in a TypeError.
 
 #### `Java.isType(obj)`
 
-- returns whether `obj` is an object of the Java language, representing a Java `Class` instance
+- returns `true` if `obj` is an object representing the constructor and static members of a Java class, as obtained (for example) by `Java.type()`
 - returns `false` for all other arguments
 
 #### `Java.typeName(obj)`
 
-- returns the Java `Class` name of `obj`
-
-`obj` is expected to represent a Java `Class` instance, i.e., `isType(obj)` should return true; otherwise, `undefined` is returned.
+- returns the Java `Class` name of `obj` when `obj` represents a Java type (`isType(obj) === true`) or Java `Class` instance
+- returns `undefined` otherwise
 
 #### `Java.isJavaFunction(fn)`
 
