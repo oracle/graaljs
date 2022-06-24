@@ -206,22 +206,73 @@ public class ForeignObjectPrototypeTest {
 
     @Test
     public void testForeignInstanceof() {
-        testInstanceofIntl("Array", ProxyArray.fromArray("fun", "with", "proxy", "array"));
-        testPrototypeIntl("Date", Instant.now());
-        testPrototypeIntl("Map", new TestTruffleHash());
-        testPrototypeIntl("String", new TestTruffleString());
-        testPrototypeIntl("Boolean", new TestTruffleBoolean());
-        testPrototypeIntl("Number", new TestTruffleNumber());
-        testPrototypeIntl("Function", (ProxyExecutable) v -> true);
-        testPrototypeIntl("Object", new Object());
+        // test expected Instance
+        Assert.assertTrue(testInstanceofIntl("Array", ProxyArray.fromArray("fun", "with", "proxy", "array")));
+        // Assert.assertTrue(testInstanceofIntl("Date", Instant.now())); //see GR-39319
+        Assert.assertTrue(testInstanceofIntl("Map", new TestTruffleHash()));
+        Assert.assertTrue(testInstanceofIntl("String", new TestTruffleString()));
+        Assert.assertTrue(testInstanceofIntl("Boolean", new TestTruffleBoolean()));
+        Assert.assertTrue(testInstanceofIntl("Number", new TestTruffleNumber()));
+        Assert.assertTrue(testInstanceofIntl("Function", (ProxyExecutable) v -> true));
+        Assert.assertTrue(testInstanceofIntl("Object", new Object()));
+
+        // test non-matching instance
+        Assert.assertFalse(testInstanceofIntl("RegExp", ProxyArray.fromArray("fun", "with", "proxy", "array")));
+        Assert.assertFalse(testInstanceofIntl("RegExp", Instant.now()));
+        Assert.assertFalse(testInstanceofIntl("RegExp", new TestTruffleHash()));
+        Assert.assertFalse(testInstanceofIntl("RegExp", new TestTruffleString()));
+        Assert.assertFalse(testInstanceofIntl("RegExp", new TestTruffleBoolean()));
+        Assert.assertFalse(testInstanceofIntl("RegExp", new TestTruffleNumber()));
+        Assert.assertFalse(testInstanceofIntl("RegExp", (ProxyExecutable) v -> true));
+        Assert.assertFalse(testInstanceofIntl("RegExp", new Object()));
     }
 
-    private static void testInstanceofIntl(String prototype, Object obj) {
-        String code = "(obj) => { return (obj instanceof " + prototype + "); }";
+    private static boolean testInstanceofIntl(String prototype, Object obj) {
+        String code = "(obj) => { return (obj instanceof " + prototype + ") && (obj instanceof Object); }";
         try (Context context = JSTest.newContextBuilder(ID).build()) {
             Value result = context.eval(ID, code).execute(obj);
-            Assert.assertTrue(result.asBoolean());
+            return result.asBoolean();
         }
+    }
+
+    @Test
+    public void testForeignRightPrototype() {
+        String code = "ForeignObjectPrototype = Object.getPrototypeOf(new java.lang.Object());\n" +
+                        "function f() {}; \n" +
+                        "f.prototype = ForeignObjectPrototype;\n" +
+                        "new java.lang.Object() instanceof f;";
+        testTrue(code);
+    }
+
+    private static void testTrue(String code) {
+        Assert.assertTrue(testIntl(code));
+    }
+
+    private static void testFalse(String code) {
+        Assert.assertFalse(testIntl(code));
+    }
+
+    private static boolean testIntl(String code) {
+        try (Context context = JSTest.newContextBuilder(ID).allowAllAccess(true).allowHostAccess(HostAccess.ALL).build()) {
+            Value result = context.eval(ID, code);
+            return result.asBoolean();
+        }
+    }
+
+    @Test
+    public void testCallableProxies() {
+        String code = "new java.lang.Object instanceof new Proxy(Object, {});";
+        testTrue(code);
+
+        code = "var handler = { get(target, prop, recv) { return (prop === 'prototype') ? Object.prototype : Reflect.get(target, prop, recv); } };\n" +
+                        "var proxy = new Proxy(function() {}, handler);\n" +
+                        "new java.lang.Object() instanceof proxy";
+        testTrue(code);
+
+        code = "var handler = { get(target, prop, recv) { if (prop === 'prototype') { throw new Error() } else { return Reflect.get(target, prop, recv); } } };\n" +
+                        "var proxy = new Proxy(function() {}, handler);\n" +
+                        "42 instanceof proxy";
+        testFalse(code);
     }
 
     @ExportLibrary(InteropLibrary.class)
