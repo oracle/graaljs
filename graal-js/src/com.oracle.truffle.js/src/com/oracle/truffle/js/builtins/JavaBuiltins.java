@@ -528,10 +528,9 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         @Specialization
-        protected final boolean isType(Object obj,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+        protected final boolean isType(Object obj) {
             TruffleLanguage.Env env = getRealm().getEnv();
-            return env.isHostObject(obj) && interop.isMetaObject(obj);
+            return env.isHostSymbol(obj);
         }
     }
 
