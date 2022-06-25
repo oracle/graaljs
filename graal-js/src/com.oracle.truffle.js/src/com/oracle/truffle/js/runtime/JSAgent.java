@@ -53,28 +53,23 @@ import org.graalvm.collections.Equivalence;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.WaiterRecord;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistryObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Base class for ECMA2017 8.7 Agents.
  */
-public abstract class JSAgent implements EcmaAgent {
+public abstract class JSAgent {
 
     private static final AtomicInteger signifierGenerator = new AtomicInteger(0);
 
     /* ECMA2017 Agent Record */
     private final int signifier;
     private boolean canBlock;
-
-    private boolean inAtomicSection;
-    private boolean inCriticalSection;
 
     /**
      * ECMA 8.4 "PromiseJobs" job queue.
@@ -115,7 +110,7 @@ public abstract class JSAgent implements EcmaAgent {
         this.finalizationRegistryQueue = new ArrayDeque<>(4);
     }
 
-    public abstract void wakeAgent(int w);
+    public abstract void wake();
 
     public int getSignifier() {
         return signifier;
@@ -123,40 +118,6 @@ public abstract class JSAgent implements EcmaAgent {
 
     public boolean canBlock() {
         return canBlock;
-    }
-
-    public boolean inCriticalSection() {
-        return inCriticalSection;
-    }
-
-    public void criticalSectionEnter(JSAgentWaiterListEntry wl) {
-        assert !inCriticalSection;
-        wl.lock();
-        inCriticalSection = true;
-    }
-
-    public void criticalSectionLeave(JSAgentWaiterListEntry wl) {
-        assert inCriticalSection;
-        inCriticalSection = false;
-        wl.unlock();
-    }
-
-    public void atomicSectionEnter(JSDynamicObject target) {
-        assert !inAtomicSection;
-        assert JSArrayBufferView.isJSArrayBufferView(target);
-        JSDynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
-        JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
-        waiterList.lock();
-        inAtomicSection = true;
-    }
-
-    public void atomicSectionLeave(JSDynamicObject target) {
-        assert inAtomicSection;
-        assert JSArrayBufferView.isJSArrayBufferView(target);
-        JSDynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
-        JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
-        inAtomicSection = false;
-        waiterList.unlock();
     }
 
     @TruffleBoundary
@@ -167,39 +128,20 @@ public abstract class JSAgent implements EcmaAgent {
     @TruffleBoundary
     public void enqueueWaitAsyncPromiseJob(WaiterRecord waiter) {
         waitAsyncJobsQueue.push(waiter);
+        // Wake up agent to process waitAsync and promise queue now.
+        if (waiter.isReadyToResolve()) {
+            waiter.getAgent().wake();
+        }
     }
 
     @TruffleBoundary
     public final void processAllPromises(boolean processWeakRefs) {
         try {
-            boolean checkWaiterRecords = !waitAsyncJobsQueue.isEmpty();
             interopBoundaryEnter();
+            boolean checkWaiterRecords = !waitAsyncJobsQueue.isEmpty();
             while (!promiseJobsQueue.isEmpty() || checkWaiterRecords) {
-                checkWaiterRecords = false;
-                Iterator<WaiterRecord> iter = waitAsyncJobsQueue.descendingIterator();
-                while (iter.hasNext()) {
-                    WaiterRecord wr = iter.next();
-                    JSAgentWaiterListEntry wl = wr.getWaiterListEntry();
-                    criticalSectionEnter(wl);
-                    boolean isReadyToResolve = wr.isReadyToResolve();
-                    try {
-                        if (isReadyToResolve) {
-                            iter.remove();
-                            checkWaiterRecords = true;
-                            if (wl.contains(wr)) {
-                                wr.setResult(Strings.TIMED_OUT);
-                                wl.remove(wr);
-                            }
-                        }
-                    } finally {
-                        criticalSectionLeave(wl);
-                    }
-                    if (isReadyToResolve) {
-                        JSDynamicObject resolve = (JSDynamicObject) wr.getPromiseCapability().getResolve();
-                        assert JSFunction.isJSFunction(resolve);
-                        Object result = wr.getResult();
-                        JSFunction.call(JSArguments.createOneArg(Undefined.instance, resolve, result));
-                    }
+                if (checkWaiterRecords) {
+                    checkWaiterRecords = processWaitAsyncJobs();
                 }
                 if (!promiseJobsQueue.isEmpty()) {
                     JSFunctionObject nextJob = promiseJobsQueue.pollLast();
@@ -227,6 +169,36 @@ public abstract class JSAgent implements EcmaAgent {
                 promiseRejectionTracker.promiseReactionJobsProcessed();
             }
         }
+    }
+
+    private boolean processWaitAsyncJobs() {
+        boolean checkWaiterRecords = false;
+        Iterator<WaiterRecord> iter = waitAsyncJobsQueue.descendingIterator();
+        while (iter.hasNext()) {
+            WaiterRecord wr = iter.next();
+            JSAgentWaiterListEntry wl = wr.getWaiterListEntry();
+            wl.enterCriticalSection();
+            boolean isReadyToResolve = wr.isReadyToResolve();
+            try {
+                if (isReadyToResolve) {
+                    iter.remove();
+                    checkWaiterRecords = true;
+                    if (wl.contains(wr)) {
+                        wr.setResult(Strings.TIMED_OUT);
+                        wl.remove(wr);
+                    }
+                }
+            } finally {
+                wl.leaveCriticalSection();
+            }
+            if (isReadyToResolve) {
+                JSDynamicObject resolve = (JSDynamicObject) wr.getPromiseCapability().getResolve();
+                assert JSFunction.isJSFunction(resolve);
+                Object result = wr.getResult();
+                JSFunction.call(JSArguments.createOneArg(Undefined.instance, resolve, result));
+            }
+        }
+        return checkWaiterRecords;
     }
 
     /**
@@ -271,13 +243,13 @@ public abstract class JSAgent implements EcmaAgent {
         int result = 0;
         for (WaiterRecord wr : waitAsyncJobsQueue) {
             if (wr.getWaiterListEntry() == wl) {
-                criticalSectionEnter(wl);
+                wl.enterCriticalSection();
                 try {
                     if (wr.isReadyToResolve()) {
                         result++;
                     }
                 } finally {
-                    criticalSectionLeave(wl);
+                    wl.leaveCriticalSection();
                 }
             }
         }
@@ -288,5 +260,10 @@ public abstract class JSAgent implements EcmaAgent {
     public void setCanBlock(boolean canBlock) {
         this.canBlock = canBlock;
     }
+
+    /**
+     * Terminate the agent.
+     */
+    public abstract void terminate();
 
 }

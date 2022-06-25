@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
+import static org.junit.Assert.assertEquals;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -50,14 +52,12 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
 
-import static org.junit.Assert.assertEquals;
-
 public class AtomicsBuiltinsTest {
 
     @Test
     public void testNotify() {
         int agentCount = 10;
-        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.TEST262_MODE_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().allowCreateThread(true).option(JSContextOptions.TEST262_MODE_NAME, "true").build()) {
             String code = "let agentCount = " + agentCount + ";\n" //
                             + "for (let i = 0; i < agentCount; i++) {\n" //
                             + "  $262.agent.start(`\n" //
@@ -259,6 +259,23 @@ public class AtomicsBuiltinsTest {
                         + "result === -Infinity && array[0] === 0;"; //
         result = context.eval(JavaScriptLanguage.ID, code);
         Assert.assertTrue(result.asBoolean());
+    }
+
+    @Test
+    public void testAgentStartReturnValue() {
+        try (Context context = JSTest.newContextBuilder().allowCreateThread(true).option(JSContextOptions.TEST262_MODE_NAME, "true").build()) {
+            String code = "" +
+                            "var startResult = $262.agent.start(`\n" +
+                            "  $262.agent.receiveBroadcast(function(sab) {\n" +
+                            "    $262.agent.leaving();\n" +
+                            "  });\n" +
+                            "`);\n" +
+                            "const sab = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);\n" +
+                            "$262.agent.broadcast(sab);\n" +
+                            "startResult;";
+            Value result = context.eval(JavaScriptLanguage.ID, code);
+            Assert.assertTrue(result.isNull());
+        }
     }
 
 }

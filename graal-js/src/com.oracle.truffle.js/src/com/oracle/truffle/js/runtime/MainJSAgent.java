@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,18 +50,12 @@ public final class MainJSAgent extends JSAgent {
     }
 
     @Override
-    public boolean isTerminated() {
-        return false;
-    }
-
-    @Override
-    public void terminate(int timeout) {
+    public void terminate() {
         // No-op
     }
 
     @Override
-    public void wakeAgent(int w) {
+    public void wake() {
         // No-op
     }
-
 }

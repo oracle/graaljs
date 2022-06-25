@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,7 @@ package com.oracle.truffle.js.runtime;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -57,14 +57,15 @@ public class JSAgentWaiterList {
 
     private final Map<Integer, JSAgentWaiterListEntry> waiters;
 
-    private final Lock globalMonitor;
+    private final ReentrantLock atomicSection;
 
     @TruffleBoundary
     public JSAgentWaiterList() {
         this.waiters = new ConcurrentHashMap<>();
-        this.globalMonitor = new ReentrantLock();
+        this.atomicSection = new ReentrantLock();
     }
 
+    @TruffleBoundary
     public JSAgentWaiterListEntry getListForIndex(int indexPos) {
         JSAgentWaiterListEntry list = Boundaries.mapPutIfAbsent(waiters, indexPos, new JSAgentWaiterListEntry());
         if (list == null) {
@@ -74,32 +75,54 @@ public class JSAgentWaiterList {
         }
     }
 
-    public void lock() {
-        globalMonitor.lock();
+    @TruffleBoundary
+    public void enterAtomicSection() {
+        assert !inAtomicSection();
+        atomicSection.lock();
     }
 
-    public void unlock() {
-        globalMonitor.unlock();
+    @TruffleBoundary
+    public void leaveAtomicSection() {
+        assert inAtomicSection();
+        atomicSection.unlock();
+    }
+
+    public boolean inAtomicSection() {
+        return atomicSection.isHeldByCurrentThread();
     }
 
     public static final class JSAgentWaiterListEntry extends ConcurrentLinkedQueue<WaiterRecord> {
 
         private static final long serialVersionUID = 2655886588267252886L;
 
-        private final Lock indexMonitor;
+        private final ReentrantLock criticalSection;
+        private final Condition waitCondition;
 
         @TruffleBoundary
         public JSAgentWaiterListEntry() {
-            super();
-            this.indexMonitor = new ReentrantLock();
+            this.criticalSection = new ReentrantLock();
+            this.waitCondition = criticalSection.newCondition();
         }
 
-        public void lock() {
-            indexMonitor.lock();
+        @TruffleBoundary
+        public void enterCriticalSection() {
+            assert !inCriticalSection();
+            criticalSection.lock();
         }
 
-        public void unlock() {
-            indexMonitor.unlock();
+        @TruffleBoundary
+        public void leaveCriticalSection() {
+            assert inCriticalSection();
+            criticalSection.unlock();
+        }
+
+        public Condition getCondition() {
+            return waitCondition;
+        }
+
+        @TruffleBoundary
+        public boolean inCriticalSection() {
+            return criticalSection.isHeldByCurrentThread();
         }
     }
 
@@ -163,11 +186,18 @@ public class JSAgentWaiterList {
         }
 
         public void setNotified() {
+            assert wl.inCriticalSection();
             assert !notified;
             notified = true;
         }
 
+        public boolean isNotified() {
+            assert wl.inCriticalSection();
+            return notified;
+        }
+
         public boolean isReadyToResolve() {
+            assert wl.inCriticalSection();
             return notified || isTimedOut();
         }
 
@@ -180,6 +210,10 @@ public class JSAgentWaiterList {
 
         public void enqueueInAgent() {
             agent.enqueueWaitAsyncPromiseJob(this);
+        }
+
+        public JSAgent getAgent() {
+            return agent;
         }
     }
 

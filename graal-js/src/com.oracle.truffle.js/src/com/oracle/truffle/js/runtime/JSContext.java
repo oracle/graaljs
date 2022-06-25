@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import static com.oracle.truffle.js.runtime.JSRealm.SYMBOL_ITERATOR_NAME;
+import static com.oracle.truffle.js.runtime.builtins.JSNonProxy.GET_SYMBOL_SPECIES_NAME;
+
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.charset.Charset;
@@ -154,9 +157,6 @@ import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
-
-import static com.oracle.truffle.js.runtime.JSRealm.SYMBOL_ITERATOR_NAME;
-import static com.oracle.truffle.js.runtime.builtins.JSNonProxy.GET_SYMBOL_SPECIES_NAME;
 
 public class JSContext {
 
@@ -785,7 +785,7 @@ public class JSContext {
 
         if (isTop) {
             if (contextOptions.isTest262Mode() || contextOptions.isTestV8Mode()) {
-                newRealm.setAgent(new DebugJSAgent(getPromiseRejectionTracker(), contextOptions.canAgentBlock(), env.getOptions()));
+                newRealm.setAgent(new DebugJSAgent(getPromiseRejectionTracker(), contextOptions.canAgentBlock()));
             } else {
                 newRealm.setAgent(new MainJSAgent(getPromiseRejectionTracker()));
             }

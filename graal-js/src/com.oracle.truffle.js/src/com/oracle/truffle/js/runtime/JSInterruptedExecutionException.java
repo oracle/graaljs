@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -54,6 +56,12 @@ public final class JSInterruptedExecutionException extends AbstractTruffleExcept
 
     public JSInterruptedExecutionException(String message, Node originatedBy) {
         super(message, originatedBy);
+        CompilerAsserts.neverPartOfCompilation();
+    }
+
+    @TruffleBoundary
+    public static JSInterruptedExecutionException wrap(InterruptedException ex) {
+        return new JSInterruptedExecutionException(ex.getMessage(), null);
     }
 
     @ExportMessage

@@ -203,7 +203,8 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
         @Specialization
         protected Object start(Object obj) {
             String sourceText = Strings.toJavaString(JSRuntime.toString(obj));
-            return ((DebugJSAgent) getRealm().getAgent()).startNewAgent(sourceText);
+            ((DebugJSAgent) getRealm().getAgent()).startNewAgent(sourceText);
+            return Undefined.instance;
         }
     }
 
