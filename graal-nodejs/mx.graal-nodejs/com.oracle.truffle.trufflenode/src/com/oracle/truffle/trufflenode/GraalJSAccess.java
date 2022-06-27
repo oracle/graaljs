@@ -1475,11 +1475,10 @@ public final class GraalJSAccess {
     }
 
     private static void pollAgentWaiterListQueue() {
+        assert Thread.holdsLock(agentWaiterListMap);
         WeakAgentWaiterList ref;
         while ((ref = (WeakAgentWaiterList) agentWaiterListQueue.poll()) != null) {
-            if (agentWaiterListMap.get(ref.pointer).get() == null) {
-                agentWaiterListMap.remove(ref.pointer);
-            }
+            agentWaiterListMap.remove(ref.pointer, ref);
         }
     }
 
