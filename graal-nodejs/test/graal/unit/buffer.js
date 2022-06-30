@@ -90,6 +90,9 @@ describe('Buffer.utf8Write', function() {
     it('should deal with utf8 inputs #2', function() {
         assert.strictEqual(Buffer.alloc(10).utf8Write('½½½'), 6);
     });
+    it('should handle int overflow', function() {
+        assert.strictEqual(Buffer.alloc(10).utf8Write('a', 1, 0xffffffff), 1);
+    });
     it('length is zero', function() {
         assert.strictEqual(Buffer.alloc(0).utf8Write.length, 0);
     });
