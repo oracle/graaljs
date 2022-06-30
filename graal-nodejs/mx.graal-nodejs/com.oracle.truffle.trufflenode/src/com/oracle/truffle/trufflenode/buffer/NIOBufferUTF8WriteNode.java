@@ -150,7 +150,10 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
             interopBuffer = true;
             rawBuffer = interopArrayBufferGetContents(arrayBuffer);
         }
-        int destLimit = Math.min(bufferLen, destOffset + bytes);
+        int destLimit = destOffset + bytes;
+        if (destLimit > bufferLen || destLimit < 0) {
+            destLimit = bufferLen;
+        }
         ByteBuffer buffer = Boundaries.byteBufferSlice(rawBuffer, bufferOffset + destOffset, bufferOffset + destLimit);
         doEncode(str, buffer);
         if (interopBuffer) {
