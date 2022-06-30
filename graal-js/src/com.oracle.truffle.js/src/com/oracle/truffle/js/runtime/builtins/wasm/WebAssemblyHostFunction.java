@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -55,8 +56,13 @@ import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSErrorType;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.interop.InteropArray;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -64,9 +70,10 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 @ExportLibrary(InteropLibrary.class)
 public class WebAssemblyHostFunction implements TruffleObject {
+    private final JSContext context;
     private final Object fn;
-    private final TruffleString returnType;
-    private final boolean returnTypeIsI64;
+    private final TruffleString[] resultTypes;
+    private final boolean anyReturnTypeIsI64;
     private final boolean anyArgTypeIsI64;
 
     public WebAssemblyHostFunction(JSContext context, Object fn, TruffleString typeInfo) {
@@ -77,9 +84,11 @@ public class WebAssemblyHostFunction implements TruffleObject {
         int idxOpen = Strings.indexOf(typeInfo, '(');
         int idxClose = Strings.indexOf(typeInfo, ')');
 
-        this.returnType = Strings.substring(context, typeInfo, idxClose + 1);
-        this.returnTypeIsI64 = JSWebAssemblyValueTypes.isI64(returnType);
+        TruffleString returnTypes = Strings.lazySubstring(typeInfo, idxClose + 1);
+        this.resultTypes = !Strings.isEmpty(returnTypes) ? Strings.split(context, returnTypes, Strings.SPACE) : new TruffleString[0];
+        this.anyReturnTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxClose + 1) >= 0;
         this.anyArgTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxOpen + 1, idxClose) >= 0;
+        this.context = context;
     }
 
     @ExportMessage
@@ -94,7 +103,7 @@ public class WebAssemblyHostFunction implements TruffleObject {
                     @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
                     @Cached BranchProfile errorBranch,
                     @CachedLibrary("this") InteropLibrary self) {
-        if (!JavaScriptLanguage.get(self).getJSContext().getContextOptions().isWasmBigInt() && (returnTypeIsI64 || anyArgTypeIsI64)) {
+        if (!JavaScriptLanguage.get(self).getJSContext().getContextOptions().isWasmBigInt() && (anyReturnTypeIsI64 || anyArgTypeIsI64)) {
             errorBranch.enter();
             throw Errors.createTypeError("wasm function signature contains illegal type");
         }
@@ -106,11 +115,38 @@ public class WebAssemblyHostFunction implements TruffleObject {
 
         Object result = callNode.executeCall(JSArguments.create(Undefined.instance, fn, jsArgs));
 
-        if (returnType.isEmpty()) {
+        if (resultTypes.length == 0) {
             return Undefined.instance;
+        } else if (resultTypes.length == 1) {
+            return toWebAssemblyValueNode.execute(result, resultTypes[0]);
         } else {
-            return toWebAssemblyValueNode.execute(result, returnType);
+            if (!context.getContextOptions().isWasmMultiValue()) {
+                throw JSException.create(JSErrorType.RuntimeError, "Multiple wasm result values are not enabled");
+            }
+            if (!(result instanceof JSDynamicObject)) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+            IteratorRecord iter = JSRuntime.getIterator((JSDynamicObject) result);
+            Object[] values = new Object[resultTypes.length];
+            int i = 0;
+            Object next = Boolean.TRUE;
+            while (next != Boolean.FALSE) {
+                next = JSRuntime.iteratorStep(iter);
+                if (next != Boolean.FALSE) {
+                    if (i >= values.length) {
+                        throw JSException.create(JSErrorType.TypeError, "Invalid result array arity");
+                    }
+                    values[i] = JSRuntime.iteratorValue((JSDynamicObject) next);
+                    i++;
+                }
+            }
+            if (i != values.length) {
+                throw JSException.create(JSErrorType.TypeError, "Invalid result array arity");
+            }
+            for (int j = 0; j < values.length; j++) {
+                values[j] = toWebAssemblyValueNode.execute(values[j], resultTypes[j]);
+            }
+            return InteropArray.create(values);
         }
     }
-
 }
