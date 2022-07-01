@@ -263,20 +263,19 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         }
                     }
 
-                    switch (returnLength) {
-                        case 0:
-                            return Undefined.instance;
-                        case 1:
-                            return toJSValueNode.execute(wasmResult);
-                        default:
-                            if (!context.getContextOptions().isWasmMultiValue()) {
-                                throw JSException.create(JSErrorType.RuntimeError, "Multiple wasm result values are not enabled");
-                            }
-                            Object[] values = new Object[returnLength];
-                            for (int i = 0; i < returnLength; i++) {
-                                values[i] = toJSValueNode.execute(exportFunctionLib.readArrayElement(wasmResult, i));
-                            }
-                            return JSArray.createZeroBasedObjectArray(context, realm, values);
+                    if (returnLength == 0) {
+                        return Undefined.instance;
+                    } else if (returnLength == 1) {
+                        return toJSValueNode.execute(wasmResult);
+                    } else {
+                        if (!context.getContextOptions().isWasmMultiValue()) {
+                            throw JSException.create(JSErrorType.RuntimeError, "Multiple wasm result values are not enabled");
+                        }
+                        Object[] values = new Object[returnLength];
+                        for (int i = 0; i < returnLength; i++) {
+                            values[i] = toJSValueNode.execute(exportFunctionLib.readArrayElement(wasmResult, i));
+                        }
+                        return JSArray.createZeroBasedObjectArray(context, realm, values);
                     }
                 } catch (InteropException ex) {
                     throw Errors.shouldNotReachHere(ex);

@@ -2087,7 +2087,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1137582.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1146861.js",
@@ -2148,7 +2148,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1217064.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-12270.js",
@@ -3839,7 +3839,7 @@
     "filePath" : "mjsunit/wasm/generic-wrapper.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "fails with Argument type is i64"
   }, {
@@ -4119,7 +4119,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-08-10"
+    "comment" : "GraalWASM error messages do not match V8 error messages"
   }, {
     "filePath" : "mjsunit/wasm/multiple-code-spaces.js",
     "status" : "SKIP",
