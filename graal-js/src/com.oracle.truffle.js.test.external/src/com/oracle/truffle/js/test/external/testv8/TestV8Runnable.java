@@ -83,6 +83,8 @@ public class TestV8Runnable extends TestRunnable {
     private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
     private static final String NO_HARMONY_REGEXP_MATCH_INDICES = "--no-harmony-regexp-match-indices";
 
+    private static final String WASM_MULTI_VALUE = "--experimental-wasm-mv";
+
     private static final Set<String> UNSUPPORTED_FLAGS = new HashSet<>(Arrays.asList(new String[]{
                     "--experimental-d8-web-snapshot-api",
                     "--experimental-web-snapshots",
@@ -185,6 +187,9 @@ public class TestV8Runnable extends TestRunnable {
         }
         if (flags.contains(HARMONY_TEMPORAL)) {
             extraOptions.put(JSContextOptions.TEMPORAL_NAME, "true");
+        }
+        if (flags.contains(WASM_MULTI_VALUE) && !suite.getConfig().isPolyglot()) {
+            supported = false;
         }
 
         if (supported) {
