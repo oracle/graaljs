@@ -135,8 +135,6 @@ public final class JSConfig {
     public static final boolean FillExceptionStack = true;
     /** Always capture stack trace eagerly. */
     public static final boolean EagerStackTrace = false;
-    /** Used to be an option, was only used by Nashorn. */
-    public static final boolean U180EWhitespace = false;
     static final int StackTraceLimit = 10;
     static final int StringLengthLimit = (1 << 30) - 1 - 24; // v8::String::kMaxLength
     static final int MaxTypedArrayLength = 0x3fff_ffff;

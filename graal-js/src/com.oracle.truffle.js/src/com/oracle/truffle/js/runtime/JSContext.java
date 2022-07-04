@@ -1188,7 +1188,6 @@ public class JSContext {
         return webAssemblyGlobalFactory;
     }
 
-    private static final String REGEX_OPTION_U180E_WHITESPACE = "U180EWhitespace";
     private static final String REGEX_OPTION_REGRESSION_TEST_MODE = "RegressionTestMode";
     private static final String REGEX_OPTION_DUMP_AUTOMATA = "DumpAutomata";
     private static final String REGEX_OPTION_STEP_EXECUTION = "StepExecution";
@@ -1197,9 +1196,6 @@ public class JSContext {
 
     private static String createRegexOptions(JSContextOptions contextOptions) {
         StringBuilder options = new StringBuilder();
-        if (JSConfig.U180EWhitespace) {
-            options.append(REGEX_OPTION_U180E_WHITESPACE).append("=true,");
-        }
         if (contextOptions.isRegexRegressionTestMode()) {
             options.append(REGEX_OPTION_REGRESSION_TEST_MODE).append("=true,");
         }
