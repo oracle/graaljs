@@ -1830,7 +1830,7 @@ public final class JSRuntime {
             return false; // fastpath
         }
         return (0x0009 <= cp && cp <= 0x000D) || (0x2000 <= cp && cp <= 0x200A) || cp == 0x0020 || cp == 0x00A0 || cp == 0x1680 || cp == 0x2028 || cp == 0x2029 || cp == 0x202F ||
-                        cp == 0x205F || cp == 0x3000 || cp == 0xFEFF || (JSConfig.U180EWhitespace && cp == 0x180E);
+                        cp == 0x205F || cp == 0x3000 || cp == 0xFEFF;
     }
 
     private static boolean isLineTerminator(char codePoint) {
