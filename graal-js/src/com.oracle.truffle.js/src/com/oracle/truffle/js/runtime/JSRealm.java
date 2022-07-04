@@ -57,7 +57,6 @@ import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
-import com.oracle.truffle.js.runtime.objects.Null;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
@@ -136,6 +135,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
+import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSMath;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -195,6 +195,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -349,6 +350,7 @@ public class JSRealm {
     private final JSFunctionObject finalizationRegistryConstructor;
     private final JSDynamicObject finalizationRegistryPrototype;
 
+    private final JSFunctionObject iteratorConstructor;
     private final JSDynamicObject iteratorPrototype;
     private final JSDynamicObject arrayIteratorPrototype;
     private final JSDynamicObject setIteratorPrototype;
@@ -695,6 +697,8 @@ public class JSRealm {
             this.bigIntPrototype = null;
         }
 
+        ctor = JSIterator.createConstructor(this);
+        this.iteratorConstructor = ctor.getFunctionObject();
         this.iteratorPrototype = createIteratorPrototype();
         this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
         this.setIteratorPrototype = es6 ? createSetIteratorPrototype() : null;
@@ -1618,6 +1622,10 @@ public class JSRealm {
         return throwerAccessor;
     }
 
+    public JSFunctionObject getIteratorConstructor() {
+        return iteratorConstructor;
+    }
+
     public JSDynamicObject getIteratorPrototype() {
         return iteratorPrototype;
     }
@@ -1700,6 +1708,7 @@ public class JSRealm {
         putGlobalProperty(JSRegExp.CLASS_NAME, getRegExpConstructor());
         putGlobalProperty(JSMath.CLASS_NAME, mathObject);
         putGlobalProperty(JSON.CLASS_NAME, JSON.create(this));
+        putGlobalProperty(JSIterator.CLASS_NAME, getIteratorConstructor());
 
         JSObjectUtil.putDataProperty(context, global, Strings.NAN, Double.NaN);
         JSObjectUtil.putDataProperty(context, global, Strings.INFINITY, Double.POSITIVE_INFINITY);

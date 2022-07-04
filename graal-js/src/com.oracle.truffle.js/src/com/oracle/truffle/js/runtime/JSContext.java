@@ -100,6 +100,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
+import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -437,6 +438,7 @@ public class JSContext {
 
     private final JSObjectFactory ordinaryObjectFactory;
     private final JSObjectFactory arrayFactory;
+    private final JSObjectFactory iteratorFactory;
     private final JSObjectFactory lazyRegexArrayFactory;
     private final JSObjectFactory lazyRegexIndicesArrayFactory;
     private final JSObjectFactory booleanFactory;
@@ -608,6 +610,7 @@ public class JSContext {
 
         this.ordinaryObjectFactory = builder.create(JSOrdinary.INSTANCE);
         this.arrayFactory = builder.create(JSArray.INSTANCE);
+        this.iteratorFactory = builder.create(JSIterator.INSTANCE);
         this.lazyRegexArrayFactory = builder.create(JSArray.INSTANCE);
         this.lazyRegexIndicesArrayFactory = builder.create(JSArray.INSTANCE);
         this.booleanFactory = builder.create(JSBoolean.INSTANCE);
@@ -919,6 +922,10 @@ public class JSContext {
 
     public final JSObjectFactory getArrayFactory() {
         return arrayFactory;
+    }
+
+    public final JSObjectFactory getIteratorFactory() {
+        return iteratorFactory;
     }
 
     public final JSObjectFactory getLazyRegexArrayFactory() {
