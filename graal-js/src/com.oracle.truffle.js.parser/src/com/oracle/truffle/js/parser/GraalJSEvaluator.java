@@ -170,10 +170,15 @@ public final class GraalJSEvaluator implements JSParser {
             code.append("*");
         }
         code.append(' ');
-        code.append("anonymous");
+        boolean nashornCompat = context.getEcmaScriptVersion() == 5 && context.isOptionNashornCompatibilityMode();
+        if (!nashornCompat) {
+            code.append("anonymous");
+        }
         code.append('(');
         code.append(parameterList);
-        code.append('\n');
+        if (!nashornCompat) {
+            code.append('\n');
+        }
         code.append(") {");
         code.append(wrappedBody);
         code.append("})");
