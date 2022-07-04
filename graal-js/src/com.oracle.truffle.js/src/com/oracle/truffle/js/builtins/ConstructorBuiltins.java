@@ -2815,9 +2815,18 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, isNewTargetCase);
         }
 
-        @Specialization
+        protected boolean isValidTarget(boolean isNewTargetCase, JSDynamicObject newTarget) {
+            return isNewTargetCase && newTarget != Undefined.instance;
+        }
+
+        @Specialization(guards = {"isValidTarget(isNewTargetCase, newTarget)"})
         protected JSDynamicObject constructIterator(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
             return swapPrototype(JSIterator.create(getContext(), getRealm()), newTarget);
+        }
+
+        @Specialization(guards = {"!isValidTarget(isNewTargetCase, newTarget)"})
+        protected JSDynamicObject constructIteratorTypeError(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
+            throw Errors.createTypeError("iterator is abstract (TODO: Better error)");
         }
 
         @Override
