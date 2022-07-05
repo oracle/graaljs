@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -62,8 +63,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  */
 @ImportStatic({IsArrayNode.Kind.class, CompilerDirectives.class})
 public abstract class IsArrayNode extends JavaScriptBaseNode {
-
-    protected static final int MAX_SHAPE_COUNT = 1;
 
     final Kind kind;
 
@@ -90,11 +89,10 @@ public abstract class IsArrayNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"kind == FastArray || kind == FastOrTypedArray", "object.getShape() == cachedShape"}, limit = "MAX_SHAPE_COUNT")
+    @Specialization(guards = {"kind == FastArray || kind == FastOrTypedArray", "object.getShape() == cachedShape"}, limit = "1")
     protected final boolean doJSFastArrayShape(JSArrayObject object,
-                    @Cached("object.getShape()") Shape cachedShape,
-                    @Cached("isArray(object)") boolean cachedResult) {
-        return checkResult(object, cachedResult);
+                    @Cached("getInitialArrayShape()") Shape cachedShape) {
+        return checkResult(object, true);
     }
 
     @Specialization(guards = {"kind == FastArray || kind == FastOrTypedArray"}, replaces = "doJSFastArrayShape")
@@ -128,6 +126,11 @@ public abstract class IsArrayNode extends JavaScriptBaseNode {
             assert kind == Kind.AnyArray;
             return JSObject.hasArray(object);
         }
+    }
+
+    protected final Shape getInitialArrayShape() {
+        JSRealm realm = getRealm();
+        return realm.getContext().getArrayFactory().getShape(realm);
     }
 
     protected final boolean checkResult(Object object, boolean result) {

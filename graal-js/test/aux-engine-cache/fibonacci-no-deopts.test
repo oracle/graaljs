@@ -4,6 +4,11 @@
 # *
 # * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
 # */
+#
+# ------
+# Test that fibonacci.js does not deopt when loading from aux cache.
+# ------
+#
 > mkdir ${TMP_DIR}/aux
 > cd ${TMP_DIR}/aux
 >[0?] js --native --experimental-options --engine.TraceCache --engine.CacheStore=${TMP_DIR}/fibo.image  ${TEST_DIR}/resources/fibonacci.js
