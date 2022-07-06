@@ -548,6 +548,11 @@ public class JSRealm {
      */
     private Object customEsmPathMappingCallback;
 
+    /**
+     * Helper field for PromiseHook.TYPE_INIT event (stores the parent promise).
+     */
+    private JSDynamicObject parentPromise;
+
     protected JSRealm(JSContext context, TruffleLanguage.Env env) {
         this(context, env, null);
     }
@@ -3099,5 +3104,19 @@ public class JSRealm {
             }
         }
         return null;
+    }
+
+    public void storeParentPromise(JSDynamicObject promise) {
+        parentPromise = promise;
+    }
+
+    public JSDynamicObject fetchParentPromise() {
+        JSDynamicObject parent = parentPromise;
+        if (parent == null) {
+            parent = Undefined.instance;
+        } else {
+            parentPromise = null;
+        }
+        return parent;
     }
 }

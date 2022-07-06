@@ -1600,33 +1600,17 @@ public class JSContext {
         }
     }
 
-    // Helper field for PromiseHook.TYPE_INIT event (stores the parent promise)
-    private JSDynamicObject parentPromise;
-
     public final void notifyPromiseHook(int changeType, JSDynamicObject promise) {
         if (!promiseHookNotUsedAssumption.isValid() && promiseHook != null) {
+            JSRealm realm = JSRealm.getMain(null);
             if (changeType == -1) {
                 // Information about parent for the incoming INIT event
-                storeParentPromise(promise);
+                realm.storeParentPromise(promise);
             } else {
-                JSDynamicObject parent = (changeType == PromiseHook.TYPE_INIT) ? fetchParentPromise() : Undefined.instance;
+                JSDynamicObject parent = (changeType == PromiseHook.TYPE_INIT) ? realm.fetchParentPromise() : Undefined.instance;
                 notifyPromiseHookImpl(changeType, promise, parent);
             }
         }
-    }
-
-    private void storeParentPromise(JSDynamicObject promise) {
-        parentPromise = promise;
-    }
-
-    private JSDynamicObject fetchParentPromise() {
-        JSDynamicObject parent = parentPromise;
-        if (parent == null) {
-            parent = Undefined.instance;
-        } else {
-            parentPromise = null;
-        }
-        return parent;
     }
 
     @TruffleBoundary
