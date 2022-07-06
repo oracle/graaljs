@@ -45,13 +45,20 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 @ExportLibrary(InteropLibrary.class)
-public final class JSIteratorObject extends JSNonProxyObject {
+public final class JSWrapForIteratorObject extends JSNonProxyObject {
+    private final IteratorRecord iterated;
 
-    protected JSIteratorObject(Shape shape) {
+    protected JSWrapForIteratorObject(Shape shape, IteratorRecord iterated) {
         super(shape);
+        this.iterated = iterated;
+    }
+
+    public IteratorRecord getIterated() {
+        return iterated;
     }
 
     @Override
@@ -59,7 +66,7 @@ public final class JSIteratorObject extends JSNonProxyObject {
         return JSIterator.CLASS_NAME;
     }
 
-    public static JSIteratorObject create(JSRealm realm, JSObjectFactory factory) {
-        return factory.initProto(new JSIteratorObject(factory.getShape(realm)), realm);
+    public static JSWrapForIteratorObject create(JSRealm realm, JSObjectFactory factory, IteratorRecord iterated) {
+        return factory.initProto(new JSWrapForIteratorObject(factory.getShape(realm), iterated), realm);
     }
 }

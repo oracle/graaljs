@@ -156,6 +156,7 @@ import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
+import com.oracle.truffle.js.runtime.builtins.JSWrapForIterator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
@@ -352,6 +353,7 @@ public class JSRealm {
 
     private final JSFunctionObject iteratorConstructor;
     private final JSDynamicObject iteratorPrototype;
+    private final JSDynamicObject wrapForIteratorPrototype;
     private final JSDynamicObject arrayIteratorPrototype;
     private final JSDynamicObject setIteratorPrototype;
     private final JSDynamicObject mapIteratorPrototype;
@@ -699,12 +701,13 @@ public class JSRealm {
 
         ctor = JSIterator.createConstructor(this);
         this.iteratorConstructor = ctor.getFunctionObject();
-        this.iteratorPrototype = createIteratorPrototype();
+        this.iteratorPrototype = ctor.getPrototype();
         this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
         this.setIteratorPrototype = es6 ? createSetIteratorPrototype() : null;
         this.mapIteratorPrototype = es6 ? createMapIteratorPrototype() : null;
         this.stringIteratorPrototype = es6 ? createStringIteratorPrototype() : null;
         this.regExpStringIteratorPrototype = context.getContextOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2019 ? createRegExpStringIteratorPrototype() : null;
+        this.wrapForIteratorPrototype = JSWrapForIterator.INSTANCE.createPrototype(this, iteratorConstructor);
 
         ctor = JSCollator.createConstructor(this);
         this.collatorConstructor = ctor.getFunctionObject();
@@ -749,6 +752,7 @@ public class JSRealm {
         this.enumerateIteratorPrototype = JSFunction.createEnumerateIteratorPrototype(this);
         this.forInIteratorPrototype = JSFunction.createForInIteratorPrototype(this);
         this.arrayProtoValuesIterator = (JSDynamicObject) JSDynamicObject.getOrDefault(getArrayPrototype(), Symbol.SYMBOL_ITERATOR, Undefined.instance);
+
 
         if (context.isOptionSharedArrayBuffer()) {
             ctor = JSSharedArrayBuffer.createConstructor(this);
@@ -1630,6 +1634,10 @@ public class JSRealm {
         return iteratorPrototype;
     }
 
+    public JSDynamicObject getWrapForIteratorPrototype() {
+        return wrapForIteratorPrototype;
+    }
+
     public JSDynamicObject getAsyncIteratorPrototype() {
         return asyncIteratorPrototype;
     }
@@ -2147,19 +2155,6 @@ public class JSRealm {
         JSObject obj = JSOrdinary.createInit(this);
         JSObjectUtil.putFunctionsFromContainer(this, obj, PerformanceBuiltins.BUILTINS);
         return obj;
-    }
-
-    /**
-     * Creates the %IteratorPrototype% object as specified in ES6 25.1.2.
-     */
-    private JSDynamicObject createIteratorPrototype() {
-        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.getObjectPrototype());
-        JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(this), JSAttributes.getDefaultNotEnumerable());
-        return prototype;
-    }
-
-    private static JSDynamicObject createIteratorPrototypeSymbolIteratorFunction(JSRealm realm) {
-        return JSFunction.create(realm, realm.getContext().getSymbolIteratorThisGetterFunctionData());
     }
 
     /**

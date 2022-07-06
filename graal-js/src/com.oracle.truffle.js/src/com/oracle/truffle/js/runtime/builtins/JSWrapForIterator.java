@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,60 +42,57 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.IteratorFunctionBuiltins;
-import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins;
+import com.oracle.truffle.js.builtins.JSWrapForIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
-public final class JSIterator extends JSNonProxy implements JSConstructorFactory.WithFunctionsAndSpecies, PrototypeSupplier {
+public final class JSWrapForIterator extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
-    public static final TruffleString CLASS_NAME = Strings.constant("Iterator");
-    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Iterator.prototype");
+    public static final JSWrapForIterator INSTANCE = new JSWrapForIterator();
 
-    public static final JSIterator INSTANCE = new JSIterator();
-
-    private JSIterator() {
+    private JSWrapForIterator() {
     }
 
-    public static JSIteratorObject create(JSContext context, JSRealm realm) {
-        JSIteratorObject obj = JSIteratorObject.create(realm, context.getIteratorFactory());
+    public static JSWrapForIteratorObject create(JSContext context, JSRealm realm, IteratorRecord iteratorRecord) {
+        JSObjectFactory factory = context.getWrapForIteratorFactory();
+        JSWrapForIteratorObject obj = factory.initProto(new JSWrapForIteratorObject(factory.getShape(realm), iteratorRecord), realm);
         return context.trackAllocation(obj);
+    }
+
+    public static boolean isWrapForIterator(Object obj) {
+        return obj instanceof JSWrapForIteratorObject;
+    }
+
+    public static JSWrapForIteratorObject asWrapForIterator(Object obj) {
+        assert isWrapForIterator(obj);
+        return (JSWrapForIteratorObject) obj;
     }
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
-        JSContext ctx = realm.getContext();
-
-        JSObject iteratorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-
-        JSObjectUtil.putConstructorProperty(ctx, iteratorPrototype, ctor);
-        JSObjectUtil.putFunctionsFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(iteratorPrototype, CLASS_NAME);
-
-        return iteratorPrototype;
+        JSDynamicObject iteratorPrototype = realm.getIteratorPrototype();
+        JSDynamicObject wrapForIteratorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, iteratorPrototype);
+        JSObjectUtil.putFunctionsFromContainer(realm, wrapForIteratorPrototype, JSWrapForIteratorPrototypeBuiltins.BUILTINS);
+        return wrapForIteratorPrototype;
     }
 
     @Override
-    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
+    public Shape makeInitialShape(JSContext ctx, JSDynamicObject prototype) {
+        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
         return initialShape;
     }
 
-    public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm, IteratorFunctionBuiltins.BUILTINS);
-    }
-
-    public static boolean isJSIterator(Object object) {
-        return object instanceof JSIterator;
+    @Override
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getWrapForIteratorPrototype();
     }
 
     @Override
     public TruffleString getClassName() {
-        return CLASS_NAME;
+        return JSIterator.CLASS_NAME;
     }
 
     @Override
@@ -103,13 +100,4 @@ public final class JSIterator extends JSNonProxy implements JSConstructorFactory
         return getClassName();
     }
 
-    @Override
-    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
-        return getClassName(object);
-    }
-
-    @Override
-    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getIteratorPrototype();
-    }
 }

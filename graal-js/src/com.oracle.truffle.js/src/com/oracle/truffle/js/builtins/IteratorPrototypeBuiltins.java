@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,28 +38,48 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.builtins;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
 
-@ExportLibrary(InteropLibrary.class)
-public final class JSIteratorObject extends JSNonProxyObject {
+/**
+ * Contains builtins for {@linkplain JSArray}.prototype.
+ */
+public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<IteratorPrototypeBuiltins.IteratorPrototype> {
 
-    protected JSIteratorObject(Shape shape) {
-        super(shape);
+    public static final JSBuiltinsContainer BUILTINS = new IteratorPrototypeBuiltins();
+
+    protected IteratorPrototypeBuiltins() {
+        super(JSArray.PROTOTYPE_NAME, IteratorPrototype.class);
+    }
+
+    public enum IteratorPrototype implements BuiltinEnum<IteratorPrototype> {
+        dummy(0);
+
+        private final int length;
+
+        IteratorPrototype(int length) {
+            this.length = length;
+        }
+
+        @Override
+        public int getLength() {
+            return length;
+        }
+
+        @Override
+        public int getECMAScriptVersion() {
+            return BuiltinEnum.super.getECMAScriptVersion();
+        }
     }
 
     @Override
-    public TruffleString getClassName() {
-        return JSIterator.CLASS_NAME;
-    }
-
-    public static JSIteratorObject create(JSRealm realm, JSObjectFactory factory) {
-        return factory.initProto(new JSIteratorObject(factory.getShape(realm)), realm);
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, IteratorPrototype builtinEnum) {
+        switch (builtinEnum) {
+        }
+        return null;
     }
 }
