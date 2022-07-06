@@ -208,7 +208,7 @@ public class ForeignObjectPrototypeTest {
     public void testForeignInstanceof() {
         // test expected Instance
         Assert.assertTrue(testInstanceofIntl("Array", ProxyArray.fromArray("fun", "with", "proxy", "array")));
-        // Assert.assertTrue(testInstanceofIntl("Date", Instant.now())); //see GR-39319
+        Assert.assertTrue(testInstanceofIntl("Date", Instant.now()));
         Assert.assertTrue(testInstanceofIntl("Map", new TestTruffleHash()));
         Assert.assertTrue(testInstanceofIntl("String", new TestTruffleString()));
         Assert.assertTrue(testInstanceofIntl("Boolean", new TestTruffleBoolean()));
