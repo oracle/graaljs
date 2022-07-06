@@ -40,10 +40,18 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.nodes.access.IteratorStepNode;
+import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
  * Contains builtins for {@linkplain JSArray}.prototype.
@@ -57,7 +65,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     public enum IteratorPrototype implements BuiltinEnum<IteratorPrototype> {
-        dummy(0);
+        toArray(0);
 
         private final int length;
 
@@ -79,7 +87,40 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, IteratorPrototype builtinEnum) {
         switch (builtinEnum) {
+            case toArray:
+                return IteratorPrototypeBuiltinsFactory.IteratorToArrayNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
         }
         return null;
+    }
+
+    public abstract static class IteratorToArrayNode extends JSBuiltinNode {
+        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private IteratorStepNode iteratorStepNode;
+        @Child private IteratorValueNode iteratorValueNode;
+        private final BranchProfile growProfile = BranchProfile.create();
+
+        public IteratorToArrayNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+
+            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            iteratorStepNode = IteratorStepNode.create(context);
+            iteratorValueNode = IteratorValueNode.create(context);
+        }
+
+        @Specialization
+        protected JSDynamicObject toArray(Object thisObj) {
+            IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
+            SimpleArrayList<Object> items = new SimpleArrayList<>();
+
+            while (true) {
+                Object next = iteratorStepNode.execute(iterated);
+                if (next == (Boolean) false) {
+                    return JSArray.createConstant(getContext(), getRealm(), items.toArray());
+                }
+
+                Object value = iteratorValueNode.execute(next);
+                items.add(value, growProfile);
+            }
+        }
     }
 }
