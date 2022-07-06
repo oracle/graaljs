@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins;
 
 import java.util.EnumSet;
 
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
@@ -112,7 +111,6 @@ public final class JSWrapForIteratorPrototypeBuiltins extends JSBuiltinsContaine
         return null;
     }
 
-    @ImportStatic({JSIterator.class})
     public abstract static class WrapForIteratorNextNode extends JSBuiltinNode {
         @Child private IteratorNextNode iteratorNextNode;
 

@@ -47,6 +47,8 @@ import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -75,8 +77,13 @@ public final class JSIterator extends JSNonProxy implements JSConstructorFactory
         JSObjectUtil.putConstructorProperty(ctx, iteratorPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(iteratorPrototype, CLASS_NAME);
+        JSObjectUtil.putDataProperty(realm.getContext(), iteratorPrototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(realm), JSAttributes.getDefaultNotEnumerable());
 
         return iteratorPrototype;
+    }
+
+    private static JSDynamicObject createIteratorPrototypeSymbolIteratorFunction(JSRealm realm) {
+        return JSFunction.create(realm, realm.getContext().getSymbolIteratorThisGetterFunctionData());
     }
 
     @Override
