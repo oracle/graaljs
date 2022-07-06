@@ -11,7 +11,7 @@ Below are the most frequently asked questions and answers about JavaScript runni
 ## Compatibility
 
 ### Is GraalVM compatible with the JavaScript language?
-GraalVM is compatible with the ECMAScript 2021 specification and is further developed alongside the 2022 draft specification.
+GraalVM is compatible with the ECMAScript 2022 specification and is further developed alongside the 2023 draft specification.
 The compatibility of GraalVM's JavaScript runtime is verified by external sources, like the [Kangax ECMAScript compatibility table](https://kangax.github.io/compat-table/es6/).
 
 GraalVM JavaScript is tested against a set of test engines, like the official test suite of ECMAScript, [test262](https://github.com/tc39/test262), as well as tests published by V8 and Nashorn, Node.js unit tests, and GraalVM's own unit tests.
@@ -86,12 +86,14 @@ Additionally, you can upload your `package-lock.json` or `package.json` file int
 Reason:
 * Ensure your benchmark considers warmup. During the first few iterations, GraalVM JavaScript will be slower than natively implemented engines, while on peak performance, this difference should level out.
 * GraalVM JavaScript is shipped in two different modes: `native` (default) and `JVM`. While the default of `native` offers fast startup, it might show slower peak performance once the application is warmed up. In the `JVM` mode, the application might need a few hundred milliseconds more to start, but typically shows better peak performance.
+* Repeated execution of code via newly created `org.graalvm.polyglot.Context` is slow, despite the same code being executed every time.
 
 Solution:
 * Use proper warmup in your benchmark, and disregard the first few iterations where the application still warms up.
 * Use the `--jvm` option for slower startup, but higher peak performance.
 * Double-check you have no flags set that might lower your performance, e.g., `-ea`/`-esa`.
 * Try to minify the problem to the root cause and [file an issue](https://github.com/graalvm/graaljs/issues) so the GraalVM team can have a look.
+* When running code via `org.graalvm.polyglot.Context`, make sure that one `org.graalvm.polyglot.Engine` object is shared and passed to each newly created `Context`. Use `org.graalvm.polyglot.Source` objects and cache them when possible. Then, GraalVM makes sure already compiled code can be shared across the Contexts, leading to improved performance. See [Reference Manual: Code Caching across multiple Contexts](https://www.graalvm.org/22.1/reference-manual/embed-languages/#code-caching-across-multiple-contexts) for more details and an example.
 
 ### How to achieve the best peak performance?
 Here are a few tips you can follow to analyse and improve peak performance:

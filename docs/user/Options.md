@@ -74,7 +74,7 @@ It expects an integer value, where both the counting version numbers (`5`, `6`, 
 As of GraalVM 21.2, `latest`, `staging` are supported, too.
 The default in GraalVM 22.x is the [`ECMAScript 2022 specification`](https://tc39.es/ecma262/).
 GraalVM JavaScript implements some features of the future draft specification and of open proposals, if you explicitly select that version and/or enable specific experimental flags.
-For production settings, it is recommended to set the `ecmascript-version` to a released, finalized version of the specification (e.g., `2021`).
+For production settings, it is recommended to set the `ecmascript-version` to a released, finalized version of the specification (e.g., `2022`).
 
 Available versions are:
 * `5` for ECMAScript 5.x
@@ -84,8 +84,8 @@ Available versions are:
 * `9` or `2018` for ECMAScript 2018
 * `10` or `2019` for ECMAScript 2019
 * `11` or `2020` for ECMAScript 2020
-* `12` or `2021` for ECMAScript 2021 (**default** in 21.3, latest released version of the specification)
-* `13` or `2022` for ECMAScript 2022 (**default** in 22.0+, latest supported draft of the [specification](https://tc39.es/ecma262/), including [finished proposals](https://github.com/tc39/proposals/blob/master/finished-proposals.md))
+* `12` or `2021` for ECMAScript 2021 (**default** in 21.3)
+* `13` or `2022` for ECMAScript 2022 (**default** in 22.0+, latest released version, [ECMAScript 2022 specification](https://262.ecma-international.org/13.0/))
 * `latest` for the latest supported language version (the default version)
 * `staging` for the latest supported language features including experimental unstable, unfinished [proposals](https://github.com/tc39/proposals) (_do not use in production!_)
 
