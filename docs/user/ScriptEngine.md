@@ -47,7 +47,7 @@ any call to `eval` forces context initialization.
 ## Setting Options via System Properties
 Options to the JavaScript engine can be set via system properties before starting the JVM by prepending `polyglot.`:
 ```java
-java -Dpolyglot.js.ecmascript-version=2021 MyApplication
+java -Dpolyglot.js.ecmascript-version=2022 MyApplication
 ```
 
 Or, options to the JavaScript engine can be set programmatically from within Java before creating `ScriptEngine`. This, however, only works for the options passed to the JavaScript engine (like `js.ecmascript`), not for the six options mentioned above that can be set via the `Bindings`.
@@ -60,7 +60,7 @@ ScriptEngine engine = GraalJSScriptEngine.create(null,
         Context.newBuilder("js")
         .allowHostAccess(HostAccess.ALL)
         .allowHostClassLookup(s -> true)
-        .option("js.ecmascript-version", "2021"));
+        .option("js.ecmascript-version", "2022"));
 engine.put("javaObj", new Object());
 engine.eval("(javaObj instanceof Java.type('java.lang.Object'));");
 ```
