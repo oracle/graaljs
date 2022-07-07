@@ -252,10 +252,6 @@ public abstract class InstanceofNode extends JSBinaryNode {
         private boolean foreignObjectIntl(Object left, JSDynamicObject right, ForeignObjectPrototypeNode getForeignPrototypeNode, BranchProfile invalidPrototypeBranch,
                         OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
             Object rightProto = getConstructorPrototype(right, invalidPrototypeBranch);
-            if (rightProto == getRealm().getDatePrototype()) {
-                // necessary because of GR-39319
-                return false;
-            }
             Object foreignProto = getForeignPrototypeNode.execute(left);
             if (foreignProto == rightProto) {
                 return true;
