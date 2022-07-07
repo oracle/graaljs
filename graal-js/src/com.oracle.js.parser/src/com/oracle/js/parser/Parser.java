@@ -3331,6 +3331,10 @@ public class Parser extends AbstractParser {
         // YIELD tested in caller.
         assert type == YIELD;
 
+        if (inFormalParameterList()) {
+            throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType()));
+        }
+
         recordYieldOrAwait();
 
         nextOrEOL();
@@ -3379,7 +3383,7 @@ public class Parser extends AbstractParser {
         long awaitToken = token;
 
         ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
-        if (currentFunction.isClassStaticBlock()) {
+        if (currentFunction.isClassStaticBlock() || inFormalParameterList()) {
             throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType()));
         }
 
@@ -5350,6 +5354,22 @@ public class Parser extends AbstractParser {
         formalParameterList(RPAREN, yield, async);
     }
 
+    private boolean inFormalParameterList() {
+        for (Iterator<ParserContextNode> iterator = lc.getAllNodes(); iterator.hasNext();) {
+            ParserContextNode node = iterator.next();
+            if (node instanceof ParserContextScopableNode) {
+                Scope scope = ((ParserContextScopableNode) node).getScope();
+                if (scope.isFunctionBodyScope()) {
+                    return false;
+                }
+                if (scope.isFunctionParameterScope() && !scope.isArrowFunctionParameterScope()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private void formalParameter(final boolean yield, final boolean await) {
         if (type == YIELD && yield || isAwait() && await) {
             throw error(expectMessage(IDENT));
@@ -5364,11 +5384,6 @@ public class Parser extends AbstractParser {
 
             if (type == ASSIGN && (ES6_DEFAULT_PARAMETER && isES6())) {
                 next();
-
-                if (type == YIELD && yield || isAwait() && await) {
-                    // error: yield in default expression
-                    throw error(expectMessage(IDENT));
-                }
 
                 // default parameter
                 Expression initializer = assignmentExpression(true, yield, await);
