@@ -55,6 +55,7 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -79,7 +80,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         some(1),
         every(1),
-        find(1);
+        find(1),
+
+        reduce(1);
 
         private final int length;
 
@@ -111,6 +114,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return IteratorPrototypeBuiltinsFactory.IteratorEveryNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case find:
                 return IteratorPrototypeBuiltinsFactory.IteratorFindNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case reduce:
+                return IteratorPrototypeBuiltinsFactory.IteratorReduceNodeGen.create(context, builtin, args().withThis().fixedArgs(1).varArgs().createArgumentNodes(context));
         }
         return null;
     }
@@ -293,6 +298,72 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return value;
             }
             return CONTINUE;
+        }
+    }
+
+    public abstract static class IteratorReduceNode extends JSBuiltinNode {
+        @Child protected IsCallableNode isCallableNode;
+        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private IteratorStepNode iteratorStepNode;
+        @Child private IteratorValueNode iteratorValueNode;
+        @Child private JSFunctionCallNode callNode;
+        @Child private IteratorCloseNode iteratorCloseNode;
+
+        protected IteratorReduceNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+
+            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            isCallableNode = IsCallableNode.create();
+            iteratorStepNode = IteratorStepNode.create(context);
+            iteratorValueNode = IteratorValueNode.create(context);
+            callNode = JSFunctionCallNode.createCall();
+        }
+
+        private Object callReducer(IteratorRecord iterated, Object reducer, Object accumulator, Object value) {
+            try {
+                return callNode.executeCall(JSArguments.create(Undefined.instance, reducer, accumulator, value));
+            } catch (AbstractTruffleException ex) {
+                if (iteratorCloseNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
+                }
+                iteratorCloseNode.executeAbrupt(iterated.getIterator());
+                throw ex; // should be executed by iteratorClose
+            }
+        }
+
+        @Specialization(guards = "isCallableNode.executeBoolean(reducer)")
+        protected Object reduce(Object thisObj, Object reducer, Object[] args) {
+            IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
+
+            Object initialValue = JSRuntime.getArgOrUndefined(args, 0);
+
+            Object accumulator;
+            if (initialValue == Undefined.instance) {
+                Object next = iteratorStepNode.execute(iterated);
+                if (next == (Boolean) false) {
+                    throw Errors.createTypeError("Reduce of empty iterator with no initial value");
+                }
+
+                accumulator = iteratorValueNode.execute(next);
+            } else {
+                accumulator = initialValue;
+            }
+
+            while (true) {
+                Object next = iteratorStepNode.execute(iterated);
+                if (next == (Boolean) false) {
+                    return accumulator;
+                }
+                Object value = iteratorValueNode.execute(next);
+                accumulator = callReducer(iterated, reducer, accumulator, value);
+            }
+        }
+
+        @Specialization(guards = "!isCallableNode.executeBoolean(reducer)")
+        protected void incompatible(Object thisObj, Object reducer, Object[] args) {
+            getIteratorDirectNode.execute(thisObj);
+            throw Errors.createTypeErrorNotAFunction(reducer);
         }
     }
 }
