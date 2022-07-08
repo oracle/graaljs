@@ -47,6 +47,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -74,7 +75,11 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     public enum IteratorPrototype implements BuiltinEnum<IteratorPrototype> {
         toArray(0),
-        forEach(1);
+        forEach(1),
+
+        some(1),
+        every(1),
+        find(1);
 
         private final int length;
 
@@ -100,8 +105,88 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return IteratorPrototypeBuiltinsFactory.IteratorToArrayNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
             case forEach:
                 return IteratorPrototypeBuiltinsFactory.IteratorForEachNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case some:
+                return IteratorPrototypeBuiltinsFactory.IteratorSomeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case every:
+                return IteratorPrototypeBuiltinsFactory.IteratorEveryNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case find:
+                return IteratorPrototypeBuiltinsFactory.IteratorFindNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
+    }
+
+    protected abstract static class IteratorWithCallableNode extends JSBuiltinNode {
+        @Child protected IsCallableNode isCallableNode;
+        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private IteratorStepNode iteratorStepNode;
+        @Child private IteratorValueNode iteratorValueNode;
+        @Child private JSFunctionCallNode callNode;
+        @Child private IteratorCloseNode iteratorCloseNode;
+
+        protected final Object CONTINUE = new Object();
+
+        protected IteratorWithCallableNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+
+            isCallableNode = IsCallableNode.create();
+            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            iteratorStepNode = IteratorStepNode.create(context);
+            iteratorValueNode = IteratorValueNode.create(context);
+            callNode = JSFunctionCallNode.createCall();
+        }
+
+        protected void prepare() {
+
+        }
+
+        protected Object end() {
+            return Undefined.instance;
+        }
+
+        protected Object step(IteratorRecord iterated, Object fn, Object value) {
+            return CONTINUE;
+        }
+
+        protected Object callMapper(IteratorRecord iterated, Object fn, Object value) {
+            try {
+                return callNode.executeCall(JSArguments.createOneArg(Undefined.instance, fn, value));
+            } catch (AbstractTruffleException ex) {
+                if (iteratorCloseNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
+                }
+                iteratorCloseNode.executeAbrupt(iterated.getIterator());
+                throw ex; // should be executed by iteratorClose
+            }
+        }
+
+        @Specialization(guards = "isCallableNode.executeBoolean(fn)")
+        protected Object compatible(Object thisObj, Object fn) {
+            IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
+            prepare();
+            while (true) {
+                Object next = iteratorStepNode.execute(iterated);
+                if (next == (Boolean) false) {
+                    return end();
+                }
+
+                Object value = iteratorValueNode.execute(next);
+                Object result = step(iterated, fn, value);
+                if (result != CONTINUE) {
+                    if (iteratorCloseNode == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
+                    }
+                    return iteratorCloseNode.execute(iterated.getIterator(), result);
+                }
+            }
+        }
+
+        @Specialization(guards = "!isCallableNode.executeBoolean(fn)")
+        protected void incompatible(Object thisObj, Object fn) {
+            getIteratorDirectNode.execute(thisObj);
+            throw Errors.createTypeErrorNotAFunction(fn);
+        }
     }
 
     public abstract static class IteratorToArrayNode extends JSBuiltinNode {
@@ -135,53 +220,79 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    public abstract static class IteratorForEachNode extends JSBuiltinNode {
-        @Child protected IsCallableNode isCallableNode;
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
-        @Child private IteratorStepNode iteratorStepNode;
-        @Child private IteratorValueNode iteratorValueNode;
-        @Child private JSFunctionCallNode callNode;
-        @Child private IteratorCloseNode iteratorCloseNode;
-
+    public abstract static class IteratorForEachNode extends IteratorWithCallableNode {
         protected IteratorForEachNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-
-            isCallableNode = IsCallableNode.create();
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
-            iteratorStepNode = IteratorStepNode.create(context);
-            iteratorValueNode = IteratorValueNode.create(context);
-            callNode = JSFunctionCallNode.createCall();
         }
 
-        @Specialization(guards = "isCallableNode.executeBoolean(fn)")
-        protected JSDynamicObject forEeach(Object thisObj, Object fn) {
-            IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
-            while (true) {
-                Object next = iteratorStepNode.execute(iterated);
-                if (next == (Boolean) false) {
-                    return Undefined.instance;
-                }
+        @Override
+        protected Object step(IteratorRecord iterated, Object fn, Object value) {
+            callMapper(iterated, fn, value);
+            return CONTINUE;
+        }
+    }
 
-                Object value = iteratorValueNode.execute(next);
-                try {
-                    callNode.executeCall(JSArguments.createOneArg(Undefined.instance, fn, value));
-                } catch (AbstractTruffleException ex) {
-                    if (iteratorCloseNode == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
-                    }
-                    iteratorCloseNode.executeAbrupt(iterated.getIterator());
-                    throw ex; // should be executed by iteratorClose
-                }
+    public abstract static class IteratorSomeNode extends IteratorWithCallableNode {
+        @Child private JSToBooleanNode toBooleanNode;
 
+        protected IteratorSomeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+
+            toBooleanNode = JSToBooleanNode.create();
+        }
+
+        @Override
+        protected Object step(IteratorRecord iterated, Object fn, Object value) {
+            if (toBooleanNode.executeBoolean(callMapper(iterated, fn, value))) {
+                return true;
             }
+            return CONTINUE;
         }
 
-        @Specialization(guards = "!isCallableNode.executeBoolean(fn)")
-        protected void incompatible(Object thisObj, Object fn) {
-            getIteratorDirectNode.execute(thisObj);
-            throw Errors.createTypeErrorNotAFunction(fn);
+        @Override
+        protected Object end() {
+            return false;
+        }
+    }
+
+    public abstract static class IteratorEveryNode extends IteratorWithCallableNode {
+        @Child private JSToBooleanNode toBooleanNode;
+
+        protected IteratorEveryNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+
+            toBooleanNode = JSToBooleanNode.create();
         }
 
+        @Override
+        protected Object step(IteratorRecord iterated, Object fn, Object value) {
+            if (!toBooleanNode.executeBoolean(callMapper(iterated, fn, value))) {
+                return false;
+            }
+            return CONTINUE;
+        }
+
+        @Override
+        protected Object end() {
+            return true;
+        }
+    }
+
+    public abstract static class IteratorFindNode extends IteratorWithCallableNode {
+        @Child private JSToBooleanNode toBooleanNode;
+
+        protected IteratorFindNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+
+            toBooleanNode = JSToBooleanNode.create();
+        }
+
+        @Override
+        protected Object step(IteratorRecord iterated, Object fn, Object value) {
+            if (toBooleanNode.executeBoolean(callMapper(iterated, fn, value))) {
+                return value;
+            }
+            return CONTINUE;
+        }
     }
 }
