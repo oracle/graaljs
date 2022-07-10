@@ -172,9 +172,9 @@ function wrap(middleware, callback) {
       parameters.push(done);
     }
     try {
-      result = middleware(...parameters);
+      result = middleware.apply(this, parameters);
     } catch (error) {
-      const exception = error;
+      const exception =  (error);
       if (fnExpectsCallback && called) {
         throw exception
       }
@@ -201,18 +201,17 @@ function wrap(middleware, callback) {
   }
 }
 
-var own$8 = {}.hasOwnProperty;
 function stringifyPosition(value) {
   if (!value || typeof value !== 'object') {
     return ''
   }
-  if (own$8.call(value, 'position') || own$8.call(value, 'type')) {
+  if ('position' in value || 'type' in value) {
     return position(value.position)
   }
-  if (own$8.call(value, 'start') || own$8.call(value, 'end')) {
+  if ('start' in value || 'end' in value) {
     return position(value)
   }
-  if (own$8.call(value, 'line') || own$8.call(value, 'column')) {
+  if ('line' in value || 'column' in value) {
     return point$1(value)
   }
   return ''
@@ -229,19 +228,18 @@ function index(value) {
 
 class VFileMessage extends Error {
   constructor(reason, place, origin) {
-    var parts = [null, null];
-    var position = {
+    const parts = [null, null];
+    let position = {
       start: {line: null, column: null},
       end: {line: null, column: null}
     };
-    var index;
     super();
     if (typeof place === 'string') {
       origin = place;
-      place = null;
+      place = undefined;
     }
     if (typeof origin === 'string') {
-      index = origin.indexOf(':');
+      const index = origin.indexOf(':');
       if (index === -1) {
         parts[1] = origin;
       } else {
@@ -484,7 +482,7 @@ function base() {
         continue
       }
       if (options[0] === true) {
-        options[1] = undefined;
+        options[0] = undefined;
       }
       const transformer = attacher.call(processor, ...options);
       if (typeof transformer === 'function') {
@@ -12629,12 +12627,12 @@ const remarkLintListItemBulletIndent = lintRule(
 );
 var remarkLintListItemBulletIndent$1 = remarkLintListItemBulletIndent;
 
-var pointStart = point('start');
-var pointEnd = point('end');
+const pointStart = point('start');
+const pointEnd = point('end');
 function point(type) {
   return point
   function point(node) {
-    var point = (node && node.position && node.position[type]) || {};
+    const point = (node && node.position && node.position[type]) || {};
     return {
       line: point.line || null,
       column: point.column || null,
@@ -20745,6 +20743,7 @@ const plugins = [
         "powershell",
         "r",
         "text",
+        "ts",
       ],
     },
   ],
@@ -20783,6 +20782,7 @@ const plugins = [
       { yes: "RFC" },
       { no: "[Rr][Ff][Cc]\\d+", yes: "RFC <number>" },
       { yes: "Unix" },
+      { yes: "Valgrind" },
       { yes: "V8" },
     ],
   ],
@@ -21226,29 +21226,33 @@ function stringWidth(string, options = {}) {
 	if (typeof string !== 'string' || string.length === 0) {
 		return 0;
 	}
+	options = {
+		ambiguousIsNarrow: true,
+		...options
+	};
 	string = stripAnsi(string);
 	if (string.length === 0) {
 		return 0;
 	}
 	string = string.replace(emojiRegex(), '  ');
-	const ambiguousCharWidth = options.ambiguousIsNarrow ? 1 : 2;
+	const ambiguousCharacterWidth = options.ambiguousIsNarrow ? 1 : 2;
 	let width = 0;
-	for (let index = 0; index < string.length; index++) {
-		const codePoint = string.codePointAt(index);
+	for (const character of string) {
+		const codePoint = character.codePointAt(0);
 		if (codePoint <= 0x1F || (codePoint >= 0x7F && codePoint <= 0x9F)) {
 			continue;
 		}
 		if (codePoint >= 0x300 && codePoint <= 0x36F) {
 			continue;
 		}
-		const code = eastAsianWidth.eastAsianWidth(string.charAt(index));
+		const code = eastAsianWidth.eastAsianWidth(character);
 		switch (code) {
 			case 'F':
 			case 'W':
 				width += 2;
 				break;
 			case 'A':
-				width += ambiguousCharWidth;
+				width += ambiguousCharacterWidth;
 				break;
 			default:
 				width += 1;

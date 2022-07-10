@@ -43,6 +43,7 @@ const {
   getConstructorOf,
   removeColors,
   toUSVString,
+  kEnumerableProperty,
 } = require('internal/util');
 
 const {
@@ -507,18 +508,18 @@ class URLSearchParams {
 }
 
 ObjectDefineProperties(URLSearchParams.prototype, {
-  append: { enumerable: true },
-  delete: { enumerable: true },
-  get: { enumerable: true },
-  getAll: { enumerable: true },
-  has: { enumerable: true },
-  set: { enumerable: true },
-  sort: { enumerable: true },
-  entries: { enumerable: true },
-  forEach: { enumerable: true },
-  keys: { enumerable: true },
-  values: { enumerable: true },
-  toString: { enumerable: true },
+  append: kEnumerableProperty,
+  delete: kEnumerableProperty,
+  get: kEnumerableProperty,
+  getAll: kEnumerableProperty,
+  has: kEnumerableProperty,
+  set: kEnumerableProperty,
+  sort: kEnumerableProperty,
+  entries: kEnumerableProperty,
+  forEach: kEnumerableProperty,
+  keys: kEnumerableProperty,
+  values: kEnumerableProperty,
+  toString: kEnumerableProperty,
   [SymbolToStringTag]: { configurable: true, value: 'URLSearchParams' },
 
   // https://heycam.github.io/webidl/#es-iterable-entries
@@ -548,7 +549,7 @@ function onParseComplete(flags, protocol, username, password,
   initSearchParams(this[searchParams], query);
 }
 
-function onParseError(flags, input) {
+function onParseError(input, flags) {
   throw new ERR_INVALID_URL(input);
 }
 
@@ -626,7 +627,8 @@ class URL {
     }
     this[context] = new URLContext();
     parse(input, -1, base_context, undefined,
-          FunctionPrototypeBind(onParseComplete, this), onParseError);
+          FunctionPrototypeBind(onParseComplete, this),
+          FunctionPrototypeBind(onParseError, this, input));
   }
 
   get [special]() {
@@ -739,7 +741,8 @@ class URL {
     // toUSVString is not needed.
     input = `${input}`;
     parse(input, -1, undefined, undefined,
-          FunctionPrototypeBind(onParseComplete, this), onParseError);
+          FunctionPrototypeBind(onParseComplete, this),
+          FunctionPrototypeBind(onParseError, this, input));
   }
 
   // readonly
@@ -982,20 +985,20 @@ class URL {
 ObjectDefineProperties(URL.prototype, {
   [kFormat]: { configurable: false, writable: false },
   [SymbolToStringTag]: { configurable: true, value: 'URL' },
-  toString: { enumerable: true },
-  href: { enumerable: true },
-  origin: { enumerable: true },
-  protocol: { enumerable: true },
-  username: { enumerable: true },
-  password: { enumerable: true },
-  host: { enumerable: true },
-  hostname: { enumerable: true },
-  port: { enumerable: true },
-  pathname: { enumerable: true },
-  search: { enumerable: true },
-  searchParams: { enumerable: true },
-  hash: { enumerable: true },
-  toJSON: { enumerable: true },
+  toString: kEnumerableProperty,
+  href: kEnumerableProperty,
+  origin: kEnumerableProperty,
+  protocol: kEnumerableProperty,
+  username: kEnumerableProperty,
+  password: kEnumerableProperty,
+  host: kEnumerableProperty,
+  hostname: kEnumerableProperty,
+  port: kEnumerableProperty,
+  pathname: kEnumerableProperty,
+  search: kEnumerableProperty,
+  searchParams: kEnumerableProperty,
+  hash: kEnumerableProperty,
+  toJSON: kEnumerableProperty,
 });
 
 function update(url, params) {

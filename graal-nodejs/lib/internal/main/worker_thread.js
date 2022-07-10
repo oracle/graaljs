@@ -17,6 +17,8 @@ const {
   setupCoverageHooks,
   setupInspectorHooks,
   setupWarningHandler,
+  setupFetch,
+  setupWebCrypto,
   setupDebugEnv,
   setupPerfHooks,
   initializeDeprecations,
@@ -73,6 +75,8 @@ setupInspectorHooks();
 setupDebugEnv();
 
 setupWarningHandler();
+setupFetch();
+setupWebCrypto();
 initializeSourceMapsHandlers();
 
 // Since worker threads cannot switch cwd, we do not need to
@@ -169,7 +173,7 @@ port.on('message', (message) => {
       process.stdin.push(null);
 
     debug(`[${threadId}] starts worker script ${filename} ` +
-          `(eval = ${eval}) at cwd = ${process.cwd()}`);
+          `(eval = ${doEval}) at cwd = ${process.cwd()}`);
     port.postMessage({ type: UP_AND_RUNNING });
     if (doEval === 'classic') {
       const { evalScript } = require('internal/process/execution');

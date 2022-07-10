@@ -5,7 +5,7 @@ const {
   JSONParse,
   JSONStringify,
   ObjectDefineProperties,
-  ObjectGetOwnPropertyDescriptor,
+  ReflectApply,
   SafeSet,
   SymbolToStringTag,
   StringPrototypeRepeat,
@@ -32,6 +32,7 @@ const { TextDecoder, TextEncoder } = require('internal/encoding');
 const {
   codes: {
     ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_THIS,
   }
 } = require('internal/errors');
 
@@ -60,11 +61,12 @@ const {
 } = require('internal/crypto/util');
 
 const {
+  kEnumerableProperty,
   lazyDOMException,
 } = require('internal/util');
 
 const {
-  getRandomValues,
+  getRandomValues: _getRandomValues,
   randomUUID: _randomUUID,
 } = require('internal/crypto/random');
 
@@ -695,6 +697,13 @@ class Crypto {
 }
 const crypto = new Crypto();
 
+function getRandomValues(array) {
+  if (!(this instanceof Crypto)) {
+    throw new ERR_INVALID_THIS('Crypto');
+  }
+  return ReflectApply(_getRandomValues, this, arguments);
+}
+
 ObjectDefineProperties(
   Crypto.prototype, {
     [SymbolToStringTag]: {
@@ -703,10 +712,7 @@ ObjectDefineProperties(
       writable: false,
       value: 'Crypto',
     },
-    subtle: {
-      ...ObjectGetOwnPropertyDescriptor(Crypto.prototype, 'subtle'),
-      enumerable: true,
-    },
+    subtle: kEnumerableProperty,
     getRandomValues: {
       enumerable: true,
       configurable: true,
@@ -811,6 +817,7 @@ ObjectDefineProperties(
 
 module.exports = {
   Crypto,
+  CryptoKey,
   SubtleCrypto,
   crypto,
 };

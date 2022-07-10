@@ -3,6 +3,7 @@
 const {
   NumberParseInt,
   ObjectDefineProperty,
+  ObjectGetOwnPropertyDescriptor,
   SafeMap,
   SafeWeakMap,
   StringPrototypeStartsWith,
@@ -14,6 +15,11 @@ const {
   getEmbedderOptions,
 } = require('internal/options');
 const { reconnectZeroFillToggle } = require('internal/buffer');
+const {
+  defineOperation,
+  emitExperimentalWarning,
+  exposeInterface,
+} = require('internal/util');
 
 const { Buffer } = require('buffer');
 const { ERR_MANIFEST_ASSERT_INTEGRITY } = require('internal/errors').codes;
@@ -30,6 +36,8 @@ function prepareMainThreadExecution(expandArgv1 = false) {
   setupPerfHooks();
   setupInspectorHooks();
   setupWarningHandler();
+  setupFetch();
+  setupWebCrypto();
 
   // Resolve the coverage directory to an absolute path, and
   // overwrite process.env so that the original path gets passed
@@ -148,6 +156,61 @@ function setupWarningHandler() {
   }
 }
 
+// https://fetch.spec.whatwg.org/
+function setupFetch() {
+  if (!getOptionValue('--experimental-fetch')) {
+    return;
+  }
+
+  emitExperimentalWarning('Fetch');
+
+  const undici = require('internal/deps/undici/undici');
+  defineOperation(globalThis, 'fetch', undici.fetch);
+  exposeInterface(globalThis, 'FormData', undici.FormData);
+  exposeInterface(globalThis, 'Headers', undici.Headers);
+  exposeInterface(globalThis, 'Request', undici.Request);
+  exposeInterface(globalThis, 'Response', undici.Response);
+}
+
+// TODO(aduh95): move this to internal/bootstrap/browser when the CLI flag is
+//               removed.
+function setupWebCrypto() {
+  if (process.config.variables.node_no_browser_globals ||
+      !getOptionValue('--experimental-global-webcrypto')) {
+    return;
+  }
+
+  let webcrypto;
+  ObjectDefineProperty(globalThis, 'crypto',
+                       ObjectGetOwnPropertyDescriptor({
+                         get crypto() {
+                           webcrypto ??= require('internal/crypto/webcrypto');
+                           return webcrypto.crypto;
+                         }
+                       }, 'crypto'));
+  if (internalBinding('config').hasOpenSSL) {
+    webcrypto ??= require('internal/crypto/webcrypto');
+    ObjectDefineProperty(globalThis, 'Crypto', {
+      writable: true,
+      enumerable: false,
+      configurable: true,
+      value: webcrypto.Crypto
+    });
+    ObjectDefineProperty(globalThis, 'CryptoKey', {
+      writable: true,
+      enumerable: false,
+      configurable: true,
+      value: webcrypto.CryptoKey
+    });
+    ObjectDefineProperty(globalThis, 'SubtleCrypto', {
+      writable: true,
+      enumerable: false,
+      configurable: true,
+      value: webcrypto.SubtleCrypto
+    });
+  }
+}
+
 // Setup User-facing NODE_V8_COVERAGE environment variable that writes
 // ScriptCoverage to a specified file.
 function setupCoverageHooks(dir) {
@@ -182,7 +245,7 @@ function setupStacktracePrinterOnSigint() {
 function initializeReport() {
   const { report } = require('internal/process/report');
   ObjectDefineProperty(process, 'report', {
-    enumerable: false,
+    enumerable: true,
     configurable: true,
     get() {
       return report;
@@ -488,6 +551,8 @@ module.exports = {
   patchProcessObject,
   setupCoverageHooks,
   setupWarningHandler,
+  setupFetch,
+  setupWebCrypto,
   setupDebugEnv,
   setupPerfHooks,
   prepareMainThreadExecution,

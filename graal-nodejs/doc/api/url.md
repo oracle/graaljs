@@ -659,7 +659,8 @@ added: v16.7.0
 * `id` {string} A `'blob:nodedata:...` URL string returned by a prior call to
   `URL.createObjectURL()`.
 
-Removes the stored {Blob} identified by the given ID.
+Removes the stored {Blob} identified by the given ID. Attempting to revoke a
+ID that isn’t registered will silently fail.
 
 ### Class: `URLSearchParams`
 
@@ -1534,11 +1535,18 @@ A `TypeError` is thrown if `urlString` is not a string.
 
 A `URIError` is thrown if the `auth` property is present but cannot be decoded.
 
-Use of the legacy `url.parse()` method is discouraged. Users should
-use the WHATWG `URL` API. Because the `url.parse()` method uses a
-lenient, non-standard algorithm for parsing URL strings, security
-issues can be introduced. Specifically, issues with [host name spoofing][] and
-incorrect handling of usernames and passwords have been identified.
+`url.parse()` uses a lenient, non-standard algorithm for parsing URL
+strings. It is prone to security issues such as [host name spoofing][]
+and incorrect handling of usernames and passwords.
+
+`url.parse()` is an exception to most of the legacy APIs. Despite its security
+concerns, it is legacy and not deprecated because it is:
+
+* Faster than the alternative WHATWG `URL` parser.
+* Easier to use with regards to relative URLs than the alternative WHATWG `URL` API.
+* Widely relied upon within the npm ecosystem.
+
+Use with caution.
 
 ### `url.resolve(from, to)`
 

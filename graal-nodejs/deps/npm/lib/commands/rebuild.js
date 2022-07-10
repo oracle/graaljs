@@ -11,6 +11,7 @@ class Rebuild extends ArboristWorkspaceCmd {
   static params = [
     'global',
     'bin-links',
+    'foreground-scripts',
     'ignore-scripts',
     ...super.params,
   ]
@@ -25,7 +26,7 @@ class Rebuild extends ArboristWorkspaceCmd {
 
   async exec (args) {
     const globalTop = resolve(this.npm.globalDir, '..')
-    const where = this.npm.config.get('global') ? globalTop : this.npm.prefix
+    const where = this.npm.global ? globalTop : this.npm.prefix
     const arb = new Arborist({
       ...this.npm.flatOptions,
       path: where,

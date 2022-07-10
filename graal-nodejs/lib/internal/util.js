@@ -466,6 +466,26 @@ function createDeferredPromise() {
   return { promise, resolve, reject };
 }
 
+// https://heycam.github.io/webidl/#define-the-operations
+function defineOperation(target, name, method) {
+  ObjectDefineProperty(target, name, {
+    writable: true,
+    enumerable: true,
+    configurable: true,
+    value: method
+  });
+}
+
+// https://heycam.github.io/webidl/#es-interfaces
+function exposeInterface(target, name, interfaceObject) {
+  ObjectDefineProperty(target, name, {
+    writable: true,
+    enumerable: false,
+    configurable: true,
+    value: interfaceObject
+  });
+}
+
 let DOMException;
 const lazyDOMException = hideStackFrames((message, name) => {
   if (DOMException === undefined)
@@ -488,6 +508,9 @@ function structuredClone(value) {
   return des.readValue();
 }
 
+const kEnumerableProperty = ObjectCreate(null);
+kEnumerableProperty.enumerable = true;
+
 module.exports = {
   assertCrypto,
   cachedResult,
@@ -495,8 +518,10 @@ module.exports = {
   createClassWrapper,
   createDeferredPromise,
   decorateErrorStack,
+  defineOperation,
   deprecate,
   emitExperimentalWarning,
+  exposeInterface,
   filterDuplicateStrings,
   getConstructorOf,
   getSystemErrorMap,
@@ -524,5 +549,7 @@ module.exports = {
   // Used by the buffer module to capture an internal reference to the
   // default isEncoding implementation, just in case userland overrides it.
   kIsEncodingSymbol: Symbol('kIsEncodingSymbol'),
-  kVmBreakFirstLineSymbol: Symbol('kVmBreakFirstLineSymbol')
+  kVmBreakFirstLineSymbol: Symbol('kVmBreakFirstLineSymbol'),
+
+  kEnumerableProperty,
 };

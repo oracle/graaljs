@@ -146,12 +146,16 @@ npm command-line interface
 </section>
 
 <div id="_content"><h3 id="synopsis">Synopsis</h3>
-<pre lang="bash"><code>npm run-script &lt;command&gt; [--if-present] [--silent] [-- &lt;args&gt;]
-npm run-script &lt;command&gt; [--workspace=&lt;workspace-name&gt;]
-npm run-script &lt;command&gt; [--workspaces]
+<!-- raw HTML omitted -->
+<!-- raw HTML omitted -->
+<!-- raw HTML omitted -->
+<pre lang="bash"><code>npm run-script &lt;command&gt; [-- &lt;args&gt;]
 
 aliases: run, rum, urn
 </code></pre>
+<!-- raw HTML omitted -->
+<!-- raw HTML omitted -->
+<!-- raw HTML omitted -->
 <h3 id="description">Description</h3>
 <p>This runs an arbitrary command from a package's <code>"scripts"</code> object.  If no
 <code>"command"</code> is provided, it will list the available scripts.</p>
@@ -286,6 +290,7 @@ other things (test, exec, publish, etc.) will operate on the root project,
 <p>When false, specifying individual workspaces via the <code>workspace</code> config, or
 all workspaces via the <code>workspaces</code> flag, will cause npm to operate only on
 the specified workspaces, and not on the root project.</p>
+<p>This value is not exported to the environment for child processes.</p>
 <!-- raw HTML omitted -->
 <!-- raw HTML omitted -->
 <h4 id="if-present"><code>if-present</code></h4>
@@ -299,6 +304,7 @@ This option can be used when it's desirable to optionally run a script when
 it's present and fail if the script fails. This is useful, for example, when
 running scripts that may only apply for some builds in an otherwise generic
 CI setup.</p>
+<p>This value is not exported to the environment for child processes.</p>
 <!-- raw HTML omitted -->
 <!-- raw HTML omitted -->
 <h4 id="ignore-scripts"><code>ignore-scripts</code></h4>

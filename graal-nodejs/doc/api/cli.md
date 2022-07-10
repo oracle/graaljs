@@ -272,6 +272,22 @@ effort to report stack traces relative to the original source file.
 Overriding `Error.prepareStackTrace` prevents `--enable-source-maps` from
 modifying the stack trace.
 
+### `--experimental-fetch`
+
+<!-- YAML
+added: v16.15.0
+-->
+
+Enable experimental support for the [Fetch API][].
+
+### `--experimental-global-webcrypto`
+
+<!-- YAML
+added: v16.15.0
+-->
+
+Expose the [Web Crypto API][] on the global scope.
+
 ### `--experimental-import-meta-resolve`
 
 <!-- YAML
@@ -282,14 +298,6 @@ added:
 
 Enable experimental `import.meta.resolve()` support.
 
-### `--experimental-json-modules`
-
-<!-- YAML
-added: v12.9.0
--->
-
-Enable experimental JSON support for the ES Module loader.
-
 ### `--experimental-loader=module`
 
 <!-- YAML
@@ -298,6 +306,16 @@ added: v9.0.0
 
 Specify the `module` of a custom experimental [ECMAScript module loader][].
 `module` may be any string accepted as an [`import` specifier][].
+
+### `--experimental-network-imports`
+
+<!-- YAML
+added: v16.15.0
+-->
+
+> Stability: 1 - Experimental
+
+Enable experimental support for the `https:` protocol in `import` specifiers.
 
 ### `--experimental-policy`
 
@@ -1538,10 +1556,13 @@ Node.js options that are allowed are:
 * `--enable-fips`
 * `--enable-source-maps`
 * `--experimental-abortcontroller`
+* `--experimental-fetch`
+* `--experimental-global-webcrypto`
 * `--experimental-import-meta-resolve`
 * `--experimental-json-modules`
 * `--experimental-loader`
 * `--experimental-modules`
+* `--experimental-network-imports`
 * `--experimental-policy`
 * `--experimental-specifier-resolution`
 * `--experimental-top-level-await`
@@ -1931,12 +1952,14 @@ $ node --max-old-space-size=1536 index.js
 [Chrome DevTools Protocol]: https://chromedevtools.github.io/devtools-protocol/
 [CommonJS]: modules.md
 [ECMAScript module loader]: esm.md#loaders
+[Fetch API]: https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API
 [Modules loaders]: packages.md#modules-loaders
 [REPL]: repl.md
 [ScriptCoverage]: https://chromedevtools.github.io/devtools-protocol/tot/Profiler#type-ScriptCoverage
 [Source Map]: https://sourcemaps.info/spec.html
 [Subresource Integrity]: https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
 [V8 JavaScript code coverage]: https://v8project.blogspot.com/2017/12/javascript-code-coverage.html
+[Web Crypto API]: webcrypto.md
 [`"type"`]: packages.md#type
 [`--cpu-prof-dir`]: #--cpu-prof-dir
 [`--diagnostic-dir`]: #--diagnostic-dirdirectory

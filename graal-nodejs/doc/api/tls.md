@@ -14,6 +14,43 @@ The module can be accessed using:
 const tls = require('tls');
 ```
 
+## Determining if crypto support is unavailable
+
+It is possible for Node.js to be built without including support for the
+`crypto` module. In such cases, attempting to `import` from `tls` or
+calling `require('tls')` will result in an error being thrown.
+
+When using CommonJS, the error thrown can be caught using try/catch:
+
+<!-- eslint-skip -->
+
+```cjs
+let tls;
+try {
+  tls = require('tls');
+} catch (err) {
+  console.log('tls support is disabled!');
+}
+```
+
+When using the lexical ESM `import` keyword, the error can only be
+caught if a handler for `process.on('uncaughtException')` is registered
+_before_ any attempt to load the module is made (using, for instance,
+a preload module).
+
+When using ESM, if there is a chance that the code may be run on a build
+of Node.js where crypto support is not enabled, consider using the
+`import()` function instead of the lexical `import` keyword:
+
+```mjs
+let tls;
+try {
+  tls = await import('tls');
+} catch (err) {
+  console.log('tls support is disabled!');
+}
+```
+
 ## TLS/SSL concepts
 
 TLS/SSL is a set of protocols that rely on a public key infrastructure (PKI) to
@@ -228,7 +265,7 @@ To use session tickets across server restarts or load balancers, servers must
 all have the same ticket keys. There are three 16-byte keys internally, but the
 tls API exposes them as a single 48-byte buffer for convenience.
 
-Its possible to get the ticket keys by calling [`server.getTicketKeys()`][] on
+It's possible to get the ticket keys by calling [`server.getTicketKeys()`][] on
 one server instance and then distribute them, but it is more reasonable to
 securely generate 48 bytes of secure random data and set them with the
 `ticketKeys` option of [`tls.createServer()`][]. The keys should be regularly
@@ -480,8 +517,9 @@ added: v0.3.2
 * `socket` {stream.Duplex}
 
 This event is emitted when a new TCP stream is established, before the TLS
-handshake begins. `socket` is typically an object of type [`net.Socket`][].
-Usually users will not want to access this event.
+handshake begins. `socket` is typically an object of type [`net.Socket`][] but
+will not receive events unlike the socket created from the [`net.Server`][]
+`'connection'` event. Usually users will not want to access this event.
 
 This event can also be explicitly emitted by users to inject connections
 into the TLS server. In that case, any [`Duplex`][] stream can be passed.
@@ -1784,7 +1822,7 @@ changes:
     See [OpenSSL man pages](https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set1_sigalgs_list.html)
     for more info.
   * `ciphers` {string} Cipher suite specification, replacing the default. For
-    more information, see [modifying the default cipher suite][]. Permitted
+    more information, see [Modifying the default TLS cipher suite][]. Permitted
     ciphers can be obtained via [`tls.getCiphers()`][]. Cipher names must be
     uppercased in order for OpenSSL to accept them.
   * `clientCertEngine` {string} Name of an OpenSSL engine which can provide the
@@ -2086,6 +2124,9 @@ Returns an array with the names of the supported TLS ciphers. The names are
 lower-case for historical reasons, but must be uppercased to be used in
 the `ciphers` option of [`tls.createSecureContext()`][].
 
+Not all supported ciphers are enabled by default. See
+[Modifying the default TLS cipher suite][].
+
 Cipher names that start with `'tls_'` are for TLSv1.3, all the others are for
 TLSv1.2 and below.
 
@@ -2154,6 +2195,7 @@ added: v11.4.0
 [Chrome's 'modern cryptography' setting]: https://www.chromium.org/Home/chromium-security/education/tls#TOC-Cipher-Suites
 [DHE]: https://en.wikipedia.org/wiki/Diffie%E2%80%93Hellman_key_exchange
 [ECDHE]: https://en.wikipedia.org/wiki/Elliptic_curve_Diffie%E2%80%93Hellman
+[Modifying the default TLS cipher suite]: #modifying-the-default-tls-cipher-suite
 [Mozilla's publicly trusted list of CAs]: https://hg.mozilla.org/mozilla-central/raw-file/tip/security/nss/lib/ckfw/builtins/certdata.txt
 [OCSP request]: https://en.wikipedia.org/wiki/OCSP_stapling
 [OpenSSL Options]: crypto.md#openssl-options
@@ -2205,6 +2247,5 @@ added: v11.4.0
 [certificate object]: #certificate-object
 [cipher list format]: https://www.openssl.org/docs/man1.1.1/man1/ciphers.html#CIPHER-LIST-FORMAT
 [forward secrecy]: https://en.wikipedia.org/wiki/Perfect_forward_secrecy
-[modifying the default cipher suite]: #modifying-the-default-tls-cipher-suite
 [perfect forward secrecy]: #perfect-forward-secrecy
 [specific attacks affecting larger AES key sizes]: https://www.schneier.com/blog/archives/2009/07/another_new_aes.html

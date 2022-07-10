@@ -50,6 +50,7 @@ const {
 const {
   createDeferredPromise,
   customInspectSymbol: kInspect,
+  kEnumerableProperty,
 } = require('internal/util');
 
 const {
@@ -109,7 +110,6 @@ const {
   nonOpStart,
   kType,
   kState,
-  kEnumerableProperty,
 } = require('internal/webstreams/util');
 
 const {
@@ -1911,9 +1911,12 @@ function readableStreamDefaultControllerError(controller, error) {
 
 function readableStreamDefaultControllerCancelSteps(controller, reason) {
   resetQueue(controller);
-  const result = controller[kState].cancelAlgorithm(reason);
-  readableStreamDefaultControllerClearAlgorithms(controller);
-  return result;
+  try {
+    const result = controller[kState].cancelAlgorithm(reason);
+    return result;
+  } finally {
+    readableStreamDefaultControllerClearAlgorithms(controller);
+  }
 }
 
 function readableStreamDefaultControllerPullSteps(controller, readRequest) {
@@ -2604,6 +2607,7 @@ function readableByteStreamControllerPullSteps(controller, readRequest) {
         pendingPullIntos,
         {
           buffer,
+          bufferByteLength: autoAllocateChunkSize,
           byteOffset: 0,
           byteLength: autoAllocateChunkSize,
           bytesFilled: 0,

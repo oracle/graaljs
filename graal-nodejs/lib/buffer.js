@@ -25,7 +25,6 @@ const {
   Array,
   ArrayIsArray,
   ArrayPrototypeForEach,
-  Error,
   MathFloor,
   MathMin,
   MathTrunc,
@@ -100,7 +99,8 @@ const {
     ERR_MISSING_ARGS,
     ERR_UNKNOWN_ENCODING
   },
-  hideStackFrames
+  genericNodeError,
+  hideStackFrames,
 } = require('internal/errors');
 const {
   validateArray,
@@ -1116,12 +1116,16 @@ function adjustOffset(offset, length) {
   return NumberIsNaN(offset) ? 0 : length;
 }
 
-Buffer.prototype.slice = function slice(start, end) {
+Buffer.prototype.subarray = function subarray(start, end) {
   const srcLength = this.length;
   start = adjustOffset(start, srcLength);
   end = end !== undefined ? adjustOffset(end, srcLength) : srcLength;
   const newLength = end > start ? end - start : 0;
   return new FastBuffer(this.buffer, this.byteOffset + start, newLength);
+};
+
+Buffer.prototype.slice = function slice(start, end) {
+  return this.subarray(start, end);
 };
 
 function swap(b, n, m) {
@@ -1206,10 +1210,10 @@ if (internalBinding('config').hasIntl) {
       return result;
 
     const code = icuErrName(result);
-    // eslint-disable-next-line no-restricted-syntax
-    const err = new Error(`Unable to transcode Buffer [${code}]`);
-    err.code = code;
-    err.errno = result;
+    const err = genericNodeError(
+      `Unable to transcode Buffer [${code}]`,
+      { code: code, errno: result }
+    );
     throw err;
   };
 }

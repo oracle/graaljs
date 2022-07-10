@@ -1528,7 +1528,7 @@ function parseHeader(stream, callback) {
     let chunk;
     while (null !== (chunk = stream.read())) {
       const str = decoder.write(chunk);
-      if (str.match(/\n\n/)) {
+      if (str.includes('\n\n')) {
         // Found the header boundary.
         const split = str.split(/\n\n/);
         header += split.shift();
@@ -1541,10 +1541,10 @@ function parseHeader(stream, callback) {
           stream.unshift(buf);
         // Now the body of the message can be read from the stream.
         callback(null, header, stream);
-      } else {
-        // Still reading the header.
-        header += str;
+        return;
       }
+      // Still reading the header.
+      header += str;
     }
   }
 }
@@ -1682,7 +1682,7 @@ async function showBoth() {
 showBoth();
 ```
 
-### `readable.map(fn[, options])`
+##### `readable.map(fn[, options])`
 
 <!-- YAML
 added: v16.14.0
@@ -1696,7 +1696,7 @@ added: v16.14.0
     * `signal` {AbortSignal} aborted if the stream is destroyed allowing to
       abort the `fn` call early.
 * `options` {Object}
-  * `concurrency` {number} the maximal concurrent invocation of `fn` to call
+  * `concurrency` {number} the maximum concurrent invocation of `fn` to call
     on the stream at once. **Default:** `1`.
   * `signal` {AbortSignal} allows destroying the stream if the signal is
     aborted.
@@ -1726,7 +1726,7 @@ for await (const result of dnsResults) {
 }
 ```
 
-### `readable.filter(fn[, options])`
+##### `readable.filter(fn[, options])`
 
 <!-- YAML
 added: v16.14.0
@@ -1740,7 +1740,7 @@ added: v16.14.0
     * `signal` {AbortSignal} aborted if the stream is destroyed allowing to
       abort the `fn` call early.
 * `options` {Object}
-  * `concurrency` {number} the maximal concurrent invocation of `fn` to call
+  * `concurrency` {number} the maximum concurrent invocation of `fn` to call
     on the stream at once. **Default:** `1`.
   * `signal` {AbortSignal} allows destroying the stream if the signal is
     aborted.
@@ -1773,6 +1773,363 @@ for await (const result of dnsResults) {
   // Logs domains with more than 60 seconds on the resolved dns record.
   console.log(result);
 }
+```
+
+##### `readable.forEach(fn[, options])`
+
+<!-- YAML
+added: v16.15.0
+-->
+
+> Stability: 1 - Experimental
+
+* `fn` {Function|AsyncFunction} a function to call on each item of the stream.
+  * `data` {any} a chunk of data from the stream.
+  * `options` {Object}
+    * `signal` {AbortSignal} aborted if the stream is destroyed allowing to
+      abort the `fn` call early.
+* `options` {Object}
+  * `concurrency` {number} the maximum concurrent invocation of `fn` to call
+    on the stream at once. **Default:** `1`.
+  * `signal` {AbortSignal} allows destroying the stream if the signal is
+    aborted.
+* Returns: {Promise} a promise for when the stream has finished.
+
+This method allows iterating a stream. For each item in the stream the
+`fn` function will be called. If the `fn` function returns a promise - that
+promise will be `await`ed.
+
+This method is different from `for await...of` loops in that it can optionally
+process items concurrently. In addition, a `forEach` iteration can only be
+stopped by having passed a `signal` option and aborting the related
+`AbortController` while `for await...of` can be stopped with `break` or
+`return`. In either case the stream will be destroyed.
+
+This method is different from listening to the [`'data'`][] event in that it
+uses the [`readable`][] event in the underlying machinary and can limit the
+number of concurrent `fn` calls.
+
+```mjs
+import { Readable } from 'stream';
+import { Resolver } from 'dns/promises';
+
+// With a synchronous predicate.
+for await (const item of Readable.from([1, 2, 3, 4]).filter((x) => x > 2)) {
+  console.log(item); // 3, 4
+}
+// With an asynchronous predicate, making at most 2 queries at a time.
+const resolver = new Resolver();
+const dnsResults = await Readable.from([
+  'nodejs.org',
+  'openjsf.org',
+  'www.linuxfoundation.org',
+]).map(async (domain) => {
+  const { address } = await resolver.resolve4(domain, { ttl: true });
+  return address;
+}, { concurrency: 2 });
+await dnsResults.forEach((result) => {
+  // Logs result, similar to `for await (const result of dnsResults)`
+  console.log(result);
+});
+console.log('done'); // Stream has finished
+```
+
+##### `readable.toArray([options])`
+
+<!-- YAML
+added: v16.15.0
+-->
+
+> Stability: 1 - Experimental
+
+* `options` {Object}
+  * `signal` {AbortSignal} allows cancelling the toArray operation if the
+    signal is aborted.
+* Returns: {Promise} a promise containing an array (if the stream is in
+  object mode) or Buffer with the contents of the stream.
+
+This method allows easily obtaining the contents of a stream. If the
+stream is in [object mode][object-mode] an array of its contents is returned.
+If the stream is not in object mode a Buffer containing its data is returned.
+
+As this method reads the entire stream into memory, it negates the benefits of
+streams. It's intended for interoperability and convenience, not as the primary
+way to consume streams.
+
+```mjs
+import { Readable } from 'stream';
+import { Resolver } from 'dns/promises';
+
+await Readable.from([1, 2, 3, 4]).toArray(); // [1, 2, 3, 4]
+
+// Make dns queries concurrently using .map and collect
+// the results into an array using toArray
+const dnsResults = await Readable.from([
+  'nodejs.org',
+  'openjsf.org',
+  'www.linuxfoundation.org',
+]).map(async (domain) => {
+  const { address } = await resolver.resolve4(domain, { ttl: true });
+  return address;
+}, { concurrency: 2 }).toArray();
+```
+
+##### `readable.some(fn[, options])`
+
+<!-- YAML
+added: v16.15.0
+-->
+
+> Stability: 1 - Experimental
+
+* `fn` {Function|AsyncFunction} a function to call on each item of the stream.
+  * `data` {any} a chunk of data from the stream.
+  * `options` {Object}
+    * `signal` {AbortSignal} aborted if the stream is destroyed allowing to
+      abort the `fn` call early.
+* `options` {Object}
+  * `concurrency` {number} the maximum concurrent invocation of `fn` to call
+    on the stream at once. **Default:** `1`.
+  * `signal` {AbortSignal} allows destroying the stream if the signal is
+    aborted.
+* Returns: {Promise} a promise evaluating to `true` if `fn` returned a truthy
+  value for at least one of the chunks.
+
+This method is similar to `Array.prototype.some` and calls `fn` on each chunk
+in the stream until the awaited return value is `true` (or any truthy value).
+Once an `fn` call on a chunk awaited return value is truthy, the stream is
+destroyed and the promise is fulfilled with `true`. If none of the `fn`
+calls on the chunks return a truthy value, the promise is fulfilled with
+`false`.
+
+```mjs
+import { Readable } from 'stream';
+import { stat } from 'fs/promises';
+
+// With a synchronous predicate.
+await Readable.from([1, 2, 3, 4]).some((x) => x > 2); // true
+await Readable.from([1, 2, 3, 4]).some((x) => x < 0); // false
+
+// With an asynchronous predicate, making at most 2 file checks at a time.
+const anyBigFile = await Readable.from([
+  'file1',
+  'file2',
+  'file3',
+]).some(async (fileName) => {
+  const stats = await stat(fileName);
+  return stat.size > 1024 * 1024;
+}, { concurrency: 2 });
+console.log(anyBigFile); // `true` if any file in the list is bigger than 1MB
+console.log('done'); // Stream has finished
+```
+
+##### `readable.every(fn[, options])`
+
+<!-- YAML
+added: v16.15.0
+-->
+
+> Stability: 1 - Experimental
+
+* `fn` {Function|AsyncFunction} a function to call on each item of the stream.
+  * `data` {any} a chunk of data from the stream.
+  * `options` {Object}
+    * `signal` {AbortSignal} aborted if the stream is destroyed allowing to
+      abort the `fn` call early.
+* `options` {Object}
+  * `concurrency` {number} the maximum concurrent invocation of `fn` to call
+    on the stream at once. **Default:** `1`.
+  * `signal` {AbortSignal} allows destroying the stream if the signal is
+    aborted.
+* Returns: {Promise} a promise evaluating to `true` if `fn` returned a truthy
+  value for all of the chunks.
+
+This method is similar to `Array.prototype.every` and calls `fn` on each chunk
+in the stream to check if all awaited return values are truthy value for `fn`.
+Once an `fn` call on a chunk awaited return value is falsy, the stream is
+destroyed and the promise is fulfilled with `false`. If all of the `fn` calls
+on the chunks return a truthy value, the promise is fulfilled with `true`.
+
+```mjs
+import { Readable } from 'stream';
+import { stat } from 'fs/promises';
+
+// With a synchronous predicate.
+await Readable.from([1, 2, 3, 4]).every((x) => x > 2); // false
+await Readable.from([1, 2, 3, 4]).every((x) => x > 0); // true
+
+// With an asynchronous predicate, making at most 2 file checks at a time.
+const allBigFiles = await Readable.from([
+  'file1',
+  'file2',
+  'file3',
+]).every(async (fileName) => {
+  const stats = await stat(fileName);
+  return stat.size > 1024 * 1024;
+}, { concurrency: 2 });
+// `true` if all files in the list are bigger than 1MiB
+console.log(allBigFiles);
+console.log('done'); // Stream has finished
+```
+
+##### `readable.flatMap(fn[, options])`
+
+<!-- YAML
+added: v16.15.0
+-->
+
+> Stability: 1 - Experimental
+
+* `fn` {Function|AsyncGeneratorFunction|AsyncFunction} a function to map over
+  every item in the stream.
+  * `data` {any} a chunk of data from the stream.
+  * `options` {Object}
+    * `signal` {AbortSignal} aborted if the stream is destroyed allowing to
+      abort the `fn` call early.
+* `options` {Object}
+  * `concurrency` {number} the maximum concurrent invocation of `fn` to call
+    on the stream at once. **Default:** `1`.
+  * `signal` {AbortSignal} allows destroying the stream if the signal is
+    aborted.
+* Returns: {Readable} a stream flat-mapped with the function `fn`.
+
+This method returns a new stream by applying the given callback to each
+chunk of the stream and then flattening the result.
+
+It is possible to return a stream or another iterable or async iterable from
+`fn` and the result streams will be merged (flattened) into the returned
+stream.
+
+```mjs
+import { Readable } from 'stream';
+import { createReadStream } from 'fs';
+
+// With a synchronous mapper.
+for await (const item of Readable.from([1, 2, 3, 4]).flatMap((x) => [x, x])) {
+  console.log(item); // 1, 1, 2, 2, 3, 3, 4, 4
+}
+// With an asynchronous mapper, combine the contents of 4 files
+const concatResult = Readable.from([
+  './1.mjs',
+  './2.mjs',
+  './3.mjs',
+  './4.mjs',
+]).flatMap((fileName) => createReadStream(fileName));
+for await (const result of concatResult) {
+  // This will contain the contents (all chunks) of all 4 files
+  console.log(result);
+}
+```
+
+##### `readable.drop(limit[, options])`
+
+<!-- YAML
+added: v16.15.0
+-->
+
+> Stability: 1 - Experimental
+
+* `limit` {number} the number of chunks to drop from the readable.
+* `options` {Object}
+  * `signal` {AbortSignal} allows destroying the stream if the signal is
+    aborted.
+* Returns: {Readable} a stream with `limit` chunks dropped.
+
+This method returns a new stream with the first `limit` chunks dropped.
+
+```mjs
+import { Readable } from 'stream';
+
+await Readable.from([1, 2, 3, 4]).drop(2).toArray(); // [3, 4]
+```
+
+##### `readable.take(limit[, options])`
+
+<!-- YAML
+added: v16.15.0
+-->
+
+> Stability: 1 - Experimental
+
+* `limit` {number} the number of chunks to take from the readable.
+* `options` {Object}
+  * `signal` {AbortSignal} allows destroying the stream if the signal is
+    aborted.
+* Returns: {Readable} a stream with `limit` chunks taken.
+
+This method returns a new stream with the first `limit` chunks.
+
+```mjs
+import { Readable } from 'stream';
+
+await Readable.from([1, 2, 3, 4]).take(2).toArray(); // [1, 2]
+```
+
+##### `readable.asIndexedPairs([options])`
+
+<!-- YAML
+added: v16.15.0
+-->
+
+> Stability: 1 - Experimental
+
+* `options` {Object}
+  * `signal` {AbortSignal} allows destroying the stream if the signal is
+    aborted.
+* Returns: {Readable} a stream of indexed pairs.
+
+This method returns a new stream with chunks of the underlying stream paired
+with a counter in the form `[index, chunk]`. The first index value is 0 and it
+increases by 1 for each chunk produced.
+
+```mjs
+import { Readable } from 'stream';
+
+const pairs = await Readable.from(['a', 'b', 'c']).asIndexedPairs().toArray();
+console.log(pairs); // [[0, 'a'], [1, 'b'], [2, 'c']]
+```
+
+##### `readable.reduce(fn[, initial[, options]])`
+
+<!-- YAML
+added: v16.15.0
+-->
+
+> Stability: 1 - Experimental
+
+* `fn` {Function|AsyncFunction} a reducer function to call over every chunk
+  in the stream.
+  * `previous` {any} the value obtained from the last call to `fn` or the
+    `initial` value if specified or the first chunk of the stream otherwise.
+  * `data` {any} a chunk of data from the stream.
+  * `options` {Object}
+    * `signal` {AbortSignal} aborted if the stream is destroyed allowing to
+      abort the `fn` call early.
+* `initial` {any} the initial value to use in the reduction.
+* `options` {Object}
+  * `signal` {AbortSignal} allows destroying the stream if the signal is
+    aborted.
+* Returns: {Promise} a promise for the final value of the reduction.
+
+This method calls `fn` on each chunk of the stream in order, passing it the
+result from the calculation on the previous element. It returns a promise for
+the final value of the reduction.
+
+The reducer function iterates the stream element-by-element which means that
+there is no `concurrency` parameter or parallism. To perform a `reduce`
+concurrently, it can be chained to the [`readable.map`][] method.
+
+If no `initial` value is supplied the first chunk of the stream is used as the
+initial value. If the stream is empty, the promise is rejected with a
+`TypeError` with the `ERR_INVALID_ARGS` code property.
+
+```mjs
+import { Readable } from 'stream';
+
+const ten = await Readable.from([1, 2, 3, 4]).reduce((previous, data) => {
+  return previous + data;
+});
+console.log(ten); // 10
 ```
 
 ### Duplex and transform streams
@@ -2062,7 +2419,7 @@ const fs = require('fs');
 async function run() {
   await pipeline(
     fs.createReadStream('lowercase.txt'),
-    async function* (source, signal) {
+    async function* (source, { signal }) {
       source.setEncoding('utf8');  // Work with strings rather than `Buffer`s.
       for await (const chunk of source) {
         yield await processChunk(chunk, { signal });
@@ -2086,7 +2443,7 @@ const fs = require('fs');
 
 async function run() {
   await pipeline(
-    async function * (signal) {
+    async function* ({ signal }) {
       await someLongRunningfn({ signal });
       yield 'asd';
     },
@@ -3823,6 +4180,7 @@ contain multi-byte characters.
 [`process.stdin`]: process.md#processstdin
 [`process.stdout`]: process.md#processstdout
 [`readable._read()`]: #readable_readsize
+[`readable.map`]: #readablemapfn-options
 [`readable.push('')`]: #readablepush
 [`readable.setEncoding()`]: #readablesetencodingencoding
 [`stream.Readable.from()`]: #streamreadablefromiterable-options

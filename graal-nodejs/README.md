@@ -1,14 +1,4 @@
-<!--lint disable no-literal-urls-->
-
-<p align="center">
-  <a href="https://nodejs.org/">
-    <img
-      alt="Node.js"
-      src="https://nodejs.org/static/images/logo-light.svg"
-      width="400"
-    />
-  </a>
-</p>
+# Node.js
 
 Node.js is an open-source, cross-platform, JavaScript runtime environment.
 
@@ -19,7 +9,7 @@ The Node.js project uses an [open governance model](./GOVERNANCE.md). The
 
 **This project has a [Code of Conduct][].**
 
-# Table of contents
+## Table of contents
 
 * [Support](#support)
 * [Release types](#release-types)
@@ -120,7 +110,7 @@ For Current and LTS, the GPG detached signature of `SHASUMS256.txt` is in
 import the keys:
 
 ```console
-$ gpg --keyserver pool.sks-keyservers.net --recv-keys DD8F2338BAE7501E3DD5AC78C273792F7D83545D
+$ gpg --keyserver hkps://keys.openpgp.org --recv-keys DD8F2338BAE7501E3DD5AC78C273792F7D83545D
 ```
 
 See the bottom of this README for a full script to import active release keys.
@@ -294,6 +284,8 @@ For information about the governance of the Node.js project, see
   **Bradley Farias** <<bradley.meck@gmail.com>>
 * [bnb](https://github.com/bnb) -
   **Tierney Cyren** <<hello@bnb.im>> (they/he)
+* [bnoordhuis](https://github.com/bnoordhuis) -
+  **Ben Noordhuis** <<info@bnoordhuis.nl>>
 * [boneskull](https://github.com/boneskull) -
   **Christopher Hiller** <<boneskull@boneskull.com>> (he/him)
 * [BridgeAR](https://github.com/BridgeAR) -
@@ -312,8 +304,6 @@ For information about the governance of the Node.js project, see
   **Daniel Bevenius** <<daniel.bevenius@gmail.com>> (he/him)
 * [danielleadams](https://github.com/danielleadams) -
   **Danielle Adams** <<adamzdanielle@gmail.com>> (she/her)
-* [DerekNonGeneric](https://github.com/DerekNonGeneric) -
-  **Derek Lewis** <<DerekNonGeneric@inf.is>> (he/him)
 * [devnexen](https://github.com/devnexen) -
   **David Carlier** <<devnexen@gmail.com>>
 * [devsnek](https://github.com/devsnek) -
@@ -354,12 +344,14 @@ For information about the governance of the Node.js project, see
   **Fedor Indutny** <<fedor@indutny.com>>
 * [JacksonTian](https://github.com/JacksonTian) -
   **Jackson Tian** <<shyvo1987@gmail.com>>
+* [JakobJingleheimer](https://github.com/JakobJingleheimer) -
+  **Jacob Smith** <<jacob@frende.me>> (he/him)
 * [jasnell](https://github.com/jasnell) -
   **James M Snell** <<jasnell@gmail.com>> (he/him)
 * [jkrems](https://github.com/jkrems) -
   **Jan Krems** <<jan.krems@gmail.com>> (he/him)
-* [joaocgreis](https://github.com/joaocgreis) -
-  **João Reis** <<reis@janeasystems.com>>
+* [joesepi](https://github.com/joesepi) -
+  **Joe Sepi** <<sepi@joesepi.com>> (he/him)
 * [joyeecheung](https://github.com/joyeecheung) -
   **Joyee Cheung** <<joyeec9h3@gmail.com>> (she/her)
 * [juanarbol](https://github.com/juanarbol) -
@@ -378,6 +370,8 @@ For information about the governance of the Node.js project, see
   **Denys Otrishko** <<shishugi@gmail.com>> (he/him)
 * [Lxxyx](https://github.com/Lxxyx) -
   **Zijian Liu** <<lxxyxzj@gmail.com>> (he/him)
+* [marsonya](https://github.com/marsonya) -
+  **Akhil Marsonya** <<akhil.marsonya27@gmail.com>> (he/him)
 * [mcollina](https://github.com/mcollina) -
   **Matteo Collina** <<matteo.collina@gmail.com>> (he/him)
 * [Mesteery](https://github.com/Mesteery) -
@@ -424,6 +418,8 @@ For information about the governance of the Node.js project, see
   **Santiago Gimeno** <<santiago.gimeno@gmail.com>>
 * [shisama](https://github.com/shisama) -
   **Masashi Hirano** <<shisama07@gmail.com>> (he/him)
+* [ShogunPanda](https://github.com/ShogunPanda) -
+  **Paolo Insogna** <<paolo@cowtech.it>> (he/him)
 * [srl295](https://github.com/srl295) -
   **Steven R Loomis** <<srloomis@us.ibm.com>>
 * [starkwang](https://github.com/starkwang) -
@@ -474,8 +470,6 @@ For information about the governance of the Node.js project, see
   **Alexey Orlenko** <<eaglexrlnk@gmail.com>> (he/him)
 * [bmeurer](https://github.com/bmeurer) -
   **Benedikt Meurer** <<benedikt.meurer@gmail.com>>
-* [bnoordhuis](https://github.com/bnoordhuis) -
-  **Ben Noordhuis** <<info@bnoordhuis.nl>>
 * [brendanashworth](https://github.com/brendanashworth) -
   **Brendan Ashworth** <<brendan.ashworth@me.com>>
 * [calvinmetcalf](https://github.com/calvinmetcalf) -
@@ -526,6 +520,8 @@ For information about the governance of the Node.js project, see
   **John-David Dalton** <<john.david.dalton@gmail.com>>
 * [jhamhader](https://github.com/jhamhader) -
   **Yuval Brik** <<yuval@brik.org.il>>
+* [joaocgreis](https://github.com/joaocgreis) -
+  **João Reis** <<reis@janeasystems.com>>
 * [joshgav](https://github.com/joshgav) -
   **Josh Gavant** <<josh.gavant@outlook.com>>
 * [julianduque](https://github.com/julianduque) -
@@ -648,6 +644,8 @@ maintaining the Node.js project.
   **Frank Qiu** <<iam.frankqiu@gmail.com>> (he/him)
 * [marsonya](https://github.com/marsonya) -
   **Akhil Marsonya** <<akhil.marsonya27@gmail.com>> (he/him)
+* [meixg](https://github.com/meixg) -
+  **Xuguang Mei** <<meixg@foxmail.com>> (he/him)
 * [Mesteery](https://github.com/Mesteery) -
   **Mestery** <<mestery@protonmail.com>> (he/him)
 * [PoojaDurgad](https://github.com/PoojaDurgad) -
@@ -671,10 +669,14 @@ Primary GPG keys for Node.js Releasers (some Releasers sign with subkeys):
   `74F12602B6F1C4E913FAA37AD3A89613643B6201`
 * **James M Snell** <<jasnell@keybase.io>>
   `71DCFD284A79C3B38668286BC97EC7A07EDE3FC1`
+* **Juan José Arboleda** <<soyjuanarbol@gmail.com>>
+  `61FC681DFB92A079F1685E77973F295594EC4689`
 * **Michaël Zasso** <<targos@protonmail.com>>
   `8FCCA13FEF1D0C2E91008E09770F7A9A5AE15600`
 * **Myles Borins** <<myles.borins@gmail.com>>
   `C4F0DFFF4E8C1A8236409D08E73BC641CC11F4C8`
+* **RafaelGSS** <<rafael.nunu@hotmail.com>>
+  `890C08DB8579162FEE0DF9DB8BEAB4DFCF555EF4`
 * **Richard Lau** <<rlau@redhat.com>>
   `C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C`
 * **Rod Vagg** <<rod@vagg.org>>
@@ -690,18 +692,20 @@ To import the full set of trusted release keys (including subkeys possibly used
 to sign releases):
 
 ```bash
-gpg --keyserver pool.sks-keyservers.net --recv-keys 4ED778F539E3634C779C87C6D7062848A1AB005C
-gpg --keyserver pool.sks-keyservers.net --recv-keys 141F07595B7B3FFE74309A937405533BE57C7D57
-gpg --keyserver pool.sks-keyservers.net --recv-keys 94AE36675C464D64BAFA68DD7434390BDBE9B9C5
-gpg --keyserver pool.sks-keyservers.net --recv-keys 74F12602B6F1C4E913FAA37AD3A89613643B6201
-gpg --keyserver pool.sks-keyservers.net --recv-keys 71DCFD284A79C3B38668286BC97EC7A07EDE3FC1
-gpg --keyserver pool.sks-keyservers.net --recv-keys 8FCCA13FEF1D0C2E91008E09770F7A9A5AE15600
-gpg --keyserver pool.sks-keyservers.net --recv-keys C4F0DFFF4E8C1A8236409D08E73BC641CC11F4C8
-gpg --keyserver pool.sks-keyservers.net --recv-keys C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C
-gpg --keyserver pool.sks-keyservers.net --recv-keys DD8F2338BAE7501E3DD5AC78C273792F7D83545D
-gpg --keyserver pool.sks-keyservers.net --recv-keys A48C2BEE680E841632CD4E44F07496B3EB3C1762
-gpg --keyserver pool.sks-keyservers.net --recv-keys 108F52B48DB57BB0CC439B2997B01419BD92F80A
-gpg --keyserver pool.sks-keyservers.net --recv-keys B9E2F5981AA6E0CD28160D9FF13993A75599653C
+gpg --keyserver hkps://keys.openpgp.org --recv-keys 4ED778F539E3634C779C87C6D7062848A1AB005C
+gpg --keyserver hkps://keys.openpgp.org --recv-keys 141F07595B7B3FFE74309A937405533BE57C7D57
+gpg --keyserver hkps://keys.openpgp.org --recv-keys 94AE36675C464D64BAFA68DD7434390BDBE9B9C5
+gpg --keyserver hkps://keys.openpgp.org --recv-keys 74F12602B6F1C4E913FAA37AD3A89613643B6201
+gpg --keyserver hkps://keys.openpgp.org --recv-keys 71DCFD284A79C3B38668286BC97EC7A07EDE3FC1
+gpg --keyserver hkps://keys.openpgp.org --recv-keys 61FC681DFB92A079F1685E77973F295594EC4689
+gpg --keyserver hkps://keys.openpgp.org --recv-keys 8FCCA13FEF1D0C2E91008E09770F7A9A5AE15600
+gpg --keyserver hkps://keys.openpgp.org --recv-keys C4F0DFFF4E8C1A8236409D08E73BC641CC11F4C8
+gpg --keyserver hkps://keys.openpgp.org --recv-keys 890C08DB8579162FEE0DF9DB8BEAB4DFCF555EF4
+gpg --keyserver hkps://keys.openpgp.org --recv-keys C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C
+gpg --keyserver hkps://keys.openpgp.org --recv-keys DD8F2338BAE7501E3DD5AC78C273792F7D83545D
+gpg --keyserver hkps://keys.openpgp.org --recv-keys A48C2BEE680E841632CD4E44F07496B3EB3C1762
+gpg --keyserver hkps://keys.openpgp.org --recv-keys 108F52B48DB57BB0CC439B2997B01419BD92F80A
+gpg --keyserver hkps://keys.openpgp.org --recv-keys B9E2F5981AA6E0CD28160D9FF13993A75599653C
 ```
 
 See the section above on [Verifying binaries](#verifying-binaries) for how to

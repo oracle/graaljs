@@ -232,8 +232,6 @@ test-crypto-keygen: SKIP
 [$system==freebsd]
 # https://github.com/nodejs/node/issues/31727
 test-fs-stat-bigint: PASS,FLAKY
-# https://github.com/nodejs/node/issues/28803
-test-stdout-close-catch: PASS,FLAKY
 # https://github.com/nodejs/node/issues/31280
 test-worker-message-port-message-before-close: PASS,FLAKY
 
@@ -267,5 +265,5 @@ test-http-client-parse-error: PASS, FLAKY
 test-http-multi-line-headers: PASS, FLAKY
 test-http-server-unconsume: PASS, FLAKY
 test-http-upgrade-advertise: PASS, FLAKY
-test-http-client-mindhsize: PASS, FLAKY
-test-http-tls-write-error: PASS, FLAKY
+test-tls-client-mindhsize: PASS, FLAKY
+test-tls-write-error: PASS, FLAKY

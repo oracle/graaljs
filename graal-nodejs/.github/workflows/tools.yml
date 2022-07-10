@@ -1,13 +1,13 @@
-name: "tools update"
+name: Tools update
 on:
   schedule:
-    # Run once a week at 00:05 AM UTC on Saturday.
-    - cron: '5 0 * * 6'
+    # Run once a week at 00:05 AM UTC on Sunday.
+    - cron: 5 0 * * 0
 
   workflow_dispatch:
 
 jobs:
-  tools_update:
+  tools-update:
     if: github.repository == 'nodejs/node'
     runs-on: ubuntu-latest
     strategy:
@@ -23,7 +23,11 @@ jobs:
                 echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
                 ./update-eslint.sh
               fi
-          - id: "lint-md-dependencies"
+          - id: corepack
+            run: |
+              make corepack-update
+              echo "NEW_VERSION=$(node deps/corepack/dist/corepack.js --version)" >> $GITHUB_ENV
+          - id: lint-md-dependencies
             run: |
               cd tools/lint-md
               npm ci
@@ -63,8 +67,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_USER_TOKEN }}
         with:
           author: Node.js GitHub Bot <github-bot@iojs.org>
-          body: "This is an automated update of ${{ matrix.id }} to ${{ env.NEW_VERSION }}."
-          branch: "actions/tools-update-${{ matrix.id }}"  # Custom branch *just* for this Action.
-          commit-message: "tools: update ${{ matrix.id }} to ${{ env.NEW_VERSION }}"
+          body: This is an automated update of ${{ matrix.id }} to ${{ env.NEW_VERSION }}.
+          branch: actions/tools-update-${{ matrix.id }}  # Custom branch *just* for this Action.
+          commit-message: 'tools: update ${{ matrix.id }} to ${{ env.NEW_VERSION }}'
           labels: tools
-          title: "tools: update ${{ matrix.id }} to ${{ env.NEW_VERSION }}"
+          title: 'tools: update ${{ matrix.id }} to ${{ env.NEW_VERSION }}'
