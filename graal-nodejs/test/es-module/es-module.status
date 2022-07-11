@@ -22,3 +22,6 @@ test-esm-loader-side-effect          : FAIL
 
 # WebAssembly is not supported
 test-esm-wasm                        : FAIL
+
+# Internal error in ImportCallNode.getActiveScriptOrModule()
+test-http-imports                    : FAIL
