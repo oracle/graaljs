@@ -105,6 +105,7 @@ test-vm-basic: FAIL
 test-vm-context: FAIL
 
 # WebAssembly is not supported
+test-fetch: FAIL
 test-vm-codegen: FAIL
 test-wasm-simple: FAIL
 test-whatwg-webstreams-transfer: FAIL
