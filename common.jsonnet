@@ -129,18 +129,6 @@ local common_json = (import "common.json");
     },
   },
 
-  js_unittest: {
-      environment+: {
-          "MX_TEST_RESULT_TAGS": "js",
-      },
-  },
-
-  js_unittest_ee: self.js_unittest + {
-      environment+: {
-          "MX_TEST_RESULT_TAGS": "js,graal-enterprise",
-      },
-  },
-
   build : {
     run+: [
       ['mx', 'build', '--force-javac'],
