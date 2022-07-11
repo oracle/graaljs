@@ -94,6 +94,7 @@ import com.oracle.truffle.js.builtins.ConsoleBuiltins;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.DebugBuiltins;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
+import com.oracle.truffle.js.builtins.IteratorHelperPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.JavaBuiltins;
 import com.oracle.truffle.js.builtins.MLEBuiltins;
@@ -357,6 +358,7 @@ public class JSRealm {
     private final JSDynamicObject arrayIteratorPrototype;
     private final JSDynamicObject setIteratorPrototype;
     private final JSDynamicObject mapIteratorPrototype;
+    private final JSDynamicObject iteratorHelperPrototype;
     private final JSDynamicObject segmentsPrototype;
     private final JSDynamicObject segmentIteratorPrototype;
     private final JSDynamicObject stringIteratorPrototype;
@@ -708,6 +710,7 @@ public class JSRealm {
         this.stringIteratorPrototype = es6 ? createStringIteratorPrototype() : null;
         this.regExpStringIteratorPrototype = context.getContextOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2019 ? createRegExpStringIteratorPrototype() : null;
         this.wrapForIteratorPrototype = JSWrapForIterator.INSTANCE.createPrototype(this, iteratorConstructor);
+        this.iteratorHelperPrototype = createIteratorHelperPrototype();
 
         ctor = JSCollator.createConstructor(this);
         this.collatorConstructor = ctor.getFunctionObject();
@@ -1658,6 +1661,10 @@ public class JSRealm {
         return mapIteratorPrototype;
     }
 
+    public JSDynamicObject getIteratorHelperPrototype() {
+        return iteratorHelperPrototype;
+    }
+
     public JSDynamicObject getStringIteratorPrototype() {
         return stringIteratorPrototype;
     }
@@ -2174,6 +2181,13 @@ public class JSRealm {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, SetIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, JSSet.ITERATOR_CLASS_NAME);
+        return prototype;
+    }
+
+    private JSDynamicObject createIteratorHelperPrototype() {
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
+        JSObjectUtil.putFunctionsFromContainer(this, prototype, IteratorHelperPrototypeBuiltins.BUILTINS);
+        JSObjectUtil.putToStringTag(prototype, IteratorHelperPrototypeBuiltins.CLASS_NAME);
         return prototype;
     }
 

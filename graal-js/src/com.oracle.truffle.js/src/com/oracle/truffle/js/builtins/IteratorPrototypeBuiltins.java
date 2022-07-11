@@ -48,6 +48,8 @@ import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -82,7 +84,14 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         every(1),
         find(1),
 
-        reduce(1);
+        reduce(1),
+
+        map(1),
+        filter(1),
+        take(1),
+        drop(1),
+        indexed(0),
+        flatMap(1);
 
         private final int length;
 
@@ -116,8 +125,164 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return IteratorPrototypeBuiltinsFactory.IteratorFindNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case reduce:
                 return IteratorPrototypeBuiltinsFactory.IteratorReduceNodeGen.create(context, builtin, args().withThis().fixedArgs(1).varArgs().createArgumentNodes(context));
+            case map:
+                return IteratorPrototypeBuiltinsFactory.IteratorMapNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case filter:
+                return IteratorPrototypeBuiltinsFactory.IteratorFilterNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case take:
+                return IteratorPrototypeBuiltinsFactory.IteratorTakeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case drop:
+                return IteratorPrototypeBuiltinsFactory.IteratorDropNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case indexed:
+                return IteratorPrototypeBuiltinsFactory.IteratorIndexedNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case flatMap:
+                return IteratorPrototypeBuiltinsFactory.IteratorFlatMapNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
+    }
+
+    protected abstract static class IteratorMapNode extends JSBuiltinNode {
+        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private IteratorHelperPrototypeBuiltins.CreateIteratorHelperNode createIteratorHelperNode;
+
+        protected IteratorMapNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+
+            createIteratorHelperNode = IteratorHelperPrototypeBuiltins.CreateIteratorHelperNode.create(context);
+            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+        }
+
+        @Specialization(guards = "isCallable(mapper)")
+        public JSDynamicObject map(Object thisObj, Object mapper) {
+            IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
+
+            return createIteratorHelperNode.execute(iterated, IteratorHelperPrototypeBuiltins.HelperType.map, mapper);
+        }
+    }
+
+    protected abstract static class IteratorFilterNode extends JSBuiltinNode {
+        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private IteratorHelperPrototypeBuiltins.CreateIteratorHelperNode createIteratorHelperNode;
+
+        protected IteratorFilterNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+
+            createIteratorHelperNode = IteratorHelperPrototypeBuiltins.CreateIteratorHelperNode.create(context);
+            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+        }
+
+        @Specialization(guards = "isCallable(filterer)")
+        public JSDynamicObject map(Object thisObj, Object filterer) {
+            IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
+
+            return createIteratorHelperNode.execute(iterated, IteratorHelperPrototypeBuiltins.HelperType.filter, filterer);
+        }
+    }
+
+    protected abstract static class IteratorIndexedNode extends JSBuiltinNode {
+        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private IteratorHelperPrototypeBuiltins.CreateIteratorHelperNode createIteratorHelperNode;
+
+        protected IteratorIndexedNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+
+            createIteratorHelperNode = IteratorHelperPrototypeBuiltins.CreateIteratorHelperNode.create(context);
+            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+        }
+
+        @Specialization
+        public JSDynamicObject indexed(Object thisObj) {
+            IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
+
+            return createIteratorHelperNode.execute(iterated, IteratorHelperPrototypeBuiltins.HelperType.indexed, 0);
+        }
+    }
+
+    protected abstract static class IteratorTakeNode extends JSBuiltinNode {
+        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private IteratorHelperPrototypeBuiltins.CreateIteratorHelperNode createIteratorHelperNode;
+
+        @Child private JSToNumberNode toNumberNode;
+        @Child private JSToIntegerOrInfinityNode toIntegerOrInfinityNode;
+
+        protected IteratorTakeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+
+            createIteratorHelperNode = IteratorHelperPrototypeBuiltins.CreateIteratorHelperNode.create(context);
+            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            toNumberNode = JSToNumberNode.create();
+            toIntegerOrInfinityNode = JSToIntegerOrInfinityNode.create();
+        }
+
+        @Specialization
+        public JSDynamicObject take(Object thisObj, Object limit) {
+            IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
+
+            Number numLimit = toNumberNode.executeNumber(limit);
+            if (Double.isNaN(numLimit.doubleValue())) {
+                throw Errors.createRangeError("NAN not allowed (TODO: error message)", this);
+            }
+
+            Number integerLimit = toIntegerOrInfinityNode.executeNumber(limit);
+            if (integerLimit.doubleValue() < 0) {
+                throw Errors.createRangeErrorIndexNegative(this);
+            }
+
+            return createIteratorHelperNode.execute(iterated, IteratorHelperPrototypeBuiltins.HelperType.take, integerLimit);
+        }
+    }
+
+    protected abstract static class IteratorDropNode extends JSBuiltinNode {
+        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private IteratorHelperPrototypeBuiltins.CreateIteratorHelperNode createIteratorHelperNode;
+
+        @Child private JSToNumberNode toNumberNode;
+        @Child private JSToIntegerOrInfinityNode toIntegerOrInfinityNode;
+
+        protected IteratorDropNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+
+            createIteratorHelperNode = IteratorHelperPrototypeBuiltins.CreateIteratorHelperNode.create(context);
+            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            toNumberNode = JSToNumberNode.create();
+            toIntegerOrInfinityNode = JSToIntegerOrInfinityNode.create();
+        }
+
+        @Specialization
+        public JSDynamicObject drop(Object thisObj, Object limit) {
+            IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
+
+            Number numLimit = toNumberNode.executeNumber(limit);
+            if (Double.isNaN(numLimit.doubleValue())) {
+                throw Errors.createRangeError("NAN not allowed (TODO: error message)", this);
+            }
+
+            Number integerLimit = toIntegerOrInfinityNode.executeNumber(limit);
+            if (integerLimit.doubleValue() < 0) {
+                throw Errors.createRangeErrorIndexNegative(this);
+            }
+
+            return createIteratorHelperNode.execute(iterated, IteratorHelperPrototypeBuiltins.HelperType.drop, integerLimit);
+        }
+    }
+
+    protected abstract static class IteratorFlatMapNode extends JSBuiltinNode {
+        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private IteratorHelperPrototypeBuiltins.CreateIteratorHelperNode createIteratorHelperNode;
+
+        protected IteratorFlatMapNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+
+            createIteratorHelperNode = IteratorHelperPrototypeBuiltins.CreateIteratorHelperNode.create(context);
+            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+        }
+
+        @Specialization(guards = "isCallable(mapper)")
+        public JSDynamicObject map(Object thisObj, Object mapper) {
+            IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
+
+            return createIteratorHelperNode.execute(iterated, IteratorHelperPrototypeBuiltins.HelperType.flatMap, mapper);
+        }
     }
 
     protected abstract static class IteratorWithCallableNode extends JSBuiltinNode {
