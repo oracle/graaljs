@@ -649,7 +649,7 @@ public abstract class Environment {
         protected final Object name;
 
         protected VarRef(Object name) {
-            assert JSFrameSlot.isAllowedIdentifierType(name) : name;
+            assert name == null || JSFrameSlot.isAllowedIdentifierType(name) : name;
             this.name = name;
         }
 
@@ -1152,6 +1152,41 @@ public abstract class Environment {
         public boolean isGlobal() {
             return false;
         }
+    }
+
+    final class ActiveModuleRef extends AbstractArgumentsVarRef {
+        ActiveModuleRef(int scopeLevel, int frameLevel, Environment current) {
+            super(scopeLevel, frameLevel, null, current);
+        }
+
+        @Override
+        public JavaScriptNode createReadNode() {
+            return factory.createAccessFrameArgument(createScopeFrameNode(), 0);
+        }
+
+        @Override
+        public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
+            throw Errors.shouldNotReachHere();
+        }
+    }
+
+    public VarRef findActiveModule() {
+        Environment current = this;
+        int frameLevel = 0;
+        int scopeLevel = 0;
+        while (current.getParent() != null) {
+            if (current instanceof FunctionEnvironment) {
+                assert !((FunctionEnvironment) current).isModule();
+                ((FunctionEnvironment) current).setNeedsParentFrame(true);
+                frameLevel++;
+                scopeLevel = 0;
+            } else if (current instanceof BlockEnvironment && current.hasScopeFrame()) {
+                scopeLevel++;
+            }
+            current = current.getParent();
+        }
+        assert current instanceof FunctionEnvironment && ((FunctionEnvironment) current).isModule();
+        return new ActiveModuleRef(scopeLevel, frameLevel, current);
     }
 
     protected String toStringImpl(@SuppressWarnings("unused") Map<String, Integer> state) {

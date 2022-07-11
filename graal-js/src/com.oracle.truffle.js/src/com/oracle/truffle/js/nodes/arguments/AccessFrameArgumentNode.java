@@ -64,8 +64,8 @@ public final class AccessFrameArgumentNode extends JavaScriptNode implements Rep
         this.argIndex = argIndex;
     }
 
-    public static JavaScriptNode create(int frameLevel, int scopeLevel, int argIndex) {
-        return new AccessFrameArgumentNode(ScopeFrameNode.create(frameLevel, scopeLevel, null), argIndex);
+    public static JavaScriptNode create(ScopeFrameNode accessFrame, int argIndex) {
+        return new AccessFrameArgumentNode(accessFrame, argIndex);
     }
 
     @Override
