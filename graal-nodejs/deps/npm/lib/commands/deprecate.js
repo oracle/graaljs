@@ -1,5 +1,4 @@
 const fetch = require('npm-registry-fetch')
-const log = require('../utils/log-shim.js')
 const otplease = require('../utils/otplease.js')
 const npa = require('npm-package-arg')
 const semver = require('semver')
@@ -16,6 +15,8 @@ class Deprecate extends BaseCommand {
     'otp',
   ]
 
+  static ignoreImplicitWorkspace = false
+
   async completion (opts) {
     if (opts.conf.argv.remain.length > 1) {
       return []
@@ -25,7 +26,7 @@ class Deprecate extends BaseCommand {
     const packages = await libaccess.lsPackages(username, this.npm.flatOptions)
     return Object.keys(packages)
       .filter((name) =>
-        packages[name] === 'write' &&
+        packages[name] === 'read-write' &&
         (opts.conf.argv.remain.length === 0 ||
           name.startsWith(opts.conf.argv.remain[0])))
   }
@@ -51,7 +52,6 @@ class Deprecate extends BaseCommand {
       ...this.npm.flatOptions,
       spec: p,
       query: { write: true },
-      log,
     })
 
     Object.keys(packument.versions)
@@ -66,7 +66,6 @@ class Deprecate extends BaseCommand {
       method: 'PUT',
       body: packument,
       ignoreBody: true,
-      log,
     }))
   }
 }

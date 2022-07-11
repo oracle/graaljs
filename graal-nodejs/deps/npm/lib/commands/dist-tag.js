@@ -1,9 +1,10 @@
 const npa = require('npm-package-arg')
+const path = require('path')
 const regFetch = require('npm-registry-fetch')
 const semver = require('semver')
 const log = require('../utils/log-shim')
 const otplease = require('../utils/otplease.js')
-const readPackageName = require('../utils/read-package-name.js')
+const readPackage = require('read-package-json-fast')
 const BaseCommand = require('../base-command.js')
 
 class DistTag extends BaseCommand {
@@ -15,6 +16,8 @@ class DistTag extends BaseCommand {
     'rm <pkg> <tag>',
     'ls [<pkg>]',
   ]
+
+  static ignoreImplicitWorkspace = false
 
   async completion (opts) {
     const argv = opts.conf.argv.remain
@@ -31,7 +34,6 @@ class DistTag extends BaseCommand {
   async exec ([cmdName, pkg, tag]) {
     const opts = {
       ...this.npm.flatOptions,
-      log,
     }
 
     if (['add', 'a', 'set', 's'].includes(cmdName)) {
@@ -146,15 +148,15 @@ class DistTag extends BaseCommand {
 
   async list (spec, opts) {
     if (!spec) {
-      if (this.npm.config.get('global')) {
+      if (this.npm.global) {
         throw this.usageError()
       }
-      const pkg = await readPackageName(this.npm.prefix)
-      if (!pkg) {
+      const { name } = await readPackage(path.resolve(this.npm.prefix, 'package.json'))
+      if (!name) {
         throw this.usageError()
       }
 
-      return this.list(pkg, opts)
+      return this.list(name, opts)
     }
     spec = npa(spec)
 

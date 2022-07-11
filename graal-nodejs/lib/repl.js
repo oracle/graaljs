@@ -177,7 +177,7 @@ const history = require('internal/repl/history');
 const {
   extensionFormatMap,
   legacyExtensionFormatMap,
-} = require('internal/modules/esm/get_format');
+} = require('internal/modules/esm/formats');
 
 let nextREPLResourceNumber = 1;
 // This prevents v8 code cache from getting confused and using a different
@@ -990,7 +990,9 @@ function REPLServer(prompt,
       clearPreview(key);
       if (!reverseSearch(d, key)) {
         ttyWrite(d, key);
-        showPreview();
+        if (key.name !== 'escape') {
+          showPreview();
+        }
       }
       return;
     }
@@ -1172,7 +1174,7 @@ const importRE = /\bimport\s*\(\s*['"`](([\w@./:-]+\/)?(?:[\w@./:-]*))(?![^'"`])
 const requireRE = /\brequire\s*\(\s*['"`](([\w@./:-]+\/)?(?:[\w@./:-]*))(?![^'"`])$/;
 const fsAutoCompleteRE = /fs(?:\.promises)?\.\s*[a-z][a-zA-Z]+\(\s*["'](.*)/;
 const simpleExpressionRE =
-    /(?:[a-zA-Z_$](?:\w|\$)*\??\.)*[a-zA-Z_$](?:\w|\$)*\??\.?$/;
+    /(?:[\w$'"`[{(](?:\w|\$|['"`\]})])*\??\.)*[a-zA-Z_$](?:\w|\$)*\??\.?$/;
 const versionedFileNamesRe = /-\d+\.\d+/;
 
 function isIdentifier(str) {

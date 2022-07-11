@@ -235,8 +235,19 @@ void CipherBase::GetSSLCiphers(const FunctionCallbackInfo<Value>& args) {
 
 void CipherBase::GetCiphers(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
+  MarkPopErrorOnReturn mark_pop_error_on_return;
   CipherPushContext ctx(env);
-  EVP_CIPHER_do_all_sorted(array_push_back<EVP_CIPHER>, &ctx);
+  EVP_CIPHER_do_all_sorted(
+#if OPENSSL_VERSION_MAJOR >= 3
+    array_push_back<EVP_CIPHER,
+                    EVP_CIPHER_fetch,
+                    EVP_CIPHER_free,
+                    EVP_get_cipherbyname,
+                    EVP_CIPHER_get0_name>,
+#else
+    array_push_back<EVP_CIPHER>,
+#endif
+    &ctx);
   args.GetReturnValue().Set(ctx.ToJSArray());
 }
 
@@ -582,7 +593,8 @@ bool CipherBase::InitAuthenticated(
     // Tell OpenSSL about the desired length.
     if (!EVP_CIPHER_CTX_ctrl(ctx_.get(), EVP_CTRL_AEAD_SET_TAG, auth_tag_len,
                              nullptr)) {
-      THROW_ERR_CRYPTO_INVALID_AUTH_TAG(env());
+      THROW_ERR_CRYPTO_INVALID_AUTH_TAG(
+          env(), "Invalid authentication tag length: %u", auth_tag_len);
       return false;
     }
 

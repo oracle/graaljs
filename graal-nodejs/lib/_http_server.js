@@ -193,7 +193,8 @@ function ServerResponse(req) {
 
   if (hasObserver('http')) {
     this[kServerResponseStatistics] = {
-      startTime: process.hrtime()
+      startTime: process.hrtime(),
+      type: 'HttpRequest',
     };
   }
 }
@@ -380,7 +381,11 @@ function Server(options, requestListener) {
   }
 
   storeHTTPOptions.call(this, options);
-  net.Server.call(this, { allowHalfOpen: true });
+  net.Server.call(
+    this,
+    { allowHalfOpen: true, noDelay: options.noDelay,
+      keepAlive: options.keepAlive,
+      keepAliveInitialDelay: options.keepAliveInitialDelay });
 
   if (requestListener) {
     this.on('request', requestListener);

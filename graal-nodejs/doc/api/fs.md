@@ -392,7 +392,7 @@ added:
   * `offset` {integer} The location in the buffer at which to start filling.
     **Default:** `0`
   * `length` {integer} The number of bytes to read. **Default:**
-    `buffer.byteLength`
+    `buffer.byteLength - offset`
   * `position` {integer} The location where to begin reading data from the
     file. If `null`, data will be read from the current file position, and
     the position will be updated. If `position` is an integer, the current
@@ -827,6 +827,11 @@ try {
 
 <!-- YAML
 added: v16.7.0
+changes:
+  - version: v16.15.0
+    pr-url: https://github.com/nodejs/node/pull/41819
+    description: Accepts an additional `verbatimSymlinks` option to specify
+                 whether to perform path resolution for symlinks.
 -->
 
 > Stability: 1 - Experimental
@@ -847,6 +852,8 @@ added: v16.7.0
   * `preserveTimestamps` {boolean} When `true` timestamps from `src` will
     be preserved. **Default:** `false`.
   * `recursive` {boolean} copy directories recursively **Default:** `false`
+  * `verbatimSymlinks` {boolean} When `true`, path resolution for symlinks will
+    be skipped. **Default:** `false`
 * Returns: {Promise} Fulfills with `undefined` upon success.
 
 Asynchronously copies the entire directory structure from `src` to `dest`,
@@ -2006,6 +2013,11 @@ copyFile('source.txt', 'destination.txt', constants.COPYFILE_EXCL, callback);
 
 <!-- YAML
 added: v16.7.0
+changes:
+  - version: v16.15.0
+    pr-url: https://github.com/nodejs/node/pull/41819
+    description: Accepts an additional `verbatimSymlinks` option to specify
+                 whether to perform path resolution for symlinks.
 -->
 
 > Stability: 1 - Experimental
@@ -2026,6 +2038,8 @@ added: v16.7.0
   * `preserveTimestamps` {boolean} When `true` timestamps from `src` will
     be preserved. **Default:** `false`.
   * `recursive` {boolean} copy directories recursively **Default:** `false`
+  * `verbatimSymlinks` {boolean} When `true`, path resolution for symlinks will
+    be skipped. **Default:** `false`
 * `callback` {Function}
 
 Asynchronously copies the entire directory structure from `src` to `dest`,
@@ -3046,7 +3060,7 @@ changes:
 * `options` {Object}
   * `buffer` {Buffer|TypedArray|DataView} **Default:** `Buffer.alloc(16384)`
   * `offset` {integer} **Default:** `0`
-  * `length` {integer} **Default:** `buffer.byteLength`
+  * `length` {integer} **Default:** `buffer.byteLength - offset`
   * `position` {integer|bigint} **Default:** `null`
 * `callback` {Function}
   * `err` {Error}
@@ -4581,6 +4595,11 @@ copyFileSync('source.txt', 'destination.txt', constants.COPYFILE_EXCL);
 
 <!-- YAML
 added: v16.7.0
+changes:
+  - version: v16.15.0
+    pr-url: https://github.com/nodejs/node/pull/41819
+    description: Accepts an additional `verbatimSymlinks` option to specify
+                 whether to perform path resolution for symlinks.
 -->
 
 > Stability: 1 - Experimental
@@ -4600,6 +4619,8 @@ added: v16.7.0
   * `preserveTimestamps` {boolean} When `true` timestamps from `src` will
     be preserved. **Default:** `false`.
   * `recursive` {boolean} copy directories recursively **Default:** `false`
+  * `verbatimSymlinks` {boolean} When `true`, path resolution for symlinks will
+    be skipped. **Default:** `false`
 
 Synchronously copies the entire directory structure from `src` to `dest`,
 including subdirectories and files.
@@ -5097,7 +5118,7 @@ changes:
 * `buffer` {Buffer|TypedArray|DataView}
 * `options` {Object}
   * `offset` {integer} **Default:** `0`
-  * `length` {integer} **Default:** `buffer.byteLength`
+  * `length` {integer} **Default:** `buffer.byteLength - offset`
   * `position` {integer|bigint} **Default:** `null`
 * Returns: {number}
 

@@ -5,6 +5,7 @@ const {
   Error,
   MathMax,
   MathMin,
+  ObjectCreate,
   NumberIsSafeInteger,
   Promise,
   PromisePrototypeThen,
@@ -458,18 +459,15 @@ async function open(path, flags, mode) {
 async function read(handle, bufferOrOptions, offset, length, position) {
   let buffer = bufferOrOptions;
   if (!isArrayBufferView(buffer)) {
-    if (bufferOrOptions === undefined) {
-      bufferOrOptions = {};
-    }
-    if (bufferOrOptions.buffer) {
-      buffer = bufferOrOptions.buffer;
-      validateBuffer(buffer);
-    } else {
-      buffer = Buffer.alloc(16384);
-    }
-    offset = bufferOrOptions.offset || 0;
-    length = bufferOrOptions.length ?? buffer.byteLength;
-    position = bufferOrOptions.position ?? null;
+    bufferOrOptions ??= ObjectCreate(null);
+    ({
+      buffer = Buffer.alloc(16384),
+      offset = 0,
+      length = buffer.byteLength - offset,
+      position = null
+    } = bufferOrOptions);
+
+    validateBuffer(buffer);
   }
 
   if (offset == null) {
@@ -543,6 +541,10 @@ async function writev(handle, buffers, position) {
 
   if (typeof position !== 'number')
     position = null;
+
+  if (buffers.length === 0) {
+    return { bytesWritten: 0, buffers };
+  }
 
   const bytesWritten = (await binding.writeBuffers(handle.fd, buffers, position,
                                                    kUsePromises)) || 0;

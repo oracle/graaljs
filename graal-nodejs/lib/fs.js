@@ -605,7 +605,7 @@ function read(fd, buffer, offset, length, position, callback) {
 
   if (arguments.length <= 3) {
     // Assume fs.read(fd, options, callback)
-    let options = {};
+    let options = ObjectCreate(null);
     if (arguments.length < 3) {
       // This is fs.read(fd, callback)
       // buffer will be the callback
@@ -621,8 +621,8 @@ function read(fd, buffer, offset, length, position, callback) {
     ({
       buffer = Buffer.alloc(16384),
       offset = 0,
-      length = buffer.byteLength,
-      position
+      length = buffer.byteLength - offset,
+      position = null
     } = options);
   }
 
@@ -687,10 +687,14 @@ function readSync(fd, buffer, offset, length, position) {
   validateBuffer(buffer);
 
   if (arguments.length <= 3) {
-    // Assume fs.read(fd, buffer, options)
-    const options = offset || {};
+    // Assume fs.readSync(fd, buffer, options)
+    const options = offset || ObjectCreate(null);
 
-    ({ offset = 0, length = buffer.byteLength, position } = options);
+    ({
+      offset = 0,
+      length = buffer.byteLength - offset,
+      position = null
+    } = options);
   }
 
   if (offset == null) {
@@ -907,6 +911,11 @@ function writev(fd, buffers, position, callback) {
   validateBufferArray(buffers);
   callback = maybeCallback(callback || position);
 
+  if (buffers.length === 0) {
+    process.nextTick(callback, null, 0, buffers);
+    return;
+  }
+
   const req = new FSReqCallback();
   req.oncomplete = wrapper;
 
@@ -932,6 +941,10 @@ ObjectDefineProperty(writev, internalUtil.customPromisifyArgs, {
 function writevSync(fd, buffers, position) {
   fd = getValidatedFd(fd);
   validateBufferArray(buffers);
+
+  if (buffers.length === 0) {
+    return 0;
+  }
 
   const ctx = {};
 
@@ -2516,7 +2529,7 @@ function realpathSync(p, options) {
       }
       resolvedLink = pathModule.resolve(previous, linkTarget);
 
-      if (cache) cache.set(base, resolvedLink);
+      cache?.set(base, resolvedLink);
       if (!isWindows) seenLinks[id] = linkTarget;
     }
 
@@ -3041,8 +3054,7 @@ ObjectDefineProperties(fs, {
     configurable: true,
     enumerable: true,
     get() {
-      if (promises === null)
-        promises = require('internal/fs/promises').exports;
+      promises ??= require('internal/fs/promises').exports;
       return promises;
     }
   }

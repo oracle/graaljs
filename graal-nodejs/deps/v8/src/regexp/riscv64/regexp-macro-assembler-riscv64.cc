@@ -23,10 +23,10 @@ namespace internal {
  * This assembler uses the following register assignment convention
  * - s3 : kScratchReg. Temporarily stores the index of capture start after a matching pass
  *        for a global regexp.
- * - a5 : Pointer to current Code object including heap object tag.
- * - a6 : Current position in input, as negative offset from end of string.
+ * - s4 : Pointer to current Code object including heap object tag.
+ * - s1 : Current position in input, as negative offset from end of string.
  *        Please notice that this is the byte offset, not the character offset!
- * - a7 : Currently loaded character. Must be loaded using
+ * - s2 : Currently loaded character. Must be loaded using
  *        LoadCurrentCharacter before using any of the dispatch methods.
  * - t0 : Points to tip of backtrack stack
  * - t1 : Unused.
@@ -816,8 +816,8 @@ Handle<HeapObject> RegExpMacroAssemblerRISCV::GetCode(Handle<String> source) {
           __ Branch(&load_char_start_regexp, ne, current_input_offset(),
                     Operand(s3));
           // Offset from the end is zero if we already reached the end.
-          __ BranchShort(&exit_label_, eq, current_input_offset(),
-                         Operand(zero_reg));
+          __ Branch(&exit_label_, eq, current_input_offset(),
+                    Operand(zero_reg));
           // Advance current position after a zero-length match.
           Label advance;
           __ bind(&advance);

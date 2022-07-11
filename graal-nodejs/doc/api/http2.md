@@ -28,6 +28,41 @@ can be accessed using:
 const http2 = require('http2');
 ```
 
+## Determining if crypto support is unavailable
+
+It is possible for Node.js to be built without including support for the
+`crypto` module. In such cases, attempting to `import` from `http2` or
+calling `require('http2')` will result in an error being thrown.
+
+When using CommonJS, the error thrown can be caught using try/catch:
+
+```cjs
+let http2;
+try {
+  http2 = require('http2');
+} catch (err) {
+  console.log('http2 support is disabled!');
+}
+```
+
+When using the lexical ESM `import` keyword, the error can only be
+caught if a handler for `process.on('uncaughtException')` is registered
+_before_ any attempt to load the module is made (using, for instance,
+a preload module).
+
+When using ESM, if there is a chance that the code may be run on a build
+of Node.js where crypto support is not enabled, consider using the
+`import()` function instead of the lexical `import` keyword:
+
+```mjs
+let http2;
+try {
+  http2 = await import('http2');
+} catch (err) {
+  console.log('http2 support is disabled!');
+}
+```
+
 ## Core API
 
 The Core API provides a low-level interface designed specifically around
@@ -900,6 +935,12 @@ For HTTP/2 Client `Http2Session` instances only, the `http2session.request()`
 creates and returns an `Http2Stream` instance that can be used to send an
 HTTP/2 request to the connected server.
 
+When a `ClientHttp2Session` is first created, the socket may not yet be
+connected. if `clienthttp2session.request()` is called during this time, the
+actual request will be deferred until the socket is ready to go.
+If the `session` is closed before the actual request be executed, an
+`ERR_HTTP2_GOAWAY_SESSION` is thrown.
+
 This method is only available if `http2session.type` is equal to
 `http2.constants.NGHTTP2_SESSION_CLIENT`.
 
@@ -1201,7 +1242,7 @@ added: v10.11.0
 
 * {boolean}
 
-Set the `true` if the `END_STREAM` flag was set in the request or response
+Set to `true` if the `END_STREAM` flag was set in the request or response
 HEADERS frame received, indicating that no additional data should be received
 and the readable side of the `Http2Stream` will be closed.
 
@@ -2324,6 +2365,9 @@ changes:
     serialized, compressed block of headers. Attempts to send headers that
     exceed this limit will result in a `'frameError'` event being emitted
     and the stream being closed and destroyed.
+    While this sets the maximum allowed size to the entire block of headers,
+    `nghttp2` (the internal http2 library) has a limit of `65536`
+    for each decompressed key/value pair.
   * `paddingStrategy` {number} The strategy used for determining the amount of
     padding to use for `HEADERS` and `DATA` frames. **Default:**
     `http2.constants.PADDING_STRATEGY_NONE`. Value may be one of:

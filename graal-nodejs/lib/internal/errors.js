@@ -33,6 +33,7 @@ const {
   MathMax,
   Number,
   NumberIsInteger,
+  ObjectAssign,
   ObjectDefineProperty,
   ObjectDefineProperties,
   ObjectIsExtensible,
@@ -827,34 +828,50 @@ class AbortError extends Error {
     this.name = 'AbortError';
   }
 }
+
+/**
+ * This creates a generic Node.js error.
+ *
+ * @param {string} message The error message.
+ * @param {object} errorProperties Object with additional properties to be added to the error.
+ * @returns {Error}
+ */
+const genericNodeError = hideStackFrames(function genericNodeError(message, errorProperties) {
+  // eslint-disable-next-line no-restricted-syntax
+  const err = new Error(message);
+  ObjectAssign(err, errorProperties);
+  return err;
+});
+
 module.exports = {
+  AbortError,
   aggregateTwoErrors,
+  captureLargerStackTrace,
   codes,
+  connResetException,
   dnsException,
+  // This is exported only to facilitate testing.
+  E,
   errnoException,
   exceptionWithHostPort,
+  fatalExceptionStackEnhancers,
+  genericNodeError,
   getMessage,
-  hideStackFrames,
   hideInternalStackFrames,
+  hideStackFrames,
   isErrorStackTraceLimitWritable,
   isStackOverflowError,
+  kEnhanceStackBeforeInspector,
+  kIsNodeError,
+  kNoOverride,
+  maybeOverridePrepareStackTrace,
+  overrideStackTrace,
+  prepareStackTrace,
   setArrowMessage,
-  connResetException,
+  SystemError,
   uvErrmapGet,
   uvException,
   uvExceptionWithHostPort,
-  SystemError,
-  AbortError,
-  // This is exported only to facilitate testing.
-  E,
-  kNoOverride,
-  prepareStackTrace,
-  maybeOverridePrepareStackTrace,
-  overrideStackTrace,
-  kEnhanceStackBeforeInspector,
-  fatalExceptionStackEnhancers,
-  kIsNodeError,
-  captureLargerStackTrace,
 };
 
 // To declare an error message, use the E(sym, val, def) function above. The sym
@@ -1414,6 +1431,10 @@ E('ERR_NAPI_INVALID_TYPEDARRAY_ALIGNMENT',
   'start offset of %s should be a multiple of %s', RangeError);
 E('ERR_NAPI_INVALID_TYPEDARRAY_LENGTH',
   'Invalid typed array length', RangeError);
+E('ERR_NETWORK_IMPORT_BAD_RESPONSE',
+  "import '%s' received a bad response: %s", Error);
+E('ERR_NETWORK_IMPORT_DISALLOWED',
+  "import of '%s' by %s is not supported: %s", Error);
 E('ERR_NO_CRYPTO',
   'Node.js is not compiled with OpenSSL crypto support', Error);
 E('ERR_NO_ICU',
@@ -1572,15 +1593,20 @@ E('ERR_UNHANDLED_ERROR',
 E('ERR_UNKNOWN_BUILTIN_MODULE', 'No such built-in module: %s', Error);
 E('ERR_UNKNOWN_CREDENTIAL', '%s identifier does not exist: %s', Error);
 E('ERR_UNKNOWN_ENCODING', 'Unknown encoding: %s', TypeError);
-E('ERR_UNKNOWN_FILE_EXTENSION',
-  'Unknown file extension "%s" for %s',
-  TypeError);
-E('ERR_UNKNOWN_MODULE_FORMAT', 'Unknown module format: %s', RangeError);
+E('ERR_UNKNOWN_FILE_EXTENSION', (ext, path, suggestion) => {
+  let msg = `Unknown file extension "${ext}" for ${path}`;
+  if (suggestion) {
+    msg += `. ${suggestion}`;
+  }
+  return msg;
+}, TypeError);
+E('ERR_UNKNOWN_MODULE_FORMAT', 'Unknown module format: %s for URL %s',
+  RangeError);
 E('ERR_UNKNOWN_SIGNAL', 'Unknown signal: %s', TypeError);
 E('ERR_UNSUPPORTED_DIR_IMPORT', "Directory import '%s' is not supported " +
 'resolving ES modules imported from %s', Error);
-E('ERR_UNSUPPORTED_ESM_URL_SCHEME', (url) => {
-  let msg = 'Only file and data URLs are supported by the default ESM loader';
+E('ERR_UNSUPPORTED_ESM_URL_SCHEME', (url, supported) => {
+  let msg = `Only URLs with a scheme in: ${ArrayPrototypeJoin(supported, ', ')} are supported by the default ESM loader`;
   if (isWindows && url.protocol.length === 2) {
     msg +=
       '. On Windows, absolute paths must be valid file:// URLs';
