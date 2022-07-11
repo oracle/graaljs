@@ -2831,7 +2831,7 @@ public final class GraalJSAccess {
         }
 
         WeakCallback callback = updateWeakCallback(object, reference, 0, 0, 0);
-        return callback.data;
+        return (callback == null) ? 0 : callback.data;
     }
 
     @TruffleBoundary
