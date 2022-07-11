@@ -841,14 +841,6 @@ int ProcessGlobalArgs(std::vector<std::string>* args,
       v8_args.push_back(full_option("--inspect-brk-node="));
   }
 
-  if (env_opts->experimental_modules || env_opts->experimental_vm_modules) {
-      v8_args.push_back("--experimental-modules");
-  }
-
-  if (env_opts->expose_internals) {
-      v8_args.push_back("--expose-internals");
-  }
-
 #ifdef __POSIX__
   // Block SIGPROF signals when sleeping in epoll_wait/kevent/etc.  Avoids the
   // performance penalty of frequent EINTR wakeups when the profiler is running.
