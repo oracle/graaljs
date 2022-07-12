@@ -757,8 +757,8 @@ public class NodeFactory {
         return AccessIndexedArgumentNode.create(0);
     }
 
-    public JavaScriptNode createAccessFrameArgument(int frameLevel, int scopeLevel, int argIndex) {
-        return AccessFrameArgumentNode.create(frameLevel, scopeLevel, argIndex);
+    public JavaScriptNode createAccessFrameArgument(ScopeFrameNode accessFrame, int argIndex) {
+        return AccessFrameArgumentNode.create(accessFrame, argIndex);
     }
 
     public JavaScriptNode createAccessHomeObject(JSContext context) {
