@@ -3120,18 +3120,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/DurationFormat/prototype/format/length.js",
-    "status" : "FAIL",
-    "comment" : "Missing 'features: [Intl.DurationFormat]'"
-  }, {
-    "filePath" : "intl402/DurationFormat/prototype/formatToParts/length.js",
-    "status" : "FAIL",
-    "comment" : "Missing 'features: [Intl.DurationFormat]'"
-  }, {
-    "filePath" : "intl402/DurationFormat/prototype/resolvedOptions/length.js",
-    "status" : "FAIL",
-    "comment" : "Missing 'features: [Intl.DurationFormat]'"
-  }, {
     "filePath" : "intl402/Temporal/Calendar/prototype/dateAdd/date-infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
