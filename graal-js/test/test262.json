@@ -3132,14 +3132,6 @@
     "status" : "FAIL",
     "comment" : "Missing 'features: [Intl.DurationFormat]'"
   }, {
-    "filePath" : "intl402/NumberFormat/test-option-useGrouping-extended.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-07-13"
-  }, {
-    "filePath" : "intl402/NumberFormat/test-option-useGrouping.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-07-13"
-  }, {
     "filePath" : "intl402/Temporal/Calendar/prototype/dateAdd/date-infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"

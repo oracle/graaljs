@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,13 +42,11 @@ package com.oracle.truffle.js.nodes.intl;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
@@ -65,7 +63,6 @@ public abstract class GetStringOrBooleanOptionNode extends JavaScriptBaseNode {
     private final Object trueValue;
     private final Object falsyValue;
     private final Object fallback;
-    private final BranchProfile errorBranch;
     @Child PropertyGetNode propertyGetNode;
     @Child JSToStringNode toStringNode;
     @Child JSToBooleanNode toBooleanNode;
@@ -75,7 +72,6 @@ public abstract class GetStringOrBooleanOptionNode extends JavaScriptBaseNode {
         this.trueValue = trueValue;
         this.falsyValue = falsyValue;
         this.fallback = fallback;
-        this.errorBranch = BranchProfile.create();
         this.propertyGetNode = PropertyGetNode.create(property, false, context);
         this.toStringNode = JSToStringNode.create();
         this.toBooleanNode = JSToBooleanNode.create();
@@ -104,11 +100,7 @@ public abstract class GetStringOrBooleanOptionNode extends JavaScriptBaseNode {
             return falsyValue;
         }
         String stringValue = Strings.toJavaString(toStringNode.executeString(value));
-        if (!isValid(stringValue)) {
-            errorBranch.enter();
-            throw Errors.createRangeErrorFormat("Value %s out of range for options property %s", this, stringValue, propertyGetNode.getKey());
-        }
-        return stringValue;
+        return isValid(stringValue) ? stringValue : fallback;
     }
 
     @TruffleBoundary
