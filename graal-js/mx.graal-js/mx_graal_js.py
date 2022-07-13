@@ -40,7 +40,7 @@ _suite = mx.suite('graal-js')
 TEST262_REPO = "https://" + "github.com/tc39/test262.git"
 
 # Git revision of Test262 to checkout
-TEST262_REV = "7960d616cf9fe0ff4681aeb6ee3ee07e42d89cc1"
+TEST262_REV = "91a61b29acc087552e45a506837ab00a2f5e25a0"
 
 def get_jdk(forBuild=False):
     # Graal.nodejs requires a JDK at build time, to be passed as argument to `./configure`.
