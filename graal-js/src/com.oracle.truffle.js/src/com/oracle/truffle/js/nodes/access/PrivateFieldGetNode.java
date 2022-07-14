@@ -64,7 +64,6 @@ import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Accessor;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -108,7 +107,7 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
     Object doAccessor(JSObject target, Accessor accessor,
                     @Cached("createCall()") JSFunctionCallNode callNode,
                     @Cached BranchProfile errorBranch) {
-        JSDynamicObject getter = accessor.getGetter();
+        Object getter = accessor.getGetter();
         if (getter == Undefined.instance) {
             errorBranch.enter();
             throw Errors.createTypeErrorCannotGetAccessorProperty(keyAsString(), target, this);

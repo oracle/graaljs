@@ -604,9 +604,9 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             Object key = toPropertyKeyNode.execute(prop);
             PropertyDescriptor desc = PropertyDescriptor.createEmpty();
             if (getter) {
-                desc.setGet((JSDynamicObject) getterOrSetter);
+                desc.setGet(getterOrSetter);
             } else {
-                desc.setSet((JSDynamicObject) getterOrSetter);
+                desc.setSet(getterOrSetter);
             }
             desc.setEnumerable(true);
             desc.setConfigurable(true);

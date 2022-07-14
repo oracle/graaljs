@@ -174,7 +174,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
                 errorBranch.enter();
                 throw Errors.createTypeError("Getter must be a function");
             }
-            desc.setGet((JSDynamicObject) getter);
+            desc.setGet(getter);
         }
         // 8.
         boolean hasSet = hasSetNode.hasProperty(obj);
@@ -185,7 +185,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
                 errorBranch.enter();
                 throw Errors.createTypeError("Setter must be a function");
             }
-            desc.setSet((JSDynamicObject) setter);
+            desc.setSet(setter);
         }
         // 9.
         if ((hasGet || hasSet) && (hasValue || hasWritable)) {

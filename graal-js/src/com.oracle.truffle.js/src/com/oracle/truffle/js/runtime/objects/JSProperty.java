@@ -102,7 +102,7 @@ public class JSProperty {
     }
 
     private static Object getValueAccessor(Object thisObj, Object value, Node encapsulatingNode) {
-        JSDynamicObject getter = ((Accessor) value).getGetter();
+        Object getter = ((Accessor) value).getGetter();
         if (getter != Undefined.instance) {
             return JSRuntime.call(getter, thisObj, JSArguments.EMPTY_ARGUMENTS_ARRAY, encapsulatingNode);
         } else {
@@ -142,7 +142,7 @@ public class JSProperty {
     }
 
     private static boolean setValueAccessor(Property property, JSDynamicObject store, Object thisObj, Object value, boolean isStrict, Node encapsulatingNode) {
-        JSDynamicObject setter = ((Accessor) JSDynamicObject.getOrNull(store, property.getKey())).getSetter();
+        Object setter = ((Accessor) JSDynamicObject.getOrNull(store, property.getKey())).getSetter();
         if (setter != Undefined.instance) {
             JSRuntime.call(setter, thisObj, new Object[]{value}, encapsulatingNode);
             return true;

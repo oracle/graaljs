@@ -340,7 +340,7 @@ public final class DefinePropertyUtil {
             return null;
         }
 
-        return new Accessor((JSDynamicObject) descriptor.getGet(), (JSDynamicObject) descriptor.getSet());
+        return new Accessor(descriptor.getGet(), descriptor.getSet());
     }
 
     public static boolean reject(boolean doThrow, String message) {

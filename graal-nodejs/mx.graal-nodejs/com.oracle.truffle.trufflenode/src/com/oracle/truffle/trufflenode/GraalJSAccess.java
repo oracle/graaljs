@@ -942,10 +942,10 @@ public final class GraalJSAccess {
             descriptor.setValue(value);
         }
         if (get != null) {
-            descriptor.setGet((JSDynamicObject) get);
+            descriptor.setGet(get);
         }
         if (set != null) {
-            descriptor.setSet((JSDynamicObject) set);
+            descriptor.setSet(set);
         }
         if (hasEnumerable) {
             descriptor.setEnumerable(enumerable);
