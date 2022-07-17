@@ -203,6 +203,7 @@ public final class TemporalUtil {
     public static final List<TruffleString> listMMCY = List.of(MONTH, MONTH_CODE, YEAR);
     public static final List<TruffleString> listMCY = List.of(MONTH_CODE, YEAR);
     public static final List<TruffleString> listDMC = List.of(DAY, MONTH_CODE);
+    public static final List<TruffleString> listYD = List.of(YEAR, DAY);
     public static final List<TruffleString> listY = List.of(YEAR);
     public static final List<TruffleString> listD = List.of(DAY);
     public static final List<TruffleString> listWDHMSMMN = List.of(WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND);
@@ -3376,16 +3377,10 @@ public final class TemporalUtil {
                     TemporalGetOptionNode getOptionNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
         Overflow overflow = toTemporalOverflow(options, getOptionNode);
-        JSDynamicObject preparedFields = prepareTemporalFields(ctx, fields, listDMMCY, listEmpty);
+        JSDynamicObject preparedFields = prepareTemporalFields(ctx, fields, listDMMCY, listYD);
         Object year = JSObject.get(preparedFields, YEAR);
-        if (year == Undefined.instance) {
-            throw TemporalErrors.createTypeErrorTemporalYearNotPresent();
-        }
         Object month = resolveISOMonth(ctx, preparedFields, toIntOrInfinityNode, identicalNode);
         Object day = JSObject.get(preparedFields, DAY);
-        if (day == Undefined.instance) {
-            throw TemporalErrors.createTypeErrorTemporalDayNotPresent();
-        }
         return regulateISODate(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))), dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))),
                         dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(day))), overflow);
     }
@@ -3411,7 +3406,7 @@ public final class TemporalUtil {
                     TemporalGetOptionNode getOptionNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
         Overflow overflow = toTemporalOverflow(options, getOptionNode);
-        JSDynamicObject preparedFields = prepareTemporalFields(ctx, fields, listDMMCY, listEmpty);
+        JSDynamicObject preparedFields = prepareTemporalFields(ctx, fields, listDMMCY, listD);
         Object month = JSObject.get(preparedFields, MONTH);
         Object monthCode = JSObject.get(preparedFields, MONTH_CODE);
         Object year = JSObject.get(preparedFields, YEAR);
@@ -3420,9 +3415,6 @@ public final class TemporalUtil {
         }
         month = resolveISOMonth(ctx, preparedFields, toIntOrInfinityNode, identicalNode);
         Object day = JSObject.get(preparedFields, DAY);
-        if (day == Undefined.instance) {
-            throw Errors.createTypeError("Day not present.");
-        }
         int referenceISOYear = 1972;
         JSTemporalDateTimeRecord result = null;
         if (monthCode == Undefined.instance) {
