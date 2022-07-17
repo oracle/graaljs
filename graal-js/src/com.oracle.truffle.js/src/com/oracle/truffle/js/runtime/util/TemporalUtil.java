@@ -250,6 +250,7 @@ public final class TemporalUtil {
     public static final BigInteger BI_1000 = new BigInteger("1000");  // 10 ^ 3
 
     public static final BigDecimal BD_10 = new BigDecimal("10");
+    public static final BigDecimal BD_60 = new BigDecimal("60");
     public static final BigDecimal BD_1000 = new BigDecimal("1000");
     public static final BigDecimal BD_10_POW_M_3 = new BigDecimal("0.001");
     public static final BigDecimal BD_10_POW_M_6 = new BigDecimal("0.000001");
