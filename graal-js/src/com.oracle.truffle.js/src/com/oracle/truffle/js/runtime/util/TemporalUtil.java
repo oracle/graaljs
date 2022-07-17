@@ -857,8 +857,7 @@ public final class TemporalUtil {
     // 13.52
     @TruffleBoundary
     public static JSDynamicObject prepareTemporalFields(JSContext ctx, JSDynamicObject fields, List<TruffleString> fieldNames, List<TruffleString> requiredFields) {
-        JSRealm realm = JSRealm.get(null);
-        JSDynamicObject result = JSOrdinary.create(ctx, realm);
+        JSDynamicObject result = JSOrdinary.createWithNullPrototype(ctx);
         for (TruffleString property : fieldNames) {
             Object value = JSObject.get(fields, property);
             assert value != null;
@@ -883,8 +882,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static JSDynamicObject preparePartialTemporalFields(JSContext ctx, JSDynamicObject fields, List<TruffleString> fieldNames) {
-        JSRealm realm = JSRealm.get(null);
-        JSDynamicObject result = JSOrdinary.create(ctx, realm);
+        JSDynamicObject result = JSOrdinary.createWithNullPrototype(ctx);
         boolean any = false;
         for (TruffleString property : fieldNames) {
             Object value = JSObject.get(fields, property);
@@ -1811,8 +1809,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static JSDynamicObject mergeLargestUnitOption(JSContext ctx, EnumerableOwnPropertyNamesNode namesNode, JSDynamicObject options, Unit largestUnit) {
-        JSRealm realm = JSRealm.get(null);
-        JSDynamicObject merged = JSOrdinary.create(ctx, realm);
+        JSDynamicObject merged = JSOrdinary.createWithNullPrototype(ctx);
         UnmodifiableArrayList<?> keys = namesNode.execute(options);
         for (Object nextKey : keys) {
             if (nextKey instanceof TruffleString) {
