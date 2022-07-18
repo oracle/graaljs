@@ -170,12 +170,12 @@ public final class JSWrapForIteratorPrototypeBuiltins extends JSBuiltinsContaine
         @Specialization
         protected Object next(JSWrapForIteratorObject thisObj, Object value) {
             JSDynamicObject iterator = thisObj.getIterated().getIterator();
-            Object throw_ = getMethodNode.executeWithTarget(iterator);
-            if (throw_ == Undefined.instance) {
+            Object throwValue = getMethodNode.executeWithTarget(iterator);
+            if (throwValue == Undefined.instance) {
                 throw UserScriptException.create(value, this, getContext().getContextOptions().getStackTraceLimit());
             }
 
-            return methodCallNode.executeCall(JSArguments.createOneArg(iterator, throw_, value));
+            return methodCallNode.executeCall(JSArguments.createOneArg(iterator, throwValue, value));
         }
 
         @Specialization

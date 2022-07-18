@@ -1,3 +1,43 @@
+/*
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.dsl.Cached;
@@ -139,7 +179,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         return null;
     }
 
-    public static abstract class IteratorHelperReturnNode extends JSBuiltinNode {
+    public abstract static class IteratorHelperReturnNode extends JSBuiltinNode {
         @Child private GetTargetNode getTargetNode;
         @Child private IteratorCloseNode iteratorCloseNode;
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
@@ -161,7 +201,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    protected static abstract class GetTargetNode extends JavaScriptBaseNode {
+    protected abstract static class GetTargetNode extends JavaScriptBaseNode {
         @Child private PropertyGetNode getTargetNode;
 
         public GetTargetNode(JSContext context) {
@@ -184,7 +224,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    protected static abstract class GetHelperTypeNode extends JavaScriptBaseNode {
+    protected abstract static class GetHelperTypeNode extends JavaScriptBaseNode {
         @Child private PropertyGetNode getHelperTypeNode;
 
         public GetHelperTypeNode(JSContext context) {
@@ -207,7 +247,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    protected static abstract class GetValueNode extends JavaScriptBaseNode {
+    protected abstract static class GetValueNode extends JavaScriptBaseNode {
         @Child private PropertyGetNode getValueNode;
 
         public GetValueNode(JSContext context) {
@@ -230,7 +270,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    protected static abstract class GetJSValueNode extends JavaScriptBaseNode {
+    protected abstract static class GetJSValueNode extends JavaScriptBaseNode {
         @Child private PropertyGetNode getValueNode;
 
         public GetJSValueNode(JSContext context) {
@@ -253,7 +293,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    protected static abstract class GetIteratorValueNode extends JavaScriptBaseNode {
+    protected abstract static class GetIteratorValueNode extends JavaScriptBaseNode {
         @Child private PropertyGetNode getValueNode;
 
         public GetIteratorValueNode(JSContext context) {
@@ -276,7 +316,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    protected static abstract class GetAliveNode extends JavaScriptBaseNode {
+    protected abstract static class GetAliveNode extends JavaScriptBaseNode {
         @Child private PropertyGetNode getAliveNode;
 
         public GetAliveNode(JSContext context) {
@@ -304,7 +344,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    protected static abstract class GetMapperNode extends JavaScriptBaseNode {
+    protected abstract static class GetMapperNode extends JavaScriptBaseNode {
         @Child private PropertyGetNode getMapperNode;
 
         public GetMapperNode(JSContext context) {
@@ -328,7 +368,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     @ImportStatic({HelperType.class})
-    public static abstract class IteratorHelperNextNode extends JSBuiltinNode {
+    public abstract static class IteratorHelperNextNode extends JSBuiltinNode {
         @Child private GetHelperTypeNode getHelperTypeNode;
 
         protected IteratorHelperNextNode(JSContext context, JSBuiltin builtin) {
@@ -377,7 +417,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    protected static abstract class IteratorHelperNextMapNode extends JSBuiltinNode {
+    protected abstract static class IteratorHelperNextMapNode extends JSBuiltinNode {
         @Child private GetTargetNode getTargetNode;
         @Child private GetMapperNode getMapperNode;
 
@@ -424,7 +464,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    protected static abstract class IteratorHelperNextFilterNode extends JSBuiltinNode {
+    protected abstract static class IteratorHelperNextFilterNode extends JSBuiltinNode {
         @Child private GetTargetNode getTargetNode;
         @Child private GetMapperNode getMapperNode;
 
@@ -477,7 +517,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    protected static abstract class IteratorHelperNextTakeNode extends JSBuiltinNode {
+    protected abstract static class IteratorHelperNextTakeNode extends JSBuiltinNode {
         @Child private GetTargetNode getTargetNode;
         @Child private GetJSValueNode getValueNode;
         @Child private PropertySetNode setValueNode;
@@ -529,7 +569,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    protected static abstract class IteratorHelperNextDropNode extends JSBuiltinNode {
+    protected abstract static class IteratorHelperNextDropNode extends JSBuiltinNode {
         @Child private GetTargetNode getTargetNode;
         @Child private GetJSValueNode getValueNode;
         @Child private PropertySetNode setValueNode;
@@ -585,7 +625,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    protected static abstract class IteratorHelperNextIndexedNode extends JSBuiltinNode {
+    protected abstract static class IteratorHelperNextIndexedNode extends JSBuiltinNode {
         @Child private GetTargetNode getTargetNode;
         @Child private GetValueNode getValueNode;
         @Child private PropertySetNode setValueNode;
@@ -630,7 +670,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    protected static abstract class IteratorHelperNextFlatMapNode extends JSBuiltinNode {
+    protected abstract static class IteratorHelperNextFlatMapNode extends JSBuiltinNode {
         @Child private GetTargetNode getTargetNode;
         @Child private GetMapperNode getMapperNode;
         @Child private GetIteratorValueNode getValueNode;

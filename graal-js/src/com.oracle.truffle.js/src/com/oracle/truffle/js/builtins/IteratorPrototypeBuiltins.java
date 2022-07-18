@@ -293,7 +293,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private JSFunctionCallNode callNode;
         @Child private IteratorCloseNode iteratorCloseNode;
 
-        protected final Object CONTINUE = new Object();
+        protected static final Object CONTINUE = new Object();
 
         protected IteratorWithCallableNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
