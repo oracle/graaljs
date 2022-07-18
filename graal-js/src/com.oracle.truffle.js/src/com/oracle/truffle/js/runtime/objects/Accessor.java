@@ -43,19 +43,19 @@ package com.oracle.truffle.js.runtime.objects;
 import java.util.Objects;
 
 public final class Accessor {
-    private final JSDynamicObject getter;
-    private final JSDynamicObject setter;
+    private final Object getter;
+    private final Object setter;
 
-    public Accessor(JSDynamicObject getter, JSDynamicObject setter) {
+    public Accessor(Object getter, Object setter) {
         this.getter = getter == null ? Undefined.instance : getter;
         this.setter = setter == null ? Undefined.instance : setter;
     }
 
-    public JSDynamicObject getGetter() {
+    public Object getGetter() {
         return getter;
     }
 
-    public JSDynamicObject getSetter() {
+    public Object getSetter() {
         return setter;
     }
 

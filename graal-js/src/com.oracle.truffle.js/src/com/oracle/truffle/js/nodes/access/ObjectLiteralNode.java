@@ -307,8 +307,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
         private void execute(JSDynamicObject obj, Object getterV, Object setterV) {
             DynamicObjectLibrary dynamicObjectLib = dynamicObjectLibrary();
 
-            JSDynamicObject getter = (JSDynamicObject) getterV;
-            JSDynamicObject setter = (JSDynamicObject) setterV;
+            Object getter = getterV;
+            Object setter = setterV;
 
             if ((getterNode == null || setterNode == null) && JSProperty.isAccessor(dynamicObjectLib.getPropertyFlagsOrDefault(obj, name, 0))) {
                 // No full accessor information and there is an accessor property already
@@ -432,7 +432,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             }
 
             assert getterV != null || setterV != null;
-            PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((JSDynamicObject) getterV, (JSDynamicObject) setterV, attributes);
+            PropertyDescriptor propDesc = PropertyDescriptor.createAccessor(getterV, setterV, attributes);
             JSRuntime.definePropertyOrThrow(receiver, key, propDesc);
         }
 
@@ -610,7 +610,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             }
 
             assert getter != null || setter != null;
-            Accessor accessor = new Accessor((JSDynamicObject) getter, (JSDynamicObject) setter);
+            Accessor accessor = new Accessor(getter, setter);
             writePrivateNode.executeWrite(frame, accessor);
         }
 

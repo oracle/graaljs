@@ -60,7 +60,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Accessor;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -100,7 +99,7 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
     Object doAccessor(JSObject target, Accessor accessor, Object value,
                     @Cached("createCall()") JSFunctionCallNode callNode,
                     @Cached BranchProfile errorBranch) {
-        JSDynamicObject setter = accessor.getSetter();
+        Object setter = accessor.getSetter();
         if (setter == Undefined.instance) {
             errorBranch.enter();
             throw Errors.createTypeErrorCannotSetAccessorProperty(keyAsString(), target);
