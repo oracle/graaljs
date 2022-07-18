@@ -57,6 +57,8 @@ import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
+import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIterator;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
@@ -355,6 +357,7 @@ public class JSRealm {
     private final JSFunctionObject iteratorConstructor;
     private final JSDynamicObject iteratorPrototype;
     private final JSDynamicObject wrapForIteratorPrototype;
+    private final JSDynamicObject wrapForAsyncIteratorPrototype;
     private final JSDynamicObject arrayIteratorPrototype;
     private final JSDynamicObject setIteratorPrototype;
     private final JSDynamicObject mapIteratorPrototype;
@@ -373,6 +376,7 @@ public class JSRealm {
     private final JSFunctionObject asyncFunctionConstructor;
     private final JSDynamicObject asyncFunctionPrototype;
 
+    private final JSFunctionObject asyncIteratorContructor;
     private final JSDynamicObject asyncIteratorPrototype;
     private final JSDynamicObject asyncFromSyncIteratorPrototype;
     private final JSDynamicObject asyncGeneratorObjectPrototype;
@@ -710,6 +714,10 @@ public class JSRealm {
         this.stringIteratorPrototype = es6 ? createStringIteratorPrototype() : null;
         this.regExpStringIteratorPrototype = context.getContextOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2019 ? createRegExpStringIteratorPrototype() : null;
         this.wrapForIteratorPrototype = JSWrapForIterator.INSTANCE.createPrototype(this, iteratorConstructor);
+        ctor = JSAsyncIterator.createConstructor(this);
+        this.asyncIteratorPrototype = ctor.getPrototype();
+        this.asyncIteratorContructor = ctor.getFunctionObject();
+        this.wrapForAsyncIteratorPrototype = JSWrapForAsyncIterator.INSTANCE.createPrototype(this, asyncIteratorContructor);
         this.iteratorHelperPrototype = createIteratorHelperPrototype();
 
         ctor = JSCollator.createConstructor(this);
@@ -780,14 +788,12 @@ public class JSRealm {
 
         boolean es9 = context.getContextOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2018;
         if (es9) {
-            this.asyncIteratorPrototype = JSFunction.createAsyncIteratorPrototype(this);
             this.asyncFromSyncIteratorPrototype = JSFunction.createAsyncFromSyncIteratorPrototype(this);
             ctor = JSFunction.createAsyncGeneratorFunctionConstructor(this);
             this.asyncGeneratorFunctionConstructor = ctor.getFunctionObject();
             this.asyncGeneratorFunctionPrototype = ctor.getPrototype();
             this.asyncGeneratorObjectPrototype = (JSDynamicObject) JSDynamicObject.getOrNull(asyncGeneratorFunctionPrototype, JSObject.PROTOTYPE);
         } else {
-            this.asyncIteratorPrototype = null;
             this.asyncFromSyncIteratorPrototype = null;
             this.asyncGeneratorFunctionConstructor = null;
             this.asyncGeneratorFunctionPrototype = null;
@@ -1632,6 +1638,9 @@ public class JSRealm {
     public JSFunctionObject getIteratorConstructor() {
         return iteratorConstructor;
     }
+    public JSFunctionObject getAsyncIteratorConstructor() {
+        return asyncIteratorContructor;
+    }
 
     public JSDynamicObject getIteratorPrototype() {
         return iteratorPrototype;
@@ -1639,6 +1648,10 @@ public class JSRealm {
 
     public JSDynamicObject getWrapForIteratorPrototype() {
         return wrapForIteratorPrototype;
+    }
+
+    public JSDynamicObject getWrapForAsyncIteratorPrototype() {
+        return wrapForAsyncIteratorPrototype;
     }
 
     public JSDynamicObject getAsyncIteratorPrototype() {
@@ -1724,6 +1737,7 @@ public class JSRealm {
         putGlobalProperty(JSMath.CLASS_NAME, mathObject);
         putGlobalProperty(JSON.CLASS_NAME, JSON.create(this));
         putGlobalProperty(JSIterator.CLASS_NAME, getIteratorConstructor());
+        putGlobalProperty(JSAsyncIterator.CLASS_NAME, getAsyncIteratorConstructor());
 
         JSObjectUtil.putDataProperty(context, global, Strings.NAN, Double.NaN);
         JSObjectUtil.putDataProperty(context, global, Strings.INFINITY, Double.POSITIVE_INFINITY);

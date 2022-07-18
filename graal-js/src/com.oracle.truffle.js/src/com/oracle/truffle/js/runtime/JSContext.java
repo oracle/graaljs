@@ -86,6 +86,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
@@ -117,6 +118,7 @@ import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
+import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForIterator;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
@@ -302,6 +304,7 @@ public class JSContext {
         PromiseCatchFinally,
         PromiseValueThunk,
         PromiseThrower,
+        PromiseReturnWrapper,
         ImportModuleDynamically,
         JavaPackageToPrimitive,
         RegExpMultiLine,
@@ -440,7 +443,9 @@ public class JSContext {
     private final JSObjectFactory ordinaryObjectFactory;
     private final JSObjectFactory arrayFactory;
     private final JSObjectFactory iteratorFactory;
+    private final JSObjectFactory asyncIteratorFactory;
     private final JSObjectFactory wrapForIteratorFactory;
+    private final JSObjectFactory wrapForAsyncIteratorFactory;
     private final JSObjectFactory lazyRegexArrayFactory;
     private final JSObjectFactory lazyRegexIndicesArrayFactory;
     private final JSObjectFactory booleanFactory;
@@ -613,7 +618,9 @@ public class JSContext {
         this.ordinaryObjectFactory = builder.create(JSOrdinary.INSTANCE);
         this.arrayFactory = builder.create(JSArray.INSTANCE);
         this.iteratorFactory = builder.create(JSIterator.INSTANCE);
+        this.asyncIteratorFactory = builder.create(JSAsyncIterator.INSTANCE);
         this.wrapForIteratorFactory = builder.create(JSWrapForIterator.INSTANCE);
+        this.wrapForAsyncIteratorFactory = builder.create(JSWrapForAsyncIterator.INSTANCE);
         this.lazyRegexArrayFactory = builder.create(JSArray.INSTANCE);
         this.lazyRegexIndicesArrayFactory = builder.create(JSArray.INSTANCE);
         this.booleanFactory = builder.create(JSBoolean.INSTANCE);
@@ -931,8 +938,16 @@ public class JSContext {
         return iteratorFactory;
     }
 
+    public final JSObjectFactory getAsyncIteratorFactory() {
+        return asyncIteratorFactory;
+    }
+
     public final JSObjectFactory getWrapForIteratorFactory() {
         return wrapForIteratorFactory;
+    }
+
+    public final JSObjectFactory getWrapForAsyncIteratorFactory() {
+        return wrapForAsyncIteratorFactory;
     }
 
     public final JSObjectFactory getLazyRegexArrayFactory() {

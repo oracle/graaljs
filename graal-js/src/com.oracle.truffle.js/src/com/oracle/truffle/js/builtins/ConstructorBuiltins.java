@@ -94,6 +94,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructErrorN
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFinalizationRegistryNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFunctionNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructIteratorNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAsyncIteratorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSAdapterNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSProxyNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJavaImporterNodeGen;
@@ -213,6 +214,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
@@ -338,6 +340,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         WeakMap(0),
         WeakSet(0),
         Iterator(0),
+        AsyncIterator(0),
         GeneratorFunction(1),
         Proxy(2),
         Promise(1),
@@ -606,6 +609,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 if (construct) {
                     return newTarget ? ConstructIteratorNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
                                     : ConstructIteratorNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context));
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
+            case AsyncIterator:
+                if (construct) {
+                    return newTarget ? ConstructAsyncIteratorNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
+                            : ConstructAsyncIteratorNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -2822,6 +2832,31 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = {"isValidTarget(isNewTargetCase, newTarget)"})
         protected JSDynamicObject constructIterator(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
             return swapPrototype(JSIterator.create(getContext(), getRealm()), newTarget);
+        }
+
+        @Specialization(guards = {"!isValidTarget(isNewTargetCase, newTarget)"})
+        protected JSDynamicObject constructIteratorTypeError(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
+            throw Errors.createTypeError("iterator is abstract (TODO: Better error)");
+        }
+
+        @Override
+        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getIteratorPrototype();
+        }
+    }
+
+    public abstract static class ConstructAsyncIteratorNode extends ConstructWithNewTargetNode {
+        public ConstructAsyncIteratorNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+        }
+
+        protected boolean isValidTarget(boolean isNewTargetCase, JSDynamicObject newTarget) {
+            return isNewTargetCase && newTarget != Undefined.instance;
+        }
+
+        @Specialization(guards = {"isValidTarget(isNewTargetCase, newTarget)"})
+        protected JSDynamicObject constructIterator(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
+            return swapPrototype(JSAsyncIterator.create(getContext(), getRealm()), newTarget);
         }
 
         @Specialization(guards = {"!isValidTarget(isNewTargetCase, newTarget)"})
