@@ -52,8 +52,32 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 
 public final class GlobalEnvironment extends DerivedEnvironment {
+
+    private enum LexicalKind {
+        Let(false, false),
+        LetDeclared(false, true),
+        Const(true, false),
+        ConstDeclared(true, true);
+
+        private final boolean isConst;
+        private final boolean declared;
+
+        LexicalKind(boolean isConst, boolean declared) {
+            this.isConst = isConst;
+            this.declared = declared;
+        }
+
+        public boolean isConst() {
+            return isConst;
+        }
+
+        public boolean isDeclared() {
+            return declared;
+        }
+    }
+
     /** Entries: (name, const). */
-    private final EconomicMap<TruffleString, Boolean> lexicalDeclarations;
+    private final EconomicMap<TruffleString, LexicalKind> lexicalDeclarations;
     private final EconomicMap<TruffleString, Boolean> varDeclarations;
 
     public GlobalEnvironment(Environment parent, NodeFactory factory, JSContext context) {
@@ -68,7 +92,7 @@ public final class GlobalEnvironment extends DerivedEnvironment {
     }
 
     public boolean addLexicalDeclaration(TruffleString name, boolean isConst) {
-        return lexicalDeclarations.put(name, isConst) == null;
+        return lexicalDeclarations.put(name, isConst ? LexicalKind.Const : LexicalKind.Let) == null;
     }
 
     public boolean hasLexicalDeclaration(TruffleString name) {
@@ -76,7 +100,7 @@ public final class GlobalEnvironment extends DerivedEnvironment {
     }
 
     public boolean hasConstDeclaration(TruffleString name) {
-        return lexicalDeclarations.get(name, Boolean.FALSE);
+        return lexicalDeclarations.get(name, LexicalKind.Let).isConst();
     }
 
     public boolean addVarDeclaration(TruffleString name) {
@@ -92,6 +116,28 @@ public final class GlobalEnvironment extends DerivedEnvironment {
      */
     public static boolean isGlobalObjectConstant(TruffleString name) {
         return Strings.UNDEFINED.equals(name) || Strings.NAN.equals(name) || Strings.INFINITY.equals(name);
+    }
+
+    public boolean hasBeenDeclared(TruffleString name) {
+        LexicalKind decl = lexicalDeclarations.get(name);
+        if (decl != null) {
+            return decl.isDeclared();
+        } else {
+            return false;
+        }
+    }
+
+    public void setHasBeenDeclared(TruffleString name, boolean declared) {
+        LexicalKind decl = lexicalDeclarations.get(name);
+        if (decl != null && decl.isDeclared() != declared) {
+            LexicalKind newKind;
+            if (declared) {
+                newKind = decl.isConst() ? LexicalKind.ConstDeclared : LexicalKind.LetDeclared;
+            } else {
+                newKind = decl.isConst() ? LexicalKind.Const : LexicalKind.Let;
+            }
+            lexicalDeclarations.put(name, newKind);
+        }
     }
 
     @Override

@@ -1855,20 +1855,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (symbol == null) {
                 // variable is not block-scoped
                 return varRef;
-            } else if (symbol.hasBeenDeclared()) {
+            } else if (symbol.hasBeenDeclared() || varRef.hasBeenDeclared()) {
                 // variable has been unconditionally declared already
                 return varRef;
             } else if (symbol.isDeclaredInSwitchBlock()) {
                 // we cannot statically determine whether a block-scoped variable is in TDZ
                 // in an unprotected switch case context, so we always need a dynamic check
                 return varRef.withTDZCheck();
+            } else if (initializationAssignment) {
+                assert !symbol.hasBeenDeclared() && !varRef.hasBeenDeclared();
+                varRef.setHasBeenDeclared(true);
+                return varRef;
             } else {
-                assert !symbol.hasBeenDeclared();
-                if (initializationAssignment) {
-                    symbol.setHasBeenDeclared();
-                    return varRef;
-                }
-
                 // variable reference is unconditionally in the temporal dead zone, i.e.,
                 // var ref is in declaring function and in scope but before the actual declaration
                 return new VarRef(name) {
@@ -1915,10 +1913,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         currentFunction().isCallerContextEval() : varNode;
 
         Symbol symbol = null;
+        VarRef varRef = null;
         if (varNode.isBlockScoped()) {
             // below, `symbol!=null` implies `isBlockScoped`
             symbol = lc.getCurrentScope().getExistingSymbol(varNode.getName().getName());
-            assert symbol != null : varName;
+            varRef = findScopeVar(varName, true);
+            assert symbol != null && varRef != null : varName;
         }
 
         JavaScriptNode assignment;
@@ -1926,7 +1926,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             assignment = createVarAssignNode(varNode, varName);
         } else if (symbol != null && (!varNode.isDestructuring() || symbol.isDeclaredInSwitchBlock()) && !symbol.hasBeenDeclared()) {
             assert varNode.isBlockScoped();
-            assignment = findScopeVar(varName, false).createWriteNode(factory.createConstantUndefined());
+            assignment = varRef.createWriteNode(factory.createConstantUndefined());
         } else {
             assignment = factory.createEmpty();
         }
@@ -1935,7 +1935,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         // (b) destructuring: the symbol does not come alive until the destructuring assignment
         if (symbol != null && (!symbol.isDeclaredInSwitchBlock() && !varNode.isDestructuring())) {
             assert varNode.isBlockScoped();
-            symbol.setHasBeenDeclared();
+            varRef.setHasBeenDeclared(true);
         }
         return assignment;
     }
@@ -3285,12 +3285,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         // TDZ: class name symbol cannot be used as a key but may be used as a value.
+        VarRef classNameVarRef = null;
         if (classNameSymbol != null) {
-            classNameSymbol.setHasBeenDeclared(true);
+            classNameVarRef = findScopeVar(classNameSymbol.getNameTS(), true);
+            assert classNameVarRef.isFrameVar() : classNameSymbol;
+            assert !classNameVarRef.hasBeenDeclared() : classNameSymbol;
+            classNameVarRef.setHasBeenDeclared(true);
         }
         JavaScriptNode value = transform(propertyValue);
         if (classNameSymbol != null) {
-            classNameSymbol.setHasBeenDeclared(false);
+            classNameVarRef.setHasBeenDeclared(false);
         }
 
         if (propertyValue instanceof FunctionNode && ((FunctionNode) propertyValue).needsSuper()) {
