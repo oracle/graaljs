@@ -73,8 +73,7 @@ public final class JSWrapForIteratorPrototypeBuiltins extends JSBuiltinsContaine
 
     public enum WrapForWrapForIterator implements BuiltinEnum<WrapForWrapForIterator> {
         next(1),
-        return_(1),
-        throw_(1);
+        return_(1);
 
         private final int length;
 
@@ -89,7 +88,7 @@ public final class JSWrapForIteratorPrototypeBuiltins extends JSBuiltinsContaine
 
         @Override
         public int getECMAScriptVersion() {
-            if (EnumSet.of(next, return_, throw_).contains(this)) {
+            if (EnumSet.of(next, return_).contains(this)) {
                 return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
@@ -103,8 +102,6 @@ public final class JSWrapForIteratorPrototypeBuiltins extends JSBuiltinsContaine
                 return JSWrapForIteratorPrototypeBuiltinsFactory.WrapForIteratorNextNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case return_:
                 return JSWrapForIteratorPrototypeBuiltinsFactory.WrapForIteratorReturnNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case throw_:
-                return JSWrapForIteratorPrototypeBuiltinsFactory.WrapForIteratorThrowNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
 
         assert false : "Unreachable! Missing entries in switch?";
@@ -146,36 +143,6 @@ public final class JSWrapForIteratorPrototypeBuiltins extends JSBuiltinsContaine
         protected Object next(VirtualFrame frame, JSWrapForIteratorObject thisObj, Object value) {
             Object result = iteratorCloseNode.execute(thisObj.getIterated().getIterator(), value);
             return createIterResultObjectNode.execute(frame, result, true);
-        }
-
-        @Specialization
-        protected JSDynamicObject incompatible(Object thisObj, Object[] args) {
-            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
-        }
-    }
-
-    public abstract static class WrapForIteratorThrowNode extends JSBuiltinNode {
-        @Child private GetMethodNode getMethodNode;
-        @Child private JSFunctionCallNode methodCallNode;
-        @Child private TruffleStringBuilder.ToStringNode toStringNode;
-
-        public WrapForIteratorThrowNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-
-            getMethodNode = GetMethodNode.create(context, Strings.THROW);
-            methodCallNode = JSFunctionCallNode.createCall();
-            toStringNode = TruffleStringBuilder.ToStringNode.create();
-        }
-
-        @Specialization
-        protected Object next(JSWrapForIteratorObject thisObj, Object value) {
-            JSDynamicObject iterator = thisObj.getIterated().getIterator();
-            Object throwValue = getMethodNode.executeWithTarget(iterator);
-            if (throwValue == Undefined.instance) {
-                throw UserScriptException.create(value, this, getContext().getContextOptions().getStackTraceLimit());
-            }
-
-            return methodCallNode.executeCall(JSArguments.createOneArg(iterator, throwValue, value));
         }
 
         @Specialization
