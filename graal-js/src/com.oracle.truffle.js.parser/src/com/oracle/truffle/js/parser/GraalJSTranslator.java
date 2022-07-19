@@ -1869,38 +1869,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             } else {
                 // variable reference is unconditionally in the temporal dead zone, i.e.,
                 // var ref is in declaring function and in scope but before the actual declaration
-                return new VarRef(name) {
-                    @Override
-                    public boolean isGlobal() {
-                        return varRef.isGlobal();
-                    }
-
-                    @Override
-                    public boolean isFunctionLocal() {
-                        return varRef.isFunctionLocal();
-                    }
-
-                    @Override
-                    public JSFrameSlot getFrameSlot() {
-                        return null;
-                    }
-
-                    @Override
-                    public JavaScriptNode createReadNode() {
-                        return factory.createThrowError(JSErrorType.ReferenceError, Strings.fromJavaString(String.format("\"%s\" is not defined", varRef.getName())));
-                    }
-
-                    @Override
-                    public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-                        JavaScriptNode throwErrorNode = createReadNode();
-                        return isPotentiallySideEffecting(rhs) ? factory.createBinary(null, BinaryOperation.DUAL, rhs, throwErrorNode) : throwErrorNode;
-                    }
-
-                    @Override
-                    public JavaScriptNode createDeleteNode() {
-                        return createReadNode();
-                    }
-                };
+                // Note: may not throw a ReferenceError if shadowed by a with statement.
+                return varRef.withTDZCheck();
             }
         }
         return varRef.withTDZCheck();
