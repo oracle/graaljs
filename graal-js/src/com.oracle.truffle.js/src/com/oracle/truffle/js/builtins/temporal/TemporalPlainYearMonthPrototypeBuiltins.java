@@ -49,7 +49,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
 
-import java.time.temporal.Temporal;
 import java.util.EnumSet;
 import java.util.List;
 

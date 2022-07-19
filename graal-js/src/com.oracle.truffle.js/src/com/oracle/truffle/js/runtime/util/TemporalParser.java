@@ -922,7 +922,6 @@ public final class TemporalParser {
             return true;
         }
 
-
         return false;
     }
 

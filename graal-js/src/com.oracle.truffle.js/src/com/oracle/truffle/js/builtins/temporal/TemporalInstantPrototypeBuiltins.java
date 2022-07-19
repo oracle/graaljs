@@ -222,13 +222,15 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             super(context, builtin);
         }
 
-        protected JSTemporalInstantObject addDurationToOrSubtractFromInstant(int sign, JSTemporalInstantObject instant, Object temporalDurationLike, ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+        protected JSTemporalInstantObject addDurationToOrSubtractFromInstant(int sign, JSTemporalInstantObject instant, Object temporalDurationLike,
+                        ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listPluralYMWD);
             BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), sign * duration.getHours(), sign * duration.getMinutes(), sign * duration.getSeconds(),
-                    sign * duration.getMilliseconds(), sign * duration.getMicroseconds(), sign * duration.getNanoseconds());
+                            sign * duration.getMilliseconds(), sign * duration.getMicroseconds(), sign * duration.getNanoseconds());
             return JSTemporalInstant.create(getContext(), getRealm(), ns);
         }
     }
+
     public abstract static class JSTemporalInstantAdd extends InstantOperation {
 
         protected JSTemporalInstantAdd(JSContext context, JSBuiltin builtin) {

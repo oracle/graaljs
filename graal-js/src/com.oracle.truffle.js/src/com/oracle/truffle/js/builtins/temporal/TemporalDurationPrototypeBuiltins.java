@@ -267,7 +267,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
-        protected JSTemporalDurationObject addDurationToOrSubtractDurationFromDuration(int sign, JSTemporalDurationObject duration, Object other, Object options, TemporalDurationAddNode durationAddNode,
+        protected JSTemporalDurationObject addDurationToOrSubtractDurationFromDuration(int sign, JSTemporalDurationObject duration, Object other, Object options,
+                        TemporalDurationAddNode durationAddNode,
                         ToRelativeTemporalObjectNode toRelativeTemporalObjectNode, ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalDurationRecord otherDuration = toLimitedTemporalDurationNode.executeDynamicObject(other, TemporalUtil.listEmpty);
             JSDynamicObject normalizedOptions = getOptionsObject(options);

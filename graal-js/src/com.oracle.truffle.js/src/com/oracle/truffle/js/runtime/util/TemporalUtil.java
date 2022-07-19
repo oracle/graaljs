@@ -784,15 +784,24 @@ public final class TemporalUtil {
 
     public static UnsignedRoundingMode getUnsignedRoundingMode(RoundingMode rm, boolean isNegative) {
         switch (rm) {
-            case CEIL: return isNegative?UnsignedRoundingMode.ZERO:UnsignedRoundingMode.INFINITY;
-            case FLOOR: return isNegative?UnsignedRoundingMode.INFINITY:UnsignedRoundingMode.ZERO;
-            case EXPAND: return UnsignedRoundingMode.INFINITY;
-            case TRUNC: return UnsignedRoundingMode.ZERO;
-            case HALF_CEIL: return isNegative?UnsignedRoundingMode.HALF_ZERO:UnsignedRoundingMode.HALF_INFINITY;
-            case HALF_FLOOR: return isNegative?UnsignedRoundingMode.HALF_INFINITY:UnsignedRoundingMode.HALF_ZERO;
-            case HALF_EXPAND: return UnsignedRoundingMode.HALF_INFINITY;
-            case HALF_TRUNC: return UnsignedRoundingMode.HALF_ZERO;
-            case HALF_EVEN: return UnsignedRoundingMode.HALF_EVEN;
+            case CEIL:
+                return isNegative ? UnsignedRoundingMode.ZERO : UnsignedRoundingMode.INFINITY;
+            case FLOOR:
+                return isNegative ? UnsignedRoundingMode.INFINITY : UnsignedRoundingMode.ZERO;
+            case EXPAND:
+                return UnsignedRoundingMode.INFINITY;
+            case TRUNC:
+                return UnsignedRoundingMode.ZERO;
+            case HALF_CEIL:
+                return isNegative ? UnsignedRoundingMode.HALF_ZERO : UnsignedRoundingMode.HALF_INFINITY;
+            case HALF_FLOOR:
+                return isNegative ? UnsignedRoundingMode.HALF_INFINITY : UnsignedRoundingMode.HALF_ZERO;
+            case HALF_EXPAND:
+                return UnsignedRoundingMode.HALF_INFINITY;
+            case HALF_TRUNC:
+                return UnsignedRoundingMode.HALF_ZERO;
+            case HALF_EVEN:
+                return UnsignedRoundingMode.HALF_EVEN;
         }
         return UnsignedRoundingMode.EMPTY;
     }
@@ -809,9 +818,9 @@ public final class TemporalUtil {
         if (urm == UnsignedRoundingMode.INFINITY) {
             return r2;
         }
-        double d1 = x-r1;
-        double d2 = r2-x;
-        if (d1 < d2)  {
+        double d1 = x - r1;
+        double d2 = r2 - x;
+        if (d1 < d2) {
             return r1;
         }
         if (d2 < d1) {
@@ -825,7 +834,7 @@ public final class TemporalUtil {
             return r2;
         }
         assert urm == UnsignedRoundingMode.HALF_EVEN;
-        double cardinality = (r1 / (r2-r1)) % 2;
+        double cardinality = (r1 / (r2 - r1)) % 2;
         if (cardinality == 0) {
             return r1;
         }
@@ -2395,10 +2404,6 @@ public final class TemporalUtil {
         double epochDays2 = JSDate.makeDay(((TemporalYear) later).getYear(), ((TemporalMonth) later).getMonth() - 1, ((TemporalDay) later).getDay());
         assert Double.isFinite(epochDays2);
         return dtol(epochDays2 - epochDays1);
-    }
-
-    private static boolean isTemporalDate(JSDynamicObject d) {
-        return d instanceof TemporalYear && d instanceof TemporalMonth && d instanceof TemporalDay;
     }
 
     public static JSTemporalDurationRecord differenceTime(int h1, int min1, int s1, int ms1, int mus1, int ns1,
