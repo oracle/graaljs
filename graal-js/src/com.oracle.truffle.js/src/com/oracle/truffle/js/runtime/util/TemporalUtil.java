@@ -236,10 +236,6 @@ public final class TemporalUtil {
     private static final BigInteger isoTimeLowerBound = isoTimeUpperBound.negate();
     private static final int isoTimeBoundYears = 270000;
 
-    // 8.64 * 10^21
-    private static final BigInteger temporalInstantUpperBound = new BigInteger("8640000000000000000000");
-    private static final BigInteger temporalInstantLowerBound = temporalInstantUpperBound.negate();
-
     // 8.64 * 10^13
     private static final BigInteger BI_8_64_13 = new BigInteger("86400000000000");
 
@@ -2986,16 +2982,15 @@ public final class TemporalUtil {
     public static BigInt parseTemporalInstant(TruffleString string) {
         JSTemporalZonedDateTimeRecord result = parseTemporalInstantString(string);
         TruffleString offsetString = result.getTimeZoneOffsetString();
-        if (offsetString == null) {
-            throw Errors.createRangeError("timeZoneOffsetString expected");
-        }
+        assert (offsetString != null);
         BigInteger utc = getEpochFromISOParts(result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(),
                         result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
-        if (utc.compareTo(temporalInstantLowerBound) < 0 || utc.compareTo(temporalInstantUpperBound) > 0) {
-            throw Errors.createRangeError("value out of bounds");
-        }
         long offsetNanoseconds = parseTimeZoneOffsetString(offsetString);
-        return new BigInt(utc.subtract(BigInteger.valueOf(offsetNanoseconds)));
+        BigInt instant = new BigInt(utc.subtract(BigInteger.valueOf(offsetNanoseconds)));
+        if (!isValidEpochNanoseconds(instant)) {
+            throw TemporalErrors.createRangeErrorInvalidNanoseconds();
+        }
+        return instant;
     }
 
     @TruffleBoundary
