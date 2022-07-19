@@ -3300,23 +3300,23 @@ public final class TemporalUtil {
     }
 
     public static Object calendarDayOfWeek(TemporalCalendarGetterNode getterNode, JSDynamicObject calendar, JSDynamicObject dateLike) {
-        return getterNode.executeInteger(calendar, dateLike, TemporalConstants.DAY_OF_WEEK);
+        return getterNode.execute(calendar, dateLike, TemporalConstants.DAY_OF_WEEK);
     }
 
     public static Object calendarDayOfYear(TemporalCalendarGetterNode getterNode, JSDynamicObject calendar, JSDynamicObject dateLike) {
-        return getterNode.executeInteger(calendar, dateLike, TemporalConstants.DAY_OF_YEAR);
+        return getterNode.execute(calendar, dateLike, TemporalConstants.DAY_OF_YEAR);
     }
 
     public static Object calendarWeekOfYear(TemporalCalendarGetterNode getterNode, JSDynamicObject calendar, JSDynamicObject dateLike) {
-        return getterNode.executeInteger(calendar, dateLike, TemporalConstants.WEEK_OF_YEAR);
+        return getterNode.execute(calendar, dateLike, TemporalConstants.WEEK_OF_YEAR);
     }
 
     public static Object calendarDaysInWeek(TemporalCalendarGetterNode getterNode, JSDynamicObject calendar, JSDynamicObject dateLike) {
-        return getterNode.executeInteger(calendar, dateLike, TemporalConstants.DAYS_IN_WEEK);
+        return getterNode.execute(calendar, dateLike, TemporalConstants.DAYS_IN_WEEK);
     }
 
     public static Object calendarDaysInMonth(TemporalCalendarGetterNode getterNode, JSDynamicObject calendar, JSDynamicObject dateLike) {
-        return getterNode.executeInteger(calendar, dateLike, TemporalConstants.DAYS_IN_MONTH);
+        return getterNode.execute(calendar, dateLike, TemporalConstants.DAYS_IN_MONTH);
     }
 
     public static Object calendarDaysInYear(TemporalCalendarGetterNode getterNode, JSDynamicObject calendar, JSDynamicObject dateLike) {
