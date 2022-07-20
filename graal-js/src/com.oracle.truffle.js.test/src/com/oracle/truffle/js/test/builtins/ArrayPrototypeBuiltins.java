@@ -40,18 +40,17 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.test.JSTest;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class ArrayPrototypeBuiltins {
 
@@ -133,5 +132,56 @@ public class ArrayPrototypeBuiltins {
             Assert.assertEquals(44, evenResult.getArrayElement(1).asInt());
         }
     }
+
+    public static class ToReversedTests {
+        @Test
+        public void reversesNumberArrays() {
+            String src = "[41, 42, 43, 44, 45].toReversed();";
+            Integer[] expected = new Integer[]{45, 44, 43, 42, 41};
+
+            testArray(src, expected.length, expected);
+
+            src = "[1, 2, 3, 4, 5].toReversed();";
+            expected = new Integer[]{5, 4, 3, 2, 1};
+
+            testArray(src, expected.length, expected);
+        }
+
+        @Test
+        public void reversesStringArrays() {
+            String src = "['a', 'b', 'c', 'd', 'e'].toReversed();";
+            String[] expected = new String[]{"e", "d", "c", "b", "a"};
+
+            testArray(src, expected.length, expected);
+
+            src = "['abcd', 'hello', 't2xs', 'fge^°'].toReversed();";
+            expected = new String[]{"fge^°", "t2xs", "hello", "abcd"};
+
+            testArray(src, expected.length, expected);
+        }
+
+        @Test
+        public void reverseComplexArray() {
+            String src = "['hello', null, undefined, 0].toReversed();";
+            Object[] expected = new Object[]{0, null, null, "hello"};
+
+            testArray(src, expected.length, expected);
+        }
+
+        private void testArray(String src, long arrayLength, Object[] result) {
+            Context.Builder builder = JSTest.newContextBuilder();
+            builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+            try (Context context = builder.build()) {
+                var value = context.eval(JavaScriptLanguage.ID, src);
+                assertEquals(arrayLength, value.getArraySize());
+
+                for (int i = 0; i < arrayLength; i++) {
+                    assertEquals(result[i], value.getArrayElement(i).as(Object.class));
+                }
+            }
+        }
+
+    }
+
 
 }
