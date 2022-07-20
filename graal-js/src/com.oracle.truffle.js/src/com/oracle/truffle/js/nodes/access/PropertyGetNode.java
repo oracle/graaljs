@@ -894,7 +894,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             JSDynamicObject store = receiverCheck.getStore(thisObj);
             Accessor accessor = (Accessor) property.getLocation().get(store, guard);
 
-            JSDynamicObject getter = accessor.getGetter();
+            Object getter = accessor.getGetter();
             if (getter != Undefined.instance) {
                 return callNode.executeCall(JSArguments.createZeroArg(receiver, getter));
             } else {
@@ -940,7 +940,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             Accessor accessor = getAccessor(thisObj, root, guard);
-            JSDynamicObject getter = accessor.getGetter();
+            Object getter = accessor.getGetter();
             if (getter != Undefined.instance) {
                 return callNode.executeCall(JSArguments.createZeroArg(receiver, getter));
             } else {

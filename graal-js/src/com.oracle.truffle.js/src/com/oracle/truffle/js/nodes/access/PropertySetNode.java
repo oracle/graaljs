@@ -627,7 +627,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             JSDynamicObject store = receiverCheck.getStore(thisObj);
             Accessor accessor = (Accessor) location.get(store, guard);
 
-            JSDynamicObject setter = accessor.getSetter();
+            Object setter = accessor.getSetter();
             if (setter != Undefined.instance) {
                 callNode.executeCall(JSArguments.createOneArg(receiver, setter, value));
             } else {

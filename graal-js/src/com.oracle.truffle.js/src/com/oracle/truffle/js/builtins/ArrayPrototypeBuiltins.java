@@ -1419,7 +1419,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Child private JSToBooleanNode toBooleanNode;
-        @Child private JSToStringNode toStringNode;
         @Child private JSArrayFirstElementIndexNode firstElementIndexNode;
         @Child private JSArrayLastElementIndexNode lastElementIndexNode;
         @Child private PropertyGetNode getSpreadableNode;
@@ -1442,14 +1441,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 toBooleanNode = insert(JSToBooleanNode.create());
             }
             return toBooleanNode.executeBoolean(target);
-        }
-
-        protected TruffleString toString(Object target) {
-            if (toStringNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toStringNode = insert(JSToStringNode.create());
-            }
-            return toStringNode.executeString(target);
         }
 
         @Specialization

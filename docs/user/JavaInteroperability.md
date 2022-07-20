@@ -15,7 +15,7 @@ The [Polyglot Programming](https://www.graalvm.org/reference-manual/polyglot-pro
 Specific migration guides for [Rhino](RhinoMigrationGuide.md) and [Nashorn](NashornMigrationGuide.md) are also available.
 
 Both JavaScript and Node.js are separately installable components of GraalVM.
-See the [README](../../README.md) for details on how to use the _GraalVM Updater_ to install JavaScript and Node.js.
+See the [README](README.md) for details on how to use the GraalVM Updater tool, `gu`, to install JavaScript and Node.js.
 After a successfull installation, the respective native launchers `js` and `node` from the `$GRAALVM/bin` directory can be used.
 
 Although other builds are possible, the following examples assume this setup is used.

@@ -407,7 +407,7 @@ public final class JSDictionary extends JSNonProxy {
                 assert !(value instanceof Accessor || value instanceof PropertyProxy);
                 JSObjectUtil.defineDataProperty(obj, key, value, desc.getFlags());
             } else {
-                JSObjectUtil.defineAccessorProperty(obj, key, new Accessor((JSDynamicObject) desc.getGet(), (JSDynamicObject) desc.getSet()), desc.getFlags());
+                JSObjectUtil.defineAccessorProperty(obj, key, new Accessor(desc.getGet(), desc.getSet()), desc.getFlags());
             }
         }
 
