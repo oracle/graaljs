@@ -1458,6 +1458,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode wrapTemporalDeadZoneInit(Scope scope, JavaScriptNode blockBody) {
+        if (!scope.hasBlockScopedOrRedeclaredSymbols()) {
+            return blockBody;
+        }
         List<JavaScriptNode> init = new ArrayList<>(4);
         createTemporalDeadZoneInit(scope, init);
         if (init.isEmpty()) {
@@ -3342,6 +3345,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             if (pattern != null) {
                                 // exception is being destructured
                                 destructuring = transformAssignment(pattern, pattern, errorVar.createReadNode(), true);
+                                destructuring = wrapTemporalDeadZoneInit(catchParamBlock.getScope(), destructuring);
                             }
                         }
 
