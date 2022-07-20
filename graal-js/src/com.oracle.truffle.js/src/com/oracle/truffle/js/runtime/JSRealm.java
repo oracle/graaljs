@@ -57,6 +57,7 @@ import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.js.runtime.builtins.JSFetchResponse;
 import com.oracle.truffle.js.runtime.objects.Null;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
@@ -270,6 +271,8 @@ public class JSRealm {
     private final JSDynamicObject localePrototype;
     private final JSFunctionObject dateConstructor;
     private final JSDynamicObject datePrototype;
+    private final JSFunctionObject fetchResponseConstructor;
+    private final JSDynamicObject fetchResponsePrototype;
     @CompilationFinal(dimensions = 1) private final JSDynamicObject[] errorConstructors;
     @CompilationFinal(dimensions = 1) private final JSDynamicObject[] errorPrototypes;
     private final JSFunctionObject callSiteConstructor;
@@ -609,6 +612,9 @@ public class JSRealm {
         this.callFunctionObject = JSDynamicObject.getOrNull(getFunctionPrototype(), Strings.CALL);
 
         JSConstructor ctor;
+        ctor = JSFetchResponse.createConstructor(this);
+        this.fetchResponseConstructor = ctor.getFunctionObject();
+        this.fetchResponsePrototype = ctor.getPrototype();
         ctor = JSArray.createConstructor(this);
         this.arrayConstructor = ctor.getFunctionObject();
         this.arrayPrototype = (JSArrayObject) ctor.getPrototype();

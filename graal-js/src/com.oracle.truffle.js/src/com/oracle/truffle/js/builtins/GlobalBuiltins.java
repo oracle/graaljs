@@ -97,7 +97,11 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadBufferNo
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadFullyNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadLineNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalUnEscapeNodeGen;
+import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalFetchNodeGen;
 import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
+import com.oracle.truffle.js.builtins.helper.FetchHttpConnection;
+import com.oracle.truffle.js.builtins.helper.FetchRequest;
+import com.oracle.truffle.js.builtins.helper.FetchResponse;
 import com.oracle.truffle.js.builtins.helper.FloatParserNode;
 import com.oracle.truffle.js.builtins.helper.StringEscape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -131,7 +135,9 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSFetchResponse;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSURLDecoder;
 import com.oracle.truffle.js.runtime.builtins.JSURLEncoder;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
@@ -140,6 +146,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.Nullish;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -168,6 +175,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         decodeURI(1),
         decodeURIComponent(1),
         eval(1),
+        fetch(2),
 
         // Annex B
         escape(1),
@@ -215,6 +223,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return JSGlobalUnEscapeNodeGen.create(context, builtin, false, args().fixedArgs(1).createArgumentNodes(context));
             case unescape:
                 return JSGlobalUnEscapeNodeGen.create(context, builtin, true, args().fixedArgs(1).createArgumentNodes(context));
+            case fetch:
+                return JSGlobalFetchNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }
@@ -1316,6 +1326,48 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected TruffleString escape(Object value) {
             TruffleString s = toString1(value);
             return unescape ? StringEscape.unescape(s) : StringEscape.escape(s);
+        }
+    }
+
+    public abstract static class JSGlobalFetchNode extends JSBuiltinNode {
+
+        protected JSGlobalFetchNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        private JSObject buildResponseObject(FetchResponse response) {
+            JSObject obj = JSOrdinary.create(getContext(), getRealm());
+
+            JSObject.set(obj, "url", tstr(response.getUrl().toExternalForm()));
+            JSObject.set(obj, "redirected", response.getCounter() > 0);
+            JSObject.set(obj, "status", response.getStatus());
+            JSObject.set(obj, "ok", response.getStatus() == 200);
+            JSObject.set(obj, "statusText", tstr(response.getStatusText()));
+
+            return obj;
+        }
+
+        private TruffleString tstr(String s) {
+            return TruffleString.fromJavaStringUncached(s, TruffleString.Encoding.UTF_8);
+        }
+
+        @Specialization
+        protected JSObject fetch(TruffleString urlString, Object options) {
+            try {
+                JSObject parsedOptions;
+                if (options == Null.instance || options == Undefined.instance) {
+                    parsedOptions = JSOrdinary.create(getContext(), getRealm());
+                } else {
+                    parsedOptions = (JSObject) options;
+                }
+                FetchRequest request = new FetchRequest(urlString, parsedOptions);
+                FetchResponse response = FetchHttpConnection.open(request);
+                return buildResponseObject(response);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            return null;
         }
     }
 

@@ -93,6 +93,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDictionary;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSFetchResponse;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistryObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -445,6 +446,7 @@ public class JSContext {
     private final JSObjectFactory stringFactory;
     private final JSObjectFactory regExpFactory;
     private final JSObjectFactory dateFactory;
+    private final JSObjectFactory fetchResponseFactory;
     private final JSObjectFactory nonStrictArgumentsFactory;
     private final JSObjectFactory strictArgumentsFactory;
     private final JSObjectFactory callSiteFactory;
@@ -619,6 +621,7 @@ public class JSContext {
         this.stringFactory = builder.create(JSString.INSTANCE);
         this.regExpFactory = builder.create(JSRegExp.INSTANCE);
         this.dateFactory = builder.create(JSDate.INSTANCE);
+        this.fetchResponseFactory = builder.create(JSFetchResponse.INSTANCE);
 
         this.symbolFactory = builder.create(JSSymbol.INSTANCE);
         this.mapFactory = builder.create(JSMap.INSTANCE);
@@ -973,6 +976,10 @@ public class JSContext {
 
     public final JSObjectFactory getDateFactory() {
         return dateFactory;
+    }
+
+    public final JSObjectFactory getFetchResponseFactory() {
+        return fetchResponseFactory;
     }
 
     public final JSObjectFactory getEnumerateIteratorFactory() {

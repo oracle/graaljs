@@ -73,6 +73,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallBigIntNodeG
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallBooleanNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallCollatorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallDateNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallFetchResponseNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallDateTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberNodeGen;
@@ -88,6 +89,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructBoolea
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructCollatorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDataViewNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFetchResponseNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDisplayNamesNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructErrorNodeGen;
@@ -129,6 +131,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWebAss
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWebAssemblyTableNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CreateDynamicFunctionNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.PromiseConstructorNodeGen;
+import com.oracle.truffle.js.builtins.helper.FetchResponse;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -216,6 +219,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
+import com.oracle.truffle.js.runtime.builtins.JSFetchResponse;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -303,6 +307,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Error(1),
         RangeError(1),
         TypeError(1),
+        FetchError(1),
         ReferenceError(1),
         SyntaxError(1),
         EvalError(1),
@@ -347,6 +352,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Memory(1),
         Module(1),
         Table(1),
+
+        // Fetch
+        Response(2),
 
         // Temporal
         PlainTime(0),
@@ -448,6 +456,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     return createCallRequiresNew(context, builtin);
                 }
 
+            case Response:
+                return construct ? (newTarget
+                        ? ConstructFetchResponseNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
+                        : ConstructFetchResponseNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context)))
+                        : CallFetchResponseNodeGen.create(context, builtin, args().createArgumentNodes(context));
+
             case Collator:
                 return construct ? (newTarget
                                 ? ConstructCollatorNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
@@ -522,6 +536,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             case Error:
             case RangeError:
             case TypeError:
+            case FetchError:
             case ReferenceError:
             case SyntaxError:
             case EvalError:
@@ -1091,6 +1106,35 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getDatePrototype();
         }
 
+    }
+
+    public abstract static class CallFetchResponseNode extends JSBuiltinNode {
+        public CallFetchResponseNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        @TruffleBoundary
+        protected Object callFetchResponse() {
+            JSRealm realm = getRealm();
+            return JSDate.toString(realm.currentTimeMillis(), realm);
+        }
+    }
+
+    public abstract static class ConstructFetchResponseNode extends ConstructWithNewTargetNode {
+        public ConstructFetchResponseNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+        }
+
+        @Specialization
+        protected JSDynamicObject constructFetchResponse(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
+            return swapPrototype(JSFetchResponse.create(getContext(), getRealm(), new FetchResponse()), newTarget);
+        }
+
+        @Override
+        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getDatePrototype();
+        }
     }
 
     public abstract static class ConstructTemporalPlainDateNode extends ConstructWithNewTargetNode {

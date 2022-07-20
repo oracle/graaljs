@@ -121,6 +121,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createFetchError(String message) {
+        return JSException.create(JSErrorType.FetchError, message);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeError(String message) {
         return JSException.create(JSErrorType.TypeError, message);
     }
