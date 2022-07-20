@@ -2725,7 +2725,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object result = JSArray.createEmpty(getContext(), getRealm(), length);
 
             for (long i = 0; i < length; i++) {
-                var value = read(thisObj, length-1-i);
+                var value = read(thisJSObj, length-1-i);
                 write(result, i, value);
             }
 
