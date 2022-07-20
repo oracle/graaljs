@@ -1457,6 +1457,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
+    private JavaScriptNode wrapTemporalDeadZoneInit(Scope scope, JavaScriptNode blockBody) {
+        List<JavaScriptNode> init = new ArrayList<>(4);
+        createTemporalDeadZoneInit(scope, init);
+        if (init.isEmpty()) {
+            return blockBody;
+        } else {
+            init.add(blockBody);
+            return factory.createExprBlock(init.toArray(EMPTY_NODE_ARRAY));
+        }
+    }
+
     private void createResolveImports(FunctionNode functionNode, List<JavaScriptNode> declarations) {
         assert functionNode.isModule();
 
@@ -3669,12 +3680,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             TruffleString className = null;
             Symbol classNameSymbol = null;
             IdentNode ident = classNode.getIdent();
-            List<JavaScriptNode> scopeInit = null;
             if (ident != null) {
                 className = ident.getNameTS();
                 classNameSymbol = classHeadScope.getExistingSymbol(ident.getName());
-                scopeInit = new ArrayList<>(2);
-                createTemporalDeadZoneInit(classHeadScope, scopeInit);
             }
 
             JavaScriptNode classHeritage = transform(classNode.getClassHeritage());
@@ -3699,9 +3707,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 classDefinition = privateEnv.wrapBlockScope(classDefinition);
             }
 
-            if (scopeInit != null && !scopeInit.isEmpty()) {
-                scopeInit.add(classDefinition);
-                classDefinition = factory.createExprBlock(scopeInit.toArray(EMPTY_NODE_ARRAY));
+            if (ident != null) {
+                classDefinition = wrapTemporalDeadZoneInit(classHeadScope, classDefinition);
             }
             return tagExpression(blockEnv.wrapBlockScope(classDefinition), classNode);
         }
