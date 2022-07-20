@@ -40,19 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLength;
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
-import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetLength;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.EnumSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -206,6 +193,19 @@ import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLength;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
+import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetLength;
+
 /**
  * Contains builtins for {@linkplain JSArray}.prototype.
  */
@@ -263,7 +263,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         group(1),
         groupToMap(1),
         findLast(1),
-        findLastIndex(1);
+        findLastIndex(1),
+
+        // Next
+        toReversed(0);
 
         private final int length;
 
@@ -368,10 +371,19 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             case at:
                 return JSArrayAtNodeGen.create(context, builtin, false, args().withThis().fixedArgs(1).createArgumentNodes(context));
+
             case group:
                 return JSArrayGroupNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case groupToMap:
                 return JSArrayGroupToMapNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+
+            case groupBy:
+                return JSArrayGroupByNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case groupByToMap:
+                return JSArrayGroupByToMapNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+
+            case toReversed:
+                return ArrayPrototypeBuiltinsFactory.JSArrayToReversedNodeGen.create(context, builtin, false, args().withThis().fixedArgs(0).createArgumentNodes(context));
         }
         return null;
     }
@@ -2692,6 +2704,26 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
             reportLoopCount(length);
             return -1;
+        }
+    }
+
+    public abstract static class JSArrayToReversedNode extends JSArrayOperation {
+        public JSArrayToReversedNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
+            super(context, builtin, isTypedArrayImplementation);
+        }
+
+        @Specialization
+        protected Object reverseArray(final JSDynamicObject thisObj) {
+            Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
+            long length = arrayGetLength(thisObj);
+            Object result = JSArray.createEmpty(getContext(), getRealm(), length);
+
+            for (long i = 0; i < length; i++) {
+                var value = read(thisObj, length-1-i);
+                write(result, i, value);
+            }
+
+            return result;
         }
     }
 
