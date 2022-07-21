@@ -133,8 +133,6 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
     private abstract static class AsyncFromSyncBaseNode extends JSBuiltinNode {
         static final HiddenKey DONE = new HiddenKey("Done");
 
-        @Child private PropertyGetNode getPromiseNode;
-
         @Child private JSFunctionCallNode executePromiseMethodNode;
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child protected PerformPromiseThenNode performPromiseThenNode;

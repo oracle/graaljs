@@ -395,7 +395,6 @@ public final class JSArrayBufferView extends JSNonProxy {
         assert JSRuntime.isPropertyKey(key);
         JSFunctionData lengthGetterData = realm.getContext().getOrCreateBuiltinFunctionData(functionKey, (c) -> {
             return JSFunctionData.createCallOnly(c, new JavaScriptRootNode(c.getLanguage(), null, null) {
-                @Child private ArrayBufferViewGetter getterNode = getter;
                 private final BranchProfile errorBranch = BranchProfile.create();
 
                 @Override

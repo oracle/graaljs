@@ -1502,7 +1502,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         private final TruffleString functionName;
         private final String functionNameJavaString;
         private final ValueProfile thisClassProfile = ValueProfile.createClassProfile();
-        @Child protected Node invokeNode;
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
         @Child protected JSFunctionCallNode callJSFunctionNode;
         @Child protected PropertyGetNode getFunctionNode;
