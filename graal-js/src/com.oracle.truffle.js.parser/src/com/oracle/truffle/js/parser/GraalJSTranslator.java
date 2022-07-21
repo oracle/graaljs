@@ -1855,11 +1855,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private VarRef findScopeVarCheckTDZ(TruffleString name, boolean initializationAssignment) {
         VarRef varRef = findScopeVar(name, false);
         if (varRef.isFunctionLocal()) {
+            if (varRef.hasBeenDeclared()) {
+                return varRef;
+            }
             Symbol symbol = lc.getCurrentScope().findBlockScopedSymbolInFunction(varRef.getName().toJavaStringUncached());
             if (symbol == null) {
                 // variable is not block-scoped
                 return varRef;
-            } else if (symbol.hasBeenDeclared() || varRef.hasBeenDeclared()) {
+            } else if (symbol.hasBeenDeclared()) {
                 // variable has been unconditionally declared already
                 return varRef;
             } else if (symbol.isDeclaredInSwitchBlock()) {
@@ -1867,7 +1870,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 // in an unprotected switch case context, so we always need a dynamic check
                 return varRef.withTDZCheck();
             } else if (initializationAssignment) {
-                assert !symbol.hasBeenDeclared() && !varRef.hasBeenDeclared();
                 varRef.setHasBeenDeclared(true);
                 return varRef;
             } else {

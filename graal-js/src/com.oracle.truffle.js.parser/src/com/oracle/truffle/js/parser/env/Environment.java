@@ -698,7 +698,7 @@ public abstract class Environment {
 
         public boolean hasBeenDeclared() {
             JSFrameSlot frameSlot = getFrameSlot();
-            return frameSlot != null && frameSlot.hasBeenDeclared();
+            return frameSlot != null && (frameSlot.hasBeenDeclared() || !JSFrameUtil.hasTemporalDeadZone(frameSlot));
         }
 
         public void setHasBeenDeclared(boolean declared) {
