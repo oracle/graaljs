@@ -53,37 +53,53 @@ import com.oracle.truffle.js.runtime.Strings;
 
 public final class GlobalEnvironment extends DerivedEnvironment {
 
-    private enum LexicalKind {
-        Let(false, false),
-        LetDeclared(false, true),
-        Const(true, false),
-        ConstDeclared(true, true);
+    private enum DeclarationKind {
+        Var(false, false, true),
+        Let(true, false, false),
+        LetDeclared(true, false, true),
+        Const(true, true, false),
+        ConstDeclared(true, true, true);
 
+        private final boolean isLexical;
         private final boolean isConst;
-        private final boolean declared;
+        private final boolean isDeclared;
 
-        LexicalKind(boolean isConst, boolean declared) {
+        DeclarationKind(boolean isLexical, boolean isConst, boolean isDeclared) {
+            this.isLexical = isLexical;
             this.isConst = isConst;
-            this.declared = declared;
+            this.isDeclared = isDeclared;
         }
 
-        public boolean isConst() {
+        public final boolean isLexical() {
+            return isLexical;
+        }
+
+        public final boolean isConst() {
             return isConst;
         }
 
-        public boolean isDeclared() {
-            return declared;
+        public final boolean isDeclared() {
+            return isDeclared;
+        }
+
+        public final DeclarationKind withDeclared(boolean declared) {
+            assert isLexical() || declared;
+            if (!isLexical() || isDeclared() == declared) {
+                return this;
+            }
+            if (declared) {
+                return isConst() ? DeclarationKind.ConstDeclared : DeclarationKind.LetDeclared;
+            } else {
+                return isConst() ? DeclarationKind.Const : DeclarationKind.Let;
+            }
         }
     }
 
-    /** Entries: (name, const). */
-    private final EconomicMap<TruffleString, LexicalKind> lexicalDeclarations;
-    private final EconomicMap<TruffleString, Boolean> varDeclarations;
+    private final EconomicMap<TruffleString, DeclarationKind> declarations;
 
     public GlobalEnvironment(Environment parent, NodeFactory factory, JSContext context) {
         super(parent, factory, context);
-        this.lexicalDeclarations = EconomicMap.create();
-        this.varDeclarations = EconomicMap.create();
+        this.declarations = EconomicMap.create();
     }
 
     @Override
@@ -92,23 +108,26 @@ public final class GlobalEnvironment extends DerivedEnvironment {
     }
 
     public boolean addLexicalDeclaration(TruffleString name, boolean isConst) {
-        return lexicalDeclarations.put(name, isConst ? LexicalKind.Const : LexicalKind.Let) == null;
+        return declarations.put(name, isConst ? DeclarationKind.Const : DeclarationKind.Let) == null;
     }
 
     public boolean hasLexicalDeclaration(TruffleString name) {
-        return lexicalDeclarations.containsKey(name);
+        DeclarationKind decl = declarations.get(name);
+        return decl != null && decl.isLexical();
     }
 
     public boolean hasConstDeclaration(TruffleString name) {
-        return lexicalDeclarations.get(name, LexicalKind.Let).isConst();
+        DeclarationKind decl = declarations.get(name);
+        return decl != null && decl.isConst();
     }
 
     public boolean addVarDeclaration(TruffleString name) {
-        return varDeclarations.put(name, Boolean.FALSE) == null;
+        return declarations.put(name, DeclarationKind.Var) == null;
     }
 
     public boolean hasVarDeclaration(TruffleString name) {
-        return varDeclarations.containsKey(name);
+        DeclarationKind decl = declarations.get(name);
+        return decl != null && !decl.isLexical();
     }
 
     /**
@@ -119,7 +138,7 @@ public final class GlobalEnvironment extends DerivedEnvironment {
     }
 
     public boolean hasBeenDeclared(TruffleString name) {
-        LexicalKind decl = lexicalDeclarations.get(name);
+        DeclarationKind decl = declarations.get(name);
         if (decl != null) {
             return decl.isDeclared();
         } else {
@@ -128,20 +147,14 @@ public final class GlobalEnvironment extends DerivedEnvironment {
     }
 
     public void setHasBeenDeclared(TruffleString name, boolean declared) {
-        LexicalKind decl = lexicalDeclarations.get(name);
-        if (decl != null && decl.isDeclared() != declared) {
-            LexicalKind newKind;
-            if (declared) {
-                newKind = decl.isConst() ? LexicalKind.ConstDeclared : LexicalKind.LetDeclared;
-            } else {
-                newKind = decl.isConst() ? LexicalKind.Const : LexicalKind.Let;
-            }
-            lexicalDeclarations.put(name, newKind);
+        DeclarationKind decl = declarations.get(name);
+        if (decl != null && decl.isLexical() && decl.isDeclared() != declared) {
+            declarations.put(name, decl.withDeclared(declared));
         }
     }
 
     @Override
     protected String toStringImpl(Map<String, Integer> state) {
-        return "Global" + new StringJoiner(", ", "{", "}").add(joinElements(lexicalDeclarations.getKeys())).add(joinElements(varDeclarations.getKeys())).toString();
+        return "Global" + new StringJoiner(", ", "{", "}").add(joinElements(declarations.getKeys())).toString();
     }
 }
