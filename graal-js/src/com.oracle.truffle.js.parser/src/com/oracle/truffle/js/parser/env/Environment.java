@@ -282,9 +282,9 @@ public abstract class Environment {
                 // 3. Undeclared global (external lexical declaration or global object property).
                 // .. Dynamically resolved using lexical global scope and global object lookups.
                 GlobalEnvironment globalEnv = (GlobalEnvironment) current;
-                if (globalEnv.hasLexicalDeclaration(name) && !GlobalEnvironment.isGlobalObjectConstant(name)) {
+                if (globalEnv.hasLexicalDeclaration(name)) {
                     return wrapIn(wrapClosure, wrapFrameLevel, new GlobalLexVarRef(name, globalEnv.hasConstDeclaration(name), globalEnv));
-                } else if (!globalEnv.hasVarDeclaration(name) && !GlobalEnvironment.isGlobalObjectConstant(name)) {
+                } else if (!globalEnv.hasVarDeclaration(name)) {
                     wrapClosure = makeGlobalWrapClosure(wrapClosure, name);
                 }
             } else if (current instanceof DebugEnvironment) {
@@ -994,7 +994,7 @@ public abstract class Environment {
 
         private GlobalLexVarRef(Object name, boolean isConst, GlobalEnvironment globalEnv, boolean required, boolean checkTDZ) {
             super(name);
-            assert name instanceof TruffleString && !name.equals(Null.NAME) && !name.equals(Undefined.NAME);
+            assert name instanceof TruffleString && !name.equals(Null.NAME) && !GlobalEnvironment.isGlobalObjectConstant((TruffleString) name) : name;
             this.isConst = isConst;
             this.required = required;
             this.checkTDZ = checkTDZ;

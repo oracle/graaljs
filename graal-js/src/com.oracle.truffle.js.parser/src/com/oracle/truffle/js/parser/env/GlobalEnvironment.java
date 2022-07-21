@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.StringJoiner;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
@@ -95,11 +96,16 @@ public final class GlobalEnvironment extends DerivedEnvironment {
         }
     }
 
+    /**
+     * Always-defined immutable constant value properties of the global object.
+     */
+    private static final UnmodifiableEconomicMap<TruffleString, DeclarationKind> PREDEFINED_IMMUTABLE_GLOBALS = initPredefinedImmutableGlobals();
+
     private final EconomicMap<TruffleString, DeclarationKind> declarations;
 
     public GlobalEnvironment(Environment parent, NodeFactory factory, JSContext context) {
         super(parent, factory, context);
-        this.declarations = EconomicMap.create();
+        this.declarations = EconomicMap.create(PREDEFINED_IMMUTABLE_GLOBALS);
     }
 
     @Override
@@ -107,8 +113,8 @@ public final class GlobalEnvironment extends DerivedEnvironment {
         return null;
     }
 
-    public boolean addLexicalDeclaration(TruffleString name, boolean isConst) {
-        return declarations.put(name, isConst ? DeclarationKind.Const : DeclarationKind.Let) == null;
+    public void addLexicalDeclaration(TruffleString name, boolean isConst) {
+        declarations.putIfAbsent(name, isConst ? DeclarationKind.Const : DeclarationKind.Let);
     }
 
     public boolean hasLexicalDeclaration(TruffleString name) {
@@ -121,8 +127,8 @@ public final class GlobalEnvironment extends DerivedEnvironment {
         return decl != null && decl.isConst();
     }
 
-    public boolean addVarDeclaration(TruffleString name) {
-        return declarations.put(name, DeclarationKind.Var) == null;
+    public void addVarDeclaration(TruffleString name) {
+        declarations.putIfAbsent(name, DeclarationKind.Var);
     }
 
     public boolean hasVarDeclaration(TruffleString name) {
@@ -134,7 +140,15 @@ public final class GlobalEnvironment extends DerivedEnvironment {
      * Returns true for always-defined immutable value properties of the global object.
      */
     public static boolean isGlobalObjectConstant(TruffleString name) {
-        return Strings.UNDEFINED.equals(name) || Strings.NAN.equals(name) || Strings.INFINITY.equals(name);
+        return PREDEFINED_IMMUTABLE_GLOBALS.containsKey(name);
+    }
+
+    private static UnmodifiableEconomicMap<TruffleString, DeclarationKind> initPredefinedImmutableGlobals() {
+        EconomicMap<TruffleString, DeclarationKind> map = EconomicMap.create();
+        map.put(Strings.UNDEFINED, DeclarationKind.Var);
+        map.put(Strings.NAN, DeclarationKind.Var);
+        map.put(Strings.INFINITY, DeclarationKind.Var);
+        return map;
     }
 
     public boolean hasBeenDeclared(TruffleString name) {
