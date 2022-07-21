@@ -188,10 +188,6 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             executePromiseMethodNode.executeCall(JSArguments.createOneArg(Undefined.instance, valueWrapperCapability.getResolve(), result));
         }
 
-        protected Object getPromise(JSDynamicObject promiseCapability) {
-            return getPromiseNode.getValue(promiseCapability);
-        }
-
         protected final Object asyncFromSyncIteratorContinuation(Object result, PromiseCapabilityRecord promiseCapability) {
             boolean done;
             try {

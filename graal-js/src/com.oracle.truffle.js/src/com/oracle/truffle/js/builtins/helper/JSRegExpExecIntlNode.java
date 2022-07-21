@@ -431,14 +431,6 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             }
             setLastIndexNode.setValueInt(regExp, value);
         }
-
-        protected boolean isJSRegExp(JSDynamicObject regExp) {
-            if (isJSRegExpNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isJSRegExpNode = createIsJSRegExpNode();
-            }
-            return isJSRegExpNode.executeBoolean(regExp);
-        }
     }
 
     private static Object executeCompiledRegex(Object compiledRegex, Object input, long fromIndex,

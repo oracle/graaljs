@@ -300,16 +300,6 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
         }
 
-        protected JSDynamicObject arrayFromIterable(Object thisObj, Object items, Object mapFn, Object thisArg, boolean mapping) {
-            if (getIteratorNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getIteratorNode = insert(GetIteratorNode.create(getContext()));
-            }
-            IteratorRecord iteratorRecord = getIteratorNode.execute(items);
-            JSDynamicObject obj = constructOrArray(thisObj, 0, false);
-            return arrayFromIteratorRecord(obj, iteratorRecord, mapFn, thisArg, mapping);
-        }
-
         protected JSDynamicObject arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping) {
             JSDynamicObject obj = constructOrArray(thisObj, 0, false);
 
