@@ -190,16 +190,16 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     // region Abstract methods
     @TruffleBoundary
     public static JSTemporalDurationRecord parseTemporalDurationString(TruffleString string) {
-        long yearsMV = 0;
-        long monthsMV = 0;
-        long daysMV = 0;
-        long weeksMV = 0;
+        long yearsMV;
+        long monthsMV;
+        long daysMV;
+        long weeksMV;
         double hoursMV = 0;
-        double minutesMV = 0;
-        double secondsMV = 0;
-        BigDecimal millisecondsMV = BigDecimal.ZERO;
-        BigDecimal microsecondsMV = BigDecimal.ZERO;
-        BigDecimal nanosecondsMV = BigDecimal.ZERO;
+        BigDecimal minutesMV;
+        BigDecimal secondsMV;
+        BigDecimal millisecondsMV;
+        BigDecimal microsecondsMV;
+        BigDecimal nanosecondsMV;
 
         TruffleString minutes = Strings.EMPTY_STRING;
         TruffleString seconds = Strings.EMPTY_STRING;
@@ -250,9 +250,9 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 assert !Strings.contains(fHours, '.');
                 TruffleString fHoursDigits = fHours; // substring(1) handled above
                 int fHoursScale = Strings.length(fHoursDigits);
-                minutesMV = 60.0 * TemporalUtil.toIntegerOrInfinity(fHoursDigits).doubleValue() / Math.pow(10, fHoursScale);
+                minutesMV = new BigDecimal(TemporalUtil.toIntegerOrInfinity(fHoursDigits).doubleValue()).multiply(TemporalUtil.BD_60).scaleByPowerOfTen(-fHoursScale);
             } else {
-                minutesMV = TemporalUtil.toIntegerOrInfinity(minutes).doubleValue();
+                minutesMV = new BigDecimal(TemporalUtil.toIntegerOrInfinity(minutes).doubleValue());
             }
             if (!empty(fMinutes)) {
                 if (!empty(seconds) || !empty(fSeconds)) {
@@ -261,11 +261,11 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 assert !Strings.contains(fMinutes, '.');
                 TruffleString fMinutesDigits = fMinutes; // substring(1) handled above
                 int fMinutesScale = Strings.length(fMinutesDigits);
-                secondsMV = 60.0 * TemporalUtil.toIntegerOrInfinity(fMinutesDigits).doubleValue() / Math.pow(10, fMinutesScale);
+                secondsMV = new BigDecimal(TemporalUtil.toIntegerOrInfinity(fMinutesDigits).doubleValue()).multiply(TemporalUtil.BD_60).scaleByPowerOfTen(-fMinutesScale);
             } else if (!empty(seconds)) {
-                secondsMV = TemporalUtil.toIntegerOrInfinity(seconds).doubleValue();
+                secondsMV = new BigDecimal(TemporalUtil.toIntegerOrInfinity(seconds).doubleValue());
             } else {
-                secondsMV = TemporalUtil.remainder(minutesMV, 1) * 60.0;
+                secondsMV = minutesMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.BD_60);
             }
 
             if (!empty(fSeconds)) {
@@ -275,7 +275,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 millisecondsMV = TemporalUtil.BD_1000.multiply(BigDecimal.valueOf(TemporalUtil.toIntegerOrInfinity(fSecondsDigits).longValue())).divide(
                                 TemporalUtil.BD_10.pow(fSecondsScale));
             } else {
-                millisecondsMV = new BigDecimal(secondsMV).remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.BD_1000, TemporalUtil.mc_20_floor);
+                millisecondsMV = secondsMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.BD_1000, TemporalUtil.mc_20_floor);
             }
             microsecondsMV = millisecondsMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.BD_1000);
             nanosecondsMV = microsecondsMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.BD_1000);
@@ -283,7 +283,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             int factor = (sign.equals(Strings.SYMBOL_MINUS) || sign.equals(Strings.UNICODE_MINUS_SIGN)) ? -1 : 1;
 
             return JSTemporalDurationRecord.createWeeks(yearsMV * factor, monthsMV * factor, weeksMV * factor, daysMV * factor, hoursMV * factor,
-                            (long) (Math.floor(minutesMV) * factor), (long) (Math.floor(secondsMV) * factor),
+                            minutesMV.longValue() * factor, secondsMV.longValue() * factor,
                             millisecondsMV.longValue() * factor, microsecondsMV.longValue() * factor, nanosecondsMV.longValue() * factor);
         }
         throw TemporalErrors.createRangeErrorTemporalMalformedDuration();

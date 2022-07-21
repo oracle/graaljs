@@ -388,7 +388,7 @@ public final class TemporalParser {
         if (!parseDate()) {
             return false;
         }
-        parseTimeSpecSeparator(); // optional
+        parseTimeSpecSeparator(true); // optional
         parseTimeZone();
 
         return true;
@@ -397,7 +397,7 @@ public final class TemporalParser {
     private JSTemporalParserRecord parseCalendarDateTimeTimeRequired() {
         reset();
         if (parseDate()) {
-            if (!parseTimeSpecSeparator()) {
+            if (!parseTimeSpecSeparator(false)) {
                 return null;
             }
             parseTimeZone();
@@ -409,12 +409,12 @@ public final class TemporalParser {
         return null;
     }
 
-    private boolean parseTimeSpecSeparator() {
+    private boolean parseTimeSpecSeparator(boolean optional) {
         int posBackup = pos;
         TruffleString restBackup = rest;
 
         if (!tryParseDateTimeSeparator()) {
-            return false;
+            return optional;
         }
         if (!tryParseTimeSpec()) {
             // we found a separator, but no time.
@@ -494,11 +494,12 @@ public final class TemporalParser {
         reset();
         // Date TimeSpecSeparator(opt) TimeZone Calendar(opt)
         if (parseDate()) {
-            tryParseTimeSpecSeparator();
-            if (parseTimeZone()) {
-                parseCalendar();
-                if (atEnd()) {
-                    return result();
+            if (parseTimeSpecSeparator(true)) {
+                if (parseTimeZone()) {
+                    parseCalendar();
+                    if (atEnd()) {
+                        return result();
+                    }
                 }
             }
         }
@@ -595,10 +596,11 @@ public final class TemporalParser {
     private JSTemporalParserRecord parseTemporalInstantString() {
         reset();
         if (parseDate()) {
-            tryParseTimeSpecSeparator(); // optional
-            if (tryParseTimeZoneOffsetRequired()) {
-                if (atEnd()) {
-                    return result();
+            if (parseTimeSpecSeparator(true)) {
+                if (tryParseTimeZoneOffsetRequired()) {
+                    if (atEnd()) {
+                        return result();
+                    }
                 }
             }
         }
@@ -611,15 +613,6 @@ public final class TemporalParser {
         }
         tryParseTimeZoneBracketedAnnotation(); // optional
         return true;
-    }
-
-    private boolean tryParseTimeSpecSeparator() {
-        if (tryParseDateTimeSeparator()) {
-            if (tryParseTimeSpec()) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private JSTemporalParserRecord parseCalendarName() {
