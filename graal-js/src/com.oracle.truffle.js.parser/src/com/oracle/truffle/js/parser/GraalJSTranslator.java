@@ -971,15 +971,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return node;
     }
 
-    static int getBlockScopedSymbolFlags(VarNode varNode) {
-        if (varNode.isConst()) {
-            return Symbol.IS_CONST;
-        } else {
-            assert varNode.isLet();
-            return Symbol.IS_LET | (varNode.getName().isCatchParameter() ? Symbol.IS_CATCH_PARAMETER | Symbol.HAS_BEEN_DECLARED : 0);
-        }
-    }
-
     private List<JavaScriptNode> functionEnvInit(FunctionNode functionNode) {
         FunctionEnvironment currentFunction = currentFunction();
         assert !currentFunction.isGlobal() || currentFunction.isIndirectEval();
