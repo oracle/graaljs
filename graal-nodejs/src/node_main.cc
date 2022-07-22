@@ -25,6 +25,8 @@
 
 #ifdef __POSIX__
 #include <pthread.h>
+#include <errno.h>
+#include <string.h> // strerror
 #endif
 
 #ifdef _WIN32
@@ -108,6 +110,12 @@ extern char** environ;
 #include <signal.h>
 #endif
 
+#if defined(__APPLE__)
+// Support Cocoa event loop on the main thread.
+// Implementation in apple_main.mm
+void ParkEventLoop();
+#endif
+
 namespace node {
 namespace per_process {
 extern bool linux_at_secure;
@@ -160,6 +168,17 @@ void* main_new_thread(void* args) {
     return reinterpret_cast<void*> (&arguments->ret);
 }
 
+#if defined(__APPLE__)
+static void *apple_main_new_thread(void *arg)
+{
+    args_t* arguments = reinterpret_cast<args_t*> (arg);
+    int ret = node::Start(arguments->argc, arguments->argv);
+    arguments->ret = ret;
+    exit(ret);
+    return reinterpret_cast<void*> (ret);
+}
+#endif
+
 int main(int argc, char *argv[]) {
     bool update_env = false;
     long stack_size = node::GraalArgumentsPreprocessing(argc, argv);
@@ -182,6 +201,9 @@ int main(int argc, char *argv[]) {
         snprintf(buffer, sizeof(buffer), "%ld", stack_size);
         setenv("NODE_STACK_SIZE", buffer, 1);
     }
+
+    void *(*main_new_thread_start)(void *) = &main_new_thread;
+    bool use_new_thread = false;
 #if defined(__sparc__) && defined(__linux__)
 /**
  * On Linux/SPARC we cannot run graal-nodejs from the main thread.
@@ -199,22 +221,52 @@ int main(int argc, char *argv[]) {
  * HotSpot tries to allocate guard pages somewhere between heap and stack.
  * The OS does not allow mmap in this area between heap and stack.
  */
-    if (1) {
+    use_new_thread = true;
+#elif defined(__APPLE__)
+/**
+ * On macOS, in order to be able to use AWT, we must run the GUI event loop
+ * on the main thread. Otherwise, the application will just hang as soon as
+ * the AWT is initialized when not running in -Djava.awt.headless=true mode.
+ *
+ * Therefore, we always run Node.js from a dedicated main thread on macOS.
+ *
+ * Inspired by this OpenJDK code:
+ * https://github.com/openjdk/jdk/blob/011958d30b275f0f6a2de097938ceeb34beb314d/src/java.base/macosx/native/libjli/java_md_macosx.m#L328-L358
+ */
+    main_new_thread_start = &apple_main_new_thread;
+    use_new_thread = true;
 #else
-    if (stack_size > 0) {
+/**
+ * On all other platforms, we spawn a new main thread only when we need to
+ * adjust the stack size.
+ */
+    use_new_thread = stack_size > 0;
 #endif
+    if (use_new_thread) {
         args_t arguments = {argc, argv, 0};
-        void* ret;
         pthread_t tid;
         pthread_attr_t attr;
 
         pthread_attr_init(&attr);
-        pthread_attr_setstacksize(&attr, (size_t) stack_size);
-        pthread_create(&tid, &attr, main_new_thread, &arguments);
+        if (stack_size > 0) {
+            pthread_attr_setstacksize(&attr, (size_t) stack_size);
+        }
+        if (pthread_create(&tid, &attr, main_new_thread_start, &arguments) != 0) {
+            fprintf(stderr, "Could not create main thread: %s\n", strerror(errno));
+            exit(1);
+        }
+        pthread_attr_destroy(&attr);
+#if defined(__APPLE__)
+        pthread_detach(tid);
+        ParkEventLoop();
+        return 0;
+#else
+        void* ret;
         pthread_join(tid, &ret);
         return *reinterpret_cast<int*> (ret);
+#endif
     } else {
         return main_orig(argc, argv);
     }
 }
-#endif
+#endif // _WIN32

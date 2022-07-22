@@ -252,6 +252,11 @@
             ],
           },
         }],
+        ['OS=="mac"', {
+          'sources': [
+            'src/apple_main.mm',
+          ],
+        }],
         ['OS=="win"', {
           'libraries': [
             'Dbghelp.lib',
