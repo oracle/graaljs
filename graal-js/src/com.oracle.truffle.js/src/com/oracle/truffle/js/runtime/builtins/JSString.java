@@ -55,7 +55,6 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
@@ -340,11 +339,6 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
             return DefinePropertyUtil.isCompatiblePropertyDescriptor(isExtensible(thisObj), desc, stringGetIndexProperty(thisObj, key), doThrow);
         }
         return super.defineOwnProperty(thisObj, key, desc, doThrow);
-    }
-
-    @TruffleBoundary
-    private static JSException createTypeErrorCannotRedefineStringIndex(Object key) {
-        return Errors.createTypeError("Cannot redefine property: " + key);
     }
 
     /**

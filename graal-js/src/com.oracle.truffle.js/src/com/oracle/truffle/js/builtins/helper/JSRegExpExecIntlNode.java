@@ -282,8 +282,6 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         private final ConditionProfile match = ConditionProfile.createCountingProfile();
         private final ConditionProfile areLegacyFeaturesEnabled = ConditionProfile.createBinaryProfile();
         private final int ecmaScriptVersion;
-
-        @Child protected IsJSClassNode isJSRegExpNode;
         @Child private JSToLengthNode toLengthNode;
         @Child private PropertyGetNode getLastIndexNode;
         @Child private PropertySetNode setLastIndexNode;
@@ -430,14 +428,6 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                 setLastIndexNode = insert(PropertySetNode.create(JSRegExp.LAST_INDEX, false, context, true));
             }
             setLastIndexNode.setValueInt(regExp, value);
-        }
-
-        protected boolean isJSRegExp(JSDynamicObject regExp) {
-            if (isJSRegExpNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isJSRegExpNode = createIsJSRegExpNode();
-            }
-            return isJSRegExpNode.executeBoolean(regExp);
         }
     }
 

@@ -133,8 +133,6 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
     private abstract static class AsyncFromSyncBaseNode extends JSBuiltinNode {
         static final HiddenKey DONE = new HiddenKey("Done");
 
-        @Child private PropertyGetNode getPromiseNode;
-
         @Child private JSFunctionCallNode executePromiseMethodNode;
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child protected PerformPromiseThenNode performPromiseThenNode;
@@ -186,10 +184,6 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         protected void promiseCapabilityResolve(PromiseCapabilityRecord valueWrapperCapability, Object result) {
             executePromiseMethodNode.executeCall(JSArguments.createOneArg(Undefined.instance, valueWrapperCapability.getResolve(), result));
-        }
-
-        protected Object getPromise(JSDynamicObject promiseCapability) {
-            return getPromiseNode.getValue(promiseCapability);
         }
 
         protected final Object asyncFromSyncIteratorContinuation(Object result, PromiseCapabilityRecord promiseCapability) {

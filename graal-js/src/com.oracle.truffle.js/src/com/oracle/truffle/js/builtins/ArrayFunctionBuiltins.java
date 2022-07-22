@@ -203,7 +203,6 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @Child private IteratorValueNode getIteratorValueNode;
         @Child private IteratorStepNode iteratorStepNode;
         @Child private GetMethodNode getIteratorMethodNode;
-        @Child private GetIteratorNode getIteratorNode;
         @Child private IsJSObjectNode isObjectNode;
         @Child private PropertyGetNode getNextMethodNode;
         @Child private JSGetLengthNode getSourceLengthNode;
@@ -298,16 +297,6 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 Object itemsObject = toObject(items);
                 return arrayFromArrayLike(thisObj, itemsObject, mapFn, thisArg, mapping, setLength);
             }
-        }
-
-        protected JSDynamicObject arrayFromIterable(Object thisObj, Object items, Object mapFn, Object thisArg, boolean mapping) {
-            if (getIteratorNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getIteratorNode = insert(GetIteratorNode.create(getContext()));
-            }
-            IteratorRecord iteratorRecord = getIteratorNode.execute(items);
-            JSDynamicObject obj = constructOrArray(thisObj, 0, false);
-            return arrayFromIteratorRecord(obj, iteratorRecord, mapFn, thisArg, mapping);
         }
 
         protected JSDynamicObject arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping) {

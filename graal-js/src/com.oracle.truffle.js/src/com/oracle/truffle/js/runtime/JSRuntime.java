@@ -1308,11 +1308,6 @@ public final class JSRuntime {
         throw new UnsupportedOperationException("unknown number value: " + number.toString() + " " + number.getClass().getSimpleName());
     }
 
-    @TruffleBoundary
-    private static int lengthIntl(CharSequence cs) {
-        return cs.length();
-    }
-
     public static String javaToString(Object obj) {
         if (obj instanceof String) {
             return (String) obj;
