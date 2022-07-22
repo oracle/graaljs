@@ -581,15 +581,6 @@ public abstract class AbstractWritableArray extends DynamicArray {
         }
     }
 
-    protected final Object[] toArrayZeroBased(JSDynamicObject object) {
-        int newLength = getUsedLength(object);
-        Object[] newArray = new Object[newLength];
-        for (int i = 0; i < newLength; i++) {
-            newArray[i] = getInBoundsFast(object, i);
-        }
-        return newArray;
-    }
-
     protected final ScriptArray deleteElementHoles(JSDynamicObject object, long index) {
         if (isInBoundsFast(object, index)) {
             int preparedindex = prepareInBoundsFast(object, (int) index);

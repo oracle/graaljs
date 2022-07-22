@@ -82,7 +82,6 @@ import java.util.stream.Stream;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -981,10 +980,6 @@ public abstract class TestSuite {
             text.append(separator);
         }
         return text.toString();
-    }
-
-    protected JSParserOptions getParserOptions() {
-        return new JSParserOptions();
     }
 
     public String getBackTrace(Throwable cause) {

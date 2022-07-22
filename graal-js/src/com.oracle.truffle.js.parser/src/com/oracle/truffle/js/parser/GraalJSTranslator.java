@@ -53,7 +53,6 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import com.oracle.js.parser.Lexer;
-import com.oracle.js.parser.Token;
 import com.oracle.js.parser.TokenType;
 import com.oracle.js.parser.ir.AccessNode;
 import com.oracle.js.parser.ir.BaseNode;
@@ -3665,15 +3664,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     @Override
     public JavaScriptNode enterDebuggerNode(DebuggerNode debuggerNode) {
         return tagStatement(factory.createDebugger(), debuggerNode);
-    }
-
-    protected static String error(final String message, final long errorToken, final LexicalContext lc) {
-        final int position = Token.descPosition(errorToken);
-        com.oracle.js.parser.Source internalSource = lc.getCurrentFunction().getSource();
-        final int lineNum = internalSource.getLine(position);
-        final int columnNum = internalSource.getColumn(position);
-        final String formatted = com.oracle.js.parser.ErrorManager.format(message, internalSource, lineNum, columnNum, errorToken);
-        return formatted.replace("\r\n", "\n");
     }
 
     @Override

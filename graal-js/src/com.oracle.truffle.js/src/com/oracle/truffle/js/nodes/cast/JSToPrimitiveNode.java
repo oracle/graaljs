@@ -197,10 +197,6 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         return hint == Hint.String;
     }
 
-    protected final boolean isHintNumber() {
-        return hint == Hint.Number || hint == Hint.Default;
-    }
-
     @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
     protected Object doForeignObject(Object object,
                     @CachedLibrary("object") InteropLibrary interop,

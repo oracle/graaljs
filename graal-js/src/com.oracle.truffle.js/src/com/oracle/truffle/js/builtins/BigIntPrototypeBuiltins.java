@@ -65,7 +65,6 @@ import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormatObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Contains builtins for {@linkplain JSBigInt}.prototype.
@@ -145,10 +144,6 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private final BranchProfile radixErrorBranch = BranchProfile.create();
-
-        protected boolean isRadix10(Object radix) {
-            return radix == Undefined.instance || (radix instanceof Integer && ((Integer) radix) == 10);
-        }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isUndefined(radix)"})
