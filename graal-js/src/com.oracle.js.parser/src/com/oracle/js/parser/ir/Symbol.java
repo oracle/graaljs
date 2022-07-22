@@ -81,7 +81,7 @@ public final class Symbol implements Comparable<Symbol> {
     public static final int IS_HOISTABLE_DECLARATION = 1 << 8;
     /** Is this a program level symbol? */
     public static final int IS_PROGRAM_LEVEL = 1 << 9;
-    /** Is this symbol seen a declaration? Used for block scoped LET and CONST symbols only. */
+    /** Is this symbol already declared? Used for block scoped LET and CONST symbols only. */
     public static final int HAS_BEEN_DECLARED = 1 << 10;
     /** Is this symbol a block function declaration hoisted into the body scope. */
     public static final int IS_HOISTED_BLOCK_FUNCTION = 1 << 11;
@@ -290,7 +290,9 @@ public final class Symbol implements Comparable<Symbol> {
     }
 
     /**
-     * Has this symbol been declared
+     * Returns true if this symbol can be assumed to have already been declared and initialized in
+     * the declaring scope, i.e., it does not have or need a temporal dead zone. Only relevant for
+     * lexical (let, const) declarations.
      *
      * @return true if declared
      */
