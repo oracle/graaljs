@@ -65,7 +65,7 @@ describe.skipOnNode('awt', function () {
     });
     it('should work in non-headless mode', function() {
         this.timeout(20000);
-        if (!isAWTAvailable()) {
+        if (!isAWTAvailable() || java.awt.GraphicsEnvironment.isHeadless()) {
             this.skip();
             return;
         }
