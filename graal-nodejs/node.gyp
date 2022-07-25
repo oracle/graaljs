@@ -256,6 +256,17 @@
           'sources': [
             'src/apple_main.mm',
           ],
+          'conditions': [
+            # -force_flat_namespace is not applicable for the dynamic library
+            [ 'node_target_type=="executable"', {
+              'xcode_settings': {
+                'OTHER_LDFLAGS': [
+                  '-force_flat_namespace',
+                  '-headerpad_max_install_names',
+                ],
+              },
+            }],
+          ],
         }],
         ['OS=="win"', {
           'libraries': [
@@ -588,19 +599,6 @@
         # Production build
         [ 'node_production=="true"', {
           'defines': [ 'NDEBUG' ],
-        }],
-        [ 'OS=="mac"', {
-          'conditions': [
-            # --force_flat_namespace is not applicable for the dynamic library
-            [ 'node_target_type=="executable"', {
-              'xcode_settings': {
-                'OTHER_LDFLAGS': [
-                  '-force_flat_namespace',
-                  '-headerpad_max_install_names',
-                ],
-              },
-            }],
-          ],
         }],
      ],
 
