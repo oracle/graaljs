@@ -282,9 +282,9 @@ public abstract class Environment {
                 // 3. Undeclared global (external lexical declaration or global object property).
                 // .. Dynamically resolved using lexical global scope and global object lookups.
                 GlobalEnvironment globalEnv = (GlobalEnvironment) current;
-                if (globalEnv.hasLexicalDeclaration(name) && !GlobalEnvironment.isGlobalObjectConstant(name)) {
-                    return wrapIn(wrapClosure, wrapFrameLevel, new GlobalLexVarRef(name, globalEnv.hasConstDeclaration(name)));
-                } else if (!globalEnv.hasVarDeclaration(name) && !GlobalEnvironment.isGlobalObjectConstant(name)) {
+                if (globalEnv.hasLexicalDeclaration(name)) {
+                    return wrapIn(wrapClosure, wrapFrameLevel, new GlobalLexVarRef(name, globalEnv.hasConstDeclaration(name), globalEnv));
+                } else if (!globalEnv.hasVarDeclaration(name)) {
                     wrapClosure = makeGlobalWrapClosure(wrapClosure, name);
                 }
             } else if (current instanceof DebugEnvironment) {
@@ -696,6 +696,18 @@ public abstract class Environment {
             return false;
         }
 
+        public boolean hasBeenDeclared() {
+            JSFrameSlot frameSlot = getFrameSlot();
+            return frameSlot != null && (frameSlot.hasBeenDeclared() || !JSFrameUtil.hasTemporalDeadZone(frameSlot));
+        }
+
+        public void setHasBeenDeclared(boolean declared) {
+            JSFrameSlot frameSlot = getFrameSlot();
+            if (frameSlot != null && frameSlot.hasBeenDeclared() != declared) {
+                frameSlot.setHasBeenDeclared(declared);
+            }
+        }
+
         @Override
         public String toString() {
             return getClass().getSimpleName() + "(" + getName() + ")";
@@ -974,17 +986,19 @@ public abstract class Environment {
         private final boolean isConst;
         private final boolean required;
         private final boolean checkTDZ;
+        private final GlobalEnvironment globalEnv;
 
-        public GlobalLexVarRef(TruffleString name, boolean isConst) {
-            this(name, isConst, true, false);
+        public GlobalLexVarRef(TruffleString name, boolean isConst, GlobalEnvironment globalEnv) {
+            this(name, isConst, globalEnv, true, false);
         }
 
-        private GlobalLexVarRef(Object name, boolean isConst, boolean required, boolean checkTDZ) {
+        private GlobalLexVarRef(Object name, boolean isConst, GlobalEnvironment globalEnv, boolean required, boolean checkTDZ) {
             super(name);
-            assert !name.equals(Null.NAME) && !name.equals(Undefined.NAME);
+            assert name instanceof TruffleString && !name.equals(Null.NAME) && !GlobalEnvironment.isGlobalObjectConstant((TruffleString) name) : name;
             this.isConst = isConst;
             this.required = required;
             this.checkTDZ = checkTDZ;
+            this.globalEnv = globalEnv;
         }
 
         @Override
@@ -1032,7 +1046,7 @@ public abstract class Environment {
         @Override
         public VarRef withRequired(@SuppressWarnings("hiding") boolean required) {
             if (this.required != required) {
-                return new GlobalLexVarRef(name, isConst, required, checkTDZ);
+                return new GlobalLexVarRef(name, isConst, globalEnv, required, checkTDZ);
             }
             return this;
         }
@@ -1040,7 +1054,7 @@ public abstract class Environment {
         @Override
         public VarRef withTDZCheck() {
             if (!this.checkTDZ) {
-                return new GlobalLexVarRef(name, isConst, required, true);
+                return new GlobalLexVarRef(name, isConst, globalEnv, required, true);
             }
             return this;
         }
@@ -1048,6 +1062,16 @@ public abstract class Environment {
         @Override
         public boolean hasTDZCheck() {
             return checkTDZ;
+        }
+
+        @Override
+        public boolean hasBeenDeclared() {
+            return globalEnv.hasBeenDeclared((TruffleString) name);
+        }
+
+        @Override
+        public void setHasBeenDeclared(boolean declared) {
+            globalEnv.setHasBeenDeclared((TruffleString) name, declared);
         }
     }
 

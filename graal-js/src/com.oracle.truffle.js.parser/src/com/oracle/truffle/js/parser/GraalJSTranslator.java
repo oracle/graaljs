@@ -970,15 +970,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return node;
     }
 
-    static int getBlockScopedSymbolFlags(VarNode varNode) {
-        if (varNode.isConst()) {
-            return Symbol.IS_CONST;
-        } else {
-            assert varNode.isLet();
-            return Symbol.IS_LET | (varNode.getName().isCatchParameter() ? Symbol.IS_CATCH_PARAMETER | Symbol.HAS_BEEN_DECLARED : 0);
-        }
-    }
-
     private List<JavaScriptNode> functionEnvInit(FunctionNode functionNode) {
         FunctionEnvironment currentFunction = currentFunction();
         assert !currentFunction.isGlobal() || currentFunction.isIndirectEval();
@@ -1284,8 +1275,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         try (EnvironmentCloseable blockEnv = enterBlockEnvironment(block)) {
             List<Statement> blockStatements = block.getStatements();
             List<JavaScriptNode> scopeInit = new ArrayList<>(block.getSymbolCount());
-            if ((block.getScope().hasBlockScopedOrRedeclaredSymbols() || block.isModuleBody()) && !(environment instanceof GlobalEnvironment)) {
-                createTemporalDeadZoneInit(block, scopeInit);
+            if (block.getScope().hasBlockScopedOrRedeclaredSymbols() && !(environment instanceof GlobalEnvironment)) {
+                createTemporalDeadZoneInit(block.getScope(), scopeInit);
+            }
+            if (block.isModuleBody()) {
+                createResolveImports(lc.getCurrentFunction(), scopeInit);
             }
             if (block.getScope().isFunctionTopScope() || block.getScope().isEvalScope()) {
                 prepareParameters(scopeInit);
@@ -1391,11 +1385,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     /**
      * Initialize block-scoped symbols with a <i>dead</i> marker value.
      */
-    private void createTemporalDeadZoneInit(Block block, List<JavaScriptNode> blockWithInit) {
-        assert (block.getScope().hasBlockScopedOrRedeclaredSymbols() || block.isModuleBody()) && !(environment instanceof GlobalEnvironment);
+    private void createTemporalDeadZoneInit(Scope blockScope, List<JavaScriptNode> blockWithInit) {
+        assert blockScope.hasBlockScopedOrRedeclaredSymbols() && !(environment instanceof GlobalEnvironment);
 
         List<FrameSlotVarRef> slotsWithTDZ = new ArrayList<>();
-        for (Symbol symbol : block.getSymbols()) {
+        for (Symbol symbol : blockScope.getSymbols()) {
             if (symbol.isImportBinding()) {
                 continue;
             }
@@ -1407,7 +1401,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 // In other cases, we can statically determine if a local use is in the TDZ,
                 // so we can skip the initialization if there is no non-local use (or eval).
                 // However, we currently need to initialize the variable for instrumentation.
-                if (symbol.isClosedOver() || symbol.isDeclaredInSwitchBlock() || block.isModuleBody() || block.getScope().hasNestedEval() || !allowScopeOptimization() || !allowTDZOptimization()) {
+                if (symbol.isClosedOver() || symbol.isDeclaredInSwitchBlock() || blockScope.isModuleScope() || blockScope.hasNestedEval() || !allowScopeOptimization() || !allowTDZOptimization()) {
                     FrameSlotVarRef slotRef = (FrameSlotVarRef) findScopeVar(symbol.getNameTS(), true);
                     assert JSFrameUtil.hasTemporalDeadZone(slotRef.getFrameSlot()) : slotRef.getFrameSlot();
                     slotsWithTDZ.add(slotRef);
@@ -1415,7 +1409,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
             if (symbol.isVarRedeclaredHere()) {
                 // redeclaration of parameter binding; initial value is copied from outer scope.
-                assert block.isFunctionBody();
+                assert blockScope.isFunctionBodyScope();
                 JavaScriptNode outerVar = environment.findBlockScopedVar(symbol.getNameTS()).createReadNode();
                 blockWithInit.add(findScopeVar(symbol.getNameTS(), true).createWriteNode(outerVar));
             }
@@ -1451,9 +1445,19 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 }
             }
         }
+    }
 
-        if (block.isModuleBody()) {
-            createResolveImports(lc.getCurrentFunction(), blockWithInit);
+    private JavaScriptNode wrapTemporalDeadZoneInit(Scope scope, JavaScriptNode blockBody) {
+        if (!scope.hasBlockScopedOrRedeclaredSymbols()) {
+            return blockBody;
+        }
+        List<JavaScriptNode> init = new ArrayList<>(4);
+        createTemporalDeadZoneInit(scope, init);
+        if (init.isEmpty()) {
+            return blockBody;
+        } else {
+            init.add(blockBody);
+            return factory.createExprBlock(init.toArray(EMPTY_NODE_ARRAY));
         }
     }
 
@@ -1850,6 +1854,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private VarRef findScopeVarCheckTDZ(TruffleString name, boolean initializationAssignment) {
         VarRef varRef = findScopeVar(name, false);
         if (varRef.isFunctionLocal()) {
+            if (varRef.hasBeenDeclared()) {
+                return varRef;
+            }
             Symbol symbol = lc.getCurrentScope().findBlockScopedSymbolInFunction(varRef.getName().toJavaStringUncached());
             if (symbol == null) {
                 // variable is not block-scoped
@@ -1861,47 +1868,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 // we cannot statically determine whether a block-scoped variable is in TDZ
                 // in an unprotected switch case context, so we always need a dynamic check
                 return varRef.withTDZCheck();
+            } else if (initializationAssignment) {
+                varRef.setHasBeenDeclared(true);
+                return varRef;
             } else {
-                assert !symbol.hasBeenDeclared();
-                if (initializationAssignment) {
-                    symbol.setHasBeenDeclared();
-                    return varRef;
-                }
-
                 // variable reference is unconditionally in the temporal dead zone, i.e.,
                 // var ref is in declaring function and in scope but before the actual declaration
-                return new VarRef(name) {
-                    @Override
-                    public boolean isGlobal() {
-                        return varRef.isGlobal();
-                    }
-
-                    @Override
-                    public boolean isFunctionLocal() {
-                        return varRef.isFunctionLocal();
-                    }
-
-                    @Override
-                    public JSFrameSlot getFrameSlot() {
-                        return null;
-                    }
-
-                    @Override
-                    public JavaScriptNode createReadNode() {
-                        return factory.createThrowError(JSErrorType.ReferenceError, Strings.fromJavaString(String.format("\"%s\" is not defined", varRef.getName())));
-                    }
-
-                    @Override
-                    public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-                        JavaScriptNode throwErrorNode = createReadNode();
-                        return isPotentiallySideEffecting(rhs) ? factory.createBinary(null, BinaryOperation.DUAL, rhs, throwErrorNode) : throwErrorNode;
-                    }
-
-                    @Override
-                    public JavaScriptNode createDeleteNode() {
-                        return createReadNode();
-                    }
-                };
+                // Note: may not throw a ReferenceError if shadowed by a with statement.
+                return varRef.withTDZCheck();
             }
         }
         return varRef.withTDZCheck();
@@ -1914,10 +1888,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         currentFunction().isCallerContextEval() : varNode;
 
         Symbol symbol = null;
+        VarRef varRef = null;
         if (varNode.isBlockScoped()) {
             // below, `symbol!=null` implies `isBlockScoped`
             symbol = lc.getCurrentScope().getExistingSymbol(varNode.getName().getName());
-            assert symbol != null : varName;
+            varRef = findScopeVar(varName, true);
+            assert symbol != null && varRef != null : varName;
         }
 
         JavaScriptNode assignment;
@@ -1925,7 +1901,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             assignment = createVarAssignNode(varNode, varName);
         } else if (symbol != null && (!varNode.isDestructuring() || symbol.isDeclaredInSwitchBlock()) && !symbol.hasBeenDeclared()) {
             assert varNode.isBlockScoped();
-            assignment = findScopeVar(varName, false).createWriteNode(factory.createConstantUndefined());
+            assignment = varRef.createWriteNode(factory.createConstantUndefined());
         } else {
             assignment = factory.createEmpty();
         }
@@ -1934,7 +1910,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         // (b) destructuring: the symbol does not come alive until the destructuring assignment
         if (symbol != null && (!symbol.isDeclaredInSwitchBlock() && !varNode.isDestructuring())) {
             assert varNode.isBlockScoped();
-            symbol.setHasBeenDeclared();
+            varRef.setHasBeenDeclared(true);
         }
         return assignment;
     }
@@ -3284,12 +3260,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         // TDZ: class name symbol cannot be used as a key but may be used as a value.
+        VarRef classNameVarRef = null;
         if (classNameSymbol != null) {
-            classNameSymbol.setHasBeenDeclared(true);
+            classNameVarRef = findScopeVar(classNameSymbol.getNameTS(), true);
+            assert classNameVarRef.isFrameVar() : classNameSymbol;
+            assert !classNameVarRef.hasBeenDeclared() : classNameSymbol;
+            classNameVarRef.setHasBeenDeclared(true);
         }
         JavaScriptNode value = transform(propertyValue);
         if (classNameSymbol != null) {
-            classNameSymbol.setHasBeenDeclared(false);
+            classNameVarRef.setHasBeenDeclared(false);
         }
 
         if (propertyValue instanceof FunctionNode && ((FunctionNode) propertyValue).needsSuper()) {
@@ -3357,6 +3337,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             if (pattern != null) {
                                 // exception is being destructured
                                 destructuring = transformAssignment(pattern, pattern, errorVar.createReadNode(), true);
+                                destructuring = wrapTemporalDeadZoneInit(catchParamBlock.getScope(), destructuring);
                             }
                         }
 
@@ -3711,6 +3692,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                                 classNode.getInstanceFieldCount(), classNode.getStaticElementCount(), classNode.hasPrivateInstanceMethods(), environment.getCurrentBlockScopeSlot());
 
                 classDefinition = privateEnv.wrapBlockScope(classDefinition);
+            }
+
+            if (ident != null) {
+                classDefinition = wrapTemporalDeadZoneInit(classHeadScope, classDefinition);
             }
             return tagExpression(blockEnv.wrapBlockScope(classDefinition), classNode);
         }
