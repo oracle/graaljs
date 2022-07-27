@@ -42,16 +42,13 @@ package com.oracle.truffle.js.builtins;
 
 import java.util.EnumSet;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
-import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -64,7 +61,6 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
@@ -73,9 +69,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
-import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIteratorObject;
-import com.oracle.truffle.js.runtime.builtins.JSWrapForIteratorObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
@@ -85,7 +79,7 @@ public final class JSWrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsCon
     public static final JSBuiltinsContainer BUILTINS = new JSWrapForAsyncIteratorPrototypeBuiltins();
 
     protected JSWrapForAsyncIteratorPrototypeBuiltins() {
-        super(JSIterator.CLASS_NAME, WrapForWrapForAsyncIterator.class); //TODO: async
+        super(JSIterator.CLASS_NAME, WrapForWrapForAsyncIterator.class); // TODO: async
     }
 
     public enum WrapForWrapForAsyncIterator implements BuiltinEnum<WrapForWrapForAsyncIterator> {
@@ -130,7 +124,6 @@ public final class JSWrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsCon
         @Child private IteratorNextNode iteratorNextNode;
         @Child private PropertyGetNode getContructorNode;
         @Child private JSFunctionCallNode callNode;
-
 
         public WrapForAsyncIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -195,7 +188,8 @@ public final class JSWrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsCon
             try {
                 Object innerResult = iteratorCloseNode.execute(thisObj.getIterated().getIterator());
                 if (JSPromise.isJSPromise(innerResult)) {
-                    JSFunctionData functionData = getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseReturnWrapper, WrapForAsyncIteratorReturnNode::createIteratorCloseResultCheckImpl);
+                    JSFunctionData functionData = getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseReturnWrapper,
+                                    WrapForAsyncIteratorReturnNode::createIteratorCloseResultCheckImpl);
                     return performPromiseThenNode.execute((JSDynamicObject) innerResult, JSFunction.create(getRealm(), functionData), Undefined.instance, newPromiseCapabilityNode.executeDefault());
                 }
 
@@ -252,6 +246,7 @@ public final class JSWrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsCon
             @Child private IsObjectNode isObjectNode;
             @Child private JSFunctionCallNode callNode;
             @Child private CreateIterResultObjectNode createIterResultObjectNode;
+
             protected AsyncIteratorCloseResultCheckNode(JSContext context) {
                 newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
                 isObjectNode = IsObjectNode.create();

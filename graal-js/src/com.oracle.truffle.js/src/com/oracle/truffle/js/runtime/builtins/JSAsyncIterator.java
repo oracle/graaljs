@@ -44,8 +44,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.AsyncIteratorFunctionBuiltins;
 import com.oracle.truffle.js.builtins.AsyncIteratorPrototypeBuiltins;
-import com.oracle.truffle.js.builtins.IteratorFunctionBuiltins;
-import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;

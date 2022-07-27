@@ -41,28 +41,19 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
-import com.oracle.truffle.js.nodes.access.IteratorStepNode;
-import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.nodes.function.InternalCallNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -72,13 +63,11 @@ import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
@@ -98,6 +87,7 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
     public static final TruffleString CLASS_NAME = Strings.constant("AsyncIteratorHelper");
 
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Async Iterator Helper");
 
     private static final HiddenKey TARGET_ID = new HiddenKey("target");
     private static final HiddenKey IMPL_ID = new HiddenKey("impl");
@@ -278,18 +268,19 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
             }
 
             if (JSPromise.isJSPromise(innerResult) && getContructorNode.getValueOrDefault(innerResult, Undefined.instance) == getRealm().getPromiseConstructor()) {
-                return performPromiseThenNode.execute((JSDynamicObject) innerResult, createCloseFunction(context, (JSDynamicObject) innerResult), Undefined.instance, newPromiseCapabilityNode.executeDefault());
+                return performPromiseThenNode.execute((JSDynamicObject) innerResult, createCloseFunction(context, (JSDynamicObject) innerResult), Undefined.instance,
+                                newPromiseCapabilityNode.executeDefault());
             }
 
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
             if (isObjectNode.executeBoolean(innerResult)) {
                 callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), createIterResultObjectNode.execute(frame, innerResult, true)));
             } else {
-                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), createIterResultObjectNode.execute(frame, Errors.createTypeErrorIterResultNotAnObject(innerResult, this), true)));
+                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(),
+                                createIterResultObjectNode.execute(frame, Errors.createTypeErrorIterResultNotAnObject(innerResult, this), true)));
             }
             return promiseCapability.getPromise();
         }
-
 
         protected JSFunctionObject createCloseFunction(JSContext context, JSDynamicObject promise) {
             JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncIteratorClose, AsyncIteratorClose::createCloseFunctionImpl);
@@ -306,7 +297,7 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 @Child public IsObjectNode isObjectNode;
                 @Child public CreateIterResultObjectNode createIterResultObjectNode;
 
-                public AsyncIteratorCloseRootNode(JSContext context) {
+                AsyncIteratorCloseRootNode(JSContext context) {
                     valueNode = AccessIndexedArgumentNode.create(0);
                     newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
                     callNode = JSFunctionCallNode.createCall();
@@ -321,7 +312,8 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     if (isObjectNode.executeBoolean(value)) {
                         callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), createIterResultObjectNode.execute(frame, value, true)));
                     } else {
-                        callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), createIterResultObjectNode.execute(frame, Errors.createTypeErrorIterResultNotAnObject(value, this), true)));
+                        callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(),
+                                        createIterResultObjectNode.execute(frame, Errors.createTypeErrorIterResultNotAnObject(value, this), true)));
                     }
                     return promiseCapability.getPromise();
                 }
@@ -359,7 +351,7 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @Specialization(guards = {"isJSObject(thisObj)"})
         protected Object next(JSObject thisObj) {
-            JSDynamicObject promise = (JSDynamicObject)getPromiseNode.getValue(thisObj);
+            JSDynamicObject promise = (JSDynamicObject) getPromiseNode.getValue(thisObj);
 
             Object impl = getNextNode.execute(thisObj);
             setIteratorPromiseNode.setValue(impl, promise);

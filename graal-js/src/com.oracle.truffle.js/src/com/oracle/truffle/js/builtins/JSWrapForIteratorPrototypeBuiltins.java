@@ -44,11 +44,8 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
-import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
-import com.oracle.truffle.js.nodes.access.IteratorNextNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -56,8 +53,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForIteratorObject;
@@ -99,9 +94,9 @@ public final class JSWrapForIteratorPrototypeBuiltins extends JSBuiltinsContaine
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, WrapForWrapForIterator builtinEnum) {
         switch (builtinEnum) {
             case next:
-                return JSWrapForIteratorPrototypeBuiltinsFactory.WrapForIteratorNextNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return JSWrapForIteratorPrototypeBuiltinsFactory.WrapForIteratorNextNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case return_:
-                return JSWrapForIteratorPrototypeBuiltinsFactory.WrapForIteratorReturnNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return JSWrapForIteratorPrototypeBuiltinsFactory.WrapForIteratorReturnNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
 
         assert false : "Unreachable! Missing entries in switch?";
@@ -109,21 +104,21 @@ public final class JSWrapForIteratorPrototypeBuiltins extends JSBuiltinsContaine
     }
 
     public abstract static class WrapForIteratorNextNode extends JSBuiltinNode {
-        @Child private IteratorNextNode iteratorNextNode;
+        @Child private JSFunctionCallNode callNode;
 
         public WrapForIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            iteratorNextNode = IteratorNextNode.create();
+            callNode = JSFunctionCallNode.createCall();
         }
 
         @Specialization
-        protected Object next(JSWrapForIteratorObject thisObj, Object value) {
-            return iteratorNextNode.execute(thisObj.getIterated(), value);
+        protected Object next(JSWrapForIteratorObject thisObj) {
+            return callNode.executeCall(JSArguments.createZeroArg(thisObj.getIterated().getIterator(), thisObj.getIterated().getNextMethod()));
         }
 
         @Specialization
-        protected JSDynamicObject incompatible(Object thisObj, Object[] args) {
+        protected JSDynamicObject incompatible(Object thisObj) {
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
     }
@@ -140,13 +135,13 @@ public final class JSWrapForIteratorPrototypeBuiltins extends JSBuiltinsContaine
         }
 
         @Specialization
-        protected Object next(VirtualFrame frame, JSWrapForIteratorObject thisObj, Object value) {
-            Object result = iteratorCloseNode.execute(thisObj.getIterated().getIterator(), value);
-            return createIterResultObjectNode.execute(frame, result, true);
+        protected Object next(VirtualFrame frame, JSWrapForIteratorObject thisObj) {
+            iteratorCloseNode.executeVoid(thisObj.getIterated().getIterator());
+            return createIterResultObjectNode.execute(frame, Undefined.instance, true);
         }
 
         @Specialization
-        protected JSDynamicObject incompatible(Object thisObj, Object[] args) {
+        protected JSDynamicObject incompatible(Object thisObj) {
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
     }

@@ -2207,14 +2207,14 @@ public class JSRealm {
     private JSDynamicObject createIteratorHelperPrototype() {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, IteratorHelperPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(prototype, IteratorHelperPrototypeBuiltins.CLASS_NAME);
+        JSObjectUtil.putToStringTag(prototype, IteratorHelperPrototypeBuiltins.TO_STRING_TAG);
         return prototype;
     }
 
     private JSDynamicObject createAsyncIteratorHelperPrototype() {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.asyncIteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, AsyncIteratorHelperPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(prototype, AsyncIteratorHelperPrototypeBuiltins.CLASS_NAME);
+        JSObjectUtil.putToStringTag(prototype, AsyncIteratorHelperPrototypeBuiltins.TO_STRING_TAG);
         return prototype;
     }
 

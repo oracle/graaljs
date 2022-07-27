@@ -81,6 +81,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     public static final TruffleString CLASS_NAME = Strings.constant("IteratorHelper");
 
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Iterator Helper");
+
     public static final HiddenKey TARGET_ID = new HiddenKey("target");
     public static final HiddenKey MAPPER_ID = new HiddenKey("mapper");
     public static final HiddenKey HELPER_TYPE_ID = new HiddenKey("type");

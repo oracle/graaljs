@@ -44,9 +44,6 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.builtins.IteratorFunctionBuiltinsFactory.JSIteratorFromNodeGen;
-import com.oracle.truffle.js.nodes.access.GetAsyncIteratorNode;
-import com.oracle.truffle.js.nodes.access.GetAsyncIteratorNodeGen;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
@@ -54,7 +51,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -103,7 +99,6 @@ public final class AsyncIteratorFunctionBuiltins extends JSBuiltinsContainer.Swi
 
         return null;
     }
-
 
     public abstract static class JSAsyncIteratorFromNode extends JSBuiltinNode {
         @Child private GetMethodNode getAsyncIteratorMethodNode;
