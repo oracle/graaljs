@@ -57,6 +57,7 @@ import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.js.builtins.AsyncIteratorHelperPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIterator;
 import org.graalvm.collections.Pair;
@@ -361,6 +362,7 @@ public class JSRealm {
     private final JSDynamicObject arrayIteratorPrototype;
     private final JSDynamicObject setIteratorPrototype;
     private final JSDynamicObject mapIteratorPrototype;
+    private final JSDynamicObject asyncIteratorHelperPrototype;
     private final JSDynamicObject iteratorHelperPrototype;
     private final JSDynamicObject segmentsPrototype;
     private final JSDynamicObject segmentIteratorPrototype;
@@ -718,6 +720,7 @@ public class JSRealm {
         this.asyncIteratorPrototype = ctor.getPrototype();
         this.asyncIteratorContructor = ctor.getFunctionObject();
         this.wrapForAsyncIteratorPrototype = JSWrapForAsyncIterator.INSTANCE.createPrototype(this, asyncIteratorContructor);
+        this.asyncIteratorHelperPrototype = createAsyncIteratorHelperPrototype();
         this.iteratorHelperPrototype = createIteratorHelperPrototype();
 
         ctor = JSCollator.createConstructor(this);
@@ -1677,6 +1680,9 @@ public class JSRealm {
     public JSDynamicObject getIteratorHelperPrototype() {
         return iteratorHelperPrototype;
     }
+    public JSDynamicObject getAsyncIteratorHelperPrototype() {
+        return asyncIteratorHelperPrototype;
+    }
 
     public JSDynamicObject getStringIteratorPrototype() {
         return stringIteratorPrototype;
@@ -2202,6 +2208,13 @@ public class JSRealm {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, IteratorHelperPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, IteratorHelperPrototypeBuiltins.CLASS_NAME);
+        return prototype;
+    }
+
+    private JSDynamicObject createAsyncIteratorHelperPrototype() {
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.asyncIteratorPrototype);
+        JSObjectUtil.putFunctionsFromContainer(this, prototype, AsyncIteratorHelperPrototypeBuiltins.BUILTINS);
+        JSObjectUtil.putToStringTag(prototype, AsyncIteratorHelperPrototypeBuiltins.CLASS_NAME);
         return prototype;
     }
 

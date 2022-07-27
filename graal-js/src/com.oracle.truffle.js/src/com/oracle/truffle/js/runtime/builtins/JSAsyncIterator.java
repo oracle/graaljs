@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.AsyncIteratorFunctionBuiltins;
+import com.oracle.truffle.js.builtins.AsyncIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.IteratorFunctionBuiltins;
 import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -76,7 +77,7 @@ public final class JSAsyncIterator extends JSNonProxy implements JSConstructorFa
         JSObject iteratorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
 
         JSObjectUtil.putConstructorProperty(ctx, iteratorPrototype, ctor);
-        JSObjectUtil.putFunctionsFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.BUILTINS); //TODO:
+        JSObjectUtil.putFunctionsFromContainer(realm, iteratorPrototype, AsyncIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(iteratorPrototype, CLASS_NAME);
         JSObjectUtil.putDataProperty(realm.getContext(), iteratorPrototype, Symbol.SYMBOL_ASYNC_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(realm), JSAttributes.getDefaultNotEnumerable());
 
