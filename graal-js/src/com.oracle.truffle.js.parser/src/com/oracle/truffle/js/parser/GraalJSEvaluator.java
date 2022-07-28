@@ -152,7 +152,7 @@ public final class GraalJSEvaluator implements JSParser {
      */
     @TruffleBoundary(transferToInterpreterOnException = false)
     @Override
-    public ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName) {
+    public ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName, Source inheritFrom) {
         String wrappedBody = "\n" + body + "\n";
         try {
             GraalJSParserHelper.checkFunctionSyntax(context, context.getParserOptions(), parameterList, wrappedBody, generatorFunction, asyncFunction, sourceName);
@@ -182,8 +182,12 @@ public final class GraalJSEvaluator implements JSParser {
         code.append(") {");
         code.append(wrappedBody);
         code.append("})");
-        Source source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).build();
-
+        Source source;
+        if (inheritFrom == null) {
+            source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).build();
+        } else {
+            source = Source.newBuilder(inheritFrom).content(code.toString()).name(sourceName).build();
+        }
         return parseEval(context, null, source, false, null);
     }
 
