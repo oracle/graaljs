@@ -108,16 +108,9 @@ public final class TemporalParser {
         this.input = input;
     }
 
-    public JSTemporalParserRecord parseTemporalDateString() {
-        // TemporalDateString => CalendarDateTime
-        JSTemporalParserRecord rec = parseCalendarDateTime();
-        return rec;
-    }
-
     public JSTemporalParserRecord parseISODateTime() {
         JSTemporalParserRecord rec;
 
-        // TemporalDateString => CalendarDateTime
         // TemporalDateTimeString => CalendarDateTime
         // TemporalRelativeToString => TemporalDateTimeString => CalendarDateTime
         rec = parseCalendarDateTime();
@@ -373,7 +366,7 @@ public final class TemporalParser {
         return c - '0';
     }
 
-    private JSTemporalParserRecord parseCalendarDateTime() {
+    public JSTemporalParserRecord parseCalendarDateTime() {
         reset();
         if (parseDateTime()) {
             parseCalendar();
@@ -484,7 +477,7 @@ public final class TemporalParser {
 
     public JSTemporalParserRecord parseTimeZoneString() {
         reset();
-        // TemporalTimeZoneIdentifier
+        // TimeZoneIdentifier
         if (parseTimeZoneIdentifier()) {
             if (atEnd()) {
                 return result();
@@ -644,7 +637,7 @@ public final class TemporalParser {
         return parseZonedDateTimeString() != null;
     }
 
-    public boolean isTemporalRelativeToString() {
+    public boolean isTemporalDateTimeString() {
         reset();
         JSTemporalParserRecord rec = parseCalendarDateTime();
         if (rec != null) {
@@ -889,15 +882,15 @@ public final class TemporalParser {
     }
 
     private boolean parseTimeZoneIdentifier() {
-        // TimeZoneNumericUTCOffset
+        // TimeZoneIANAName
         reset();
-        if (tryParseTimeZoneNumericUTCOffset(false)) {
+        if (parseTimeZoneIANAName()) {
             return true;
         }
 
+        // TimeZoneNumericUTCOffset
         reset();
-        // TimeZoneIANAName
-        if (parseTimeZoneIANAName()) {
+        if (tryParseTimeZoneNumericUTCOffset(false)) {
             return true;
         }
 
@@ -928,6 +921,7 @@ public final class TemporalParser {
             move(matcher.end(1));
             return true;
         }
+
         return false;
     }
 

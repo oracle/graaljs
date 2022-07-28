@@ -86,6 +86,11 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
+    public static JSException createRangeErrorRelativeToNotUndefined() {
+        return Errors.createRangeError("RelativeTo object should be not undefined.");
+    }
+
+    @TruffleBoundary
     public static JSException createRangeErrorDisallowedField(TruffleString property) {
         return Errors.createRangeError(String.format("Property %s is a disallowed field and not 0.", property));
     }

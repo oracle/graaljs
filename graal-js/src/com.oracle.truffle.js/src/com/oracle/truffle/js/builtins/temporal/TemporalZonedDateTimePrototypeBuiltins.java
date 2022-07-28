@@ -116,6 +116,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
@@ -653,66 +654,28 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         }
     }
 
-    public abstract static class JSTemporalZonedDateTimeAdd extends JSTemporalBuiltinOperation {
-
-        protected JSTemporalZonedDateTimeAdd(JSContext context, JSBuiltin builtin) {
+    public abstract static class ZonedDateTimeOperation extends JSTemporalBuiltinOperation {
+        public ZonedDateTimeOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization
-        public JSDynamicObject add(Object thisObj, Object temporalDurationLike, Object optionsParam,
-                        @Cached JSNumberToBigIntNode toBigInt,
-                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
-            JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
+        protected JSTemporalZonedDateTimeObject addDurationToOrSubtractDurationFromZonedDateTime(int sign, JSTemporalZonedDateTimeObject zonedDateTime, Object temporalDurationLike,
+                        Object optionsParam, JSNumberToBigIntNode toBigInt, ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
             JSDynamicObject options = getOptionsObject(optionsParam);
             JSDynamicObject timeZone = zonedDateTime.getTimeZone();
             JSDynamicObject calendar = zonedDateTime.getCalendar();
-            BigInt epochNanoseconds = TemporalUtil.addZonedDateTime(getContext(), zonedDateTime.getNanoseconds(), timeZone, calendar, dtol(duration.getYears()), dtol(duration.getMonths()),
-                            dtol(duration.getWeeks()), dtol(duration.getDays()), dtol(duration.getHours()), dtol(duration.getMinutes()), dtol(duration.getSeconds()), dtol(duration.getMilliseconds()),
-                            dtol(duration.getMicroseconds()), toBigInt.executeBigInt(duration.getNanoseconds()).bigIntegerValue(), options);
+            BigInt epochNanoseconds = TemporalUtil.addZonedDateTime(getContext(), zonedDateTime.getNanoseconds(), timeZone, calendar, sign * dtol(duration.getYears()),
+                            sign * dtol(duration.getMonths()),
+                            sign * dtol(duration.getWeeks()), sign * dtol(duration.getDays()), sign * dtol(duration.getHours()), sign * dtol(duration.getMinutes()), sign * dtol(duration.getSeconds()),
+                            sign * dtol(duration.getMilliseconds()),
+                            sign * dtol(duration.getMicroseconds()), toBigInt.executeBigInt(sign * duration.getNanoseconds()).bigIntegerValue(), options);
             return JSTemporalZonedDateTime.create(getContext(), getRealm(), epochNanoseconds, timeZone, calendar);
         }
-    }
 
-    public abstract static class JSTemporalZonedDateTimeSubtract extends JSTemporalBuiltinOperation {
-
-        protected JSTemporalZonedDateTimeSubtract(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        public JSDynamicObject subtract(Object thisObj, Object temporalDurationLike, Object optionsParam,
-                        @Cached JSNumberToBigIntNode toBigInt,
-                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
-            JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
-            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
-            JSDynamicObject options = getOptionsObject(optionsParam);
-            JSDynamicObject timeZone = zonedDateTime.getTimeZone();
-            JSDynamicObject calendar = zonedDateTime.getCalendar();
-            BigInt epochNanoseconds = TemporalUtil.addZonedDateTime(getContext(), zonedDateTime.getNanoseconds(), timeZone, calendar, dtol(-duration.getYears()), dtol(-duration.getMonths()),
-                            dtol(-duration.getWeeks()), dtol(-duration.getDays()), dtol(-duration.getHours()), dtol(-duration.getMinutes()), dtol(-duration.getSeconds()),
-                            dtol(-duration.getMilliseconds()), dtol(-duration.getMicroseconds()), toBigInt.executeBigInt(-duration.getNanoseconds()).bigIntegerValue(), options);
-            return JSTemporalZonedDateTime.create(getContext(), getRealm(), epochNanoseconds, timeZone, calendar);
-        }
-    }
-
-    public abstract static class JSTemporalZonedDateTimeUntil extends JSTemporalBuiltinOperation {
-
-        protected JSTemporalZonedDateTimeUntil(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        public Object until(Object thisObj, Object otherParam, Object optionsParam,
-                        @Cached("create()") JSToNumberNode toNumber,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime,
-                        @Cached JSToStringNode toStringNode,
-                        @Cached TruffleString.EqualNode equalNode,
-                        @Cached("create(getContext())") TemporalDurationAddNode durationAddNode,
-                        @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode) {
-            JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
+        protected JSTemporalDurationObject differenceTemporalZonedDateTime(int sign, JSTemporalZonedDateTimeObject zonedDateTime, Object otherParam, Object optionsParam, JSToNumberNode toNumber,
+                        EnumerableOwnPropertyNamesNode namesNode, ToTemporalZonedDateTimeNode toTemporalZonedDateTime, JSToStringNode toStringNode, TruffleString.EqualNode equalNode,
+                        TemporalDurationAddNode durationAddNode, TemporalRoundDurationNode roundDurationNode) {
             JSTemporalZonedDateTimeObject other = (JSTemporalZonedDateTimeObject) toTemporalZonedDateTime.executeDynamicObject(otherParam, Undefined.instance);
             if (!TemporalUtil.calendarEquals(zonedDateTime.getCalendar(), other.getCalendar(), toStringNode)) {
                 errorBranch.enter();
@@ -724,13 +687,16 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listEmpty, AUTO, defaultLargestUnit, equalNode);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode);
+            if (sign == TemporalUtil.SINCE) {
+                roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
+            }
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
             if (!(Unit.YEAR == largestUnit || Unit.MONTH == largestUnit || Unit.WEEK == largestUnit || Unit.DAY == largestUnit)) {
                 long differenceNs = TemporalUtil.bitol(TemporalUtil.differenceInstant(zonedDateTime.getNanoseconds(), other.getNanoseconds(), roundingIncrement, smallestUnit, roundingMode));
                 JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, 0, 0, 0, 0, 0, 0, differenceNs, largestUnit);
-                return JSTemporalDuration.createTemporalDuration(getContext(), 0, 0, 0, 0, balanceResult.getHours(), balanceResult.getMinutes(), balanceResult.getSeconds(),
-                                balanceResult.getMilliseconds(), balanceResult.getMicroseconds(), balanceResult.getNanoseconds(), errorBranch);
+                return JSTemporalDuration.createTemporalDuration(getContext(), 0, 0, 0, 0, sign * balanceResult.getHours(), sign * balanceResult.getMinutes(), sign * balanceResult.getSeconds(),
+                                sign * balanceResult.getMilliseconds(), sign * balanceResult.getMicroseconds(), sign * balanceResult.getNanoseconds(), errorBranch);
             }
             if (!TemporalUtil.timeZoneEquals(zonedDateTime.getTimeZone(), other.getTimeZone(), toStringNode)) {
                 errorBranch.enter();
@@ -746,8 +712,60 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalDurationRecord result = TemporalUtil.adjustRoundedDurationDays(getContext(), namesNode, durationAddNode, roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(),
                             roundResult.getDays(), roundResult.getHours(), roundResult.getMinutes(), roundResult.getSeconds(), roundResult.getMilliseconds(), roundResult.getMicroseconds(),
                             roundResult.getNanoseconds(), (long) roundingIncrement, smallestUnit, roundingMode, zonedDateTime);
-            return JSTemporalDuration.createTemporalDuration(getContext(), result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), result.getHours(), result.getMinutes(),
-                            result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), errorBranch);
+            return JSTemporalDuration.createTemporalDuration(getContext(), sign * result.getYears(), sign * result.getMonths(), sign * result.getWeeks(), sign * result.getDays(),
+                            sign * result.getHours(), sign * result.getMinutes(),
+                            sign * result.getSeconds(), sign * result.getMilliseconds(), sign * result.getMicroseconds(), sign * result.getNanoseconds(), errorBranch);
+        }
+    }
+
+    public abstract static class JSTemporalZonedDateTimeAdd extends ZonedDateTimeOperation {
+
+        protected JSTemporalZonedDateTimeAdd(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public JSDynamicObject add(Object thisObj, Object temporalDurationLike, Object optionsParam,
+                        @Cached JSNumberToBigIntNode toBigInt,
+                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+            JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
+            return addDurationToOrSubtractDurationFromZonedDateTime(TemporalUtil.ADD, zonedDateTime, temporalDurationLike, optionsParam, toBigInt, toLimitedTemporalDurationNode);
+        }
+    }
+
+    public abstract static class JSTemporalZonedDateTimeSubtract extends ZonedDateTimeOperation {
+
+        protected JSTemporalZonedDateTimeSubtract(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public JSDynamicObject subtract(Object thisObj, Object temporalDurationLike, Object optionsParam,
+                        @Cached JSNumberToBigIntNode toBigInt,
+                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+            JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
+            return addDurationToOrSubtractDurationFromZonedDateTime(TemporalUtil.SUBTRACT, zonedDateTime, temporalDurationLike, optionsParam, toBigInt, toLimitedTemporalDurationNode);
+        }
+    }
+
+    public abstract static class JSTemporalZonedDateTimeUntil extends ZonedDateTimeOperation {
+
+        protected JSTemporalZonedDateTimeUntil(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public Object until(Object thisObj, Object otherParam, Object optionsParam,
+                        @Cached("create()") JSToNumberNode toNumber,
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
+                        @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime,
+                        @Cached JSToStringNode toStringNode,
+                        @Cached TruffleString.EqualNode equalNode,
+                        @Cached("create(getContext())") TemporalDurationAddNode durationAddNode,
+                        @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode) {
+            JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
+            return differenceTemporalZonedDateTime(TemporalUtil.UNTIL, zonedDateTime, otherParam, optionsParam, toNumber, namesNode, toTemporalZonedDateTime, toStringNode, equalNode, durationAddNode,
+                            roundDurationNode);
         }
     }
 
