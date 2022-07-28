@@ -363,7 +363,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
-            return addDurationToOrSubtractDurationFromDuration(1, duration, other, options, durationAddNode, toRelativeTemporalObjectNode, toLimitedTemporalDurationNode);
+            return addDurationToOrSubtractDurationFromDuration(TemporalUtil.ADD, duration, other, options, durationAddNode, toRelativeTemporalObjectNode, toLimitedTemporalDurationNode);
         }
     }
 
@@ -379,7 +379,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
-            return addDurationToOrSubtractDurationFromDuration(-1, duration, other, options, durationAddNode, toRelativeTemporalObjectNode, toLimitedTemporalDurationNode);
+            return addDurationToOrSubtractDurationFromDuration(TemporalUtil.SUBTRACT, duration, other, options, durationAddNode, toRelativeTemporalObjectNode, toLimitedTemporalDurationNode);
         }
     }
 

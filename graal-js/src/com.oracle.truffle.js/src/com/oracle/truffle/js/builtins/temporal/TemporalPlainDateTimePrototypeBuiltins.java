@@ -423,7 +423,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         public JSDynamicObject add(Object thisObj, Object temporalDurationLike, Object optParam,
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalPlainDateTimeObject dateTime = requireTemporalDateTime(thisObj);
-            return addDurationToOrSubtractDurationFromPlainDateTime(TemporalUtil.UNTIL, dateTime, temporalDurationLike, optParam, toLimitedTemporalDurationNode);
+            return addDurationToOrSubtractDurationFromPlainDateTime(TemporalUtil.ADD, dateTime, temporalDurationLike, optParam, toLimitedTemporalDurationNode);
         }
     }
 
@@ -437,7 +437,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         public JSDynamicObject subtract(Object thisObj, Object temporalDurationLike, Object optParam,
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalPlainDateTimeObject dateTime = requireTemporalDateTime(thisObj);
-            return addDurationToOrSubtractDurationFromPlainDateTime(TemporalUtil.SINCE, dateTime, temporalDurationLike, optParam, toLimitedTemporalDurationNode);
+            return addDurationToOrSubtractDurationFromPlainDateTime(TemporalUtil.SUBTRACT, dateTime, temporalDurationLike, optParam, toLimitedTemporalDurationNode);
         }
     }
 

@@ -306,7 +306,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         public JSDynamicObject add(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
-            return addDurationToOrSubtractDurationFromPlainTime(1, temporalTime, temporalDurationLike, toLimitedTemporalDurationNode);
+            return addDurationToOrSubtractDurationFromPlainTime(TemporalUtil.ADD, temporalTime, temporalDurationLike, toLimitedTemporalDurationNode);
         }
     }
 
@@ -320,7 +320,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         public JSDynamicObject subtract(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
-            return addDurationToOrSubtractDurationFromPlainTime(-1, temporalTime, temporalDurationLike, toLimitedTemporalDurationNode);
+            return addDurationToOrSubtractDurationFromPlainTime(TemporalUtil.SUBTRACT, temporalTime, temporalDurationLike, toLimitedTemporalDurationNode);
         }
     }
 

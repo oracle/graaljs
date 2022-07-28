@@ -222,7 +222,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             super(context, builtin);
         }
 
-        protected JSTemporalInstantObject addDurationToOrSubtractFromInstant(int sign, JSTemporalInstantObject instant, Object temporalDurationLike,
+        protected JSTemporalInstantObject addDurationToOrSubtractDurationFromInstant(int sign, JSTemporalInstantObject instant, Object temporalDurationLike,
                         ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listPluralYMWD);
             BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), sign * duration.getHours(), sign * duration.getMinutes(), sign * duration.getSeconds(),
@@ -241,7 +241,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         public JSDynamicObject add(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
-            return addDurationToOrSubtractFromInstant(1, instant, temporalDurationLike, toLimitedTemporalDurationNode);
+            return addDurationToOrSubtractDurationFromInstant(TemporalUtil.ADD, instant, temporalDurationLike, toLimitedTemporalDurationNode);
         }
     }
 
@@ -255,7 +255,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         public JSDynamicObject subtract(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
-            return addDurationToOrSubtractFromInstant(-1, instant, temporalDurationLike, toLimitedTemporalDurationNode);
+            return addDurationToOrSubtractDurationFromInstant(TemporalUtil.SUBTRACT, instant, temporalDurationLike, toLimitedTemporalDurationNode);
         }
     }
 

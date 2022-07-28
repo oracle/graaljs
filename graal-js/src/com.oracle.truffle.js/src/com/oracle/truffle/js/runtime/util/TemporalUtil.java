@@ -111,6 +111,7 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
@@ -275,6 +276,9 @@ public final class TemporalUtil {
 
     public static final int SINCE = -1;
     public static final int UNTIL = 1;
+
+    public static final int SUBTRACT = -1;
+    public static final int ADD = 1;
 
     public enum Overflow {
         CONSTRAIN,
@@ -540,7 +544,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static JSTemporalZonedDateTimeRecord parseTemporalRelativeToString(TruffleString isoString) {
-        if (!(new TemporalParser(isoString)).isTemporalTemporalDateTimeString()) {
+        if (!(new TemporalParser(isoString)).isTemporalDateTimeString()) {
             throw TemporalErrors.createRangeErrorInvalidRelativeToString();
         }
         JSTemporalDateTimeRecord result = parseISODateTime(isoString, false, false);
@@ -3636,10 +3640,6 @@ public final class TemporalUtil {
     }
 
     public static double roundTowardsZero(double d) {
-        if (d < 0) {
-            return Math.ceil(d);
-        } else {
-            return Math.floor(d);
-        }
+        return ExactMath.truncate(d);
     }
 }

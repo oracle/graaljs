@@ -396,7 +396,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             super(context, builtin);
         }
 
-        protected JSTemporalPlainYearMonthObject addTemporalPlainYearMonth(int operation, JSTemporalPlainYearMonthObject ym, Object temporalDurationLike, Object optParam,
+        protected JSTemporalPlainYearMonthObject addDurationToOrSubtractDurationFromPlainYearMont(int operation, JSTemporalPlainYearMonthObject ym, Object temporalDurationLike, Object optParam,
                         EnumerableOwnPropertyNamesNode namesNode, ToLimitedTemporalDurationNode toLimitedTemporalDurationNode, TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
                         TemporalCalendarFieldsNode calendarFieldsNode, TemporalCalendarGetterNode calendarGetterNode, JSToIntegerThrowOnInfinityNode toIntNode,
                         TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
@@ -482,8 +482,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached JSToIntegerThrowOnInfinityNode toIntNode,
                         @Cached("create(getContext())") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
             JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
-            return addTemporalPlainYearMonth(1, ym, temporalDurationLike, optParam, namesNode, toLimitedTemporalDurationNode, yearMonthFromFieldsNode, calendarFieldsNode, calendarGetterNode,
-                            toIntNode, dateFromFieldsNode);
+            return addDurationToOrSubtractDurationFromPlainYearMont(TemporalUtil.ADD, ym, temporalDurationLike, optParam, namesNode, toLimitedTemporalDurationNode, yearMonthFromFieldsNode,
+                            calendarFieldsNode, calendarGetterNode, toIntNode, dateFromFieldsNode);
         }
     }
 
@@ -503,8 +503,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached JSToIntegerThrowOnInfinityNode toIntNode,
                         @Cached("create(getContext())") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
             JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
-            return addTemporalPlainYearMonth(-1, ym, temporalDurationLike, optParam, namesNode, toLimitedTemporalDurationNode, yearMonthFromFieldsNode, calendarFieldsNode, calendarGetterNode,
-                            toIntNode, dateFromFieldsNode);
+            return addDurationToOrSubtractDurationFromPlainYearMont(TemporalUtil.SUBTRACT, ym, temporalDurationLike, optParam, namesNode, toLimitedTemporalDurationNode, yearMonthFromFieldsNode,
+                            calendarFieldsNode, calendarGetterNode, toIntNode, dateFromFieldsNode);
         }
     }
 
