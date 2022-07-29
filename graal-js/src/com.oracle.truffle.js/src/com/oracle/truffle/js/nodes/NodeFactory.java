@@ -61,6 +61,7 @@ import com.oracle.truffle.js.annotations.GenerateDecoder;
 import com.oracle.truffle.js.annotations.GenerateProxy;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.AsyncIteratorNextNode;
+import com.oracle.truffle.js.nodes.access.ClearFrameSlotsNode;
 import com.oracle.truffle.js.nodes.access.CompoundWriteElementNode;
 import com.oracle.truffle.js.nodes.access.ConstantVariableWriteNode;
 import com.oracle.truffle.js.nodes.access.DebugScopeVarWrapperNode;
@@ -657,19 +658,38 @@ public class NodeFactory {
     }
 
     public final JavaScriptNode createInitializeFrameSlots(ScopeFrameNode scope, int[] slots, int from, int to) {
-        if (to - from >= 2) {
-            boolean isRange = true;
-            for (int i = from + 1; i < to; i++) {
-                if (slots[i - 1] != slots[i] - 1) {
-                    isRange = false;
-                    break;
-                }
-            }
-            if (isRange) {
-                return createInitializeFrameSlotRange(scope, slots[from], slots[to - 1] + 1);
-            }
+        if (isIndexRange(slots, from, to)) {
+            return createInitializeFrameSlotRange(scope, slots[from], slots[to - 1] + 1);
         }
         return createInitializeFrameSlots(scope, (from == 0 && to == slots.length) ? slots : Arrays.copyOfRange(slots, from, to));
+    }
+
+    /** Check if the indices can be represented as closed range [slots[from], slots[to - 1]]. */
+    private static boolean isIndexRange(int[] slots, int from, int to) {
+        if (to - from >= 2) {
+            for (int i = from + 1; i < to; i++) {
+                if (slots[i - 1] != slots[i] - 1) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public JavaScriptNode createClearFrameSlots(ScopeFrameNode scope, int[] slots) {
+        return ClearFrameSlotsNode.create(scope, slots);
+    }
+
+    public JavaScriptNode createClearFrameSlotRange(ScopeFrameNode scope, int start, int end) {
+        return ClearFrameSlotsNode.createRange(scope, start, end);
+    }
+
+    public final JavaScriptNode createClearFrameSlots(ScopeFrameNode scope, int[] slots, int from, int to) {
+        if (isIndexRange(slots, from, to)) {
+            return createClearFrameSlotRange(scope, slots[from], slots[to - 1] + 1);
+        }
+        return createClearFrameSlots(scope, (from == 0 && to == slots.length) ? slots : Arrays.copyOfRange(slots, from, to));
     }
 
     public JavaScriptNode createThrow(JSContext context, JavaScriptNode expression) {

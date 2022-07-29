@@ -467,6 +467,21 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             body = prepareDeclarations(declarations, body);
         }
 
+        JSFrameDescriptor fd = currentFunction().getFunctionFrameDescriptor();
+        List<JSFrameSlot> slotsWithTDZ = new ArrayList<>(fd.getSize());
+        for (JSFrameSlot slot : fd.getSlots()) {
+            if (JSFrameUtil.hasTemporalDeadZone(slot)) {
+                slotsWithTDZ.add(slot);
+            }
+        }
+        if (!slotsWithTDZ.isEmpty()) {
+            int[] slots = new int[slotsWithTDZ.size()];
+            for (int i = 0; i < slotsWithTDZ.size(); i++) {
+                slots[i] = slotsWithTDZ.get(i).getIndex();
+            }
+            body = factory.createExprBlock(factory.createClearFrameSlots(factory.createScopeFrame(0, 0, null), slots, 0, slots.length), body);
+        }
+
         return body;
     }
 

@@ -142,6 +142,11 @@ public final class JSFrameDescriptor {
         return identifierToSlotMap.getKeys();
     }
 
+    public Iterable<JSFrameSlot> getSlots() {
+        CompilerAsserts.neverPartOfCompilation();
+        return identifierToSlotMap.getValues();
+    }
+
     public FrameDescriptor toFrameDescriptor() {
         if (this.frameDescriptor != null) {
             return this.frameDescriptor;
