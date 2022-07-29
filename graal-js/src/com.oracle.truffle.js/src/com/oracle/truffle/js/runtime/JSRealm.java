@@ -707,21 +707,11 @@ public class JSRealm {
             this.bigIntPrototype = null;
         }
 
-        ctor = JSIterator.createConstructor(this);
-        this.iteratorConstructor = ctor.getFunctionObject();
-        this.iteratorPrototype = ctor.getPrototype();
         this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
         this.setIteratorPrototype = es6 ? createSetIteratorPrototype() : null;
         this.mapIteratorPrototype = es6 ? createMapIteratorPrototype() : null;
         this.stringIteratorPrototype = es6 ? createStringIteratorPrototype() : null;
         this.regExpStringIteratorPrototype = context.getContextOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2019 ? createRegExpStringIteratorPrototype() : null;
-        this.wrapForIteratorPrototype = JSWrapForIterator.INSTANCE.createPrototype(this, iteratorConstructor);
-        ctor = JSAsyncIterator.createConstructor(this);
-        this.asyncIteratorPrototype = ctor.getPrototype();
-        this.asyncIteratorContructor = ctor.getFunctionObject();
-        this.wrapForAsyncIteratorPrototype = JSWrapForAsyncIterator.INSTANCE.createPrototype(this, asyncIteratorContructor);
-        this.asyncIteratorHelperPrototype = createAsyncIteratorHelperPrototype();
-        this.iteratorHelperPrototype = createIteratorHelperPrototype();
 
         ctor = JSCollator.createConstructor(this);
         this.collatorConstructor = ctor.getFunctionObject();
@@ -766,7 +756,6 @@ public class JSRealm {
         this.enumerateIteratorPrototype = JSFunction.createEnumerateIteratorPrototype(this);
         this.forInIteratorPrototype = JSFunction.createForInIteratorPrototype(this);
         this.arrayProtoValuesIterator = (JSDynamicObject) JSDynamicObject.getOrDefault(getArrayPrototype(), Symbol.SYMBOL_ITERATOR, Undefined.instance);
-
 
         if (context.isOptionSharedArrayBuffer()) {
             ctor = JSSharedArrayBuffer.createConstructor(this);
@@ -817,6 +806,36 @@ public class JSRealm {
             this.weakRefPrototype = null;
             this.finalizationRegistryConstructor = null;
             this.finalizationRegistryPrototype = null;
+        }
+
+        boolean isStaging = context.getContextOptions().getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion;
+        if (isStaging) {
+            ctor = JSIterator.createConstructor(this);
+            this.iteratorConstructor = ctor.getFunctionObject();
+            this.iteratorPrototype = ctor.getPrototype();
+
+            this.wrapForIteratorPrototype = JSWrapForIterator.INSTANCE.createPrototype(this, iteratorConstructor);
+            ctor = JSAsyncIterator.createConstructor(this);
+            this.asyncIteratorPrototype = ctor.getPrototype();
+            this.asyncIteratorContructor = ctor.getFunctionObject();
+            this.wrapForAsyncIteratorPrototype = JSWrapForAsyncIterator.INSTANCE.createPrototype(this, asyncIteratorContructor);
+            this.asyncIteratorHelperPrototype = createAsyncIteratorHelperPrototype();
+            this.iteratorHelperPrototype = createIteratorHelperPrototype();
+        } else {
+            this.iteratorPrototype = createIteratorPrototype();
+
+            this.iteratorConstructor = null;
+            this.wrapForIteratorPrototype = null;
+            this.asyncIteratorContructor = null;
+            this.wrapForAsyncIteratorPrototype = null;
+            this.asyncIteratorHelperPrototype = null;
+            this.iteratorHelperPrototype = null;
+
+            if (es9) {
+                this.asyncIteratorPrototype = JSFunction.createAsyncIteratorPrototype(this);
+            } else {
+                this.asyncIteratorPrototype = null;
+            }
         }
 
         this.ordinaryHasInstanceFunction = JSFunction.createOrdinaryHasInstanceFunction(this);
@@ -1742,8 +1761,6 @@ public class JSRealm {
         putGlobalProperty(JSRegExp.CLASS_NAME, getRegExpConstructor());
         putGlobalProperty(JSMath.CLASS_NAME, mathObject);
         putGlobalProperty(JSON.CLASS_NAME, JSON.create(this));
-        putGlobalProperty(JSIterator.CLASS_NAME, getIteratorConstructor());
-        putGlobalProperty(JSAsyncIterator.CLASS_NAME, getAsyncIteratorConstructor());
 
         JSObjectUtil.putDataProperty(context, global, Strings.NAN, Double.NaN);
         JSObjectUtil.putDataProperty(context, global, Strings.INFINITY, Double.POSITIVE_INFINITY);
@@ -1834,6 +1851,10 @@ public class JSRealm {
             putGlobalProperty(JSProxy.CLASS_NAME, getProxyConstructor());
             putGlobalProperty(JSPromise.CLASS_NAME, getPromiseConstructor());
             this.promiseAllFunctionObject = (JSDynamicObject) JSObject.get(getPromiseConstructor(), Strings.ALL);
+        }
+        if (context.getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion) {
+            putGlobalProperty(JSIterator.CLASS_NAME, getIteratorConstructor());
+            putGlobalProperty(JSAsyncIterator.CLASS_NAME, getAsyncIteratorConstructor());
         }
 
         if (context.isOptionSharedArrayBuffer()) {
@@ -2182,6 +2203,19 @@ public class JSRealm {
         JSObject obj = JSOrdinary.createInit(this);
         JSObjectUtil.putFunctionsFromContainer(this, obj, PerformanceBuiltins.BUILTINS);
         return obj;
+    }
+
+    /**
+     * Creates the %IteratorPrototype% object as specified in ES6 25.1.2.
+     */
+    private JSDynamicObject createIteratorPrototype() {
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.getObjectPrototype());
+        JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(this), JSAttributes.getDefaultNotEnumerable());
+        return prototype;
+    }
+
+    private static JSDynamicObject createIteratorPrototypeSymbolIteratorFunction(JSRealm realm) {
+        return JSFunction.create(realm, realm.getContext().getSymbolIteratorThisGetterFunctionData());
     }
 
     /**

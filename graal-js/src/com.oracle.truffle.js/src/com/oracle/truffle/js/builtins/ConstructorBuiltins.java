@@ -407,6 +407,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return 6;
             } else if (EnumSet.of(PlainTime, Calendar, Duration, PlainDate, PlainDateTime, PlainYearMonth, PlainMonthDay, Instant, TimeZone, ZonedDateTime).contains(this)) {
                 return JSConfig.ECMAScript2022;
+            } else if (EnumSet.of(Iterator, AsyncIterator).contains(this)) {
+                return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
