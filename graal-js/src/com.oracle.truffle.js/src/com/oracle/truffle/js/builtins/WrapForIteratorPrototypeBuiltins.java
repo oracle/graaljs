@@ -59,10 +59,10 @@ import com.oracle.truffle.js.runtime.builtins.JSWrapForIteratorObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class JSWrapForIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<JSWrapForIteratorPrototypeBuiltins.WrapForWrapForIterator> {
-    public static final JSBuiltinsContainer BUILTINS = new JSWrapForIteratorPrototypeBuiltins();
+public final class WrapForIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WrapForIteratorPrototypeBuiltins.WrapForWrapForIterator> {
+    public static final JSBuiltinsContainer BUILTINS = new WrapForIteratorPrototypeBuiltins();
 
-    protected JSWrapForIteratorPrototypeBuiltins() {
+    protected WrapForIteratorPrototypeBuiltins() {
         super(JSIterator.CLASS_NAME, WrapForWrapForIterator.class);
     }
 

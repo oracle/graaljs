@@ -42,7 +42,7 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.JSWrapForIteratorPrototypeBuiltins;
+import com.oracle.truffle.js.builtins.WrapForIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -75,7 +75,7 @@ public final class JSWrapForIterator extends JSNonProxy implements JSConstructor
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSDynamicObject iteratorPrototype = realm.getIteratorPrototype();
         JSDynamicObject wrapForIteratorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, iteratorPrototype);
-        JSObjectUtil.putFunctionsFromContainer(realm, wrapForIteratorPrototype, JSWrapForIteratorPrototypeBuiltins.BUILTINS);
+        JSObjectUtil.putFunctionsFromContainer(realm, wrapForIteratorPrototype, WrapForIteratorPrototypeBuiltins.BUILTINS);
         return wrapForIteratorPrototype;
     }
 

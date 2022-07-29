@@ -75,10 +75,10 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class JSWrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<JSWrapForAsyncIteratorPrototypeBuiltins.WrapForWrapForAsyncIterator> {
-    public static final JSBuiltinsContainer BUILTINS = new JSWrapForAsyncIteratorPrototypeBuiltins();
+public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WrapForAsyncIteratorPrototypeBuiltins.WrapForWrapForAsyncIterator> {
+    public static final JSBuiltinsContainer BUILTINS = new WrapForAsyncIteratorPrototypeBuiltins();
 
-    protected JSWrapForAsyncIteratorPrototypeBuiltins() {
+    protected WrapForAsyncIteratorPrototypeBuiltins() {
         super(JSIterator.CLASS_NAME, WrapForWrapForAsyncIterator.class); // TODO: async
     }
 
