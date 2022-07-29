@@ -90,9 +90,7 @@ public class TimezoneICUJDKCompat {
     public void compareICUandJDKversions() {
         String versionJDK = java.time.zone.ZoneRulesProvider.getVersions("UTC").lastEntry().getKey();
         String versionICU = com.ibm.icu.util.TimeZone.getTZDataVersion();
-        //Assert.assertEquals(versionJDK, versionICU);
-        Assert.assertEquals(versionJDK, versionJDK);
-        Assert.assertEquals(versionICU, versionICU);
+        Assert.assertEquals(versionJDK, versionICU);
     }
 
 }
