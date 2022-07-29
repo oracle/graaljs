@@ -707,6 +707,36 @@ public class JSRealm {
             this.bigIntPrototype = null;
         }
 
+        boolean isStaging = context.getContextOptions().getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion;
+        if (isStaging) {
+            ctor = JSIterator.createConstructor(this);
+            this.iteratorConstructor = ctor.getFunctionObject();
+            this.iteratorPrototype = ctor.getPrototype();
+
+            this.wrapForIteratorPrototype = JSWrapForIterator.INSTANCE.createPrototype(this, iteratorConstructor);
+            ctor = JSAsyncIterator.createConstructor(this);
+            this.asyncIteratorPrototype = ctor.getPrototype();
+            this.asyncIteratorContructor = ctor.getFunctionObject();
+            this.wrapForAsyncIteratorPrototype = JSWrapForAsyncIterator.INSTANCE.createPrototype(this, asyncIteratorContructor);
+            this.asyncIteratorHelperPrototype = createAsyncIteratorHelperPrototype();
+            this.iteratorHelperPrototype = createIteratorHelperPrototype();
+        } else {
+            this.iteratorPrototype = createIteratorPrototype();
+
+            this.iteratorConstructor = null;
+            this.wrapForIteratorPrototype = null;
+            this.asyncIteratorContructor = null;
+            this.wrapForAsyncIteratorPrototype = null;
+            this.asyncIteratorHelperPrototype = null;
+            this.iteratorHelperPrototype = null;
+
+            if (context.getContextOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2018) {
+                this.asyncIteratorPrototype = JSFunction.createAsyncIteratorPrototype(this);
+            } else {
+                this.asyncIteratorPrototype = null;
+            }
+        }
+
         this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
         this.setIteratorPrototype = es6 ? createSetIteratorPrototype() : null;
         this.mapIteratorPrototype = es6 ? createMapIteratorPrototype() : null;
@@ -806,36 +836,6 @@ public class JSRealm {
             this.weakRefPrototype = null;
             this.finalizationRegistryConstructor = null;
             this.finalizationRegistryPrototype = null;
-        }
-
-        boolean isStaging = context.getContextOptions().getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion;
-        if (isStaging) {
-            ctor = JSIterator.createConstructor(this);
-            this.iteratorConstructor = ctor.getFunctionObject();
-            this.iteratorPrototype = ctor.getPrototype();
-
-            this.wrapForIteratorPrototype = JSWrapForIterator.INSTANCE.createPrototype(this, iteratorConstructor);
-            ctor = JSAsyncIterator.createConstructor(this);
-            this.asyncIteratorPrototype = ctor.getPrototype();
-            this.asyncIteratorContructor = ctor.getFunctionObject();
-            this.wrapForAsyncIteratorPrototype = JSWrapForAsyncIterator.INSTANCE.createPrototype(this, asyncIteratorContructor);
-            this.asyncIteratorHelperPrototype = createAsyncIteratorHelperPrototype();
-            this.iteratorHelperPrototype = createIteratorHelperPrototype();
-        } else {
-            this.iteratorPrototype = createIteratorPrototype();
-
-            this.iteratorConstructor = null;
-            this.wrapForIteratorPrototype = null;
-            this.asyncIteratorContructor = null;
-            this.wrapForAsyncIteratorPrototype = null;
-            this.asyncIteratorHelperPrototype = null;
-            this.iteratorHelperPrototype = null;
-
-            if (es9) {
-                this.asyncIteratorPrototype = JSFunction.createAsyncIteratorPrototype(this);
-            } else {
-                this.asyncIteratorPrototype = null;
-            }
         }
 
         this.ordinaryHasInstanceFunction = JSFunction.createOrdinaryHasInstanceFunction(this);
