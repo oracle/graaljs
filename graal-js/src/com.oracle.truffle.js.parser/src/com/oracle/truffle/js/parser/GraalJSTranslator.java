@@ -946,16 +946,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             } else {
                 valueNode = tagHiddenExpression(factory.createAccessArgument(argIndex));
             }
-            TruffleString paramName = function.getParameters().get(i).getNameTS();
-            VarRef paramRef = environment.findLocalVar(paramName);
-            if (paramRef != null) {
-                init.add(tagHiddenExpression(paramRef.createWriteNode(valueNode)));
-                if (hasMappedArguments) {
-                    currentFunction.addMappedParameter(paramRef.getFrameSlot(), i);
-                }
-            } else {
+            IdentNode param = function.getParameters().get(i);
+            if (param.isIgnoredParameter()) {
                 // Duplicate parameter names are allowed in non-strict mode but have no binding.
                 assert !currentFunction.isStrictMode();
+                continue;
+            }
+            TruffleString paramName = param.getNameTS();
+            VarRef paramRef = environment.findLocalVar(paramName);
+            init.add(tagHiddenExpression(paramRef.createWriteNode(valueNode)));
+            if (hasMappedArguments) {
+                currentFunction.addMappedParameter(paramRef.getFrameSlot(), i);
             }
         }
     }

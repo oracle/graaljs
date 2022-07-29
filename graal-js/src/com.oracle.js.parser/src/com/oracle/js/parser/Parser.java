@@ -5284,12 +5284,12 @@ public class Parser extends AbstractParser {
                 String parameterName = parameter.getName();
 
                 if (parametersSet.contains(parameterName)) {
-                    // redefinition of parameter name, rename in non-strict mode
-                    parameterName = functionNode.uniqueName(parameterName);
-                    final long parameterToken = parameter.getToken();
-                    parameters.set(i, new IdentNode(parameterToken, Token.descPosition(parameterToken), lexer.stringIntern(functionNode.uniqueName(parameterName))));
+                    // redefinition of parameter name, allowed in non-strict mode;
+                    // the parameter is mapped to the argument at the index of the last redefinition
+                    parameters.set(i, parameter.setIsIgnoredParameter());
+                } else {
+                    parametersSet.add(parameterName);
                 }
-                parametersSet.add(parameterName);
             }
         }
     }
