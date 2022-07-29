@@ -346,9 +346,6 @@ public class Parser extends AbstractParser {
     private final ParserContext lc;
     private final List<Object> defaultNames;
 
-    /** Namespace for function names where not explicitly given */
-    private final Namespace namespace;
-
     /** to receive line information from Lexer when scanning multiline literals. */
     protected final Lexer.LineInfoReceiver lineInfoReceiver;
 
@@ -404,7 +401,6 @@ public class Parser extends AbstractParser {
         this.lc = new ParserContext();
         this.defaultNames = new ArrayList<>();
         this.env = env;
-        this.namespace = new Namespace(env.getNamespace());
         this.scripting = env.scripting && env.syntaxExtensions;
         this.shebang = env.shebang || scripting;
         this.allowBigInt = env.allowBigInt;
@@ -764,7 +760,7 @@ public class Parser extends AbstractParser {
         }
 
         final Scope parentScope = lc.getCurrentScope();
-        return new ParserContextFunctionNode(functionToken, ident, name, namespace, functionLine, flags, parameters, functionLength, parentScope, functionTopScope);
+        return new ParserContextFunctionNode(functionToken, ident, name, functionLine, flags, parameters, functionLength, parentScope, functionTopScope);
     }
 
     private FunctionNode createFunctionNode(final ParserContextFunctionNode function, final long startToken, final IdentNode ident,
