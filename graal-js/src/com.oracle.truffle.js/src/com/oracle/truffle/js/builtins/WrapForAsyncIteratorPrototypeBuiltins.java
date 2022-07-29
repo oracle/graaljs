@@ -110,9 +110,9 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, WrapForWrapForAsyncIterator builtinEnum) {
         switch (builtinEnum) {
             case next:
-                return JSWrapForAsyncIteratorPrototypeBuiltinsFactory.WrapForAsyncIteratorNextNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return WrapForAsyncIteratorPrototypeBuiltinsFactory.WrapForAsyncIteratorNextNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case return_:
-                return JSWrapForAsyncIteratorPrototypeBuiltinsFactory.WrapForAsyncIteratorReturnNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return WrapForAsyncIteratorPrototypeBuiltinsFactory.WrapForAsyncIteratorReturnNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
 
         assert false : "Unreachable! Missing entries in switch?";

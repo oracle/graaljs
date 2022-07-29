@@ -94,9 +94,9 @@ public final class WrapForIteratorPrototypeBuiltins extends JSBuiltinsContainer.
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, WrapForWrapForIterator builtinEnum) {
         switch (builtinEnum) {
             case next:
-                return JSWrapForIteratorPrototypeBuiltinsFactory.WrapForIteratorNextNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return WrapForIteratorPrototypeBuiltinsFactory.WrapForIteratorNextNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case return_:
-                return JSWrapForIteratorPrototypeBuiltinsFactory.WrapForIteratorReturnNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return WrapForIteratorPrototypeBuiltinsFactory.WrapForIteratorReturnNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
 
         assert false : "Unreachable! Missing entries in switch?";
