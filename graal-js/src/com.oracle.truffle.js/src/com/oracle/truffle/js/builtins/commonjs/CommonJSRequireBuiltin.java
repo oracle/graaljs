@@ -44,7 +44,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Stack;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -52,7 +51,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -122,8 +121,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         }
     }
 
-    private static final String MODULE_END = "\n});";
-    private static final String MODULE_PREAMBLE = "(function (exports, require, module, __filename, __dirname) {";
+    private static final String MODULE_FUNCTION_ARGS = "exports, require, module, __filename, __dirname";
 
     @TruffleBoundary
     static TruffleFile getModuleResolveCurrentWorkingDirectory(JSContext context, TruffleLanguage.Env env) {
@@ -224,10 +222,10 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         JSObject env = JSOrdinary.create(getContext(), getRealm());
         JSObject.set(env, Strings.ENV_PROPERTY_NAME, JSOrdinary.create(getContext(), getRealm()));
         // Parse the module
-        CharSequence characters = MODULE_PREAMBLE + source.getCharacters() + MODULE_END;
-        Source moduleSources = Source.newBuilder(source).content(characters).mimeType(JavaScriptLanguage.TEXT_MIME_TYPE).build();
-        CallTarget moduleCallTarget = realm.getEnv().parsePublic(moduleSources);
-        Object moduleExecutableFunction = moduleCallTarget.call();
+        JSContext context = realm.getContext();
+        String body = source.getCharacters().toString();
+        ScriptNode scriptNode = context.getEvaluator().parseFunction(context, MODULE_FUNCTION_ARGS, body, false, false, source.getPath(), source);
+        Object moduleExecutableFunction = scriptNode.run(realm);
         // Execute the module.
         if (JSFunction.isJSFunction(moduleExecutableFunction)) {
             log("adding to cache ", normalizedPath);
