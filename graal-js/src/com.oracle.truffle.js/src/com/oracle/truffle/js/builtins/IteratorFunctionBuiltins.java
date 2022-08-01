@@ -44,6 +44,7 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.IteratorFunctionBuiltinsFactory.GetIteratorDirectNodeGen;
 import com.oracle.truffle.js.builtins.IteratorFunctionBuiltinsFactory.JSIteratorFromNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -117,6 +118,8 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         @Child private PropertyGetNode getNextMethodNode;
         @Child private IsCallableNode isCallableNode;
 
+        private final BranchProfile errorProfile = BranchProfile.create();
+
         public GetIteratorDirectNode(JSContext context) {
             isObjectNode = IsObjectNode.create();
             isCallableNode = IsCallableNode.create();
@@ -125,19 +128,20 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
 
         public abstract IteratorRecord execute(Object iteratedObject);
 
-        @Specialization
+        @Specialization(guards = "isJSObject(obj)")
         protected IteratorRecord get(Object obj) {
-            if (!isObjectNode.executeBoolean(obj)) {
-                throw Errors.createTypeErrorNotAnObject(obj, this);
-            }
-
             Object nextMethod = getNextMethodNode.getValue(obj);
             if (!isCallableNode.executeBoolean(nextMethod)) {
+                errorProfile.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
 
-            IteratorRecord iteratorRecord = IteratorRecord.create((JSDynamicObject) obj, nextMethod, false);
-            return iteratorRecord;
+            return IteratorRecord.create((JSDynamicObject) obj, nextMethod, false);
+        }
+
+        @Specialization(guards = "!isJSObject(obj)")
+        public IteratorRecord unsupported(Object obj) {
+            throw Errors.createTypeErrorNotAnObject(obj, this);
         }
 
         public static GetIteratorDirectNode create(JSContext context) {

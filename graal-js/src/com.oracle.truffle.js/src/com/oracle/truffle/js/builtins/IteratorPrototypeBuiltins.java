@@ -40,13 +40,28 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.LoopConditionProfile;
+import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
+import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
+import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
+import com.oracle.truffle.js.nodes.access.IteratorNextNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.access.WriteElementNode;
+import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -57,9 +72,13 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -157,6 +176,11 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
 
             return createIteratorHelperNode.execute(iterated, IteratorHelperPrototypeBuiltins.HelperType.map, mapper);
+        }
+
+        @Specialization(guards = "!isCallable(mapper)")
+        public Object unsupported(Object thisObj, Object mapper) {
+            throw Errors.createTypeErrorCallableExpected();
         }
     }
 
@@ -361,32 +385,39 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     public abstract static class IteratorToArrayNode extends JSBuiltinNode {
         @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
-        @Child private IteratorStepNode iteratorStepNode;
+        @Child private IteratorNextNode iteratorNextNode;
+        @Child private IteratorCompleteNode iteratorCompleteNode;
         @Child private IteratorValueNode iteratorValueNode;
-        private final BranchProfile growProfile = BranchProfile.create();
+        @Child private WriteElementNode writeNode;
 
         protected IteratorToArrayNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
             getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
-            iteratorStepNode = IteratorStepNode.create(context);
+            iteratorNextNode = IteratorNextNode.create();
+            iteratorCompleteNode = IteratorCompleteNode.create(context);
             iteratorValueNode = IteratorValueNode.create(context);
+            writeNode = WriteElementNode.create(context, true, true);
         }
 
         @Specialization
         protected JSDynamicObject toArray(Object thisObj) {
             IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
-            SimpleArrayList<Object> items = new SimpleArrayList<>();
+            JSArrayObject items = JSArray.createEmptyChecked(getContext(), getRealm(), 0);
 
-            while (true) {
-                Object next = iteratorStepNode.execute(iterated);
-                if (next == (Boolean) false) {
-                    return JSArray.createConstant(getContext(), getRealm(), items.toArray());
+            long index;
+            for (index = 0;; index++) {
+                Object next = iteratorNextNode.execute(iterated);
+                boolean done = iteratorCompleteNode.execute(next);
+                if (done) {
+                    break;
                 }
 
                 Object value = iteratorValueNode.execute(next);
-                items.add(value, growProfile);
+                writeNode.executeWithTargetAndIndexAndValue(items, index, value);
             }
+
+            return items;
         }
     }
 

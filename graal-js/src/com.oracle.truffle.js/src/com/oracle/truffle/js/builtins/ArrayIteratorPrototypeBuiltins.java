@@ -113,6 +113,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private ReadElementNode readElementNode;
         private final ConditionProfile intIndexProfile;
         private final BranchProfile errorBranch;
+        private final BranchProfile useAfterCloseBranch;
         private final ConditionProfile isTypedArrayProfile;
 
         public ArrayIteratorNextNode(JSContext context, JSBuiltin builtin) {
@@ -127,12 +128,14 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             this.intIndexProfile = ConditionProfile.createBinaryProfile();
             this.isTypedArrayProfile = ConditionProfile.createBinaryProfile();
             this.errorBranch = BranchProfile.create();
+            this.useAfterCloseBranch = BranchProfile.create();
         }
 
         @Specialization(guards = "isArrayIterator(iterator)")
         protected JSDynamicObject doArrayIterator(VirtualFrame frame, JSDynamicObject iterator) {
             Object array = getIteratedObjectNode.getValue(iterator);
             if (array == Undefined.instance) {
+                this.useAfterCloseBranch.enter();
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 

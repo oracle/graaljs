@@ -46,12 +46,17 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.LoopConditionProfile;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
+import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
+import com.oracle.truffle.js.nodes.access.IteratorNextNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -182,205 +187,68 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     public abstract static class IteratorHelperReturnNode extends JSBuiltinNode {
-        @Child private GetTargetNode getTargetNode;
+        @Child private GetHiddenValueNode getTargetNode;
         @Child private IteratorCloseNode iteratorCloseNode;
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
 
         protected IteratorHelperReturnNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getTargetNode = GetTargetNode.create(context);
+            getTargetNode = GetHiddenValueNode.create(context, TARGET_ID);
             iteratorCloseNode = IteratorCloseNode.create(context);
             createIterResultObjectNode = CreateIterResultObjectNode.create(context);
         }
 
         @Specialization(guards = "isJSObject(thisObj)")
         public Object close(VirtualFrame frame, JSObject thisObj) {
-            IteratorRecord iterated = getTargetNode.execute(thisObj);
+            IteratorRecord iterated = (IteratorRecord) getTargetNode.execute(thisObj);
 
             iteratorCloseNode.executeVoid(iterated.getIterator());
             return createIterResultObjectNode.execute(frame, Undefined.instance, true);
         }
     }
 
-    protected abstract static class GetTargetNode extends JavaScriptBaseNode {
+    protected abstract static class GetHiddenValueNode extends JavaScriptBaseNode {
+        @Child protected HasHiddenKeyCacheNode hasHiddenKeyCacheNode;
         @Child private PropertyGetNode getTargetNode;
 
-        public GetTargetNode(JSContext context) {
-            getTargetNode = PropertyGetNode.createGetHidden(TARGET_ID, context);
-        }
-
-        public abstract IteratorRecord execute(JSDynamicObject generator);
-
-        @Specialization
-        protected IteratorRecord get(JSDynamicObject generator) {
-            if (!generator.hasProperty(TARGET_ID)) {
-                throw Errors.createTypeErrorIncompatibleReceiver(generator);
-            }
-
-            return (IteratorRecord) getTargetNode.getValue(generator);
-        }
-
-        public static GetTargetNode create(JSContext context) {
-            return IteratorHelperPrototypeBuiltinsFactory.GetTargetNodeGen.create(context);
-        }
-    }
-
-    protected abstract static class GetHelperTypeNode extends JavaScriptBaseNode {
-        @Child private PropertyGetNode getHelperTypeNode;
-
-        public GetHelperTypeNode(JSContext context) {
-            getHelperTypeNode = PropertyGetNode.createGetHidden(HELPER_TYPE_ID, context);
-        }
-
-        public abstract HelperType execute(JSDynamicObject generator);
-
-        @Specialization
-        protected HelperType get(JSDynamicObject generator) {
-            if (!generator.hasProperty(HELPER_TYPE_ID)) {
-                throw Errors.createTypeErrorIncompatibleReceiver(generator);
-            }
-
-            return (HelperType) getHelperTypeNode.getValue(generator);
-        }
-
-        public static GetHelperTypeNode create(JSContext context) {
-            return IteratorHelperPrototypeBuiltinsFactory.GetHelperTypeNodeGen.create(context);
-        }
-    }
-
-    protected abstract static class GetValueNode extends JavaScriptBaseNode {
-        @Child private PropertyGetNode getValueNode;
-
-        public GetValueNode(JSContext context) {
-            getValueNode = PropertyGetNode.createGetHidden(VALUE_ID, context);
-        }
-
-        public abstract int execute(JSDynamicObject generator);
-
-        @Specialization
-        protected int get(JSDynamicObject generator) {
-            if (!generator.hasProperty(VALUE_ID)) {
-                throw Errors.createTypeErrorIncompatibleReceiver(generator);
-            }
-
-            return (int) getValueNode.getValue(generator);
-        }
-
-        public static GetValueNode create(JSContext context) {
-            return IteratorHelperPrototypeBuiltinsFactory.GetValueNodeGen.create(context);
-        }
-    }
-
-    protected abstract static class GetJSValueNode extends JavaScriptBaseNode {
-        @Child private PropertyGetNode getValueNode;
-
-        public GetJSValueNode(JSContext context) {
-            getValueNode = PropertyGetNode.createGetHidden(VALUE_ID, context);
-        }
-
-        public abstract Number execute(JSDynamicObject generator);
-
-        @Specialization
-        protected Number get(JSDynamicObject generator) {
-            if (!generator.hasProperty(VALUE_ID)) {
-                throw Errors.createTypeErrorIncompatibleReceiver(generator);
-            }
-
-            return (Number) getValueNode.getValue(generator);
-        }
-
-        public static GetJSValueNode create(JSContext context) {
-            return IteratorHelperPrototypeBuiltinsFactory.GetJSValueNodeGen.create(context);
-        }
-    }
-
-    protected abstract static class GetIteratorValueNode extends JavaScriptBaseNode {
-        @Child private PropertyGetNode getValueNode;
-
-        public GetIteratorValueNode(JSContext context) {
-            getValueNode = PropertyGetNode.createGetHidden(VALUE_ID, context);
-        }
-
-        public abstract IteratorRecord execute(JSDynamicObject generator);
-
-        @Specialization
-        protected IteratorRecord get(JSDynamicObject generator) {
-            if (!generator.hasProperty(VALUE_ID)) {
-                throw Errors.createTypeErrorIncompatibleReceiver(generator);
-            }
-
-            return (IteratorRecord) getValueNode.getValue(generator);
-        }
-
-        public static GetIteratorValueNode create(JSContext context) {
-            return IteratorHelperPrototypeBuiltinsFactory.GetIteratorValueNodeGen.create(context);
-        }
-    }
-
-    protected abstract static class GetAliveNode extends JavaScriptBaseNode {
-        @Child private PropertyGetNode getAliveNode;
-
-        public GetAliveNode(JSContext context) {
-            getAliveNode = PropertyGetNode.createGetHidden(ALIVE_ID, context);
-        }
-
-        public abstract boolean execute(JSDynamicObject generator);
-
-        @Specialization
-        protected boolean get(JSDynamicObject generator) {
-            if (!generator.hasProperty(ALIVE_ID)) {
-                throw Errors.createTypeErrorIncompatibleReceiver(generator);
-            }
-
-            try {
-                return getAliveNode.getValueBoolean(generator);
-            } catch (UnexpectedResultException e) {
-                assert false : "Unreachable";
-                throw new RuntimeException(e);
-            }
-        }
-
-        public static GetAliveNode create(JSContext context) {
-            return IteratorHelperPrototypeBuiltinsFactory.GetAliveNodeGen.create(context);
-        }
-    }
-
-    protected abstract static class GetMapperNode extends JavaScriptBaseNode {
-        @Child private PropertyGetNode getMapperNode;
-
-        public GetMapperNode(JSContext context) {
-            getMapperNode = PropertyGetNode.createGetHidden(MAPPER_ID, context);
+        public GetHiddenValueNode(JSContext context, HiddenKey key) {
+            hasHiddenKeyCacheNode = HasHiddenKeyCacheNode.create(key);
+            getTargetNode = PropertyGetNode.createGetHidden(key, context);
         }
 
         public abstract Object execute(JSDynamicObject generator);
 
-        @Specialization
+        @Specialization(guards = "hasHiddenKeyCacheNode.executeHasHiddenKey(generator)")
         protected Object get(JSDynamicObject generator) {
-            if (!generator.hasProperty(MAPPER_ID)) {
-                throw Errors.createTypeErrorIncompatibleReceiver(generator);
-            }
-
-            return getMapperNode.getValue(generator);
+            return getTargetNode.getValue(generator);
         }
 
-        public static GetMapperNode create(JSContext context) {
-            return IteratorHelperPrototypeBuiltinsFactory.GetMapperNodeGen.create(context);
+        @Specialization(guards = "!hasHiddenKeyCacheNode.executeHasHiddenKey(generator)")
+        protected Object incompatible(JSDynamicObject generator) {
+            throw Errors.createTypeErrorIncompatibleReceiver(generator);
+        }
+
+        public static GetHiddenValueNode create(JSContext context, HiddenKey key) {
+            return IteratorHelperPrototypeBuiltinsFactory.GetHiddenValueNodeGen.create(context, key);
         }
     }
 
     @ImportStatic({HelperType.class})
     public abstract static class IteratorHelperNextNode extends JSBuiltinNode {
-        @Child private GetHelperTypeNode getHelperTypeNode;
+        @Child private GetHiddenValueNode getHelperTypeNode;
+
+        private final ValueProfile objProfile = ValueProfile.createIdentityProfile();
+        private final ValueProfile typeProfile = ValueProfile.createIdentityProfile();
 
         protected IteratorHelperNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getHelperTypeNode = GetHelperTypeNode.create(context);
+            getHelperTypeNode = GetHiddenValueNode.create(context, HELPER_TYPE_ID);
         }
 
         protected HelperType getHelperType(JSObject thisObj) {
-            return this.getHelperTypeNode.execute(thisObj);
+            return typeProfile.profile((HelperType) this.getHelperTypeNode.execute(objProfile.profile(thisObj)));
         }
 
         @Specialization(guards = {"isJSObject(thisObj)", "getHelperType(thisObj) == map"})
@@ -420,10 +288,11 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     protected abstract static class IteratorHelperNextMapNode extends JSBuiltinNode {
-        @Child private GetTargetNode getTargetNode;
-        @Child private GetMapperNode getMapperNode;
+        @Child private GetHiddenValueNode getTargetNode;
+        @Child private GetHiddenValueNode getMapperNode;
 
-        @Child private IteratorStepNode iteratorStepNode;
+        @Child private IteratorNextNode iteratorNextNode;
+        @Child private IteratorCompleteNode iteratorCompleteNode;
         @Child private IteratorValueNode iteratorValueNode;
         @Child private IteratorCloseNode iteratorCloseNode;
 
@@ -431,13 +300,16 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Child private JSFunctionCallNode callNode;
 
+        private final LoopConditionProfile loopProfile = LoopConditionProfile.createCountingProfile();
+
         protected IteratorHelperNextMapNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getTargetNode = GetTargetNode.create(context);
-            getMapperNode = GetMapperNode.create(context);
+            getTargetNode = GetHiddenValueNode.create(context, TARGET_ID);
+            getMapperNode = GetHiddenValueNode.create(context, MAPPER_ID);
 
-            iteratorStepNode = IteratorStepNode.create(context);
+            iteratorNextNode = IteratorNextNode.create();
+            iteratorCompleteNode = IteratorCompleteNode.create(context);
             iteratorValueNode = IteratorValueNode.create(context);
             iteratorCloseNode = IteratorCloseNode.create(context);
 
@@ -448,11 +320,12 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "isJSObject(thisObj)")
         public Object next(VirtualFrame frame, JSObject thisObj) {
-            IteratorRecord iterated = getTargetNode.execute(thisObj);
+            IteratorRecord iterated = (IteratorRecord) getTargetNode.execute(thisObj);
             Object mapper = getMapperNode.execute(thisObj);
 
-            Object next = iteratorStepNode.execute(iterated);
-            if (next == (Boolean) false) {
+            Object next = iteratorNextNode.execute(iterated);
+            boolean done = iteratorCompleteNode.execute(next);
+            if (loopProfile.profile(done)) {
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
@@ -467,8 +340,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     protected abstract static class IteratorHelperNextFilterNode extends JSBuiltinNode {
-        @Child private GetTargetNode getTargetNode;
-        @Child private GetMapperNode getMapperNode;
+        @Child private GetHiddenValueNode getTargetNode;
+        @Child private GetHiddenValueNode getMapperNode;
 
         @Child private IteratorStepNode iteratorStepNode;
         @Child private IteratorValueNode iteratorValueNode;
@@ -482,8 +355,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorHelperNextFilterNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getTargetNode = GetTargetNode.create(context);
-            getMapperNode = GetMapperNode.create(context);
+            getTargetNode = GetHiddenValueNode.create(context, TARGET_ID);
+            getMapperNode = GetHiddenValueNode.create(context, MAPPER_ID);
 
             iteratorStepNode = IteratorStepNode.create(context);
             iteratorValueNode = IteratorValueNode.create(context);
@@ -497,7 +370,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "isJSObject(thisObj)")
         public Object next(VirtualFrame frame, JSObject thisObj) {
-            IteratorRecord iterated = getTargetNode.execute(thisObj);
+            IteratorRecord iterated = (IteratorRecord) getTargetNode.execute(thisObj);
             Object filterer = getMapperNode.execute(thisObj);
 
             while (true) {
@@ -520,8 +393,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     protected abstract static class IteratorHelperNextTakeNode extends JSBuiltinNode {
-        @Child private GetTargetNode getTargetNode;
-        @Child private GetJSValueNode getValueNode;
+        @Child private GetHiddenValueNode getTargetNode;
+        @Child private GetHiddenValueNode getValueNode;
         @Child private PropertySetNode setValueNode;
 
         @Child private IteratorStepNode iteratorStepNode;
@@ -533,8 +406,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorHelperNextTakeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getTargetNode = GetTargetNode.create(context);
-            getValueNode = GetJSValueNode.create(context);
+            getTargetNode = GetHiddenValueNode.create(context, TARGET_ID);
+            getValueNode = GetHiddenValueNode.create(context, VALUE_ID);
             setValueNode = PropertySetNode.createSetHidden(VALUE_ID, context);
 
             iteratorStepNode = IteratorStepNode.create(context);
@@ -546,8 +419,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "isJSObject(thisObj)")
         public Object next(VirtualFrame frame, JSObject thisObj) {
-            IteratorRecord iterated = getTargetNode.execute(thisObj);
-            Number remaining = getValueNode.execute(thisObj);
+            IteratorRecord iterated = (IteratorRecord) getTargetNode.execute(thisObj);
+            Number remaining = (Number) getValueNode.execute(thisObj);
             if (remaining.doubleValue() == 0) {
                 Object result = iteratorCloseNode.execute(iterated.getIterator(), Undefined.instance);
                 return createIterResultObjectNode.execute(frame, result, true);
@@ -572,8 +445,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     protected abstract static class IteratorHelperNextDropNode extends JSBuiltinNode {
-        @Child private GetTargetNode getTargetNode;
-        @Child private GetJSValueNode getValueNode;
+        @Child private GetHiddenValueNode getTargetNode;
+        @Child private GetHiddenValueNode getValueNode;
         @Child private PropertySetNode setValueNode;
 
         @Child private IteratorStepNode iteratorStepNode;
@@ -585,8 +458,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorHelperNextDropNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getTargetNode = GetTargetNode.create(context);
-            getValueNode = GetJSValueNode.create(context);
+            getTargetNode = GetHiddenValueNode.create(context, TARGET_ID);
+            getValueNode = GetHiddenValueNode.create(context, VALUE_ID);
             setValueNode = PropertySetNode.createSetHidden(VALUE_ID, context);
 
             iteratorStepNode = IteratorStepNode.create(context);
@@ -598,8 +471,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "isJSObject(thisObj)")
         public Object next(VirtualFrame frame, JSObject thisObj) {
-            IteratorRecord iterated = getTargetNode.execute(thisObj);
-            double remaining = getValueNode.execute(thisObj).doubleValue(); // TODO: Optimize?
+            IteratorRecord iterated = (IteratorRecord) getTargetNode.execute(thisObj);
+            double remaining = ((Number)getValueNode.execute(thisObj)).doubleValue(); // TODO: Optimize?
             while (remaining > 0) {
                 Object next = iteratorStepNode.execute(iterated);
                 if (next == (Boolean) false) {
@@ -628,8 +501,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     protected abstract static class IteratorHelperNextIndexedNode extends JSBuiltinNode {
-        @Child private GetTargetNode getTargetNode;
-        @Child private GetValueNode getValueNode;
+        @Child private GetHiddenValueNode getTargetNode;
+        @Child private GetHiddenValueNode getValueNode;
         @Child private PropertySetNode setValueNode;
 
         @Child private IteratorStepNode iteratorStepNode;
@@ -640,8 +513,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorHelperNextIndexedNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getTargetNode = GetTargetNode.create(context);
-            getValueNode = GetValueNode.create(context);
+            getTargetNode = GetHiddenValueNode.create(context, TARGET_ID);
+            getValueNode = GetHiddenValueNode.create(context, VALUE_ID);
             setValueNode = PropertySetNode.createSetHidden(VALUE_ID, context);
 
             iteratorStepNode = IteratorStepNode.create(context);
@@ -652,8 +525,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "isJSObject(thisObj)")
         public Object next(VirtualFrame frame, JSObject thisObj) {
-            int index = getValueNode.execute(thisObj);
-            IteratorRecord iterated = getTargetNode.execute(thisObj);
+            int index = (int) getValueNode.execute(thisObj);
+            IteratorRecord iterated = (IteratorRecord) getTargetNode.execute(thisObj);
 
             Object next = iteratorStepNode.execute(iterated);
             if (next == (Boolean) false) {
@@ -673,11 +546,11 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     protected abstract static class IteratorHelperNextFlatMapNode extends JSBuiltinNode {
-        @Child private GetTargetNode getTargetNode;
-        @Child private GetMapperNode getMapperNode;
-        @Child private GetIteratorValueNode getValueNode;
+        @Child private GetHiddenValueNode getTargetNode;
+        @Child private GetHiddenValueNode getMapperNode;
+        @Child private GetHiddenValueNode getValueNode;
         @Child private PropertySetNode setValueNode;
-        @Child private GetAliveNode getAliveNode;
+        @Child private GetHiddenValueNode getAliveNode;
         @Child private PropertySetNode setAliveNode;
 
         @Child private IteratorStepNode iteratorStepNode;
@@ -691,11 +564,11 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorHelperNextFlatMapNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getTargetNode = GetTargetNode.create(context);
-            getMapperNode = GetMapperNode.create(context);
-            getValueNode = GetIteratorValueNode.create(context);
+            getTargetNode = GetHiddenValueNode.create(context, TARGET_ID);
+            getMapperNode = GetHiddenValueNode.create(context, MAPPER_ID);
+            getValueNode = GetHiddenValueNode.create(context, VALUE_ID);
             setValueNode = PropertySetNode.createSetHidden(VALUE_ID, context);
-            getAliveNode = GetAliveNode.create(context);
+            getAliveNode = GetHiddenValueNode.create(context, ALIVE_ID);
             setAliveNode = PropertySetNode.createSetHidden(ALIVE_ID, context);
 
             iteratorStepNode = IteratorStepNode.create(context);
@@ -711,11 +584,11 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = "isJSObject(thisObj)")
         public Object next(VirtualFrame frame, JSObject thisObj) {
             Object mapper = getMapperNode.execute(thisObj);
-            boolean innerAlive = getAliveNode.get(thisObj);
+            boolean innerAlive = (boolean) getAliveNode.get(thisObj);
 
             while (true) {
                 if (innerAlive) {
-                    IteratorRecord iterated = getValueNode.execute(thisObj);
+                    IteratorRecord iterated = (IteratorRecord) getValueNode.execute(thisObj);
                     Object next = iteratorStepNode.execute(iterated);
                     if (next == (Boolean) false) {
                         innerAlive = false;
@@ -726,7 +599,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     Object value = iteratorValueNode.execute(next);
                     return createIterResultObjectNode.execute(frame, value, false);
                 } else {
-                    IteratorRecord iterated = getTargetNode.execute(thisObj);
+                    IteratorRecord iterated = (IteratorRecord) getTargetNode.execute(thisObj);
                     Object next = iteratorStepNode.execute(iterated);
                     if (next == (Boolean) false) {
                         setAliveNode.setValueBoolean(thisObj, false);
