@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,8 +52,8 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSAddNode;
 import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
@@ -62,6 +62,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.nodes.unary.JSOverloadedUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
@@ -433,6 +434,11 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         return oldValue;
     }
 
+    @Specialization(guards = {"isIllegal(frame)"})
+    Object doDead(@SuppressWarnings("unused") Frame frame) {
+        throw Errors.createReferenceErrorNotDefined(getIdentifier(), this);
+    }
+
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return LocalVarPostfixIncNodeGen.create(op, getSlotIndex(), getIdentifier(), hasTemporalDeadZone(), getLevelFrameNode());
@@ -579,6 +585,11 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         double newValue = op.doDouble(oldValue);
         frame.setObject(slot, newValue);
         return newValue;
+    }
+
+    @Specialization(guards = {"isIllegal(frame)"})
+    Object doDead(@SuppressWarnings("unused") Frame frame) {
+        throw Errors.createReferenceErrorNotDefined(getIdentifier(), this);
     }
 
     @Override

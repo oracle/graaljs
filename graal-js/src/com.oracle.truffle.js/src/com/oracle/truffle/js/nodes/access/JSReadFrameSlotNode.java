@@ -61,6 +61,7 @@ import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
@@ -172,6 +173,11 @@ abstract class JSReadScopeFrameSlotNode extends JSReadFrameSlotNode {
         return SafeInteger.valueOf(levelFrame.getLong(slot));
     }
 
+    @Specialization(guards = "isIllegal(levelFrame)")
+    protected final Object doDead(@SuppressWarnings("unused") Frame levelFrame) {
+        throw Errors.createReferenceErrorNotDefined(getIdentifier(), this);
+    }
+
     @Override
     public ScopeFrameNode getLevelFrameNode() {
         return scopeFrameNode;
@@ -239,6 +245,11 @@ abstract class JSReadCurrentFrameSlotNode extends JSReadFrameSlotNode {
     @Specialization(guards = "frame.isLong(slot)")
     protected final SafeInteger doSafeInteger(VirtualFrame frame) {
         return SafeInteger.valueOf(frame.getLong(slot));
+    }
+
+    @Specialization(guards = "isIllegal(frame)")
+    protected final Object doDead(@SuppressWarnings("unused") VirtualFrame frame) {
+        throw Errors.createReferenceErrorNotDefined(getIdentifier(), this);
     }
 
     @Override
