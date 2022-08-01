@@ -44,7 +44,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.LoopConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -472,7 +471,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = "isJSObject(thisObj)")
         public Object next(VirtualFrame frame, JSObject thisObj) {
             IteratorRecord iterated = (IteratorRecord) getTargetNode.execute(thisObj);
-            double remaining = ((Number)getValueNode.execute(thisObj)).doubleValue(); // TODO: Optimize?
+            double remaining = ((Number) getValueNode.execute(thisObj)).doubleValue(); // TODO: Optimize?
             while (remaining > 0) {
                 Object next = iteratorStepNode.execute(iterated);
                 if (next == (Boolean) false) {
