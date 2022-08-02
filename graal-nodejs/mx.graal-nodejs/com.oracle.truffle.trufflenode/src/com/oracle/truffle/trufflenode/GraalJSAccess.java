@@ -2194,12 +2194,8 @@ public final class GraalJSAccess {
 
         String bodyJavaString = Strings.toJavaString((TruffleString) body);
         String sourceNameJavaString = Strings.toJavaString(sourceName);
-        try {
-            GraalJSParserHelper.checkFunctionSyntax(jsContext, parserOptions, parameterList, bodyJavaString, false, false, sourceNameJavaString);
-        } catch (com.oracle.js.parser.ParserException ex) {
-            // throw the correct JS error
-            nodeEvaluator.parseFunction(jsContext, parameterList, bodyJavaString, false, false, sourceNameJavaString, null);
-        }
+        // Will throw a JS error (if syntax is wrong).
+        nodeEvaluator.checkFunctionSyntax(jsContext, parserOptions, parameterList, bodyJavaString, false, false, sourceNameJavaString);
 
         StringBuilder code = new StringBuilder();
 
