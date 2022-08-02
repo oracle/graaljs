@@ -90,7 +90,6 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Nullish;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSFunction extends JSNonProxy {
 
@@ -167,6 +166,9 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static final PropertyProxy NAME_PROXY = new FunctionNamePropertyProxy();
+
+    public static final PropertyProxy ARGUMENTS_PROXY = new ArgumentsProxyProperty();
+    public static final PropertyProxy CALLER_PROXY = new CallerProxyProperty();
 
     /** Placeholder for lazy initialization of the prototype property. */
     public static final Object CLASS_PROTOTYPE_PLACEHOLDER = new Object();
@@ -882,25 +884,23 @@ public final class JSFunction extends JSNonProxy {
                         function == realm.getReflectConstructFunctionObject();
     }
 
+    /**
+     * V8 compatibility mode: retrieves the function's arguments from the stack.
+     */
     public static final class ArgumentsProxyProperty extends PropertyProxy {
 
-        private final JSContext context;
-
-        public ArgumentsProxyProperty(JSContext context) {
-            this.context = context;
+        private ArgumentsProxyProperty() {
         }
 
         @Override
         public Object get(JSDynamicObject thiz) {
-            if (context.isOptionV8CompatibilityMode()) {
-                return JSRuntime.toJSNull(createArguments(thiz));
-            } else {
-                return Undefined.instance;
-            }
+            JSFunctionObject thisFunction = (JSFunctionObject) thiz;
+            assert !getFunctionData(thisFunction).hasStrictFunctionProperties() && getFunctionData(thisFunction).getContext().isOptionV8CompatibilityMode();
+            return JSRuntime.toJSNull(createArguments(thisFunction));
         }
 
         @TruffleBoundary
-        private static Object createArguments(JSDynamicObject thiz) {
+        private static Object createArguments(JSFunctionObject thisFunction) {
             return Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                 @Override
                 public Object visitFrame(FrameInstance frameInstance) {
@@ -908,7 +908,7 @@ public final class JSFunction extends JSNonProxy {
                     if (JSRuntime.isJSFunctionRootNode(rootNode)) {
                         Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
                         JSDynamicObject function = (JSDynamicObject) JSArguments.getFunctionObject(frame.getArguments());
-                        if (function == thiz) {
+                        if (function == thisFunction) {
                             JSRealm realm = JSRealm.get(null);
                             Object[] userArguments = JSArguments.extractUserArguments(frame.getArguments());
                             return JSArgumentsArray.createNonStrictSlow(realm, userArguments, function);
@@ -921,25 +921,23 @@ public final class JSFunction extends JSNonProxy {
 
     }
 
+    /**
+     * V8 compatibility mode: retrieves the function's caller from the stack.
+     */
     public static final class CallerProxyProperty extends PropertyProxy {
 
-        private final JSContext context;
-
-        public CallerProxyProperty(JSContext context) {
-            this.context = context;
+        private CallerProxyProperty() {
         }
 
         @Override
         public Object get(JSDynamicObject thiz) {
-            if (context.isOptionV8CompatibilityMode()) {
-                return JSRuntime.toJSNull(findCaller(thiz));
-            } else {
-                return Undefined.instance;
-            }
+            JSFunctionObject thisFunction = (JSFunctionObject) thiz;
+            assert !getFunctionData(thisFunction).hasStrictFunctionProperties() && getFunctionData(thisFunction).getContext().isOptionV8CompatibilityMode();
+            return JSRuntime.toJSNull(findCaller(thisFunction));
         }
 
         @TruffleBoundary
-        private static Object findCaller(JSDynamicObject thiz) {
+        private static Object findCaller(JSFunctionObject thisFunction) {
             return Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                 private boolean seenThis = false;
 
@@ -978,7 +976,7 @@ public final class JSFunction extends JSNonProxy {
                             if (!PROGRAM_FUNCTION_NAME.equals(rootNode.getName())) {
                                 return function;
                             }
-                        } else if (function == thiz) {
+                        } else if (function == thisFunction) {
                             seenThis = true;
                         }
                     }
