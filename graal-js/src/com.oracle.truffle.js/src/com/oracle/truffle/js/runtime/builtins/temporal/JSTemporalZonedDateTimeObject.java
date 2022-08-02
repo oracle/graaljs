@@ -87,9 +87,8 @@ public class JSTemporalZonedDateTimeObject extends JSNonProxyObject implements T
         return timeZone;
     }
 
-    @ExportMessage
     @TruffleBoundary
-    Instant asInstant() {
+    private Instant toInstant() {
         BigInteger[] res = nanoseconds.bigIntegerValue().divideAndRemainder(TemporalUtil.BI_10_POW_9);
         return Instant.ofEpochSecond(res[0].longValue(), res[1].intValue());
     }
@@ -131,7 +130,7 @@ public class JSTemporalZonedDateTimeObject extends JSNonProxyObject implements T
     @ExportMessage
     @TruffleBoundary
     final LocalDate asDate() throws UnsupportedMessageException {
-        LocalDate ld = LocalDate.ofInstant(asInstant(), asTimeZone());
+        LocalDate ld = LocalDate.ofInstant(toInstant(), asTimeZone());
         return ld;
     }
 
@@ -143,7 +142,7 @@ public class JSTemporalZonedDateTimeObject extends JSNonProxyObject implements T
     @ExportMessage
     @TruffleBoundary
     final LocalTime asTime() throws UnsupportedMessageException {
-        LocalTime lt = LocalTime.ofInstant(asInstant(), asTimeZone());
+        LocalTime lt = LocalTime.ofInstant(toInstant(), asTimeZone());
         return lt;
     }
 }
