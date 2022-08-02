@@ -121,7 +121,7 @@ public interface Evaluator {
     /**
      * Parse function using parameter list and body, to be used by the {@code Function} constructor.
      */
-    ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName, Source inheritFrom);
+    ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName);
 
     default ScriptNode parseScript(JSContext context, Source source) {
         return parseScript(context, source, "", "", context.getParserOptions().isStrict());
@@ -141,4 +141,6 @@ public interface Evaluator {
      * Creates a script that will be evaluated in a specified lexical context.
      */
     JavaScriptNode parseInlineScript(JSContext context, Source source, MaterializedFrame lexicalContextFrame, boolean isStrict, Node locationNode);
+
+    void checkFunctionSyntax(JSContext context, JSParserOptions parserOptions, String parameterList, String body, boolean generator, boolean async, String sourceName);
 }

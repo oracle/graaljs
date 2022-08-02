@@ -2143,7 +2143,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected final ScriptNode parseFunction(String paramList, String body, String sourceName) {
             CompilerAsserts.neverPartOfCompilation();
-            return context.getEvaluator().parseFunction(context, paramList, body, generatorFunction, asyncFunction, sourceName, null);
+            return context.getEvaluator().parseFunction(context, paramList, body, generatorFunction, asyncFunction, sourceName);
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
