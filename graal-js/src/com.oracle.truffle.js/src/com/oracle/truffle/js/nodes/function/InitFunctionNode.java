@@ -149,8 +149,8 @@ public class InitFunctionNode extends JavaScriptBaseNode {
         if (context.getEcmaScriptVersion() >= 6) {
             if (!strictProperties) {
                 if (context.isOptionV8CompatibilityMode()) {
-                    Properties.putConstant(setArgumentsNode, function, JSFunction.ARGUMENTS, context.getArgumentsPropertyProxy(), argumentsCallerFlags | JSProperty.PROXY);
-                    Properties.putConstant(setCallerNode, function, JSFunction.CALLER, context.getCallerPropertyProxy(), argumentsCallerFlags | JSProperty.PROXY);
+                    Properties.putConstant(setArgumentsNode, function, JSFunction.ARGUMENTS, JSFunction.ARGUMENTS_PROXY, argumentsCallerFlags | JSProperty.PROXY);
+                    Properties.putConstant(setCallerNode, function, JSFunction.CALLER, JSFunction.CALLER_PROXY, argumentsCallerFlags | JSProperty.PROXY);
                 } else {
                     Properties.putConstant(setArgumentsNode, function, JSFunction.ARGUMENTS, Undefined.instance, argumentsCallerFlags);
                     Properties.putConstant(setCallerNode, function, JSFunction.CALLER, Undefined.instance, argumentsCallerFlags);

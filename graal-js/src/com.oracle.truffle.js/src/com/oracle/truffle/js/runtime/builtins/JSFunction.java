@@ -70,6 +70,7 @@ import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.GeneratorPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode;
+import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -90,7 +91,6 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Nullish;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSFunction extends JSNonProxy {
 
@@ -167,6 +167,9 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static final PropertyProxy NAME_PROXY = new FunctionNamePropertyProxy();
+
+    public static final PropertyProxy ARGUMENTS_PROXY = new ArgumentsProxyProperty();
+    public static final PropertyProxy CALLER_PROXY = new CallerProxyProperty();
 
     /** Placeholder for lazy initialization of the prototype property. */
     public static final Object CLASS_PROTOTYPE_PLACEHOLDER = new Object();
@@ -882,36 +885,38 @@ public final class JSFunction extends JSNonProxy {
                         function == realm.getReflectConstructFunctionObject();
     }
 
+    /**
+     * V8 compatibility mode: retrieves the function's arguments from the stack.
+     */
     public static final class ArgumentsProxyProperty extends PropertyProxy {
 
-        private final JSContext context;
-
-        public ArgumentsProxyProperty(JSContext context) {
-            this.context = context;
+        private ArgumentsProxyProperty() {
         }
 
         @Override
         public Object get(JSDynamicObject thiz) {
-            if (context.isOptionV8CompatibilityMode()) {
-                return JSRuntime.toJSNull(createArguments(thiz));
-            } else {
-                return Undefined.instance;
-            }
+            JSFunctionObject thisFunction = (JSFunctionObject) thiz;
+            assert !getFunctionData(thisFunction).hasStrictFunctionProperties() && getFunctionData(thisFunction).getContext().isOptionV8CompatibilityMode();
+            return JSRuntime.toJSNull(createArguments(thisFunction));
         }
 
         @TruffleBoundary
-        private static Object createArguments(JSDynamicObject thiz) {
+        private static Object createArguments(JSFunctionObject thisFunction) {
+            JSFunctionData thisFunctionData = getFunctionData(thisFunction);
             return Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                 @Override
                 public Object visitFrame(FrameInstance frameInstance) {
+                    CompilerAsserts.neverPartOfCompilation();
                     RootNode rootNode = getFrameRootNode(frameInstance);
-                    if (JSRuntime.isJSFunctionRootNode(rootNode)) {
-                        Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
-                        JSDynamicObject function = (JSDynamicObject) JSArguments.getFunctionObject(frame.getArguments());
-                        if (function == thiz) {
-                            JSRealm realm = JSRealm.get(null);
-                            Object[] userArguments = JSArguments.extractUserArguments(frame.getArguments());
-                            return JSArgumentsArray.createNonStrictSlow(realm, userArguments, function);
+                    if (rootNode instanceof FunctionRootNode) {
+                        if (((FunctionRootNode) rootNode).getFunctionData() == thisFunctionData) {
+                            Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
+                            Object function = JSArguments.getFunctionObject(frame.getArguments());
+                            if (function == thisFunction) {
+                                JSRealm realm = JSRealm.get(null);
+                                Object[] userArguments = JSArguments.extractUserArguments(frame.getArguments());
+                                return JSArgumentsArray.createNonStrictSlow(realm, userArguments, (JSFunctionObject) function);
+                            }
                         }
                     }
                     return null;
@@ -921,35 +926,39 @@ public final class JSFunction extends JSNonProxy {
 
     }
 
+    /**
+     * V8 compatibility mode: retrieves the function's caller from the stack.
+     */
     public static final class CallerProxyProperty extends PropertyProxy {
 
-        private final JSContext context;
-
-        public CallerProxyProperty(JSContext context) {
-            this.context = context;
+        private CallerProxyProperty() {
         }
 
         @Override
         public Object get(JSDynamicObject thiz) {
-            if (context.isOptionV8CompatibilityMode()) {
-                return JSRuntime.toJSNull(findCaller(thiz));
-            } else {
-                return Undefined.instance;
-            }
+            JSFunctionObject thisFunction = (JSFunctionObject) thiz;
+            assert !getFunctionData(thisFunction).hasStrictFunctionProperties() && getFunctionData(thisFunction).getContext().isOptionV8CompatibilityMode();
+            return JSRuntime.toJSNull(findCaller(thisFunction));
         }
 
         @TruffleBoundary
-        private static Object findCaller(JSDynamicObject thiz) {
+        private static Object findCaller(JSFunctionObject thisFunction) {
+            JSFunctionData thisFunctionData = getFunctionData(thisFunction);
             return Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
-                private boolean seenThis = false;
+                private boolean seenThisFunction = false;
 
                 @Override
                 public Object visitFrame(FrameInstance frameInstance) {
+                    CompilerAsserts.neverPartOfCompilation();
                     RootNode rootNode = getFrameRootNode(frameInstance);
-                    if (JSRuntime.isJSFunctionRootNode(rootNode)) {
-                        Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
-                        JSDynamicObject function = (JSDynamicObject) JSArguments.getFunctionObject(frame.getArguments());
-                        if (seenThis) {
+                    if (rootNode instanceof FunctionRootNode) {
+                        if (seenThisFunction) {
+                            Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
+                            Object function = JSArguments.getFunctionObject(frame.getArguments());
+                            if (!isJSFunction(function)) {
+                                return null;
+                            }
+                            JSFunctionObject callerFunction = (JSFunctionObject) function;
                             SourceSection ss = rootNode.getSourceSection();
                             if (ss == null) {
                                 return null;
@@ -957,29 +966,35 @@ public final class JSFunction extends JSNonProxy {
                             if (ss.getSource().isInternal() && !JSFunction.isBuiltinSourceSection(ss)) {
                                 return null;
                             }
-                            JSFunctionData functionData = JSFunction.getFunctionData(function);
+                            JSFunctionData functionData = JSFunction.getFunctionData(callerFunction);
                             if (JSFunction.isBuiltinSourceSection(ss)) {
                                 JSRealm realm = JSRealm.get(null);
-                                if (function == realm.getEvalFunctionObject()) {
+                                if (callerFunction == realm.getEvalFunctionObject()) {
                                     return null; // skip eval()
                                 }
-                                if (isBuiltinThatShouldNotAppearInStackTrace(realm, function)) {
+                                if (isBuiltinThatShouldNotAppearInStackTrace(realm, callerFunction)) {
                                     return null;
                                 }
                                 if (Strings.startsWith(functionData.getName(), Strings.BRACKET_SYMBOL_DOT)) {
                                     return null;
                                 }
-                                if (isStrictBuiltin(function, realm)) {
+                                if (isStrictBuiltin(callerFunction, realm)) {
                                     return Null.instance; // do not go beyond a strict builtin
                                 }
                             } else if (functionData.isStrict()) {
                                 return Null.instance;
                             }
                             if (!PROGRAM_FUNCTION_NAME.equals(rootNode.getName())) {
-                                return function;
+                                return callerFunction;
                             }
-                        } else if (function == thiz) {
-                            seenThis = true;
+                        } else {
+                            if (((FunctionRootNode) rootNode).getFunctionData() == thisFunctionData) {
+                                Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
+                                Object function = JSArguments.getFunctionObject(frame.getArguments());
+                                if (function == thisFunction) {
+                                    seenThisFunction = true;
+                                }
+                            }
                         }
                     }
                     return null;

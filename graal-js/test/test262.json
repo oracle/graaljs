@@ -2133,10 +2133,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-05-20"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/from/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/from/argument-string-subsecond.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-05-20"
