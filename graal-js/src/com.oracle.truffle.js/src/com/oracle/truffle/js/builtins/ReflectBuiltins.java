@@ -429,11 +429,18 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
         protected Object doForeignObject(Object target, Object propertyKey,
                         @CachedLibrary("target") InteropLibrary interop,
-                        @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
+                        @Cached TruffleString.ToJavaStringNode toJavaStringNode,
+                        @Cached ForeignObjectPrototypeNode foreignObjectPrototypeNode,
+                        @Cached JSClassProfile classProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             if (interop.hasMembers(target)) {
                 if (key instanceof TruffleString) {
-                    return interop.isMemberExisting(target, Strings.toJavaString(toJavaStringNode, (TruffleString) key));
+                    boolean result = interop.isMemberExisting(target, Strings.toJavaString(toJavaStringNode, (TruffleString) key));
+                    if (!result && getContext().getContextOptions().hasForeignObjectPrototype()) {
+                        JSDynamicObject prototype = foreignObjectPrototypeNode.execute(target);
+                        result = JSObject.hasProperty(prototype, key, classProfile);
+                    }
+                    return result;
                 } else {
                     return false;
                 }
