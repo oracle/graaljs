@@ -70,6 +70,7 @@ import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.GeneratorPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode;
+import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -901,17 +902,21 @@ public final class JSFunction extends JSNonProxy {
 
         @TruffleBoundary
         private static Object createArguments(JSFunctionObject thisFunction) {
+            JSFunctionData thisFunctionData = getFunctionData(thisFunction);
             return Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                 @Override
                 public Object visitFrame(FrameInstance frameInstance) {
+                    CompilerAsserts.neverPartOfCompilation();
                     RootNode rootNode = getFrameRootNode(frameInstance);
-                    if (JSRuntime.isJSFunctionRootNode(rootNode)) {
-                        Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
-                        Object function = JSArguments.getFunctionObject(frame.getArguments());
-                        if (function == thisFunction) {
-                            JSRealm realm = JSRealm.get(null);
-                            Object[] userArguments = JSArguments.extractUserArguments(frame.getArguments());
-                            return JSArgumentsArray.createNonStrictSlow(realm, userArguments, thisFunction);
+                    if (rootNode instanceof FunctionRootNode) {
+                        if (((FunctionRootNode) rootNode).getFunctionData() == thisFunctionData) {
+                            Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
+                            Object function = JSArguments.getFunctionObject(frame.getArguments());
+                            if (function == thisFunction) {
+                                JSRealm realm = JSRealm.get(null);
+                                Object[] userArguments = JSArguments.extractUserArguments(frame.getArguments());
+                                return JSArgumentsArray.createNonStrictSlow(realm, userArguments, (JSFunctionObject) function);
+                            }
                         }
                     }
                     return null;
@@ -938,16 +943,18 @@ public final class JSFunction extends JSNonProxy {
 
         @TruffleBoundary
         private static Object findCaller(JSFunctionObject thisFunction) {
+            JSFunctionData thisFunctionData = getFunctionData(thisFunction);
             return Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                 private boolean seenThisFunction = false;
 
                 @Override
                 public Object visitFrame(FrameInstance frameInstance) {
+                    CompilerAsserts.neverPartOfCompilation();
                     RootNode rootNode = getFrameRootNode(frameInstance);
-                    if (JSRuntime.isJSFunctionRootNode(rootNode)) {
-                        Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
-                        Object function = JSArguments.getFunctionObject(frame.getArguments());
+                    if (rootNode instanceof FunctionRootNode) {
                         if (seenThisFunction) {
+                            Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
+                            Object function = JSArguments.getFunctionObject(frame.getArguments());
                             if (!isJSFunction(function)) {
                                 return null;
                             }
@@ -980,8 +987,14 @@ public final class JSFunction extends JSNonProxy {
                             if (!PROGRAM_FUNCTION_NAME.equals(rootNode.getName())) {
                                 return callerFunction;
                             }
-                        } else if (function == thisFunction) {
-                            seenThisFunction = true;
+                        } else {
+                            if (((FunctionRootNode) rootNode).getFunctionData() == thisFunctionData) {
+                                Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
+                                Object function = JSArguments.getFunctionObject(frame.getArguments());
+                                if (function == thisFunction) {
+                                    seenThisFunction = true;
+                                }
+                            }
                         }
                     }
                     return null;
