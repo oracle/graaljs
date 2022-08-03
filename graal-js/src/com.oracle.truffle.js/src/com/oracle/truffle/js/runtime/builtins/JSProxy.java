@@ -345,7 +345,12 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.hasProperty((JSDynamicObject) target, key);
             } else {
-                return JSInteropUtil.hasProperty(target, key);
+                boolean result = JSInteropUtil.hasProperty(target, key);
+                if (!result && JavaScriptLanguage.get(null).getJSContext().getContextOptions().hasForeignObjectPrototype()) {
+                    JSDynamicObject prototype = ForeignObjectPrototypeNode.getUncached().execute(target);
+                    result = JSObject.hasProperty(prototype, key);
+                }
+                return result;
             }
         }
 
