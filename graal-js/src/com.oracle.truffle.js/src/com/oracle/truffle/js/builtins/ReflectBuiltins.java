@@ -77,6 +77,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
@@ -349,12 +350,23 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
 
         @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
-        protected Object doForeignObject(Object target, Object propertyKey, @SuppressWarnings("unused") Object[] optionalArgs,
+        protected Object doForeignObject(Object target, Object propertyKey, Object[] optionalArgs,
                         @CachedLibrary("target") InteropLibrary interop,
-                        @Cached ImportValueNode importValue) {
+                        @Cached ImportValueNode importValue,
+                        @Cached ForeignObjectPrototypeNode foreignObjectPrototypeNode,
+                        @Cached JSClassProfile classProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             if (interop.hasMembers(target)) {
-                return JSInteropUtil.readMemberOrDefault(target, key, Undefined.instance, interop, importValue, this);
+                Object result = JSInteropUtil.readMemberOrDefault(target, key, null, interop, importValue, this);
+                if (result == null) {
+                    if (getContext().getContextOptions().hasForeignObjectPrototype()) {
+                        JSDynamicObject prototype = foreignObjectPrototypeNode.execute(target);
+                        result = doObject(prototype, key, optionalArgs, classProfile);
+                    } else {
+                        result = Undefined.instance;
+                    }
+                }
+                return result;
             } else {
                 throw Errors.createTypeErrorCalledOnNonObject();
             }
