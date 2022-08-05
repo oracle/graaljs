@@ -50,7 +50,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.LoopConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
@@ -85,10 +84,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Iterator;
 
 /**
  * Contains builtins for {@linkplain JSArray}.prototype.
@@ -461,7 +457,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             public Object next(VirtualFrame frame, Object thisObj) {
                 IteratorArgs args = getArgs(thisObj);
 
-                int index = 0;
+                int index;
                 try {
                     index = getIndexNode.getValueInt(thisObj);
                 } catch (UnexpectedResultException e) {

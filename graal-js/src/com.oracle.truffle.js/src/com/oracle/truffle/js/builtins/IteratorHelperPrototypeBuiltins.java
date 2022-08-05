@@ -41,41 +41,23 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.profiles.LoopConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
-import com.oracle.truffle.js.nodes.access.CreateObjectNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
-import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
-import com.oracle.truffle.js.nodes.access.IteratorNextNode;
-import com.oracle.truffle.js.nodes.access.IteratorStepNode;
-import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.function.InternalCallNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -93,14 +75,6 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     public static final HiddenKey NEXT_ID = new HiddenKey("next");
     public static final HiddenKey ARGS_ID = new HiddenKey("target");
 
-    public enum HelperType {
-        map,
-        filter,
-        take,
-        drop,
-        indexed,
-        flatMap;
-    }
 
     protected IteratorHelperPrototypeBuiltins() {
         super(JSArray.ITERATOR_PROTOTYPE_NAME, IteratorHelperPrototypeBuiltins.HelperIteratorPrototype.class);
@@ -155,7 +129,6 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    @ImportStatic({HelperType.class})
     public abstract static class IteratorHelperNextNode extends JSBuiltinNode {
         @Child private PropertyGetNode getNextImplNode;
         @Child private HasHiddenKeyCacheNode hasNextImplNode;
