@@ -43,26 +43,17 @@ package com.oracle.truffle.js.builtins;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.builtins.IteratorFunctionBuiltinsFactory.GetIteratorDirectNodeGen;
 import com.oracle.truffle.js.builtins.IteratorFunctionBuiltinsFactory.JSIteratorFromNodeGen;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.unary.IsCallableNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -78,7 +69,7 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
 
     public static final JSBuiltinsContainer BUILTINS = new IteratorFunctionBuiltins();
 
-    protected IteratorFunctionBuiltins() {
+    IteratorFunctionBuiltins() {
         super(JSArray.CLASS_NAME, ArrayFunction.class);
     }
 
@@ -113,42 +104,6 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         return null;
-    }
-
-    public abstract static class GetIteratorDirectNode extends JavaScriptBaseNode {
-        @Child private IsObjectNode isObjectNode;
-        @Child private PropertyGetNode getNextMethodNode;
-        @Child private IsCallableNode isCallableNode;
-
-        private final BranchProfile errorProfile = BranchProfile.create();
-
-        public GetIteratorDirectNode(JSContext context) {
-            isObjectNode = IsObjectNode.create();
-            isCallableNode = IsCallableNode.create();
-            getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
-        }
-
-        public abstract IteratorRecord execute(Object iteratedObject);
-
-        @Specialization(guards = "isJSObject(obj)")
-        protected IteratorRecord get(Object obj) {
-            Object nextMethod = getNextMethodNode.getValue(obj);
-            if (!isCallableNode.executeBoolean(nextMethod)) {
-                errorProfile.enter();
-                throw Errors.createTypeErrorCallableExpected();
-            }
-
-            return IteratorRecord.create((JSDynamicObject) obj, nextMethod, false);
-        }
-
-        @Specialization(guards = "!isJSObject(obj)")
-        public IteratorRecord unsupported(Object obj) {
-            throw Errors.createTypeErrorNotAnObject(obj, this);
-        }
-
-        public static GetIteratorDirectNode create(JSContext context) {
-            return GetIteratorDirectNodeGen.create(context);
-        }
     }
 
     public abstract static class JSIteratorFromNode extends JSBuiltinNode {

@@ -53,6 +53,7 @@ import com.oracle.truffle.api.profiles.LoopConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
@@ -168,7 +169,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
         return null;
     }
-    
+
     public static class IteratorArgs {
         public final IteratorRecord target;
 
@@ -176,10 +177,10 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             this.target = target;
         }
     }
-    
+
     private abstract static class IteratorBaseNode<T extends IteratorArgs> extends JSBuiltinNode {
 
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
         @Child private PropertySetNode setArgsNode;
         @Child private PropertySetNode setNextNode;
@@ -190,7 +191,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             this.key = key;
 
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
             setArgsNode = PropertySetNode.createSetHidden(IteratorHelperPrototypeBuiltins.ARGS_ID, context);
             setNextNode = PropertySetNode.createSetHidden(IteratorHelperPrototypeBuiltins.NEXT_ID, context);
@@ -861,7 +862,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     protected abstract static class IteratorWithCallableNode extends JSBuiltinNode {
         @Child protected IsCallableNode isCallableNode;
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private IteratorNextNode iteratorNextNode;
         @Child private IteratorCompleteNode iteratorCompleteNode;
         @Child private IteratorValueNode iteratorValueNode;
@@ -874,7 +875,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             super(context, builtin);
 
             isCallableNode = IsCallableNode.create();
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             iteratorNextNode = IteratorNextNode.create();
             iteratorCompleteNode = IteratorCompleteNode.create(context);
             iteratorValueNode = IteratorValueNode.create(context);
@@ -937,7 +938,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     public abstract static class IteratorToArrayNode extends JSBuiltinNode {
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private IteratorNextNode iteratorNextNode;
         @Child private IteratorCompleteNode iteratorCompleteNode;
         @Child private IteratorValueNode iteratorValueNode;
@@ -946,7 +947,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorToArrayNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             iteratorNextNode = IteratorNextNode.create();
             iteratorCompleteNode = IteratorCompleteNode.create(context);
             iteratorValueNode = IteratorValueNode.create(context);
@@ -975,12 +976,12 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     public abstract static class IteratorToAsyncNode extends JSBuiltinNode {
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
 
         protected IteratorToAsyncNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            getIteratorDirectNode = GetIteratorDirectNode.create(context);
         }
 
         @Specialization
@@ -1068,7 +1069,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     public abstract static class IteratorReduceNode extends JSBuiltinNode {
         @Child protected IsCallableNode isCallableNode;
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private IteratorStepNode iteratorStepNode;
         @Child private IteratorValueNode iteratorValueNode;
         @Child private JSFunctionCallNode callNode;
@@ -1077,7 +1078,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorReduceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             isCallableNode = IsCallableNode.create();
             iteratorStepNode = IteratorStepNode.create(context);
             iteratorValueNode = IteratorValueNode.create(context);

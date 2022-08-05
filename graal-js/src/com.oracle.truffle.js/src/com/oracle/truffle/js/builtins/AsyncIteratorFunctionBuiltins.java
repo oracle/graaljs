@@ -44,6 +44,7 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
@@ -106,7 +107,7 @@ public final class AsyncIteratorFunctionBuiltins extends JSBuiltinsContainer.Swi
         @Child private GetIteratorNode getIteratorNode;
 
         @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
 
         public JSAsyncIteratorFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -139,10 +140,10 @@ public final class AsyncIteratorFunctionBuiltins extends JSBuiltinsContainer.Swi
             } else {
                 if (getIteratorDirectNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getIteratorDirectNode = insert(IteratorFunctionBuiltins.GetIteratorDirectNode.create(getContext()));
+                    getIteratorDirectNode = insert(GetIteratorDirectNode.create(getContext()));
                 }
 
-                iteratorRecord = getIteratorDirectNode.get(arg);
+                iteratorRecord = getIteratorDirectNode.execute(arg);
             }
 
             return JSWrapForAsyncIterator.create(getContext(), getRealm(), iteratorRecord);

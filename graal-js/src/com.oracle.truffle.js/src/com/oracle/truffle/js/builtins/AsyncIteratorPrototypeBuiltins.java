@@ -50,6 +50,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
@@ -323,7 +324,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
     }
 
     protected abstract static class AsyncIteratorMapNode extends JSBuiltinNode {
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorMapArgs> awaitNode;
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child private AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode createAsyncIteratorHelperNode;
@@ -331,7 +332,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public AsyncIteratorMapNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             createAsyncIteratorHelperNode = AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorMap, AsyncIteratorMapNode::createMapFunctionImpl);
@@ -420,7 +421,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
     }
 
     protected abstract static class AsyncIteratorFilterNode extends JSBuiltinNode {
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorFilterArgs> awaitNode;
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child private AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode createAsyncIteratorHelperNode;
@@ -428,7 +429,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public AsyncIteratorFilterNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             createAsyncIteratorHelperNode = AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorFilter, AsyncIteratorFilterNode::createFilterFunctionImpl);
@@ -558,7 +559,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
     protected abstract static class AsyncIteratorTakeNode extends JSBuiltinNode {
         private static final HiddenKey REMAINING_ID = new HiddenKey("remaining");
 
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorTakeArgs> awaitNode;
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child private AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode createAsyncIteratorHelperNode;
@@ -569,7 +570,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public AsyncIteratorTakeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             createAsyncIteratorHelperNode = AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorTake, AsyncIteratorTakeNode::createTakeFunctionImpl);
@@ -681,7 +682,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
     }
 
     protected abstract static class AsyncIteratorDropNode extends JSBuiltinNode {
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorDropArgs> awaitNode;
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child private AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode createAsyncIteratorHelperNode;
@@ -691,7 +692,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public AsyncIteratorDropNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             createAsyncIteratorHelperNode = AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorDrop, AsyncIteratorDropNode::createDropFunctionImpl);
@@ -802,14 +803,14 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
     protected abstract static class AsyncIteratorIndexedNode extends JSBuiltinNode {
         private static final HiddenKey INDEX_ID = new HiddenKey("index");
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorIndexedArgs> awaitNode;
         @Child private AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode createAsyncIteratorHelperNode;
 
         public AsyncIteratorIndexedNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             createAsyncIteratorHelperNode = AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorIndexed, AsyncIteratorIndexedNode::createIndexedFunctionImpl);
         }
@@ -902,14 +903,14 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
     protected abstract static class AsyncIteratorFlatMapNode extends JSBuiltinNode {
         private static HiddenKey CURRENT_ID = new HiddenKey("current");
 
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorFlatMapArgs> awaitNode;
         @Child private AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode createAsyncIteratorHelperNode;
 
         public AsyncIteratorFlatMapNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             createAsyncIteratorHelperNode = AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorFlatMap, AsyncIteratorFlatMapNode::createFlatMapFunctionImpl);
         }
@@ -1087,7 +1088,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
     }
 
     protected abstract static class AsyncIteratorReduceNode extends JSBuiltinNode {
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private IteratorNextNode iteratorNextNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorReduceArgs> initalAwaitNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorReduceArgs> awaitNode;
@@ -1096,7 +1097,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public AsyncIteratorReduceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             iteratorNextNode = IteratorNextNode.create();
             newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorReduce, AsyncIteratorReduceNode::createReduceFunctionImpl);
@@ -1249,7 +1250,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
     }
 
     protected abstract static class AsyncIteratorToArrayNode extends JSBuiltinNode {
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private IteratorNextNode iteratorNextNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorToArrayArgs> awaitNode;
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
@@ -1257,7 +1258,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public AsyncIteratorToArrayNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             iteratorNextNode = IteratorNextNode.create();
             newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorToArray, AsyncIteratorToArrayNode::createToArrayFunctionImpl);
@@ -1332,7 +1333,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
     }
 
     protected abstract static class AsyncIteratorForEachNode extends JSBuiltinNode {
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private IteratorNextNode iteratorNextNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorForEachArgs> awaitNode;
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
@@ -1340,7 +1341,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public AsyncIteratorForEachNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             iteratorNextNode = IteratorNextNode.create();
             newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorForEach, AsyncIteratorForEachNode::createForEachFunctionImpl);
@@ -1437,7 +1438,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
     }
 
     protected abstract static class AsyncIteratorSomeNode extends JSBuiltinNode {
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private IteratorNextNode iteratorNextNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorSomeArgs> awaitNode;
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
@@ -1445,7 +1446,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public AsyncIteratorSomeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             iteratorNextNode = IteratorNextNode.create();
             newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorSome, AsyncIteratorSomeNode::createSomeFunctionImpl);
@@ -1554,7 +1555,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
     }
 
     protected abstract static class AsyncIteratorEveryNode extends JSBuiltinNode {
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private IteratorNextNode iteratorNextNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorEveryArgs> awaitNode;
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
@@ -1562,7 +1563,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public AsyncIteratorEveryNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             iteratorNextNode = IteratorNextNode.create();
             newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorEvery, AsyncIteratorEveryNode::createEveryFunctionImpl);
@@ -1671,7 +1672,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
     }
 
     protected abstract static class AsyncIteratorFindNode extends JSBuiltinNode {
-        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private IteratorNextNode iteratorNextNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorFindArgs> awaitNode;
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
@@ -1679,7 +1680,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public AsyncIteratorFindNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             iteratorNextNode = IteratorNextNode.create();
             newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorFind, AsyncIteratorFindNode::createFindFunctionImpl);
