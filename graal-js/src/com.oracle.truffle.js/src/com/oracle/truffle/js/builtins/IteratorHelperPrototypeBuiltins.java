@@ -41,8 +41,10 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
@@ -58,7 +60,6 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<IteratorHelperPrototypeBuiltins.HelperIteratorPrototype> {
@@ -111,6 +112,13 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private PropertyGetNode getTargetNode;
         @Child private IteratorCloseNode iteratorCloseNode;
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
+        @Child private HasHiddenKeyCacheNode hasNextImplNode;
+
+
+        @Child private HasHiddenKeyCacheNode hasInnerNode;
+        @Child private PropertyGetNode isAliveNode;
+        @Child private PropertyGetNode getInnerNode;
+
 
         protected IteratorHelperReturnNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -118,14 +126,46 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             getTargetNode = PropertyGetNode.create(ARGS_ID, context);
             iteratorCloseNode = IteratorCloseNode.create(context);
             createIterResultObjectNode = CreateIterResultObjectNode.create(context);
+            hasNextImplNode = HasHiddenKeyCacheNode.create(ARGS_ID);
+
+            hasInnerNode = HasHiddenKeyCacheNode.create(IteratorPrototypeBuiltins.FLATMAP_ALIVE_ID);
         }
 
-        @Specialization(guards = "isJSObject(thisObj)")
-        public Object close(VirtualFrame frame, JSObject thisObj) {
+        protected boolean hasImpl(Object thisObj) {
+            return hasNextImplNode.executeHasHiddenKey(thisObj);
+        }
+
+        @Specialization(guards = "hasImpl(thisObj)")
+        public Object close(VirtualFrame frame, Object thisObj) {
+            if (hasInnerNode.executeHasHiddenKey(thisObj)) {
+                if (isAliveNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    isAliveNode = insert(PropertyGetNode.createGetHidden(IteratorPrototypeBuiltins.FLATMAP_ALIVE_ID, getContext()));
+                }
+
+                try {
+                    if (isAliveNode.getValueBoolean(thisObj)) {
+                        if (getInnerNode == null) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            getInnerNode = insert(PropertyGetNode.createGetHidden(IteratorPrototypeBuiltins.FLATMAP_INNER_ID, getContext()));
+                        }
+                        IteratorRecord iterated = (IteratorRecord) getInnerNode.getValue(thisObj);
+                        iteratorCloseNode.executeAbrupt(iterated.getIterator());
+                    }
+                } catch (UnexpectedResultException ignored) {
+                    assert false : "Unreachable";
+                }
+            }
+
             IteratorRecord iterated = ((IteratorPrototypeBuiltins.IteratorArgs) getTargetNode.getValue(thisObj)).target;
 
             iteratorCloseNode.executeVoid(iterated.getIterator());
             return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+        }
+
+        @Specialization(guards = "!hasImpl(thisObj)")
+        public Object unsupported(Object thisObj) {
+            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
     }
 

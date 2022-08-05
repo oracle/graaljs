@@ -94,6 +94,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     public static final JSBuiltinsContainer BUILTINS = new IteratorPrototypeBuiltins();
 
+    public static final HiddenKey FLATMAP_ALIVE_ID = new HiddenKey("innerAlive");
+    public static final HiddenKey FLATMAP_INNER_ID = new HiddenKey("innerIterator");
+
     private IteratorPrototypeBuiltins() {
         super(JSArray.PROTOTYPE_NAME, IteratorPrototype.class);
     }
@@ -721,15 +724,12 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     protected abstract static class IteratorFlatMapNode extends IteratorBaseNode<IteratorFlatMapNode.IteratorFlatMapArgs> {
-        private static final HiddenKey ALIVE_ID = new HiddenKey("innerAlive");
-        private static final HiddenKey INNER_ID = new HiddenKey("innerIterator");
-
         @Child private PropertySetNode setAliveNode;
 
         protected IteratorFlatMapNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, JSContext.BuiltinFunctionKey.IteratorFlatMap);
 
-            setAliveNode = PropertySetNode.createSetHidden(ALIVE_ID, context);
+            setAliveNode = PropertySetNode.createSetHidden(FLATMAP_ALIVE_ID, context);
         }
 
         protected static class IteratorFlatMapArgs extends IteratorArgs {
@@ -784,11 +784,11 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 callNode = JSFunctionCallNode.createCall();
                 getIteratorNode = GetIteratorNode.create(context);
 
-                setAliveNode = PropertySetNode.createSetHidden(ALIVE_ID, context);
-                getAliveNode = PropertyGetNode.createGetHidden(ALIVE_ID, context);
+                setAliveNode = PropertySetNode.createSetHidden(FLATMAP_ALIVE_ID, context);
+                getAliveNode = PropertyGetNode.createGetHidden(FLATMAP_ALIVE_ID, context);
 
-                setInnerNode = PropertySetNode.createSetHidden(INNER_ID, context);
-                getInnerNode = PropertyGetNode.createGetHidden(INNER_ID, context);
+                setInnerNode = PropertySetNode.createSetHidden(FLATMAP_INNER_ID, context);
+                getInnerNode = PropertyGetNode.createGetHidden(FLATMAP_INNER_ID, context);
             }
 
             @Specialization
