@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -61,6 +62,7 @@ import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.function.InternalCallNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -87,11 +89,9 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     public static final TruffleString TO_STRING_TAG = Strings.constant("Iterator Helper");
 
-    public static final HiddenKey TARGET_ID = new HiddenKey("target");
-    public static final HiddenKey MAPPER_ID = new HiddenKey("mapper");
-    public static final HiddenKey HELPER_TYPE_ID = new HiddenKey("type");
-    public static final HiddenKey VALUE_ID = new HiddenKey("value");
-    public static final HiddenKey ALIVE_ID = new HiddenKey("alive");
+
+    public static final HiddenKey NEXT_ID = new HiddenKey("next");
+    public static final HiddenKey ARGS_ID = new HiddenKey("target");
 
     public enum HelperType {
         map,
@@ -104,58 +104,6 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     protected IteratorHelperPrototypeBuiltins() {
         super(JSArray.ITERATOR_PROTOTYPE_NAME, IteratorHelperPrototypeBuiltins.HelperIteratorPrototype.class);
-    }
-
-    protected static class CreateIteratorHelperNode extends JavaScriptBaseNode {
-        @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
-        @Child private PropertySetNode setTargetNode;
-        @Child private PropertySetNode setHelperTypeNode;
-        @Child private PropertySetNode setValueNode;
-        @Child private PropertySetNode setMapperNode;
-        @Child private PropertySetNode setAliveNode;
-
-        private final JSContext context;
-
-        public CreateIteratorHelperNode(JSContext context) {
-            this.context = context;
-
-            createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
-            setTargetNode = PropertySetNode.createSetHidden(TARGET_ID, context);
-            setHelperTypeNode = PropertySetNode.createSetHidden(HELPER_TYPE_ID, context);
-            setValueNode = PropertySetNode.createSetHidden(VALUE_ID, context);
-            setAliveNode = PropertySetNode.createSetHidden(ALIVE_ID, context);
-            setMapperNode = PropertySetNode.createSetHidden(MAPPER_ID, context);
-        }
-
-        public JSDynamicObject execute(IteratorRecord target, HelperType type, int value) {
-            JSDynamicObject iterator = createObjectNode.execute(JSRealm.get(this).getIteratorHelperPrototype());
-            setTargetNode.setValue(iterator, target);
-            setHelperTypeNode.setValue(iterator, type);
-            setValueNode.setValueInt(iterator, value);
-            return iterator;
-        }
-
-        public JSDynamicObject execute(IteratorRecord target, HelperType type, Number value) {
-            JSDynamicObject iterator = createObjectNode.execute(JSRealm.get(this).getIteratorHelperPrototype());
-            setTargetNode.setValue(iterator, target);
-            setHelperTypeNode.setValue(iterator, type);
-            setValueNode.setValue(iterator, value);
-            return iterator;
-        }
-
-        public JSDynamicObject execute(IteratorRecord target, HelperType type, Object mapper) {
-            JSDynamicObject iterator = createObjectNode.execute(JSRealm.get(this).getIteratorHelperPrototype());
-            setTargetNode.setValue(iterator, target);
-            setHelperTypeNode.setValue(iterator, type);
-            setAliveNode.setValueBoolean(iterator, false);
-            setMapperNode.setValue(iterator, mapper);
-
-            return iterator;
-        }
-
-        public static CreateIteratorHelperNode create(JSContext context) {
-            return new CreateIteratorHelperNode(context);
-        }
     }
 
     public enum HelperIteratorPrototype implements BuiltinEnum<IteratorHelperPrototypeBuiltins.HelperIteratorPrototype> {
@@ -186,438 +134,53 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     public abstract static class IteratorHelperReturnNode extends JSBuiltinNode {
-        @Child private GetHiddenValueNode getTargetNode;
+        @Child private PropertyGetNode getTargetNode;
         @Child private IteratorCloseNode iteratorCloseNode;
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
 
         protected IteratorHelperReturnNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getTargetNode = GetHiddenValueNode.create(context, TARGET_ID);
+            getTargetNode = PropertyGetNode.create(ARGS_ID, context);
             iteratorCloseNode = IteratorCloseNode.create(context);
             createIterResultObjectNode = CreateIterResultObjectNode.create(context);
         }
 
         @Specialization(guards = "isJSObject(thisObj)")
         public Object close(VirtualFrame frame, JSObject thisObj) {
-            IteratorRecord iterated = (IteratorRecord) getTargetNode.execute(thisObj);
+            IteratorRecord iterated = ((IteratorPrototypeBuiltins.IteratorArgs) getTargetNode.getValue(thisObj)).target;
 
             iteratorCloseNode.executeVoid(iterated.getIterator());
             return createIterResultObjectNode.execute(frame, Undefined.instance, true);
         }
     }
 
-    protected abstract static class GetHiddenValueNode extends JavaScriptBaseNode {
-        @Child protected HasHiddenKeyCacheNode hasHiddenKeyCacheNode;
-        @Child private PropertyGetNode getTargetNode;
-
-        public GetHiddenValueNode(JSContext context, HiddenKey key) {
-            hasHiddenKeyCacheNode = HasHiddenKeyCacheNode.create(key);
-            getTargetNode = PropertyGetNode.createGetHidden(key, context);
-        }
-
-        public abstract Object execute(JSDynamicObject generator);
-
-        @Specialization(guards = "hasHiddenKeyCacheNode.executeHasHiddenKey(generator)")
-        protected Object get(JSDynamicObject generator) {
-            return getTargetNode.getValue(generator);
-        }
-
-        @Specialization(guards = "!hasHiddenKeyCacheNode.executeHasHiddenKey(generator)")
-        protected Object incompatible(JSDynamicObject generator) {
-            throw Errors.createTypeErrorIncompatibleReceiver(generator);
-        }
-
-        public static GetHiddenValueNode create(JSContext context, HiddenKey key) {
-            return IteratorHelperPrototypeBuiltinsFactory.GetHiddenValueNodeGen.create(context, key);
-        }
-    }
-
     @ImportStatic({HelperType.class})
     public abstract static class IteratorHelperNextNode extends JSBuiltinNode {
-        @Child private GetHiddenValueNode getHelperTypeNode;
-
-        private final ValueProfile objProfile = ValueProfile.createIdentityProfile();
-        private final ValueProfile typeProfile = ValueProfile.createIdentityProfile();
+        @Child private PropertyGetNode getNextImplNode;
+        @Child private HasHiddenKeyCacheNode hasNextImplNode;
+        @Child private InternalCallNode callNode;
 
         protected IteratorHelperNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getHelperTypeNode = GetHiddenValueNode.create(context, HELPER_TYPE_ID);
+            getNextImplNode = PropertyGetNode.createGetHidden(NEXT_ID, context);
+            hasNextImplNode = HasHiddenKeyCacheNode.create(NEXT_ID);
+            callNode = InternalCallNode.create();
         }
 
-        protected HelperType getHelperType(JSObject thisObj) {
-            return typeProfile.profile((HelperType) this.getHelperTypeNode.execute(objProfile.profile(thisObj)));
+        protected boolean hasImpl(Object thisObj) {
+            return hasNextImplNode.executeHasHiddenKey(thisObj);
         }
 
-        @Specialization(guards = {"isJSObject(thisObj)", "getHelperType(thisObj) == map"})
-        protected Object nextMap(VirtualFrame frame, JSObject thisObj, Object value, @Cached("create(getContext(), getBuiltin())") IteratorHelperNextMapNode nextMapNode) {
-            return nextMapNode.next(frame, thisObj);
+        @Specialization(guards = "hasImpl(thisObj)")
+        public Object next(VirtualFrame frame, Object thisObj) {
+            return callNode.execute((CallTarget) getNextImplNode.getValue(thisObj), frame.getArguments());
         }
 
-        @Specialization(guards = {"isJSObject(thisObj)", "getHelperType(thisObj) == filter"})
-        protected Object nextFilter(VirtualFrame frame, JSObject thisObj, Object value, @Cached("create(getContext(), getBuiltin())") IteratorHelperNextFilterNode nextFilterNode) {
-            return nextFilterNode.next(frame, thisObj);
-        }
-
-        @Specialization(guards = {"isJSObject(thisObj)", "getHelperType(thisObj) == take"})
-        protected Object nextTake(VirtualFrame frame, JSObject thisObj, Object value, @Cached("create(getContext(), getBuiltin())") IteratorHelperNextTakeNode nextTakeNode) {
-            return nextTakeNode.next(frame, thisObj);
-        }
-
-        @Specialization(guards = {"isJSObject(thisObj)", "getHelperType(thisObj) == drop"})
-        protected Object nextDrop(VirtualFrame frame, JSObject thisObj, Object value, @Cached("create(getContext(), getBuiltin())") IteratorHelperNextDropNode nextDropNode) {
-            return nextDropNode.next(frame, thisObj);
-        }
-
-        @Specialization(guards = {"isJSObject(thisObj)", "getHelperType(thisObj) == indexed"})
-        protected Object nextIndexed(VirtualFrame frame, JSObject thisObj, Object value, @Cached("create(getContext(), getBuiltin())") IteratorHelperNextIndexedNode nextIndexedNode) {
-            return nextIndexedNode.next(frame, thisObj);
-        }
-
-        @Specialization(guards = {"isJSObject(thisObj)", "getHelperType(thisObj) == flatMap"})
-        protected Object nextFlatMap(VirtualFrame frame, JSObject thisObj, Object value, @Cached("create(getContext(), getBuiltin())") IteratorHelperNextFlatMapNode nextFlatMapNode) {
-            return nextFlatMapNode.next(frame, thisObj);
-        }
-
-        @Specialization(guards = "!isJSObject(thisObj)")
-        protected Object incompatible(Object thisObj, Object value) {
-            throw Errors.createTypeErrorGeneratorObjectExpected();
+        @Specialization(guards = "!hasImpl(thisObj)")
+        public Object unsupported(Object thisObj) {
+            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
     }
-
-    protected abstract static class IteratorHelperNextMapNode extends JSBuiltinNode {
-        @Child private GetHiddenValueNode getTargetNode;
-        @Child private GetHiddenValueNode getMapperNode;
-
-        @Child private IteratorNextNode iteratorNextNode;
-        @Child private IteratorCompleteNode iteratorCompleteNode;
-        @Child private IteratorValueNode iteratorValueNode;
-        @Child private IteratorCloseNode iteratorCloseNode;
-
-        @Child private CreateIterResultObjectNode createIterResultObjectNode;
-
-        @Child private JSFunctionCallNode callNode;
-
-        private final LoopConditionProfile loopProfile = LoopConditionProfile.createCountingProfile();
-
-        protected IteratorHelperNextMapNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-
-            getTargetNode = GetHiddenValueNode.create(context, TARGET_ID);
-            getMapperNode = GetHiddenValueNode.create(context, MAPPER_ID);
-
-            iteratorNextNode = IteratorNextNode.create();
-            iteratorCompleteNode = IteratorCompleteNode.create(context);
-            iteratorValueNode = IteratorValueNode.create(context);
-            iteratorCloseNode = IteratorCloseNode.create(context);
-
-            createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-
-            callNode = JSFunctionCallNode.createCall();
-        }
-
-        @Specialization(guards = "isJSObject(thisObj)")
-        public Object next(VirtualFrame frame, JSObject thisObj) {
-            IteratorRecord iterated = (IteratorRecord) getTargetNode.execute(thisObj);
-            Object mapper = getMapperNode.execute(thisObj);
-
-            Object next = iteratorNextNode.execute(iterated);
-            boolean done = iteratorCompleteNode.execute(next);
-            if (loopProfile.profile(done)) {
-                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
-            }
-
-            Object value = iteratorValueNode.execute(next);
-            Object mapped = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, mapper, value));
-            return createIterResultObjectNode.execute(frame, mapped, false);
-        }
-
-        protected static IteratorHelperNextMapNode create(JSContext context, JSBuiltin builtin) {
-            return IteratorHelperPrototypeBuiltinsFactory.IteratorHelperNextMapNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-        }
-    }
-
-    protected abstract static class IteratorHelperNextFilterNode extends JSBuiltinNode {
-        @Child private GetHiddenValueNode getTargetNode;
-        @Child private GetHiddenValueNode getMapperNode;
-
-        @Child private IteratorStepNode iteratorStepNode;
-        @Child private IteratorValueNode iteratorValueNode;
-        @Child private IteratorCloseNode iteratorCloseNode;
-
-        @Child private CreateIterResultObjectNode createIterResultObjectNode;
-
-        @Child private JSFunctionCallNode callNode;
-        @Child private JSToBooleanNode toBooleanNode;
-
-        protected IteratorHelperNextFilterNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-
-            getTargetNode = GetHiddenValueNode.create(context, TARGET_ID);
-            getMapperNode = GetHiddenValueNode.create(context, MAPPER_ID);
-
-            iteratorStepNode = IteratorStepNode.create(context);
-            iteratorValueNode = IteratorValueNode.create(context);
-            iteratorCloseNode = IteratorCloseNode.create(context);
-
-            createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-
-            callNode = JSFunctionCallNode.createCall();
-            toBooleanNode = JSToBooleanNode.create();
-        }
-
-        @Specialization(guards = "isJSObject(thisObj)")
-        public Object next(VirtualFrame frame, JSObject thisObj) {
-            IteratorRecord iterated = (IteratorRecord) getTargetNode.execute(thisObj);
-            Object filterer = getMapperNode.execute(thisObj);
-
-            while (true) {
-                Object next = iteratorStepNode.execute(iterated);
-                if (next == (Boolean) false) {
-                    return createIterResultObjectNode.execute(frame, Undefined.instance, true);
-                }
-
-                Object value = iteratorValueNode.execute(next);
-                Object selected = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, filterer, value));
-                if (toBooleanNode.executeBoolean(selected)) {
-                    return createIterResultObjectNode.execute(frame, value, false);
-                }
-            }
-        }
-
-        protected static IteratorHelperNextFilterNode create(JSContext context, JSBuiltin builtin) {
-            return IteratorHelperPrototypeBuiltinsFactory.IteratorHelperNextFilterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-        }
-    }
-
-    protected abstract static class IteratorHelperNextTakeNode extends JSBuiltinNode {
-        @Child private GetHiddenValueNode getTargetNode;
-        @Child private GetHiddenValueNode getValueNode;
-        @Child private PropertySetNode setValueNode;
-
-        @Child private IteratorStepNode iteratorStepNode;
-        @Child private IteratorValueNode iteratorValueNode;
-        @Child private IteratorCloseNode iteratorCloseNode;
-
-        @Child private CreateIterResultObjectNode createIterResultObjectNode;
-
-        protected IteratorHelperNextTakeNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-
-            getTargetNode = GetHiddenValueNode.create(context, TARGET_ID);
-            getValueNode = GetHiddenValueNode.create(context, VALUE_ID);
-            setValueNode = PropertySetNode.createSetHidden(VALUE_ID, context);
-
-            iteratorStepNode = IteratorStepNode.create(context);
-            iteratorValueNode = IteratorValueNode.create(context);
-            iteratorCloseNode = IteratorCloseNode.create(context);
-
-            createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-        }
-
-        @Specialization(guards = "isJSObject(thisObj)")
-        public Object next(VirtualFrame frame, JSObject thisObj) {
-            IteratorRecord iterated = (IteratorRecord) getTargetNode.execute(thisObj);
-            Number remaining = (Number) getValueNode.execute(thisObj);
-            if (remaining.doubleValue() == 0) {
-                Object result = iteratorCloseNode.execute(iterated.getIterator(), Undefined.instance);
-                return createIterResultObjectNode.execute(frame, result, true);
-            }
-
-            if (Double.isFinite(remaining.doubleValue())) {
-                setValueNode.setValue(thisObj, remaining.doubleValue() - 1); // TODO: Optimize?
-            }
-
-            Object next = iteratorStepNode.execute(iterated);
-            if (next == (Boolean) false) {
-                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
-            }
-
-            Object value = iteratorValueNode.execute(next);
-            return createIterResultObjectNode.execute(frame, value, false);
-        }
-
-        protected static IteratorHelperNextTakeNode create(JSContext context, JSBuiltin builtin) {
-            return IteratorHelperPrototypeBuiltinsFactory.IteratorHelperNextTakeNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-        }
-    }
-
-    protected abstract static class IteratorHelperNextDropNode extends JSBuiltinNode {
-        @Child private GetHiddenValueNode getTargetNode;
-        @Child private GetHiddenValueNode getValueNode;
-        @Child private PropertySetNode setValueNode;
-
-        @Child private IteratorStepNode iteratorStepNode;
-        @Child private IteratorValueNode iteratorValueNode;
-        @Child private IteratorCloseNode iteratorCloseNode;
-
-        @Child private CreateIterResultObjectNode createIterResultObjectNode;
-
-        protected IteratorHelperNextDropNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-
-            getTargetNode = GetHiddenValueNode.create(context, TARGET_ID);
-            getValueNode = GetHiddenValueNode.create(context, VALUE_ID);
-            setValueNode = PropertySetNode.createSetHidden(VALUE_ID, context);
-
-            iteratorStepNode = IteratorStepNode.create(context);
-            iteratorValueNode = IteratorValueNode.create(context);
-            iteratorCloseNode = IteratorCloseNode.create(context);
-
-            createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-        }
-
-        @Specialization(guards = "isJSObject(thisObj)")
-        public Object next(VirtualFrame frame, JSObject thisObj) {
-            IteratorRecord iterated = (IteratorRecord) getTargetNode.execute(thisObj);
-            double remaining = ((Number) getValueNode.execute(thisObj)).doubleValue(); // TODO: Optimize?
-            while (remaining > 0) {
-                Object next = iteratorStepNode.execute(iterated);
-                if (next == (Boolean) false) {
-                    return createIterResultObjectNode.execute(frame, Undefined.instance, true);
-                }
-
-                if (Double.isFinite(remaining)) {
-                    remaining--;
-                }
-            }
-
-            setValueNode.setValue(thisObj, 0);
-
-            Object next = iteratorStepNode.execute(iterated);
-            if (next == (Boolean) false) {
-                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
-            }
-
-            Object value = iteratorValueNode.execute(next);
-            return createIterResultObjectNode.execute(frame, value, false);
-        }
-
-        protected static IteratorHelperNextDropNode create(JSContext context, JSBuiltin builtin) {
-            return IteratorHelperPrototypeBuiltinsFactory.IteratorHelperNextDropNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-        }
-    }
-
-    protected abstract static class IteratorHelperNextIndexedNode extends JSBuiltinNode {
-        @Child private GetHiddenValueNode getTargetNode;
-        @Child private GetHiddenValueNode getValueNode;
-        @Child private PropertySetNode setValueNode;
-
-        @Child private IteratorStepNode iteratorStepNode;
-        @Child private IteratorValueNode iteratorValueNode;
-
-        @Child private CreateIterResultObjectNode createIterResultObjectNode;
-
-        protected IteratorHelperNextIndexedNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-
-            getTargetNode = GetHiddenValueNode.create(context, TARGET_ID);
-            getValueNode = GetHiddenValueNode.create(context, VALUE_ID);
-            setValueNode = PropertySetNode.createSetHidden(VALUE_ID, context);
-
-            iteratorStepNode = IteratorStepNode.create(context);
-            iteratorValueNode = IteratorValueNode.create(context);
-
-            createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-        }
-
-        @Specialization(guards = "isJSObject(thisObj)")
-        public Object next(VirtualFrame frame, JSObject thisObj) {
-            int index = (int) getValueNode.execute(thisObj);
-            IteratorRecord iterated = (IteratorRecord) getTargetNode.execute(thisObj);
-
-            Object next = iteratorStepNode.execute(iterated);
-            if (next == (Boolean) false) {
-                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
-            }
-
-            Object value = iteratorValueNode.execute(next);
-            JSArrayObject pair = JSArray.createConstantObjectArray(getContext(), getRealm(), new Object[]{index, value});
-            setValueNode.setValue(thisObj, index + 1);
-
-            return createIterResultObjectNode.execute(frame, pair, false);
-        }
-
-        protected static IteratorHelperNextIndexedNode create(JSContext context, JSBuiltin builtin) {
-            return IteratorHelperPrototypeBuiltinsFactory.IteratorHelperNextIndexedNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-        }
-    }
-
-    protected abstract static class IteratorHelperNextFlatMapNode extends JSBuiltinNode {
-        @Child private GetHiddenValueNode getTargetNode;
-        @Child private GetHiddenValueNode getMapperNode;
-        @Child private GetHiddenValueNode getValueNode;
-        @Child private PropertySetNode setValueNode;
-        @Child private GetHiddenValueNode getAliveNode;
-        @Child private PropertySetNode setAliveNode;
-
-        @Child private IteratorStepNode iteratorStepNode;
-        @Child private IteratorValueNode iteratorValueNode;
-        @Child private IteratorCloseNode iteratorCloseNode;
-
-        @Child private CreateIterResultObjectNode createIterResultObjectNode;
-        @Child private GetIteratorNode getIteratorNode;
-        @Child private JSFunctionCallNode callNode;
-
-        protected IteratorHelperNextFlatMapNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-
-            getTargetNode = GetHiddenValueNode.create(context, TARGET_ID);
-            getMapperNode = GetHiddenValueNode.create(context, MAPPER_ID);
-            getValueNode = GetHiddenValueNode.create(context, VALUE_ID);
-            setValueNode = PropertySetNode.createSetHidden(VALUE_ID, context);
-            getAliveNode = GetHiddenValueNode.create(context, ALIVE_ID);
-            setAliveNode = PropertySetNode.createSetHidden(ALIVE_ID, context);
-
-            iteratorStepNode = IteratorStepNode.create(context);
-            iteratorValueNode = IteratorValueNode.create(context);
-            iteratorCloseNode = IteratorCloseNode.create(context);
-
-            createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-            getIteratorNode = GetIteratorNode.create(context);
-
-            callNode = JSFunctionCallNode.createCall();
-        }
-
-        @Specialization(guards = "isJSObject(thisObj)")
-        public Object next(VirtualFrame frame, JSObject thisObj) {
-            Object mapper = getMapperNode.execute(thisObj);
-            boolean innerAlive = (boolean) getAliveNode.get(thisObj);
-
-            while (true) {
-                if (innerAlive) {
-                    IteratorRecord iterated = (IteratorRecord) getValueNode.execute(thisObj);
-                    Object next = iteratorStepNode.execute(iterated);
-                    if (next == (Boolean) false) {
-                        innerAlive = false;
-                        setAliveNode.setValueBoolean(thisObj, false);
-                        continue;
-                    }
-
-                    Object value = iteratorValueNode.execute(next);
-                    return createIterResultObjectNode.execute(frame, value, false);
-                } else {
-                    IteratorRecord iterated = (IteratorRecord) getTargetNode.execute(thisObj);
-                    Object next = iteratorStepNode.execute(iterated);
-                    if (next == (Boolean) false) {
-                        setAliveNode.setValueBoolean(thisObj, false);
-                        return createIterResultObjectNode.execute(frame, Undefined.instance, true);
-                    }
-
-                    Object value = iteratorValueNode.execute(next);
-                    Object mapped = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, mapper, value));
-                    IteratorRecord innerIterator = getIteratorNode.execute(mapped);
-                    setValueNode.setValue(thisObj, innerIterator);
-                    innerAlive = true;
-                    setAliveNode.setValueBoolean(thisObj, true);
-                }
-            }
-        }
-
-        protected static IteratorHelperNextFlatMapNode create(JSContext context, JSBuiltin builtin) {
-            return IteratorHelperPrototypeBuiltinsFactory.IteratorHelperNextFlatMapNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-        }
-    }
-
 }

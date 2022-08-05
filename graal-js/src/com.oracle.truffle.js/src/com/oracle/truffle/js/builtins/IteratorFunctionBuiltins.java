@@ -43,8 +43,10 @@ package com.oracle.truffle.js.builtins;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.IteratorFunctionBuiltinsFactory.GetIteratorDirectNodeGen;
 import com.oracle.truffle.js.builtins.IteratorFunctionBuiltinsFactory.JSIteratorFromNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -107,7 +109,7 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ArrayFunction builtinEnum) {
         switch (builtinEnum) {
             case from:
-                return JSIteratorFromNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
+                return JSIteratorFromNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
 
         return null;
@@ -155,19 +157,20 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
 
+        private final ConditionProfile directProfile = ConditionProfile.createBinaryProfile();
+
         public JSIteratorFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.getIteratorMethodNode = GetMethodNode.create(context, Symbol.SYMBOL_ITERATOR);
         }
 
-        @Specialization
-        protected JSDynamicObject iteratorFrom(Object thisObj, Object[] args) {
-            Object arg = JSRuntime.getArgOrUndefined(args, 0);
 
+        @Specialization
+        protected JSDynamicObject iteratorFrom(Object arg) {
             IteratorRecord iteratorRecord = null;
 
             Object usingIterator = getIteratorMethodNode.executeWithTarget(arg);
-            if (usingIterator != Undefined.instance) {
+            if (directProfile.profile(usingIterator != Undefined.instance)) {
                 if (getIteratorNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     getIteratorNode = insert(GetIteratorNode.create(getContext()));
@@ -194,5 +197,7 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
 
             return JSWrapForIterator.create(getContext(), getRealm(), iteratorRecord);
         }
+
+
     }
 }
