@@ -82,6 +82,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIterator;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -98,6 +99,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     public enum IteratorPrototype implements BuiltinEnum<IteratorPrototype> {
+        toAsync(0),
         toArray(0),
         forEach(1),
 
@@ -134,6 +136,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, IteratorPrototype builtinEnum) {
         switch (builtinEnum) {
+            case toAsync:
+                return IteratorPrototypeBuiltinsFactory.IteratorToAsyncNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
             case toArray:
                 return IteratorPrototypeBuiltinsFactory.IteratorToArrayNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
             case forEach:
@@ -967,6 +971,22 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             return items;
+        }
+    }
+
+    public abstract static class IteratorToAsyncNode extends JSBuiltinNode {
+        @Child private IteratorFunctionBuiltins.GetIteratorDirectNode getIteratorDirectNode;
+
+        protected IteratorToAsyncNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+
+            getIteratorDirectNode = IteratorFunctionBuiltins.GetIteratorDirectNode.create(context);
+        }
+
+        @Specialization
+        protected JSDynamicObject toArray(Object thisObj) {
+            IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
+            return JSWrapForAsyncIterator.create(getContext(), getRealm(), iterated);
         }
     }
 
