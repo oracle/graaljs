@@ -40,11 +40,7 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
-import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.test.interop.AsyncInteropTest;
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
@@ -53,8 +49,9 @@ import org.junit.Test;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
+import com.oracle.truffle.js.test.interop.AsyncInteropTest;
 
-public class IteratorPrototypeBuiltins {
+public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testObject() {
         String src = "var parent = Object.getPrototypeOf(Iterator.prototype) === Object.prototype; var proto = typeof Iterator.prototype";
@@ -597,6 +594,17 @@ public class IteratorPrototypeBuiltins {
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype[Symbol.toStringTag]");
             Assert.assertEquals("Iterator", result.asString());
+        }
+    }
+
+
+    @Test
+    public void testCombined() {
+        Context.Builder builder = JSTest.newContextBuilder();
+        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        try (Context context = builder.build()) {
+            Value result = context.eval(JavaScriptLanguage.ID, "[4,5,6,7].values().indexed().flatMap(x => x).filter(x=>x>1).map(x => x*2).drop(3).take(1).reduce((a, b) => a + b, -1)");
+            Assert.assertEquals(11, result.asInt());
         }
     }
 }
