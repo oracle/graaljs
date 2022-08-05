@@ -92,7 +92,7 @@ public final class JSWrapForAsyncIterator extends JSNonProxy implements JSConstr
 
     @Override
     public TruffleString getClassName() {
-        return JSIterator.CLASS_NAME;
+        return JSAsyncIterator.CLASS_NAME;
     }
 
     @Override

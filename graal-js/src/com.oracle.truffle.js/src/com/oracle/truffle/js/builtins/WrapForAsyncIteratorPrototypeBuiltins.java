@@ -65,9 +65,9 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIteratorObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -79,7 +79,7 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
     public static final JSBuiltinsContainer BUILTINS = new WrapForAsyncIteratorPrototypeBuiltins();
 
     protected WrapForAsyncIteratorPrototypeBuiltins() {
-        super(JSIterator.CLASS_NAME, WrapForWrapForAsyncIterator.class); // TODO: async
+        super(JSAsyncIterator.CLASS_NAME, WrapForWrapForAsyncIterator.class);
     }
 
     public enum WrapForWrapForAsyncIterator implements BuiltinEnum<WrapForWrapForAsyncIterator> {

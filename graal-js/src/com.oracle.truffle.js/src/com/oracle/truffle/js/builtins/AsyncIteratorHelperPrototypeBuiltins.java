@@ -98,7 +98,7 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
     }
 
     public enum HelperIteratorPrototype implements BuiltinEnum<AsyncIteratorHelperPrototypeBuiltins.HelperIteratorPrototype> {
-        next(1),
+        next(0),
         return_(0);
 
         private final int length;
