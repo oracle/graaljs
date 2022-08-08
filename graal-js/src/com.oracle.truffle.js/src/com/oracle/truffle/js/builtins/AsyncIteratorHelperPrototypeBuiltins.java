@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.AsyncIteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -211,123 +212,21 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
     public abstract static class IteratorHelperReturnNode extends JSBuiltinNode {
         @Child private GetTargetNode getTargetNode;
-        @Child private AsyncIteratorClose asyncIteratorClose;
+        @Child private AsyncIteratorCloseNode asyncIteratorClose;
 
         protected IteratorHelperReturnNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
             getTargetNode = GetTargetNode.create(context);
-            asyncIteratorClose = AsyncIteratorClose.create(context);
+            asyncIteratorClose = AsyncIteratorCloseNode.create(context);
         }
 
         @Specialization(guards = "isJSObject(thisObj)")
-        public Object close(VirtualFrame frame, JSObject thisObj) {
+        public Object close(JSObject thisObj) {
             IteratorRecord iterated = getTargetNode.execute(thisObj);
 
-            return asyncIteratorClose.execute(frame, iterated);
+            return asyncIteratorClose.execute(iterated.getIterator());
         }
-    }
-
-    protected static class AsyncIteratorClose extends JavaScriptBaseNode {
-        @Child public GetMethodNode getReturnNode;
-        @Child private PropertyGetNode getContructorNode;
-        @Child public JSFunctionCallNode callNode;
-        @Child public NewPromiseCapabilityNode newPromiseCapabilityNode;
-        @Child public CreateIterResultObjectNode createIterResultObjectNode;
-        @Child public PerformPromiseThenNode performPromiseThenNode;
-        @Child public IsObjectNode isObjectNode;
-        @Child public PropertySetNode setPromiseNode;
-
-        private static final HiddenKey PROMISE_KEY = new HiddenKey("promiseKey");
-
-        private final JSContext context;
-
-        public AsyncIteratorClose(JSContext context) {
-            this.context = context;
-
-            getReturnNode = GetMethodNode.create(context, Strings.RETURN);
-            getContructorNode = PropertyGetNode.create(JSObject.CONSTRUCTOR, context);
-            callNode = JSFunctionCallNode.createCall();
-            newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
-            createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-            performPromiseThenNode = PerformPromiseThenNode.create(context);
-            isObjectNode = IsObjectNode.create();
-            setPromiseNode = PropertySetNode.createSetHidden(PROMISE_KEY, context);
-        }
-
-        public static AsyncIteratorClose create(JSContext context) {
-            return new AsyncIteratorClose(context);
-        }
-
-        public final Object execute(VirtualFrame frame, IteratorRecord iterated) {
-            Object innerResult = getReturnNode.executeWithTarget(iterated.getIterator());
-            if (innerResult == Undefined.instance) {
-                PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
-                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), createIterResultObjectNode.execute(frame, Undefined.instance, true)));
-                return promiseCapability.getPromise();
-            }
-
-            if (JSPromise.isJSPromise(innerResult) && getContructorNode.getValueOrDefault(innerResult, Undefined.instance) == getRealm().getPromiseConstructor()) {
-                return performPromiseThenNode.execute((JSDynamicObject) innerResult, createCloseFunction(context, (JSDynamicObject) innerResult), Undefined.instance,
-                                newPromiseCapabilityNode.executeDefault());
-            }
-
-            PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
-            if (isObjectNode.executeBoolean(innerResult)) {
-                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), createIterResultObjectNode.execute(frame, innerResult, true)));
-            } else {
-                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(),
-                                createIterResultObjectNode.execute(frame, Errors.createTypeErrorIterResultNotAnObject(innerResult, this), true)));
-            }
-            return promiseCapability.getPromise();
-        }
-
-        protected JSFunctionObject createCloseFunction(JSContext context, JSDynamicObject promise) {
-            JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncIteratorClose, AsyncIteratorClose::createCloseFunctionImpl);
-            JSFunctionObject function = JSFunction.create(getRealm(), functionData);
-            setPromiseNode.setValue(function, promise);
-            return function;
-        }
-
-        private static JSFunctionData createCloseFunctionImpl(JSContext context) {
-            class AsyncIteratorCloseRootNode extends JavaScriptRootNode implements AsyncHandlerRootNode {
-                @Child private JavaScriptNode valueNode;
-                @Child public NewPromiseCapabilityNode newPromiseCapabilityNode;
-                @Child public JSFunctionCallNode callNode;
-                @Child public IsObjectNode isObjectNode;
-                @Child public CreateIterResultObjectNode createIterResultObjectNode;
-
-                AsyncIteratorCloseRootNode(JSContext context) {
-                    valueNode = AccessIndexedArgumentNode.create(0);
-                    newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
-                    callNode = JSFunctionCallNode.createCall();
-                    isObjectNode = IsObjectNode.create();
-                    createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-                }
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object value = valueNode.execute(frame);
-                    PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
-                    if (isObjectNode.executeBoolean(value)) {
-                        callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), createIterResultObjectNode.execute(frame, value, true)));
-                    } else {
-                        callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(),
-                                        createIterResultObjectNode.execute(frame, Errors.createTypeErrorIterResultNotAnObject(value, this), true)));
-                    }
-                    return promiseCapability.getPromise();
-                }
-
-                @Override
-                public AsyncStackTraceInfo getAsyncStackTraceInfo(JSFunctionObject handlerFunction) {
-                    assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
-                    JSDynamicObject promise = (JSDynamicObject) JSObjectUtil.getHiddenProperty(handlerFunction, PROMISE_KEY);
-                    return new AsyncStackTraceInfo(promise, null);
-                }
-            }
-            return JSFunctionData.createCallOnly(context, new AsyncIteratorCloseRootNode(context).getCallTarget(), 1, Strings.EMPTY_STRING);
-        }
-
     }
 
     public abstract static class AsyncIteratorHelperNextNode extends JSBuiltinNode {
