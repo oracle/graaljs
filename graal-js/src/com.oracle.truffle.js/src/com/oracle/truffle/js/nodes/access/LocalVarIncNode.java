@@ -431,6 +431,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
 
     @Specialization(guards = {"isIllegal(frame)"})
     Object doDead(@SuppressWarnings("unused") Frame frame) {
+        assert hasTemporalDeadZone();
         throw Errors.createReferenceErrorNotDefined(getIdentifier(), this);
     }
 
@@ -580,6 +581,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
 
     @Specialization(guards = {"isIllegal(frame)"})
     Object doDead(@SuppressWarnings("unused") Frame frame) {
+        assert hasTemporalDeadZone();
         throw Errors.createReferenceErrorNotDefined(getIdentifier(), this);
     }
 

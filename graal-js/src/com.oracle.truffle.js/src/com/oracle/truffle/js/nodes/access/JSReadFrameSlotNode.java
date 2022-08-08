@@ -173,6 +173,7 @@ abstract class JSReadScopeFrameSlotNode extends JSReadFrameSlotNode {
 
     @Specialization(guards = "isIllegal(levelFrame)")
     protected final Object doDead(@SuppressWarnings("unused") Frame levelFrame) {
+        assert hasTemporalDeadZone();
         throw Errors.createReferenceErrorNotDefined(getIdentifier(), this);
     }
 
@@ -224,6 +225,7 @@ abstract class JSReadCurrentFrameSlotNode extends JSReadFrameSlotNode {
 
     @Specialization(guards = "isIllegal(frame)")
     protected final Object doDead(@SuppressWarnings("unused") VirtualFrame frame) {
+        assert hasTemporalDeadZone();
         throw Errors.createReferenceErrorNotDefined(getIdentifier(), this);
     }
 
