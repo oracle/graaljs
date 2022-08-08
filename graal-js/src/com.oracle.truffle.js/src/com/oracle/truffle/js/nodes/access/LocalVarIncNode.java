@@ -50,7 +50,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
@@ -390,13 +389,9 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
                     @Cached("createBinaryProfile()") ConditionProfile isBigIntProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBoundaryProfile,
                     @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode,
-                    @Cached("createToNumericOperand()") JSToNumericNode toNumericOperand,
-                    @Cached("create()") BranchProfile deadBranch) {
+                    @Cached("createToNumericOperand()") JSToNumericNode toNumericOperand) {
         ensureObjectKind(frame);
         Object value = frame.getObject(slot);
-        if (hasTemporalDeadZone()) {
-            checkNotDead(value, deadBranch);
-        }
         Object operand = toNumericOperand.execute(value);
         if (isNumberProfile.profile(operand instanceof Number)) {
             frame.setObject(slot, op.doNumber((Number) operand, isIntegerProfile, isBoundaryProfile));
@@ -541,13 +536,9 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
                     @Cached("createBinaryProfile()") ConditionProfile isBigIntProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBoundaryProfile,
                     @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode,
-                    @Cached("createToNumericOperand()") JSToNumericNode toNumericOperand,
-                    @Cached("create()") BranchProfile deadBranch) {
+                    @Cached("createToNumericOperand()") JSToNumericNode toNumericOperand) {
         ensureObjectKind(frame);
         Object value = frame.getObject(slot);
-        if (hasTemporalDeadZone()) {
-            checkNotDead(value, deadBranch);
-        }
         Object operand = toNumericOperand.execute(value);
         Object newValue;
         if (isNumberProfile.profile(operand instanceof Number)) {

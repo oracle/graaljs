@@ -46,10 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.objects.Dead;
 
 public abstract class FrameSlotNode extends JavaScriptNode {
 
@@ -76,14 +73,6 @@ public abstract class FrameSlotNode extends JavaScriptNode {
 
     public boolean hasTemporalDeadZone() {
         return false;
-    }
-
-    protected final Object checkNotDead(Object value, BranchProfile deadBranch) {
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, value == Dead.instance())) {
-            deadBranch.enter();
-            throw Errors.createReferenceErrorNotDefined(getIdentifier(), this);
-        }
-        return value;
     }
 
     protected final boolean isIllegal(Frame frame) {
