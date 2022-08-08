@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -51,7 +52,9 @@ import com.oracle.truffle.js.nodes.access.AsyncIteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
+import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
@@ -166,16 +169,18 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
     protected abstract static class GetTargetNode extends JavaScriptBaseNode {
         @Child private PropertyGetNode getTargetNode;
+        @Child private HasHiddenKeyCacheNode hasTargetNode;
 
         public GetTargetNode(JSContext context) {
             getTargetNode = PropertyGetNode.createGetHidden(TARGET_ID, context);
+            hasTargetNode = HasHiddenKeyCacheNode.create(TARGET_ID);
         }
 
         public abstract IteratorRecord execute(JSDynamicObject generator);
 
         @Specialization
         protected IteratorRecord get(JSDynamicObject generator) {
-            if (!generator.hasProperty(TARGET_ID)) {
+            if (!hasTargetNode.executeHasHiddenKey(generator)) {
                 throw Errors.createTypeErrorIncompatibleReceiver(generator);
             }
 
@@ -189,16 +194,18 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
     protected abstract static class GetNextNode extends JavaScriptBaseNode {
         @Child private PropertyGetNode getTargetNode;
+        @Child private HasHiddenKeyCacheNode hasTargetNode;
 
         public GetNextNode(JSContext context) {
             getTargetNode = PropertyGetNode.createGetHidden(IMPL_ID, context);
+            hasTargetNode = HasHiddenKeyCacheNode.create(IMPL_ID);
         }
 
         public abstract JSFunctionObject execute(JSDynamicObject generator);
 
         @Specialization
         protected JSFunctionObject get(JSDynamicObject generator) {
-            if (!generator.hasProperty(TARGET_ID)) {
+            if (!hasTargetNode.executeHasHiddenKey(generator)) {
                 throw Errors.createTypeErrorIncompatibleReceiver(generator);
             }
 
@@ -213,29 +220,55 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
     public abstract static class IteratorHelperReturnNode extends JSBuiltinNode {
         @Child private GetTargetNode getTargetNode;
         @Child private AsyncIteratorCloseNode asyncIteratorClose;
+        @Child private JSFunctionCallNode callNode;
+        @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
+        @Child private HasHiddenKeyCacheNode hasInnerNode;
+        @Child private PropertyGetNode getInnerNode;
+        @Child private IteratorCloseNode iteratorCloseNode;
 
         protected IteratorHelperReturnNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
             getTargetNode = GetTargetNode.create(context);
+            newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
+            callNode = JSFunctionCallNode.createCall();
             asyncIteratorClose = AsyncIteratorCloseNode.create(context);
+            iteratorCloseNode = IteratorCloseNode.create(context);
+            hasInnerNode = HasHiddenKeyCacheNode.create(AsyncIteratorPrototypeBuiltins.AsyncIteratorFlatMapNode.CURRENT_ID);
+            getInnerNode = PropertyGetNode.create(AsyncIteratorPrototypeBuiltins.AsyncIteratorFlatMapNode.CURRENT_ID, context);
         }
 
         @Specialization(guards = "isJSObject(thisObj)")
         public Object close(JSObject thisObj) {
-            IteratorRecord iterated = getTargetNode.execute(thisObj);
+            if (hasInnerNode.executeHasHiddenKey(thisObj)) {
+                try {
+                    iteratorCloseNode.executeAbrupt(((IteratorRecord) getInnerNode.getValue(thisObj)).getIterator());
+                } catch (AbstractTruffleException ex) {
+                    //We don't care
+                }
+            }
+            try {
+                IteratorRecord iterated = getTargetNode.execute(thisObj);
 
-            return asyncIteratorClose.execute(iterated.getIterator());
+
+                return asyncIteratorClose.execute(iterated.getIterator());
+            } catch (AbstractTruffleException ex) {
+                PromiseCapabilityRecord capabilityRecord = newPromiseCapabilityNode.executeDefault();
+                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, capabilityRecord.getReject(), Errors.createTypeErrorIncompatibleReceiver(thisObj)));
+                return capabilityRecord.getPromise();
+            }
         }
     }
 
     public abstract static class AsyncIteratorHelperNextNode extends JSBuiltinNode {
         @Child private GetNextNode getNextNode;
-        @Child public NewPromiseCapabilityNode newPromiseCapabilityNode;
-        @Child public PerformPromiseThenNode performPromiseThenNode;
-        @Child public PropertySetNode setIteratorPromiseNode;
-        @Child public PropertyGetNode getPromiseNode;
-        @Child public PropertySetNode setPromiseNode;
+        @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
+        @Child private JSFunctionCallNode callNode;
+        @Child private PerformPromiseThenNode performPromiseThenNode;
+        @Child private PropertySetNode setIteratorPromiseNode;
+        @Child private PropertyGetNode getPromiseNode;
+        @Child private PropertySetNode setPromiseNode;
+        @Child private PropertySetNode setThisNode;
 
         protected AsyncIteratorHelperNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -243,20 +276,29 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
             getNextNode = GetNextNode.create(context);
             newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             performPromiseThenNode = PerformPromiseThenNode.create(context);
+            callNode = JSFunctionCallNode.createCall();
             setIteratorPromiseNode = PropertySetNode.createSetHidden(AsyncIteratorPrototypeBuiltins.PROMISE_ID, context);
             getPromiseNode = PropertyGetNode.createGetHidden(NEXT_PROMISE_ID, context);
             setPromiseNode = PropertySetNode.createSetHidden(NEXT_PROMISE_ID, context);
+            setThisNode = PropertySetNode.createSetHidden(AsyncIteratorPrototypeBuiltins.AsyncIteratorAwaitNode.THIS_ID, context);
         }
 
         @Specialization(guards = {"isJSObject(thisObj)"})
         protected Object next(JSObject thisObj) {
-            JSDynamicObject promise = (JSDynamicObject) getPromiseNode.getValue(thisObj);
+            try {
+                JSDynamicObject promise = (JSDynamicObject) getPromiseNode.getValue(thisObj);
 
-            Object impl = getNextNode.execute(thisObj);
-            setIteratorPromiseNode.setValue(impl, promise);
-            JSDynamicObject result = performPromiseThenNode.execute(promise, impl, Undefined.instance, newPromiseCapabilityNode.executeDefault());
-            setPromiseNode.setValue(thisObj, result);
-            return result;
+                Object impl = getNextNode.execute(thisObj);
+                setIteratorPromiseNode.setValue(thisObj, promise);
+                setThisNode.setValue(impl, thisObj);
+                JSDynamicObject result = performPromiseThenNode.execute(promise, impl, Undefined.instance, newPromiseCapabilityNode.executeDefault());
+                setPromiseNode.setValue(thisObj, result);
+                return result;
+            } catch (AbstractTruffleException ex) {
+                PromiseCapabilityRecord capabilityRecord = newPromiseCapabilityNode.executeDefault();
+                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, capabilityRecord.getReject(), Errors.createTypeErrorIncompatibleReceiver(thisObj)));
+                return capabilityRecord.getPromise();
+            }
         }
 
         @Specialization(guards = "!isJSObject(thisObj)")
