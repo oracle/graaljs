@@ -78,7 +78,6 @@ import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
-import com.oracle.truffle.js.nodes.access.InitializeFrameSlotsNode;
 import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteUnaryNode;
 import com.oracle.truffle.js.nodes.access.IteratorGetNextValueNode;
@@ -647,21 +646,6 @@ public class NodeFactory {
 
     public JavaScriptNode createGlobalVarWrapper(TruffleString varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
         return new GlobalScopeVarWrapperNode(varName, defaultDelegate, dynamicScope, scopeAccessNode);
-    }
-
-    public JavaScriptNode createInitializeFrameSlots(ScopeFrameNode scope, int[] slots) {
-        return InitializeFrameSlotsNode.create(scope, slots);
-    }
-
-    public JavaScriptNode createInitializeFrameSlotRange(ScopeFrameNode scope, int start, int end) {
-        return InitializeFrameSlotsNode.createRange(scope, start, end);
-    }
-
-    public final JavaScriptNode createInitializeFrameSlots(ScopeFrameNode scope, int[] slots, int from, int to) {
-        if (isIndexRange(slots, from, to)) {
-            return createInitializeFrameSlotRange(scope, slots[from], slots[to - 1] + 1);
-        }
-        return createInitializeFrameSlots(scope, (from == 0 && to == slots.length) ? slots : Arrays.copyOfRange(slots, from, to));
     }
 
     /** Check if the indices can be represented as closed range [slots[from], slots[to - 1]]. */
