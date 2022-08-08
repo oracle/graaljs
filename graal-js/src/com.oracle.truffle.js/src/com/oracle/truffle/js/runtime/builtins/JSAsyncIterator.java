@@ -55,7 +55,8 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSAsyncIterator extends JSNonProxy implements JSConstructorFactory.WithFunctionsAndSpecies, PrototypeSupplier {
 
-    public static final TruffleString CLASS_NAME = Strings.constant("Async Iterator");
+    public static final TruffleString CLASS_NAME = Strings.constant("AsyncIterator");
+    public static final TruffleString TO_STRING_NAME = Strings.constant("Async Iterator");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("AsyncIterator.prototype");
 
     public static final JSAsyncIterator INSTANCE = new JSAsyncIterator();
@@ -76,7 +77,7 @@ public final class JSAsyncIterator extends JSNonProxy implements JSConstructorFa
 
         JSObjectUtil.putConstructorProperty(ctx, iteratorPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, iteratorPrototype, AsyncIteratorPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(iteratorPrototype, CLASS_NAME);
+        JSObjectUtil.putToStringTag(iteratorPrototype, TO_STRING_NAME);
         JSObjectUtil.putDataProperty(realm.getContext(), iteratorPrototype, Symbol.SYMBOL_ASYNC_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(realm), JSAttributes.getDefaultNotEnumerable());
 
         return iteratorPrototype;
@@ -112,7 +113,7 @@ public final class JSAsyncIterator extends JSNonProxy implements JSConstructorFa
 
     @Override
     public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
-        return getClassName(object);
+        return TO_STRING_NAME;
     }
 
     @Override

@@ -55,6 +55,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIterator;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -65,7 +66,7 @@ public final class AsyncIteratorFunctionBuiltins extends JSBuiltinsContainer.Swi
     public static final JSBuiltinsContainer BUILTINS = new AsyncIteratorFunctionBuiltins();
 
     protected AsyncIteratorFunctionBuiltins() {
-        super(JSArray.CLASS_NAME, AsyncIteratorFunction.class);
+        super(JSAsyncIterator.CLASS_NAME, AsyncIteratorFunction.class);
     }
 
     public enum AsyncIteratorFunction implements BuiltinEnum<AsyncIteratorFunction> {
