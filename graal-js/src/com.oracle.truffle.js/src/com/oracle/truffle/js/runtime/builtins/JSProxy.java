@@ -58,6 +58,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.ProxyFunctionBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.JSProxyCallNode;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -207,7 +208,12 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
                 JSDynamicObject jsobj = (JSDynamicObject) target;
                 return JSObject.getJSClass(jsobj).getHelper(jsobj, receiver, key, encapsulatingNode);
             } else {
-                return JSInteropUtil.readMemberOrDefault(target, key, null);
+                Object result = JSInteropUtil.readMemberOrDefault(target, key, null);
+                if (result == null && JavaScriptLanguage.get(encapsulatingNode).getJSContext().getContextOptions().hasForeignObjectPrototype()) {
+                    JSDynamicObject prototype = ForeignObjectPrototypeNode.getUncached().execute(target);
+                    result = JSObject.getJSClass(prototype).getHelper(prototype, receiver, key, encapsulatingNode);
+                }
+                return result;
             }
         }
 
@@ -339,7 +345,12 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.hasProperty((JSDynamicObject) target, key);
             } else {
-                return JSInteropUtil.hasProperty(target, key);
+                boolean result = JSInteropUtil.hasProperty(target, key);
+                if (!result && JavaScriptLanguage.get(null).getJSContext().getContextOptions().hasForeignObjectPrototype()) {
+                    JSDynamicObject prototype = ForeignObjectPrototypeNode.getUncached().execute(target);
+                    result = JSObject.hasProperty(prototype, key);
+                }
+                return result;
             }
         }
 

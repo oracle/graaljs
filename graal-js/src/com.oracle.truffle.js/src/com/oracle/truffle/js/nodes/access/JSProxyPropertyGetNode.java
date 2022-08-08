@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -72,6 +73,7 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode callNode;
     @Child private JSGetOwnPropertyNode getOwnPropertyNode;
     @Child private JSIdenticalNode sameValueNode;
+    @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
     private final BranchProfile errorBranch = BranchProfile.create();
 
     protected JSProxyPropertyGetNode(JSContext context) {
@@ -100,7 +102,11 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
             if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.getOrDefault((JSDynamicObject) target, propertyKey, receiver, defaultValue, targetClassProfile, this);
             } else {
-                return JSInteropUtil.readMemberOrDefault(target, propertyKey, defaultValue);
+                Object result = JSInteropUtil.readMemberOrDefault(target, propertyKey, null);
+                if (result == null) {
+                    result = maybeGetFromPrototype(target, propertyKey, receiver, defaultValue, targetClassProfile);
+                }
+                return result;
             }
         }
         Object trapResult = callNode.executeCall(JSArguments.create(handler, trapFun, target, propertyKey, receiver));
@@ -108,6 +114,19 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
             checkInvariants(propertyKey, target, trapResult);
         }
         return trapResult;
+    }
+
+    private Object maybeGetFromPrototype(Object target, Object propertyKey, Object receiver, Object defaultValue, JSClassProfile protoClassProfile) {
+        assert JSRuntime.isPropertyKey(propertyKey);
+        if (getLanguage().getJSContext().getContextOptions().hasForeignObjectPrototype()) {
+            if (foreignObjectPrototypeNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
+            }
+            JSDynamicObject prototype = foreignObjectPrototypeNode.execute(target);
+            return JSObject.getOrDefault(prototype, propertyKey, receiver, defaultValue, protoClassProfile, this);
+        }
+        return defaultValue;
     }
 
     private void checkInvariants(Object propertyKey, Object proxyTarget, Object trapResult) {
