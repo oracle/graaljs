@@ -49,7 +49,6 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.LoopConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
@@ -58,12 +57,13 @@ import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
+import com.oracle.truffle.js.nodes.access.IteratorGetNextValueNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
-import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -200,6 +200,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected abstract static class IteratorImplNode<T extends IteratorArgs> extends JavaScriptBaseNode {
             @Child private PropertyGetNode getArgsNode;
             @Child private HasHiddenKeyCacheNode hasArgsNode;
+            @Child protected IteratorGetNextValueNode getNextValueNode;
             private final BranchProfile hasNoArgsProfile = BranchProfile.create();
             private final JSContext context;
 
@@ -208,6 +209,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
                 getArgsNode = PropertyGetNode.createGetHidden(IteratorHelperPrototypeBuiltins.ARGS_ID, context);
                 hasArgsNode = HasHiddenKeyCacheNode.create(IteratorHelperPrototypeBuiltins.ARGS_ID);
+                getNextValueNode = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), true);
             }
 
             protected abstract Object execute(VirtualFrame frame, Object thisObj);
@@ -285,23 +287,15 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         protected abstract static class IteratorMapNextNode extends IteratorImplNode<IteratorMapArgs> {
-            @Child private IteratorNextNode iteratorNextNode;
-            @Child private IteratorCompleteNode iteratorCompleteNode;
-            @Child private IteratorValueNode iteratorValueNode;
             @Child private IteratorCloseNode iteratorCloseNode;
 
             @Child private CreateIterResultObjectNode createIterResultObjectNode;
 
             @Child private JSFunctionCallNode callNode;
 
-            private final LoopConditionProfile loopProfile = LoopConditionProfile.createCountingProfile();
-
             protected IteratorMapNextNode(JSContext context) {
                 super(context);
 
-                iteratorNextNode = IteratorNextNode.create();
-                iteratorCompleteNode = IteratorCompleteNode.create(context);
-                iteratorValueNode = IteratorValueNode.create(context);
                 iteratorCloseNode = IteratorCloseNode.create(context);
 
                 createIterResultObjectNode = CreateIterResultObjectNode.create(context);
@@ -313,13 +307,11 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             public Object next(VirtualFrame frame, Object thisObj) {
                 IteratorMapArgs args = getArgs(thisObj);
 
-                Object next = iteratorNextNode.execute(args.target);
-                boolean done = iteratorCompleteNode.execute(next);
-                if (loopProfile.profile(done)) {
+                Object value = getNextValueNode.execute(frame, args.target);
+                if (value == null) {
                     return createIterResultObjectNode.execute(frame, Undefined.instance, true);
                 }
 
-                Object value = iteratorValueNode.execute(next);
                 Object mapped;
                 try {
                     mapped = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, args.mapper, value));
@@ -362,9 +354,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         protected abstract static class IteratorFilterNextNode extends IteratorImplNode<IteratorFilterArgs> {
-            @Child private IteratorNextNode iteratorNextNode;
-            @Child private IteratorCompleteNode iteratorCompleteNode;
-            @Child private IteratorValueNode iteratorValueNode;
             @Child private IteratorCloseNode iteratorCloseNode;
             @Child private CreateIterResultObjectNode createIterResultObjectNode;
             @Child private JSFunctionCallNode callNode;
@@ -373,9 +362,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             protected IteratorFilterNextNode(JSContext context) {
                 super(context);
 
-                iteratorNextNode = IteratorNextNode.create();
-                iteratorCompleteNode = IteratorCompleteNode.create(context);
-                iteratorValueNode = IteratorValueNode.create(context);
                 iteratorCloseNode = IteratorCloseNode.create(context);
 
                 createIterResultObjectNode = CreateIterResultObjectNode.create(context);
@@ -390,13 +376,11 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 IteratorFilterArgs args = getArgs(thisObj);
 
                 while (true) {
-                    Object next = iteratorNextNode.execute(args.target);
-                    boolean done = iteratorCompleteNode.execute(next);
-                    if (done) {
+                    Object value = getNextValueNode.execute(frame, args.target);
+                    if (value == null) {
                         break;
                     }
 
-                    Object value = iteratorValueNode.execute(next);
                     Object selected;
                     try {
                         selected = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, args.filterer, value));
@@ -438,22 +422,12 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         protected abstract static class IteratorIndexedNextNode extends IteratorBaseNode.IteratorImplNode<IteratorArgs> {
-
-            @Child private IteratorNextNode iteratorNextNode;
-            @Child private IteratorCompleteNode iteratorCompleteNode;
-            @Child private IteratorValueNode iteratorValueNode;
             @Child private CreateIterResultObjectNode createIterResultObjectNode;
             @Child private PropertyGetNode getIndexNode;
             @Child private PropertySetNode setIndexNode;
 
-            private final LoopConditionProfile loopProfile = LoopConditionProfile.createCountingProfile();
-
             protected IteratorIndexedNextNode(JSContext context) {
                 super(context);
-
-                iteratorNextNode = IteratorNextNode.create();
-                iteratorCompleteNode = IteratorCompleteNode.create(context);
-                iteratorValueNode = IteratorValueNode.create(context);
 
                 createIterResultObjectNode = CreateIterResultObjectNode.create(context);
 
@@ -472,13 +446,11 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     throw new RuntimeException(e);
                 }
 
-                Object next = iteratorNextNode.execute(args.target);
-                boolean done = iteratorCompleteNode.execute(next);
-                if (loopProfile.profile(done)) {
+                Object value = getNextValueNode.execute(frame, args.target);
+                if (value == null) {
                     return createIterResultObjectNode.execute(frame, Undefined.instance, true);
                 }
 
-                Object value = iteratorValueNode.execute(next);
                 JSArrayObject pair = JSArray.createConstant(getContext(), getRealm(), new Object[]{index, value});
                 setIndexNode.setValueInt(thisObj, index + 1);
 
@@ -540,9 +512,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         protected abstract static class IteratorTakeNextNode extends IteratorBaseNode.IteratorImplNode<IteratorTakeArgs> {
-            @Child private IteratorNextNode iteratorNextNode;
-            @Child private IteratorCompleteNode iteratorCompleteNode;
-            @Child private IteratorValueNode iteratorValueNode;
             @Child private IteratorCloseNode iteratorCloseNode;
 
             @Child private CreateIterResultObjectNode createIterResultObjectNode;
@@ -556,9 +525,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             protected IteratorTakeNextNode(JSContext context) {
                 super(context);
 
-                iteratorNextNode = IteratorNextNode.create();
-                iteratorCompleteNode = IteratorCompleteNode.create(context);
-                iteratorValueNode = IteratorValueNode.create(context);
                 iteratorCloseNode = IteratorCloseNode.create(context);
 
                 createIterResultObjectNode = CreateIterResultObjectNode.create(context);
@@ -588,13 +554,10 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     setLimitNode.setValue(thisObj, remaining - 1);
                 }
 
-                Object next = iteratorNextNode.execute(args.target);
-                boolean done = iteratorCompleteNode.execute(next);
-                if (done) {
+                Object value = getNextValueNode.execute(frame, args.target);
+                if (value == null) {
                     return createIterResultObjectNode.execute(frame, Undefined.instance, true);
                 }
-
-                Object value = iteratorValueNode.execute(next);
                 return createIterResultObjectNode.execute(frame, value, false);
             }
         }
@@ -650,7 +613,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected abstract static class IteratorDropNextNode extends IteratorBaseNode.IteratorImplNode<IteratorDropArgs> {
             @Child private IteratorNextNode iteratorNextNode;
             @Child private IteratorCompleteNode iteratorCompleteNode;
-            @Child private IteratorValueNode iteratorValueNode;
 
             @Child private CreateIterResultObjectNode createIterResultObjectNode;
 
@@ -665,7 +627,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
                 iteratorNextNode = IteratorNextNode.create();
                 iteratorCompleteNode = IteratorCompleteNode.create(context);
-                iteratorValueNode = IteratorValueNode.create(context);
 
                 createIterResultObjectNode = CreateIterResultObjectNode.create(context);
 
@@ -687,9 +648,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     }
 
                     while (remaining > 0) {
-                        Object next = iteratorNextNode.execute(args.target);
-                        boolean done = iteratorCompleteNode.execute(next);
-                        if (done) {
+                        Object value = getNextValueNode.execute(frame, args.target);
+                        if (value == null) {
                             setLimitNode.setValue(thisObj, remaining);
                             return createIterResultObjectNode.execute(frame, Undefined.instance, true);
                         }
@@ -699,13 +659,10 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
                     setLimitNode.setValue(thisObj, 0L);
 
-                    Object next = iteratorNextNode.execute(args.target);
-                    boolean done = iteratorCompleteNode.execute(next);
-                    if (done) {
+                    Object value = getNextValueNode.execute(frame, args.target);
+                    if (value == null) {
                         return createIterResultObjectNode.execute(frame, Undefined.instance, true);
                     }
-
-                    Object value = iteratorValueNode.execute(next);
                     return createIterResultObjectNode.execute(frame, value, false);
                 } else {
                     boolean done;
@@ -756,9 +713,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         protected abstract static class IteratorFlatMapNextNode extends IteratorBaseNode.IteratorImplNode<IteratorFlatMapArgs> {
-            @Child private IteratorNextNode iteratorNextNode;
-            @Child private IteratorCompleteNode iteratorCompleteNode;
-            @Child private IteratorValueNode iteratorValueNode;
             @Child private IteratorCloseNode iteratorCloseNode;
 
             @Child private CreateIterResultObjectNode createIterResultObjectNode;
@@ -775,9 +729,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             protected IteratorFlatMapNextNode(JSContext context) {
                 super(context);
 
-                iteratorNextNode = IteratorNextNode.create();
-                iteratorCompleteNode = IteratorCompleteNode.create(context);
-                iteratorValueNode = IteratorValueNode.create(context);
                 iteratorCloseNode = IteratorCloseNode.create(context);
 
                 createIterResultObjectNode = CreateIterResultObjectNode.create(context);
@@ -808,37 +759,25 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     if (innerAlive) {
                         IteratorRecord iterated = (IteratorRecord) getInnerNode.getValue(thisObj);
 
-                        Object next;
-                        boolean done;
+                        Object value;
                         try {
-                            next = iteratorNextNode.execute(iterated);
-                            done = iteratorCompleteNode.execute(next);
+                            value = getNextValueNode.execute(frame, iterated);
                         } catch (AbstractTruffleException e) {
                             iteratorCloseNode.executeAbrupt(args.target.getIterator());
                             throw e;
                         }
-                        if (done) {
+                        if (value == null) {
                             innerAlive = false;
                             continue;
                         }
-
-                        Object value;
-                        try {
-                            value = iteratorValueNode.execute(next);
-                        } catch (AbstractTruffleException e) {
-                            iteratorCloseNode.executeAbrupt(args.target.getIterator());
-                            throw e;
-                        }
                         return createIterResultObjectNode.execute(frame, value, false);
                     } else {
-                        Object next = iteratorNextNode.execute(args.target);
-                        boolean done = iteratorCompleteNode.execute(next);
-                        if (done) {
+                        Object value = getNextValueNode.execute(frame, args.target);
+                        if (value == null) {
                             setAliveNode.setValueBoolean(thisObj, false);
                             return createIterResultObjectNode.execute(frame, Undefined.instance, true);
                         }
 
-                        Object value = iteratorValueNode.execute(next);
                         IteratorRecord innerIterator;
                         try {
                             Object mapped = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, args.mapper, value));
@@ -863,9 +802,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     protected abstract static class IteratorWithCallableNode extends JSBuiltinNode {
         @Child protected IsCallableNode isCallableNode;
         @Child private GetIteratorDirectNode getIteratorDirectNode;
-        @Child private IteratorNextNode iteratorNextNode;
-        @Child private IteratorCompleteNode iteratorCompleteNode;
-        @Child private IteratorValueNode iteratorValueNode;
+        @Child private IteratorGetNextValueNode getNextValueNode;
         @Child private JSFunctionCallNode callNode;
         @Child private IteratorCloseNode iteratorCloseNode;
 
@@ -876,9 +813,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             isCallableNode = IsCallableNode.create();
             getIteratorDirectNode = GetIteratorDirectNode.create(context);
-            iteratorNextNode = IteratorNextNode.create();
-            iteratorCompleteNode = IteratorCompleteNode.create(context);
-            iteratorValueNode = IteratorValueNode.create(context);
+            getNextValueNode = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), true);
             callNode = JSFunctionCallNode.createCall();
         }
 
@@ -908,17 +843,15 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = "isCallableNode.executeBoolean(fn)")
-        protected Object compatible(Object thisObj, Object fn) {
+        protected Object compatible(VirtualFrame frame, Object thisObj, Object fn) {
             IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
             prepare();
             while (true) {
-                Object next = iteratorNextNode.execute(iterated);
-                boolean done = iteratorCompleteNode.execute(next);
-                if (done) {
+                Object value = getNextValueNode.execute(frame, iterated);
+                if (value == null) {
                     return end();
                 }
 
-                Object value = iteratorValueNode.execute(next);
                 Object result = step(iterated, fn, value);
                 if (result != CONTINUE) {
                     if (iteratorCloseNode == null) {
@@ -937,41 +870,21 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    public abstract static class IteratorToArrayNode extends JSBuiltinNode {
+    protected abstract static class IteratorToArrayNode extends JSBuiltinNode {
         @Child private GetIteratorDirectNode getIteratorDirectNode;
-        @Child private IteratorNextNode iteratorNextNode;
-        @Child private IteratorCompleteNode iteratorCompleteNode;
-        @Child private IteratorValueNode iteratorValueNode;
-        @Child private WriteElementNode writeNode;
+        @Child private com.oracle.truffle.js.nodes.access.IteratorToArrayNode toArrayNode;
 
         protected IteratorToArrayNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
             getIteratorDirectNode = GetIteratorDirectNode.create(context);
-            iteratorNextNode = IteratorNextNode.create();
-            iteratorCompleteNode = IteratorCompleteNode.create(context);
-            iteratorValueNode = IteratorValueNode.create(context);
-            writeNode = WriteElementNode.create(context, true, true);
+            toArrayNode = com.oracle.truffle.js.nodes.access.IteratorToArrayNode.create(context, null);
         }
 
         @Specialization
-        protected JSDynamicObject toArray(Object thisObj) {
+        protected Object toArray(VirtualFrame frame, Object thisObj) {
             IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
-            JSArrayObject items = JSArray.createEmptyChecked(getContext(), getRealm(), 0);
-
-            long index;
-            for (index = 0;; index++) {
-                Object next = iteratorNextNode.execute(iterated);
-                boolean done = iteratorCompleteNode.execute(next);
-                if (done) {
-                    break;
-                }
-
-                Object value = iteratorValueNode.execute(next);
-                writeNode.executeWithTargetAndIndexAndValue(items, index, value);
-            }
-
-            return items;
+            return toArrayNode.execute(frame, iterated);
         }
     }
 
@@ -985,7 +898,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        protected JSDynamicObject toArray(Object thisObj) {
+        protected JSDynamicObject toAsync(Object thisObj) {
             IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
             return JSWrapForAsyncIterator.create(getContext(), getRealm(), iterated);
         }
