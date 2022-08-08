@@ -120,7 +120,8 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
             if (returnMethod != Undefined.instance) {
                 Object innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
                 JSDynamicObject promise = this.toPromise(innerResult);
-                return performPromiseThenNode.execute(promise, Undefined.instance, createCloseAbruptFunction(promise, completion), newPromiseCapabilityNode.executeDefault());
+                JSFunctionObject finallyFunction = createCloseAbruptFunction(promise, completion);
+                return performPromiseThenNode.execute(promise, finallyFunction, finallyFunction, newPromiseCapabilityNode.executeDefault());
             }
         } catch (AbstractTruffleException e) {
             // re-throw outer exception, see AsyncIteratorClose

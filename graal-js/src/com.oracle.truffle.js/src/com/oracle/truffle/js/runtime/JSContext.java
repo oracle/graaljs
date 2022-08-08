@@ -298,6 +298,7 @@ public class JSContext {
         AsyncIteratorTake,
         AsyncIteratorTakeWithValue,
         AsyncIteratorDrop,
+        AsyncIteratorDropWithValueLoop,
         AsyncIteratorDropWithValue,
         AsyncIteratorIndexed,
         AsyncIteratorIndexedWithValue,
