@@ -134,10 +134,6 @@
     },
     "comment" : "GR-22846"
   }, {
-    "filePath" : "built-ins/BigInt/constructor-coercion.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
     "filePath" : "built-ins/RegExp/named-groups/non-unicode-property-names-valid.js",
     "status" : "FAIL",
     "comment" : "new failures 2020-07-21"

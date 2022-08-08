@@ -1986,7 +1986,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             if (JSRuntime.isNumber(primitiveObj)) {
                 return numberToBigIntNode.executeBigInt(primitiveObj);
             } else {
-                return toBigIntNode.executeBigInteger(value);
+                return toBigIntNode.executeBigInteger(primitiveObj);
             }
         }
     }
