@@ -172,7 +172,7 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
             Number yNumber = endDateToNumberNode.executeNumber(endDate);
             double x = JSDate.timeClip(JSRuntime.toDouble(xNumber));
             double y = JSDate.timeClip(JSRuntime.toDouble(yNumber));
-            if (Double.isNaN(x) || Double.isNaN(y) || x > y) {
+            if (Double.isNaN(x) || Double.isNaN(y)) {
                 errorBranch.enter();
                 throw Errors.createRangeErrorInvalidTimeValue();
             }
@@ -205,7 +205,7 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
             Number yNumber = endDateToNumberNode.executeNumber(endDate);
             double x = JSDate.timeClip(JSRuntime.toDouble(xNumber));
             double y = JSDate.timeClip(JSRuntime.toDouble(yNumber));
-            if (Double.isNaN(x) || Double.isNaN(y) || x > y) {
+            if (Double.isNaN(x) || Double.isNaN(y)) {
                 errorBranch.enter();
                 throw Errors.createRangeErrorInvalidTimeValue();
             }

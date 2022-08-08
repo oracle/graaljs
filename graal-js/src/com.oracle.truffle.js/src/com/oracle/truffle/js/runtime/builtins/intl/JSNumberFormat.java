@@ -504,42 +504,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     private static FormattedNumberRange formatRangeImpl(JSDynamicObject numberFormatObj, Number x, Number y) {
-        boolean rangeError = false;
         if (JSRuntime.isNaN(x) || JSRuntime.isNaN(y)) {
-            rangeError = true;
-        }
-        if (x instanceof BigDecimal) {
-            BigDecimal xDecimal = (BigDecimal) x;
-            if (y instanceof BigDecimal && ((BigDecimal) y).compareTo(xDecimal) < 0) {
-                rangeError = true;
-            } else if (y instanceof Double) {
-                double yDouble = (Double) y;
-                if (Double.NEGATIVE_INFINITY == yDouble) {
-                    rangeError = true;
-                } else if (JSRuntime.isNegativeZero(yDouble) && xDecimal.signum() >= 0) {
-                    rangeError = true;
-                }
-            }
-        } else if (x instanceof Double) {
-            double xDouble = (Double) x;
-            if (Double.POSITIVE_INFINITY == xDouble) {
-                if (y instanceof BigDecimal) {
-                    rangeError = true;
-                } else if (y instanceof Double) {
-                    double yDouble = (Double) y;
-                    if (Double.NEGATIVE_INFINITY == yDouble || JSRuntime.isNegativeZero(yDouble)) {
-                        rangeError = true;
-                    }
-                }
-            } else if (JSRuntime.isNegativeZero(xDouble)) {
-                if (y instanceof BigDecimal && ((BigDecimal) y).signum() == -1) {
-                    rangeError = true;
-                } else if (y instanceof Double && Double.NEGATIVE_INFINITY == (Double) y) {
-                    rangeError = true;
-                }
-            }
-        }
-        if (rangeError) {
             throw Errors.createRangeError("invalid range");
         }
         InternalState state = getInternalState(numberFormatObj);

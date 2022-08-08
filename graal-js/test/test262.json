@@ -2752,17 +2752,9 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/date-x-greater-than-y-not-throws.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/date-x-greater-than-y-not-throws.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
@@ -2771,18 +2763,6 @@
     "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/NumberFormat/prototype/formatRange/x-greater-than-y-not-throws.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
-    "filePath" : "intl402/NumberFormat/prototype/formatRangeToParts/x-greater-than-y-not-throws.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
-    "filePath" : "intl402/PluralRules/prototype/selectRange/x-greater-than-y-not-throws.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
   }, {
     "filePath" : "intl402/Temporal/Calendar/prototype/dateAdd/date-infinity-throws-rangeerror.js",
     "status" : "FAIL",
