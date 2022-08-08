@@ -82,7 +82,7 @@ public class DebugJSAgent extends JSAgent {
     private final Lock queueLock;
     private final Condition queueCondition;
 
-    static final int POLL_TIMEOUT_MS = 1_000;
+    static final int POLL_TIMEOUT_MS = 100;
 
     public DebugJSAgent(PromiseRejectionTracker promiseRejectionTracker, boolean canBlock) {
         super(promiseRejectionTracker, canBlock);
