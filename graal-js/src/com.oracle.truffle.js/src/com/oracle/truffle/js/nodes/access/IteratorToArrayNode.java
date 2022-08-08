@@ -51,6 +51,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
@@ -61,11 +62,14 @@ public abstract class IteratorToArrayNode extends JavaScriptNode {
     private final JSContext context;
     @Child @Executed JavaScriptNode iteratorNode;
     @Child private IteratorGetNextValueNode iteratorStepNode;
+    @Child private WriteElementNode writeNode;
 
     protected IteratorToArrayNode(JSContext context, JavaScriptNode iteratorNode, IteratorGetNextValueNode iteratorStepNode) {
         this.context = context;
         this.iteratorNode = iteratorNode;
         this.iteratorStepNode = iteratorStepNode;
+
+        writeNode = WriteElementNode.create(context, true, true);
     }
 
     public static IteratorToArrayNode create(JSContext context, JavaScriptNode iterator) {
@@ -74,14 +78,19 @@ public abstract class IteratorToArrayNode extends JavaScriptNode {
     }
 
     @Specialization(guards = "!iteratorRecord.isDone()")
-    protected Object doIterator(VirtualFrame frame, IteratorRecord iteratorRecord,
-                    @Cached BranchProfile growProfile) {
-        SimpleArrayList<Object> elements = new SimpleArrayList<>();
-        Object value;
-        while ((value = iteratorStepNode.execute(frame, iteratorRecord)) != null) {
-            elements.add(value, growProfile);
+    protected Object doIterator(VirtualFrame frame, IteratorRecord iteratorRecord) {
+        JSArrayObject items = JSArray.createEmptyChecked(context, getRealm(), 0);
+
+        long index;
+        for (index = 0;; index++) {
+            Object value = iteratorStepNode.execute(frame, iteratorRecord);
+            if (value == null) {
+                break;
+            }
+            writeNode.executeWithTargetAndIndexAndValue(items, index, value);
         }
-        return JSArray.createZeroBasedObjectArray(context, getRealm(), elements.toArray());
+
+        return items;
     }
 
     @Specialization(guards = "iteratorRecord.isDone()")
