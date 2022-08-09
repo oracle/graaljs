@@ -94,8 +94,8 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFindN
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFlatMapNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFlatNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayForEachNodeGen;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayGroupByNodeGen;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayGroupByToMapNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayGroupNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayGroupToMapNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayIncludesNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayIndexOfNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayIteratorNodeGen;
@@ -253,9 +253,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         // ES2022
         at(1),
 
-        // ES 2023
-        groupBy(1),
-        groupByToMap(1),
+        // staging
+        group(1),
+        groupToMap(1),
         findLast(1),
         findLastIndex(1);
 
@@ -280,7 +280,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return JSConfig.ECMAScript2019;
             } else if (this == at) {
                 return JSConfig.ECMAScript2022;
-            } else if (EnumSet.of(groupBy, groupByToMap, findLast, findLastIndex).contains(this)) {
+            } else if (EnumSet.of(group, groupToMap, findLast, findLastIndex).contains(this)) {
                 return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
@@ -362,10 +362,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             case at:
                 return JSArrayAtNodeGen.create(context, builtin, false, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case groupBy:
-                return JSArrayGroupByNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
-            case groupByToMap:
-                return JSArrayGroupByToMapNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case group:
+                return JSArrayGroupNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case groupToMap:
+                return JSArrayGroupToMapNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }
@@ -3355,14 +3355,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    public abstract static class JSArrayGroupByBaseNode extends JSArrayOperation {
+    public abstract static class JSArrayGroupBaseNode extends JSArrayOperation {
         @Child private JSFunctionCallNode callNode = JSFunctionCallNode.createCall();
 
-        protected JSArrayGroupByBaseNode(JSContext context, JSBuiltin builtin) {
+        protected JSArrayGroupBaseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, false);
         }
 
-        protected Map<Object, List<Object>> collectGroupByResults(Object thisObj, Object callback, Object thisArg) {
+        protected Map<Object, List<Object>> collectGroupResults(Object thisObj, Object callback, Object thisArg) {
             Object thisJSObj = toObject(thisObj);
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
@@ -3396,19 +3396,19 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     }
 
-    public abstract static class JSArrayGroupByNode extends JSArrayGroupByBaseNode {
+    public abstract static class JSArrayGroupNode extends JSArrayGroupBaseNode {
         @Child private JSToPropertyKeyNode toPropertyKeyNode;
 
-        public JSArrayGroupByNode(JSContext context, JSBuiltin builtin) {
+        public JSArrayGroupNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.toPropertyKeyNode = JSToPropertyKeyNode.create();
         }
 
         @Specialization
-        protected Object groupBy(Object thisObj, Object callback, Object thisArg) {
-            Map<Object, List<Object>> groups = collectGroupByResults(thisObj, callback, thisArg);
+        protected Object group(Object thisObj, Object callback, Object thisArg) {
+            Map<Object, List<Object>> groups = collectGroupResults(thisObj, callback, thisArg);
             JSObject obj = JSOrdinary.createWithNullPrototype(getContext());
-            return createGroupByResult(obj, groups);
+            return createGroupResult(obj, groups);
         }
 
         @Override
@@ -3417,7 +3417,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @TruffleBoundary
-        protected Object createGroupByResult(JSDynamicObject obj, Map<Object, List<Object>> groups) {
+        protected Object createGroupResult(JSDynamicObject obj, Map<Object, List<Object>> groups) {
             for (Map.Entry<Object, List<Object>> entry : groups.entrySet()) {
                 JSDynamicObject elements = JSArray.createConstant(getContext(), getRealm(), entry.getValue().toArray());
                 JSObjectUtil.defineDataProperty(getContext(), obj, entry.getKey(), elements, JSAttributes.getDefault());
@@ -3426,18 +3426,18 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    public abstract static class JSArrayGroupByToMapNode extends JSArrayGroupByBaseNode {
+    public abstract static class JSArrayGroupToMapNode extends JSArrayGroupBaseNode {
         @Child private JSCollectionsNormalizeNode normalizeKeyNode = JSCollectionsNormalizeNode.create();
 
-        public JSArrayGroupByToMapNode(JSContext context, JSBuiltin builtin) {
+        public JSArrayGroupToMapNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object groupByToMap(Object thisObj, Object callback, Object thisArg) {
-            Map<Object, List<Object>> groups = collectGroupByResults(thisObj, callback, thisArg);
+        protected Object groupToMap(Object thisObj, Object callback, Object thisArg) {
+            Map<Object, List<Object>> groups = collectGroupResults(thisObj, callback, thisArg);
             JSMapObject map = JSMap.create(getContext(), getRealm());
-            return createGroupByResult(map, groups);
+            return createGroupResult(map, groups);
         }
 
         @Override
@@ -3446,7 +3446,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @TruffleBoundary
-        protected Object createGroupByResult(JSMapObject map, Map<Object, List<Object>> groups) {
+        protected Object createGroupResult(JSMapObject map, Map<Object, List<Object>> groups) {
             JSHashMap internalMap = JSMap.getInternalMap(map);
             JSRealm realm = getRealm();
             for (Map.Entry<Object, List<Object>> entry : groups.entrySet()) {

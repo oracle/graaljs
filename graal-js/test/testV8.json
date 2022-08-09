@@ -27,6 +27,14 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "intl/date-format/format-range-to-parts.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, see https://github.com/tc39/ecma402/issues/692"
+  }, {
+    "filePath" : "intl/date-format/format-range.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, see https://github.com/tc39/ecma402/issues/692"
+  }, {
     "filePath" : "intl/default_locale.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"

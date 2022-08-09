@@ -159,7 +159,7 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
             }
             double x = JSRuntime.doubleValue(startToNumber.executeNumber(start));
             double y = JSRuntime.doubleValue(endToNumber.executeNumber(end));
-            if (Double.isNaN(x) || Double.isNaN(y) || x > y) {
+            if (Double.isNaN(x) || Double.isNaN(y)) {
                 errorBranch.enter();
                 throw Errors.createRangeError("invalid range");
             }

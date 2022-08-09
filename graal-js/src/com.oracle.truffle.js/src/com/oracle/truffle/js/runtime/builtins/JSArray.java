@@ -236,8 +236,8 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
             names.add(Strings.FLAT_MAP);
         }
         if (context.getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion) {
-            names.add(Strings.GROUP_BY);
-            names.add(Strings.GROUP_BY_TO_MAP);
+            names.add(Strings.GROUP);
+            names.add(Strings.GROUP_TO_MAP);
         }
         if (context.getEcmaScriptVersion() >= 7) {
             names.add(Strings.INCLUDES);
