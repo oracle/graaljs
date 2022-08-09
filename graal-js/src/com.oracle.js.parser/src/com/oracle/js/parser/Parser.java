@@ -346,9 +346,6 @@ public class Parser extends AbstractParser {
     private final ParserContext lc;
     private final List<Object> defaultNames;
 
-    /** Namespace for function names where not explicitly given */
-    private final Namespace namespace;
-
     /** to receive line information from Lexer when scanning multiline literals. */
     protected final Lexer.LineInfoReceiver lineInfoReceiver;
 
@@ -404,7 +401,6 @@ public class Parser extends AbstractParser {
         this.lc = new ParserContext();
         this.defaultNames = new ArrayList<>();
         this.env = env;
-        this.namespace = new Namespace(env.getNamespace());
         this.scripting = env.scripting && env.syntaxExtensions;
         this.shebang = env.shebang || scripting;
         this.allowBigInt = env.allowBigInt;
@@ -764,7 +760,7 @@ public class Parser extends AbstractParser {
         }
 
         final Scope parentScope = lc.getCurrentScope();
-        return new ParserContextFunctionNode(functionToken, ident, name, namespace, functionLine, flags, parameters, functionLength, parentScope, functionTopScope);
+        return new ParserContextFunctionNode(functionToken, ident, name, functionLine, flags, parameters, functionLength, parentScope, functionTopScope);
     }
 
     private FunctionNode createFunctionNode(final ParserContextFunctionNode function, final long startToken, final IdentNode ident,
@@ -5284,12 +5280,12 @@ public class Parser extends AbstractParser {
                 String parameterName = parameter.getName();
 
                 if (parametersSet.contains(parameterName)) {
-                    // redefinition of parameter name, rename in non-strict mode
-                    parameterName = functionNode.uniqueName(parameterName);
-                    final long parameterToken = parameter.getToken();
-                    parameters.set(i, new IdentNode(parameterToken, Token.descPosition(parameterToken), lexer.stringIntern(functionNode.uniqueName(parameterName))));
+                    // redefinition of parameter name, allowed in non-strict mode;
+                    // the parameter is mapped to the argument at the index of the last redefinition
+                    parameters.set(i, parameter.setIsIgnoredParameter());
+                } else {
+                    parametersSet.add(parameterName);
                 }
-                parametersSet.add(parameterName);
             }
         }
     }

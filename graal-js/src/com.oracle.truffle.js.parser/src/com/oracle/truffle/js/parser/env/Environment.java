@@ -897,8 +897,9 @@ public abstract class Environment {
             assert !JSFrameUtil.hasTemporalDeadZone(frameSlot);
             assert current.function().hasSimpleParameterList();
             assert !current.function().isDirectArgumentsAccess();
+            assert frameSlot.getMappedParameterIndex() != -1;
             this.frameSlot = frameSlot;
-            this.parameterIndex = current.function().getMappedParameterIndex(frameSlot);
+            this.parameterIndex = frameSlot.getMappedParameterIndex();
         }
 
         private VarRef findArgumentsObject() {

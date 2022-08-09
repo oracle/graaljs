@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,10 +50,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSAddNode;
 import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
@@ -62,6 +61,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.nodes.unary.JSOverloadedUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
@@ -389,13 +389,9 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
                     @Cached("createBinaryProfile()") ConditionProfile isBigIntProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBoundaryProfile,
                     @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode,
-                    @Cached("createToNumericOperand()") JSToNumericNode toNumericOperand,
-                    @Cached("create()") BranchProfile deadBranch) {
+                    @Cached("createToNumericOperand()") JSToNumericNode toNumericOperand) {
         ensureObjectKind(frame);
         Object value = frame.getObject(slot);
-        if (hasTemporalDeadZone()) {
-            checkNotDead(value, deadBranch);
-        }
         Object operand = toNumericOperand.execute(value);
         if (isNumberProfile.profile(operand instanceof Number)) {
             frame.setObject(slot, op.doNumber((Number) operand, isIntegerProfile, isBoundaryProfile));
@@ -431,6 +427,12 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         double newValue = op.doDouble(oldValue);
         frame.setObject(slot, newValue);
         return oldValue;
+    }
+
+    @Specialization(guards = {"isIllegal(frame)"})
+    Object doDead(@SuppressWarnings("unused") Frame frame) {
+        assert hasTemporalDeadZone();
+        throw Errors.createReferenceErrorNotDefined(getIdentifier(), this);
     }
 
     @Override
@@ -535,13 +537,9 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
                     @Cached("createBinaryProfile()") ConditionProfile isBigIntProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBoundaryProfile,
                     @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode,
-                    @Cached("createToNumericOperand()") JSToNumericNode toNumericOperand,
-                    @Cached("create()") BranchProfile deadBranch) {
+                    @Cached("createToNumericOperand()") JSToNumericNode toNumericOperand) {
         ensureObjectKind(frame);
         Object value = frame.getObject(slot);
-        if (hasTemporalDeadZone()) {
-            checkNotDead(value, deadBranch);
-        }
         Object operand = toNumericOperand.execute(value);
         Object newValue;
         if (isNumberProfile.profile(operand instanceof Number)) {
@@ -579,6 +577,12 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         double newValue = op.doDouble(oldValue);
         frame.setObject(slot, newValue);
         return newValue;
+    }
+
+    @Specialization(guards = {"isIllegal(frame)"})
+    Object doDead(@SuppressWarnings("unused") Frame frame) {
+        assert hasTemporalDeadZone();
+        throw Errors.createReferenceErrorNotDefined(getIdentifier(), this);
     }
 
     @Override

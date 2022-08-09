@@ -46,8 +46,6 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
-import org.graalvm.collections.EconomicMap;
-
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -94,7 +92,7 @@ public final class FunctionEnvironment extends Environment {
     private boolean hasYield;
     private boolean hasAwait;
 
-    private EconomicMap<JSFrameSlot, Integer> parameters;
+    private boolean hasMappedParameters;
     private List<BreakTarget> jumpTargetStack;
     private boolean directArgumentsAccess;
 
@@ -318,14 +316,9 @@ public final class FunctionEnvironment extends Environment {
 
     public void addMappedParameter(JSFrameSlot slot, int index) {
         assert slot != null && JSFrameUtil.isParam(slot) : slot;
-        if (parameters == null) {
-            parameters = EconomicMap.create();
-        }
-        parameters.put(slot, index);
-    }
-
-    protected int getMappedParameterIndex(JSFrameSlot slot) {
-        return parameters.get(slot, -1);
+        assert slot.getMappedParameterIndex() == -1;
+        this.hasMappedParameters = true;
+        slot.setMappedParameterIndex(index);
     }
 
     public TruffleString getFunctionName() {
@@ -383,7 +376,7 @@ public final class FunctionEnvironment extends Environment {
     }
 
     public boolean hasMappedParameters() {
-        return parameters != null;
+        return hasMappedParameters;
     }
 
     @Override

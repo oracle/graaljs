@@ -467,6 +467,21 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             body = prepareDeclarations(declarations, body);
         }
 
+        JSFrameDescriptor fd = currentFunction().getFunctionFrameDescriptor();
+        List<JSFrameSlot> slotsWithTDZ = new ArrayList<>(fd.getSize());
+        for (JSFrameSlot slot : fd.getSlots()) {
+            if (JSFrameUtil.hasTemporalDeadZone(slot)) {
+                slotsWithTDZ.add(slot);
+            }
+        }
+        if (!slotsWithTDZ.isEmpty()) {
+            int[] slots = new int[slotsWithTDZ.size()];
+            for (int i = 0; i < slotsWithTDZ.size(); i++) {
+                slots[i] = slotsWithTDZ.get(i).getIndex();
+            }
+            body = factory.createExprBlock(factory.createClearFrameSlots(factory.createScopeFrame(0, 0, null), slots, 0, slots.length), body);
+        }
+
         return body;
     }
 
@@ -946,16 +961,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             } else {
                 valueNode = tagHiddenExpression(factory.createAccessArgument(argIndex));
             }
-            TruffleString paramName = function.getParameters().get(i).getNameTS();
-            VarRef paramRef = environment.findLocalVar(paramName);
-            if (paramRef != null) {
-                init.add(tagHiddenExpression(paramRef.createWriteNode(valueNode)));
-                if (hasMappedArguments) {
-                    currentFunction.addMappedParameter(paramRef.getFrameSlot(), i);
-                }
-            } else {
+            IdentNode param = function.getParameters().get(i);
+            if (param.isIgnoredParameter()) {
                 // Duplicate parameter names are allowed in non-strict mode but have no binding.
                 assert !currentFunction.isStrictMode();
+                continue;
+            }
+            TruffleString paramName = param.getNameTS();
+            VarRef paramRef = environment.findLocalVar(paramName);
+            init.add(tagHiddenExpression(paramRef.createWriteNode(valueNode)));
+            if (hasMappedArguments) {
+                currentFunction.addMappedParameter(paramRef.getFrameSlot(), i);
             }
         }
     }
@@ -1424,7 +1440,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 for (int i = 0; i < slots.length; i++) {
                     slots[i] = slotsWithTDZ.get(i).getFrameSlot().getIndex();
                 }
-                blockWithInit.add(factory.createInitializeFrameSlots(scope, slots, 0, slots.length));
+                blockWithInit.add(factory.createClearFrameSlots(scope, slots, 0, slots.length));
             } else {
                 // we have slots in separate frames
                 int[] slots = new int[slotsWithTDZ.size()];
@@ -1440,7 +1456,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         }
                         slots[to++] = next.getFrameSlot().getIndex();
                     }
-                    blockWithInit.add(factory.createInitializeFrameSlots(scope, slots, from, to));
+                    blockWithInit.add(factory.createClearFrameSlots(scope, slots, from, to));
                     from = to;
                 }
             }

@@ -50,18 +50,17 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /*
- * Sets the initial value of frame slots of locals with a temporal dead zone.
+ * Clears frame slots of locals with a temporal dead zone (i.e. let or const declarations).
  */
-public class InitializeFrameSlotsNode extends JavaScriptNode {
+public class ClearFrameSlotsNode extends JavaScriptNode {
 
     @Child private ScopeFrameNode scopeFrameNode;
     @CompilationFinal(dimensions = 1) private final int[] slots;
 
-    protected InitializeFrameSlotsNode(ScopeFrameNode scopeFrameNode, int[] slots) {
+    protected ClearFrameSlotsNode(ScopeFrameNode scopeFrameNode, int[] slots) {
         this.scopeFrameNode = Objects.requireNonNull(scopeFrameNode);
         this.slots = Objects.requireNonNull(slots);
     }
@@ -71,25 +70,25 @@ public class InitializeFrameSlotsNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         Frame scopeFrame = scopeFrameNode.executeFrame(frame);
         for (int slot : slots) {
-            initializeSlot(scopeFrame, slot);
+            clearSlot(scopeFrame, slot);
         }
         return Undefined.instance;
     }
 
-    static void initializeSlot(Frame scopeFrame, int slot) {
+    static void clearSlot(Frame scopeFrame, int slot) {
         assert JSFrameUtil.hasTemporalDeadZone(scopeFrame.getFrameDescriptor(), slot) : slot;
-        scopeFrame.setObject(slot, Dead.instance());
+        scopeFrame.clear(slot);
     }
 
     public static JavaScriptNode create(ScopeFrameNode scopeFrameNode, int[] slots) {
         if (slots.length == 1) {
-            return new InitializeFrameSlotNode(scopeFrameNode, slots[0]);
+            return new ClearFrameSlotNode(scopeFrameNode, slots[0]);
         }
-        return new InitializeFrameSlotsNode(scopeFrameNode, slots);
+        return new ClearFrameSlotsNode(scopeFrameNode, slots);
     }
 
     public static JavaScriptNode createRange(ScopeFrameNode scopeFrameNode, int start, int end) {
-        return new InitializeFrameSlotRangeNode(scopeFrameNode, start, end);
+        return new ClearFrameSlotRangeNode(scopeFrameNode, start, end);
     }
 
     @Override
@@ -103,12 +102,12 @@ public class InitializeFrameSlotsNode extends JavaScriptNode {
     }
 }
 
-class InitializeFrameSlotNode extends JavaScriptNode {
+class ClearFrameSlotNode extends JavaScriptNode {
 
     @Child private ScopeFrameNode scopeFrameNode;
     private final int slot;
 
-    protected InitializeFrameSlotNode(ScopeFrameNode scopeFrameNode, int slot) {
+    protected ClearFrameSlotNode(ScopeFrameNode scopeFrameNode, int slot) {
         this.slot = slot;
         this.scopeFrameNode = Objects.requireNonNull(scopeFrameNode);
     }
@@ -116,13 +115,13 @@ class InitializeFrameSlotNode extends JavaScriptNode {
     @Override
     public Object execute(VirtualFrame frame) {
         Frame scopeFrame = scopeFrameNode.executeFrame(frame);
-        InitializeFrameSlotsNode.initializeSlot(scopeFrame, slot);
+        ClearFrameSlotsNode.clearSlot(scopeFrame, slot);
         return Undefined.instance;
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new InitializeFrameSlotNode(scopeFrameNode, slot);
+        return new ClearFrameSlotNode(scopeFrameNode, slot);
     }
 
     @Override
@@ -131,13 +130,13 @@ class InitializeFrameSlotNode extends JavaScriptNode {
     }
 }
 
-class InitializeFrameSlotRangeNode extends JavaScriptNode {
+class ClearFrameSlotRangeNode extends JavaScriptNode {
 
     private final int start;
     private final int end;
     @Child private ScopeFrameNode scopeFrameNode;
 
-    protected InitializeFrameSlotRangeNode(ScopeFrameNode scopeFrameNode, int start, int end) {
+    protected ClearFrameSlotRangeNode(ScopeFrameNode scopeFrameNode, int start, int end) {
         this.start = start;
         this.end = end;
         this.scopeFrameNode = Objects.requireNonNull(scopeFrameNode);
@@ -148,14 +147,14 @@ class InitializeFrameSlotRangeNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         Frame scopeFrame = scopeFrameNode.executeFrame(frame);
         for (int slot = start; slot < end; slot++) {
-            InitializeFrameSlotsNode.initializeSlot(scopeFrame, slot);
+            ClearFrameSlotsNode.clearSlot(scopeFrame, slot);
         }
         return Undefined.instance;
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new InitializeFrameSlotRangeNode(scopeFrameNode, start, end);
+        return new ClearFrameSlotRangeNode(scopeFrameNode, start, end);
     }
 
     @Override

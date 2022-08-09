@@ -61,6 +61,7 @@ public final class JSFrameSlot {
     private final FrameSlotKind kind;
 
     private boolean hasBeenDeclared;
+    private int mappedParameterIndex = -1;
 
     public JSFrameSlot(int index, Object identifier, int flags, FrameSlotKind kind) {
         this.index = index;
@@ -154,6 +155,14 @@ public final class JSFrameSlot {
      */
     public void setHasBeenDeclared(boolean declared) {
         this.hasBeenDeclared = declared;
+    }
+
+    public int getMappedParameterIndex() {
+        return mappedParameterIndex;
+    }
+
+    public void setMappedParameterIndex(int mappedParameterIndex) {
+        this.mappedParameterIndex = mappedParameterIndex;
     }
 
     /**
