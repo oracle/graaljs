@@ -42,9 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import java.util.EnumSet;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.IteratorFunctionBuiltinsFactory.JSIteratorFromNodeGen;
 import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
@@ -112,11 +110,12 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
 
-        private final ConditionProfile directProfile = ConditionProfile.createBinaryProfile();
-
         public JSIteratorFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.getIteratorMethodNode = GetMethodNode.create(context, Symbol.SYMBOL_ITERATOR);
+            this.getIteratorNode = insert(GetIteratorNode.create(getContext()));
+            this.ordinaryHasInstanceNode = insert(OrdinaryHasInstanceNode.create(getContext()));
+            this.getIteratorDirectNode = insert(GetIteratorDirectNode.create(getContext()));
         }
 
 
@@ -125,28 +124,13 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             IteratorRecord iteratorRecord = null;
 
             Object usingIterator = getIteratorMethodNode.executeWithTarget(arg);
-            if (directProfile.profile(usingIterator != Undefined.instance)) {
-                if (getIteratorNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getIteratorNode = insert(GetIteratorNode.create(getContext()));
-                }
-
+            if (usingIterator != Undefined.instance) {
                 iteratorRecord = getIteratorNode.execute(arg);
-
-                if (ordinaryHasInstanceNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    ordinaryHasInstanceNode = insert(OrdinaryHasInstanceNode.create(getContext()));
-                }
-
                 boolean hasInstance = ordinaryHasInstanceNode.executeBoolean(iteratorRecord.getIterator(), getRealm().getIteratorConstructor());
                 if (hasInstance) {
                     return iteratorRecord.getIterator();
                 }
             } else {
-                if (getIteratorDirectNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getIteratorDirectNode = insert(GetIteratorDirectNode.create(getContext()));
-                }
                 iteratorRecord = getIteratorDirectNode.execute(arg);
             }
 
