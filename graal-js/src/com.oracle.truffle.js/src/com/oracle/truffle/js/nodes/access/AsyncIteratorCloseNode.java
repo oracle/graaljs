@@ -44,7 +44,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.js.builtins.AsyncIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;

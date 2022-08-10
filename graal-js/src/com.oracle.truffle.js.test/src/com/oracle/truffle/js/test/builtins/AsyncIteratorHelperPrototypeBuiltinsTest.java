@@ -40,9 +40,7 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
-import com.oracle.truffle.js.test.interop.AsyncInteropTest;
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
@@ -50,6 +48,7 @@ import org.junit.Test;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
+import com.oracle.truffle.js.test.interop.AsyncInteropTest;
 
 public class AsyncIteratorHelperPrototypeBuiltinsTest {
     @Test

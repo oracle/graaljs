@@ -207,7 +207,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             @Override
             public AsyncStackTraceInfo getAsyncStackTraceInfo(JSFunctionObject handlerFunction) {
                 assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
-                JSDynamicObject promise = (JSDynamicObject)JSObjectUtil.getHiddenProperty((JSDynamicObject) JSObjectUtil.getHiddenProperty(handlerFunction, THIS_ID), PROMISE_ID);
+                JSDynamicObject promise = (JSDynamicObject) JSObjectUtil.getHiddenProperty((JSDynamicObject) JSObjectUtil.getHiddenProperty(handlerFunction, THIS_ID), PROMISE_ID);
                 return new AsyncStackTraceInfo(promise, null);
             }
         }
@@ -215,7 +215,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         private static class AsyncIteratorIfAbruptCloseNode extends AsyncIteratorRootNode<AsyncIteratorArgs> {
             @Child private AsyncIteratorCloseNode closeNode;
 
-            public AsyncIteratorIfAbruptCloseNode(JSContext context) {
+            AsyncIteratorIfAbruptCloseNode(JSContext context) {
                 super(context);
 
                 closeNode = AsyncIteratorCloseNode.create(context);
@@ -232,7 +232,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
             @Child private JSFunctionCallNode callNode;
 
-            public AsyncIteratorIfAbruptReturnNode(JSContext context) {
+            AsyncIteratorIfAbruptReturnNode(JSContext context) {
                 super(context);
 
                 newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
@@ -251,7 +251,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public static class AsyncIteratorArgs {
             public final IteratorRecord iterated;
 
-            public AsyncIteratorArgs(IteratorRecord iterated) {
+            AsyncIteratorArgs(IteratorRecord iterated) {
                 this.iterated = iterated;
             }
         }

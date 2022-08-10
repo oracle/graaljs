@@ -105,7 +105,9 @@ public class AsyncIteratorPrototypeBuiltinsTest {
             Assert.assertEquals("undefined undefined boolean true\n", out.toString());
             out.reset();
 
-            context.eval(JavaScriptLanguage.ID, "var called = false; AsyncIterator.prototype.map.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')}).next().catch(err => console.log(called, err))");
+            context.eval(JavaScriptLanguage.ID, "var called = false; " +
+                    "AsyncIterator.prototype.map.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})" +
+                    ".next().catch(err => console.log(called, err))");
             Assert.assertEquals("true Error: test\n", out.toString());
         }
     }
@@ -138,7 +140,9 @@ public class AsyncIteratorPrototypeBuiltinsTest {
             Assert.assertEquals("undefined undefined boolean true\n", out.toString());
             out.reset();
 
-            context.eval(JavaScriptLanguage.ID, "var called = false; AsyncIterator.prototype.filter.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')}).next().catch(err => console.log(called, err))");
+            context.eval(JavaScriptLanguage.ID, "var called = false; " +
+                    "AsyncIterator.prototype.filter.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})" +
+                    ".next().catch(err => console.log(called, err))");
             Assert.assertEquals("true Error: test\n", out.toString());
         }
     }
@@ -286,7 +290,9 @@ public class AsyncIteratorPrototypeBuiltinsTest {
             Assert.assertEquals("undefined undefined boolean true\n", out.toString());
             out.reset();
 
-            context.eval(JavaScriptLanguage.ID, "var called = false; AsyncIterator.prototype.flatMap.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')}).next().catch(err => console.log(called, err))");
+            context.eval(JavaScriptLanguage.ID, "var called = false; " +
+                    "AsyncIterator.prototype.flatMap.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})" +
+                    ".next().catch(err => console.log(called, err))");
             Assert.assertEquals("true Error: test\n", out.toString());
         }
     }
