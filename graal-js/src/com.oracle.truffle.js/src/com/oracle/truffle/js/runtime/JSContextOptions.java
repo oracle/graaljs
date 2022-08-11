@@ -649,7 +649,7 @@ public final class JSContextOptions {
         }
 
         this.annexB = readBooleanOption(ANNEX_B);
-        this.intl402 = readBooleanOption(INTL_402);
+        this.intl402 = INTL_402.hasBeenSet(optionValues) ? readBooleanOption(INTL_402) : !nashornCompatibilityMode;
         this.regexpStaticResult = patchBooleanOption(REGEXP_STATIC_RESULT, REGEXP_STATIC_RESULT_NAME, regexpStaticResult, msg -> {
             regexpStaticResultCyclicAssumption.invalidate(msg);
             regexpStaticResultCurrentAssumption = regexpStaticResultCyclicAssumption.getAssumption();
