@@ -62,7 +62,7 @@ public class GR39223 {
     public void testIntlDefault() throws ScriptException {
         ScriptEngine engine = getEngine();
         Object result = engine.eval("typeof Intl");
-        assertEquals("undefined", result);
+        assertEquals("object", result);
     }
 
     @Test
