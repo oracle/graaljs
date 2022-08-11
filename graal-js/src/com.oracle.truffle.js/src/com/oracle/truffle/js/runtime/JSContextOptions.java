@@ -141,7 +141,7 @@ public final class JSContextOptions {
 
     public static final String INTL_402_NAME = JS_OPTION_PREFIX + "intl-402";
     @Option(name = INTL_402_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Enable ECMAScript Internationalization API.") //
-    public static final OptionKey<Boolean> INTL_402 = new OptionKey<>(false);
+    public static final OptionKey<Boolean> INTL_402 = new OptionKey<>(true);
     @CompilationFinal private boolean intl402;
 
     public static final String REGEXP_MATCH_INDICES_NAME = JS_OPTION_PREFIX + "regexp-match-indices";
@@ -649,7 +649,7 @@ public final class JSContextOptions {
         }
 
         this.annexB = readBooleanOption(ANNEX_B);
-        this.intl402 = readBooleanOption(INTL_402);
+        this.intl402 = INTL_402.hasBeenSet(optionValues) ? readBooleanOption(INTL_402) : !nashornCompatibilityMode;
         this.regexpStaticResult = patchBooleanOption(REGEXP_STATIC_RESULT, REGEXP_STATIC_RESULT_NAME, regexpStaticResult, msg -> {
             regexpStaticResultCyclicAssumption.invalidate(msg);
             regexpStaticResultCurrentAssumption = regexpStaticResultCyclicAssumption.getAssumption();
