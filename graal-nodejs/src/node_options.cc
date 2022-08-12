@@ -840,6 +840,7 @@ PerProcessOptionsParser::PerProcessOptionsParser(
 
   AddOption("--jvm", "", V8Option{}, kAllowedInEnvironment);
   AddOption("--native", "", V8Option{}, kAllowedInEnvironment);
+  AddOption("--polyglot", "", V8Option{}, kAllowedInEnvironment);
 
   Insert(iop, &PerProcessOptions::get_per_isolate_options);
 

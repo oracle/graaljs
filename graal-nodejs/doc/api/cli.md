@@ -1596,6 +1596,7 @@ Node.js options that are allowed are:
 * `--openssl-config`
 * `--pending-deprecation`
 * `--policy-integrity`
+* `--polyglot`
 * `--preserve-symlinks-main`
 * `--preserve-symlinks`
 * `--prof-process`
