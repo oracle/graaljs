@@ -8,6 +8,7 @@ See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) fo
 ## Version 22.3.0
 * Updated Node.js to version 16.16.0.
 * ECMA-402 Internationalization API has been enabled by default. It can be disabled by `--js.intl-402=false` option.
+* Implemented the [Decorators (stage 3)](https://github.com/tc39/proposal-decorators) proposal.
 
 ## Version 22.2.0
 * GraalVM JavaScript is now an installable component of GraalVM. It can be installed with `gu install js`.

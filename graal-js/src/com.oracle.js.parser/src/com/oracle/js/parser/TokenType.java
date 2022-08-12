@@ -128,11 +128,13 @@ public enum TokenType {
     NULLISHCOALESC (BINARY,  "??",    4, true, 11),
     ASSIGN_NULLCOAL(BINARY,  "??=",   2, false, 12),
     OPTIONAL_CHAIN (BRACKET, "?.",   18, true, 11),
+    AT             (UNARY,   "@",    0,  true, 14),
 
     // ECMA 7.6.1.1 Keywords, 7.6.1.2 Future Reserved Words.
     // All other Java keywords are commented out.
 
 //  ABSTRACT       (FUTURE,       "abstract"),
+    ACCESSOR       (CONTEXTUAL,   "accessor"),
     AS             (CONTEXTUAL,   "as"),
     ASSERT         (CONTEXTUAL,   "assert"),
     ASYNC          (CONTEXTUAL,   "async"),

@@ -59,6 +59,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.annotations.GenerateDecoder;
 import com.oracle.truffle.js.annotations.GenerateProxy;
+import com.oracle.truffle.js.decorators.DecoratorListEvaluationNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.AsyncIteratorNextNode;
 import com.oracle.truffle.js.nodes.access.ClearFrameSlotsNode;
@@ -916,11 +917,20 @@ public class NodeFactory {
         return ObjectLiteralNode.newDataMember(keyName, isStatic, enumerable, value, isField);
     }
 
+    public ObjectLiteralMemberNode createAutoAccessor(TruffleString keyName, boolean isStatic, boolean enumerable, JavaScriptNode value) {
+        return ObjectLiteralNode.newAutoAccessor(keyName, isStatic, enumerable, value);
+    }
+
+    public ObjectLiteralMemberNode createComputedAutoAccessor(JavaScriptNode key, boolean isStatic, boolean enumerable, JavaScriptNode value) {
+        return ObjectLiteralNode.newComputedAutoAccessor(key, isStatic, enumerable, value);
+    }
+
     public ObjectLiteralMemberNode createProtoMember(TruffleString keyName, boolean isStatic, JavaScriptNode value) {
         return ObjectLiteralNode.newProtoMember(keyName, isStatic, value);
     }
 
-    public ObjectLiteralMemberNode createComputedDataMember(JavaScriptNode key, boolean isStatic, boolean enumerable, JavaScriptNode value, boolean isField, boolean isAnonymousFunctionDefinition) {
+    public ObjectLiteralMemberNode createComputedDataMember(JavaScriptNode key, boolean isStatic, boolean enumerable, JavaScriptNode value, boolean isField,
+                    boolean isAnonymousFunctionDefinition) {
         return ObjectLiteralNode.newComputedDataMember(key, isStatic, enumerable, value, isField, isAnonymousFunctionDefinition);
     }
 
@@ -937,10 +947,11 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members,
-                    JSWriteFrameSlotNode writeClassBinding, JSWriteFrameSlotNode writeInternalConstructorBrand, TruffleString className, int instanceFieldCount, int staticFieldCount,
-                    boolean hasPrivateInstanceMethods, JSFrameSlot blockScopeSlot) {
+                    JSWriteFrameSlotNode writeClassBinding, JSWriteFrameSlotNode writeInternalConstructorBrand, JavaScriptNode[] classDecorators, DecoratorListEvaluationNode[] memberDecorators,
+                    TruffleString className, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods, JSFrameSlot blockScopeSlot) {
         return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members,
-                        writeClassBinding, writeInternalConstructorBrand, className != null, instanceFieldCount, staticFieldCount, hasPrivateInstanceMethods, blockScopeSlot);
+                        writeClassBinding, writeInternalConstructorBrand, className, classDecorators, memberDecorators, instanceFieldCount, staticFieldCount, hasPrivateInstanceMethods,
+                        blockScopeSlot);
     }
 
     public JavaScriptNode createMakeMethod(JSContext context, JavaScriptNode function) {
@@ -1288,12 +1299,13 @@ public class NodeFactory {
         return ObjectLiteralNode.newPrivateFieldMember(keyNode, isStatic, valueNode, writePrivateNode);
     }
 
-    public ObjectLiteralMemberNode createPrivateMethodMember(boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode) {
-        return ObjectLiteralNode.newPrivateMethodMember(isStatic, valueNode, writePrivateNode);
+    public ObjectLiteralMemberNode createPrivateMethodMember(TruffleString privateName, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode, int privateBrandSlotIndex) {
+        return ObjectLiteralNode.newPrivateMethodMember(privateName, isStatic, valueNode, writePrivateNode, privateBrandSlotIndex);
     }
 
-    public ObjectLiteralMemberNode createPrivateAccessorMember(boolean isStatic, JavaScriptNode getterNode, JavaScriptNode setterNode, JSWriteFrameSlotNode writePrivateNode) {
-        return ObjectLiteralNode.newPrivateAccessorMember(isStatic, getterNode, setterNode, writePrivateNode);
+    public ObjectLiteralMemberNode createPrivateAccessorMember(boolean isStatic, JavaScriptNode getterNode, JavaScriptNode setterNode, JSWriteFrameSlotNode writePrivateNode,
+                    int privateBrandSlotIndex) {
+        return ObjectLiteralNode.newPrivateAccessorMember(isStatic, getterNode, setterNode, writePrivateNode, privateBrandSlotIndex);
     }
 
     public JavaScriptNode createPrivateBrandCheck(JavaScriptNode targetNode, JavaScriptNode brandNode) {

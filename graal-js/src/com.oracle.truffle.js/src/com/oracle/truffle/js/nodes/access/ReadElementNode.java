@@ -465,7 +465,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             assert JSRuntime.isForeignObject(target);
             return new ForeignObjectReadElementTypeCacheNode(target.getClass(), next);
         } else {
-            assert JSRuntime.isJavaPrimitive(target);
+            assert JSRuntime.isJavaPrimitive(target) : target;
             return new JavaObjectReadElementTypeCacheNode(target.getClass(), next);
         }
     }

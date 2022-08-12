@@ -58,6 +58,7 @@ import com.oracle.js.parser.ir.BreakNode;
 import com.oracle.js.parser.ir.CallNode;
 import com.oracle.js.parser.ir.CaseNode;
 import com.oracle.js.parser.ir.CatchNode;
+import com.oracle.js.parser.ir.ClassElement;
 import com.oracle.js.parser.ir.ClassNode;
 import com.oracle.js.parser.ir.ContinueNode;
 import com.oracle.js.parser.ir.DebuggerNode;
@@ -483,7 +484,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
             comma();
         }
 
-        PropertyNode constructor = classNode.getConstructor();
+        ClassElement constructor = classNode.getConstructor();
         if (constructor != null) {
             property("constructor");
             constructor.getValue().accept(this);

@@ -201,6 +201,7 @@ public class Test262Runnable extends TestRunnable {
                     "computed-property-names",
                     "const",
                     "cross-realm",
+                    "decorators",
                     "default-parameters",
                     "destructuring-assignment",
                     "destructuring-binding",
@@ -246,7 +247,6 @@ public class Test262Runnable extends TestRunnable {
                     "IsHTMLDDA",
                     "ShadowRealm",
                     "arbitrary-module-namespace-names",
-                    "decorators",
                     "regexp-v-flag",
                     "resizable-arraybuffer",
                     "tail-call-optimization",
@@ -259,6 +259,7 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.NumberFormat-v3",
                     "array-find-from-last",
                     "array-grouping",
+                    "decorators",
     }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {

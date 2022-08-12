@@ -875,7 +875,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     public PropertyCacheNode(Object key, JSContext context) {
         this.key = key;
         this.context = context;
-        assert JSRuntime.isPropertyKey(key) || key instanceof HiddenKey;
+        assert JSRuntime.isPropertyKey(key) || key instanceof HiddenKey : key;
     }
 
     public final Object getKey() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.js.parser.ir.BreakNode;
 import com.oracle.js.parser.ir.CallNode;
 import com.oracle.js.parser.ir.CaseNode;
 import com.oracle.js.parser.ir.CatchNode;
+import com.oracle.js.parser.ir.ClassElement;
 import com.oracle.js.parser.ir.ClassNode;
 import com.oracle.js.parser.ir.ContinueNode;
 import com.oracle.js.parser.ir.DebuggerNode;
@@ -532,4 +533,14 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     public R enterTemplateLiteralNode(final TemplateLiteralNode templateLiteralNode) {
         return enterDefault(templateLiteralNode);
     }
+
+    /**
+     * Callback for entering a ClassElement
+     * 
+     * @param element the node
+     */
+    public R enterClassElement(final ClassElement element) {
+        return enterDefault(element);
+    }
+
 }
