@@ -829,10 +829,7 @@ public class JSRealm {
         if (context.getContextOptions().isWebAssembly()) {
             Object wasmMemSetGrowCallback;
             if (!isWasmAvailable()) {
-                String msg = "WebAssembly API enabled but wasm language cannot be accessed!";
-                if (!truffleLanguageEnv.isPolyglotEvalAllowed()) {
-                    msg += " Did you set the --polyglot flag?";
-                }
+                String msg = "WebAssembly API enabled but wasm language cannot be accessed! Did you forget to set the --polyglot flag?";
                 if (JSConfig.SubstrateVM) {
                     msg += " In native mode, you might have to rebuild libpolyglot with 'gu rebuild-images libpolyglot'.";
                 }
