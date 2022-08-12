@@ -728,8 +728,12 @@ public:
     }
 
     static void SetMode(int mode, bool polyglot) {
-        GraalIsolate::mode = mode;
-        GraalIsolate::polyglot = polyglot;
+        if (mode != kModeDefault) {
+            GraalIsolate::mode = mode;
+        }
+        if (polyglot) {
+            GraalIsolate::polyglot = true;
+        }
     }
 
     static void InitThreadLocals();
