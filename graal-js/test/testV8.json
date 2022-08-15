@@ -27,17 +27,73 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/date-format/format-range-to-parts.js",
+    "filePath" : "intl/date-format/timezone-name-extended.js",
     "status" : "FAIL",
-    "comment" : "Obsolete test, see https://github.com/tc39/ecma402/issues/692"
-  }, {
-    "filePath" : "intl/date-format/format-range.js",
-    "status" : "FAIL",
-    "comment" : "Obsolete test, see https://github.com/tc39/ecma402/issues/692"
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "intl/default_locale.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
+  }, {
+    "filePath" : "intl/enumeration/calendar-sorted.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/enumeration/callendar-syntax-valid.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/enumeration/collation-sorted.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/enumeration/collation-syntax-valid.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/enumeration/currency-sorted.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/enumeration/currency-syntax-valid.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/enumeration/numberingSystem-no-algorithm.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/enumeration/numberingSystem-sorted.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/enumeration/numberingSystem-syntax-valid.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/enumeration/supported-values-of-invalid-key.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/enumeration/supported-values-of-name.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/enumeration/supported-values-of-property.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/enumeration/supported-values-of-valid-key.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/enumeration/timeZone-sorted.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/enumeration/unit-sorted.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "intl/general/case-mapping.js",
     "status" : "FAIL"
@@ -52,13 +108,53 @@
     "filePath" : "intl/general/supported-locales-of.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "intl/locale/locale-calendars.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/locale/locale-collations.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/locale/locale-info-check-property.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "intl/locale/locale-info-check-return-types.js",
     "status" : "FAIL",
     "comment" : "Off-spec/obsolete test."
   }, {
+    "filePath" : "intl/locale/locale-info-ext.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/locale/locale-info-no-undefined.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/locale/locale-info-timezones-sorted.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/locale/locale-numberingSystems.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "intl/localematcher/bestfit-supplemental-files.js",
     "status" : "FAIL",
     "comment" : "localeMatcher best fit"
+  }, {
+    "filePath" : "intl/number-format/format-range-string.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/number-format/format-string.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/number-format/options-digits.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "intl/overrides/caching.js",
     "status" : "SKIP",
@@ -76,17 +172,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
   }, {
-    "filePath" : "intl/regress-10529.js",
-    "status" : "FAIL",
-    "comment" : "Obsolete test, updated by https://github.com/v8/v8/commit/b9a48232b735f0f59249ff5d8299e45c09c4cd5c#diff-a80a8b27273a537129d6af2650a81aa462ee693c9abd6f9007348ba9c7a6863a"
-  }, {
     "filePath" : "intl/regress-10613.js",
     "status" : "FAIL",
     "comment" : "Different error message expected, passes otherwise"
-  }, {
-    "filePath" : "intl/regress-1074578.js",
-    "status" : "FAIL",
-    "comment" : "Fails after ICU4J 70.1 update. Expects a different formatting of a timezone (MST versus GMT-7)."
   }, {
     "filePath" : "intl/regress-1130489.js",
     "status" : "PASS",
@@ -95,6 +183,10 @@
     },
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
+  }, {
+    "filePath" : "intl/regress-1336865.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "intl/regress-7770.js",
     "status" : "FAIL",
@@ -115,6 +207,14 @@
     "filePath" : "intl/relative-time-format/default-locale-pt-BR.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+  }, {
+    "filePath" : "intl/string-localecompare.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/temporal/calendar/fields.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/allocation-site-info.js",
     "status" : "SKIP",
@@ -170,9 +270,21 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
+    "filePath" : "mjsunit/async-stack-traces-promise-all-settled.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/async-stack-traces-promise-any.js",
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
+  }, {
+    "filePath" : "mjsunit/baseline/flush-baseline-code.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/baseline/flush-only-baseline-code.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/baseline/verify-bytecode-offsets.js",
     "status" : "FAIL",
@@ -249,11 +361,23 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
+    "filePath" : "mjsunit/compiler/fast-api-annotations.js",
+    "status" : "FAIL",
+    "comment" : "FastCAPI"
+  }, {
+    "filePath" : "mjsunit/compiler/fast-api-calls-wasm.js",
+    "status" : "FAIL",
+    "comment" : "FastCAPI"
+  }, {
     "filePath" : "mjsunit/compiler/fast-api-calls.js",
     "status" : "FAIL",
     "comment" : "FastCAPI"
   }, {
     "filePath" : "mjsunit/compiler/fast-api-interface-types.js",
+    "status" : "FAIL",
+    "comment" : "FastCAPI"
+  }, {
+    "filePath" : "mjsunit/compiler/fast-api-sequences-x64.js",
     "status" : "FAIL",
     "comment" : "FastCAPI"
   }, {
@@ -264,10 +388,6 @@
     "filePath" : "mjsunit/compiler/regress-1065737.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
-    "filePath" : "mjsunit/compiler/regress-1104514.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/compiler/regress-1125145.js",
     "status" : "SKIP",
@@ -306,6 +426,18 @@
     "status" : "SKIP",
     "comment" : "stack size exceeded e.g. in shareengine config"
   }, {
+    "filePath" : "mjsunit/compiler/regress-crbug-1241464.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/compiler/regress-crbug-1344965.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/compiler/store-data-property-in-literal-private.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/compiler/string-add-try-catch.js",
     "status" : "PASS",
     "runInIsolation" : true,
@@ -319,13 +451,9 @@
     "runInIsolation" : true,
     "comment" : "memory intensive test"
   }, {
-    "filePath" : "mjsunit/compiler/test-dynamic-map-check-deprecated-maps2.js",
+    "filePath" : "mjsunit/compiler/typedarray-resizablearraybuffer.js",
     "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "mjsunit/compiler/test-dynamic-map-check-deprecated-maps3.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/console.js",
     "status" : "FAIL",
@@ -372,6 +500,14 @@
     "filePath" : "mjsunit/d8/d8-worker-shutdown.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+  }, {
+    "filePath" : "mjsunit/dataview-growablesharedarraybuffer.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/dataview-resizablearraybuffer.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/date-parse.js",
     "status" : "FAIL"
@@ -430,6 +566,10 @@
     "filePath" : "mjsunit/es6/generator-destructuring.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/es6/iterator-call-lazy-deopt.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/es6/math-log2-log10.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -467,10 +607,6 @@
     "filePath" : "mjsunit/es6/regress/regress-576662.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/regress/regress-5929-1.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
     "filePath" : "mjsunit/es6/regress/regress-9234.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
@@ -489,26 +625,13 @@
     "filePath" : "mjsunit/es6/super.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/typedarray-construct-by-array-like-prototype-element-added.js",
-    "status" : "FAIL",
-    "comment" : "Delegates to a partially obsolete typedarray-construct-by-array-like.js test"
-  }, {
-    "filePath" : "mjsunit/es6/typedarray-construct-by-array-like.js",
-    "status" : "FAIL",
-    "comment" : "Part of the test is obsolete and was removed by https://github.com/v8/v8/commit/1ac9280d509e3d01c8b07c65431d96a21eb7423b"
-  }, {
     "filePath" : "mjsunit/es6/typedarray-construct-offset-not-smi.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/es6/typedarray-every.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/typedarray-filter.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/typedarray-foreach.js",
-    "status" : "FAIL"
+    "filePath" : "mjsunit/es6/typedarray-detached.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/es6/typedarray-map.js",
     "status" : "FAIL"
@@ -541,6 +664,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
+    "filePath" : "mjsunit/external-array.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/extinction/array.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
@@ -559,6 +686,22 @@
     "filePath" : "mjsunit/global-load-with-proxy.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "mjsunit/harmony/array-to-reversed.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/harmony/array-to-spliced.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/harmony/array-with.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/harmony/arraybuffer-transfer.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/harmony/async-for-of-non-iterable.js",
     "status" : "FAIL",
@@ -604,6 +747,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
+    "filePath" : "mjsunit/harmony/bigint/tostring-toolong.js",
+    "status" : "SKIP",
+    "comment" : "Tests for V8's limits on BigInts."
+  }, {
     "filePath" : "mjsunit/harmony/error-cause.js",
     "status" : "FAIL",
     "comment" : "Uses Worker"
@@ -620,6 +767,14 @@
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
   }, {
+    "filePath" : "mjsunit/harmony/index-fields-nonextensible-global-proxy-no-lazy-feedback.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/harmony/index-fields-nonextensible-global-proxy.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/harmony/modules-import-15-top-level-await.mjs",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
@@ -631,6 +786,14 @@
     "filePath" : "mjsunit/harmony/modules-import-16.mjs",
     "status" : "FAIL",
     "comment" : "TODO: evaluate"
+  }, {
+    "filePath" : "mjsunit/harmony/private-accessors.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/harmony/private-reference-logical-assignment-short-circuit.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/harmony/private-symbols.js",
     "status" : "FAIL",
@@ -644,29 +807,9 @@
     "status" : "SKIP",
     "comment" : "long-running test, deactivated"
   }, {
-    "filePath" : "mjsunit/harmony/regexp-property-emoji-flag-sequence-generated.js",
+    "filePath" : "mjsunit/harmony/regexp-named-captures.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/harmony/regexp-property-emoji-keycap-sequence-generated.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/harmony/regexp-property-emoji-modifier-sequence-generated.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/harmony/regexp-property-emoji-tag-sequence-generated.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/harmony/regexp-property-emoji-zwj-sequence-generated.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/harmony/regexp-property-sequence.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/harmony/regexp-property-special.js",
     "runInIsolation" : true,
@@ -678,13 +821,45 @@
     },
     "status" : "PASS"
   }, {
+    "filePath" : "mjsunit/harmony/shadowrealm-evaluate.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/harmony/shadowrealm-importvalue.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/harmony/shadowrealm-wrapped-function-bind.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/harmony/shadowrealm-wrapped-function-props-stack.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/harmony/shadowrealm-wrapped-function-props.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/harmony/shadowrealm-wrapped-function.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/harmony/sharedarraybuffer-worker-gc-stress.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
-    "filePath" : "mjsunit/harmony/typedarray-set-length-detach.js",
+    "filePath" : "mjsunit/harmony/sharedarraybuffer.js",
     "status" : "FAIL",
-    "comment" : "Obsolete test, removed by https://github.com/v8/v8/commit/908e7ac767042830fedee4f5b5fd4b8873091b59"
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/harmony/typedarray-to-reversed.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/harmony/typedarray-with.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/cleanup-on-detached-realm.js",
     "status" : "FAIL",
@@ -697,6 +872,10 @@
     "filePath" : "mjsunit/harmony/weakrefs/cleanupsome-optional.js",
     "status" : "FAIL",
     "comment" : "Check of V8-specific behaviour: cleanupSome is not available unless --harmony-weak-refs-with-cleanup-some is used"
+  }, {
+    "filePath" : "mjsunit/harmony/weakrefs/finalizationregistry-independent-lifetime-multiple.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/finalizationregistry-independent-lifetime.js",
     "status" : "FAIL",
@@ -729,6 +908,10 @@
     "filePath" : "mjsunit/ic-megadom-2.js",
     "status" : "FAIL",
     "comment" : "d8.dom"
+  }, {
+    "filePath" : "mjsunit/ic-megadom-3.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/ic-megadom.js",
     "status" : "FAIL",
@@ -789,6 +972,38 @@
     "filePath" : "mjsunit/lookup-behind-property.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/maglev/add-number.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/maglev/add-smi.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/maglev/lazy-deopt-with-onstack-activation.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/maglev/lazy-deopt-without-onstack-activation.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/maglev/load-named.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/maglev/spill-double.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/maglev/string-compare.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/maglev/super-ic.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/messages.js",
     "status" : "FAIL"
   }, {
@@ -814,9 +1029,9 @@
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
   }, {
-    "filePath" : "mjsunit/promise-hooks.js",
+    "filePath" : "mjsunit/proxy-super-return-define-property-trap.js",
     "status" : "FAIL",
-    "comment" : "d8.promise.setHooks"
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/random-bit-correlations.js",
     "status" : "SKIP",
@@ -836,26 +1051,6 @@
     "filePath" : "mjsunit/regexp-linear-flag.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "mjsunit/regexp-modifiers-autogenerated-i18n.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/regexp-modifiers-autogenerated.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/regexp-modifiers-dotall.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/regexp-modifiers-i18n.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/regexp-modifiers.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/regexp-stack-overflow.js",
     "runInIsolation" : true,
@@ -953,10 +1148,6 @@
     "runInIsolation" : true,
     "comment" : "these tests expect the stack limit to be reached; spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
   }, {
-    "filePath" : "mjsunit/regress/regress-1138075.js",
-    "status" : "SKIP",
-    "comment" : "stack overflow, recursion"
-  }, {
     "filePath" : "mjsunit/regress/regress-1166138.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
@@ -986,6 +1177,38 @@
     "filePath" : "mjsunit/regress/regress-1215653.js",
     "status" : "SKIP",
     "comment" : "GR-35543: Occasional AssertionError at com.oracle.js.parser.ParserContext.pop()"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1221035.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-12256.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1230597.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1232620.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1255368.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-12657.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1273677.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1313475.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/regress/regress-148378.js",
     "status" : "SKIP",
@@ -1044,6 +1267,10 @@
     "status" : "SKIP",
     "runInIsolation" : true,
     "comment" : "these tests expect the stack limit to be reached"
+  }, {
+    "filePath" : "mjsunit/regress/regress-4578.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/regress/regress-458987.js",
     "runInIsolation" : true,
@@ -1165,10 +1392,6 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
-    "filePath" : "mjsunit/regress/regress-752764.js",
-    "status" : "SKIP",
-    "comment" : "Calls v8StringMaxLength. Checks that longer strings cannot be parsed as RegExps by V8."
-  }, {
     "filePath" : "mjsunit/regress/regress-7716.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1199,10 +1422,6 @@
     "filePath" : "mjsunit/regress/regress-821368.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-840106.js",
-    "status" : "FAIL",
-    "comment" : "Obsolete test, removed by https://github.com/v8/v8/commit/1ac9280d509e3d01c8b07c65431d96a21eb7423b"
   }, {
     "filePath" : "mjsunit/regress/regress-842078.js",
     "status" : "FAIL",
@@ -1312,6 +1531,106 @@
     "filePath" : "mjsunit/regress/regress-crbug-1162473.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1237153.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1238467.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1239907.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1259950.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1262007.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1278086.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1302527-no-lazy-feedback.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1302527.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1308360.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1309467.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1321899-1.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1321899-2.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1321899-3.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1321899-4.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1321899-5.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1321899-6.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1339722-2.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1339722-3.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1339722-4.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1339722-5.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1339722-6.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1339722-7.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1339722-8.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1339722.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1347721.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-150545.js",
     "status" : "SKIP",
@@ -1566,6 +1885,70 @@
     "filePath" : "mjsunit/regress/regress-trap-allocation-memento.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/regress/regress-v8-10384.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-10602.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-10817.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-11360.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-12122.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-12219.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-12421-no-lazy-feedback.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-12421.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-12472.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-12595.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-12671.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-12705.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-12729-1.mjs",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-12729.mjs",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-13037.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-13110.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/regress/regress-v8-5848.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
@@ -1587,6 +1970,10 @@
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
     }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/i32-lowering-inlining.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/regress/wasm/loop-stack-check.js",
     "status" : "SKIP",
@@ -1672,6 +2059,13 @@
       "POLYGLOT" : "PASS"
     }
   }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1084151.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/regress/wasm/regress-1101304.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -1689,6 +2083,13 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-11206.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-11335.js",
     "status" : "SKIP",
@@ -1732,6 +2133,13 @@
       "POLYGLOT" : "PASS"
     }
   }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1185464.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/regress/wasm/regress-1201340.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -1755,6 +2163,211 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-12270.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1231950.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-12330.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1239116.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1239116b.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1242300.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1242689.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1247659.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1248024.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1254674.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1255354.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1264462.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1271244.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1271456.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1271538.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1272204.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1273705.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1282224.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1283042.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1283395.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1284980.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1286253.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-12867.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1289678.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1290079.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-13118.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1314184.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1314363.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1338150.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1339153.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1347073.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-5531.js",
     "status" : "SKIP",
@@ -2128,6 +2741,13 @@
       "POLYGLOT" : "FAIL"
     }
   }, {
+    "filePath" : "mjsunit/regress/wasm/regress-7785.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/regress/wasm/regress-782280.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -2354,6 +2974,12 @@
       "POLYGLOT" : "PASS"
     }
   }, {
+    "filePath" : "mjsunit/regress/wasm/regress-875556.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
     "filePath" : "mjsunit/regress/wasm/regress-894307.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -2532,6 +3158,13 @@
     "status" : "SKIP",
     "comment" : "Uses i32.trunc_sat_f32_s instruction"
   }, {
+    "filePath" : "mjsunit/regress/wasm/regress-964607.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/regress/wasm/regress-968078.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -2563,6 +3196,31 @@
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1168612.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-crbug-1338075.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-crbug-1338980.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-crbug-1340488.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-crbug-1341180.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
@@ -2609,6 +3267,30 @@
     "filePath" : "mjsunit/serialize-embedded-error.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/shared-memory/mutex.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/shared-memory/shared-array-atomics.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/shared-memory/shared-array-surface.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/shared-memory/shared-struct-atomics.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/shared-memory/shared-struct-surface.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/shared-memory/shared-struct-without-map-space.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/stack-overflow-arity-catch-noinline.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -2631,6 +3313,10 @@
     "filePath" : "mjsunit/stack-traces.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/statistics-extension.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/string-oom-array-join.js",
     "status" : "SKIP",
     "runInIsolation" : true,
@@ -2651,6 +3337,30 @@
     "filePath" : "mjsunit/switch.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
+  }, {
+    "filePath" : "mjsunit/temporal/duration-from.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/temporal/function-exist.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-get-era.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-get-eraYear.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-era.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-eraYear.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/test-builtins-setup.js",
     "status" : "FAIL",
@@ -2722,9 +3432,25 @@
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
   }, {
+    "filePath" : "mjsunit/typedarray-growablesharedarraybuffer-array-methods.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/typedarray-growablesharedarraybuffer-atomics.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/typedarray-growablesharedarraybuffer.js",
     "status" : "FAIL",
     "comment" : "ResizableArrayBuffer (GR-31575)"
+  }, {
+    "filePath" : "mjsunit/typedarray-resizablearraybuffer-array-methods.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/typedarray-resizablearraybuffer-atomics.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/typedarray-resizablearraybuffer-detach.js",
     "status" : "FAIL",
@@ -2774,6 +3500,10 @@
     "status" : "SKIP",
     "comment" : "undetectable"
   }, {
+    "filePath" : "mjsunit/value-serializer.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/verify-assert-false.js",
     "status" : "SKIP",
     "comment" : "two tests using internal functions, just to ensure assertFalse etc. are working properly"
@@ -2781,6 +3511,10 @@
     "filePath" : "mjsunit/verify-check-false.js",
     "status" : "SKIP",
     "comment" : "two tests using internal functions, just to ensure assertFalse etc. are working properly"
+  }, {
+    "filePath" : "mjsunit/verify-no-fail.js",
+    "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/wasm/adapter-frame.js",
     "status" : "SKIP",
@@ -2793,6 +3527,13 @@
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
     }
+  }, {
+    "filePath" : "mjsunit/wasm/anyfunc.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/wasm/array-copy-benchmark.js",
     "status" : "SKIP",
@@ -2829,6 +3570,13 @@
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
     }
+  }, {
+    "filePath" : "mjsunit/wasm/bigint-opt.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/wasm/bigint.js",
     "status" : "SKIP",
@@ -3012,6 +3760,41 @@
       "POLYGLOT" : "FAIL"
     }
   }, {
+    "filePath" : "mjsunit/wasm/extended-constants.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/wasm/externref-globals-liftoff.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/wasm/externref-globals.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/wasm/externref-liftoff.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/wasm/externref.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/wasm/ffi-error.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -3061,6 +3844,12 @@
     }
   }, {
     "filePath" : "mjsunit/wasm/gc-stress.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/wasm/gdbjit.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
@@ -3132,6 +3921,13 @@
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
     }
+  }, {
+    "filePath" : "mjsunit/wasm/grow-shared-memory.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/wasm/huge-memory.js",
     "status" : "SKIP",
@@ -3277,6 +4073,13 @@
       "POLYGLOT" : "PASS"
     }
   }, {
+    "filePath" : "mjsunit/wasm/max-module-size-flag.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/wasm/memory-external-call.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -3323,6 +4126,20 @@
       "POLYGLOT" : "PASS"
     }
   }, {
+    "filePath" : "mjsunit/wasm/multi-table-element-section.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/wasm/multi-value.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/wasm/multiple-code-spaces.js",
     "status" : "SKIP",
     "comment" : "Based on v8WasmNumCodeSpaces(), a concept unknown to graal.js"
@@ -3358,6 +4175,12 @@
       "POLYGLOT" : "FAIL"
     }
   }, {
+    "filePath" : "mjsunit/wasm/prototype.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
     "filePath" : "mjsunit/wasm/receiver.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -3369,6 +4192,20 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     }
+  }, {
+    "filePath" : "mjsunit/wasm/resizablearraybuffer-growablesharedarraybuffer-wasm.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/wasm/serialization-with-compilation-hints.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/wasm/serialize-lazy-module.js",
     "status" : "SKIP",
@@ -3438,17 +4275,66 @@
       "POLYGLOT" : "FAIL"
     }
   }, {
+    "filePath" : "mjsunit/wasm/stringrefs-exec.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/wasm/stringrefs-js.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/wasm/table-access-liftoff.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/wasm/table-access.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/wasm/table-copy-externref.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/wasm/table-copy.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     }
   }, {
+    "filePath" : "mjsunit/wasm/table-fill.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/wasm/table-get.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
     }
+  }, {
+    "filePath" : "mjsunit/wasm/table-grow-from-wasm.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/wasm/table-grow.js",
     "status" : "SKIP",
@@ -3467,6 +4353,20 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     }
+  }, {
+    "filePath" : "mjsunit/wasm/test-partial-serialization.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/wasm/test-serialization-with-lazy-compilation.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/wasm/test-wasm-module-builder.js",
     "status" : "SKIP",
@@ -3574,6 +4474,13 @@
     }
   }, {
     "filePath" : "mjsunit/wasm/worker-module.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "Uses Worker"
+  }, {
+    "filePath" : "mjsunit/wasm/worker-running-empty-loop-interruptible.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"

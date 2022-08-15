@@ -81,9 +81,11 @@ public class TestV8Runnable extends TestRunnable {
     private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
     private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
     private static final String NO_HARMONY_REGEXP_MATCH_INDICES = "--no-harmony-regexp-match-indices";
+    private static final String HARMONY_TEMPORAL = "--harmony-temporal";
 
     private static final Set<String> UNSUPPORTED_FLAGS = new HashSet<>(Arrays.asList(new String[]{
                     "--experimental-d8-web-snapshot-api",
+                    "--experimental-web-snapshots",
                     "--experimental-wasm-bulk-memory",
                     "--experimental-wasm-compilation-hints",
                     "--experimental-wasm-eh",
@@ -99,6 +101,8 @@ public class TestV8Runnable extends TestRunnable {
                     "--wasm-staging"
     }));
     private static final Set<String> ES2023_FLAGS = new HashSet<>(Arrays.asList(new String[]{
+                    "--harmony-array-find-last",
+                    "--harmony-array-grouping",
                     "--harmony-atomics-waitasync",
                     "--harmony_intl_enumeration",
                     "--harmony_intl_locale_info",
@@ -178,6 +182,9 @@ public class TestV8Runnable extends TestRunnable {
         if (flags.contains(HARMONY_IMPORT_ASSERTIONS)) {
             extraOptions.put(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true");
             extraOptions.put(JSContextOptions.JSON_MODULES_NAME, "true");
+        }
+        if (flags.contains(HARMONY_TEMPORAL)) {
+            extraOptions.put(JSContextOptions.TEMPORAL_NAME, "true");
         }
 
         if (supported) {
