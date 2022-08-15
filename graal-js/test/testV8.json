@@ -526,6 +526,13 @@
     },
     "comment" : "needs larger stack, at least 3m is needed"
   }, {
+    "filePath" : "mjsunit/dump-counters-quit.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
+  }, {
     "filePath" : "mjsunit/duplicate-parameters.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
@@ -1550,6 +1557,13 @@
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1262007.js",
     "status" : "FAIL",
+    "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1263994.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
     "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1278086.js",
@@ -3537,9 +3551,7 @@
   }, {
     "filePath" : "mjsunit/wasm/array-copy-benchmark.js",
     "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    }
+    "comment" : "now using --experimental-wasm-gc"
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm-exception-in-tonumber.js",
     "status" : "SKIP",
@@ -4147,8 +4159,9 @@
     "filePath" : "mjsunit/wasm/mutable-globals.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "PASS"
-    }
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/wasm/names.js",
     "status" : "SKIP",
@@ -4189,9 +4202,7 @@
   }, {
     "filePath" : "mjsunit/wasm/reference-globals.js",
     "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    }
+    "comment" : "now using --experimental-wasm-gc"
   }, {
     "filePath" : "mjsunit/wasm/resizablearraybuffer-growablesharedarraybuffer-wasm.js",
     "status" : "SKIP",
@@ -4370,9 +4381,7 @@
   }, {
     "filePath" : "mjsunit/wasm/test-wasm-module-builder.js",
     "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "PASS"
-    }
+    "comment" : "now using --experimental-wasm-typed-funcref"
   }, {
     "filePath" : "mjsunit/wasm/tier-down-to-liftoff.js",
     "status" : "SKIP",
