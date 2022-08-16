@@ -66,8 +66,8 @@ class GraalJsVm(GuestVm):
         if hasattr(self.host_vm(), 'run_launcher'):
             if self.config_name() == 'trace-cache':
                 return self.run_aux_cache(cwd, args, 1, [])
-            if self.config_name() == 'trace-cache-many-compilations':
-                return self.run_aux_cache(cwd, args, 20, [])
+            if self.config_name() == 'trace-cache-three-compilations':
+                return self.run_aux_cache(cwd, args, 3, [])
             if self.config_name() == 'trace-cache-executed':
                 return self.run_aux_cache(cwd, args, 1, ['--engine.CacheCompile=executed'])
             else:
@@ -80,7 +80,7 @@ def register_js_vms():
         ('default', [], 10),
         ('interpreter', ['--experimental-options', '--engine.Compilation=false'], 100),
         ('trace-cache', [], 110),
-        ('trace-cache-many-compilations', [], 120),
+        ('trace-cache-three-compilations', [], 120),
         ('trace-cache-executed', [], 130),
     ]:
         if mx.suite('js-benchmarks', fatalIfMissing=False):
