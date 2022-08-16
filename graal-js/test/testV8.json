@@ -822,36 +822,6 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
-    "filePath" : "mjsunit/harmony/relative-indexing-methods.js",
-    "ecmaVersion" : {
-      "minVersion" : 13
-    },
-    "status" : "PASS"
-  }, {
-    "filePath" : "mjsunit/harmony/shadowrealm-evaluate.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
-    "filePath" : "mjsunit/harmony/shadowrealm-importvalue.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
-    "filePath" : "mjsunit/harmony/shadowrealm-wrapped-function-bind.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
-    "filePath" : "mjsunit/harmony/shadowrealm-wrapped-function-props-stack.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
-    "filePath" : "mjsunit/harmony/shadowrealm-wrapped-function-props.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
-    "filePath" : "mjsunit/harmony/shadowrealm-wrapped-function.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
     "filePath" : "mjsunit/harmony/sharedarraybuffer-worker-gc-stress.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
@@ -1986,7 +1956,10 @@
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/i32-lowering-inlining.js",
-    "status" : "FAIL",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    },
     "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/regress/wasm/loop-stack-check.js",
@@ -3549,10 +3522,6 @@
     },
     "comment" : "V8 test update 2022-08-10"
   }, {
-    "filePath" : "mjsunit/wasm/array-copy-benchmark.js",
-    "status" : "SKIP",
-    "comment" : "now using --experimental-wasm-gc"
-  }, {
     "filePath" : "mjsunit/wasm/asm-wasm-exception-in-tonumber.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -4200,10 +4169,6 @@
       "POLYGLOT" : "PASS"
     }
   }, {
-    "filePath" : "mjsunit/wasm/reference-globals.js",
-    "status" : "SKIP",
-    "comment" : "now using --experimental-wasm-gc"
-  }, {
     "filePath" : "mjsunit/wasm/resizablearraybuffer-growablesharedarraybuffer-wasm.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -4378,10 +4343,6 @@
       "POLYGLOT" : "FAIL"
     },
     "comment" : "V8 test update 2022-08-10"
-  }, {
-    "filePath" : "mjsunit/wasm/test-wasm-module-builder.js",
-    "status" : "SKIP",
-    "comment" : "now using --experimental-wasm-typed-funcref"
   }, {
     "filePath" : "mjsunit/wasm/tier-down-to-liftoff.js",
     "status" : "SKIP",
