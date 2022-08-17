@@ -74,8 +74,8 @@ suite = {
     },
 
     "TESTV8" : {
-      "sha1" : "673bdf0bdbe943b99680873386ee1781e8c401df",
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/testv8-20210709.tar.gz"],
+      "sha1" : "7f67ced5326c9c0f674566a69c6050e2e21c27a9",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/testv8-20220810.tar.gz"],
     },
 
     "JACKSON_CORE" : {

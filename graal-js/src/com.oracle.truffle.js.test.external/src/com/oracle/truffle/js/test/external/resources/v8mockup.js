@@ -1097,3 +1097,53 @@ function v8PretenureAllocationSite() {
 function version() {
     return Graal.versionGraalVM;
 }
+
+function v8CreatePrivateNameSymbol(name) {
+    return Symbol(name);
+}
+
+function v8ConstructInternalizedString(string) {
+    return string;
+}
+
+function v8ActiveTierIsMaglev(fun) {
+    return v8IgnoreResult;
+}
+
+function v8OptimizeMaglevOnNextCall(fun) {
+}
+
+function v8DisableOptimizationFinalization() {
+}
+
+function v8WaitForBackgroundOptimization() {
+}
+
+function v8FinalizeOptimization() {
+}
+
+function v8SystemBreak() {
+}
+
+function v8IsSameHeapObject(obj1, obj2) {
+    return Object.is(obj1, obj2);
+}
+
+function v8IsSharedString(obj) {
+    return typeof(obj) === "string" && v8IgnoreResult;
+}
+
+function v8IsInternalizedString(obj) {
+    return typeof(obj) === "string" && v8IgnoreResult;
+}
+
+function v8SharedGC() {
+}
+
+function v8GetWasmExceptionTagId(exception, instance) {
+    throw new Error("v8 internal method not implemented");
+}
+
+function v8IsTurboFanFunction(fun) {
+    return v8IgnoreResult;
+}
