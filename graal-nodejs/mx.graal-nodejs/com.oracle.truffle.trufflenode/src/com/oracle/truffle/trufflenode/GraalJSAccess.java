@@ -3151,7 +3151,7 @@ public final class GraalJSAccess {
         boolean internalError = !(exception instanceof com.oracle.truffle.api.exception.AbstractTruffleException) && !(exception instanceof StackOverflowError) &&
                         !(exception instanceof OutOfMemoryError) &&
                         !(exception instanceof ControlFlowException) && !(exception instanceof GraalJSKillException);
-        if (internalError) {
+        if (internalError && (VERBOSE || !exitInProgress)) {
             ((Throwable) exception).printStackTrace();
             exit(1);
         }
@@ -3361,8 +3361,11 @@ public final class GraalJSAccess {
         }
     }
 
+    private static volatile boolean exitInProgress;
+
     private void exit(int status) {
         try {
+            exitInProgress = true;
             evaluator.close();
         } finally {
             System.exit(status);
