@@ -90,6 +90,17 @@ local common_json = (import "common.json");
     capabilities: ['darwin_mojave', 'amd64'],
   },
 
+  darwin_aarch64: common + {
+    os:: 'darwin',
+    arch:: 'aarch64',
+    packages+: common_json.sulong.deps.darwin_aarch64.packages,
+    environment+: {
+      // for compatibility with macOS BigSur
+      MACOSX_DEPLOYMENT_TARGET: '11.0',
+    },
+    capabilities: ['darwin', 'aarch64'],
+  },
+
   windows: common + {
     os:: 'windows',
     arch:: 'amd64',
