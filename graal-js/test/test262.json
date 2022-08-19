@@ -130,10 +130,6 @@
     },
     "comment" : "GR-22846"
   }, {
-    "filePath" : "built-ins/RegExp/named-groups/non-unicode-property-names-valid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Alphabetic.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
