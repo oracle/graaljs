@@ -113,9 +113,9 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         public JSIteratorFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.getIteratorMethodNode = GetMethodNode.create(context, Symbol.SYMBOL_ITERATOR);
-            this.getIteratorNode = insert(GetIteratorNode.create(getContext()));
-            this.ordinaryHasInstanceNode = insert(OrdinaryHasInstanceNode.create(getContext()));
-            this.getIteratorDirectNode = insert(GetIteratorDirectNode.create(getContext()));
+            this.getIteratorNode = GetIteratorNode.create(getContext());
+            this.ordinaryHasInstanceNode = OrdinaryHasInstanceNode.create(getContext());
+            this.getIteratorDirectNode = GetIteratorDirectNode.create(getContext());
         }
 
 
