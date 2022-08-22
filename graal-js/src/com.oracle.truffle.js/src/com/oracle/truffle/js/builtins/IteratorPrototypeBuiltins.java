@@ -75,13 +75,13 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIterator;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -184,6 +184,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
         @Child private PropertySetNode setArgsNode;
         @Child private PropertySetNode setNextNode;
+        @Child private PropertySetNode setGeneratorStateNode;
         private final JSContext.BuiltinFunctionKey key;
 
         IteratorBaseNode(JSContext context, JSBuiltin builtin, JSContext.BuiltinFunctionKey key) {
@@ -195,6 +196,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
             setArgsNode = PropertySetNode.createSetHidden(IteratorHelperPrototypeBuiltins.ARGS_ID, context);
             setNextNode = PropertySetNode.createSetHidden(IteratorHelperPrototypeBuiltins.NEXT_ID, context);
+            setGeneratorStateNode = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
         }
 
         protected abstract static class IteratorImplNode<T extends IteratorArgs> extends JavaScriptBaseNode {
@@ -246,9 +248,10 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         protected JSDynamicObject createIterator(T args) {
-            JSDynamicObject iterator = createObjectNode.execute(JSRealm.get(this).getIteratorHelperPrototype());
+            JSDynamicObject iterator = createObjectNode.execute(getRealm().getIteratorHelperPrototype());
             setArgsNode.setValue(iterator, args);
             setNextNode.setValue(iterator, getNextCallTarget());
+            setGeneratorStateNode.setValue(iterator, JSFunction.GeneratorState.SuspendedStart);
             return iterator;
         }
 

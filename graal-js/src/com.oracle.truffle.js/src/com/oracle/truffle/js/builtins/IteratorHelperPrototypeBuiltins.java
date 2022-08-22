@@ -42,15 +42,20 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.InternalCallNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -59,6 +64,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -108,22 +114,23 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         return null;
     }
 
+    @ImportStatic({IteratorHelperPrototypeBuiltins.class, IteratorPrototypeBuiltins.class, JSFunction.GeneratorState.class})
     public abstract static class IteratorHelperReturnNode extends JSBuiltinNode {
         @Child private PropertyGetNode getTargetNode;
+        @Child private PropertyGetNode getGeneratorStateNode;
+        @Child private PropertySetNode setGeneratorStateNode;
         @Child private IteratorCloseNode iteratorCloseNode;
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
         @Child private HasHiddenKeyCacheNode hasNextImplNode;
-
-
         @Child private HasHiddenKeyCacheNode hasInnerNode;
-        @Child private PropertyGetNode isAliveNode;
-        @Child private PropertyGetNode getInnerNode;
 
 
         protected IteratorHelperReturnNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
             getTargetNode = PropertyGetNode.create(ARGS_ID, context);
+            getGeneratorStateNode = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_STATE_ID, context);
+            setGeneratorStateNode = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
             iteratorCloseNode = IteratorCloseNode.create(context);
             createIterResultObjectNode = CreateIterResultObjectNode.create(context);
             hasNextImplNode = HasHiddenKeyCacheNode.create(ARGS_ID);
@@ -134,34 +141,57 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected boolean hasImpl(Object thisObj) {
             return hasNextImplNode.executeHasHiddenKey(thisObj);
         }
+        protected boolean hasInner(Object thisObj) {
+            return hasInnerNode.executeHasHiddenKey(thisObj);
+        }
+        protected JSFunction.GeneratorState getState(Object thisObject) {
+            return (JSFunction.GeneratorState) getGeneratorStateNode.getValue(thisObject);
+        }
 
-        @Specialization(guards = "hasImpl(thisObj)")
-        public Object close(VirtualFrame frame, Object thisObj) {
-            if (hasInnerNode.executeHasHiddenKey(thisObj)) {
-                if (isAliveNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    isAliveNode = insert(PropertyGetNode.createGetHidden(IteratorPrototypeBuiltins.FLATMAP_ALIVE_ID, getContext()));
-                }
+        @Specialization(guards = {"hasImpl(thisObj)", "getState(thisObj) == Executing"})
+        public Object executing(Object thisObj) {
+            throw Errors.createTypeError("generator is already executing");
+        }
+        @Specialization(guards = {"hasImpl(thisObj)", "getState(thisObj) == SuspendedStart"})
+        public Object suspendedStart(VirtualFrame frame, Object thisObj) {
+            setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Completed);
+            return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+        }
 
-                try {
-                    if (isAliveNode.getValueBoolean(thisObj)) {
-                        if (getInnerNode == null) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            getInnerNode = insert(PropertyGetNode.createGetHidden(IteratorPrototypeBuiltins.FLATMAP_INNER_ID, getContext()));
-                        }
-                        IteratorRecord iterated = (IteratorRecord) getInnerNode.getValue(thisObj);
-                        iteratorCloseNode.executeAbrupt(iterated.getIterator());
-                    }
-                } catch (UnexpectedResultException ignored) {
-                    assert false : "Unreachable";
+        @Specialization(guards = {"hasImpl(thisObj)", "hasInner(thisObj)"})
+        public Object closeInner(VirtualFrame frame, Object thisObj,
+                                 @Cached("createGetHidden(FLATMAP_ALIVE_ID, getContext())") PropertyGetNode isAliveNode,
+                                 @Cached("createGetHidden(FLATMAP_INNER_ID, getContext())") PropertyGetNode getInnerNode,
+                                 @Cached("create()") BranchProfile aliveProfile) {
+            setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Executing);
+
+            try {
+                if (isAliveNode.getValueBoolean(thisObj)) {
+                    IteratorRecord iterated = (IteratorRecord) getInnerNode.getValue(thisObj);
+                    iteratorCloseNode.executeAbrupt(iterated.getIterator());
+                } else {
+                    aliveProfile.enter();
                 }
+            } catch (UnexpectedResultException ex) {
+                throw Errors.shouldNotReachHere(ex);
             }
+            return close(frame, thisObj);
+        }
+
+        @Specialization(guards = {"hasImpl(thisObj)", "!hasInner(thisObj)"})
+        public Object close(VirtualFrame frame, Object thisObj) {
+            setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Executing);
 
             IteratorRecord iterated = ((IteratorPrototypeBuiltins.IteratorArgs) getTargetNode.getValue(thisObj)).target;
 
-            iteratorCloseNode.executeVoid(iterated.getIterator());
+            try {
+                iteratorCloseNode.executeVoid(iterated.getIterator());
+            } finally {
+                setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Completed);
+            }
             return createIterResultObjectNode.execute(frame, Undefined.instance, true);
         }
+
 
         @Specialization(guards = "!hasImpl(thisObj)")
         public Object unsupported(Object thisObj) {
@@ -170,15 +200,22 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     public abstract static class IteratorHelperNextNode extends JSBuiltinNode {
+        @Child private PropertyGetNode getDoneNode;
         @Child private PropertyGetNode getNextImplNode;
+        @Child private PropertyGetNode getGeneratorStateNode;
+        @Child private PropertySetNode setGeneratorStateNode;
         @Child private HasHiddenKeyCacheNode hasNextImplNode;
+        @Child private CreateIterResultObjectNode createIterResultObjectNode;
         @Child private InternalCallNode callNode;
 
         protected IteratorHelperNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
+            getGeneratorStateNode = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_STATE_ID, context);
+            setGeneratorStateNode = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
             getNextImplNode = PropertyGetNode.createGetHidden(NEXT_ID, context);
             hasNextImplNode = HasHiddenKeyCacheNode.create(NEXT_ID);
+            getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
             callNode = InternalCallNode.create();
         }
 
@@ -187,8 +224,44 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = "hasImpl(thisObj)")
-        public Object next(VirtualFrame frame, Object thisObj) {
-            return callNode.execute((CallTarget) getNextImplNode.getValue(thisObj), frame.getArguments());
+        public Object next(VirtualFrame frame, Object thisObj,
+                           @Cached("create()") BranchProfile executingProfile,
+                           @Cached("create()") BranchProfile completedProfile) {
+            Object state = getGeneratorStateNode.getValue(thisObj);
+            if (state == JSFunction.GeneratorState.Executing) {
+                executingProfile.enter();
+                throw Errors.createTypeError("generator is already executing");
+            }
+            if (state == JSFunction.GeneratorState.Completed) {
+                completedProfile.enter();
+                if (createIterResultObjectNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    createIterResultObjectNode = insert(CreateIterResultObjectNode.create(getContext()));
+                }
+                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+            }
+
+            setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Executing);
+
+            Object result;
+            try {
+                result = callNode.execute((CallTarget) getNextImplNode.getValue(thisObj), frame.getArguments());
+            } catch (AbstractTruffleException ex) {
+                setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Completed);
+                throw ex;
+            }
+
+            try {
+                if (getDoneNode.getValueBoolean(result)) {
+                    setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Completed);
+                } else {
+                    setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.SuspendedYield);
+                }
+            } catch (UnexpectedResultException e) {
+                throw Errors.shouldNotReachHere();
+            }
+
+            return result;
         }
 
         @Specialization(guards = "!hasImpl(thisObj)")
