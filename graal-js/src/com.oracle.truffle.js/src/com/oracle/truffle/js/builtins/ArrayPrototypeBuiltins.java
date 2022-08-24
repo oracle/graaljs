@@ -111,6 +111,7 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySomeN
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySortNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySpliceNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLocaleStringNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToReversedNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToStringNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayUnshiftNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
@@ -257,7 +258,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         group(1),
         groupToMap(1),
         findLast(1),
-        findLastIndex(1);
+        findLastIndex(1),
+
+        // https://github.com/tc39/proposal-change-array-by-copy
+        toReversed(0);
 
         private final int length;
 
@@ -366,6 +370,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return JSArrayGroupNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case groupToMap:
                 return JSArrayGroupToMapNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+
+            case toReversed:
+                return JSArrayToReversedNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -3454,6 +3461,40 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 internalMap.put(entry.getKey(), elements);
             }
             return map;
+        }
+    }
+
+    public abstract static class JSArrayToReversedNode extends JSArrayOperation {
+
+        public JSArrayToReversedNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object toReversedJSArray(JSArrayObject thisObj) {
+            return toReversed(thisObj);
+        }
+
+        @Specialization(replaces = "toReversedJSArray")
+        protected Object reverseGeneric(Object thisObj) {
+            final Object array = toObject(thisObj);
+            return toReversed(array);
+        }
+
+        private Object toReversed(Object array) {
+            long tgtIdx = 0;
+            long length = getLength(array);
+            JSDynamicObject resultArray = (JSDynamicObject) getArraySpeciesConstructorNode().arraySpeciesCreate(array, length);
+
+            for (tgtIdx = 0; tgtIdx < length; tgtIdx++) {
+                long srcIdx = length - tgtIdx - 1;
+                Object value = read(array, srcIdx);
+                JSRuntime.createDataPropertyOrThrow(resultArray, Strings.fromLong(tgtIdx), value);
+                TruffleSafepoint.poll(this);
+            }
+            reportLoopCount(tgtIdx);
+
+            return resultArray;
         }
     }
 }
