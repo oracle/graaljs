@@ -1994,13 +1994,13 @@ public class JSRealm {
         JSObjectUtil.putDataProperty(context, graalObject, Strings.VERSION_ECMA_SCRIPT, esVersion, flags);
         JSObjectUtil.putDataProperty(context, graalObject, Strings.IS_GRAAL_RUNTIME, JSFunction.create(this, isGraalRuntimeFunction(context)), flags);
         if (options.getUnhandledRejectionsMode() == JSContextOptions.UnhandledRejectionsTrackingMode.HANDLER) {
-            JSFunctionObject registerFunction = JSFunction.create(this, setUnhandledPromiseRejectionHandlerFunction());
+            JSFunctionObject registerFunction = JSFunction.create(this, setUnhandledPromiseRejectionHandlerFunction(context));
             JSObjectUtil.putDataProperty(context, graalObject, Strings.SET_UNHANDLED_PROMISE_REJECTION_HANDLER, registerFunction, flags);
         }
         putGlobalProperty(Strings.GRAAL, graalObject);
     }
 
-    private JSFunctionData setUnhandledPromiseRejectionHandlerFunction() {
+    private static JSFunctionData setUnhandledPromiseRejectionHandlerFunction(JSContext context) {
         return context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.SetUhandledPromiseRejectionHandler, (c) -> {
             return JSFunctionData.createCallOnly(c, new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Override
@@ -2023,7 +2023,7 @@ public class JSRealm {
 
                 @TruffleBoundary
                 private void registerHandler(Object handlerFunctionObject) {
-                    unhandledPromiseRejectionHandler = handlerFunctionObject;
+                    JSRealm.get(null).unhandledPromiseRejectionHandler = handlerFunctionObject;
                 }
             }.getCallTarget(), 0, Strings.SET_UNHANDLED_PROMISE_REJECTION_HANDLER);
         });

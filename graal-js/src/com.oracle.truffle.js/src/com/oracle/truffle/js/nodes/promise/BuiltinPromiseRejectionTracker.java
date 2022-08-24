@@ -54,8 +54,8 @@ import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
-import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
 
@@ -101,9 +101,12 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
 
     @Override
     public void promiseReactionJobsProcessed() {
+        JSRealm realm = JSRealm.get(null);
+        assert realm.getContext() == context;
+
         while (!asyncHandledRejections.isEmpty()) {
             PromiseChainInfoRecord info = asyncHandledRejections.removeFirst();
-            PrintWriter out = JSRealm.get(null).getErrorWriter();
+            PrintWriter out = realm.getErrorWriter();
             out.println("[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: " + JSRuntime.safeToString(info.reason));
             out.flush();
         }
@@ -119,12 +122,12 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
             }
             info.warned = true;
             if (mode == JSContextOptions.UnhandledRejectionsTrackingMode.HANDLER) {
-                Object handler = JSRealm.get(null).getUnhandledPromiseRejectionHandler();
+                Object handler = realm.getUnhandledPromiseRejectionHandler();
                 if (handler != null) {
-                    JSInteropUtil.call(handler, new Object[] {info.reason, unhandled});
+                    JSRuntime.call(handler, Undefined.instance, new Object[] {info.reason, unhandled});
                 }
             } else if (mode == JSContextOptions.UnhandledRejectionsTrackingMode.WARN) {
-                PrintWriter out = JSRealm.get(null).getErrorWriter();
+                PrintWriter out = realm.getErrorWriter();
                 out.println("[GraalVM JavaScript Warning] Unhandled promise rejection: " + JSRuntime.safeToString(info.reason));
                 out.flush();
             } else {

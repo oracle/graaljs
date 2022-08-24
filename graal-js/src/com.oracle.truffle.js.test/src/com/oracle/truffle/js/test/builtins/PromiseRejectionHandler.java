@@ -42,6 +42,7 @@ package com.oracle.truffle.js.test.builtins;
 
 import com.oracle.truffle.js.test.JSTest;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
@@ -73,6 +74,22 @@ public class PromiseRejectionHandler {
             context.eval("js", "Graal.setUnhandledPromiseRejectionHandler(); Promise.reject('test')");
             context.eval("js", "Graal.setUnhandledPromiseRejectionHandler(null); Promise.reject('test')");
             context.eval("js", "Graal.setUnhandledPromiseRejectionHandler(undefined); Promise.reject('test')");
+        }
+    }
+
+    @Test
+    public void testMultipleContexts() {
+        // Make sure we're accessing the right realm when using a shared engine.
+        Engine engine = Engine.newBuilder("js").allowExperimentalOptions(true).build();
+        try (Context context1 = newUnhandledRejectionContext(engine)) {
+            try (Context context2 = newUnhandledRejectionContext(engine)) {
+                context1.eval("js", "count = 0; Graal.setUnhandledPromiseRejectionHandler(() => count++)");
+                context2.eval("js", "Graal.setUnhandledPromiseRejectionHandler(null);");
+                context1.eval("js", "Promise.reject('test')");
+                context2.eval("js", "Promise.reject('test')");
+                Value count = context1.eval("js", "count");
+                assertEquals(1, count.asInt());
+            }
         }
     }
 
@@ -138,8 +155,16 @@ public class PromiseRejectionHandler {
     }
 
 
+    Context newUnhandledRejectionContext(Engine engine) {
+        Context.Builder builder = JSTest.newContextBuilder().option("js.unhandled-rejections", "handler").allowAllAccess(true);
+        if (engine != null) {
+            builder.engine(engine);
+        }
+        return builder.build();
+    }
+
     Context newUnhandledRejectionContext() {
-        return JSTest.newContextBuilder().option("js.unhandled-rejections", "handler").allowAllAccess(true).build();
+        return newUnhandledRejectionContext(null);
     }
 
     boolean registerHandlerFunctionExists(Context context) {
