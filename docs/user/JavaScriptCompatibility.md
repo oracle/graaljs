@@ -219,11 +219,11 @@ The Graal object is available in GraalVM JavaScript by default, unless deactivat
 - If `true`, hot code is compiled by the GraalVM compiler, resulting in high peak performance.
 - If `false`, GraalVM JavaScript will not be optimized by the GraalVM Compiler, typically resulting in lower performance.
 
-### `Graal.registerPromiseRejectionHandler(handler)`
+### `Graal.setUnhandledPromiseRejectionHandler(handler)`
 
 - provides the unhandled promise rejection handler when using option (`js.unhandled-rejections=handler`).
 - the handler is called with two arguments: (rejection, promise).
-- `Graal.registerPromiseRejectionHandler` can be called with null, undefined, or empty args to clear the handler.
+- `Graal.setUnhandledPromiseRejectionHandler` can be called with null, undefined, or empty args to clear the handler.
 
 ### Java
 

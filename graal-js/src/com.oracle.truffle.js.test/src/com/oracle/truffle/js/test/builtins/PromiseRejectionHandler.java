@@ -42,6 +42,7 @@ package com.oracle.truffle.js.test.builtins;
 
 import com.oracle.truffle.js.test.JSTest;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
@@ -68,17 +69,24 @@ public class PromiseRejectionHandler {
     @Test
     public void testInvokeRegister() {
         try (Context context = newUnhandledRejectionContext()) {
-            context.eval("js", "Graal.registerPromiseRejectionHandler(() => {}); Promise.reject('test')");
-            context.eval("js", "Graal.registerPromiseRejectionHandler(); Promise.reject('test')");
-            context.eval("js", "Graal.registerPromiseRejectionHandler(null); Promise.reject('test')");
-            context.eval("js", "Graal.registerPromiseRejectionHandler(undefined); Promise.reject('test')");
+            context.eval("js", "Graal.setUnhandledPromiseRejectionHandler(() => {}); Promise.reject('test')");
+            context.eval("js", "Graal.setUnhandledPromiseRejectionHandler(); Promise.reject('test')");
+            context.eval("js", "Graal.setUnhandledPromiseRejectionHandler(null); Promise.reject('test')");
+            context.eval("js", "Graal.setUnhandledPromiseRejectionHandler(undefined); Promise.reject('test')");
+        }
+    }
+
+    @Test(expected = PolyglotException.class)
+    public void testUncallableHandler() {
+        try (Context context = newUnhandledRejectionContext()) {
+            context.eval("js", "Graal.setUnhandledPromiseRejectionHandler('not callable');");
         }
     }
 
     @Test
     public void testSingleUnhandledRejection() {
         try (Context context = newUnhandledRejectionContext()) {
-            context.eval("js", "count = 0; Graal.registerPromiseRejectionHandler(() => count++); Promise.reject('test')");
+            context.eval("js", "count = 0; Graal.setUnhandledPromiseRejectionHandler(() => count++); Promise.reject('test')");
             Value count = context.eval("js", "count");
             assertEquals(1, count.asInt());
         }
@@ -89,7 +97,7 @@ public class PromiseRejectionHandler {
         try (Context context = newUnhandledRejectionContext()) {
             context.eval("js", "" +
                     "count = 0; " +
-                    "Graal.registerPromiseRejectionHandler(() => {" +
+                    "Graal.setUnhandledPromiseRejectionHandler(() => {" +
                     "   if (count == 0) Promise.reject('testInner');" +
                     "   count++;" +
                     "}); " +
@@ -111,7 +119,7 @@ public class PromiseRejectionHandler {
                 executed.set(true);
             };
             context.getBindings("js").putMember("handler", testHandler);
-            context.eval("js", "Graal.registerPromiseRejectionHandler((r, p) => handler(r, p)); Promise.reject('test')");
+            context.eval("js", "Graal.setUnhandledPromiseRejectionHandler((r, p) => handler(r, p)); Promise.reject('test')");
             assertTrue(executed.get());
         }
     }
@@ -124,7 +132,7 @@ public class PromiseRejectionHandler {
                 executed.set(true);
             };
             context.getBindings("js").putMember("handler", testHandler);
-            context.eval("js", "Graal.registerPromiseRejectionHandler(handler); Promise.reject('test')");
+            context.eval("js", "Graal.setUnhandledPromiseRejectionHandler(handler); Promise.reject('test')");
             assertTrue(executed.get());
         }
     }
@@ -135,6 +143,6 @@ public class PromiseRejectionHandler {
     }
 
     boolean registerHandlerFunctionExists(Context context) {
-        return context.eval("js", "'registerPromiseRejectionHandler' in Graal").asBoolean();
+        return context.eval("js", "'setUnhandledPromiseRejectionHandler' in Graal").asBoolean();
     }
 }

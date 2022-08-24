@@ -1994,14 +1994,14 @@ public class JSRealm {
         JSObjectUtil.putDataProperty(context, graalObject, Strings.VERSION_ECMA_SCRIPT, esVersion, flags);
         JSObjectUtil.putDataProperty(context, graalObject, Strings.IS_GRAAL_RUNTIME, JSFunction.create(this, isGraalRuntimeFunction(context)), flags);
         if (options.getUnhandledRejectionsMode() == JSContextOptions.UnhandledRejectionsTrackingMode.HANDLER) {
-            JSFunctionObject registerFunction = JSFunction.create(this, registerPromiseRejectionHandlerFunction());
-            JSObjectUtil.putDataProperty(context, graalObject, Strings.REGISTER_PROMISE_REJECTION_HANDLER, registerFunction, flags);
+            JSFunctionObject registerFunction = JSFunction.create(this, setUnhandledPromiseRejectionHandlerFunction());
+            JSObjectUtil.putDataProperty(context, graalObject, Strings.SET_UNHANDLED_PROMISE_REJECTION_HANDLER, registerFunction, flags);
         }
         putGlobalProperty(Strings.GRAAL, graalObject);
     }
 
-    private JSFunctionData registerPromiseRejectionHandlerFunction() {
-        return context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.RegisterPromiseRejectionHandler, (c) -> {
+    private JSFunctionData setUnhandledPromiseRejectionHandlerFunction() {
+        return context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.SetUhandledPromiseRejectionHandler, (c) -> {
             return JSFunctionData.createCallOnly(c, new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -2010,8 +2010,10 @@ public class JSRealm {
                         Object arg = JSArguments.getUserArgument(args, 0);
                         if (JSRuntime.isNullOrUndefined(arg)) {
                             registerHandler(null);
-                        } else {
+                        } else if (JSRuntime.isCallable(arg)) {
                             registerHandler(arg);
+                        } else {
+                            throw Errors.createError("Value provided for the unhandled promise rejection handler is not callable");
                         }
                     } else {
                         registerHandler(null);
@@ -2023,7 +2025,7 @@ public class JSRealm {
                 private void registerHandler(Object handlerFunctionObject) {
                     unhandledPromiseRejectionHandler = handlerFunctionObject;
                 }
-            }.getCallTarget(), 0, Strings.REGISTER_PROMISE_REJECTION_HANDLER);
+            }.getCallTarget(), 0, Strings.SET_UNHANDLED_PROMISE_REJECTION_HANDLER);
         });
     }
 
