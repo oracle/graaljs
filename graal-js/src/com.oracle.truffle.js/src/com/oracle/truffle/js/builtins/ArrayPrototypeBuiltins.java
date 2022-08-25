@@ -3502,6 +3502,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
+    // TODO Schlaegl: Generalization: see spec (https://tc39.es/proposal-change-array-by-copy):
+    // "sort", "SortIndexedProperties", "CompareArrayElements")
     public abstract static class JSArrayToSortedNode extends JSArrayOperation {
 
         @Child private DeletePropertyNode deletePropertyNode; // DeletePropertyOrThrow
@@ -3522,26 +3524,21 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached("create(getContext(), true)") JSArrayDeleteRangeNode arrayDeleteRangeNode) {
             checkCompareFunction(compare);
             long len = getLength(thisObj);
-
-            if (len < 2) {
-                // nothing to do
-                return thisObj;
-            }
-
             ScriptArray scriptArray = arrayGetArrayType(thisObj);
             Object[] array = arrayToObjectArrayNode.executeObjectArray(thisObj, scriptArray, len);
 
             sortIntl(getComparator(thisObj, compare), array);
             reportLoopCount(len); // best effort guess, let's not go for n*log(n)
 
+            JSDynamicObject resultArray = (JSDynamicObject) getArraySpeciesConstructorNode().arrayCreate(len);
             for (int i = 0; i < array.length; i++) {
-                write(thisObj, i, array[i]);
+                JSRuntime.createDataPropertyOrThrow(resultArray, Strings.fromLong(i), array[i]);
             }
 
             if (isSparse.profile(array.length < len)) {
-                arrayDeleteRangeNode.execute(thisObj, scriptArray, array.length, len);
+                arrayDeleteRangeNode.execute(resultArray, scriptArray, array.length, len);
             }
-            return thisObj;
+            return resultArray;
         }
 
         private void delete(Object obj, Object i) {
@@ -3567,12 +3564,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private JSDynamicObject toSortedJSObject(final Object comparefn, JSDynamicObject thisJSObj) {
             long len = getLength(thisJSObj);
-
-            if (len == 0) {
-                // nothing to do
-                return thisJSObj;
-            }
-
             Object[] array = jsobjectToArray(thisJSObj, len);
 
             Comparator<Object> comparator = getComparator(thisJSObj, comparefn);
@@ -3583,24 +3574,20 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             sortIntl(comparator, array);
             reportLoopCount(len);
 
+            JSDynamicObject resultArray = (JSDynamicObject) getArraySpeciesConstructorNode().arrayCreate(len);
             for (int i = 0; i < array.length; i++) {
-                write(thisJSObj, i, array[i]);
+                JSRuntime.createDataPropertyOrThrow(resultArray, Strings.fromLong(i), array[i]);
             }
 
             if (isSparse.profile(array.length < len)) {
-                deleteGenericElements(thisJSObj, array.length, len);
+                deleteGenericElements(resultArray, array.length, len);
             }
-            return thisJSObj;
+            return resultArray;
         }
 
         public Object toSortedForeignObject(Object comparefn, Object thisObj) {
             assert JSGuards.isForeignObject(thisObj);
             long len = getLength(thisObj);
-
-            if (len < 2) {
-                // nothing to do
-                return thisObj;
-            }
 
             if (len >= Integer.MAX_VALUE) {
                 errorBranch.enter();
@@ -3613,10 +3600,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             sortIntl(comparator, array);
             reportLoopCount(len);
 
+            JSDynamicObject resultArray = (JSDynamicObject) getArraySpeciesConstructorNode().arrayCreate(len);
             for (int i = 0; i < array.length; i++) {
-                write(thisObj, i, array[i]);
+                JSRuntime.createDataPropertyOrThrow(resultArray, Strings.fromLong(i), array[i]);
             }
-            return thisObj;
+            return resultArray;
         }
 
         private void checkCompareFunction(Object compare) {
