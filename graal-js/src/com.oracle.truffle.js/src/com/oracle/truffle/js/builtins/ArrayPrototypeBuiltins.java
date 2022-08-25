@@ -120,6 +120,7 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLoc
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToStringNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayUnshiftNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToSplicedNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayWithNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.builtins.sort.SortComparator;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -203,6 +204,7 @@ import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
  * Contains builtins for {@linkplain JSArray}.prototype.
@@ -266,7 +268,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         // Next
         toReversed(0),
         toSorted(1),
-        toSpliced(2);
+        toSpliced(2),
+        with(2);
 
         private final int length;
 
@@ -383,6 +386,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return ArrayPrototypeBuiltinsFactory.JSArrayToSortedNodeGen.create(context, builtin, false, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toSpliced:
                 return JSArrayToSplicedNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
+            case with:
+                return JSArrayWithNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }
@@ -3653,6 +3658,55 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         throws UnsupportedMessageException, InvalidArrayIndexException, UnsupportedTypeException {
             Object val = arrays.readArrayElement(srcObj, fromIndex);
             arrays.writeArrayElement(destObj, toIndex, val);
+        }
+    }
+
+    public abstract static class JSArrayWithNode extends JSArrayOperationWithToInt {
+
+        public JSArrayWithNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object withJSArray(JSArrayObject thisObj, Object index, Object value) {
+            return with(thisObj, index, value);
+        }
+
+        @Specialization(replaces = "withJSArray")
+        protected Object withGeneric(Object thisObj, Object index, Object value) {
+            final Object array = toObject(thisObj);
+            return with(array, index, value);
+        }
+
+        private Object with(Object array, Object index, Object value) {
+            long len = getLength(array);
+            long relativeIndex = TemporalUtil.toIntegerOrInfinity(index).longValue();
+            long actualIndex;
+            if (relativeIndex >= 0) {
+                actualIndex = relativeIndex;
+            } else {
+                actualIndex = len + relativeIndex;
+            }
+            if (actualIndex >= len || actualIndex < 0) {
+                errorBranch.enter();
+                throw Errors.createRangeError(""); /* TODO: which string */
+            }
+            JSDynamicObject resultArray = (JSDynamicObject) getArraySpeciesConstructorNode().arrayCreate(len);
+
+            long k;
+            for (k = 0; k < len; k++) {
+                Object val;
+                if (k == actualIndex) {
+                    val = value;
+                } else {
+                    val = read(array, k);
+                }
+
+                JSRuntime.createDataPropertyOrThrow(resultArray, Strings.fromLong(k), val);
+                TruffleSafepoint.poll(this);
+            }
+            reportLoopCount(k);
+            return resultArray;
         }
     }
 }
