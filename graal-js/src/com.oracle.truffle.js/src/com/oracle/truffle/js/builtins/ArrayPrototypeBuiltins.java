@@ -112,6 +112,7 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySortN
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySpliceNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToReversedNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToSortedNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToStringNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayUnshiftNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
@@ -261,7 +262,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         findLastIndex(1),
 
         // https://github.com/tc39/proposal-change-array-by-copy
-        toReversed(0);
+        toReversed(0),
+        toSorted(1);
 
         private final int length;
 
@@ -373,6 +375,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             case toReversed:
                 return JSArrayToReversedNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case toSorted:
+                return JSArrayToSortedNodeGen.create(context, builtin, false, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -3495,6 +3499,275 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             reportLoopCount(tgtIdx);
 
             return resultArray;
+        }
+    }
+
+    public abstract static class JSArrayToSortedNode extends JSArrayOperation {
+
+        @Child private DeletePropertyNode deletePropertyNode; // DeletePropertyOrThrow
+        private final ConditionProfile isSparse = ConditionProfile.create();
+        private final BranchProfile hasCompareFnBranch = BranchProfile.create();
+        private final BranchProfile noCompareFnBranch = BranchProfile.create();
+        private final BranchProfile growProfile = BranchProfile.create();
+        @Child private InteropLibrary interopNode;
+        @Child private ImportValueNode importValueNode;
+
+        public JSArrayToSortedNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
+            super(context, builtin, isTypedArrayImplementation);
+        }
+
+        @Specialization(guards = {"!isTypedArrayImplementation", "isJSFastArray(thisObj)"}, assumptions = "getContext().getArrayPrototypeNoElementsAssumption()")
+        protected JSDynamicObject toSortedArray(final JSDynamicObject thisObj, final Object compare,
+                        @Cached("create(getContext())") JSArrayToDenseObjectArrayNode arrayToObjectArrayNode,
+                        @Cached("create(getContext(), true)") JSArrayDeleteRangeNode arrayDeleteRangeNode) {
+            checkCompareFunction(compare);
+            long len = getLength(thisObj);
+
+            if (len < 2) {
+                // nothing to do
+                return thisObj;
+            }
+
+            ScriptArray scriptArray = arrayGetArrayType(thisObj);
+            Object[] array = arrayToObjectArrayNode.executeObjectArray(thisObj, scriptArray, len);
+
+            sortIntl(getComparator(thisObj, compare), array);
+            reportLoopCount(len); // best effort guess, let's not go for n*log(n)
+
+            for (int i = 0; i < array.length; i++) {
+                write(thisObj, i, array[i]);
+            }
+
+            if (isSparse.profile(array.length < len)) {
+                arrayDeleteRangeNode.execute(thisObj, scriptArray, array.length, len);
+            }
+            return thisObj;
+        }
+
+        private void delete(Object obj, Object i) {
+            if (deletePropertyNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                JSContext context = getContext();
+                deletePropertyNode = insert(DeletePropertyNode.create(true, context));
+            }
+            deletePropertyNode.executeEvaluated(obj, i);
+        }
+
+        @Specialization
+        protected Object toSorted(Object thisObj, final Object comparefn,
+                        @Cached("createBinaryProfile()") ConditionProfile isJSObject) {
+            checkCompareFunction(comparefn);
+            Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
+            if (isJSObject.profile(JSDynamicObject.isJSDynamicObject(thisJSObj))) {
+                return toSortedJSObject(comparefn, (JSDynamicObject) thisJSObj);
+            } else {
+                return toSortedForeignObject(comparefn, thisJSObj);
+            }
+        }
+
+        private JSDynamicObject toSortedJSObject(final Object comparefn, JSDynamicObject thisJSObj) {
+            long len = getLength(thisJSObj);
+
+            if (len == 0) {
+                // nothing to do
+                return thisJSObj;
+            }
+
+            Object[] array = jsobjectToArray(thisJSObj, len);
+
+            Comparator<Object> comparator = getComparator(thisJSObj, comparefn);
+            if (isTypedArrayImplementation && comparefn == Undefined.instance) {
+                assert comparator == null;
+                prepareForDefaultComparator(array);
+            }
+            sortIntl(comparator, array);
+            reportLoopCount(len);
+
+            for (int i = 0; i < array.length; i++) {
+                write(thisJSObj, i, array[i]);
+            }
+
+            if (isSparse.profile(array.length < len)) {
+                deleteGenericElements(thisJSObj, array.length, len);
+            }
+            return thisJSObj;
+        }
+
+        public Object toSortedForeignObject(Object comparefn, Object thisObj) {
+            assert JSGuards.isForeignObject(thisObj);
+            long len = getLength(thisObj);
+
+            if (len < 2) {
+                // nothing to do
+                return thisObj;
+            }
+
+            if (len >= Integer.MAX_VALUE) {
+                errorBranch.enter();
+                throw Errors.createRangeErrorInvalidArrayLength();
+            }
+
+            Object[] array = foreignArrayToObjectArray(thisObj, (int) len);
+
+            Comparator<Object> comparator = getComparator(thisObj, comparefn);
+            sortIntl(comparator, array);
+            reportLoopCount(len);
+
+            for (int i = 0; i < array.length; i++) {
+                write(thisObj, i, array[i]);
+            }
+            return thisObj;
+        }
+
+        private void checkCompareFunction(Object compare) {
+            if (!(compare == Undefined.instance || isCallable(compare))) {
+                errorBranch.enter();
+                throw Errors.createTypeError("The comparison function must be either a function or undefined");
+            }
+        }
+
+        private Comparator<Object> getComparator(Object thisObj, Object compare) {
+            if (compare == Undefined.instance) {
+                noCompareFnBranch.enter();
+                return getDefaultComparator(thisObj);
+            } else {
+                assert isCallable(compare);
+                hasCompareFnBranch.enter();
+                return new SortComparator(compare);
+            }
+        }
+
+        private Comparator<Object> getDefaultComparator(Object thisObj) {
+            if (isTypedArrayImplementation) {
+                return null; // use Comparable.compareTo (equivalent to Comparator.naturalOrder())
+            } else {
+                if (JSArray.isJSArray(thisObj)) {
+                    ScriptArray array = arrayGetArrayType((JSDynamicObject) thisObj);
+                    if (array instanceof AbstractIntArray || array instanceof ConstantByteArray || array instanceof ConstantIntArray) {
+                        return JSArray.DEFAULT_JSARRAY_INTEGER_COMPARATOR;
+                    } else if (array instanceof AbstractDoubleArray || array instanceof ConstantDoubleArray) {
+                        return JSArray.DEFAULT_JSARRAY_DOUBLE_COMPARATOR;
+                    }
+                }
+                return JSArray.DEFAULT_JSARRAY_COMPARATOR;
+            }
+        }
+
+        /**
+         * In a generic JSObject, this deletes all elements between the actual "size" (i.e., number
+         * of non-empty elements) and the "length" (value of the property). I.e., it cleans up
+         * garbage remaining after sorting all elements to lower indices (in case there are holes).
+         */
+        private void deleteGenericElements(Object obj, long fromIndex, long toIndex) {
+            for (long index = fromIndex; index < toIndex; index++) {
+                delete(obj, index);
+            }
+        }
+
+        @TruffleBoundary
+        private static void sortIntl(Comparator<Object> comparator, Object[] array) {
+            try {
+                Arrays.sort(array, comparator);
+            } catch (IllegalArgumentException e) {
+                // Collections.sort throws IllegalArgumentException when
+                // Comparison method violates its general contract
+
+                // See ECMA spec 15.4.4.11 Array.prototype.sort (comparefn).
+                // If "comparefn" is not undefined and is not a consistent
+                // comparison function for the elements of this array, the
+                // behaviour of sort is implementation-defined.
+            }
+        }
+
+        private static void prepareForDefaultComparator(Object[] array) {
+            // Default comparator (based on Comparable.compareTo) cannot be used
+            // for elements of different type (for example, Integer.compareTo()
+            // accepts Integers only, not Doubles).
+            boolean needsConversion = false;
+            Class<?> clazz = array[0].getClass();
+            for (Object element : array) {
+                Class<?> c = element.getClass();
+                if (clazz != c) {
+                    needsConversion = true;
+                    break;
+                }
+            }
+            if (needsConversion) {
+                for (int i = 0; i < array.length; i++) {
+                    array[i] = JSRuntime.toDouble(array[i]);
+                }
+            }
+        }
+
+        private class SortComparator implements Comparator<Object> {
+            private final Object compFnObj;
+            private final boolean isFunction;
+
+            SortComparator(Object compFnObj) {
+                this.compFnObj = compFnObj;
+                this.isFunction = JSFunction.isJSFunction(compFnObj);
+            }
+
+            @Override
+            public int compare(Object arg0, Object arg1) {
+                if (arg0 == Undefined.instance) {
+                    if (arg1 == Undefined.instance) {
+                        return 0;
+                    }
+                    return 1;
+                } else if (arg1 == Undefined.instance) {
+                    return -1;
+                }
+                Object retObj;
+                if (isFunction) {
+                    retObj = JSFunction.call((JSFunctionObject) compFnObj, Undefined.instance, new Object[]{arg0, arg1});
+                } else {
+                    retObj = JSRuntime.call(compFnObj, Undefined.instance, new Object[]{arg0, arg1});
+                }
+                return convertResult(retObj);
+            }
+
+            private int convertResult(Object retObj) {
+                if (retObj instanceof Integer) {
+                    return (int) retObj;
+                } else {
+                    double d = JSRuntime.toDouble(retObj);
+                    if (d < 0) {
+                        return -1;
+                    } else if (d > 0) {
+                        return 1;
+                    } else {
+                        // +/-0 or NaN
+                        return 0;
+                    }
+                }
+            }
+        }
+
+        @TruffleBoundary
+        private Object[] jsobjectToArray(JSDynamicObject thisObj, long len) {
+            SimpleArrayList<Object> list = SimpleArrayList.create(len);
+            for (long k = 0; k < len; k++) {
+                if (JSObject.hasProperty(thisObj, k)) {
+                    list.add(JSObject.get(thisObj, k), growProfile);
+                }
+            }
+            return list.toArray();
+        }
+
+        private Object[] foreignArrayToObjectArray(Object thisObj, int len) {
+            InteropLibrary interop = interopNode;
+            ImportValueNode importValue = importValueNode;
+            if (interop == null || importValue == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                interopNode = interop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
+                importValueNode = importValue = insert(ImportValueNode.create());
+            }
+            Object[] array = new Object[len];
+            for (int index = 0; index < len; index++) {
+                array[index] = JSInteropUtil.readArrayElementOrDefault(thisObj, index, Undefined.instance, interop, importValue, this);
+            }
+            return array;
         }
     }
 }
