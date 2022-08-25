@@ -546,8 +546,8 @@ public final class JSContextOptions {
                     "'warn', a warning is printed to stderr when an unhandled rejection is detected. " +
                     "'throw', an exception is thrown when an unhandled rejection is detected. " +
                     "'handler', the handler function set with Graal.setUnhandledPromiseRejectionHandler will be " +
-                    "called with the rejection value and promise respectively as arguments.")
-    public static final OptionKey<UnhandledRejectionsTrackingMode> UNHANDLED_REJECTIONS = new OptionKey<>(UnhandledRejectionsTrackingMode.NONE);
+                    "called with the rejection value and promise respectively as arguments.") public static final OptionKey<UnhandledRejectionsTrackingMode> UNHANDLED_REJECTIONS = new OptionKey<>(
+                                    UnhandledRejectionsTrackingMode.NONE);
     @CompilationFinal private UnhandledRejectionsTrackingMode unhandledRejectionsMode;
 
     public static final String OPERATOR_OVERLOADING_NAME = JS_OPTION_PREFIX + "operator-overloading";

@@ -334,7 +334,7 @@ public class JSContext {
         SegmenterPosition,
         FunctionAsyncIterator,
         IsGraalRuntime,
-        SetUhandledPromiseRejectionHandler,
+        SetUnhandledPromiseRejectionHandler,
         AsyncModuleExecutionFulfilled,
         AsyncModuleExecutionRejected,
         TopLevelAwaitResolve,

@@ -2001,29 +2001,22 @@ public class JSRealm {
     }
 
     private static JSFunctionData setUnhandledPromiseRejectionHandlerFunction(JSContext context) {
-        return context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.SetUhandledPromiseRejectionHandler, (c) -> {
+        return context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.SetUnhandledPromiseRejectionHandler, (c) -> {
             return JSFunctionData.createCallOnly(c, new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object[] args = frame.getArguments();
+                    Object handler = null;
                     if (JSArguments.getUserArgumentCount(args) > 0) {
                         Object arg = JSArguments.getUserArgument(args, 0);
-                        if (JSRuntime.isNullOrUndefined(arg)) {
-                            registerHandler(null);
-                        } else if (JSRuntime.isCallable(arg)) {
-                            registerHandler(arg);
-                        } else {
-                            throw Errors.createError("Value provided for the unhandled promise rejection handler is not callable");
+                        if (JSRuntime.isCallable(arg)) {
+                            handler = arg;
+                        } else if (!JSRuntime.isNullOrUndefined(arg)) {
+                            throw Errors.createTypeError("Value provided for the unhandled promise rejection handler is not callable");
                         }
-                    } else {
-                        registerHandler(null);
                     }
+                    getRealm().unhandledPromiseRejectionHandler = handler;
                     return Undefined.instance;
-                }
-
-                @TruffleBoundary
-                private void registerHandler(Object handlerFunctionObject) {
-                    JSRealm.get(null).unhandledPromiseRejectionHandler = handlerFunctionObject;
                 }
             }.getCallTarget(), 0, Strings.SET_UNHANDLED_PROMISE_REJECTION_HANDLER);
         });

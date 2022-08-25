@@ -124,7 +124,7 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
             if (mode == JSContextOptions.UnhandledRejectionsTrackingMode.HANDLER) {
                 Object handler = realm.getUnhandledPromiseRejectionHandler();
                 if (handler != null) {
-                    JSRuntime.call(handler, Undefined.instance, new Object[] {info.reason, unhandled});
+                    JSRuntime.call(handler, Undefined.instance, new Object[]{info.reason, unhandled});
                 }
             } else if (mode == JSContextOptions.UnhandledRejectionsTrackingMode.WARN) {
                 PrintWriter out = realm.getErrorWriter();

@@ -113,12 +113,12 @@ public class PromiseRejectionHandler {
     public void testUnhandledRejectionInHandler() {
         try (Context context = newUnhandledRejectionContext()) {
             context.eval("js", "" +
-                    "count = 0; " +
-                    "Graal.setUnhandledPromiseRejectionHandler(() => {" +
-                    "   if (count == 0) Promise.reject('testInner');" +
-                    "   count++;" +
-                    "}); " +
-                    "Promise.reject('test1')");
+                            "count = 0; " +
+                            "Graal.setUnhandledPromiseRejectionHandler(() => {" +
+                            "   if (count == 0) Promise.reject('testInner');" +
+                            "   count++;" +
+                            "}); " +
+                            "Promise.reject('test1')");
             context.eval("js", "Promise.reject('test2')");
             Value count = context.eval("js", "count");
             assertEquals(3, count.asInt());
@@ -153,7 +153,6 @@ public class PromiseRejectionHandler {
             assertTrue(executed.get());
         }
     }
-
 
     Context newUnhandledRejectionContext(Engine engine) {
         Context.Builder builder = JSTest.newContextBuilder().option("js.unhandled-rejections", "handler").allowAllAccess(true);
