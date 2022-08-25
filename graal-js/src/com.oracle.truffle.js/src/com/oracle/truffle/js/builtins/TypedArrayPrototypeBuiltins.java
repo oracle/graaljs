@@ -78,6 +78,9 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySlice
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySomeNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySortNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLocaleStringNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToReversedNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToSortedNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayWithNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewFillNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewForEachNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewIteratorNodeGen;
@@ -158,7 +161,12 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         // ES 2023
         findLast(1),
-        findLastIndex(1);
+        findLastIndex(1),
+
+        // https://github.com/tc39/proposal-change-array-by-copy
+        toReversed(0),
+        toSorted(1),
+        with(2);
 
         private final int length;
 
@@ -243,6 +251,15 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSArrayIncludesNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case at:
                 return JSArrayAtNodeGen.create(context, builtin, true, args().withThis().fixedArgs(1).createArgumentNodes(context));
+
+            // TODO Schlaegl: additional work needed to meet the spec
+            // (https://github.com/tc39/proposal-change-array-by-copy)
+            case toReversed:
+                return JSArrayToReversedNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case toSorted:
+                return JSArrayToSortedNodeGen.create(context, builtin, true, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case with:
+                return JSArrayWithNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }
