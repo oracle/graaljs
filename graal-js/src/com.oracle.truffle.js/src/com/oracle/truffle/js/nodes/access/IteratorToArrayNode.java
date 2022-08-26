@@ -121,7 +121,7 @@ public abstract class IteratorToArrayNode extends JavaScriptNode {
 
         iteratorRecord.setDone(true);
 
-        return items;
+        return JSArray.createZeroBasedObjectArray(context, getRealm(), items.toArray());
     }
 
     @Specialization(guards = "iteratorRecord.isDone()")

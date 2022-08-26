@@ -51,16 +51,14 @@ import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
-    @Child private IsObjectNode isObjectNode;
     @Child private PropertyGetNode getNextMethodNode;
     @Child private IsCallableNode isCallableNode;
 
     private final BranchProfile errorProfile = BranchProfile.create();
 
     public GetIteratorDirectNode(JSContext context) {
-        isObjectNode = IsObjectNode.create();
         isCallableNode = IsCallableNode.create();
-        getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
+        getNextMethodNode = PropertyGetNode.create(Strings.NEXT, false, context);
     }
 
     public abstract IteratorRecord execute(Object iteratedObject);
