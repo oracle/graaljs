@@ -78,10 +78,10 @@ import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStrin
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToTimeStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateValueOfNodeGen;
-import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltins.ObjectOperation;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.OrdinaryToPrimitiveNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -850,20 +850,22 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
     }
 
-    public abstract static class JSDateToJSONNode extends ObjectOperation {
+    public abstract static class JSDateToJSONNode extends JSBuiltinNode {
 
         @Child private PropertyGetNode getToISOStringFnNode;
         @Child private JSFunctionCallNode callToISOStringFnNode;
+        @Child private JSToObjectNode toObjectNode;
         @Child private JSToPrimitiveNode toPrimitiveNode;
 
         public JSDateToJSONNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            toObjectNode = JSToObjectNode.createToObject(context);
             toPrimitiveNode = JSToPrimitiveNode.createHintNumber();
         }
 
         @Specialization
         protected Object toJSON(Object thisDate, @SuppressWarnings("unused") Object key) {
-            JSDynamicObject o = toJSObject(thisDate);
+            Object o = toObjectNode.execute(thisDate);
             Object tv = toPrimitiveNode.execute(o);
             if (JSRuntime.isNumber(tv)) {
                 double d = JSRuntime.doubleValue(((Number) tv));
