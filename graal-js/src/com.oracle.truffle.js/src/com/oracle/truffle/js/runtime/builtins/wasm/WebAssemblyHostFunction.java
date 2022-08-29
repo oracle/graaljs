@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -56,8 +55,6 @@ import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSErrorType;
-import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
@@ -70,7 +67,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 @ExportLibrary(InteropLibrary.class)
 public class WebAssemblyHostFunction implements TruffleObject {
-    private final JSContext context;
     private final Object fn;
     private final TruffleString[] resultTypes;
     private final boolean anyReturnTypeIsI64;
@@ -88,7 +84,6 @@ public class WebAssemblyHostFunction implements TruffleObject {
         this.resultTypes = !Strings.isEmpty(returnTypes) ? Strings.split(context, returnTypes, Strings.SPACE) : new TruffleString[0];
         this.anyReturnTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxClose + 1) >= 0;
         this.anyArgTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxOpen + 1, idxClose) >= 0;
-        this.context = context;
     }
 
     @ExportMessage
@@ -120,11 +115,8 @@ public class WebAssemblyHostFunction implements TruffleObject {
         } else if (resultTypes.length == 1) {
             return toWebAssemblyValueNode.execute(result, resultTypes[0]);
         } else {
-            if (!context.getContextOptions().isWasmMultiValue()) {
-                throw JSException.create(JSErrorType.RuntimeError, "wasm multi-value is not enabled");
-            }
             if (!(result instanceof JSDynamicObject)) {
-                throw CompilerDirectives.shouldNotReachHere();
+                throw Errors.shouldNotReachHere();
             }
             IteratorRecord iter = JSRuntime.getIterator((JSDynamicObject) result);
             Object[] values = new Object[resultTypes.length];
@@ -134,14 +126,16 @@ public class WebAssemblyHostFunction implements TruffleObject {
                 next = JSRuntime.iteratorStep(iter);
                 if (next != Boolean.FALSE) {
                     if (i >= values.length) {
-                        throw JSException.create(JSErrorType.TypeError, "invalid result array arity");
+                        errorBranch.enter();
+                        throw Errors.createTypeError("invalid result array arity");
                     }
                     values[i] = JSRuntime.iteratorValue((JSDynamicObject) next);
                     i++;
                 }
             }
             if (i != values.length) {
-                throw JSException.create(JSErrorType.TypeError, "invalid result array arity");
+                errorBranch.enter();
+                throw Errors.createTypeError("invalid result array arity");
             }
             for (int j = 0; j < values.length; j++) {
                 values[j] = toWebAssemblyValueNode.execute(values[j], resultTypes[j]);

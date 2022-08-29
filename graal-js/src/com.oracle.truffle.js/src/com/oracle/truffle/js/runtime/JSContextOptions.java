@@ -618,11 +618,6 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SCOPE_OPTIMIZATION = new OptionKey<>(true);
     @CompilationFinal private boolean scopeOptimization;
 
-    public static final String WASM_MULTI_VALUE_NAME = JS_OPTION_PREFIX + "wasm-multi-value";
-    @Option(name = WASM_MULTI_VALUE_NAME, category = OptionCategory.USER, help = "Enable wasm multi-value support") //
-    public static final OptionKey<Boolean> WASM_MULTI_VALUE = new OptionKey<>(true);
-    @CompilationFinal private boolean wasmMultiValue;
-
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -729,7 +724,6 @@ public final class JSContextOptions {
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
         this.scopeOptimization = readBooleanOption(SCOPE_OPTIMIZATION);
-        this.wasmMultiValue = readBooleanOption(WASM_MULTI_VALUE);
     }
 
     private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
@@ -1152,10 +1146,6 @@ public final class JSContextOptions {
         return scopeOptimization;
     }
 
-    public boolean isWasmMultiValue() {
-        return wasmMultiValue;
-    }
-
     @Override
     public int hashCode() {
         int hash = 5;
@@ -1222,7 +1212,6 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.esmBareSpecifierRelativeLookup ? 1 : 0);
         hash = 53 * hash + (this.temporal ? 1 : 0);
         hash = 53 * hash + (this.scopeOptimization ? 1 : 0);
-        hash = 53 * hash + (this.wasmMultiValue ? 1 : 0);
         return hash;
     }
 
@@ -1422,9 +1411,6 @@ public final class JSContextOptions {
             return false;
         }
         if (this.scopeOptimization != other.scopeOptimization) {
-            return false;
-        }
-        if (this.wasmMultiValue != other.wasmMultiValue) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

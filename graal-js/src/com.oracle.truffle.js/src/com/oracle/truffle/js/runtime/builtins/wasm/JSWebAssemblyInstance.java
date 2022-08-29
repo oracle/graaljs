@@ -60,8 +60,6 @@ import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSErrorType;
-import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -268,9 +266,6 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     } else if (returnLength == 1) {
                         return toJSValueNode.execute(wasmResult);
                     } else {
-                        if (!context.getContextOptions().isWasmMultiValue()) {
-                            throw JSException.create(JSErrorType.RuntimeError, "wasm multi-value is not enabled");
-                        }
                         Object[] values = new Object[returnLength];
                         for (int i = 0; i < returnLength; i++) {
                             values[i] = toJSValueNode.execute(exportFunctionLib.readArrayElement(wasmResult, i));
